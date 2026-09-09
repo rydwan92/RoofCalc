@@ -1,0 +1,14 @@
+{
+  "name": "@cieslacalc/calculator-core",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@cieslacalc/timber-model": "workspace:*",
+    "@cieslacalc/roof-math": "workspace:*",
+    "@cieslacalc/drawing-engine": "workspace:*",
+    "@cieslacalc/shared": "workspace:*",
+    "zod": "^3.25.0"
+  }
+}

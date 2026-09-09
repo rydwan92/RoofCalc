@@ -1,0 +1,8 @@
+Options -Indexes
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteRule (^|/)(\.[^/]+|node_modules)(/|$) - [F,L]
+RewriteRule ^(packages|docs|migrations|ChatPromptsHistoryIgnore)(/|$) - [F,L]
+RewriteRule ^apps/(?!web/dist(?:/|$)) - [F,L]
+RewriteRule ^(package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|tsconfig\.json|.*\.config\.(js|ts)|README\.md|PROJECT_BLUEPRINT\.md)$ - [F,L]
+</IfModule>

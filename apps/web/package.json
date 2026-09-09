@@ -1,0 +1,29 @@
+{
+  "name": "@cieslacalc/web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@cieslacalc/timber-model": "workspace:*",
+    "@cieslacalc/calculator-core": "workspace:*",
+    "@cieslacalc/drawing-engine": "workspace:*",
+    "@cieslacalc/roof-math": "workspace:*",
+    "@cieslacalc/shared": "workspace:*",
+    "@cieslacalc/ui": "workspace:*",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-router-dom": "^7.6.0",
+    "i18next": "^25.3.0",
+    "react-i18next": "^15.6.0",
+    "zustand": "^5.0.5",
+    "lucide-react": "^0.468.0"
+  },
+  "devDependencies": {
+    "vite": "^6.1.0",
+    "@vitejs/plugin-react": "^4.5.0"
+  }
+}

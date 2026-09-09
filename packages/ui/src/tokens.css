@@ -1,0 +1,12 @@
+:root {
+  --bg: #f7f8f5;
+  --surface: #ffffff;
+  --ink: #24382f;
+  --muted: #768078;
+  --green: #214e40;
+  --green-soft: #eaf0e9;
+  --line: #e3e7df;
+  --accent: #d8eaac;
+  --radius: 16px;
+  --font: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+}
