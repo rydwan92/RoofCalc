@@ -1301,7 +1301,7 @@ If code is temporarily incomplete, explicitly list:
 
 **Iteration:** `004 — reactive gable roof skeleton + faster dual-mode UX`
 
-**Status:** `IMPLEMENTED — VALIDATED`
+**Status:** `IMPLEMENTED — VALIDATED — PUSHED`
 
 **Working repository:** `C:/xampp/htdocs/RoofCalc`, origin `https://github.com/rydwan92/RoofCalc.git`. The former nested gitlink `RoofCalc/` was promoted into this root on 2026-09-10 only after matching hashes for V4 source and documentation were verified, then removed.
 
@@ -1326,6 +1326,7 @@ If code is temporarily incomplete, explicitly list:
 - Focused V4 tests passed: gable template (4), projection (6), store (5) and Builder integration (11).
 - Browser QA passed at desktop and 360 px: Quick Calc, Builder skeleton, responsive controls and no horizontal mobile overflow were inspected. Label overlap at the ridge and clipped mobile pitch controls were found and corrected during QA.
 - Root XAMPP build was verified at `http://localhost/RoofCalc/apps/web/dist/#/calculators/common-rafter`.
+- Published to `origin/main` in commit `7ce50d4` (`feat: add reactive roof skeleton workbench`), which removes the former `160000 RoofCalc` gitlink.
 - No Three.js, 3D solver, hip/valley geometry, persistence, authentication, billing or PDF work was added.
 
 **Iteration 004 limitations:**
@@ -1407,7 +1408,7 @@ If code is temporarily incomplete, explicitly list:
 
 **NEXT ACTION:**
 
-> After the commit and push, verify the root XAMPP URL with Ctrl+F5 on the intended workstation. Keep future source work in `C:/xampp/htdocs/RoofCalc`; do not recreate a nested Git repository. Do not begin Iteration 005 without a new explicit prompt.
+> Work only in `C:/xampp/htdocs/RoofCalc`. After source changes run `npx pnpm@10.15.1 build`, then open `http://localhost/RoofCalc/apps/web/dist/#/calculators/common-rafter` with Ctrl+F5. Do not recreate a nested Git repository or begin Iteration 005 without a new explicit prompt.
 
 ---
 
