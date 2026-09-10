@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  createAssemblyDetailPreviews,
+  createHipRafterDetailPreview,
+} from '@cieslacalc/calculator-core';
+import {
   ArrowLeft,
   Box,
   Columns3,
@@ -23,7 +27,12 @@ import {
   purlinPlacementSegments,
   resolveRoofTemplate,
 } from '@cieslacalc/roof-math';
-import type { ResolvedHipRafter, RoofSkeleton } from '@cieslacalc/timber-model';
+import type { DetailPreviewModel } from '@cieslacalc/drawing-engine';
+import type {
+  ResolvedHipRafter,
+  ResolvedRafterSpacing,
+  RoofSkeleton,
+} from '@cieslacalc/timber-model';
 import { formatLength } from '../format';
 import { useAssembly } from './store';
 import {
@@ -38,12 +47,14 @@ import {
 import { AssemblyCanvas, entityLabel } from './Canvas';
 import { SkeletonCanvas } from './SkeletonCanvas';
 import { HipFabricationSheet } from './HipFabricationSheet';
+import { DetailDrawer, QuickCutPreviews } from './DetailPreview';
 import {
   ContextualFabrication,
   ContextualResults,
   Fabrication,
   HipResults,
   Results,
+  SpacingSummary,
 } from './Summary';
 import {
   resolveWorkbenchSelectionContext,
@@ -51,7 +62,13 @@ import {
 } from './selection';
 import './styles.css';
 
-function Toolbox({ result }: { result: Calculation | null }) {
+function Toolbox({
+  result,
+  detailPreviews,
+}: {
+  result: Calculation | null;
+  detailPreviews: DetailPreviewModel[];
+}) {
   const state = useAssembly(),
     { t } = useTranslation();
   const canAdd =
@@ -86,12 +103,36 @@ function Toolbox({ result }: { result: Calculation | null }) {
         )}
         <span>{t('assembly.toolbox')}</span>
       </button>
-      <section>
-        <h2>{t('assembly.geometry')}</h2>
-        {selectButton('roof', <Triangle size={20} />, t('assembly.roof'))}
+      <section className="a-toolbox-active">
+        <h2>{t('assembly.activeSelection')}</h2>
+        <strong>{entityLabel(state.selected, state, t)}</strong>
+        {detailPreviews.length > 0 && (
+          <div className="a-toolbox-detail-shortcuts">
+            {detailPreviews.map((preview) => (
+              <button
+                key={preview.id}
+                className="a-tool"
+                aria-pressed={state.selected === preview.sourceSelectionId}
+                onClick={() =>
+                  state.select(
+                    preview.sourceSelectionId,
+                    preview.subjectMemberId,
+                  )
+                }
+              >
+                <Triangle size={18} />
+                <span>{t(`assembly.${preview.titleKey}`)}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </section>
-      <section>
-        <h2>{t('assembly.timber')}</h2>
+      <details open>
+        <summary>{t('assembly.geometry')}</summary>
+        {selectButton('roof', <Triangle size={20} />, t('assembly.roof'))}
+      </details>
+      <details open>
+        <summary>{t('assembly.timber')}</summary>
         {selectButton(
           state.spec.member.id,
           <Box size={20} />,
@@ -109,9 +150,9 @@ function Toolbox({ result }: { result: Calculation | null }) {
             <Box size={20} />,
             `${t('assembly.jackRafter')} J1`,
           )}
-      </section>
-      <section>
-        <h2>{t('assembly.supports')}</h2>
+      </details>
+      <details open>
+        <summary>{t('assembly.supports')}</summary>
         {state.spec.supports.map((support) => {
           const number = /^support:purlin-(\d+)$/.exec(support.id)?.[1];
           return selectButton(
@@ -137,7 +178,7 @@ function Toolbox({ result }: { result: Calculation | null }) {
           <Columns3 size={20} />,
           t('assembly.ridge'),
         )}
-      </section>
+      </details>
     </aside>
   );
 }
@@ -146,21 +187,27 @@ function Inspector({
   hip,
   skeleton,
   context,
-  onEnlarge,
+  spacingEntries,
+  detailPreviews,
+  onOpenDetail,
 }: {
   result: Calculation | null;
   hip?: ResolvedHipRafter;
   skeleton: RoofSkeleton;
   context: WorkbenchSelectionContext;
-  onEnlarge: () => void;
+  spacingEntries: {
+    spacing: ResolvedRafterSpacing;
+    stationLabelKey: 'rafterPairs' | 'spacingAxes';
+    headingKey?: 'commonRafterRegionSpacing' | 'jackRafterRegionSpacing';
+  }[];
+  detailPreviews: DetailPreviewModel[];
+  onOpenDetail: (preview: DetailPreviewModel) => void;
 }) {
   const state = useAssembly(),
     { t, i18n } = useTranslation();
   const support = state.spec.supports.find(
     (s) => s.id === state.selected || `joint:${s.id}` === state.selected,
   );
-  const isCut =
-    state.selected.startsWith('joint:') || state.selected.startsWith('cut:');
   const rafterInstance =
     state.selectedPrototype === state.spec.member.id
       ? skeleton.members.find((member) => member.id === state.selected)
@@ -204,7 +251,19 @@ function Inspector({
           <span className="a-context-badge">
             {t(`assembly.${context.kind}Context`)}
           </span>
-          {state.selected === 'roof' && <GeometryInputs includeLayout />}
+          {state.selected === 'roof' && (
+            <>
+              <GeometryInputs includeLayout />
+              {spacingEntries.map((entry) => (
+                <SpacingSummary
+                  key={`${entry.headingKey ?? 'gable'}:${entry.spacing.mode}`}
+                  spacing={entry.spacing}
+                  stationLabelKey={entry.stationLabelKey}
+                  headingKey={entry.headingKey}
+                />
+              ))}
+            </>
+          )}
           {rafterInstance && (
             <section className="a-instance-facts">
               <dl className="a-facts">
@@ -310,18 +369,24 @@ function Inspector({
             />
           )}
           {support && <SupportInputs support={support} result={result} />}
-          {isCut && result && (
-            <section className="a-detail-lens">
-              <h3>{t('assembly.detail')}</h3>
-              <AssemblyCanvas
-                result={result}
-                compact
-                focusId={state.selected}
-                readOnly
-              />
-              <button className="a-button" onClick={onEnlarge}>
-                {t('assembly.enlarge')}
-              </button>
+          {detailPreviews.length > 0 && (
+            <section className="a-inspector-details">
+              <h3>{t('assembly.availableDetails')}</h3>
+              {detailPreviews.map((preview) => (
+                <button
+                  key={preview.id}
+                  className="a-button"
+                  onClick={() => {
+                    state.select(
+                      preview.sourceSelectionId,
+                      preview.subjectMemberId,
+                    );
+                    onOpenDetail(preview);
+                  }}
+                >
+                  {preview.subjectCode} · {t(`assembly.${preview.titleKey}`)}
+                </button>
+              ))}
             </section>
           )}
         </div>
@@ -333,7 +398,10 @@ export function AssemblyPage() {
   const state = useAssembly(),
     { t, i18n } = useTranslation();
   const [marking, setMarking] = useState(false),
-    [focusId, setFocusId] = useState<string | undefined>();
+    [focusId, setFocusId] = useState<string | undefined>(),
+    [detailOpen, setDetailOpen] = useState(false),
+    [detailPinned, setDetailPinned] = useState(false),
+    [activeDetailId, setActiveDetailId] = useState<string | undefined>();
   const brand = import.meta.env.VITE_BRAND_NAME || 'CieślaCalc';
   const templateResult = useMemo(
     () => resolveRoofTemplate(state.template),
@@ -357,7 +425,89 @@ export function AssemblyPage() {
   const result = templateResult.calculation;
   const hip =
     'hipRafter' in templateResult ? templateResult.hipRafter : undefined;
+  const layoutSpacing =
+    'jackRafterSpacing' in templateResult
+      ? templateResult.jackRafterSpacing
+      : templateResult.rafterSpacing;
+  const spacingEntries =
+    'jackRafterSpacing' in templateResult
+      ? [
+          ...(templateResult.rafterSpacing
+            ? [
+                {
+                  spacing: templateResult.rafterSpacing,
+                  stationLabelKey: 'rafterPairs' as const,
+                  headingKey: 'commonRafterRegionSpacing' as const,
+                },
+              ]
+            : []),
+          {
+            spacing: templateResult.jackRafterSpacing,
+            stationLabelKey: 'spacingAxes' as const,
+            headingKey: 'jackRafterRegionSpacing' as const,
+          },
+        ]
+      : [
+          {
+            spacing: templateResult.rafterSpacing,
+            stationLabelKey: 'rafterPairs' as const,
+          },
+        ];
   const wall = state.spec.supports.find((s) => s.kind === 'wall-plate')!;
+  const commonDetailPreviews = useMemo(
+    () => (result ? createAssemblyDetailPreviews(result) : []),
+    [result],
+  );
+  const hipDetailPreview = useMemo(
+    () => (hip ? createHipRafterDetailPreview(hip) : undefined),
+    [hip],
+  );
+  const allDetailPreviews = useMemo(
+    () => [
+      ...commonDetailPreviews,
+      ...(hipDetailPreview ? [hipDetailPreview] : []),
+    ],
+    [commonDetailPreviews, hipDetailPreview],
+  );
+  const selectionDetailPreviews = useMemo(() => {
+    const direct = allDetailPreviews.find(
+      (preview) => preview.sourceSelectionId === state.selected,
+    );
+    if (direct) return [direct];
+    if (selectionContext.kind === 'support')
+      return allDetailPreviews.filter(
+        (preview) => preview.relatedSupportId === selectionContext.id,
+      );
+    const prototypeId =
+      selectionContext.kind === 'prototype'
+        ? selectionContext.prototype.id
+        : selectionContext.kind === 'instance'
+          ? selectionContext.member.prototypeId
+          : undefined;
+    if (prototypeId === HIP_RAFTER_PROTOTYPE_ID)
+      return hipDetailPreview ? [hipDetailPreview] : [];
+    if (prototypeId === state.spec.member.id) return commonDetailPreviews;
+    return [];
+  }, [
+    allDetailPreviews,
+    commonDetailPreviews,
+    hipDetailPreview,
+    selectionContext,
+    state.selected,
+    state.spec.member.id,
+  ]);
+  const quickDetailPreviews = hip
+    ? hipDetailPreview
+      ? [hipDetailPreview]
+      : []
+    : commonDetailPreviews.filter(
+        (preview) =>
+          preview.type === 'ridge-cut-detail' ||
+          preview.relatedSupportId === wall.id,
+      );
+  const drawerPreviews = detailPinned
+    ? allDetailPreviews
+    : selectionDetailPreviews;
   const changeMode = (mode: 'quick' | 'builder') => {
     state.setMode(mode);
     if (mode === 'builder' && window.matchMedia?.('(max-width: 800px)').matches)
@@ -370,6 +520,26 @@ export function AssemblyPage() {
   useEffect(() => {
     setFocusId(undefined);
   }, [state.selected, state.mode]);
+  useEffect(() => {
+    if (state.mode !== 'builder' || detailPinned) return;
+    const direct = allDetailPreviews.find(
+      (preview) => preview.sourceSelectionId === state.selected,
+    );
+    if (direct) {
+      setActiveDetailId(direct.id);
+      setDetailOpen(true);
+      if (window.matchMedia?.('(max-width: 800px)').matches)
+        useAssembly.setState({ inspectorOpen: false });
+      return;
+    }
+    setActiveDetailId(selectionDetailPreviews[0]?.id);
+  }, [
+    allDetailPreviews,
+    detailPinned,
+    selectionDetailPreviews,
+    state.mode,
+    state.selected,
+  ]);
   return (
     <div
       className={`assembly-app mode-${state.mode}`}
@@ -536,6 +706,7 @@ export function AssemblyPage() {
               ) : (
                 result && <AssemblyCanvas result={result} compact readOnly />
               )}
+              <QuickCutPreviews previews={quickDetailPreviews} />
               <button
                 className="a-button"
                 aria-expanded={marking}
@@ -550,7 +721,10 @@ export function AssemblyPage() {
             <div
               className={`a-builder-layout ${state.collapsed ? 'tools-collapsed' : ''}`}
             >
-              <Toolbox result={result} />
+              <Toolbox
+                result={result}
+                detailPreviews={selectionDetailPreviews}
+              />
               <section className="a-canvas-column">
                 <div
                   className="a-view-switch"
@@ -596,7 +770,10 @@ export function AssemblyPage() {
                 ) : state.view === 'rafter' ? (
                   <AssemblyCanvas result={result} />
                 ) : (
-                  <SkeletonCanvas template={state.template} />
+                  <SkeletonCanvas
+                    template={state.template}
+                    spacing={layoutSpacing}
+                  />
                 )}
               </section>
               <Inspector
@@ -604,9 +781,43 @@ export function AssemblyPage() {
                 hip={hip}
                 skeleton={skeleton}
                 context={selectionContext}
-                onEnlarge={() => setFocusId(state.selected)}
+                spacingEntries={spacingEntries}
+                detailPreviews={selectionDetailPreviews}
+                onOpenDetail={(preview) => {
+                  setActiveDetailId(preview.id);
+                  setDetailOpen(true);
+                }}
               />
             </div>
+            <DetailDrawer
+              previews={drawerPreviews}
+              activeId={activeDetailId}
+              open={detailOpen}
+              pinned={detailPinned}
+              onSelect={(id) => {
+                const preview = allDetailPreviews.find(
+                  (candidate) => candidate.id === id,
+                );
+                setActiveDetailId(id);
+                if (preview)
+                  state.select(
+                    preview.sourceSelectionId,
+                    preview.subjectMemberId,
+                  );
+              }}
+              onToggle={() => setDetailOpen((open) => !open)}
+              onClose={() => setDetailOpen(false)}
+              onPin={() => setDetailPinned((pinned) => !pinned)}
+              onZoom={(preview) => {
+                if (preview.subjectCode === 'H1') {
+                  state.setView('hip');
+                  setFocusId(undefined);
+                } else {
+                  state.setView('rafter');
+                  setFocusId(preview.sourceSelectionId);
+                }
+              }}
+            />
             <ContextualResults
               context={selectionContext}
               resolved={templateResult}

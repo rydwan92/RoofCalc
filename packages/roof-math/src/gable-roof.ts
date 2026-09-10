@@ -17,10 +17,20 @@ import {
 const positiveMm = z.number().finite().min(1).max(100000);
 const pitchDeg = z.number().finite().min(1).max(80);
 const support = supportSpecSchema;
-export const rafterSpacingSchema: z.ZodType<RafterSpacingSpec> = z.object({
-  mode: z.enum(['fixed-spacing', 'fit-evenly']),
-  spacingMm: positiveMm,
-});
+export const rafterSpacingSchema: z.ZodType<RafterSpacingSpec> = z
+  .object({
+    mode: z.enum(['max-even-spacing', 'target-even-spacing', 'fixed-module']),
+    spacingMm: positiveMm,
+    endPolicy: z.enum(['require-both-ends', 'allow-open-end']).optional(),
+  })
+  .superRefine((spacing, ctx) => {
+    if (spacing.mode === 'fixed-module' && !spacing.endPolicy)
+      ctx.addIssue({
+        code: 'custom',
+        path: ['endPolicy'],
+        message: 'end_policy_required',
+      });
+  }) as z.ZodType<RafterSpacingSpec>;
 export function gableRidgeHeightMm(halfRunMm: number, pitchDegValue: number) {
   return (
     positiveMm.parse(halfRunMm) *
@@ -92,30 +102,55 @@ export function resolveRafterSpacing(
   const exactBayCount = length / spec.spacingMm;
   const fullBayCount = Math.floor(exactBayCount);
   const hasRemainder = length - fullBayCount * spec.spacingMm > 1e-8;
-  const bayCount =
-    spec.mode === 'fit-evenly'
+  const evenBayCount =
+    spec.mode === 'max-even-spacing'
       ? Math.max(1, Math.ceil(exactBayCount))
-      : Math.max(1, fullBayCount + (hasRemainder ? 1 : 0));
-  const actualSpacingMm =
-    spec.mode === 'fit-evenly' ? length / bayCount : spec.spacingMm;
+      : spec.mode === 'target-even-spacing'
+        ? Math.max(1, Math.round(exactBayCount))
+        : undefined;
+  const actualSpacingMm = evenBayCount ? length / evenBayCount : spec.spacingMm;
   const stations =
-    spec.mode === 'fit-evenly'
-      ? Array.from({ length: bayCount + 1 }, (_, index) =>
-          index === bayCount ? length : index * actualSpacingMm,
-        )
-      : [
+    spec.mode === 'fixed-module'
+      ? [
           ...Array.from(
             { length: fullBayCount + 1 },
             (_, index) => index * spec.spacingMm,
           ),
-          ...(hasRemainder ? [length] : []),
-        ];
+          ...(spec.endPolicy === 'require-both-ends' && hasRemainder
+            ? [length]
+            : []),
+        ]
+      : Array.from({ length: evenBayCount! + 1 }, (_, index) =>
+          index === evenBayCount ? length : index * actualSpacingMm,
+        );
+  const bayCount = stations.length - 1;
+  const deviationMm =
+    spec.mode === 'target-even-spacing'
+      ? actualSpacingMm - spec.spacingMm
+      : undefined;
   return {
     mode: spec.mode,
     requestedSpacingMm: spec.spacingMm,
     actualSpacingMm,
-    endBaySpacingMm: stations.at(-1)! - stations.at(-2)!,
+    ...(spec.mode === 'fixed-module'
+      ? {
+          endPolicy: spec.endPolicy,
+          ...(spec.endPolicy === 'require-both-ends' && hasRemainder
+            ? { endBaySpacingMm: length - fullBayCount * spec.spacingMm }
+            : {}),
+          ...(spec.endPolicy === 'allow-open-end' && hasRemainder
+            ? { remainderToEndMm: length - fullBayCount * spec.spacingMm }
+            : {}),
+        }
+      : { endBaySpacingMm: actualSpacingMm }),
+    ...(deviationMm === undefined
+      ? {}
+      : {
+          deviationMm,
+          deviationRatio: deviationMm / spec.spacingMm,
+        }),
     bayCount,
+    stationCount: stations.length,
     stations: stations.map((alongBuildingMm, index) => ({
       id: `instance:rafter-pair-${index + 1}`,
       alongBuildingMm,
@@ -144,7 +179,7 @@ export function gableTemplateFromAssembly(
   > = {
     id: 'template:gable-1',
     buildingLengthMm: 8000,
-    rafterSpacing: { mode: 'fit-evenly', spacingMm: 800 },
+    rafterSpacing: { mode: 'max-even-spacing', spacingMm: 800 },
   },
 ): GableRoofTemplateSpec {
   const assembly = assemblySpecSchema.parse(raw);

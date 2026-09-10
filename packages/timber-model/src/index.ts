@@ -106,11 +106,19 @@ export interface AssemblySpec {
   supports: SupportSpec[];
   ridge: { id: EntityId; thicknessMm: number };
 }
-export type RafterSpacingMode = 'fixed-spacing' | 'fit-evenly';
-export interface RafterSpacingSpec {
-  mode: RafterSpacingMode;
-  spacingMm: number;
-}
+export type RafterSpacingMode =
+  'max-even-spacing' | 'target-even-spacing' | 'fixed-module';
+export type EndStationPolicy = 'require-both-ends' | 'allow-open-end';
+export type RafterSpacingSpec =
+  | {
+      mode: 'max-even-spacing' | 'target-even-spacing';
+      spacingMm: number;
+    }
+  | {
+      mode: 'fixed-module';
+      spacingMm: number;
+      endPolicy: EndStationPolicy;
+    };
 /** Editable intent for a symmetric gable roof. The cross section resolves through AssemblySpec. */
 export interface GableRoofTemplateSpec {
   id: EntityId;
@@ -314,8 +322,13 @@ export interface ResolvedRafterSpacing {
   mode: RafterSpacingMode;
   requestedSpacingMm: number;
   actualSpacingMm: number;
-  endBaySpacingMm: number;
+  endBaySpacingMm?: number;
+  remainderToEndMm?: number;
+  deviationMm?: number;
+  deviationRatio?: number;
+  endPolicy?: EndStationPolicy;
   bayCount: number;
+  stationCount: number;
   stations: RafterStation[];
 }
 export interface Point3D {

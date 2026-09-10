@@ -15,6 +15,94 @@ import type {
   WorkbenchSelectionContext,
 } from './selection';
 
+export function SpacingSummary({
+  spacing,
+  stationLabelKey = 'rafterPairs',
+  headingKey,
+  compact = false,
+}: {
+  spacing: ResolvedRafterSpacing;
+  stationLabelKey?: 'rafterPairs' | 'spacingAxes';
+  headingKey?: 'commonRafterRegionSpacing' | 'jackRafterRegionSpacing';
+  compact?: boolean;
+}) {
+  const { t, i18n } = useTranslation();
+  const state = useAssembly();
+  const length = (value: number) =>
+    `${formatLength(value, state.unit, i18n.language)} ${state.unit}`;
+  const percent = (value: number) => {
+    const formatted = formatNumber(Math.abs(value) * 100, i18n.language);
+    return `${value > 0 ? '+' : value < 0 ? '−' : ''}${formatted}%`;
+  };
+  const requestedLabel =
+    spacing.mode === 'max-even-spacing'
+      ? 'requestedMaximumSpacing'
+      : spacing.mode === 'target-even-spacing'
+        ? 'requestedTargetSpacing'
+        : 'requestedModuleSpacing';
+  const explanation =
+    spacing.mode === 'max-even-spacing'
+      ? t('assembly.spacingMaxExplanation', {
+          count: spacing.stationCount,
+          middle: Math.max(0, spacing.stationCount - 2),
+          requested: length(spacing.requestedSpacingMm),
+        })
+      : spacing.mode === 'target-even-spacing'
+        ? t('assembly.spacingTargetExplanation', {
+            bays: spacing.bayCount,
+            deviation: percent(spacing.deviationRatio ?? 0),
+          })
+        : spacing.endPolicy === 'require-both-ends'
+          ? t('assembly.spacingFixedEndExplanation', {
+              endBay:
+                spacing.endBaySpacingMm === undefined
+                  ? length(spacing.actualSpacingMm)
+                  : length(spacing.endBaySpacingMm),
+            })
+          : t('assembly.spacingOpenEndExplanation', {
+              remainder: length(spacing.remainderToEndMm ?? 0),
+            });
+  return (
+    <section
+      className={`a-spacing-summary ${compact ? 'is-compact' : ''}`}
+      data-testid="spacing-summary"
+    >
+      {headingKey && <h3>{t(`assembly.${headingKey}`)}</h3>}
+      <dl>
+        <div>
+          <dt>{t(`assembly.${requestedLabel}`)}</dt>
+          <dd data-testid="requested-spacing">
+            {length(spacing.requestedSpacingMm)}
+          </dd>
+        </div>
+        <div>
+          <dt>{t('assembly.actualSpacing')}</dt>
+          <dd data-testid="actual-spacing">
+            {length(spacing.actualSpacingMm)}
+          </dd>
+        </div>
+        <div>
+          <dt>{t('assembly.bayCount')}</dt>
+          <dd data-testid="bay-count">{spacing.bayCount}</dd>
+        </div>
+        <div>
+          <dt>{t(`assembly.${stationLabelKey}`)}</dt>
+          <dd data-testid="station-count">{spacing.stationCount}</dd>
+        </div>
+        {spacing.deviationRatio !== undefined && (
+          <div>
+            <dt>{t('assembly.spacingDeviation')}</dt>
+            <dd data-testid="spacing-deviation">
+              {percent(spacing.deviationRatio)}
+            </dd>
+          </div>
+        )}
+      </dl>
+      <p>{explanation}</p>
+    </section>
+  );
+}
+
 export function HipResults({ hip }: { hip: ResolvedHipRafter }) {
   const { t, i18n } = useTranslation(),
     state = useAssembly();
@@ -176,7 +264,7 @@ export function Fabrication({
             className="a-joint-card"
             onClick={() => {
               state.setMode('builder');
-              state.select(joint.id);
+              state.select(joint.id, state.spec.member.id);
             }}
           >
             <strong>
@@ -206,7 +294,7 @@ export function Fabrication({
           className="a-joint-card"
           onClick={() => {
             state.setMode('builder');
-            state.select('cut:ridge');
+            state.select('cut:ridge', state.spec.member.id);
           }}
         >
           <strong>K1 · {t('assembly.ridge')}</strong>
@@ -375,6 +463,26 @@ export function ContextualResults({
             )}
           </Metric>
         </div>
+        {'jackRafterSpacing' in resolved ? (
+          <>
+            {resolved.rafterSpacing && (
+              <SpacingSummary
+                spacing={resolved.rafterSpacing}
+                stationLabelKey="rafterPairs"
+                headingKey="commonRafterRegionSpacing"
+                compact
+              />
+            )}
+            <SpacingSummary
+              spacing={resolved.jackRafterSpacing}
+              stationLabelKey="spacingAxes"
+              headingKey="jackRafterRegionSpacing"
+              compact
+            />
+          </>
+        ) : (
+          <SpacingSummary spacing={resolved.rafterSpacing} compact />
+        )}
       </section>
     );
   }
@@ -518,6 +626,7 @@ export function ContextualResults({
   }
 
   const isSeat = context.jointKind === 'seat-notch';
+  const isHipCut = context.jointKind === 'hip-end-cut';
   return (
     <section
       className="a-context-results"
@@ -526,7 +635,13 @@ export function ContextualResults({
     >
       <header>
         <span>{t('assembly.cutSummary')}</span>
-        <strong>{isSeat ? t('assembly.notch') : t('assembly.ridgeCut')}</strong>
+        <strong>
+          {isSeat
+            ? t('assembly.notch')
+            : isHipCut
+              ? t('assembly.hipUpperCutDetail')
+              : t('assembly.ridgeCut')}
+        </strong>
       </header>
       <div className="a-results">
         {isSeat ? (
@@ -542,6 +657,18 @@ export function ContextualResults({
             </Metric>
             <Metric label={t('assembly.position')}>
               {length(context.joint.stationMm)}
+            </Metric>
+          </>
+        ) : isHipCut ? (
+          <>
+            <Metric label={t('assembly.hipPlumb')} main>
+              {angle(context.cut.plumbToMemberDeg)}
+            </Metric>
+            <Metric label={t('assembly.hipCheek')}>
+              {angle(context.cut.cheekAngleDeg)}
+            </Metric>
+            <Metric label={t('assembly.position')}>
+              {length(context.cut.referenceStationMm)}
             </Metric>
           </>
         ) : (
@@ -635,6 +762,8 @@ export function ContextualFabrication({
         b.result.outerEaveToHipCenterLineLengthMm -
         a.result.outerEaveToHipCenterLineLengthMm,
     )[0];
+  const isHipJoint =
+    context.kind === 'joint' && context.jointKind === 'hip-end-cut';
 
   return (
     <section
@@ -677,7 +806,8 @@ export function ContextualFabrication({
         </div>
       )}
 
-      {(contextPrototype?.code === 'K1' || context.kind === 'joint') && (
+      {(contextPrototype?.code === 'K1' ||
+        (context.kind === 'joint' && !isHipJoint)) && (
         <div className="a-fabrication-summary">
           <strong>K1 · {t('assembly.commonRafter')}</strong>
           <span>
@@ -689,7 +819,7 @@ export function ContextualFabrication({
         </div>
       )}
 
-      {contextPrototype?.code === 'H1' && hip && (
+      {(contextPrototype?.code === 'H1' || isHipJoint) && hip && (
         <div className="a-fabrication-summary">
           <strong>H1 · {t('assembly.hipRafter')}</strong>
           <span>{length(hip.result.outerEaveToRidgeFaceMm)}</span>

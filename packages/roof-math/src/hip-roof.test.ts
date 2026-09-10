@@ -150,6 +150,34 @@ describe('regular hip roof template', () => {
     }
   });
 
+  it('uses the same target-even resolver for the hip common region and J1 stations', () => {
+    const output = resolveHipRoofTemplate(
+      template({
+        rafterSpacing: { mode: 'target-even-spacing', spacingMm: 1400 },
+      }),
+    );
+    expect(output.rafterSpacing).toMatchObject({
+      mode: 'target-even-spacing',
+      requestedSpacingMm: 1400,
+      actualSpacingMm: 2000,
+      bayCount: 1,
+      stationCount: 2,
+    });
+    expect(output.jackRafterSpacing).toMatchObject({
+      mode: 'target-even-spacing',
+      requestedSpacingMm: 1400,
+      actualSpacingMm: 4000 / 3,
+      bayCount: 3,
+      stationCount: 4,
+    });
+    expect(
+      output.jackRafterSpacing.stations.map(
+        (station) => station.alongBuildingMm,
+      ),
+    ).toEqual([0, 4000 / 3, 8000 / 3, 4000]);
+    expect(output.jackRafters).toHaveLength(16);
+  });
+
   it('exposes K1, H1 and variable-length J1 prototype summaries', () => {
     const output = resolveHipRoofTemplate(template());
     expect(output.memberPrototypes.map((prototype) => prototype.code)).toEqual([
@@ -239,7 +267,7 @@ describe('regular hip roof template', () => {
     const gable = gableTemplateFromAssembly(assemblyDefaults, {
       id: 'template:gable-1',
       buildingLengthMm: 6000,
-      rafterSpacing: { mode: 'fit-evenly', spacingMm: 700 },
+      rafterSpacing: { mode: 'max-even-spacing', spacingMm: 700 },
     });
     const hip = convertRoofTemplate(gable, 'hip');
     expect(hip.type).toBe('hip');

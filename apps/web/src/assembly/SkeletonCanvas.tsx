@@ -31,6 +31,7 @@ import {
 } from '@cieslacalc/roof-math';
 import type {
   HipRoofSkeleton,
+  ResolvedRafterSpacing,
   RoofTemplateSpec,
   SkeletonMember3D,
 } from '@cieslacalc/timber-model';
@@ -85,7 +86,13 @@ function memberLabel(member: SkeletonMember3D, t: (key: string) => string) {
   return t(`assembly.${member.kind}`);
 }
 
-export function SkeletonCanvas({ template }: { template: RoofTemplateSpec }) {
+export function SkeletonCanvas({
+  template,
+  spacing,
+}: {
+  template: RoofTemplateSpec;
+  spacing: ResolvedRafterSpacing;
+}) {
   const state = useAssembly(),
     { t, i18n } = useTranslation();
   const container = useRef<HTMLDivElement>(null),
@@ -162,6 +169,28 @@ export function SkeletonCanvas({ template }: { template: RoofTemplateSpec }) {
     viewportPoint(fit.project(point), viewport, { width, height });
   const worldPoint = (point: { x: number; y: number; z: number }) =>
     viewPoint(projectAxonometric(point));
+  const spacingStationAxes =
+    template.type === 'gable'
+      ? spacing.stations.slice(0, 5).map((station) => ({
+          id: station.id,
+          alongBuildingMm: station.alongBuildingMm,
+          from: worldPoint({
+            x: -template.halfRunMm,
+            y: station.alongBuildingMm,
+            z: 0,
+          }),
+          to: worldPoint({
+            x: template.halfRunMm,
+            y: station.alongBuildingMm,
+            z: 0,
+          }),
+          dimensionPoint: worldPoint({
+            x: template.halfRunMm + 320,
+            y: station.alongBuildingMm,
+            z: 0,
+          }),
+        }))
+      : [];
   const pointString = (points: Point[]) =>
     points
       .map(viewPoint)
@@ -502,6 +531,67 @@ export function SkeletonCanvas({ template }: { template: RoofTemplateSpec }) {
             <polygon key={guide.id} points={pointString(guide.projected)} />
           ))}
         </g>
+        {spacingStationAxes.length > 0 && (
+          <g
+            className={`a-spacing-guides ${state.selected === 'roof' ? 'is-active' : ''}`}
+            aria-hidden="true"
+          >
+            {spacingStationAxes.map((station, index) => {
+              const previous = spacingStationAxes[index - 1];
+              return (
+                <g key={station.id}>
+                  <line
+                    data-testid="spacing-station-axis"
+                    className="a-spacing-station-axis"
+                    x1={station.from.x}
+                    y1={station.from.y}
+                    x2={station.to.x}
+                    y2={station.to.y}
+                  />
+                  {previous && (
+                    <g data-testid="spacing-bay-dimension">
+                      <line
+                        className="a-spacing-dimension-line"
+                        x1={previous.dimensionPoint.x}
+                        y1={previous.dimensionPoint.y}
+                        x2={station.dimensionPoint.x}
+                        y2={station.dimensionPoint.y}
+                      />
+                      <circle
+                        cx={previous.dimensionPoint.x}
+                        cy={previous.dimensionPoint.y}
+                        r={2.5}
+                      />
+                      <circle
+                        cx={station.dimensionPoint.x}
+                        cy={station.dimensionPoint.y}
+                        r={2.5}
+                      />
+                      <text
+                        x={
+                          (previous.dimensionPoint.x +
+                            station.dimensionPoint.x) /
+                            2 +
+                          7
+                        }
+                        y={
+                          (previous.dimensionPoint.y +
+                            station.dimensionPoint.y) /
+                            2 -
+                          5
+                        }
+                      >
+                        {length(
+                          station.alongBuildingMm - previous.alongBuildingMm,
+                        )}
+                      </text>
+                    </g>
+                  )}
+                </g>
+              );
+            })}
+          </g>
+        )}
         <g className="a-skeleton-members">
           {solids.map(({ member, faces }) => {
             const selected = state.selected === member.selectionId;
@@ -641,6 +731,24 @@ export function SkeletonCanvas({ template }: { template: RoofTemplateSpec }) {
             <dd>{length((skeleton as HipRoofSkeleton).ridgeLengthMm)}</dd>
           </div>
         )}
+        <div data-testid="skeleton-spacing-pattern">
+          <dt>
+            {t(
+              `assembly.${template.type === 'hip' ? 'jackRafterRegionSpacing' : 'spacingPattern'}`,
+            )}
+          </dt>
+          <dd>
+            {spacing.bayCount} × {length(spacing.actualSpacingMm)}
+          </dd>
+        </div>
+        <div>
+          <dt>
+            {t(
+              `assembly.${template.type === 'hip' ? 'spacingAxes' : 'rafterPairs'}`,
+            )}
+          </dt>
+          <dd>{spacing.stationCount}</dd>
+        </div>
       </dl>
       <p className="a-canvas-hint">
         {selectedMember

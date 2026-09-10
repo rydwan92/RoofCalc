@@ -267,7 +267,7 @@ export interface DrawingModel {
 export interface DrawingPolygon {
   id: string;
   points: Point[];
-  role: 'member' | 'support' | 'stock';
+  role: 'member' | 'support' | 'stock' | 'removed';
   selectionId?: string;
 }
 export interface DrawingMarker {
@@ -280,6 +280,51 @@ export interface DrawingLabel {
   id: string;
   at: Point;
   textKey: string;
+}
+export type DetailPreviewType =
+  'birdsmouth-detail' | 'ridge-cut-detail' | 'hip-cut-detail';
+export type DetailLocalFrame =
+  'member-elevation' | 'member-top-face' | 'joint-face';
+export interface DetailKeyDimension {
+  id: string;
+  labelKey: string;
+  value: number;
+  unit: 'length' | 'angle' | 'ratio';
+  referenceKey?: string;
+}
+export interface DetailFabricationStep {
+  id: string;
+  action:
+    | 'mark-plumb'
+    | 'mark-seat'
+    | 'check-depth'
+    | 'measure-ridge-face'
+    | 'mark-double-cheek'
+    | 'check-backing';
+  operationId: string;
+  fromLabel?: string;
+  targetLabel?: string;
+  edge?: 'top' | 'bottom';
+  distanceMm?: number;
+  angleDeg?: number;
+  seatLengthMm?: number;
+  normalDepthMm?: number;
+  remainingDepthMm?: number;
+}
+/** Renderer-neutral local projection derived from resolved fabrication data. */
+export interface DetailPreviewModel {
+  id: string;
+  sourceSelectionId: string;
+  type: DetailPreviewType;
+  titleKey: string;
+  subjectMemberId: string;
+  subjectCode: 'K1' | 'H1';
+  relatedSupportId?: string;
+  localFrame: DetailLocalFrame;
+  drawing: DrawingModel;
+  keyDimensions: DetailKeyDimension[];
+  fabricationSteps: DetailFabricationStep[];
+  warningKeys: string[];
 }
 export interface Viewport {
   width: number;

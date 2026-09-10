@@ -142,6 +142,19 @@ export function createAssemblyDrawing(
     model.polygons = model.polygons
       ?.map((p) => ({ ...p, points: clipPolygon(p.points, model.bounds) }))
       .filter((p) => p.points.length >= 3);
+    if (focusJoint) {
+      const removed = clipPolygon(
+        focusJoint.removedProfile.map(world),
+        model.bounds,
+      );
+      if (removed.length >= 3)
+        model.polygons?.push({
+          id: `${focusJoint.id}:removed`,
+          points: removed,
+          role: 'removed',
+          selectionId: focusJoint.id,
+        });
+    }
     model.lines = model.lines.filter((l) => l.selectionId === focusId);
     model.markers = [];
     model.dimensions = focusJoint

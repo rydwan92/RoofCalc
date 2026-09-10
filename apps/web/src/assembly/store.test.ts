@@ -70,6 +70,58 @@ it('template layout changes only repeated skeleton positions, not fabrication ge
   expect(after.rafterSpacing?.stations).toHaveLength(21);
   expect(after.calculation).toEqual(before.calculation);
 });
+it('switches explicit spacing policies as undoable canonical template edits', () => {
+  useAssembly.getState().setCanonicalField('template.buildingLengthMm', 940);
+  useAssembly.getState().setCanonicalField('template.rafterSpacingMm', 800);
+  useAssembly.setState({ historyPast: [], historyFuture: [] });
+
+  const maximum = resolveRoofTemplate(useAssembly.getState().template);
+  expect(maximum.rafterSpacing).toMatchObject({
+    mode: 'max-even-spacing',
+    requestedSpacingMm: 800,
+    actualSpacingMm: 470,
+    bayCount: 2,
+    stationCount: 3,
+  });
+
+  useAssembly.getState().setSpacingMode('target-even-spacing');
+  const target = resolveRoofTemplate(useAssembly.getState().template);
+  expect(target.rafterSpacing).toMatchObject({
+    mode: 'target-even-spacing',
+    actualSpacingMm: 940,
+    deviationMm: 140,
+    deviationRatio: 0.175,
+    bayCount: 1,
+    stationCount: 2,
+  });
+
+  useAssembly.getState().setSpacingMode('fixed-module');
+  expect(useAssembly.getState().template.rafterSpacing).toEqual({
+    mode: 'fixed-module',
+    spacingMm: 800,
+    endPolicy: 'require-both-ends',
+  });
+  useAssembly.getState().setEndStationPolicy('allow-open-end');
+  const openEnd = resolveRoofTemplate(useAssembly.getState().template);
+  expect(openEnd.rafterSpacing).toMatchObject({
+    mode: 'fixed-module',
+    endPolicy: 'allow-open-end',
+    remainderToEndMm: 140,
+    bayCount: 1,
+    stationCount: 2,
+  });
+
+  useAssembly.getState().undo();
+  expect(useAssembly.getState().template.rafterSpacing).toMatchObject({
+    mode: 'fixed-module',
+    endPolicy: 'require-both-ends',
+  });
+  useAssembly.getState().redo();
+  expect(useAssembly.getState().template.rafterSpacing).toMatchObject({
+    mode: 'fixed-module',
+    endPolicy: 'allow-open-end',
+  });
+});
 it('converts the controlling joint parameter without changing the notch', () => {
   const id = useAssembly.getState().spec.supports[0]!.id;
   const before = calculateAssembly(useAssembly.getState().spec);

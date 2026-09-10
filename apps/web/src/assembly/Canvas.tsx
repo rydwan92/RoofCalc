@@ -61,6 +61,7 @@ export function entityLabel(
   if (id === state.spec.member.id) return t('assembly.rafter');
   if (id === state.spec.ridge.id) return t('assembly.ridge');
   if (id === 'cut:ridge') return t('assembly.ridgeCut');
+  if (id === 'cut:hip-ridge-H1') return t('assembly.hipUpperCutDetail');
   if (id === 'cut:eave') return t('assembly.eaveCut');
   const support = state.spec.supports.find(
     (s) => s.id === id || `joint:${s.id}` === id,
@@ -217,7 +218,12 @@ export function AssemblyCanvas({
     if (readOnly) return;
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
-      state.select(id);
+      state.select(
+        id,
+        id.startsWith('joint:') || id.startsWith('cut:')
+          ? state.spec.member.id
+          : undefined,
+      );
     }
     const support = state.spec.supports.find(
       (s) => s.id === id && s.kind === 'purlin',
@@ -258,7 +264,13 @@ export function AssemblyCanvas({
           'aria-label': entityLabel(id, state, t),
           'aria-pressed':
             state.selected === id || state.selectedPrototype === id,
-          onClick: () => state.select(id),
+          onClick: () =>
+            state.select(
+              id,
+              id.startsWith('joint:') || id.startsWith('cut:')
+                ? state.spec.member.id
+                : undefined,
+            ),
           onKeyDown: (e: KeyboardEvent<SVGElement>) => keys(e, id),
           onPointerDown: (e: PointerEvent<SVGElement>) => start(e, id),
         };

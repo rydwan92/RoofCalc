@@ -2,7 +2,7 @@
 
 Parametryczny warsztat ciesielski z dwoma interfejsami: **Szybkie** i **Kreator**. Oba edytują jeden dyskryminowany `RoofTemplateSpec`, wyprowadzają z niego wspólny `AssemblySpec` i korzystają z tego samego silnika geometrii, zaciosów i trasowania.
 
-Wymagania i stan pracy: [PROJECT_BLUEPRINT.md](PROJECT_BLUEPRINT.md). Aktualny kierunek architektury: [Architecture V6](docs/ARCHITECTURE_V6_HIP_ROOF_AND_RAFTER.md). Kontrakty matematyczne: [Assembly V3 geometry](docs/ASSEMBLY_V3_GEOMETRY.md) i [Hip rafter geometry](docs/HIP_RAFTER_GEOMETRY.md).
+Wymagania i stan pracy: [PROJECT_BLUEPRINT.md](PROJECT_BLUEPRINT.md). Aktualny kierunek architektury: [Architecture V8](docs/ARCHITECTURE_V8_CUT_PREVIEWS_AND_DETAIL_DRAWER.md). Kontrakty matematyczne: [Assembly V3 geometry](docs/ASSEMBLY_V3_GEOMETRY.md), [Hip rafter geometry](docs/HIP_RAFTER_GEOMETRY.md) i [Jack rafter geometry](docs/JACK_RAFTER_GEOMETRY.md).
 
 ## Uruchomienie
 
@@ -15,11 +15,13 @@ npx pnpm@10.15.1 dev
 
 Frontend: http://127.0.0.1:5173. API: http://127.0.0.1:3001/api/health. Przy globalnym pnpm można używać bezpośrednio `pnpm`.
 
-## Szybkie i Kreator — model 7.0.0
+## Szybkie i Kreator — model 8.0.0
 
-**Szybkie:** wybierz krokiew zwykłą K1 albo narożną H1, wpisz rzut do osi kalenicy, kąt połaci i okap. Wyniki oraz rysunek aktualizują się lokalnie. „Więcej ustawień” otwiera odpowiedni przekrój i kalenicę. Przejście do Kreatora zachowuje dokładnie ten sam szablon i wynik.
+**Szybkie:** wybierz krokiew zwykłą K1 albo narożną H1, wpisz rzut do osi kalenicy, kąt połaci i okap. Wyniki, rysunek i mini-podglądy najważniejszych cięć aktualizują się z tego samego wyniku obliczeń. „Więcej ustawień” otwiera odpowiedni przekrój i kalenicę. Przejście do Kreatora zachowuje dokładnie ten sam szablon i wynik.
 
-**Kreator:** pokazuje interaktywny, aksonometryczny szkielet dachu dwuspadowego albo regularnego kopertowego. Każda krokiew ma fizyczny identyfikator i wskazuje wspólny prototyp produkcyjny K1, H1 lub J1. Zaznaczenie przełącza kontekst dachu, prototypu, sztuki, podpory albo cięcia; dolne wyniki i panel „Co przygotować” odpowiadają temu samemu obiektowi. Uchwyty na szkielecie zmieniają kąt/wysokość kalenicy, rozpiętość i długość budynku; płatwie przesuwają się po połaci. Geometria, zaciosy i wyniki produkcyjne aktualizują się z tego samego modelu. Undo/Redo, pan, zoom i Fit nie zmieniają geometrii poza świadomą edycją.
+**Kreator:** pokazuje interaktywny, aksonometryczny szkielet dachu dwuspadowego albo regularnego kopertowego. Każda krokiew ma fizyczny identyfikator i wskazuje wspólny prototyp produkcyjny K1, H1 lub J1. Zaznaczenie przełącza kontekst dachu, prototypu, sztuki, podpory albo cięcia; dolne wyniki i panel „Co przygotować” odpowiadają temu samemu obiektowi. Zaznaczenie zaciosu lub cięcia otwiera zsynchronizowany panel szczegółu z lokalnym rysunkiem, wymiarami, punktami odniesienia i kolejnością trasowania. Uchwyty na szkielecie zmieniają kąt/wysokość kalenicy, rozpiętość i długość budynku; płatwie przesuwają się po połaci. Geometria, zaciosy, podglądy i wyniki produkcyjne aktualizują się z tego samego modelu. Undo/Redo, pan, zoom i Fit nie zmieniają geometrii poza świadomą edycją.
+
+**Rozstaw krokwi:** jedna wspólna funkcja steruje parami K1 dachu dwuspadowego, wspólnymi krokwiami dachu kopertowego i stacjami kulawek J1. „Maksymalny rozstaw” traktuje wartość jako nieprzekraczalny limit i rozkłada osie równo; dlatego 940/800 daje 2 pola, 3 pary oraz rzeczywiste 470 mm. „Docelowy rozstaw” wybiera najbliższą równą liczbę pól i pokazuje odchylenie. „Stały moduł” utrzymuje moduł oraz wymaga jawnej decyzji, czy dodać oś końcową, czy pozostawić końcówkę otwartą.
 
 **Dach kopertowy i H1:** V6 obsługuje prostokątny dach o równych kątach połaci, w tym kwadratowy wariant namiotowy z kalenicą długości zero. Cztery fizyczne narożne korzystają z jednego prototypu H1. Karta H1 koordynuje rzut z góry, widok wzdłuż krokwi i detal cięcia/fazowania; osobno pokazuje długość teoretyczną, odjęcie od grubości kalenicy i długość do jej fizycznego lica.
 
@@ -37,7 +39,7 @@ Wersje `common-rafter@1.0.0` i `@2.0.0` pozostają w rejestrze historycznym z te
 npx pnpm@10.15.1 build
 ```
 
-Po buildzie otwórz http://localhost/RoofCalc/apps/web/dist/#/calculators/common-rafter i odśwież stronę przez Ctrl+F5, aby pominąć cache. `index.php` przekierowuje do `apps/web/dist/`. Po zmianie kodu wykonaj build lub użyj serwera Vite. Apache wystarcza do lokalnych obliczeń; API działa osobno na porcie 3001.
+Po buildzie w tym układzie XAMPP otwórz http://localhost/projects/RoofCalc/apps/web/dist/#/calculators/common-rafter i odśwież stronę przez Ctrl+F5, aby pominąć cache. `index.php` przekierowuje do `apps/web/dist/`. Po zmianie kodu wykonaj build lub użyj serwera Vite. Apache wystarcza do lokalnych obliczeń; API działa osobno na porcie 3001.
 
 Na hostingu Node uruchom `npx pnpm@10.15.1 start`. Express serwuje frontend i `/api/health`. Dostępne zmienne: `PORT` (domyślnie 3001), `HOST` (127.0.0.1). Publicznym katalogiem jest `apps/web/dist`, nie całe repozytorium. `VITE_BRAND_NAME` w `apps/web/.env.local` ustawia nazwę przed buildem. HashRouter obsługuje podkatalogi.
 
@@ -61,4 +63,4 @@ Testy obejmują geometrię, walidację, jednostki, profil po cięciach, dynamicz
 - `apps/web/src/assembly`: dwa tryby, edytor sesji, SVG, inspector, tłumaczenia i plan trasowania.
 - `apps/api`: Express; `ui`: tokeny/komponenty; `shared`: kontrakty.
 
-Zakres V7 nie obejmuje odjęcia J1 do fizycznego lica H1, zaciosów J1 na płatwiach, krokwi koszowych, nieregularnych/nierównych połaci ani dowolnych wielokątów dachu. Brak zapisu po odświeżeniu, naddatków/rzazu, statyki, pełnego 3D/CAD, bazy, logowania, płatności i PDF. Geometryczny wynik nie potwierdza nośności konstrukcji. Kolejna iteracja nie rozpoczyna się automatycznie.
+Zakres V8 nie obejmuje odjęcia J1 do fizycznego lica H1, zaciosów J1 na płatwiach, krokwi koszowych, nieregularnych/nierównych połaci ani dowolnych wielokątów dachu. Lokalne podglądy są rysunkami traserskimi wyprowadzonymi z aktualnego wyniku, a nie pełną dokumentacją warsztatową wszystkich lic i rzazów. Brak zapisu po odświeżeniu, naddatków/rzazu, statyki, pełnego 3D/CAD, bazy, logowania, płatności i PDF. Geometryczny wynik nie potwierdza nośności konstrukcji. Kolejna iteracja nie rozpoczyna się automatycznie.

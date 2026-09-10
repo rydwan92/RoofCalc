@@ -55,6 +55,67 @@ describe('dual-mode parametric workbench', () => {
     expect(screen.queryByRole('button', { name: 'Detal' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Element' })).toBeNull();
   });
+  it('shows canonical-derived compact K1 and H1 cut previews in Quick Calc', () => {
+    render(<App />);
+    expect(screen.getByTestId('detail-preview-birdsmouth-detail')).toBeTruthy();
+    expect(screen.getByTestId('detail-preview-ridge-cut-detail')).toBeTruthy();
+    expect(screen.getByText('Szybkie podglądy cięć')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Krokiew narożna' }));
+    expect(screen.getByTestId('detail-preview-hip-cut-detail')).toBeTruthy();
+    expect(
+      screen.getAllByText(/Górne cięcie krokwi narożnej/).length,
+    ).toBeGreaterThan(0);
+  });
+  it('explains the 940 / 800 maximum policy and exposes target deviation', () => {
+    render(<App />);
+    builder();
+    enter('Długość budynku', '940');
+    expect(
+      screen
+        .getAllByTestId('requested-spacing')
+        .every((node) => node.textContent === '800 mm'),
+    ).toBe(true);
+    expect(
+      screen
+        .getAllByTestId('actual-spacing')
+        .every((node) => node.textContent === '470 mm'),
+    ).toBe(true);
+    expect(
+      screen
+        .getAllByTestId('bay-count')
+        .every((node) => node.textContent === '2'),
+    ).toBe(true);
+    expect(
+      screen
+        .getAllByTestId('station-count')
+        .every((node) => node.textContent === '3'),
+    ).toBe(true);
+    expect(
+      screen.getAllByText(/żadne pole nie przekracza 800 mm/).length,
+    ).toBeGreaterThan(0);
+    expect(screen.getAllByTestId('spacing-station-axis')).toHaveLength(3);
+    expect(screen.getAllByTestId('spacing-bay-dimension')).toHaveLength(2);
+    fireEvent.change(screen.getByLabelText('Sposób rozstawu'), {
+      target: { value: 'target-even-spacing' },
+    });
+    expect(
+      screen
+        .getAllByTestId('actual-spacing')
+        .every((node) => node.textContent === '940 mm'),
+    ).toBe(true);
+    expect(
+      screen
+        .getAllByTestId('station-count')
+        .every((node) => node.textContent === '2'),
+    ).toBe(true);
+    expect(
+      screen
+        .getAllByTestId('spacing-deviation')
+        .every((node) => node.textContent === '+17,5%'),
+    ).toBe(true);
+    expect(screen.getAllByTestId('spacing-station-axis')).toHaveLength(2);
+    expect(screen.getAllByTestId('spacing-bay-dimension')).toHaveLength(1);
+  });
   it('adds a real purlin, updates profile/stations numerically and preserves it in Quick mode', () => {
     const { container } = render(<App />);
     builder();
@@ -112,7 +173,13 @@ describe('dual-mode parametric workbench', () => {
     add();
     rafterView();
     fireEvent.keyDown(canvasButton('Zacios · Płatew P1'), { key: 'Enter' });
-    expect(screen.getByTestId('detail-drawing')).toBeTruthy();
+    expect(
+      screen.getByTestId('detail-drawer').classList.contains('is-open'),
+    ).toBe(true);
+    expect(screen.getByTestId('detail-preview-birdsmouth-detail')).toBeTruthy();
+    expect(
+      screen.getByTestId('detail-drawer').querySelector('.shape-removed'),
+    ).toBeTruthy();
     expect(
       screen.getByRole('region', { name: 'Detal wykonawczy' }),
     ).toBeTruthy();
@@ -124,12 +191,42 @@ describe('dual-mode parametric workbench', () => {
     expect(screen.getByTestId('selected-notch-depth').textContent).toBe(
       '57,4 mm',
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Powiększ detal' }));
-    expect(screen.getAllByTestId('detail-drawing')).toHaveLength(2);
-    fireEvent.keyDown(screen.getAllByTestId('detail-drawing')[0]!, {
+    fireEvent.click(screen.getByRole('button', { name: 'Zbliż do detalu' }));
+    expect(screen.getByTestId('detail-drawing')).toBeTruthy();
+    fireEvent.keyDown(screen.getByTestId('detail-drawing'), {
       key: 'Escape',
     });
     expect(screen.getByTestId('assembly-drawing')).toBeTruthy();
+  });
+  it('coordinates ridge and H1 cut selection with the smart detail drawer', () => {
+    render(<App />);
+    builder();
+    rafterView();
+    fireEvent.click(canvasButton('Cięcie kalenicowe'));
+    expect(screen.getByTestId('detail-preview-ridge-cut-detail')).toBeTruthy();
+    expect(screen.getByTestId('detail-drawer').textContent).toContain(
+      'Cięcie kalenicowe',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Szybkie' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Krokiew narożna' }));
+    builder();
+    fireEvent.click(screen.getByRole('button', { name: 'Połać' }));
+    enter('Długość budynku', '10000');
+    expect(
+      screen.getAllByText('Strefa pełnych krokwi K1').length,
+    ).toBeGreaterThan(0);
+    expect(screen.getAllByText('Strefa kulawek J1').length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole('button', { name: 'Krokiew narożna H1' }));
+    fireEvent.click(
+      screen.getAllByRole('button', {
+        name: /Górne cięcie krokwi narożnej/,
+      })[0]!,
+    );
+    expect(screen.getByTestId('detail-preview-hip-cut-detail')).toBeTruthy();
+    expect(useAssembly.getState().selected).toBe('cut:hip-ridge-H1');
+    expect(
+      screen.getByTestId('contextual-fabrication').getAttribute('data-context'),
+    ).toBe('joint');
   });
   it('retains the last valid drawing during an invalid draft and recovers through exact input', () => {
     const { container } = render(<App />);

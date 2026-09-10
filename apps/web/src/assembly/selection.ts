@@ -1,5 +1,6 @@
 import type {
   AssemblySpec,
+  CompoundEndCut,
   ResolvedEndCut,
   ResolvedJackRafterInstance,
   ResolvedJoint,
@@ -36,6 +37,11 @@ export type WorkbenchSelectionContext =
       kind: 'joint';
       jointKind: 'end-cut';
       cut: ResolvedEndCut;
+    }
+  | {
+      kind: 'joint';
+      jointKind: 'hip-end-cut';
+      cut: CompoundEndCut;
     };
 
 export function resolveWorkbenchSelectionContext(args: {
@@ -75,6 +81,16 @@ export function resolveWorkbenchSelectionContext(args: {
     (candidate) => candidate.id === selected,
   );
   if (cut) return { kind: 'joint', jointKind: 'end-cut', cut };
+
+  if (
+    'hipRafter' in resolved &&
+    resolved.hipRafter.fabrication.ridgeCut.id === selected
+  )
+    return {
+      kind: 'joint',
+      jointKind: 'hip-end-cut',
+      cut: resolved.hipRafter.fabrication.ridgeCut,
+    };
 
   const support = spec.supports.find((candidate) => candidate.id === selected);
   if (support)

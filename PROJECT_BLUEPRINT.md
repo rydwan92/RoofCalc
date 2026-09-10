@@ -1297,11 +1297,55 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
-> Updated 2026-09-10. Iteration 007 is implemented in the root repository.
+> Updated 2026-09-10. Iteration 008 is complete in the root repository.
 
-**Iteration:** `007 — jack rafters + contextual fabrication + visual hierarchy`
+**Iteration:** `008 — cut detail previews + smart detail drawer + explicit spacing policies`
 
-**Status:** `IMPLEMENTED — AUTOMATED VALIDATION PASSED; NATIVE BROWSER QA UNAVAILABLE`
+**Status:** `COMPLETE — AUTOMATED VALIDATION PASS; NATIVE BROWSER QA UNAVAILABLE`
+
+**Iteration 008 completed:**
+
+- Read the mandatory blueprint, V3–V8 architecture, hip geometry, research roadmap, V8 review/prompt and the complete V8.1 spacing audit before editing source.
+- Replaced ambiguous spacing names with the discriminated `max-even-spacing`, `target-even-spacing` and `fixed-module` policies. Fixed module has an explicit `require-both-ends` / `allow-open-end` policy; the target policy records signed millimetre and ratio deviation. Maximum even spacing remains the conservative default.
+- Kept `resolveRafterSpacing()` as the single resolver for gable K1 pairs, the hip common-rafter ridge region and the hip half-run stations that generate J1. Hip summaries now expose the common K1 and jack J1 regions separately when both exist, because their resolved actual spacing can differ.
+- Preserved the required `940 / 800` maximum result: 2 bays, 3 pairs and 470 mm actual spacing. Inspector/roof summary show requested value, actual value, bays, stations/pairs and the reason. Target mode resolves 1 bay, 2 pairs, 940 mm and `+17.5%`; fixed module exposes the final bay or open-end remainder.
+- Added station-axis guides, up to four adjacent bay dimensions and an overall `N × actual spacing` skeleton annotation without duplicating long runs of labels.
+- Added renderer-neutral `DetailPreviewModel` data and pure preview factories. K1 birdsmouth and ridge-cut details come from the exact resolved assembly/fabrication plan; the H1 top-face double-cheek preview consumes the resolved compound cut and backing values. The removed birdsmouth profile is the canonical cut polygon, not a decorative approximation.
+- Added compact K1/H1 cut previews to Quick Calc and a responsive smart detail drawer to Builder. The drawer auto-opens for direct cut selection, supports collapse, close, pin, tabs and “zoom to detail”, and shows close-up geometry, key dimensions, reference frames, ordered marking steps and explicit H1 backing/drop warning.
+- Synchronized drawing, toolbox, inspector, contextual results and fabrication context around the same selection IDs. The toolbox now has collapsible groups, a compact collapsed state, active-selection feedback and direct detail shortcuts.
+- Updated Polish/English Model 8.0 copy and README, including the working XAMPP URL. No new calculator family, 3D engine, persistence, auth/database, PDF or structural claim was added.
+
+**Spacing audit assumptions and contract:**
+
+- `max-even-spacing` means both end stations plus the minimum evenly distributed bay count that does not exceed the request. `target-even-spacing` uses `max(1, round(L / target))` and reports signed deviation. `fixed-module` starts at zero and only adds the building-end station when its explicit policy requires it.
+- A fixed-module open end can legitimately resolve one station and zero complete bays when the requested module exceeds the building length; the remainder is reported rather than silently creating another axis. Structural suitability is deliberately not inferred.
+- There is no saved-template persistence in the current product, so no legacy-state migration is active. Any future persistence layer must map old `fit-evenly` / `fixed-spacing` values explicitly instead of silently reinterpreting them.
+
+**Files changed / WIP:**
+
+- Domain/math: `packages/timber-model/src/index.ts`, `packages/roof-math/src/gable-roof.ts` and its tests, `packages/roof-math/src/hip-roof.test.ts`.
+- Shared preview/drawing: `packages/drawing-engine/src/index.ts`, `packages/calculator-core/src/assembly.ts`, new `packages/calculator-core/src/detail-preview.ts` and its tests, plus the calculator-core barrel export.
+- Web: new `apps/web/src/assembly/DetailPreview.tsx`; updated Page, Inputs, Canvas, SkeletonCanvas, Summary, selection/store and their tests, styles and translations.
+- Documentation: `README.md` and this checkpoint. The four user-supplied V8 documents remain untracked and untouched. There is no dependency/lockfile change, unfinished syntax, commit or push.
+
+**Iteration 008 validation:**
+
+- Baseline passed typecheck, 217 tests across 25 files and web/API production build. Final repository-pinned validation passed `typecheck`, `lint`, `git diff --check`, web/API production build and **237 tests across 26 files**.
+- Regression coverage includes every V8.1 spacing case, invalid/non-finite and short inputs, display-unit invariance, fixed end policies, Undo/Redo, gable/hip/J1 shared resolver behavior, exact canonical preview values and removed profile, Quick K1/H1 previews, 940/800 UI explanation, station guides, direct cut selection, drawer open/zoom and H1 context.
+- Build output is valid. Vite still reports the known advisory that the main minified JavaScript chunk is above 500 kB; this is a performance follow-up, not a build failure.
+- The production XAMPP URL returned HTTP 200. The requested Browser skill was initialized, but the in-app surface returned exactly `Browser is not available: iab` before navigation. No native desktop/360 px screenshot, visual-overflow, pointer or touch claim is made. Responsive drawer/bottom-sheet behavior is covered by CSS and jsdom interaction tests only.
+
+**Known limitations:**
+
+- H1 close-up is a coordinated top-face cutting/marking projection from the resolved double-cheek angles; it is not a full 3D saw-face model and retains the explicit backed-versus-dropped warning.
+- J1 still ends at the theoretical H1 center plane and has no dedicated cut preview, physical H1-face deduction or purlin joinery. Kerf, allowances, structural sizing and print/export remain outside this iteration.
+- Native visual/mobile acceptance remains outstanding solely because the requested in-app Browser surface was unavailable.
+
+**NEXT ACTION:**
+
+> When the in-app Browser is available, run desktop and 360 px acceptance QA against the production build: verify 940/800 in all three policies, gable station labels, Quick K1/H1 previews, drawer selection/pin/close/zoom and toolbox/inspector overflow. Then obtain an explicit domain decision for H1 backed-versus-dropped geometry and J1 physical-face/purlin joinery before extending fabrication. Do not begin Iteration 009 without a new approved prompt.
+
+**Previous checkpoint — Iteration 007:**
 
 **Iteration 007 completed:**
 

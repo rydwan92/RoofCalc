@@ -13,6 +13,7 @@ import {
 } from '@cieslacalc/roof-math';
 import type {
   AssemblySpec,
+  EndStationPolicy,
   RafterSpacingMode,
   RoofTemplateSpec,
   SupportSpec,
@@ -208,6 +209,7 @@ interface AssemblyState {
   setCanonicalField: (field: EditField, value: number) => void;
   stepField: (field: EditField, delta: number) => void;
   setSpacingMode: (mode: RafterSpacingMode) => void;
+  setEndStationPolicy: (policy: EndStationPolicy) => void;
   movePurlin: (id: string, xMm: number) => void;
   add: () => void;
   remove: (id: string) => void;
@@ -358,7 +360,29 @@ export const useAssembly = create<AssemblyState>((set) => ({
     set((state) => {
       const template = {
         ...state.template,
-        rafterSpacing: { ...state.template.rafterSpacing, mode },
+        rafterSpacing:
+          mode === 'fixed-module'
+            ? {
+                mode,
+                spacingMm: state.template.rafterSpacing.spacingMm,
+                endPolicy:
+                  state.template.rafterSpacing.mode === 'fixed-module'
+                    ? state.template.rafterSpacing.endPolicy
+                    : 'require-both-ends',
+              }
+            : { mode, spacingMm: state.template.rafterSpacing.spacingMm },
+      };
+      return withHistory(
+        state,
+        committedTemplate(template, state.drafts, state.invalidFields),
+      );
+    }),
+  setEndStationPolicy: (endPolicy) =>
+    set((state) => {
+      if (state.template.rafterSpacing.mode !== 'fixed-module') return state;
+      const template = {
+        ...state.template,
+        rafterSpacing: { ...state.template.rafterSpacing, endPolicy },
       };
       return withHistory(
         state,

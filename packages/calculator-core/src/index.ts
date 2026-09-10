@@ -98,6 +98,7 @@ export const calculatorVersions = {
 export * from './workbench';
 export * from './assembly';
 export * from './hip-rafter';
+export * from './detail-preview';
 export interface AccessPolicy {
   canUse(feature: FeatureKey): boolean;
 }

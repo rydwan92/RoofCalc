@@ -169,14 +169,38 @@ export function TemplateInputs() {
           value={state.template.rafterSpacing.mode}
           onChange={(event) =>
             state.setSpacingMode(
-              event.target.value as 'fixed-spacing' | 'fit-evenly',
+              event.target.value as
+                'max-even-spacing' | 'target-even-spacing' | 'fixed-module',
             )
           }
         >
-          <option value="fit-evenly">{t('assembly.fitEvenly')}</option>
-          <option value="fixed-spacing">{t('assembly.fixedSpacing')}</option>
+          <option value="max-even-spacing">
+            {t('assembly.maxEvenSpacing')}
+          </option>
+          <option value="target-even-spacing">
+            {t('assembly.targetEvenSpacing')}
+          </option>
+          <option value="fixed-module">{t('assembly.fixedModule')}</option>
         </select>
       </label>
+      {state.template.rafterSpacing.mode === 'fixed-module' && (
+        <label className="a-select-label">
+          {t('assembly.endStationPolicy')}
+          <select
+            value={state.template.rafterSpacing.endPolicy}
+            onChange={(event) =>
+              state.setEndStationPolicy(
+                event.target.value as 'require-both-ends' | 'allow-open-end',
+              )
+            }
+          >
+            <option value="require-both-ends">
+              {t('assembly.requireBothEnds')}
+            </option>
+            <option value="allow-open-end">{t('assembly.allowOpenEnd')}</option>
+          </select>
+        </label>
+      )}
     </section>
   );
 }
