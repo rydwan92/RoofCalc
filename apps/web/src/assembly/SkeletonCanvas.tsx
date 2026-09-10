@@ -22,14 +22,15 @@ import {
 } from '@cieslacalc/drawing-engine';
 import {
   clampGablePitchDeg,
-  clampGableHalfRunMm,
+  clampRoofHalfRunMm,
   clampPurlinPlacement,
-  createGableRoofSkeleton,
+  createRoofSkeleton,
   gablePitchDegFromRidgeHeight,
   gableRidgeHeightMm,
 } from '@cieslacalc/roof-math';
 import type {
-  GableRoofTemplateSpec,
+  HipRoofSkeleton,
+  RoofTemplateSpec,
   SkeletonMember3D,
 } from '@cieslacalc/timber-model';
 import { formatLength } from '../format';
@@ -59,18 +60,16 @@ interface Drag {
 const handleRangeMm = 1000;
 
 function memberLabel(member: SkeletonMember3D, t: (key: string) => string) {
+  if (member.kind === 'hip-rafter')
+    return `${t('assembly.hipRafter')} H1 · ${t(`assembly.${member.side}`)}`;
   if (member.kind === 'rafter') {
-    const number = /rafter-pair-(\d+)/.exec(member.id)?.[1] ?? '';
+    const number = /pair-(\d+)/.exec(member.id)?.[1] ?? '';
     return `${t('assembly.rafter')} #${number} - ${t(`assembly.${member.side}`)}`;
   }
   return t(`assembly.${member.kind}`);
 }
 
-export function SkeletonCanvas({
-  template,
-}: {
-  template: GableRoofTemplateSpec;
-}) {
+export function SkeletonCanvas({ template }: { template: RoofTemplateSpec }) {
   const state = useAssembly(),
     { t, i18n } = useTranslation();
   const container = useRef<HTMLDivElement>(null),
@@ -104,7 +103,7 @@ export function SkeletonCanvas({
     return () => element.removeEventListener('wheel', zoom);
   }, []);
 
-  const skeleton = createGableRoofSkeleton(template);
+  const skeleton = createRoofSkeleton(template);
   const height = width < 550 ? 400 : 570;
   const solids = skeleton.members.map((member) => ({
     member,
@@ -112,16 +111,21 @@ export function SkeletonCanvas({
       createTimberPrismFaces(
         { from: member.from, to: member.to },
         member.section,
-        member.kind === 'rafter' ? 'along-roof' : 'along-building',
+        member.kind === 'rafter' || member.kind === 'hip-rafter'
+          ? 'along-roof'
+          : 'along-building',
       ),
     ),
   }));
+  const guides = (skeleton.guides ?? []).map((guide) => ({
+    ...guide,
+    projected: guide.points.map((point) => projectAxonometric(point)),
+  }));
   const fit = fitDrawing(
-    boundsFromPoints(
-      solids.flatMap(({ faces }) =>
-        faces.flatMap((face) => face.projected),
-      ),
-    ),
+    boundsFromPoints([
+      ...solids.flatMap(({ faces }) => faces.flatMap((face) => face.projected)),
+      ...guides.flatMap((guide) => guide.projected),
+    ]),
     { width, height, padding: width < 550 ? 44 : 88 },
   );
   const viewPoint = (point: Point) =>
@@ -129,17 +133,22 @@ export function SkeletonCanvas({
   const worldPoint = (point: { x: number; y: number; z: number }) =>
     viewPoint(projectAxonometric(point));
   const pointString = (points: Point[]) =>
-    points.map(viewPoint).map((point) => `${point.x},${point.y}`).join(' ');
+    points
+      .map(viewPoint)
+      .map((point) => `${point.x},${point.y}`)
+      .join(' ');
   const length = (value: number) =>
     `${formatLength(value, state.unit, i18n.language)} ${state.unit}`;
   const slope = Math.tan((template.pitchDeg * Math.PI) / 180);
+  const pitchHandleY = template.type === 'hip' ? template.halfRunMm : 0;
+  const lengthHandleZ = template.type === 'gable' ? skeleton.ridgeHeightMm : 0;
   const handles: Handle[] = [
     {
       id: 'handle:pitch',
       kind: 'pitch',
-      at: worldPoint({ x: 0, y: 0, z: skeleton.ridgeHeightMm }),
-      axisStart: worldPoint({ x: 0, y: 0, z: 0 }),
-      axisEnd: worldPoint({ x: 0, y: 0, z: handleRangeMm }),
+      at: worldPoint({ x: 0, y: pitchHandleY, z: skeleton.ridgeHeightMm }),
+      axisStart: worldPoint({ x: 0, y: pitchHandleY, z: 0 }),
+      axisEnd: worldPoint({ x: 0, y: pitchHandleY, z: handleRangeMm }),
       axisLengthMm: handleRangeMm,
     },
     {
@@ -147,7 +156,11 @@ export function SkeletonCanvas({
       kind: 'span',
       at: worldPoint({ x: template.halfRunMm, y: 0, z: 0 }),
       axisStart: worldPoint({ x: template.halfRunMm, y: 0, z: 0 }),
-      axisEnd: worldPoint({ x: template.halfRunMm + handleRangeMm, y: 0, z: 0 }),
+      axisEnd: worldPoint({
+        x: template.halfRunMm + handleRangeMm,
+        y: 0,
+        z: 0,
+      }),
       axisLengthMm: handleRangeMm,
     },
     {
@@ -156,17 +169,17 @@ export function SkeletonCanvas({
       at: worldPoint({
         x: 0,
         y: template.buildingLengthMm,
-        z: skeleton.ridgeHeightMm,
+        z: lengthHandleZ,
       }),
       axisStart: worldPoint({
         x: 0,
         y: template.buildingLengthMm,
-        z: skeleton.ridgeHeightMm,
+        z: lengthHandleZ,
       }),
       axisEnd: worldPoint({
         x: 0,
         y: template.buildingLengthMm + handleRangeMm,
-        z: skeleton.ridgeHeightMm,
+        z: lengthHandleZ,
       }),
       axisLengthMm: handleRangeMm,
     },
@@ -176,17 +189,17 @@ export function SkeletonCanvas({
       selectionId: support.id,
       at: worldPoint({
         x: -template.halfRunMm + support.placement.xMm,
-        y: 0,
+        y: template.type === 'hip' ? support.placement.xMm : 0,
         z: support.placement.xMm * slope,
       }),
       axisStart: worldPoint({
         x: -template.halfRunMm + support.placement.xMm,
-        y: 0,
+        y: template.type === 'hip' ? support.placement.xMm : 0,
         z: support.placement.xMm * slope,
       }),
       axisEnd: worldPoint({
         x: -template.halfRunMm + support.placement.xMm + handleRangeMm,
-        y: 0,
+        y: template.type === 'hip' ? support.placement.xMm + handleRangeMm : 0,
         z: (support.placement.xMm + handleRangeMm) * slope,
       }),
       axisLengthMm: handleRangeMm,
@@ -223,8 +236,8 @@ export function SkeletonCanvas({
             : handle.kind === 'length'
               ? template.buildingLengthMm
               : template.intermediateSupports.find(
-                    (support) => support.id === handle.selectionId,
-                  )?.placement.xMm,
+                  (support) => support.id === handle.selectionId,
+                )?.placement.xMm,
       supportId: handle.selectionId,
       viewport,
       axisStart: handle.axisStart,
@@ -282,14 +295,14 @@ export function SkeletonCanvas({
       state.setCanonicalField('roof.pitchDeg', snappedPitch);
       setPreview(`${t('assembly.pitch')} ${snappedPitch.toFixed(1)}°`);
     } else if (active.kind === 'span') {
-      const run = clampGableHalfRunMm(
-        template,
-        Math.round(raw / 10) * 10,
-      );
+      const run = clampRoofHalfRunMm(template, Math.round(raw / 10) * 10);
       state.setCanonicalField('roof.runMm', run);
       setPreview(`${t('assembly.span')} ${length(run * 2)}`);
     } else if (active.kind === 'length') {
-      const buildingLength = Math.max(1, Math.round(raw / 10) * 10);
+      const buildingLength = Math.max(
+        template.type === 'hip' ? template.halfRunMm * 2 : 1,
+        Math.round(raw / 10) * 10,
+      );
       state.setCanonicalField('template.buildingLengthMm', buildingLength);
       setPreview(`${t('assembly.buildingLength')} ${length(buildingLength)}`);
     } else if (active.supportId) {
@@ -303,7 +316,11 @@ export function SkeletonCanvas({
     }
   };
   const beginPan = (event: PointerEvent<SVGSVGElement>) => {
-    if (event.button !== 0 && event.button !== 1 && event.pointerType !== 'touch')
+    if (
+      event.button !== 0 &&
+      event.button !== 1 &&
+      event.pointerType !== 'touch'
+    )
       return;
     if ((event.target as SVGElement).dataset.skeletonBackground !== 'true')
       return;
@@ -348,7 +365,7 @@ export function SkeletonCanvas({
     } else if (handle.kind === 'span') {
       state.setCanonicalField(
         'roof.runMm',
-        clampGableHalfRunMm(
+        clampRoofHalfRunMm(
           template,
           template.halfRunMm + direction * 10 * multiplier,
         ),
@@ -356,7 +373,10 @@ export function SkeletonCanvas({
     } else if (handle.kind === 'length') {
       state.setCanonicalField(
         'template.buildingLengthMm',
-        Math.max(1, template.buildingLengthMm + direction * 10 * multiplier),
+        Math.max(
+          template.type === 'hip' ? template.halfRunMm * 2 : 1,
+          template.buildingLengthMm + direction * 10 * multiplier,
+        ),
       );
     } else if (handle.selectionId) {
       const support = state.spec.supports.find(
@@ -378,14 +398,20 @@ export function SkeletonCanvas({
     if (handle.kind === 'pitch') return template.pitchDeg;
     if (handle.kind === 'span') return template.halfRunMm * 2;
     if (handle.kind === 'length') return template.buildingLengthMm;
-    return state.spec.supports.find((support) => support.id === handle.selectionId)
-      ?.placement.xMm;
+    return state.spec.supports.find(
+      (support) => support.id === handle.selectionId,
+    )?.placement.xMm;
   };
   const activeHandleData = handles.find((handle) => handle.id === activeHandle);
-  const chipWidth = preview ? Math.min(240, Math.max(110, preview.length * 7.2)) : 0;
+  const chipWidth = preview
+    ? Math.min(240, Math.max(110, preview.length * 7.2))
+    : 0;
   const chipPosition = activeHandleData
     ? {
-        x: Math.max(8, Math.min(width - chipWidth - 8, activeHandleData.at.x + 16)),
+        x: Math.max(
+          8,
+          Math.min(width - chipWidth - 8, activeHandleData.at.x + 16),
+        ),
         y: Math.max(8, activeHandleData.at.y - 40),
       }
     : undefined;
@@ -394,11 +420,17 @@ export function SkeletonCanvas({
       <div className="a-canvas-toolbar">
         <span>{t('assembly.skeleton')}</span>
         <output aria-live="polite">
-          {t('assembly.rafterPairCount', {
-            count:
-              skeleton.members.filter((member) => member.kind === 'rafter')
-                .length / 2,
-          })}
+          {template.type === 'hip'
+            ? t('assembly.hipSkeletonCount', {
+                common:
+                  skeleton.members.filter((member) => member.kind === 'rafter')
+                    .length / 2,
+              })
+            : t('assembly.rafterPairCount', {
+                count:
+                  skeleton.members.filter((member) => member.kind === 'rafter')
+                    .length / 2,
+              })}
         </output>
       </div>
       <svg
@@ -406,7 +438,9 @@ export function SkeletonCanvas({
         className="a-drawing"
         data-testid="skeleton-drawing"
         role="group"
-        aria-label={t('assembly.skeletonDrawing')}
+        aria-label={t(
+          `assembly.${template.type === 'hip' ? 'hipSkeletonDrawing' : 'skeletonDrawing'}`,
+        )}
         style={{ height }}
         onPointerDown={beginPan}
         onPointerMove={moveDrag}
@@ -418,13 +452,22 @@ export function SkeletonCanvas({
         }}
         onLostPointerCapture={() => finishDrag(true)}
       >
-        <title>{t('assembly.skeletonDrawing')}</title>
+        <title>
+          {t(
+            `assembly.${template.type === 'hip' ? 'hipSkeletonDrawing' : 'skeletonDrawing'}`,
+          )}
+        </title>
         <rect
           className="a-skeleton-background"
           data-skeleton-background="true"
           width={width}
           height={height}
         />
+        <g className="a-roof-guides" aria-hidden="true">
+          {guides.map((guide) => (
+            <polygon key={guide.id} points={pointString(guide.projected)} />
+          ))}
+        </g>
         <g className="a-skeleton-members">
           {solids.map(({ member, faces }) => (
             <g
@@ -489,7 +532,11 @@ export function SkeletonCanvas({
           </g>
         )}
       </svg>
-      <div className="a-canvas-controls" role="group" aria-label={t('assembly.view')}>
+      <div
+        className="a-canvas-controls"
+        role="group"
+        aria-label={t('assembly.view')}
+      >
         <button
           aria-label={t('assembly.zoomOut')}
           disabled={viewport.zoom <= 0.65}
@@ -535,9 +582,19 @@ export function SkeletonCanvas({
             {length(gableRidgeHeightMm(template.halfRunMm, template.pitchDeg))}
           </dd>
         </div>
+        {template.type === 'hip' && (
+          <div>
+            <dt>{t('assembly.ridgeLength')}</dt>
+            <dd>{length((skeleton as HipRoofSkeleton).ridgeLengthMm)}</dd>
+          </div>
+        )}
       </dl>
       <p className="a-canvas-hint">
-        {selectedMember ? memberLabel(selectedMember, t) : t('assembly.skeletonHint')}
+        {selectedMember
+          ? memberLabel(selectedMember, t)
+          : t(
+              `assembly.${template.type === 'hip' ? 'hipSkeletonHint' : 'skeletonHint'}`,
+            )}
       </p>
     </div>
   );

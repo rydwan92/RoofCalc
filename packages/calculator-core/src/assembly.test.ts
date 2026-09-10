@@ -15,12 +15,13 @@ import {
   fitDimensionedDrawing,
   layoutDimensionLanes,
 } from '@cieslacalc/drawing-engine';
-it('launches v3 without replacing versioned v1/v2 algorithms', () => {
+it('keeps historical K1 versions while registering the new H1 module', () => {
   expect(calculatorRegistry['common-rafter']).toBe(assemblyWorkbench);
   expect(Object.keys(calculatorVersions)).toEqual([
     'common-rafter@1.0.0',
     'common-rafter@2.0.0',
     'common-rafter@3.0.0',
+    'hip-rafter@1.0.0',
   ]);
 });
 it.each([1, 35, 80])(

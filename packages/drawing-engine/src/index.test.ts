@@ -99,7 +99,9 @@ it('derives deterministic projected solid faces from a timber axis and section',
   expect(projected.map((face) => face.id)).toEqual(
     projectTimberPrismFaces(faces).map((face) => face.id),
   );
-  expect(boundsFromPoints(projected.flatMap((face) => face.projected))).toMatchObject({
+  expect(
+    boundsFromPoints(projected.flatMap((face) => face.projected)),
+  ).toMatchObject({
     minX: expect.any(Number),
     maxY: expect.any(Number),
   });
@@ -110,4 +112,21 @@ it('derives deterministic projected solid faces from a timber axis and section',
       'along-roof',
     ),
   ).toThrow('invalid_prism_axis');
+});
+
+it('keeps a real rectangular section around a diagonal hip axis', () => {
+  const start = createTimberPrismFaces(
+    {
+      from: { x: -4000, y: 0, z: 0 },
+      to: { x: 0, y: 4000, z: 2800 },
+    },
+    { widthMm: 100, depthMm: 240 },
+    'along-roof',
+  ).find((face) => face.id === 'start')!;
+  const distance = (
+    a: (typeof start.points)[number],
+    b: (typeof start.points)[number],
+  ) => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
+  expect(distance(start.points[0], start.points[1])).toBeCloseTo(240, 10);
+  expect(distance(start.points[1], start.points[2])).toBeCloseTo(100, 10);
 });

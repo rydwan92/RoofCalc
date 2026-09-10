@@ -1,8 +1,8 @@
 # CieślaCalc / RoofCalc
 
-Parametryczny warsztat ciesielski z dwoma interfejsami: **Szybkie** i **Kreator**. Oba edytują jeden `AssemblySpec` i korzystają z tego samego silnika geometrii, zaciosów i trasowania.
+Parametryczny warsztat ciesielski z dwoma interfejsami: **Szybkie** i **Kreator**. Oba edytują jeden dyskryminowany `RoofTemplateSpec`, wyprowadzają z niego wspólny `AssemblySpec` i korzystają z tego samego silnika geometrii, zaciosów i trasowania.
 
-Wymagania i stan pracy: [PROJECT_BLUEPRINT.md](PROJECT_BLUEPRINT.md). Kierunek architektury: [Architecture V3](docs/ARCHITECTURE_V3_WORKBENCH.md). Dokładny kontrakt matematyczny: [Assembly V3 geometry](docs/ASSEMBLY_V3_GEOMETRY.md).
+Wymagania i stan pracy: [PROJECT_BLUEPRINT.md](PROJECT_BLUEPRINT.md). Aktualny kierunek architektury: [Architecture V6](docs/ARCHITECTURE_V6_HIP_ROOF_AND_RAFTER.md). Kontrakty matematyczne: [Assembly V3 geometry](docs/ASSEMBLY_V3_GEOMETRY.md) i [Hip rafter geometry](docs/HIP_RAFTER_GEOMETRY.md).
 
 ## Uruchomienie
 
@@ -15,17 +15,19 @@ npx pnpm@10.15.1 dev
 
 Frontend: http://127.0.0.1:5173. API: http://127.0.0.1:3001/api/health. Przy globalnym pnpm można używać bezpośrednio `pnpm`.
 
-## Szybkie i Kreator — model 5.0.0
+## Szybkie i Kreator — model 6.0.0
 
-**Szybkie:** wpisz rzut do osi kalenicy, kąt połaci i okap. Wyniki oraz mały rysunek aktualizują się lokalnie. „Więcej ustawień” otwiera przekrój krokwi, murłatę, siedzisko i kalenicę. Dostępne są plan trasowania i przejście do Kreatora bez utraty dokładności lub podpór.
+**Szybkie:** wybierz krokiew zwykłą K1 albo narożną H1, wpisz rzut do osi kalenicy, kąt połaci i okap. Wyniki oraz rysunek aktualizują się lokalnie. „Więcej ustawień” otwiera odpowiedni przekrój i kalenicę. Przejście do Kreatora zachowuje dokładnie ten sam szablon i wynik.
 
-**Kreator:** domyślnie pokazuje interaktywny, aksonometryczny szkielet z pełnymi 2.5D bryłami drewna. Każda krokiew ma fizyczny identyfikator i wskazuje wspólny prototyp produkcyjny K1. Uchwyty na szkielecie zmieniają kąt/wysokość kalenicy, rozpiętość i długość budynku; płatwie przesuwają się po połaci. Pary krokwi, zaciosy i wyniki fabrication aktualizują się z tego samego modelu. Undo/Redo, pan, zoom i Fit nie zmieniają geometrii poza świadomą edycją.
+**Kreator:** pokazuje interaktywny, aksonometryczny szkielet dachu dwuspadowego albo regularnego kopertowego. Każda krokiew ma fizyczny identyfikator i wskazuje wspólny prototyp produkcyjny K1 lub H1. Uchwyty na szkielecie zmieniają kąt/wysokość kalenicy, rozpiętość i długość budynku; płatwie przesuwają się po połaci. Geometria, zaciosy i wyniki produkcyjne aktualizują się z tego samego modelu. Undo/Redo, pan, zoom i Fit nie zmieniają geometrii poza świadomą edycją.
+
+**Dach kopertowy i H1:** V6 obsługuje prostokątny dach o równych kątach połaci, w tym kwadratowy wariant namiotowy z kalenicą długości zero. Cztery fizyczne narożne korzystają z jednego prototypu H1. Karta H1 koordynuje rzut z góry, widok wzdłuż krokwi i detal cięcia/fazowania; osobno pokazuje długość teoretyczną, odjęcie od grubości kalenicy i długość do jej fizycznego lica.
 
 **Płatwie:** dodaj kolejne podpory P1, P2, P3… tak długo, jak istnieje legalny odstęp. Każdą wybierzesz, przesuniesz uchwytem na szkielecie lub wpiszesz dokładną pozycję od lica murłaty. Drag przyciąga do 10 mm, nie pozwala nakładać podpór i można go anulować przez Esc. Można zmienić szerokość, wysokość oraz sterować zaciosem przez siedzisko albo głębokość.
 
 Płatew jest elementem domeny: zmiana położenia aktualizuje przecięcia, rzeczywisty wycięty profil, punkty trasowania i rysunek. Jej ruch nie zmienia długości całej krokwi przy stałych końcach. Datums mają semantyczne identyfikatory; A/B/C… są tylko generowanymi etykietami. Plan produkcyjny jest strukturą danych tłumaczoną przez UI na PL/EN. Jednostki mm/cm/m nie zmieniają geometrii.
 
-Wersje `common-rafter@1.0.0` i `@2.0.0` pozostają w rejestrze historycznym z testami regresji. Aktualny ekran używa `@3.0.0`.
+Wersje `common-rafter@1.0.0` i `@2.0.0` pozostają w rejestrze historycznym z testami regresji. Aktualna ścieżka K1 używa `common-rafter@3.0.0`, a H1 ma wersję `hip-rafter@1.0.0`.
 
 ## XAMPP / hosting
 
@@ -50,11 +52,11 @@ Testy obejmują geometrię, walidację, jednostki, profil po cięciach, dynamicz
 
 ## Organizacja i granice
 
-- `timber-model`: AssemblySpec, ResolvedAssembly, FabricationPlan i typy elementów.
-- `roof-math`: czysta geometria, wspólny resolver zaciosów, walidacja i szablon.
+- `timber-model`: RoofTemplateSpec, AssemblySpec, jawne typy K1/H1, operacje złożone i typy szkieletu.
+- `roof-math`: czysta geometria, wspólny resolver zaciosów, walidacja, szablony gable/hip i dokładna geometria H1.
 - `calculator-core`: wersjonowany rejestr i adapter rysunku.
 - `drawing-engine`: prymitywy, projekcja, przycinanie, semantic dimension lanes i snapping.
 - `apps/web/src/assembly`: dwa tryby, edytor sesji, SVG, inspector, tłumaczenia i plan trasowania.
 - `apps/api`: Express; `ui`: tokeny/komponenty; `shared`: kontrakty.
 
-Zakres UI: jedna krokiew, jedna murłata, jedna opcjonalna płatew, kalenica. Solver testowo obsługuje więcej podpór bez osobnego kalkulatora. Brak zapisu po odświeżeniu, naddatków/rzazu, statyki, krokwi narożnych/koszowych, 3D, CAD, bazy, logowania, płatności i PDF. Geometryczny wynik nie potwierdza nośności konstrukcji. Kolejna iteracja nie rozpoczyna się automatycznie.
+Zakres V6 nie obejmuje kulawek, krokwi koszowych, nieregularnych/nierównych połaci ani dowolnych wielokątów dachu. Brak zapisu po odświeżeniu, naddatków/rzazu, statyki, pełnego 3D/CAD, bazy, logowania, płatności i PDF. Geometryczny wynik nie potwierdza nośności konstrukcji. Kolejna iteracja nie rozpoczyna się automatycznie.

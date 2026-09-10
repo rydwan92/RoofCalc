@@ -152,7 +152,9 @@ describe('dual-mode parametric workbench', () => {
   it('keeps malformed roof/section inputs editable without a crash or non-finite output', () => {
     const { container } = render(<App />);
     enter('Rzut do osi kalenicy', '');
-    expect(input('Rzut do osi kalenicy').getAttribute('aria-invalid')).toBe('true');
+    expect(input('Rzut do osi kalenicy').getAttribute('aria-invalid')).toBe(
+      'true',
+    );
     expect(container.innerHTML).not.toMatch(/NaN|Infinity|undefined/);
     enter('Rzut do osi kalenicy', '4000');
     builder();
@@ -195,7 +197,7 @@ describe('dual-mode parametric workbench', () => {
       screen.getByRole('button', { name: 'Zmień język na angielski' }),
     );
     expect(
-      await screen.findByRole('heading', { name: 'Common rafter' }),
+      await screen.findByRole('heading', { name: 'Roof workbench' }),
     ).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Add purlin' })).toBeTruthy();
     expect(container.textContent).not.toContain('assembly.');
@@ -275,7 +277,8 @@ describe('dual-mode parametric workbench', () => {
     const { container } = render(<App />);
     builder();
     const rafterCount = () =>
-      container.querySelectorAll('[data-entity^="instance:rafter-pair"]').length;
+      container.querySelectorAll('[data-entity^="instance:rafter-pair"]')
+        .length;
     const ridge = () =>
       container
         .querySelector('[data-entity="skeleton:ridge"] .a-skeleton-face')!
@@ -297,7 +300,9 @@ describe('dual-mode parametric workbench', () => {
     expect(screen.getByText('Pary krokwi')).toBeTruthy();
     enter('Kąt połaci', '42');
     expect(ridge()).not.toBe(beforeRidge);
-    expect(screen.getByTestId('stock-length').textContent).not.toBe(beforeStock);
+    expect(screen.getByTestId('stock-length').textContent).not.toBe(
+      beforeStock,
+    );
     add();
     expect(
       container.querySelector('[data-entity="instance:purlin-1:right"]'),
@@ -306,17 +311,15 @@ describe('dual-mode parametric workbench', () => {
   it('opens a selected physical rafter instance in the shared fabrication view', () => {
     const { container } = render(<App />);
     builder();
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Krokiew #4 - lewa' }),
+    fireEvent.click(screen.getByRole('button', { name: 'Krokiew #4 - lewa' }));
+    expect(container.querySelectorAll('.kind-rafter.is-selected')).toHaveLength(
+      1,
     );
-    expect(container.querySelectorAll('.kind-rafter.is-selected')).toHaveLength(1);
     expect(screen.getByText('rafter-pair-4:left')).toBeTruthy();
     expect(screen.getByText('Krokiew K1')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Otwórz element' }));
     expect(screen.getByTestId('assembly-drawing')).toBeTruthy();
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Wróć do szkieletu' }),
-    );
+    fireEvent.click(screen.getByRole('button', { name: 'Wróć do szkieletu' }));
     expect(screen.getByTestId('skeleton-drawing')).toBeTruthy();
   });
   it('adds and selects multiple independently resolved purlins in the skeleton', () => {
@@ -347,7 +350,9 @@ describe('dual-mode parametric workbench', () => {
     expect(
       useAssembly.getState().template.intermediateSupports[1]!.placement.xMm,
     ).toBe(purlinBefore + 10);
-    expect(useAssembly.getState().template.intermediateSupports).toHaveLength(2);
+    expect(useAssembly.getState().template.intermediateSupports).toHaveLength(
+      2,
+    );
   });
   it('adjusts skeleton handles through canonical history while camera controls leave geometry unchanged', () => {
     render(<App />);
@@ -419,12 +424,18 @@ describe('dual-mode parametric workbench', () => {
       x: Number(circle.getAttribute('cx')),
       y: Number(circle.getAttribute('cy')),
     };
-    const axisX = Number(axis.getAttribute('x2')) - Number(axis.getAttribute('x1'));
-    const axisY = Number(axis.getAttribute('y2')) - Number(axis.getAttribute('y1'));
+    const axisX =
+      Number(axis.getAttribute('x2')) - Number(axis.getAttribute('x1'));
+    const axisY =
+      Number(axis.getAttribute('y2')) - Number(axis.getAttribute('y1'));
     const axisLength = Math.hypot(axisX, axisY);
     const before = purlin().placement.xMm;
     const pointer = { pointerId: 31, pointerType: 'mouse', button: 0 };
-    fireEvent.pointerDown(circle, { ...pointer, clientX: start.x, clientY: start.y });
+    fireEvent.pointerDown(circle, {
+      ...pointer,
+      clientX: start.x,
+      clientY: start.y,
+    });
     fireEvent.pointerMove(drawing, {
       ...pointer,
       clientX: start.x + (axisX / axisLength) * 50,
@@ -434,7 +445,11 @@ describe('dual-mode parametric workbench', () => {
     fireEvent.pointerCancel(drawing, pointer);
     expect(purlin().placement.xMm).toBe(before);
     expect(useAssembly.getState().historyPast).toHaveLength(0);
-    fireEvent.pointerDown(circle, { ...pointer, clientX: start.x, clientY: start.y });
+    fireEvent.pointerDown(circle, {
+      ...pointer,
+      clientX: start.x,
+      clientY: start.y,
+    });
     fireEvent.pointerMove(drawing, {
       ...pointer,
       clientX: start.x + (axisX / axisLength) * 50,
@@ -442,5 +457,63 @@ describe('dual-mode parametric workbench', () => {
     });
     fireEvent.pointerUp(drawing, pointer);
     expect(useAssembly.getState().historyPast).toHaveLength(1);
+  });
+  it('offers a fast H1 path with shared reactive math and coordinated drawings', () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Krokiew narożna' }));
+    expect(useAssembly.getState().template.type).toBe('hip');
+    expect(document.querySelectorAll('.a-basic-fields input')).toHaveLength(3);
+    expect(screen.getByTestId('hip-physical-length')).toBeTruthy();
+    expect(screen.getByTestId('hip-fabrication-sheet')).toBeTruthy();
+    expect(screen.getByText('Rzut z góry')).toBeTruthy();
+    expect(screen.getByText('Widok wzdłuż krokwi')).toBeTruthy();
+    expect(screen.getByText('Cięcie górne i fazowanie')).toBeTruthy();
+    const before = screen.getByTestId('hip-theoretical-length').textContent;
+    enter('Kąt połaci', '42');
+    expect(screen.getByTestId('hip-theoretical-length').textContent).not.toBe(
+      before,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Otwórz w kreatorze/ }));
+    expect(useAssembly.getState().template.type).toBe('hip');
+    expect(screen.getByTestId('skeleton-drawing')).toBeTruthy();
+  });
+
+  it('selects one physical hip and opens its shared H1 fabrication sheet', () => {
+    const { container } = render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Krokiew narożna' }));
+    builder();
+    const hips = container.querySelectorAll('[data-entity^="instance:hip:"]');
+    expect(hips).toHaveLength(4);
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /Krokiew narożna H1.*przedni lewy narożnik/,
+      }),
+    );
+    expect(useAssembly.getState().selected).toBe('instance:hip:front-left');
+    expect(screen.getByText('front-left')).toBeTruthy();
+    fireEvent.click(
+      screen.getByRole('button', { name: /Przygotuj krokiew narożną H1/ }),
+    );
+    expect(useAssembly.getState().view).toBe('hip');
+    expect(screen.getByTestId('hip-fabrication-sheet')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Wróć do szkieletu' }));
+    expect(useAssembly.getState().view).toBe('skeleton');
+  });
+
+  it('renders the square hip as a zero-ridge pyramid and a rectangle with a ridge', () => {
+    const { container } = render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Krokiew narożna' }));
+    builder();
+    expect(useAssembly.getState().template.buildingLengthMm).toBe(8000);
+    expect(
+      container.querySelector('[data-entity="skeleton:ridge"]'),
+    ).toBeNull();
+    enter('Długość budynku', '10000');
+    expect(
+      container.querySelector('[data-entity="skeleton:ridge"]'),
+    ).toBeTruthy();
+    enter('Długość budynku', '7999');
+    expect(input('Długość budynku').getAttribute('aria-invalid')).toBe('true');
+    expect(useAssembly.getState().template.buildingLengthMm).toBe(10000);
   });
 });

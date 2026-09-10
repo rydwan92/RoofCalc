@@ -2,17 +2,19 @@ import { create } from 'zustand';
 import {
   addPurlin,
   assemblyDefaults,
-  assemblyFromGableTemplate,
+  assemblyFromRoofTemplate,
   calculateBirdsmouth,
+  convertRoofTemplate,
   gableTemplateFromAssembly,
+  roofTemplateFromAssembly,
   seatLength,
   toMillimetres,
   type LengthUnit,
 } from '@cieslacalc/roof-math';
 import type {
   AssemblySpec,
-  GableRoofTemplateSpec,
   RafterSpacingMode,
+  RoofTemplateSpec,
   SupportSpec,
 } from '@cieslacalc/timber-model';
 import { editableLength, parseDecimal } from '../format';
@@ -24,13 +26,18 @@ export type EditField =
   | 'roof.overhangMm'
   | 'member.widthMm'
   | 'member.depthMm'
+  | 'hip.widthMm'
+  | 'hip.depthMm'
   | 'ridge.thicknessMm'
   | 'template.buildingLengthMm'
   | 'template.rafterSpacingMm'
   | `support/${string}/${SupportField}`;
 type AssemblyEditField = Exclude<
   EditField,
-  'template.buildingLengthMm' | 'template.rafterSpacingMm'
+  | 'template.buildingLengthMm'
+  | 'template.rafterSpacingMm'
+  | 'hip.widthMm'
+  | 'hip.depthMm'
 >;
 export const supportField = (id: string, field: SupportField): EditField =>
   `support/${id}/${field}`;
@@ -54,12 +61,16 @@ export function editableFields(spec: AssemblySpec): EditField[] {
 export function editValue(
   spec: AssemblySpec,
   field: EditField,
-  template?: GableRoofTemplateSpec,
+  template?: RoofTemplateSpec,
 ): number {
   if (field === 'template.buildingLengthMm')
     return template?.buildingLengthMm ?? NaN;
   if (field === 'template.rafterSpacingMm')
     return template?.rafterSpacing.spacingMm ?? NaN;
+  if (field === 'hip.widthMm')
+    return template?.type === 'hip' ? template.hipRafterSection.widthMm : NaN;
+  if (field === 'hip.depthMm')
+    return template?.type === 'hip' ? template.hipRafterSection.depthMm : NaN;
   if (field.startsWith('support/')) {
     const [, id, key] = field.split('/');
     const support = spec.supports.find((s) => s.id === id)!;
@@ -121,26 +132,19 @@ function editedSpec(
   return next;
 }
 const templateDefaults = gableTemplateFromAssembly(assemblyDefaults);
-function templateLayout(template: GableRoofTemplateSpec) {
-  return {
-    id: template.id,
-    buildingLengthMm: template.buildingLengthMm,
-    rafterSpacing: template.rafterSpacing,
-  };
-}
 function valueForTemplate(
-  template: GableRoofTemplateSpec,
+  template: RoofTemplateSpec,
   spec: AssemblySpec,
   field: EditField,
 ): number {
   return editValue(spec, field, template);
 }
 function editedTemplate(
-  template: GableRoofTemplateSpec,
+  template: RoofTemplateSpec,
   spec: AssemblySpec,
   field: EditField,
   value: number,
-): GableRoofTemplateSpec {
+): RoofTemplateSpec {
   if (field === 'template.buildingLengthMm')
     return {
       ...template,
@@ -151,33 +155,41 @@ function editedTemplate(
       ...template,
       rafterSpacing: { ...template.rafterSpacing, spacingMm: value },
     };
-  return gableTemplateFromAssembly(
-    editedSpec(spec, field, value),
-    templateLayout(template),
+  if (field === 'hip.widthMm' || field === 'hip.depthMm') {
+    if (template.type !== 'hip') throw new RangeError('hip_template_required');
+    const key = field === 'hip.widthMm' ? 'widthMm' : 'depthMm';
+    return {
+      ...template,
+      hipRafterSection: { ...template.hipRafterSection, [key]: value },
+    };
+  }
+  return roofTemplateFromAssembly(
+    editedSpec(spec, field as AssemblyEditField, value),
+    template,
   );
 }
 function committedTemplate(
-  template: GableRoofTemplateSpec,
+  template: RoofTemplateSpec,
   drafts: Partial<Record<EditField, string>>,
   invalidFields: Partial<Record<EditField, boolean>>,
 ) {
-  const spec = assemblyFromGableTemplate(template);
+  const spec = assemblyFromRoofTemplate(template);
   return { template, spec, drafts, invalidFields };
 }
 interface DomainSnapshot {
-  template: GableRoofTemplateSpec;
+  template: RoofTemplateSpec;
 }
 const historyLimit = 40;
-const snapshot = (template: GableRoofTemplateSpec): DomainSnapshot => ({
+const snapshot = (template: RoofTemplateSpec): DomainSnapshot => ({
   template: structuredClone(template),
 });
-const sameTemplate = (a: GableRoofTemplateSpec, b: GableRoofTemplateSpec) =>
+const sameTemplate = (a: RoofTemplateSpec, b: RoofTemplateSpec) =>
   JSON.stringify(a) === JSON.stringify(b);
 interface AssemblyState {
-  template: GableRoofTemplateSpec;
+  template: RoofTemplateSpec;
   spec: AssemblySpec;
   mode: 'quick' | 'builder';
-  view: 'skeleton' | 'rafter';
+  view: 'skeleton' | 'rafter' | 'hip';
   unit: LengthUnit;
   selected: string;
   selectedPrototype?: string;
@@ -189,7 +201,8 @@ interface AssemblyState {
   historyFuture: DomainSnapshot[];
   activeTransaction?: DomainSnapshot;
   setMode: (mode: 'quick' | 'builder') => void;
-  setView: (view: 'skeleton' | 'rafter') => void;
+  setRoofType: (type: RoofTemplateSpec['type']) => void;
+  setView: (view: 'skeleton' | 'rafter' | 'hip') => void;
   setUnit: (unit: LengthUnit) => void;
   setField: (field: EditField, raw: string) => void;
   setCanonicalField: (field: EditField, value: number) => void;
@@ -229,7 +242,7 @@ function restoredSnapshot(snapshotToRestore: DomainSnapshot) {
 }
 export const useAssembly = create<AssemblyState>((set) => ({
   template: structuredClone(templateDefaults),
-  spec: assemblyFromGableTemplate(templateDefaults),
+  spec: assemblyFromRoofTemplate(templateDefaults),
   mode: 'quick',
   view: 'skeleton',
   unit: 'mm',
@@ -243,6 +256,19 @@ export const useAssembly = create<AssemblyState>((set) => ({
   historyFuture: [],
   activeTransaction: undefined,
   setMode: (mode) => set({ mode }),
+  setRoofType: (type) =>
+    set((state) => {
+      const template = convertRoofTemplate(state.template, type);
+      return {
+        ...withHistory(
+          state,
+          committedTemplate(template, state.drafts, state.invalidFields),
+        ),
+        selected: 'roof',
+        selectedPrototype: undefined,
+        view: 'skeleton',
+      };
+    }),
   setView: (view) => set({ view }),
   setUnit: (unit) =>
     set((state) => ({
@@ -269,7 +295,12 @@ export const useAssembly = create<AssemblyState>((set) => ({
             : field === 'roof.pitchDeg'
               ? parsed
               : toMillimetres(parsed, state.unit);
-        const template = editedTemplate(state.template, state.spec, field, value);
+        const template = editedTemplate(
+          state.template,
+          state.spec,
+          field,
+          value,
+        );
         delete invalidFields[field];
         return withHistory(
           state,
@@ -283,7 +314,12 @@ export const useAssembly = create<AssemblyState>((set) => ({
   setCanonicalField: (field, value) =>
     set((state) => {
       try {
-        const template = editedTemplate(state.template, state.spec, field, value);
+        const template = editedTemplate(
+          state.template,
+          state.spec,
+          field,
+          value,
+        );
         const drafts = { ...state.drafts };
         const invalidFields = { ...state.invalidFields };
         delete drafts[field];
@@ -300,7 +336,12 @@ export const useAssembly = create<AssemblyState>((set) => ({
     set((state) => {
       const value = valueForTemplate(state.template, state.spec, field) + delta;
       try {
-        const template = editedTemplate(state.template, state.spec, field, value);
+        const template = editedTemplate(
+          state.template,
+          state.spec,
+          field,
+          value,
+        );
         const drafts = { ...state.drafts };
         delete drafts[field];
         const invalidFields = { ...state.invalidFields };
@@ -339,9 +380,9 @@ export const useAssembly = create<AssemblyState>((set) => ({
     }),
   add: () =>
     set((state) => {
-      const template = gableTemplateFromAssembly(
+      const template = roofTemplateFromAssembly(
         addPurlin(state.spec),
-        templateLayout(state.template),
+        state.template,
       );
       return {
         ...withHistory(
@@ -375,7 +416,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         ...withHistory(
           state,
           committedTemplate(
-            gableTemplateFromAssembly(spec, templateLayout(state.template)),
+            roofTemplateFromAssembly(spec, state.template),
             drafts,
             invalidFields,
           ),
@@ -458,7 +499,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
       return withHistory(
         state,
         committedTemplate(
-          gableTemplateFromAssembly(spec, templateLayout(state.template)),
+          roofTemplateFromAssembly(spec, state.template),
           drafts,
           invalidFields,
         ),
@@ -467,7 +508,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
   reset: () =>
     set({
       template: structuredClone(templateDefaults),
-      spec: assemblyFromGableTemplate(templateDefaults),
+      spec: assemblyFromRoofTemplate(templateDefaults),
       drafts: {},
       invalidFields: {},
       selected: 'roof',

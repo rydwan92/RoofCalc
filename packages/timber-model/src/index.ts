@@ -125,6 +125,85 @@ export interface GableRoofTemplateSpec {
   ridge: AssemblySpec['ridge'];
   intermediateSupports: SupportSpec[];
 }
+/** Editable intent for the V6 regular rectangular equal-pitch hip roof. */
+export interface HipRoofTemplateSpec {
+  id: EntityId;
+  type: 'hip';
+  buildingLengthMm: number;
+  halfRunMm: number;
+  pitchDeg: number;
+  eaveOverhangMm: number;
+  rafterSpacing: RafterSpacingSpec;
+  /** Shared common-rafter K1 section. */
+  rafterSection: TimberSection;
+  /** Shared diagonal hip-rafter H1 section. */
+  hipRafterSection: TimberSection;
+  wallPlate: SupportSpec;
+  ridge: AssemblySpec['ridge'];
+  intermediateSupports: SupportSpec[];
+}
+export type RoofTemplateSpec = GableRoofTemplateSpec | HipRoofTemplateSpec;
+
+export interface HipRafterSpec {
+  id: EntityId;
+  section: TimberSection;
+  commonRunMm: number;
+  pitchDeg: number;
+  overhangMm: number;
+  ridgeThicknessMm: number;
+}
+export interface HipRafterResult {
+  commonRiseMm: number;
+  planRunMm: number;
+  tailPlanRunMm: number;
+  theoreticalLineLengthMm: number;
+  tailLineLengthMm: number;
+  totalTheoreticalLineLengthMm: number;
+  ridgePlanDeductionMm: number;
+  ridgeAxisDeductionMm: number;
+  lineLengthToRidgeFaceMm: number;
+  outerEaveToRidgeFaceMm: number;
+  hipSlopeDeg: number;
+  plumbToMemberDeg: number;
+  seatToMemberDeg: number;
+  cheekAngleDeg: number;
+  backingAngleDeg: number;
+}
+export interface CompoundEndCut {
+  kind: 'compound-end-cut';
+  id: EntityId;
+  memberId: EntityId;
+  end: 'ridge' | 'tail';
+  plumbToMemberDeg: number;
+  cheekAngleDeg: number;
+  doubleCheek: boolean;
+  referenceStationMm: number;
+  reference: 'outer-eave-to-ridge-face';
+  ridgePlanDeductionMm: number;
+  ridgeAxisDeductionMm: number;
+}
+export interface HipBackingDetail {
+  kind: 'hip-backing';
+  id: EntityId;
+  memberId: EntityId;
+  angleDeg: number;
+  reference: 'top-arris-to-roof-plane';
+  fabricationChoice: 'back-or-drop-not-decided';
+}
+export interface HipFabricationPlan {
+  memberId: EntityId;
+  section: TimberSection;
+  referenceDatum: 'outer-eave';
+  theoreticalRidgeCenterStationMm: number;
+  ridgeFaceStationMm: number;
+  ridgeCut: CompoundEndCut;
+  backing: HipBackingDetail;
+}
+export interface ResolvedHipRafter {
+  spec: HipRafterSpec;
+  result: HipRafterResult;
+  fabrication: HipFabricationPlan;
+}
 export interface RafterStation {
   id: EntityId;
   alongBuildingMm: number;
@@ -143,10 +222,17 @@ export interface Point3D {
   z: number;
 }
 export type SkeletonMemberKind =
-  | 'wall-plate'
-  | 'ridge'
-  | 'rafter'
-  | 'purlin';
+  'wall-plate' | 'ridge' | 'rafter' | 'hip-rafter' | 'purlin';
+export type SkeletonMemberSide =
+  | 'left'
+  | 'right'
+  | 'center'
+  | 'front'
+  | 'rear'
+  | 'front-left'
+  | 'front-right'
+  | 'rear-left'
+  | 'rear-right';
 export interface SkeletonMember3D {
   /** Stable physical placement ID, e.g. instance:rafter-pair-4:left. */
   id: EntityId;
@@ -158,13 +244,26 @@ export interface SkeletonMember3D {
   from: Point3D;
   to: Point3D;
   section: TimberSection;
-  side: 'left' | 'right' | 'center';
+  side: SkeletonMemberSide;
   stationMm?: number;
+}
+export interface SkeletonGuide3D {
+  id: EntityId;
+  kind: 'roof-plane';
+  points: Point3D[];
 }
 export interface GableRoofSkeleton {
   ridgeHeightMm: number;
   members: SkeletonMember3D[];
+  guides?: SkeletonGuide3D[];
 }
+export interface HipRoofSkeleton {
+  ridgeHeightMm: number;
+  ridgeLengthMm: number;
+  members: SkeletonMember3D[];
+  guides: SkeletonGuide3D[];
+}
+export type RoofSkeleton = GableRoofSkeleton | HipRoofSkeleton;
 export interface ResolvedJoint extends SeatNotch {
   memberId: EntityId;
   heelDatumId: DatumId;

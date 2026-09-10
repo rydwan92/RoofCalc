@@ -9,6 +9,7 @@ import type { DrawingModel } from '@cieslacalc/drawing-engine';
 import type { FeatureKey } from '@cieslacalc/shared';
 import { rafterWorkbench } from './workbench';
 import { assemblyWorkbench } from './assembly';
+import { hipRafter } from './hip-rafter';
 
 export interface CalculatorDefinition<I, O> {
   id: string;
@@ -86,17 +87,23 @@ export const commonRafter: CalculatorDefinition<
 
 export const calculatorRegistry = {
   'common-rafter': assemblyWorkbench,
+  'hip-rafter': hipRafter,
 } as const;
 export const calculatorVersions = {
   'common-rafter@1.0.0': commonRafter,
   'common-rafter@2.0.0': rafterWorkbench,
   'common-rafter@3.0.0': assemblyWorkbench,
+  'hip-rafter@1.0.0': hipRafter,
 } as const;
 export * from './workbench';
 export * from './assembly';
+export * from './hip-rafter';
 export interface AccessPolicy {
   canUse(feature: FeatureKey): boolean;
 }
 export const freeAccessPolicy: AccessPolicy = {
-  canUse: (feature) => feature === commonRafter.requiredEntitlement,
+  canUse: (feature) =>
+    Object.values(calculatorRegistry).some(
+      (calculator) => calculator.requiredEntitlement === feature,
+    ),
 };

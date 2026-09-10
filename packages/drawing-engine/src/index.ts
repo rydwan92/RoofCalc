@@ -102,15 +102,23 @@ export function createTimberPrismFaces(
     section.depthMm <= 0
   )
     throw new RangeError('invalid_prism_section');
+  if (orientation !== 'along-roof' && orientation !== 'along-building')
+    throw new RangeError('invalid_prism_orientation');
   const direction = unit3(vector3(axis.from, axis.to));
-  const widthDirection =
-    orientation === 'along-roof'
-      ? { x: 0, y: 1, z: 0 }
-      : { x: 1, y: 0, z: 0 };
-  const depthDirection =
-    orientation === 'along-roof'
-      ? unit3({ x: direction.z, y: 0, z: -direction.x })
-      : { x: 0, y: 0, z: 1 };
+  const planLength = Math.hypot(direction.x, direction.y);
+  if (planLength <= 1e-8) throw new RangeError('invalid_prism_orientation');
+  // Width stays horizontal and perpendicular to the member's exact plan axis.
+  // This preserves the V5 common-rafter result and also supports diagonal hips.
+  const widthDirection = {
+    x: -direction.y / planLength,
+    y: direction.x / planLength,
+    z: 0,
+  };
+  const depthDirection = unit3({
+    x: widthDirection.y * direction.z,
+    y: -widthDirection.x * direction.z,
+    z: widthDirection.x * direction.y - widthDirection.y * direction.x,
+  });
   const a = prismCorner(
       axis.from,
       widthDirection,
@@ -210,8 +218,7 @@ export function projectTimberPrismFaces(
     })
     .sort(
       (a, b) =>
-        a.paintOrder - b.paintOrder ||
-        rank.get(a.id)! - rank.get(b.id)!,
+        a.paintOrder - b.paintOrder || rank.get(a.id)! - rank.get(b.id)!,
     );
 }
 export interface Bounds {

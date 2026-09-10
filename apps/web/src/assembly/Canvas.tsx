@@ -40,7 +40,15 @@ export function entityLabel(
   t: (key: string) => string,
 ): string {
   if (id === 'roof') return t('assembly.roof');
-  const instance = /^instance:rafter-pair-(\d+):(left|right)$/.exec(id);
+  const hip = /^instance:hip:(front-left|front-right|rear-left|rear-right)$/.exec(
+    id,
+  );
+  if (hip)
+    return `${t('assembly.hipRafter')} H1 · ${t(`assembly.${hip[1]}`)}`;
+  if (id === 'member:hip-rafter-H1') return `${t('assembly.hipRafter')} H1`;
+  const instance = /^instance:(?:rafter-pair|hip-common-pair)-(\d+):(left|right)$/.exec(
+    id,
+  );
   if (instance)
     return `${t('assembly.rafter')} #${instance[1]} - ${t(`assembly.${instance[2]}`)}`;
   if (id === state.spec.member.id) return t('assembly.rafter');

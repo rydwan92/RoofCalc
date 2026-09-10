@@ -2,7 +2,7 @@ import { beforeEach, expect, it } from 'vitest';
 import {
   calculateAssembly,
   assemblySpecSchema,
-  resolveGableRoofTemplate,
+  resolveRoofTemplate,
 } from '@cieslacalc/roof-math';
 import { supportField, useAssembly } from './store';
 beforeEach(() => {
@@ -63,11 +63,11 @@ it('invalid drafts preserve the last valid template and disappear with a removed
   ).toBe(true);
 });
 it('template layout changes only repeated skeleton positions, not fabrication geometry', () => {
-  const before = resolveGableRoofTemplate(useAssembly.getState().template);
+  const before = resolveRoofTemplate(useAssembly.getState().template);
   useAssembly.getState().setField('template.buildingLengthMm', '12000');
   useAssembly.getState().setField('template.rafterSpacingMm', '600');
-  const after = resolveGableRoofTemplate(useAssembly.getState().template);
-  expect(after.rafterSpacing.stations).toHaveLength(21);
+  const after = resolveRoofTemplate(useAssembly.getState().template);
+  expect(after.rafterSpacing?.stations).toHaveLength(21);
   expect(after.calculation).toEqual(before.calculation);
 });
 it('converts the controlling joint parameter without changing the notch', () => {
@@ -79,6 +79,74 @@ it('converts the controlling joint parameter without changing the notch', () => 
     before.assembly.joints[0]!.seatLengthMm,
     10,
   );
+});
+
+it('switches roof templates as one undoable transaction and preserves compatible values', () => {
+  const before = structuredClone(useAssembly.getState().template);
+  useAssembly.getState().setRoofType('hip');
+  const hip = useAssembly.getState().template;
+  expect(hip.type).toBe('hip');
+  expect(hip.halfRunMm).toBe(before.halfRunMm);
+  expect(hip.pitchDeg).toBe(before.pitchDeg);
+  expect(useAssembly.getState().historyPast).toHaveLength(1);
+  useAssembly.getState().undo();
+  expect(useAssembly.getState().template.type).toBe('gable');
+  expect(useAssembly.getState().template.halfRunMm).toBe(before.halfRunMm);
+  useAssembly.getState().redo();
+  expect(useAssembly.getState().template.type).toBe('hip');
+});
+
+it('keeps Quick and Builder on the same canonical H1 result', () => {
+  useAssembly.getState().setRoofType('hip');
+  const quick = resolveRoofTemplate(useAssembly.getState().template);
+  expect('hipRafter' in quick).toBe(true);
+  useAssembly.getState().setMode('builder');
+  const builder = resolveRoofTemplate(useAssembly.getState().template);
+  expect(builder).toEqual(quick);
+});
+
+it('updates K1, H1 and ridge geometry from shared hip dimensions', () => {
+  useAssembly.getState().setRoofType('hip');
+  useAssembly.getState().setCanonicalField('template.buildingLengthMm', 10000);
+  const before = resolveRoofTemplate(useAssembly.getState().template);
+  if (!('hipRafter' in before)) throw new Error('expected hip result');
+  useAssembly.getState().setCanonicalField('roof.pitchDeg', 42);
+  const pitched = resolveRoofTemplate(useAssembly.getState().template);
+  if (!('hipRafter' in pitched)) throw new Error('expected hip result');
+  expect(pitched.calculation.plan.referenceLengthMm).not.toBe(
+    before.calculation.plan.referenceLengthMm,
+  );
+  expect(pitched.hipRafter.result.theoreticalLineLengthMm).not.toBe(
+    before.hipRafter.result.theoreticalLineLengthMm,
+  );
+  useAssembly.getState().setCanonicalField('roof.runMm', 4500);
+  const wider = resolveRoofTemplate(useAssembly.getState().template);
+  if (!('hipRafter' in wider)) throw new Error('expected hip result');
+  expect(wider.ridgeLengthMm).toBe(1000);
+  expect(wider.hipRafter.result.planRunMm).toBeCloseTo(4500 * Math.SQRT2, 10);
+});
+
+it('changes hip ridge length without changing H1 when only building length changes', () => {
+  useAssembly.getState().setRoofType('hip');
+  const before = resolveRoofTemplate(useAssembly.getState().template);
+  if (!('hipRafter' in before)) throw new Error('expected hip result');
+  useAssembly.getState().setCanonicalField('template.buildingLengthMm', 12000);
+  const after = resolveRoofTemplate(useAssembly.getState().template);
+  if (!('hipRafter' in after)) throw new Error('expected hip result');
+  expect(after.ridgeLengthMm).toBe(4000);
+  expect(after.hipRafter).toEqual(before.hipRafter);
+});
+
+it('rejects a hip building length below span and keeps display units invariant', () => {
+  useAssembly.getState().setRoofType('hip');
+  const before = resolveRoofTemplate(useAssembly.getState().template);
+  useAssembly.getState().setField('template.buildingLengthMm', '7999');
+  expect(
+    useAssembly.getState().invalidFields['template.buildingLengthMm'],
+  ).toBe(true);
+  expect(resolveRoofTemplate(useAssembly.getState().template)).toEqual(before);
+  useAssembly.getState().setUnit('cm');
+  expect(resolveRoofTemplate(useAssembly.getState().template)).toEqual(before);
 });
 it('undoes and redoes a committed numeric template edit without recording display state', () => {
   const before = useAssembly.getState().template;
@@ -101,7 +169,8 @@ it('updates canonical millimetres directly for drawing handles without display-u
 it('coalesces a purlin gesture and restores its start state when cancelled', () => {
   useAssembly.getState().add();
   useAssembly.setState({ historyPast: [], historyFuture: [] });
-  const start = useAssembly.getState().template.intermediateSupports[0]!.placement.xMm;
+  const start =
+    useAssembly.getState().template.intermediateSupports[0]!.placement.xMm;
   useAssembly.getState().beginTransaction();
   useAssembly.getState().movePurlin('support:purlin-1', start + 100);
   useAssembly.getState().movePurlin('support:purlin-1', start + 250);

@@ -4,6 +4,67 @@ import { formatLength, formatNumber } from '../format';
 import { useAssembly } from './store';
 import type { Calculation } from './Inputs';
 import type { ResolvedRafterSpacing } from '@cieslacalc/timber-model';
+import type { ResolvedHipRafter } from '@cieslacalc/timber-model';
+
+export function HipResults({ hip }: { hip: ResolvedHipRafter }) {
+  const { t, i18n } = useTranslation(),
+    state = useAssembly();
+  const length = (n: number) => formatLength(n, state.unit, i18n.language);
+  const angle = (n: number) => formatNumber(n, i18n.language);
+  const result = hip.result;
+  return (
+    <div className="a-results a-hip-results" aria-live="polite">
+      <div className="a-main-result">
+        <span>{t('assembly.hipPhysicalLength')}</span>
+        <strong data-testid="hip-physical-length">
+          {length(result.outerEaveToRidgeFaceMm)} <small>{state.unit}</small>
+        </strong>
+        <p>{t('assembly.hipLengthNote')}</p>
+      </div>
+      <div>
+        <span>{t('assembly.hipTheoreticalLength')}</span>
+        <strong data-testid="hip-theoretical-length">
+          {length(result.totalTheoreticalLineLengthMm)}{' '}
+          <small>{state.unit}</small>
+        </strong>
+      </div>
+      <div>
+        <span>{t('assembly.hipPlanRun')}</span>
+        <strong>
+          {length(result.planRunMm)} <small>{state.unit}</small>
+        </strong>
+      </div>
+      <div>
+        <span>{t('assembly.hipSlope')}</span>
+        <strong>
+          {angle(result.hipSlopeDeg)}
+          <small>°</small>
+        </strong>
+      </div>
+      <div>
+        <span>{t('assembly.hipPlumb')}</span>
+        <strong>
+          {angle(result.plumbToMemberDeg)}
+          <small>°</small>
+        </strong>
+      </div>
+      <div>
+        <span>{t('assembly.hipCheek')}</span>
+        <strong>
+          {angle(result.cheekAngleDeg)}
+          <small>°</small>
+        </strong>
+      </div>
+      <div>
+        <span>{t('assembly.hipBacking')}</span>
+        <strong>
+          {angle(result.backingAngleDeg)}
+          <small>°</small>
+        </strong>
+      </div>
+    </div>
+  );
+}
 
 export function Results({
   result,
@@ -24,8 +85,7 @@ export function Results({
       <div className="a-main-result">
         <span>{t('assembly.stock')}</span>
         <strong data-testid="stock-length">
-          {length(result?.plan.minimumStockLengthMm)}{' '}
-          <small>{unit}</small>
+          {length(result?.plan.minimumStockLengthMm)} <small>{unit}</small>
         </strong>
         <p>{t('assembly.stockNote')}</p>
       </div>

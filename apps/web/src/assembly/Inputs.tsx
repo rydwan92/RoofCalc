@@ -25,7 +25,10 @@ export function NumberField({
     unit = angle ? '°' : state.unit;
   const value = editValue(state.spec, field, state.template);
   const invalid =
-    !!state.invalidFields[field] || !Number.isFinite(value) || value < min || value > max;
+    !!state.invalidFields[field] ||
+    !Number.isFinite(value) ||
+    value < min ||
+    value > max;
   const limit = (n: number) =>
     !Number.isFinite(n)
       ? '—'
@@ -87,9 +90,14 @@ export function NumberField({
     </label>
   );
 }
-export function GeometryInputs({ includeLayout = false }: { includeLayout?: boolean }) {
+export function GeometryInputs({
+  includeLayout = false,
+}: {
+  includeLayout?: boolean;
+}) {
   return (
     <>
+      {includeLayout && <RoofTypeSelector context="roof" />}
       <NumberField field="roof.runMm" label="run" min={1} />
       <NumberField
         field="roof.pitchDeg"
@@ -103,6 +111,36 @@ export function GeometryInputs({ includeLayout = false }: { includeLayout?: bool
     </>
   );
 }
+export function RoofTypeSelector({ context }: { context: 'roof' | 'member' }) {
+  const state = useAssembly(),
+    { t } = useTranslation();
+  return (
+    <div className="a-roof-type">
+      <span>
+        {t(`assembly.${context === 'roof' ? 'roofType' : 'memberType'}`)}
+      </span>
+      <div
+        role="group"
+        aria-label={t(
+          `assembly.${context === 'roof' ? 'roofType' : 'memberType'}`,
+        )}
+      >
+        {(['gable', 'hip'] as const).map((type) => (
+          <button
+            key={type}
+            type="button"
+            aria-pressed={state.template.type === type}
+            onClick={() => state.setRoofType(type)}
+          >
+            {t(
+              `assembly.${context === 'roof' ? (type === 'gable' ? 'gableRoof' : 'hipRoof') : type === 'gable' ? 'commonRafter' : 'hipRafter'}`,
+            )}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 export function TemplateInputs() {
   const state = useAssembly(),
     { t } = useTranslation();
@@ -112,9 +150,12 @@ export function TemplateInputs() {
       <NumberField
         field="template.buildingLengthMm"
         label="buildingLength"
-        min={1}
+        min={state.template.type === 'hip' ? state.template.halfRunMm * 2 : 1}
         max={100000}
       />
+      {state.template.type === 'hip' && (
+        <p className="a-help">{t('assembly.hipLengthRule')}</p>
+      )}
       <NumberField
         field="template.rafterSpacingMm"
         label="rafterSpacing"
@@ -144,6 +185,14 @@ export function TimberInputs() {
     <>
       <NumberField field="member.widthMm" label="width" min={1} max={1000} />
       <NumberField field="member.depthMm" label="depth" min={1} max={2000} />
+    </>
+  );
+}
+export function HipTimberInputs() {
+  return (
+    <>
+      <NumberField field="hip.widthMm" label="width" min={1} max={1000} />
+      <NumberField field="hip.depthMm" label="depth" min={1} max={2000} />
     </>
   );
 }

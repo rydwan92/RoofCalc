@@ -1297,11 +1297,52 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
-> Updated 2026-09-10. Iteration 005 is implemented and fully validated in the root repository.
+> Updated 2026-09-10. Iteration 006 is in progress in the root repository.
 
-**Iteration:** `005 — interactive solid skeleton + multi-purlin Builder`
+**Iteration:** `006 — regular hip roof + hip rafter H1`
 
-**Status:** `IMPLEMENTED — VALIDATED`
+**Status:** `IMPLEMENTED — AUTOMATED VALIDATION PASSED; BROWSER QA UNAVAILABLE`
+
+**Iteration 006 completed:**
+
+- Added the discriminated `RoofTemplateSpec = GableRoofTemplateSpec | HipRoofTemplateSpec`. Both variants retain canonical building length, half-run, pitch, overhang, spacing, K1 section, wall plate, ridge and intermediate supports; the hip variant adds an explicit H1 section. Pure adapters keep the existing `AssemblySpec` and K1 solver as the shared cross-section path.
+- Added exact pure H1 geometry and structured `HipRafterSpec`, `HipRafterResult`, `CompoundEndCut`, `HipBackingDetail` and `HipFabricationPlan`. The versioned calculator registry now includes `hip-rafter@1.0.0` without altering historical K1 versions.
+- Added a pure regular hip-template resolver for rectangular equal-pitch roofs. It resolves ridge height/length/endpoints, the square zero-ridge apex, the valid common-rafter region, the shared K1 calculation, one shared H1 calculation and four exact hip axes.
+- The hip skeleton reuses V5 solid-prism rendering. It has four perimeter wall-plate members, an omitted ridge solid at zero ridge length, four visually stronger H1 solids, valid K1 pairs along the central ridge region, roof-plane guide polygons instead of fake jack rafters and purlins trimmed to the real hip boundaries.
+- Physical hip IDs are `instance:hip:front-left`, `instance:hip:front-right`, `instance:hip:rear-left` and `instance:hip:rear-right`; all link to `member:hip-rafter-H1`. Selection identifies one corner instance while editing the shared prototype.
+- Quick Calc now selects K1 or H1 while keeping the same canonical store. H1 retains only run, pitch and overhang as primary inputs, with H1 section/ridge thickness disclosed separately, immediate explicit lengths/angles and direct transfer to the hip Builder.
+- Builder has one undoable gable/hip selector, preserves compatible values, initializes the H1 section explicitly, enforces `buildingLength >= full span`, updates K1/H1/skeleton together and reuses the existing history, direct pitch/span/length/purlin handles and viewport state.
+- Added a coordinated H1 sheet with plan, elevation along the hip and ridge-cut/backing detail. It shows the outer eave, wall corner, 45-degree plan direction, ridge axis/face, tail, rise, theoretical/physical lengths, plumb/seat references, symmetric double-cheek layout and backing reference without adding permanent global view tabs.
+- Updated PL/EN copy, context-aware workbench/member titles, Model 6.0 styling, responsive single-column H1 drawings at phone width and README architecture/limitations.
+
+**H1 formula and reference contract:**
+
+- With common run `r`, overhang `e`, ridge thickness `t` and common pitch `theta`: `rise = r*tan(theta)`, `hipPlanRun = r*sqrt(2)`, `hipTailPlanRun = e*sqrt(2)` and `lineFactor = sqrt(2 + tan(theta)^2)`.
+- `theoreticalHipLine = r*lineFactor`, `tailLine = e*lineFactor`, `outerEaveToRidgeCenter = (r+e)*lineFactor` and `hipSlope = atan(tan(theta)/sqrt(2))`.
+- `plumbToMember = 90deg - hipSlope`, `seatToMember = hipSlope`, `cheek = atan(sqrt(2)/lineFactor)` and `backing = atan(tan(theta)/lineFactor)`.
+- Ridge deduction uses the V6 centerline-to-near-face convention: `ridgePlanDeduction = t/sqrt(2)`, `ridgeAxisDeduction = ridgePlanDeduction/cos(hipSlope)`, then subtracts the axis deduction from the theoretical wall-corner or outer-eave station. Intermediate math is never rounded.
+
+**Iteration 006 validation:**
+
+- Preflight on clean `main`: typecheck passed, 171 tests across 22 files passed, and web/API production build passed.
+- Final typecheck and lint passed; Vitest passed **205 tests across 24 files**; the Vite web and tsup API production builds passed.
+- New automated coverage includes the 1000 mm/30-degree and exact 6/12 H1 regressions, zero/nonzero overhang and ridge thickness, low/high pitch, invalid/non-finite inputs, template discrimination, gable regression, rectangular/square roofs, axes/IDs/prototype sharing, honest purlin trimming, K1/H1 shared reactivity, template-switch undo/redo, unit invariance and Quick/Builder/H1-sheet flows.
+- XAMPP returned HTTP 200 for the newly built `apps/web/dist` artifact.
+- Requested Browser QA could not run: `iab` reported unavailable and the browser inventory returned no browsers or tabs. No desktop screenshot, 360 px screenshot, native touch, pan/zoom or visual-overflow claim is made for V6. Responsive behavior is covered only by CSS and jsdom interaction tests until a browser becomes available.
+
+**Files changed / WIP:**
+
+- Domain/math: `packages/timber-model/src/index.ts`, new `packages/roof-math/src/{hip-rafter,hip-roof,roof-template}.ts`, their tests and barrel exports.
+- Versioning/drawing: new `packages/calculator-core/src/hip-rafter.ts`, registry/tests, and generalized diagonal prism cross-section geometry/tests in `drawing-engine`.
+- Web: union-aware `store.ts`, inputs/page/skeleton/summary/canvas, new `HipFabricationSheet.tsx`, PL/EN translations, responsive styles and interaction tests.
+- Documentation: `README.md` and this checkpoint. No unfinished syntax or placeholder implementation; no dependency or lockfile change; no commit or push performed.
+
+**Iteration 006 limitations:**
+
+- V6 intentionally has no jack rafters/infill or jack cut list, valley/irregular/unequal-pitch roofs, arbitrary footprints, structural verification, per-instance fabrication overrides, allowances/kerf, persistence, PDF or full 3D CAD.
+- Hip purlins are shown only on the two long roof planes and terminate at exact hip boundaries. End-plane infill remains guide geometry until a real jack-rafter solver exists.
+- The H1 sheet explains a regular symmetric double-cheek/backing geometry but does not choose backing versus dropping or prescribe structural/member sizing.
+- Native visual and touch QA remains the required user-acceptance step because the requested browser surface was unavailable in this session.
 
 **Working repository:** `C:/xampp/htdocs/RoofCalc`, origin `https://github.com/rydwan92/RoofCalc.git`. The former nested gitlink `RoofCalc/` was promoted into this root on 2026-09-10 only after matching hashes for V4 source and documentation were verified, then removed.
 
@@ -1435,7 +1476,7 @@ If code is temporarily incomplete, explicitly list:
 
 **NEXT ACTION:**
 
-> Perform user-acceptance QA of the V5 Builder on the intended desktop and touch device, especially pinch behavior (not implemented), multi-purlin placement under real job measurements and the production XAMPP URL after build. Fix only evidenced issues. Do not begin Iteration 006 without a new explicit prompt.
+> Perform user-acceptance browser QA of Iteration 006 on desktop and at 360 px: compare rectangular and square/pyramid hip skeletons, select all four physical H1 instances, open the coordinated H1 sheet, edit pitch/span/building length/ridge thickness, verify Undo/Redo plus pan/zoom/Fit, and check overflow/readability. Fix only evidenced V6 issues. Do not begin Iteration 007 without a new explicit prompt.
 
 ---
 
