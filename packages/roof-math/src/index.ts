@@ -9,5 +9,6 @@ export * from './assembly';
 export * from './geometry/lines';
 export * from './gable-roof';
 export * from './hip-rafter';
+export * from './jack-rafter';
 export * from './hip-roof';
 export * from './roof-template';

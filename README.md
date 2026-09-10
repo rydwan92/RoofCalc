@@ -15,13 +15,15 @@ npx pnpm@10.15.1 dev
 
 Frontend: http://127.0.0.1:5173. API: http://127.0.0.1:3001/api/health. Przy globalnym pnpm można używać bezpośrednio `pnpm`.
 
-## Szybkie i Kreator — model 6.0.0
+## Szybkie i Kreator — model 7.0.0
 
 **Szybkie:** wybierz krokiew zwykłą K1 albo narożną H1, wpisz rzut do osi kalenicy, kąt połaci i okap. Wyniki oraz rysunek aktualizują się lokalnie. „Więcej ustawień” otwiera odpowiedni przekrój i kalenicę. Przejście do Kreatora zachowuje dokładnie ten sam szablon i wynik.
 
-**Kreator:** pokazuje interaktywny, aksonometryczny szkielet dachu dwuspadowego albo regularnego kopertowego. Każda krokiew ma fizyczny identyfikator i wskazuje wspólny prototyp produkcyjny K1 lub H1. Uchwyty na szkielecie zmieniają kąt/wysokość kalenicy, rozpiętość i długość budynku; płatwie przesuwają się po połaci. Geometria, zaciosy i wyniki produkcyjne aktualizują się z tego samego modelu. Undo/Redo, pan, zoom i Fit nie zmieniają geometrii poza świadomą edycją.
+**Kreator:** pokazuje interaktywny, aksonometryczny szkielet dachu dwuspadowego albo regularnego kopertowego. Każda krokiew ma fizyczny identyfikator i wskazuje wspólny prototyp produkcyjny K1, H1 lub J1. Zaznaczenie przełącza kontekst dachu, prototypu, sztuki, podpory albo cięcia; dolne wyniki i panel „Co przygotować” odpowiadają temu samemu obiektowi. Uchwyty na szkielecie zmieniają kąt/wysokość kalenicy, rozpiętość i długość budynku; płatwie przesuwają się po połaci. Geometria, zaciosy i wyniki produkcyjne aktualizują się z tego samego modelu. Undo/Redo, pan, zoom i Fit nie zmieniają geometrii poza świadomą edycją.
 
 **Dach kopertowy i H1:** V6 obsługuje prostokątny dach o równych kątach połaci, w tym kwadratowy wariant namiotowy z kalenicą długości zero. Cztery fizyczne narożne korzystają z jednego prototypu H1. Karta H1 koordynuje rzut z góry, widok wzdłuż krokwi i detal cięcia/fazowania; osobno pokazuje długość teoretyczną, odjęcie od grubości kalenicy i długość do jej fizycznego lica.
+
+**Kulawki J1:** V7 generuje na obu połaciach przy każdym narożu deterministyczne fizyczne sztuki z jednego prototypu J1. Każda ma własną pozycję, oś, długość do teoretycznej pionowej płaszczyzny H1, wspólny z K1 zacios murłaty i jawne linie spotkania z H1. Zestaw J1 ma zmienne długości; odjęcie do fizycznego lica H1 i połączenia z płatwiami są uczciwie oznaczone jako jeszcze nierozwiązane. Dokładny kontrakt opisuje `docs/JACK_RAFTER_GEOMETRY.md`.
 
 **Płatwie:** dodaj kolejne podpory P1, P2, P3… tak długo, jak istnieje legalny odstęp. Każdą wybierzesz, przesuniesz uchwytem na szkielecie lub wpiszesz dokładną pozycję od lica murłaty. Drag przyciąga do 10 mm, nie pozwala nakładać podpór i można go anulować przez Esc. Można zmienić szerokość, wysokość oraz sterować zaciosem przez siedzisko albo głębokość.
 
@@ -52,11 +54,11 @@ Testy obejmują geometrię, walidację, jednostki, profil po cięciach, dynamicz
 
 ## Organizacja i granice
 
-- `timber-model`: RoofTemplateSpec, AssemblySpec, jawne typy K1/H1, operacje złożone i typy szkieletu.
-- `roof-math`: czysta geometria, wspólny resolver zaciosów, walidacja, szablony gable/hip i dokładna geometria H1.
+- `timber-model`: RoofTemplateSpec, AssemblySpec, jawne typy K1/H1/J1, prototypy/instancje, operacje złożone i typy szkieletu.
+- `roof-math`: czysta geometria, wspólny resolver zaciosów, walidacja, szablony gable/hip oraz dokładna geometria H1 i J1.
 - `calculator-core`: wersjonowany rejestr i adapter rysunku.
 - `drawing-engine`: prymitywy, projekcja, przycinanie, semantic dimension lanes i snapping.
 - `apps/web/src/assembly`: dwa tryby, edytor sesji, SVG, inspector, tłumaczenia i plan trasowania.
 - `apps/api`: Express; `ui`: tokeny/komponenty; `shared`: kontrakty.
 
-Zakres V6 nie obejmuje kulawek, krokwi koszowych, nieregularnych/nierównych połaci ani dowolnych wielokątów dachu. Brak zapisu po odświeżeniu, naddatków/rzazu, statyki, pełnego 3D/CAD, bazy, logowania, płatności i PDF. Geometryczny wynik nie potwierdza nośności konstrukcji. Kolejna iteracja nie rozpoczyna się automatycznie.
+Zakres V7 nie obejmuje odjęcia J1 do fizycznego lica H1, zaciosów J1 na płatwiach, krokwi koszowych, nieregularnych/nierównych połaci ani dowolnych wielokątów dachu. Brak zapisu po odświeżeniu, naddatków/rzazu, statyki, pełnego 3D/CAD, bazy, logowania, płatności i PDF. Geometryczny wynik nie potwierdza nośności konstrukcji. Kolejna iteracja nie rozpoczyna się automatycznie.

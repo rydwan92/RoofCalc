@@ -8,6 +8,7 @@ import {
 } from './gable-roof';
 import {
   HIP_RAFTER_PROTOTYPE_ID,
+  JACK_RAFTER_PROTOTYPE_ID,
   createHipRoofSkeleton,
   hipRoofTemplateSchema,
   resolveHipRoofTemplate,
@@ -99,6 +100,90 @@ describe('regular hip roof template', () => {
     }
   });
 
+  it('generates stable real J1 instances on both planes beside every hip', () => {
+    const output = resolveHipRoofTemplate(template());
+    const skeleton = createHipRoofSkeleton(template());
+    const jacks = skeleton.members.filter(
+      (member) => member.kind === 'jack-rafter',
+    );
+    expect(
+      output.jackRafterSpacing.stations.map(
+        (station) => station.alongBuildingMm,
+      ),
+    ).toEqual([0, 800, 1600, 2400, 3200, 4000]);
+    expect(output.jackRafters).toHaveLength(32);
+    expect(jacks).toHaveLength(32);
+    expect(new Set(jacks.map((member) => member.id)).size).toBe(32);
+    expect(new Set(jacks.map((member) => member.prototypeId))).toEqual(
+      new Set([JACK_RAFTER_PROTOTYPE_ID]),
+    );
+    expect(
+      output.jackRafters.filter((jack) => jack.spec.hipCorner === 'front-left'),
+    ).toHaveLength(8);
+    expect(
+      output.jackRafters.every(
+        (jack) =>
+          jack.fabrication.meetingCut.hipFaceDeduction === 'not-applied',
+      ),
+    ).toBe(true);
+  });
+
+  it('keeps J1 stations valid and lengths monotonic toward each hip apex', () => {
+    const output = resolveHipRoofTemplate(template());
+    const group = output.jackRafters.filter(
+      (jack) =>
+        jack.spec.hipCorner === 'front-left' && jack.spec.roofPlane === 'left',
+    );
+    expect(group.map((jack) => jack.spec.stationFromHipCornerMm)).toEqual([
+      800, 1600, 2400, 3200,
+    ]);
+    const lengths = group.map(
+      (jack) => jack.result.outerEaveToHipCenterLineLengthMm,
+    );
+    expect(lengths).toEqual([...lengths].sort((a, b) => a - b));
+    for (const jack of group) {
+      expect(jack.spec.stationFromHipCornerMm).toBeGreaterThan(0);
+      expect(jack.spec.stationFromHipCornerMm).toBeLessThan(
+        output.template.halfRunMm,
+      );
+      expect(Object.values(jack.result).every(Number.isFinite)).toBe(true);
+    }
+  });
+
+  it('exposes K1, H1 and variable-length J1 prototype summaries', () => {
+    const output = resolveHipRoofTemplate(template());
+    expect(output.memberPrototypes.map((prototype) => prototype.code)).toEqual([
+      'K1',
+      'H1',
+      'J1',
+    ]);
+    const j1 = output.memberPrototypes.find(
+      (prototype) => prototype.id === JACK_RAFTER_PROTOTYPE_ID,
+    )!;
+    expect(j1.count).toBe(output.jackRafters.length);
+    expect(j1.fabricationMode).toBe('variable-by-instance');
+    expect(j1.lengthRangeMm.max).toBeGreaterThan(j1.lengthRangeMm.min);
+  });
+
+  it('adds end-plane K1 instances and four common directions for a pyramid', () => {
+    const rectangle = createHipRoofSkeleton(template());
+    expect(
+      rectangle.members.some(
+        (member) => member.id === 'instance:hip-common:front',
+      ),
+    ).toBe(true);
+    const square = createHipRoofSkeleton(template({ buildingLengthMm: 8000 }));
+    const squareCommon = square.members.filter(
+      (member) => member.kind === 'rafter',
+    );
+    expect(squareCommon.map((member) => member.side).sort()).toEqual([
+      'front',
+      'left',
+      'rear',
+      'right',
+    ]);
+  });
+
   it('trims compatible long-slope purlins at the real hip boundaries', () => {
     const withPurlin = template({
       intermediateSupports: [
@@ -119,6 +204,12 @@ describe('regular hip roof template', () => {
     expect(purlins[0]!.to.y).toBe(8000);
     expect(purlins[1]!.from.y).toBe(2000);
     expect(purlins[1]!.to.y).toBe(8000);
+    expect(
+      resolveHipRoofTemplate(withPurlin).jackRafters.every(
+        (jack) =>
+          jack.fabrication.intermediateSupportJoinery === 'not-resolved',
+      ),
+    ).toBe(true);
   });
 
   it('keeps H1 cross-section geometry independent of building length', () => {

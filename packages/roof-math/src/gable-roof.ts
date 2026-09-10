@@ -4,6 +4,7 @@ import type {
   GableRoofSkeleton,
   GableRoofTemplateSpec,
   RafterSpacingSpec,
+  ResolvedMemberPrototype,
   ResolvedRafterSpacing,
   SkeletonMember3D,
 } from '@cieslacalc/timber-model';
@@ -72,7 +73,9 @@ export const gableRoofTemplateSchema: z.ZodType<GableRoofTemplateSpec> = z
         path: ['wallPlate', 'placement', 'xMm'],
         message: 'wall_origin',
       });
-    if (template.intermediateSupports.some((support) => support.kind !== 'purlin'))
+    if (
+      template.intermediateSupports.some((support) => support.kind !== 'purlin')
+    )
       ctx.addIssue({
         code: 'custom',
         path: ['intermediateSupports'],
@@ -101,8 +104,9 @@ export function resolveRafterSpacing(
           index === bayCount ? length : index * actualSpacingMm,
         )
       : [
-          ...Array.from({ length: fullBayCount + 1 }, (_, index) =>
-            index * spec.spacingMm,
+          ...Array.from(
+            { length: fullBayCount + 1 },
+            (_, index) => index * spec.spacingMm,
           ),
           ...(hasRemainder ? [length] : []),
         ];
@@ -191,26 +195,42 @@ export function clampGableHalfRunMm(
   proposedMm: number,
 ) {
   if (!Number.isFinite(proposedMm)) throw new RangeError('invalid_half_run');
-  return Math.max(
-    minimumGableHalfRunMm(raw),
-    Math.min(100000, proposedMm),
-  );
+  return Math.max(minimumGableHalfRunMm(raw), Math.min(100000, proposedMm));
 }
 
 export function resolveGableRoofTemplate(raw: GableRoofTemplateSpec) {
   const template = gableRoofTemplateSchema.parse(raw);
   const assemblySpec = assemblySpecSchema.parse(assemblyForTemplate(template));
+  const rafterSpacing = resolveRafterSpacing(
+    template.buildingLengthMm,
+    template.rafterSpacing,
+  );
+  const calculation = calculateAssembly(assemblySpec);
+  const instanceIds = rafterSpacing.stations.flatMap((station) => [
+    `${station.id}:left`,
+    `${station.id}:right`,
+  ]);
+  const memberPrototypes: ResolvedMemberPrototype[] = [
+    {
+      id: calculation.assembly.member.id,
+      code: 'K1',
+      kind: 'common-rafter',
+      section: template.rafterSection,
+      instanceIds,
+      count: instanceIds.length,
+      lengthRangeMm: {
+        min: calculation.plan.minimumStockLengthMm,
+        max: calculation.plan.minimumStockLengthMm,
+      },
+      fabricationMode: 'shared',
+    },
+  ];
   return {
     template,
-    ridgeHeightMm: gableRidgeHeightMm(
-      template.halfRunMm,
-      template.pitchDeg,
-    ),
-    rafterSpacing: resolveRafterSpacing(
-      template.buildingLengthMm,
-      template.rafterSpacing,
-    ),
-    calculation: calculateAssembly(assemblySpec),
+    ridgeHeightMm: gableRidgeHeightMm(template.halfRunMm, template.pitchDeg),
+    rafterSpacing,
+    calculation,
+    memberPrototypes,
   };
 }
 

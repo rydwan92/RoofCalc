@@ -1,0 +1,91 @@
+import type {
+  AssemblySpec,
+  ResolvedEndCut,
+  ResolvedJackRafterInstance,
+  ResolvedJoint,
+  ResolvedMemberPrototype,
+  RoofSkeleton,
+  RoofTemplateSpec,
+  SkeletonMember3D,
+  SupportSpec,
+} from '@cieslacalc/timber-model';
+import type { resolveRoofTemplate } from '@cieslacalc/roof-math';
+
+export type ResolvedRoofTemplate = ReturnType<typeof resolveRoofTemplate>;
+
+export type WorkbenchSelectionContext =
+  | { kind: 'roof' }
+  | { kind: 'prototype'; prototype: ResolvedMemberPrototype }
+  | {
+      kind: 'instance';
+      member: SkeletonMember3D;
+      jack?: ResolvedJackRafterInstance;
+    }
+  | {
+      kind: 'support';
+      id: string;
+      supportKind: 'wall-plate' | 'purlin' | 'ridge';
+      support?: SupportSpec;
+    }
+  | {
+      kind: 'joint';
+      jointKind: 'seat-notch';
+      joint: ResolvedJoint;
+    }
+  | {
+      kind: 'joint';
+      jointKind: 'end-cut';
+      cut: ResolvedEndCut;
+    };
+
+export function resolveWorkbenchSelectionContext(args: {
+  selected: string;
+  template: RoofTemplateSpec;
+  spec: AssemblySpec;
+  resolved: ResolvedRoofTemplate;
+  skeleton: RoofSkeleton;
+}): WorkbenchSelectionContext {
+  const { selected, spec, resolved, skeleton } = args;
+  if (selected === 'roof') return { kind: 'roof' };
+
+  const prototype = resolved.memberPrototypes.find(
+    (candidate) => candidate.id === selected,
+  );
+  if (prototype) return { kind: 'prototype', prototype };
+
+  const member = skeleton.members.find(
+    (candidate) => candidate.id === selected,
+  );
+  if (member) {
+    const jack =
+      'jackRafters' in resolved
+        ? resolved.jackRafters.find(
+            (candidate) => candidate.spec.id === selected,
+          )
+        : undefined;
+    return { kind: 'instance', member, jack };
+  }
+
+  const joint = resolved.calculation.assembly.joints.find(
+    (candidate) => candidate.id === selected,
+  );
+  if (joint) return { kind: 'joint', jointKind: 'seat-notch', joint };
+
+  const cut = resolved.calculation.assembly.endCuts.find(
+    (candidate) => candidate.id === selected,
+  );
+  if (cut) return { kind: 'joint', jointKind: 'end-cut', cut };
+
+  const support = spec.supports.find((candidate) => candidate.id === selected);
+  if (support)
+    return {
+      kind: 'support',
+      id: support.id,
+      supportKind: support.kind,
+      support,
+    };
+  if (selected === spec.ridge.id)
+    return { kind: 'support', id: spec.ridge.id, supportKind: 'ridge' };
+
+  return { kind: 'roof' };
+}

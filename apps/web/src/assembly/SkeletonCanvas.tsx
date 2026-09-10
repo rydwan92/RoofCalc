@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
   type KeyboardEvent,
@@ -62,7 +63,22 @@ const handleRangeMm = 1000;
 function memberLabel(member: SkeletonMember3D, t: (key: string) => string) {
   if (member.kind === 'hip-rafter')
     return `${t('assembly.hipRafter')} H1 · ${t(`assembly.${member.side}`)}`;
+  if (member.kind === 'jack-rafter') {
+    const match =
+      /^instance:jack:(front-left|front-right|rear-left|rear-right):(left|right|front|rear):(\d+)$/.exec(
+        member.id,
+      );
+    return match
+      ? `${t('assembly.jackRafter')} J1/${match[3]} · ${t(`assembly.${match[2]}`)} · ${t(`assembly.${match[1]}`)}`
+      : `${t('assembly.jackRafter')} J1`;
+  }
   if (member.kind === 'rafter') {
+    const hipCommon = /^instance:hip-common:(front|rear|left|right)$/.exec(
+      member.id,
+    );
+    if (hipCommon) {
+      return `${t('assembly.commonRafter')} K1 · ${t(`assembly.${hipCommon[1]}`)}`;
+    }
     const number = /pair-(\d+)/.exec(member.id)?.[1] ?? '';
     return `${t('assembly.rafter')} #${number} - ${t(`assembly.${member.side}`)}`;
   }
@@ -103,20 +119,34 @@ export function SkeletonCanvas({ template }: { template: RoofTemplateSpec }) {
     return () => element.removeEventListener('wheel', zoom);
   }, []);
 
-  const skeleton = createRoofSkeleton(template);
+  const skeleton = useMemo(() => createRoofSkeleton(template), [template]);
   const height = width < 550 ? 400 : 570;
-  const solids = skeleton.members.map((member) => ({
-    member,
-    faces: projectTimberPrismFaces(
-      createTimberPrismFaces(
-        { from: member.from, to: member.to },
-        member.section,
-        member.kind === 'rafter' || member.kind === 'hip-rafter'
-          ? 'along-roof'
-          : 'along-building',
+  const memberLayer = (member: SkeletonMember3D) =>
+    member.kind === 'jack-rafter'
+      ? 0
+      : member.kind === 'rafter'
+        ? 1
+        : member.kind === 'wall-plate' || member.kind === 'purlin'
+          ? 2
+          : member.kind === 'ridge'
+            ? 3
+            : 4;
+  const solids = [...skeleton.members]
+    .sort((a, b) => memberLayer(a) - memberLayer(b))
+    .map((member) => ({
+      member,
+      faces: projectTimberPrismFaces(
+        createTimberPrismFaces(
+          { from: member.from, to: member.to },
+          member.section,
+          member.kind === 'rafter' ||
+            member.kind === 'hip-rafter' ||
+            member.kind === 'jack-rafter'
+            ? 'along-roof'
+            : 'along-building',
+        ),
       ),
-    ),
-  }));
+    }));
   const guides = (skeleton.guides ?? []).map((guide) => ({
     ...guide,
     projected: guide.points.map((point) => projectAxonometric(point)),
@@ -324,6 +354,7 @@ export function SkeletonCanvas({ template }: { template: RoofTemplateSpec }) {
       return;
     if ((event.target as SVGElement).dataset.skeletonBackground !== 'true')
       return;
+    state.select('roof');
     drag.current = {
       kind: 'pan',
       pointerId: event.pointerId,
@@ -422,9 +453,12 @@ export function SkeletonCanvas({ template }: { template: RoofTemplateSpec }) {
         <output aria-live="polite">
           {template.type === 'hip'
             ? t('assembly.hipSkeletonCount', {
-                common:
-                  skeleton.members.filter((member) => member.kind === 'rafter')
-                    .length / 2,
+                common: skeleton.members.filter(
+                  (member) => member.kind === 'rafter',
+                ).length,
+                jacks: skeleton.members.filter(
+                  (member) => member.kind === 'jack-rafter',
+                ).length,
               })
             : t('assembly.rafterPairCount', {
                 count:
@@ -469,27 +503,46 @@ export function SkeletonCanvas({ template }: { template: RoofTemplateSpec }) {
           ))}
         </g>
         <g className="a-skeleton-members">
-          {solids.map(({ member, faces }) => (
-            <g
-              key={member.id}
-              data-entity={member.id}
-              role="button"
-              tabIndex={0}
-              aria-label={memberLabel(member, t)}
-              aria-pressed={state.selected === member.selectionId}
-              className={`a-skeleton-member kind-${member.kind} ${state.selected === member.selectionId ? 'is-selected' : ''}`}
-              onClick={() => select(member)}
-              onKeyDown={(event) => keySelect(event, member)}
-            >
-              {faces.map((face) => (
-                <polygon
-                  key={face.id}
-                  className={`a-skeleton-face face-${face.id}`}
-                  points={pointString(face.projected)}
-                />
-              ))}
-            </g>
-          ))}
+          {solids.map(({ member, faces }) => {
+            const selected = state.selected === member.selectionId;
+            const related =
+              state.selected !== 'roof' &&
+              !selected &&
+              (state.selected === member.prototypeId ||
+                state.selectedPrototype === member.prototypeId);
+            const muted = state.selected !== 'roof' && !selected && !related;
+            return (
+              <g
+                key={member.id}
+                data-entity={member.id}
+                data-prototype={member.prototypeId}
+                data-selection-state={
+                  selected
+                    ? 'selected'
+                    : related
+                      ? 'related'
+                      : muted
+                        ? 'muted'
+                        : 'default'
+                }
+                role="button"
+                tabIndex={0}
+                aria-label={memberLabel(member, t)}
+                aria-pressed={selected}
+                className={`a-skeleton-member kind-${member.kind} ${selected ? 'is-selected' : ''} ${related ? 'is-related' : ''} ${muted ? 'is-muted' : ''}`}
+                onClick={() => select(member)}
+                onKeyDown={(event) => keySelect(event, member)}
+              >
+                {faces.map((face) => (
+                  <polygon
+                    key={face.id}
+                    className={`a-skeleton-face face-${face.id}`}
+                    points={pointString(face.projected)}
+                  />
+                ))}
+              </g>
+            );
+          })}
         </g>
         <g className="a-handle-layer">
           {handles.map((handle) => (

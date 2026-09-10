@@ -40,15 +40,22 @@ export function entityLabel(
   t: (key: string) => string,
 ): string {
   if (id === 'roof') return t('assembly.roof');
-  const hip = /^instance:hip:(front-left|front-right|rear-left|rear-right)$/.exec(
-    id,
-  );
-  if (hip)
-    return `${t('assembly.hipRafter')} H1 · ${t(`assembly.${hip[1]}`)}`;
+  const hip =
+    /^instance:hip:(front-left|front-right|rear-left|rear-right)$/.exec(id);
+  if (hip) return `${t('assembly.hipRafter')} H1 · ${t(`assembly.${hip[1]}`)}`;
   if (id === 'member:hip-rafter-H1') return `${t('assembly.hipRafter')} H1`;
-  const instance = /^instance:(?:rafter-pair|hip-common-pair)-(\d+):(left|right)$/.exec(
-    id,
-  );
+  const jack =
+    /^instance:jack:(front-left|front-right|rear-left|rear-right):(left|right|front|rear):(\d+)$/.exec(
+      id,
+    );
+  if (jack)
+    return `${t('assembly.jackRafter')} J1/${jack[3]} · ${t(`assembly.${jack[2]}`)} · ${t(`assembly.${jack[1]}`)}`;
+  if (id === 'member:jack-rafter-J1') return `${t('assembly.jackRafter')} J1`;
+  const hipCommon = /^instance:hip-common:(front|rear|left|right)$/.exec(id);
+  if (hipCommon)
+    return `${t('assembly.commonRafter')} K1 · ${t(`assembly.${hipCommon[1]}`)}`;
+  const instance =
+    /^instance:(?:rafter-pair|hip-common-pair)-(\d+):(left|right)$/.exec(id);
   if (instance)
     return `${t('assembly.rafter')} #${instance[1]} - ${t(`assembly.${instance[2]}`)}`;
   if (id === state.spec.member.id) return t('assembly.rafter');

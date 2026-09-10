@@ -1,10 +1,19 @@
 import { useTranslation } from 'react-i18next';
+import type { ReactNode } from 'react';
 import { datumDisplayLabel } from '@cieslacalc/drawing-engine';
 import { formatLength, formatNumber } from '../format';
 import { useAssembly } from './store';
 import type { Calculation } from './Inputs';
-import type { ResolvedRafterSpacing } from '@cieslacalc/timber-model';
-import type { ResolvedHipRafter } from '@cieslacalc/timber-model';
+import type {
+  ResolvedHipRafter,
+  ResolvedMemberPrototype,
+  ResolvedRafterSpacing,
+  RoofSkeleton,
+} from '@cieslacalc/timber-model';
+import type {
+  ResolvedRoofTemplate,
+  WorkbenchSelectionContext,
+} from './selection';
 
 export function HipResults({ hip }: { hip: ResolvedHipRafter }) {
   const { t, i18n } = useTranslation(),
@@ -259,6 +268,515 @@ export function Fabrication({
             ))}
           </div>
         </>
+      )}
+    </section>
+  );
+}
+
+function prototypeName(
+  prototype: ResolvedMemberPrototype,
+  t: (key: string) => string,
+) {
+  return t(
+    `assembly.${
+      prototype.kind === 'common-rafter'
+        ? 'commonRafter'
+        : prototype.kind === 'hip-rafter'
+          ? 'hipRafter'
+          : 'jackRafter'
+    }`,
+  );
+}
+
+function Metric({
+  label,
+  children,
+  main = false,
+  testId,
+}: {
+  label: string;
+  children: ReactNode;
+  main?: boolean;
+  testId?: string;
+}) {
+  return (
+    <div className={main ? 'a-main-result' : undefined}>
+      <span>{label}</span>
+      <strong data-testid={testId}>{children}</strong>
+    </div>
+  );
+}
+
+export function ContextualResults({
+  context,
+  resolved,
+  skeleton,
+}: {
+  context: WorkbenchSelectionContext;
+  resolved: ResolvedRoofTemplate;
+  skeleton: RoofSkeleton;
+}) {
+  const { t, i18n } = useTranslation();
+  const state = useAssembly();
+  const length = (value: number) =>
+    `${formatLength(value, state.unit, i18n.language)} ${state.unit}`;
+  const angle = (value: number) => `${formatNumber(value, i18n.language)}°`;
+  const section = (width: number, depth: number) =>
+    `${formatLength(width, state.unit, i18n.language)} × ${formatLength(depth, state.unit, i18n.language)} ${state.unit}`;
+  const prototypes = resolved.memberPrototypes;
+  const count = (code: ResolvedMemberPrototype['code']) =>
+    prototypes.find((prototype) => prototype.code === code)?.count ?? 0;
+
+  if (context.kind === 'roof') {
+    const ridgeLength =
+      'ridgeLengthMm' in resolved
+        ? resolved.ridgeLengthMm
+        : resolved.template.buildingLengthMm;
+    return (
+      <section
+        className="a-context-results"
+        aria-label={t('assembly.roofSummary')}
+        data-context="roof"
+      >
+        <header>
+          <span>{t('assembly.roofSummary')}</span>
+          <strong>
+            {t(
+              `assembly.${resolved.template.type === 'hip' ? 'hipRoof' : 'gableRoof'}`,
+            )}
+          </strong>
+        </header>
+        <div className="a-results">
+          <Metric label={t('assembly.footprint')} main>
+            {length(resolved.template.buildingLengthMm)} ×{' '}
+            {length(resolved.template.halfRunMm * 2)}
+          </Metric>
+          <Metric label={t('assembly.ridgeLength')}>
+            {length(ridgeLength)}
+          </Metric>
+          <Metric label={t('assembly.ridgeHeight')}>
+            {length(resolved.ridgeHeightMm)}
+          </Metric>
+          <Metric label={t('assembly.stock')} testId="stock-length">
+            {length(resolved.calculation.plan.minimumStockLengthMm)}
+          </Metric>
+          <Metric label={`${t('assembly.commonRafter')} K1`}>
+            {count('K1')}
+          </Metric>
+          <Metric label={`${t('assembly.hipRafter')} H1`}>{count('H1')}</Metric>
+          <Metric label={`${t('assembly.jackRafter')} J1`} testId="jack-count">
+            {count('J1')}
+          </Metric>
+          <Metric label={t('assembly.actualSpacing')}>
+            {length(
+              'jackRafterSpacing' in resolved
+                ? resolved.jackRafterSpacing.actualSpacingMm
+                : resolved.rafterSpacing.actualSpacingMm,
+            )}
+          </Metric>
+        </div>
+      </section>
+    );
+  }
+
+  if (context.kind === 'prototype') {
+    const { prototype } = context;
+    const range = prototype.lengthRangeMm;
+    return (
+      <section
+        className="a-context-results"
+        aria-label={t('assembly.prototypeSummary')}
+        data-context="prototype"
+      >
+        <header>
+          <span>{t('assembly.prototypeSummary')}</span>
+          <strong>
+            {prototype.code} · {prototypeName(prototype, t)}
+          </strong>
+        </header>
+        <div className="a-results">
+          <Metric label={t('assembly.family')} main>
+            {prototype.code} · {prototypeName(prototype, t)}
+          </Metric>
+          <Metric label={t('assembly.pieceCount')}>{prototype.count}</Metric>
+          <Metric label={t('assembly.section')}>
+            {section(prototype.section.widthMm, prototype.section.depthMm)}
+          </Metric>
+          <Metric label={t('assembly.lengthRange')}>
+            {range.min === range.max
+              ? length(range.max)
+              : `${length(range.min)} – ${length(range.max)}`}
+          </Metric>
+          <Metric label={t('assembly.fabricationMode')}>
+            {t(
+              `assembly.${
+                prototype.fabricationMode === 'shared'
+                  ? 'sharedFabrication'
+                  : 'variableFabrication'
+              }`,
+            )}
+          </Metric>
+        </div>
+      </section>
+    );
+  }
+
+  if (context.kind === 'instance') {
+    const prototype = prototypes.find(
+      (candidate) => candidate.id === context.member.prototypeId,
+    );
+    const hip = 'hipRafter' in resolved ? resolved.hipRafter : undefined;
+    const exactLength = context.jack
+      ? context.jack.result.outerEaveToHipCenterLineLengthMm
+      : context.member.kind === 'hip-rafter' && hip
+        ? hip.result.outerEaveToRidgeFaceMm
+        : resolved.calculation.plan.minimumStockLengthMm;
+    return (
+      <section
+        className="a-context-results"
+        aria-label={t('assembly.instanceSummary')}
+        data-context="instance"
+      >
+        <header>
+          <span>{t('assembly.instanceSummary')}</span>
+          <strong>ID · {context.member.id.replace('instance:', '')}</strong>
+        </header>
+        <div className="a-results">
+          <Metric
+            label={t('assembly.exactLength')}
+            main
+            testId="instance-length"
+          >
+            {length(exactLength)}
+          </Metric>
+          <Metric label={t('assembly.prototype')}>
+            {prototype?.code ?? '—'}
+          </Metric>
+          <Metric label={t('assembly.roofPlane')}>
+            {t(`assembly.${context.member.side}`)}
+          </Metric>
+          <Metric label={t('assembly.position')}>
+            {length(context.member.stationMm ?? 0)}
+          </Metric>
+          {context.jack && (
+            <Metric label={t('assembly.meetingHip')}>
+              {t(`assembly.${context.jack.spec.hipCorner}`)}
+            </Metric>
+          )}
+          {context.jack && (
+            <Metric label={t('assembly.jackTopFace')}>
+              {angle(context.jack.result.topFaceCutLineToMemberAxisDeg)}
+            </Metric>
+          )}
+        </div>
+      </section>
+    );
+  }
+
+  if (context.kind === 'support') {
+    const supportSection = context.support
+      ? section(
+          context.support.section.widthMm,
+          context.support.section.heightMm,
+        )
+      : section(
+          resolved.template.ridge.thicknessMm,
+          resolved.template.rafterSection.depthMm,
+        );
+    const connected = skeleton.members.filter((member) =>
+      context.supportKind === 'purlin'
+        ? member.kind === 'rafter' &&
+          (resolved.template.type === 'gable' ||
+            member.side === 'left' ||
+            member.side === 'right')
+        : ['rafter', 'hip-rafter', 'jack-rafter'].includes(member.kind),
+    ).length;
+    return (
+      <section
+        className="a-context-results"
+        aria-label={t('assembly.supportSummary')}
+        data-context="support"
+      >
+        <header>
+          <span>{t('assembly.supportSummary')}</span>
+          <strong>{t(`assembly.${context.supportKind}`)}</strong>
+        </header>
+        <div className="a-results">
+          <Metric label={t('assembly.support')} main>
+            {t(`assembly.${context.supportKind}`)}
+          </Metric>
+          <Metric label={t('assembly.section')}>{supportSection}</Metric>
+          <Metric label={t('assembly.connectedMembers')}>{connected}</Metric>
+          {context.support && (
+            <Metric label={t('assembly.position')}>
+              {length(context.support.placement.xMm)}
+            </Metric>
+          )}
+        </div>
+      </section>
+    );
+  }
+
+  const isSeat = context.jointKind === 'seat-notch';
+  return (
+    <section
+      className="a-context-results"
+      aria-label={t('assembly.cutSummary')}
+      data-context="joint"
+    >
+      <header>
+        <span>{t('assembly.cutSummary')}</span>
+        <strong>{isSeat ? t('assembly.notch') : t('assembly.ridgeCut')}</strong>
+      </header>
+      <div className="a-results">
+        {isSeat ? (
+          <>
+            <Metric label={t('assembly.seat')} main>
+              {length(context.joint.seatLengthMm)}
+            </Metric>
+            <Metric label={t('assembly.notchDepth')}>
+              {length(context.joint.normalDepthMm)}
+            </Metric>
+            <Metric label={t('assembly.remaining')}>
+              {length(context.joint.remainingDepthMm)}
+            </Metric>
+            <Metric label={t('assembly.position')}>
+              {length(context.joint.stationMm)}
+            </Metric>
+          </>
+        ) : (
+          <>
+            <Metric label={t('assembly.cutAngle')} main>
+              {angle(context.cut.angleToMemberDeg)}
+            </Metric>
+            <Metric label={t('assembly.position')}>
+              {length(context.cut.stationMm)}
+            </Metric>
+          </>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function K1Steps({ result }: { result: Calculation }) {
+  const { t, i18n } = useTranslation();
+  const state = useAssembly();
+  const length = (value: number) =>
+    formatLength(value, state.unit, i18n.language);
+  const labels = new Map(
+    result.plan.datums.map((datum, index) => [
+      datum.id,
+      datumDisplayLabel(index),
+    ]),
+  );
+  return (
+    <ol>
+      {result.plan.steps.map((step, index) => (
+        <li key={`${step.operationId}/${step.action}`}>
+          <span className="a-step-number">{index + 1}</span>
+          <p>
+            {step.action === 'check-depth'
+              ? t('assembly.checkDepth', {
+                  depth: length(step.normalDepthMm),
+                  remaining: length(step.remainingDepthMm),
+                  unit: state.unit,
+                })
+              : t(
+                  `assembly.${step.action === 'mark-plumb' ? 'markPlumb' : 'markSeat'}`,
+                  {
+                    from: labels.get(step.from),
+                    to: labels.get(step.target),
+                    distance: length(step.distanceMm),
+                    seat:
+                      step.seatLengthMm === undefined
+                        ? ''
+                        : length(step.seatLengthMm),
+                    angle: formatNumber(step.angleDeg, i18n.language),
+                    unit: state.unit,
+                  },
+                )}
+          </p>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+export function ContextualFabrication({
+  context,
+  resolved,
+  expanded,
+}: {
+  context: WorkbenchSelectionContext;
+  resolved: ResolvedRoofTemplate;
+  expanded: boolean;
+}) {
+  const { t, i18n } = useTranslation();
+  const state = useAssembly();
+  const length = (value: number) =>
+    `${formatLength(value, state.unit, i18n.language)} ${state.unit}`;
+  const angle = (value: number) => `${formatNumber(value, i18n.language)}°`;
+  const hip = 'hipRafter' in resolved ? resolved.hipRafter : undefined;
+  const jacks = 'jackRafters' in resolved ? resolved.jackRafters : [];
+  const contextPrototype =
+    context.kind === 'prototype'
+      ? context.prototype
+      : context.kind === 'instance'
+        ? resolved.memberPrototypes.find(
+            (prototype) => prototype.id === context.member.prototypeId,
+          )
+        : undefined;
+  const selectedJack = context.kind === 'instance' ? context.jack : undefined;
+  const representativeJack =
+    selectedJack ??
+    [...jacks].sort(
+      (a, b) =>
+        b.result.outerEaveToHipCenterLineLengthMm -
+        a.result.outerEaveToHipCenterLineLengthMm,
+    )[0];
+
+  return (
+    <section
+      className="a-fabrication a-context-fabrication"
+      aria-label={t('assembly.fabrication')}
+      data-testid="contextual-fabrication"
+      data-context={context.kind}
+    >
+      <header>
+        <div>
+          <small>{t('assembly.whatToPrepare')}</small>
+          <h2>{t('assembly.selectionFabrication')}</h2>
+        </div>
+        <span>{t(`assembly.${context.kind}Context`)}</span>
+      </header>
+
+      {context.kind === 'roof' && (
+        <div className="a-preparation-groups">
+          {resolved.memberPrototypes.map((prototype) => (
+            <button
+              key={prototype.id}
+              className="a-preparation-card"
+              onClick={() => state.select(prototype.id)}
+            >
+              <strong>{prototype.code}</strong>
+              <span>{prototypeName(prototype, t)}</span>
+              <b>
+                {prototype.count} ×{' '}
+                {prototype.lengthRangeMm.min === prototype.lengthRangeMm.max
+                  ? length(prototype.lengthRangeMm.max)
+                  : `${length(prototype.lengthRangeMm.min)} – ${length(prototype.lengthRangeMm.max)}`}
+              </b>
+              <small>
+                {t(
+                  `assembly.${prototype.fabricationMode === 'shared' ? 'sharedFabrication' : 'variableFabrication'}`,
+                )}
+              </small>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {(contextPrototype?.code === 'K1' || context.kind === 'joint') && (
+        <div className="a-fabrication-summary">
+          <strong>K1 · {t('assembly.commonRafter')}</strong>
+          <span>
+            {length(resolved.calculation.plan.section.widthMm)} ×{' '}
+            {length(resolved.calculation.plan.section.depthMm)}
+          </span>
+          <p>{t('assembly.k1PreparationSummary')}</p>
+          {expanded && <K1Steps result={resolved.calculation} />}
+        </div>
+      )}
+
+      {contextPrototype?.code === 'H1' && hip && (
+        <div className="a-fabrication-summary">
+          <strong>H1 · {t('assembly.hipRafter')}</strong>
+          <span>{length(hip.result.outerEaveToRidgeFaceMm)}</span>
+          <p>{t('assembly.h1PreparationSummary')}</p>
+          {expanded && (
+            <ol>
+              <li>
+                {t('assembly.h1StepMeasure', {
+                  value: length(hip.result.outerEaveToRidgeFaceMm),
+                })}
+              </li>
+              <li>
+                {t('assembly.h1StepPlumb', {
+                  value: angle(hip.result.plumbToMemberDeg),
+                })}
+              </li>
+              <li>
+                {t('assembly.h1StepCheek', {
+                  value: angle(hip.result.cheekAngleDeg),
+                })}
+              </li>
+              <li>
+                {t('assembly.h1StepBacking', {
+                  value: angle(hip.result.backingAngleDeg),
+                })}
+              </li>
+            </ol>
+          )}
+        </div>
+      )}
+
+      {contextPrototype?.code === 'J1' && representativeJack && (
+        <div className="a-fabrication-summary">
+          <strong>
+            J1 · {t('assembly.jackRafter')}
+            {selectedJack ? ` · ${selectedJack.spec.ordinalFromCorner}` : ''}
+          </strong>
+          <span>
+            {selectedJack
+              ? length(selectedJack.result.outerEaveToHipCenterLineLengthMm)
+              : t('assembly.variableLengthSet', {
+                  min: length(contextPrototype.lengthRangeMm.min),
+                  max: length(contextPrototype.lengthRangeMm.max),
+                })}
+          </span>
+          <p>{t('assembly.j1PreparationSummary')}</p>
+          <div className="a-fabrication-notes">
+            <p>{t('assembly.hipFaceDeductionNote')}</p>
+            {representativeJack.fabrication.intermediateSupportJoinery ===
+              'not-resolved' && <p>{t('assembly.jackPurlinLimit')}</p>}
+          </div>
+          {expanded && (
+            <ol>
+              {representativeJack.fabrication.steps.map((step, index) => (
+                <li key={`${step.action}/${index}`}>
+                  {step.action === 'measure-to-hip-center-plane'
+                    ? t('assembly.j1StepMeasure', {
+                        value: length(step.distanceMm),
+                      })
+                    : step.action === 'mark-wall-seat'
+                      ? t('assembly.j1StepSeat', {
+                          seat: length(step.joint.seatLengthMm),
+                          depth: length(step.joint.normalDepthMm),
+                        })
+                      : step.action === 'mark-hip-plumb'
+                        ? t('assembly.j1StepPlumb', {
+                            value: angle(step.angleDeg),
+                          })
+                        : t('assembly.j1StepTopFace', {
+                            value: angle(step.angleDeg),
+                          })}
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+      )}
+
+      {context.kind === 'support' && (
+        <div className="a-fabrication-summary">
+          <strong>{t(`assembly.${context.supportKind}`)}</strong>
+          <p>{t('assembly.supportPreparationSummary')}</p>
+          {context.supportKind === 'purlin' &&
+            resolved.template.type === 'hip' && (
+              <p className="a-limit-note">{t('assembly.jackPurlinLimit')}</p>
+            )}
+        </div>
       )}
     </section>
   );

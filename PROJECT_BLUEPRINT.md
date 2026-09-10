@@ -1297,11 +1297,53 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
-> Updated 2026-09-10. Iteration 006 is in progress in the root repository.
+> Updated 2026-09-10. Iteration 007 is implemented in the root repository.
 
-**Iteration:** `006 — regular hip roof + hip rafter H1`
+**Iteration:** `007 — jack rafters + contextual fabrication + visual hierarchy`
 
-**Status:** `IMPLEMENTED — AUTOMATED VALIDATION PASSED; BROWSER QA UNAVAILABLE`
+**Status:** `IMPLEMENTED — AUTOMATED VALIDATION PASSED; NATIVE BROWSER QA UNAVAILABLE`
+
+**Iteration 007 completed:**
+
+- Added first-class J1 jack-rafter domain types, pure geometry/fabrication results, deterministic physical instance IDs and one shared variable-length fabrication prototype. The hip-template resolver now generates 8 J1 members for every interior station, with exact world endpoints on all four roof planes; the default example resolves 32 physical jacks.
+- Kept K1, H1 and J1 in one template/model pipeline. Hip roofs now expose prototype summaries with physical counts, sections, instance IDs, length ranges and shared-versus-variable fabrication modes; gable roofs expose the same K1 prototype shape.
+- Added the explicit regular equal-pitch J1 geometry contract in `docs/JACK_RAFTER_GEOMETRY.md`, including wall-run/line-length equations, referenced plumb/plan/top-face angles, exact count rules and regression values. J1 reuses the canonical K1 wall-seat result rather than duplicating birdsmouth math.
+- Added selection-aware roof, prototype, physical-instance, support, seat-notch and end-cut contexts. Builder results, inspector and preparation panel now follow the active selection while Quick Calc retains the existing compact K1/H1 workflow.
+- Made fabrication a first-class Builder panel: whole-roof K1/H1/J1 groups, prototype quantities and ranges, exact per-instance J1 length/plane/station, ordered preparation steps and explicit unresolved H1-face/purlin-joinery notices.
+- Added real selectable J1 timber solids to the skeleton, end-plane K1 members, stronger H1/primary hierarchy, lighter secondary J1 treatment, ghost roof fills and selected/related/muted/hover/focus states. Background selection returns to the whole-roof context.
+- Updated Polish/English copy, Model 7.0 product documentation, responsive styles and automated UI/domain regression coverage. No 3D engine, persistence, auth, database, PDF or additional roof type was added.
+
+**J1 formula and reference contract:**
+
+- For station `d` measured on the wall from a hip corner, common pitch `theta` and overhang `e`: wall run is `d`, total horizontal run is `d + e`, rise from the outer-eave station is `(d + e) * tan(theta)` and outer-eave-to-theoretical-hip-center-plane line length is `(d + e) / cos(theta)`.
+- J1 plumb is referenced to its member axis as `90deg - theta`; the plan meeting line is referenced to the J1 plan axis as `45deg`; the top-face trace is referenced to the J1 axis as `atan(cos(theta))` for the documented equal-pitch vertical hip-center-plane model. Intermediate calculations are never rounded.
+- A station must satisfy `0 < d < halfRun`. The resolver deliberately excludes the corner and apex/ridge endpoints. It applies no allowance, kerf or unverified deduction from the theoretical H1 center plane to an H1 timber face.
+
+**Iteration 007 validation:**
+
+- Preflight on the clean tracked baseline passed typecheck, 205 tests across 24 files and production build. The three supplied V7 documents were untracked user files and remain preserved.
+- Final `npx pnpm@10.15.1 typecheck`, `lint`, web/API production `build` and `git diff --check` passed. Vitest passed **217 tests across 25 files**, including 6 new pure J1 tests, expanded hip-template tests and 20 Builder/Quick interaction tests.
+- Automated coverage includes exact and monotonic J1 lengths, stable IDs, all roof planes/corners, K1/H1/J1 prototype counts, pyramid common members, invalid/non-finite inputs, purlin limitation flags, roof/prototype/instance/support/joint contexts, selection hierarchy and contextual fabrication.
+- The requested in-app Browser was initialized after the production build but returned `Browser is not available: iab`. No desktop/mobile screenshot, visual-overflow, native pointer or touch claim is made for V7; responsive behavior is covered by CSS and jsdom interaction tests only.
+
+**Files changed / WIP:**
+
+- Domain/math: `packages/timber-model/src/index.ts`; new `packages/roof-math/src/jack-rafter.ts` and test; hip/gable resolvers, hip tests and barrel export.
+- Web: new `apps/web/src/assembly/selection.ts`; updated page, skeleton/cross-section canvases, contextual results/fabrication, translations, styles and page tests.
+- Documentation: `README.md`, new `docs/JACK_RAFTER_GEOMETRY.md` and this checkpoint. The user-supplied V7 architecture, review and prompt documents remain untracked and untouched. No dependency/lockfile change, unfinished syntax, commit or push.
+
+**Iteration 007 limitations:**
+
+- J1 fabrication ends at the theoretical H1 center plane. It intentionally does not select an H1 face deduction, backed-versus-dropped convention, saw allowance or kerf without a separately approved physical reference model.
+- Intermediate purlins remain real shared supports, but J1-to-purlin notch/joinery is reported as unresolved. J1 has coordinated contextual facts and preparation steps, not a dedicated dimensioned per-piece cut drawing.
+- Structural/member sizing, irregular or unequal-pitch hips, valleys, full 3D CAD, persistence, auth/database, PDF/export and additional roof systems remain outside V7.
+- Native desktop/mobile/touch visual QA remains required because the requested Browser surface was unavailable in this session.
+
+**NEXT ACTION:**
+
+> Enable the in-app Browser and run desktop plus 360 px user-acceptance QA for J1 density, selection contrast, preparation-panel overflow and native pointer/touch behavior; then obtain an explicit domain decision for H1 face deduction/backed-versus-dropped geometry and J1-to-purlin joinery before extending fabrication. Do not begin Iteration 008 without a new approved prompt.
+
+**Previous checkpoint — Iteration 006:**
 
 **Iteration 006 completed:**
 

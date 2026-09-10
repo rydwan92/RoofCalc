@@ -113,6 +113,12 @@ describe('dual-mode parametric workbench', () => {
     rafterView();
     fireEvent.keyDown(canvasButton('Zacios · Płatew P1'), { key: 'Enter' });
     expect(screen.getByTestId('detail-drawing')).toBeTruthy();
+    expect(
+      screen.getByRole('region', { name: 'Detal wykonawczy' }),
+    ).toBeTruthy();
+    expect(
+      screen.getByTestId('contextual-fabrication').getAttribute('data-context'),
+    ).toBe('joint');
     expect(input('Pozycja od lica murłaty')).toBeTruthy();
     enter('Długość siedziska', '100');
     expect(screen.getByTestId('selected-notch-depth').textContent).toBe(
@@ -138,7 +144,9 @@ describe('dual-mode parametric workbench', () => {
       'true',
     );
     expect(screen.getByTestId('assembly-drawing')).toBeTruthy();
-    expect(screen.getByTestId('stock-length').textContent).not.toContain('—');
+    expect(
+      screen.getByRole('region', { name: 'Parametry podpory' }),
+    ).toBeTruthy();
     expect(
       container
         .querySelector('[data-profile="member:rafter-1"]')!
@@ -287,8 +295,8 @@ describe('dual-mode parametric workbench', () => {
     const beforeRidge = ridge();
     const beforeStock = screen.getByTestId('stock-length').textContent;
     expect(
-      screen.queryByRole('region', { name: 'Trasowanie krok po kroku' }),
-    ).toBeNull();
+      screen.getByRole('region', { name: 'Trasowanie krok po kroku' }),
+    ).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Pokaż trasowanie' }));
     expect(
       screen.getByRole('region', { name: 'Trasowanie krok po kroku' }),
@@ -297,7 +305,7 @@ describe('dual-mode parametric workbench', () => {
     enter('Rozstaw krokwi', '600');
     expect(rafterCount()).toBeGreaterThan(beforeCount);
     expect(screen.getByText('21 par krokwi')).toBeTruthy();
-    expect(screen.getByText('Pary krokwi')).toBeTruthy();
+    expect(screen.getByText('Krokiew zwykła K1')).toBeTruthy();
     enter('Kąt połaci', '42');
     expect(ridge()).not.toBe(beforeRidge);
     expect(screen.getByTestId('stock-length').textContent).not.toBe(
@@ -498,6 +506,112 @@ describe('dual-mode parametric workbench', () => {
     expect(screen.getByTestId('hip-fabrication-sheet')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Wróć do szkieletu' }));
     expect(useAssembly.getState().view).toBe('skeleton');
+  });
+
+  it('renders first-class J1 members and switches roof, prototype and instance results', () => {
+    const { container } = render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Krokiew narożna' }));
+    builder();
+
+    const jacks = container.querySelectorAll('.kind-jack-rafter');
+    expect(jacks).toHaveLength(32);
+    expect(screen.getByTestId('jack-count').textContent).toBe('32');
+    expect(
+      screen.getByRole('region', { name: 'Podsumowanie dachu' }),
+    ).toBeTruthy();
+    expect(
+      screen.getByTestId('contextual-fabrication').getAttribute('data-context'),
+    ).toBe('roof');
+
+    fireEvent.click(
+      container.querySelector('.a-toolbox [aria-label="Krokiew"]')!,
+    );
+    expect(
+      screen.getByRole('region', { name: 'Podsumowanie prototypu' }),
+    ).toBeTruthy();
+    expect(screen.getAllByText('K1 · Krokiew zwykła').length).toBeGreaterThan(
+      0,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Krokiew narożna H1' }));
+    expect(
+      screen.getByRole('region', { name: 'Podsumowanie prototypu' }),
+    ).toBeTruthy();
+    expect(screen.getAllByText('H1 · Krokiew narożna').length).toBeGreaterThan(
+      0,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Kulawek J1' }));
+    expect(useAssembly.getState().selected).toBe('member:jack-rafter-J1');
+    expect(
+      screen.getByRole('region', { name: 'Podsumowanie prototypu' }),
+    ).toBeTruthy();
+    expect(screen.getByText('długość osobna dla każdej sztuki')).toBeTruthy();
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /Kulawek J1\/1 · lewa · przedni lewy narożnik/,
+      }),
+    );
+    expect(useAssembly.getState().selected).toBe(
+      'instance:jack:front-left:left:1',
+    );
+    expect(useAssembly.getState().selectedPrototype).toBe(
+      'member:jack-rafter-J1',
+    );
+    expect(screen.getByTestId('jack-inspector')).toBeTruthy();
+    expect(
+      screen.getByRole('region', { name: 'Parametry konkretnej sztuki' }),
+    ).toBeTruthy();
+    expect(screen.getByTestId('instance-length').textContent).toMatch(/mm$/);
+    expect(
+      container
+        .querySelector('[data-entity="instance:jack:front-left:left:1"]')
+        ?.getAttribute('data-selection-state'),
+    ).toBe('selected');
+    expect(
+      container
+        .querySelector('[data-entity="instance:jack:front-left:left:2"]')
+        ?.getAttribute('data-selection-state'),
+    ).toBe('related');
+    expect(
+      container
+        .querySelector('[data-entity="instance:hip:front-left"]')
+        ?.getAttribute('data-selection-state'),
+    ).toBe('muted');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Połać' }));
+    expect(
+      screen.getByRole('region', { name: 'Podsumowanie dachu' }),
+    ).toBeTruthy();
+  });
+
+  it('shows support and J1 fabrication contexts with explicit limitations', () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Krokiew narożna' }));
+    builder();
+    fireEvent.click(screen.getByRole('button', { name: 'Kalenica' }));
+    expect(
+      screen.getByRole('region', { name: 'Parametry podpory' }),
+    ).toBeTruthy();
+    expect(
+      screen.getByTestId('contextual-fabrication').getAttribute('data-context'),
+    ).toBe('support');
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /Kulawek J1\/2 · przód · przedni lewy narożnik/,
+      }),
+    );
+    expect(screen.getAllByText(/Odjęcie do fizycznego lica H1/)).toHaveLength(
+      2,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Pokaż trasowanie' }));
+    expect(
+      screen.getByText(
+        /Odmierz .* po osi od okapu do teoretycznej płaszczyzny H1/,
+      ),
+    ).toBeTruthy();
   });
 
   it('renders the square hip as a zero-ridge pyramid and a rectangle with a ridge', () => {

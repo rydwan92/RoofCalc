@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ArrowLeft,
@@ -18,11 +18,12 @@ import {
 import {
   createRoofSkeleton,
   HIP_RAFTER_PROTOTYPE_ID,
+  JACK_RAFTER_PROTOTYPE_ID,
   lengthUnits,
   purlinPlacementSegments,
   resolveRoofTemplate,
 } from '@cieslacalc/roof-math';
-import type { ResolvedHipRafter } from '@cieslacalc/timber-model';
+import type { ResolvedHipRafter, RoofSkeleton } from '@cieslacalc/timber-model';
 import { formatLength } from '../format';
 import { useAssembly } from './store';
 import {
@@ -37,7 +38,17 @@ import {
 import { AssemblyCanvas, entityLabel } from './Canvas';
 import { SkeletonCanvas } from './SkeletonCanvas';
 import { HipFabricationSheet } from './HipFabricationSheet';
-import { Fabrication, HipResults, Results } from './Summary';
+import {
+  ContextualFabrication,
+  ContextualResults,
+  Fabrication,
+  HipResults,
+  Results,
+} from './Summary';
+import {
+  resolveWorkbenchSelectionContext,
+  type WorkbenchSelectionContext,
+} from './selection';
 import './styles.css';
 
 function Toolbox({ result }: { result: Calculation | null }) {
@@ -92,6 +103,12 @@ function Toolbox({ result }: { result: Calculation | null }) {
             <Box size={20} />,
             `${t('assembly.hipRafter')} H1`,
           )}
+        {state.template.type === 'hip' &&
+          selectButton(
+            JACK_RAFTER_PROTOTYPE_ID,
+            <Box size={20} />,
+            `${t('assembly.jackRafter')} J1`,
+          )}
       </section>
       <section>
         <h2>{t('assembly.supports')}</h2>
@@ -127,10 +144,14 @@ function Toolbox({ result }: { result: Calculation | null }) {
 function Inspector({
   result,
   hip,
+  skeleton,
+  context,
   onEnlarge,
 }: {
   result: Calculation | null;
   hip?: ResolvedHipRafter;
+  skeleton: RoofSkeleton;
+  context: WorkbenchSelectionContext;
   onEnlarge: () => void;
 }) {
   const state = useAssembly(),
@@ -142,22 +163,22 @@ function Inspector({
     state.selected.startsWith('joint:') || state.selected.startsWith('cut:');
   const rafterInstance =
     state.selectedPrototype === state.spec.member.id
-      ? createRoofSkeleton(state.template).members.find(
-          (member) => member.id === state.selected,
-        )
+      ? skeleton.members.find((member) => member.id === state.selected)
       : undefined;
   const hipInstance =
     state.selectedPrototype === HIP_RAFTER_PROTOTYPE_ID
-      ? createRoofSkeleton(state.template).members.find(
-          (member) => member.id === state.selected,
-        )
+      ? skeleton.members.find((member) => member.id === state.selected)
       : undefined;
+  const jackInstance = context.kind === 'instance' ? context.jack : undefined;
   const isRafter =
     state.selected === state.spec.member.id ||
     state.selectedPrototype === state.spec.member.id;
   const isHip =
     state.selected === HIP_RAFTER_PROTOTYPE_ID ||
     state.selectedPrototype === HIP_RAFTER_PROTOTYPE_ID;
+  const isJack =
+    state.selected === JACK_RAFTER_PROTOTYPE_ID ||
+    state.selectedPrototype === JACK_RAFTER_PROTOTYPE_ID;
   const length = (value: number) =>
     `${formatLength(value, state.unit, i18n.language)} ${state.unit}`;
   return (
@@ -180,6 +201,9 @@ function Inspector({
       </button>
       {state.inspectorOpen && (
         <div className="a-inspector-body">
+          <span className="a-context-badge">
+            {t(`assembly.${context.kind}Context`)}
+          </span>
           {state.selected === 'roof' && <GeometryInputs includeLayout />}
           {rafterInstance && (
             <section className="a-instance-facts">
@@ -231,7 +255,44 @@ function Inspector({
               <p className="a-help">{t('assembly.hipSelectionHint')}</p>
             </section>
           )}
-          {(isRafter || state.selected === 'cut:eave') && <TimberInputs />}
+          {jackInstance && (
+            <section className="a-instance-facts" data-testid="jack-inspector">
+              <dl className="a-facts">
+                <div>
+                  <dt>{t('assembly.physicalInstance')}</dt>
+                  <dd>J1/{jackInstance.spec.ordinalFromCorner}</dd>
+                </div>
+                <div>
+                  <dt>{t('assembly.roofPlane')}</dt>
+                  <dd>{t(`assembly.${jackInstance.spec.roofPlane}`)}</dd>
+                </div>
+                <div>
+                  <dt>{t('assembly.corner')}</dt>
+                  <dd>{t(`assembly.${jackInstance.spec.hipCorner}`)}</dd>
+                </div>
+                <div>
+                  <dt>{t('assembly.position')}</dt>
+                  <dd>{length(jackInstance.spec.stationFromHipCornerMm)}</dd>
+                </div>
+                <div>
+                  <dt>{t('assembly.exactLength')}</dt>
+                  <dd>
+                    {length(
+                      jackInstance.result.outerEaveToHipCenterLineLengthMm,
+                    )}
+                  </dd>
+                </div>
+                <div>
+                  <dt>{t('assembly.prototype')}</dt>
+                  <dd>J1 · {t('assembly.jackRafter')}</dd>
+                </div>
+              </dl>
+              <p className="a-help">{t('assembly.hipFaceDeductionNote')}</p>
+            </section>
+          )}
+          {(isRafter || isJack || state.selected === 'cut:eave') && (
+            <TimberInputs />
+          )}
           {isHip && hip && (
             <>
               <HipTimberInputs />
@@ -274,7 +335,25 @@ export function AssemblyPage() {
   const [marking, setMarking] = useState(false),
     [focusId, setFocusId] = useState<string | undefined>();
   const brand = import.meta.env.VITE_BRAND_NAME || 'CieślaCalc';
-  const templateResult = resolveRoofTemplate(state.template);
+  const templateResult = useMemo(
+    () => resolveRoofTemplate(state.template),
+    [state.template],
+  );
+  const skeleton = useMemo(
+    () => createRoofSkeleton(state.template),
+    [state.template],
+  );
+  const selectionContext = useMemo(
+    () =>
+      resolveWorkbenchSelectionContext({
+        selected: state.selected,
+        template: state.template,
+        spec: state.spec,
+        resolved: templateResult,
+        skeleton,
+      }),
+    [state.selected, state.template, state.spec, templateResult, skeleton],
+  );
   const result = templateResult.calculation;
   const hip =
     'hipRafter' in templateResult ? templateResult.hipRafter : undefined;
@@ -397,7 +476,7 @@ export function AssemblyPage() {
             <h1>{t('assembly.title')}</h1>
             <strong className="a-member-subtitle">
               {state.template.type === 'hip'
-                ? `${t('assembly.hipRoof')} · ${state.selectedPrototype === HIP_RAFTER_PROTOTYPE_ID || state.selected === HIP_RAFTER_PROTOTYPE_ID ? `H1 ${t('assembly.hipRafter')}` : state.selectedPrototype === state.spec.member.id || state.selected === state.spec.member.id ? `K1 ${t('assembly.commonRafter')}` : t('assembly.skeleton')}`
+                ? `${t('assembly.hipRoof')} · ${state.selectedPrototype === JACK_RAFTER_PROTOTYPE_ID || state.selected === JACK_RAFTER_PROTOTYPE_ID ? `J1 ${t('assembly.jackRafter')}` : state.selectedPrototype === HIP_RAFTER_PROTOTYPE_ID || state.selected === HIP_RAFTER_PROTOTYPE_ID ? `H1 ${t('assembly.hipRafter')}` : state.selectedPrototype === state.spec.member.id || state.selected === state.spec.member.id ? `K1 ${t('assembly.commonRafter')}` : t('assembly.skeleton')}`
                 : `K1 ${t('assembly.commonRafter')}`}
             </strong>
             <p>
@@ -523,24 +602,21 @@ export function AssemblyPage() {
               <Inspector
                 result={result}
                 hip={hip}
+                skeleton={skeleton}
+                context={selectionContext}
                 onEnlarge={() => setFocusId(state.selected)}
               />
             </div>
-            {hip &&
-            (state.view === 'hip' ||
-              state.selectedPrototype === HIP_RAFTER_PROTOTYPE_ID ||
-              state.selected === HIP_RAFTER_PROTOTYPE_ID) ? (
-              <HipResults hip={hip} />
-            ) : (
-              <Results
-                result={result}
-                rafterSpacing={
-                  state.view === 'skeleton'
-                    ? templateResult.rafterSpacing
-                    : undefined
-                }
-              />
-            )}
+            <ContextualResults
+              context={selectionContext}
+              resolved={templateResult}
+              skeleton={skeleton}
+            />
+            <ContextualFabrication
+              context={selectionContext}
+              resolved={templateResult}
+              expanded={marking}
+            />
             {state.view !== 'hip' && (
               <button
                 className="a-button"
@@ -552,7 +628,7 @@ export function AssemblyPage() {
             )}
           </>
         )}
-        {result && marking && !hip && (
+        {state.mode === 'quick' && result && marking && !hip && (
           <Fabrication result={result} expanded={marking} />
         )}
         {hip && marking && state.mode === 'quick' && (

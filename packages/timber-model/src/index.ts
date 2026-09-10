@@ -204,6 +204,108 @@ export interface ResolvedHipRafter {
   result: HipRafterResult;
   fabrication: HipFabricationPlan;
 }
+export type JackRafterRoofPlane = 'left' | 'right' | 'front' | 'rear';
+export type HipCorner =
+  'front-left' | 'front-right' | 'rear-left' | 'rear-right';
+export interface JackRafterWallJoint {
+  supportId: EntityId;
+  stationFromOuterEaveMm: number;
+  seatLengthMm: number;
+  normalDepthMm: number;
+  remainingDepthMm: number;
+}
+/** One physical regular-hip jack. Its station is measured on the wall plate from the hip corner. */
+export interface JackRafterSpec {
+  id: EntityId;
+  prototypeId: EntityId;
+  section: TimberSection;
+  roofPlane: JackRafterRoofPlane;
+  hipCorner: HipCorner;
+  hipRafterInstanceId: EntityId;
+  ordinalFromCorner: number;
+  stationFromHipCornerMm: number;
+  commonRunMm: number;
+  pitchDeg: number;
+  overhangMm: number;
+  wallJoint?: JackRafterWallJoint;
+  hasIntermediateSupports: boolean;
+}
+export interface JackRafterResult {
+  wallToHipCenterHorizontalRunMm: number;
+  outerEaveToHipCenterHorizontalRunMm: number;
+  wallToHipCenterLineLengthMm: number;
+  tailLineLengthMm: number;
+  outerEaveToHipCenterLineLengthMm: number;
+  riseFromOuterEaveMm: number;
+  roofSlopeDeg: number;
+  plumbLineToMemberAxisDeg: number;
+  planCutLineToMemberAxisDeg: 45;
+  topFaceCutLineToMemberAxisDeg: number;
+}
+export interface JackRafterMeetingCut {
+  kind: 'jack-to-hip-center-plane';
+  id: EntityId;
+  memberId: EntityId;
+  hipRafterInstanceId: EntityId;
+  referencePlane: 'vertical-hip-center-plane';
+  plumbLineToMemberAxisDeg: number;
+  planCutLineToMemberAxisDeg: 45;
+  topFaceCutLineToMemberAxisDeg: number;
+  hipFaceDeduction: 'not-applied';
+}
+export type JackRafterFabricationStep =
+  | {
+      action: 'measure-to-hip-center-plane';
+      distanceMm: number;
+      reference: 'outer-eave-axis';
+    }
+  | {
+      action: 'mark-wall-seat';
+      joint: JackRafterWallJoint;
+    }
+  | {
+      action: 'mark-hip-plumb';
+      angleDeg: number;
+      reference: 'member-axis-on-side-face';
+    }
+  | {
+      action: 'mark-hip-top-face-line';
+      angleDeg: number;
+      reference: 'member-axis-on-top-face';
+    };
+export interface JackRafterFabricationPlan {
+  memberId: EntityId;
+  prototypeId: EntityId;
+  section: TimberSection;
+  lengthBasis: 'outer-eave-axis-to-theoretical-hip-center-plane';
+  referenceLengthMm: number;
+  meetingCut: JackRafterMeetingCut;
+  wallJoint?: JackRafterWallJoint;
+  intermediateSupportJoinery: 'resolved-none' | 'not-resolved';
+  allowanceAndKerf: 'not-included';
+  steps: JackRafterFabricationStep[];
+}
+export interface ResolvedJackRafter {
+  spec: JackRafterSpec;
+  result: JackRafterResult;
+  fabrication: JackRafterFabricationPlan;
+}
+export interface ResolvedJackRafterInstance extends ResolvedJackRafter {
+  from: Point3D;
+  to: Point3D;
+}
+export type MemberPrototypeKind =
+  'common-rafter' | 'hip-rafter' | 'jack-rafter';
+export interface ResolvedMemberPrototype {
+  id: EntityId;
+  code: 'K1' | 'H1' | 'J1';
+  kind: MemberPrototypeKind;
+  section: TimberSection;
+  instanceIds: EntityId[];
+  count: number;
+  lengthRangeMm: { min: number; max: number };
+  fabricationMode: 'shared' | 'variable-by-instance';
+}
 export interface RafterStation {
   id: EntityId;
   alongBuildingMm: number;
@@ -222,7 +324,7 @@ export interface Point3D {
   z: number;
 }
 export type SkeletonMemberKind =
-  'wall-plate' | 'ridge' | 'rafter' | 'hip-rafter' | 'purlin';
+  'wall-plate' | 'ridge' | 'rafter' | 'hip-rafter' | 'jack-rafter' | 'purlin';
 export type SkeletonMemberSide =
   | 'left'
   | 'right'
