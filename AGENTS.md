@@ -9,9 +9,11 @@ Before editing code, read in this order:
 1. `PROJECT_BLUEPRINT.md` — product and architecture source of truth.
 2. `docs/ARCHITECTURE_V3_WORKBENCH.md` — dual-mode parametric workbench direction.
 3. `docs/ARCHITECTURE_V4_ROOF_SKELETON.md` — reactive gable-roof skeleton foundation.
-4. `docs/ARCHITECTURE_V5_INTERACTIVE_SKELETON.md` — current interactive solid-skeleton/direct-manipulation direction.
-5. `docs/DOMAIN_RESEARCH_ROADMAP.md` — domain-research rules.
-6. the currently requested iteration prompt in `docs/`.
+4. `docs/ARCHITECTURE_V5_INTERACTIVE_SKELETON.md` — interactive solid-skeleton/direct-manipulation foundation.
+5. `docs/ARCHITECTURE_V6_HIP_ROOF_AND_RAFTER.md` — current multi-template/hip-roof/hip-rafter direction.
+6. `docs/HIP_RAFTER_GEOMETRY.md` — exact V6 regular hip geometry and regression contract.
+7. `docs/DOMAIN_RESEARCH_ROADMAP.md` — domain-research rules.
+8. the currently requested iteration prompt in `docs/`.
 
 If a newer explicit user-approved iteration prompt conflicts with an old `WORK CHECKPOINT`, the newer prompt controls the next iteration, but the agent must update the checkpoint at the start/end so the repository becomes consistent again.
 
@@ -41,6 +43,9 @@ Do not discard uncommitted user work.
 - Cuts/notches are domain operations, not decorative SVG overlays.
 - A whole-roof/skeleton preview is derived from the same assembly/template model. Do not create a second geometry engine for visualization.
 - Repeated skeleton members must distinguish a physical instance ID from a shared fabrication prototype/definition ID when the active architecture requires it.
+- A roof template may resolve more than one fabrication prototype (for example common rafter K1 and hip rafter H1). Do not duplicate a full fabrication calculation for every identical physical instance.
+- New roof types must be introduced through discriminated template/domain types and pure resolvers, not through view-specific conditional formulas.
+- Hip/valley/compound geometry must state the exact plan/elevation/face reference for every angle. Never expose an ambiguous generic `cut angle`.
 - Camera/viewport state is UI state, never construction/domain state.
 - Direct-manipulation gestures should update canonical values through explicit constraints and should be modeled as transactions so cancel/undo is possible.
 - UI may expose direct manipulation, but every editable geometric value must also have an exact numeric input.
@@ -69,6 +74,8 @@ Primary goals:
 Quick Calc must remain clearly simpler and faster than Builder.
 
 Builder should progressively become a direct-manipulation technical editor, while remaining understandable to a non-expert through visual feedback and contextual labels.
+
+For spatial/compound members such as a hip rafter, prefer coordinated plan/elevation/cut details derived from the same result rather than forcing the user to infer a 3D cut from one side view.
 
 ## Git safety
 
