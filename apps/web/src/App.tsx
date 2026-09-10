@@ -1,1 +1,1 @@
-export { WorkbenchPage as App } from './workbench/WorkbenchPage';
+export { AssemblyPage as App } from './assembly/Page';

@@ -7,8 +7,9 @@ import { createWorkbenchDrawing } from './workbench';
 import { calculatorRegistry, calculatorVersions } from './index';
 
 describe('workbench drawing adapter', () => {
-  it('retains v1 while launching explicit v2 under the stable calculator ID', () => {
-    expect(calculatorRegistry['common-rafter'].version).toBe('2.0.0');
+  it('retains historical v1/v2 while launching explicit v3 under the stable calculator ID', () => {
+    expect(calculatorRegistry['common-rafter'].version).toBe('3.0.0');
+    expect(calculatorVersions['common-rafter@2.0.0'].version).toBe('2.0.0');
     expect(
       calculatorVersions['common-rafter@1.0.0'].calculate({
         runMm: 1000,

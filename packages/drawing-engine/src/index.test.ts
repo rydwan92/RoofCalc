@@ -4,6 +4,7 @@ import {
   clipPolygon,
   fitDrawing,
   layoutDimension,
+  projectAxonometric,
 } from './index';
 
 it.each([2500, 13000])('fits %s mm without changing proportions', (length) => {
@@ -57,4 +58,14 @@ it('places collapsed manufacturing dimensions without dividing by zero', () => {
   );
   expect(Object.values(dimension.label).every(Number.isFinite)).toBe(true);
   expect(dimension.rotationDeg).toBe(0);
+});
+
+it('projects roof world axes into a stable axonometric plane', () => {
+  expect(projectAxonometric({ x: 0, y: 0, z: 0 })).toEqual({ x: 0, y: 0 });
+  expect(projectAxonometric({ x: 1000, y: 0, z: 0 }).x).toBeGreaterThan(0);
+  expect(projectAxonometric({ x: 0, y: 1000, z: 0 }).x).toBeLessThan(0);
+  expect(projectAxonometric({ x: 0, y: 0, z: 1000 }).y).toBe(1000);
+  expect(() => projectAxonometric({ x: NaN, y: 0, z: 0 })).toThrow(
+    'invalid_projection',
+  );
 });

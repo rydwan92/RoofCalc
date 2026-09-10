@@ -3,7 +3,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import i18n from './i18n';
-import { App } from './App';
+// Historical v2 screen regression suite; v3 has its own integration tests.
+import { WorkbenchPage as App } from './workbench/WorkbenchPage';
 import { useWorkbench } from './store';
 
 beforeEach(async () => {

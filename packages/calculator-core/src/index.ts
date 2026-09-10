@@ -8,6 +8,7 @@ import {
 import type { DrawingModel } from '@cieslacalc/drawing-engine';
 import type { FeatureKey } from '@cieslacalc/shared';
 import { rafterWorkbench } from './workbench';
+import { assemblyWorkbench } from './assembly';
 
 export interface CalculatorDefinition<I, O> {
   id: string;
@@ -83,12 +84,16 @@ export const commonRafter: CalculatorDefinition<
   },
 };
 
-export const calculatorRegistry = { 'common-rafter': rafterWorkbench } as const;
+export const calculatorRegistry = {
+  'common-rafter': assemblyWorkbench,
+} as const;
 export const calculatorVersions = {
   'common-rafter@1.0.0': commonRafter,
   'common-rafter@2.0.0': rafterWorkbench,
+  'common-rafter@3.0.0': assemblyWorkbench,
 } as const;
 export * from './workbench';
+export * from './assembly';
 export interface AccessPolicy {
   canUse(feature: FeatureKey): boolean;
 }

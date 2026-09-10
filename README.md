@@ -1,68 +1,60 @@
 # CieślaCalc / RoofCalc
 
-Aplikacja rozwijana według [`PROJECT_BLUEPRINT.md`](PROJECT_BLUEPRINT.md). Ten dokument w katalogu głównym jest źródłem wymagań i checkpointu oraz jest śledzony przez Git.
+Parametryczny warsztat ciesielski z dwoma interfejsami: **Szybkie** i **Kreator**. Oba edytują jeden `AssemblySpec` i korzystają z tego samego silnika geometrii, zaciosów i trasowania.
+
+Wymagania i stan pracy: [PROJECT_BLUEPRINT.md](PROJECT_BLUEPRINT.md). Kierunek architektury: [Architecture V3](docs/ARCHITECTURE_V3_WORKBENCH.md). Dokładny kontrakt matematyczny: [Assembly V3 geometry](docs/ASSEMBLY_V3_GEOMETRY.md).
 
 ## Uruchomienie
 
-W katalogu projektu, Node.js >= 20.16:
+Node.js >= 20.16, pnpm 10.15.1. W katalogu repozytorium:
 
 ```powershell
-npx pnpm@10.15.1 install
+npx pnpm@10.15.1 install --frozen-lockfile
 npx pnpm@10.15.1 dev
 ```
 
-Frontend: http://127.0.0.1:5173, API: http://127.0.0.1:3001/api/health. Zainstalowany globalnie pnpm pozwala pominąć `npx pnpm@10.15.1` i używać `pnpm`.
+Frontend: http://127.0.0.1:5173. API: http://127.0.0.1:3001/api/health. Przy globalnym pnpm można używać bezpośrednio `pnpm`.
 
-## XAMPP
+## Szybkie i Kreator — model 4.0.0
+
+**Szybkie:** wpisz rzut do osi kalenicy, kąt połaci i okap. Wyniki oraz mały rysunek aktualizują się lokalnie. „Więcej ustawień” otwiera przekrój krokwi, murłatę, siedzisko i kalenicę. Dostępne są plan trasowania i przejście do Kreatora bez utraty dokładności lub podpór.
+
+**Kreator:** domyślnie pokazuje reaktywny, aksonometryczny szkielet dachu dwuspadowego: murłaty, kalenicę, powtarzalne pary krokwi i opcjonalną płatew. Długość budynku, rozstaw, tryb rozstawu, rzut, kąt i okap aktualizują od razu szkielet oraz wspólny wynik fabrication. Widok „Krokiew” zachowuje dokładny profil, inspector i detal zaciosu. Na telefonie narzędzia tworzą pasek, a właściwości otwierają dolny panel.
+
+**Płatew:** dodaj jedną podporę, wpisz pozycję od lewego lica murłaty albo przeciągnij ją myszą/palcem. Drag przyciąga do siatki i punktów odniesienia, ogranicza zakres i pokazuje aktualny wymiar. Strzałki przesuwają o 1 mm, Shift+strzałka o 10 mm. Esc anuluje gest. Inspector przyjmuje dokładne wartości bez przyciągania. Można zmienić szerokość, wysokość oraz sterować zaciosem przez siedzisko albo głębokość. Podpora automatycznie dopasowuje wysokość osadzenia do krokwi.
+
+Płatew jest elementem domeny: zmiana położenia aktualizuje przecięcia, rzeczywisty wycięty profil, punkty trasowania i rysunek. Jej ruch nie zmienia długości całej krokwi przy stałych końcach. Datums mają semantyczne identyfikatory; A/B/C… są tylko generowanymi etykietami. Plan produkcyjny jest strukturą danych tłumaczoną przez UI na PL/EN. Jednostki mm/cm/m nie zmieniają geometrii.
+
+Wersje `common-rafter@1.0.0` i `@2.0.0` pozostają w rejestrze historycznym z testami regresji. Aktualny ekran używa `@3.0.0`.
+
+## XAMPP / hosting
 
 ```powershell
 npx pnpm@10.15.1 build
 ```
 
-Otwórz http://localhost/projects/RoofCalc/. `index.php` przekieruje do zbudowanej aplikacji w `apps/web/dist/`. Apache obsługuje statyczny frontend; Node nie jest potrzebny do obliczeń. Po zmianie kodu trzeba wykonać build albo korzystać z serwera deweloperskiego. API w tym trybie nadal ma osobny port 3001. Baza danych nie jest jeszcze używana.
+Po buildzie otwórz http://localhost/RoofCalc/apps/web/dist/#/calculators/common-rafter i odśwież stronę przez Ctrl+F5, aby pominąć cache. `index.php` przekierowuje do `apps/web/dist/`. Po zmianie kodu wykonaj build lub użyj serwera Vite. Apache wystarcza do lokalnych obliczeń; API działa osobno na porcie 3001.
 
-## Zwykły hosting Node.js
+Na hostingu Node uruchom `npx pnpm@10.15.1 start`. Express serwuje frontend i `/api/health`. Dostępne zmienne: `PORT` (domyślnie 3001), `HOST` (127.0.0.1). Publicznym katalogiem jest `apps/web/dist`, nie całe repozytorium. `VITE_BRAND_NAME` w `apps/web/.env.local` ustawia nazwę przed buildem. HashRouter obsługuje podkatalogi.
 
-Po instalacji i buildzie: `npx pnpm@10.15.1 start`. Express serwuje frontend i `/api/health` z jednego adresu. Zmienne `PORT` (domyślnie 3001) oraz `HOST` (domyślnie 127.0.0.1) są konfigurowalne. Host wymagający publicznego nasłuchu może ustawić `HOST=0.0.0.0`. Publicznym katalogiem statycznym jest tylko `apps/web/dist`, a nie całe repozytorium.
-
-`VITE_BRAND_NAME` w `apps/web/.env.local` pozwala zmienić nazwę widoczną w interfejsie przed buildem. HashRouter zapewnia działanie tras pod podkatalogiem XAMPP bez zależności od reguł routingu serwera.
-
-## Sprawdzanie
+## Weryfikacja
 
 ```powershell
 npx pnpm@10.15.1 typecheck
 npx pnpm@10.15.1 test
 npx pnpm@10.15.1 lint
-npx pnpm@10.15.1 format:check
 npx pnpm@10.15.1 build
 ```
 
-Testy obejmują geometrię, jednostki, walidację, model rysunku, reaktywny interfejs w jsdom i API. Testy jsdom nie zastępują kontroli wizualnej w przeglądarce.
+Testy obejmują geometrię, walidację, jednostki, profil po cięciach, dynamiczne podpory/datums, trasowanie, lane layout i transformacje, interakcje w jsdom oraz API. Testy jsdom i granic etykiet nie zastępują kontroli wizualnej i dotykowej w przeglądarce. Jej aktualny status podaje checkpoint.
 
-## Warsztat — model 2.0.0
+## Organizacja i granice
 
-Ekran ma trzy widoki: **Konstrukcja**, **Element** i **Detal**. Wybierz krokiew, murłatę lub cięcie na rysunku albo w narzędziach; panel właściwości pozwala edytować wymiary. Na telefonie narzędzia przewijają się w swoim pasku, a właściwości są rozwijane pod płótnem. Dolna sekcja pokazuje łańcuch A→B→C→D oraz instrukcje trasowania po górnej krawędzi.
+- `timber-model`: AssemblySpec, ResolvedAssembly, FabricationPlan i typy elementów.
+- `roof-math`: czysta geometria, wspólny resolver zaciosów, walidacja i szablon.
+- `calculator-core`: wersjonowany rejestr i adapter rysunku.
+- `drawing-engine`: prymitywy, projekcja, przycinanie, semantic dimension lanes i snapping.
+- `apps/web/src/assembly`: dwa tryby, edytor sesji, SVG, inspector, tłumaczenia i plan trasowania.
+- `apps/api`: Express; `ui`: tokeny/komponenty; `shared`: kontrakty.
 
-Nowe parametry: szerokość/wysokość przekroju krokwi, szerokość murłaty, długość siedziska i grubość deski kalenicowej. Zmiana jednostek mm/cm/m zachowuje kanoniczne wartości wszystkich parametrów. Obliczenia i kształt zmieniają się od razu, bez API.
-
-Uzgodniony model: dolna krawędź `y=(x−s)·tan(α)`, siedzisko `[0,s]` na `y=0`. Zacios usuwa `s·sin(α)` głębokości prostopadłej; pionowa wysokość wynosi `s·tan(α)`. Lico kalenicy leży w `x=rzut−grubość/2`. A–D to punkty na górnej krawędzi, przy czym B wyznacza ścianę pionową zaciosu, a C rzut końca siedziska.
-
-Pełny kontrakt i wzory: [`docs/RAFTER_WORKBENCH_GEOMETRY.md`](docs/RAFTER_WORKBENCH_GEOMETRY.md). Dokument opisuje także różnicę między A→D i minimalną długością prostokątnego materiału, pomijane naddatki oraz schematyczne wysokości bloków podpór.
-
-## Zachowany model 1.0.0
-
-- Rzut poziomy: od punktu podparcia do osi kalenicy, > 0 i <= 100 000 mm.
-- Kąt połaci: od 1° do 80° włącznie (jawny zakres prototypu).
-- Wysięg okapu: wymiar poziomy od 0 do 10 000 mm.
-- Wysokość = rzut × tan(kąta). Długość podparcie–kalenica = rzut / cos(kąta).
-- Całkowita długość referencyjna = (rzut + wysięg okapu) / cos(kąta).
-- Brak odjęcia grubości kalenicy, zaciosu, przekroju drewna i zapasu na cięcie. Wynik nie jest gotową długością produkcyjną ani sprawdzeniem nośności.
-- Jednostki kanoniczne: mm / stopnie. Zaokrąglanie wyłącznie na ekranie.
-
-Model 1.0.0 jest zachowany w wersjonowanym rejestrze wraz z testami regresji. Aktualny ekran korzysta z wersji 2.0.0. Stan nadal nie jest zapisywany po odświeżeniu. Krokwie narożne, dodatkowe podpory, konta, projekty, baza, PWA, PDF oraz weryfikacja nośności pozostają poza tą iteracją.
-
-## Organizacja
-
-`apps/web`: komponenty warsztatu, zagnieżdżony stan sesji i renderer SVG. `apps/api`: Express. `packages/timber-model`: niezależne typy drewna, podpór, operacji i punktów odniesienia. `roof-math`: czysta matematyka, profil po cięciach i walidacja. `calculator-core`: wersjonowany rejestr i adapter widoków. `drawing-engine`: ogólne prymitywy, przycinanie detalu i układ wymiarów. `ui`: tokeny i komponenty. `shared`: kontrakty.
-
-Nie dodajemy jeszcze bibliotek dla nieistniejących funkcji serwerowych (TanStack Query, Drizzle), PWA ani rozbudowanych formularzy. CSS korzysta z tokenów; Tailwind nie jest wymagany do tej iteracji. Vite 6 dobrano do lokalnego Node 20.16 zgodnie z [wymaganiami Vite 6](https://v6.vite.dev/blog/announcing-vite6).
+Zakres UI: jedna krokiew, jedna murłata, jedna opcjonalna płatew, kalenica. Solver testowo obsługuje więcej podpór bez osobnego kalkulatora. Brak zapisu po odświeżeniu, naddatków/rzazu, statyki, krokwi narożnych/koszowych, 3D, CAD, bazy, logowania, płatności i PDF. Geometryczny wynik nie potwierdza nośności konstrukcji. Kolejna iteracja nie rozpoczyna się automatycznie.

@@ -1,5 +1,6 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
+import { assemblyPl, assemblyEn } from './assembly/translations';
 
 const pl = {
   commonRafter: 'Krokiew zwykła',
@@ -263,7 +264,10 @@ const en: typeof pl = {
     'Angles are relative to the member axis, not settings for a specific saw.',
 };
 void i18n.use(initReactI18next).init({
-  resources: { pl: { translation: pl }, en: { translation: en } },
+  resources: {
+    pl: { translation: { ...pl, assembly: assemblyPl } },
+    en: { translation: { ...en, assembly: assemblyEn } },
+  },
   lng: 'pl',
   fallbackLng: 'pl',
   interpolation: { escapeValue: false },

@@ -1297,76 +1297,117 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
-> This block is intentionally mutable. The agent must keep it current.
+> Updated 2026-09-10. Iteration 004 is implemented, visually verified and promoted into the root repository.
 
-**Iteration:** `002 — parametric rafter workbench`
+**Iteration:** `004 — reactive gable roof skeleton + faster dual-mode UX`
 
-**Status:** `IMPLEMENTED — BROWSER_VISUAL_QA_PENDING`
+**Status:** `IMPLEMENTED — VALIDATED`
 
-**Goal of current iteration:**
+**Working repository:** `C:/xampp/htdocs/RoofCalc`, origin `https://github.com/rydwan92/RoofCalc.git`. The former nested gitlink `RoofCalc/` was promoted into this root on 2026-09-10 only after matching hashes for V4 source and documentation were verified, then removed.
 
-- Preserve Iteration 001 foundations and deliver the first parametric common-rafter fabrication workbench.
-- Introduce a real timber profile, wall plate, symmetric ridge board, actual birdsmouth removal, plumb cuts and explicit top-edge marking datums.
+**Iteration 004 completed:**
+
+- Added a pure `GableRoofTemplateSpec` with canonical building length, half-run, pitch, overhang, rafter section, supports and explicit spacing mode.
+- Added pure `fit-evenly` and `fixed-spacing` resolvers, one cross-section AssemblySpec adapter and a world XYZ skeleton resolver for wall plates, ridge, repeated rafter pairs and optional purlins.
+- Added a renderer-neutral axonometric projection helper and an SVG Skeleton context in Builder. Skeleton selection uses the same semantic member/support IDs as the fabrication view.
+- Made the template the canonical Zustand state. AssemblySpec is now derived before the existing shared solver runs; Quick Calc and Builder cannot diverge.
+- Builder defaults to `Szkielet` and offers compact `Szkielet` / `Krokiew` contexts. Existing rafter drawing, keyboard/mouse/touch purlin movement and contextual notch detail remain in `Krokiew`.
+- Added exact building length and rafter-spacing fields, explicit spacing mode and compact pitch/spacing step controls. Invalid raw drafts preserve the last valid skeleton/fabrication result and show a local field error.
+- Expanded the live result rail with rafter-pair count and actual spacing in skeleton context. Added PL/EN translations and responsive technical styling.
+- Added focused tests for spacing, template-to-assembly synchronization, skeleton instances/purlins, projection and the complete Quick/Builder interaction path.
+
+**Iteration 004 validation:**
+
+- Final `npx pnpm@10.15.1 typecheck` passed.
+- Final `npx pnpm@10.15.1 test` passed: 158 tests across 22 files.
+- Final `npx pnpm@10.15.1 lint` passed.
+- Final `npx pnpm@10.15.1 build` passed for Vite web and tsup API.
+- After promoting the nested source to the root: `install`, typecheck, 158 tests across 22 files, lint, build and `git diff --check` all passed in the root workspace.
+- Focused V4 tests passed: gable template (4), projection (6), store (5) and Builder integration (11).
+- Browser QA passed at desktop and 360 px: Quick Calc, Builder skeleton, responsive controls and no horizontal mobile overflow were inspected. Label overlap at the ridge and clipped mobile pitch controls were found and corrected during QA.
+- Root XAMPP build was verified at `http://localhost/RoofCalc/apps/web/dist/#/calculators/common-rafter`.
+- No Three.js, 3D solver, hip/valley geometry, persistence, authentication, billing or PDF work was added.
+
+**Iteration 004 limitations:**
+
+- The project is one flat repository at `C:/xampp/htdocs/RoofCalc`; future source work belongs there. The nested gitlink is gone.
+- Purlin direct manipulation remains in the `Krokiew` profile where its constrained horizontal axis is exact; the skeleton shows and immediately reflects the moved support.
+- The skeleton is a 2.5D explanatory view. Fabrication remains intentionally 2D and no structural safety inference is made.
+- Native touch hardware was not available; touch pointer behavior is covered through the existing simulated Pointer Events integration tests.
+
+**Goal of prior iteration 003:**
+
+- Prove a shared parametric assembly/fabrication engine through Quick Calc, Visual Builder and a movable, real purlin support.
+- Keep one rafter, wall plate, zero/one UI purlin and ridge; do not begin the next iteration.
 
 **Completed:**
 
-- Read the full blueprint and iteration prompt; baseline typecheck, 57 tests and web/API build passed before implementation.
-- Moved the sole blueprint from `.md/PROJECT_BLUEPRINT.md` to repository root and added it to the Git index, without creating a commit. README links updated.
-- `packages/timber-model`: pure TypeScript section/member/local frame/support/cut/datum/marking types, independent of UI and renderers.
-- `roof-math`: pure birdsmouth, ridge-cut, frame transforms and retained fabrication profile with Zod validation and tests.
-- Same stable calculator ID with explicit `common-rafter@2.0.0` as the launched workbench. `common-rafter@1.0.0` is retained unchanged in a versioned registry with regression tests.
-- Drawing engine supports generic polygons, selection IDs, datums, annotation layout and polygon clipping. Calculator-core adapts domain geometry into assembly/member/joint-detail models.
-- Refactored UI into WorkbenchPage, WorkbenchTools, Canvas, DrawingLayers, Inspector and FabricationSummary. The old monolithic App and triangle-only Drawing have been replaced.
-- Desktop toolbox/canvas/inspector and mobile local tool strip + expandable inspector; assembly, member and selected joint detail modes, click/keyboard object selection, dimension visibility and zoom/fit.
-- Reactive geometry/timber/plate/seat/ridge editing, separate canonical nested input and text drafts, display-only mm/cm/m switching, complete PL/EN UI.
-- Actual concave cut profile, top-edge A–D chain, minimum stock envelope, removed depth percentage and structured marking steps. No invented structural safety threshold.
-- Full mathematical contract recorded in `docs/RAFTER_WORKBENCH_GEOMETRY.md`.
-- Prompt history is excluded only from formatting so supplied instructions remain untouched. XAMPP rules include the moved blueprint among internal project documents.
+- Read the full blueprint, V3 architecture, iteration prompt and research roadmap; inspected initial Git status/diff and preserved pre-existing user changes.
+- `timber-model`: editable `AssemblySpec`, typed support placement and joint preference, semantic `Datum`, `ResolvedAssembly`, resolved joints/end cuts and structured `FabricationPlan`.
+- `roof-math`: line intersection, unit tangent/normal, parallel offset, projection and existing world/member transforms; one generic support/joint resolver for both wall plate and purlin. Actual notch triangles are removed from the retained profile.
+- Schema validates finite ranges, unique IDs, wall origin, support fit/separation and notch geometry. Pure solver supports more than one purlin; UI intentionally exposes only one.
+- Stable calculator ID now launches `common-rafter@3.0.0`. Historical `@1.0.0` and `@2.0.0` remain versioned and regression-tested, with no changes to their calculation functions. The previous UI remains an unlaunched historical regression fixture.
+- Shared live Zustand AssemblySpec powers Quick and Builder. No QuickCalcMath/BuilderMath. Mode switches and mm/cm/m display switches preserve canonical values and added supports.
+- Quick starts with run/pitch/overhang, discloses timber/support settings, shows immediate results and a compact sketch, and opens marking steps or Builder.
+- Builder has a collapsible desktop toolbox, dominant SVG canvas, selected-element inspector, active add/remove purlin, and no permanent Construction/Member/Detail mode hierarchy.
+- Mobile has a wrapping tool strip and non-modal bottom inspector; direct entry to Builder starts the sheet closed and element selection opens it.
+- Pointer Events handle mouse/touch, screen-matrix inversion, inverse fit, grab offset, projection frozen during drag, snapping/clamping, guide/live dimension and canonical millimetre updates. Pointer-up commits; cancellation/lost capture/Esc restores the original position. Keyboard arrows move 1 mm, Shift+arrow 10 mm.
+- Purlin position, width, height and joint parameter are editable numerically. Seat or normal depth can control the same resolver. Invalid drafts stay editable while stale geometry/plans disappear.
+- Cut selection shows a contextual inset; Enlarge detail focuses the main canvas; back/Esc returns to assembly. All detail shapes come from the same retained profile.
+- Dynamic semantic datums and from/to references remain stable in fabrication and drawing models. A/B/C… are separate generated display labels, including labels beyond Z.
+- Dimension intents carry primary/support/joint groups and priority. Renderer assigns collision-aware lanes using projected spans/label footprints and expands fit bounds to keep labels visible. Compact views suppress secondary dimensions; full marking data stays available below.
+- Fabrication plan contains ordered support joints, stations, stock/section data and mark-plumb/mark-seat/check-depth steps, translated in PL/EN by UI.
+- Added `docs/ASSEMBLY_V3_GEOMETRY.md`; updated README, local run address and this checkpoint.
 
 **Mathematical assumptions / user decisions:**
 
-- On 2026-09-09 the user explicitly resolved the contradictory placement in the prompt: keep the seat at y=0 from x=0 to x=s, and lower the uncut lower edge to `y=(x-s)*tan(theta)`.
-- Upper edge is lower edge plus `depth/cos(theta)` vertically; normal section depth is preserved.
-- Heel cut is vertical at x=0. Seat toe is (s,0). The triangle inside the uncut timber is removed from the actual polygon.
-- Notch vertical height `s*tan(theta)`, normal removed depth `s*sin(theta)`, remaining depth `d-s*sin(theta)`, removed ratio `s*sin(theta)/d`.
-- Ridge face `x=run-thickness/2`; slope deduction `thickness/(2*cos(theta))`. Plumb-line angle to member `90-theta`; top/bottom longitudinal station offset `d*tan(theta)`.
-- A/B/C/D are on the TOP edge at world x=-overhang, 0, seat, run-thickness/2. With the approved correction, B identifies the physical heel plumb cut; C is the vertical projection of the seat toe, not a second notch cut.
-- A→B=e/cos(theta), B→C=s/cos(theta), C→D=(run-thickness/2-s)/cos(theta). Their sum equals A→D.
-- Minimum rectangular stock length is A→D+d*tan(theta), without kerf, trimming or defect allowances.
-- Plate width and seat length are independent. Seat <= plate width; normal notch depth < member depth; ridge face must be beyond the full plate width.
+- Preserves the user-approved 2026-09-09 wall placement: seat `[0,s0]` at y=0, uncut lower edge `y=(x-s0)tan(theta)`, upper edge a parallel normal offset by member depth.
+- Every horizontal support at left-face X=x seats at the lower-edge toe X=x+s. Its elevation follows this contact geometry. Purlin elevation is not an independent input.
+- Notch normal depth `s sin(theta)`; vertical heel height `s tan(theta)`; remaining depth `d-s sin(theta)`. No arbitrary structural-safety threshold.
+- Support width and seat length differ. Seat fits within width; notch removes strictly less than full depth. Support blocks cannot overlap and require 1 mm separation.
+- Ridge near face `run-thickness/2`; top-edge length `(run-thickness/2+overhang)/cos(theta)`; minimum stock adds `d tan(theta)`. No kerf or production allowance.
+- Moving the purlin changes its contact elevation, actual notch/profile points, top-edge datums, stations and inter-joint lengths. Fixed member endpoints mean total stock length remains unchanged.
+- Canonical UI purlin position is horizontal X from the wall's left face. Drag limits: `plateWidth+1` to `run-ridgeThickness/2-purlinWidth-1`. Exact inspector input is validated rather than silently clamped/snapped.
+- Zoom-aware grid: 1/5/10 mm; legal endpoints and midpoint are reference targets within 7 pixels capped at 40 mm. Screen coordinates are transient view/gesture data only.
+- Every marking reference is explicit about its datum and top edge. Heel datum identifies the real plumb notch cut; toe datum is a vertical projection/reference, not another cut.
 
 **Files changed / WIP:**
 
-- `PROJECT_BLUEPRINT.md`, `README.md`, `docs/RAFTER_WORKBENCH_GEOMETRY.md`.
-- New `packages/timber-model/**`.
-- New `roof-math/src/cuts/{birdsmouth,ridge-cut}.ts` and tests; frame2d and rafter-workbench modules/tests; package exports/dependencies.
-- `calculator-core/src/workbench.ts` and tests, current/versioned registry; drawing-engine primitives/layout/clip helpers and tests.
-- `apps/web/src/workbench/**`, App.tsx, store.ts/tests, App.test.tsx, i18n.ts, styles.css, web package dependencies. Removed superseded Drawing.tsx.
-- `pnpm-lock.yaml`, `.prettierignore`, `.htaccess`.
-- No unfinished syntax or placeholder geometry. User's prompt and `RoofCalc.zip` preserved; no commits made.
+- `PROJECT_BLUEPRINT.md`, `README.md`, new `docs/ASSEMBLY_V3_GEOMETRY.md`.
+- `packages/timber-model/src/index.ts`.
+- New `packages/roof-math/src/assembly.ts`, `assembly.test.ts`, `geometry/lines.ts`, `geometry/lines.test.ts`; package barrel export.
+- New `packages/calculator-core/src/assembly.ts`, `assembly.test.ts`; registry/export and historical registry test update.
+- New `packages/drawing-engine/src/{interaction,lanes}.ts` and tests; drawing types and inverse fit extension.
+- New `apps/web/src/assembly/{Page,Canvas,Inputs,Summary}.tsx`, `store.ts`, `translations.ts`, `styles.css`, Page/store tests; `App.tsx` entry, historical App test import and i18n bundle registration.
+- No unfinished syntax or placeholder implementation. Dependencies installed using the existing frozen lockfile; no new libraries or lockfile changes. No commit or push performed.
+- Preserved user changes: deletion/move of `docs/RAFTER_WORKBENCH_GEOMETRY.md` to `ChatPromptsHistoryIgnore/`, and untracked V3 architecture, research roadmap and iteration prompt. Do not revert these.
 
 **Validation already run:**
 
-- Baseline: typecheck, 57 tests, web/API build — PASS.
+- Before implementation: 103 baseline tests and web/API build passed. First typecheck attempt raced incomplete dependency installation (`tsc` unavailable); after installation, typecheck passed. This was resolved, not a remaining code error.
 - Final `npx pnpm@10.15.1 typecheck` — PASS.
-- Final `npx pnpm@10.15.1 test` — PASS: 103 tests across 14 files.
-- `npx pnpm@10.15.1 lint` — PASS.
-- `npx pnpm@10.15.1 build` — PASS: React/Vite + Express/tsup.
-- Tests include birdsmouth references and invalid/full-depth cases; actual removed polygon area; coordinate round trips; ridge near-face intersections; additive datum chain; minimum stock; zero overhang/thickness; section reactivity; display-unit invariance; stale-result removal; keyboard selection; view switching and translations.
-- Browser requested via plugin; `iab` is unavailable in this session. No other browser surface was substituted. Browser layout/visual testing is not claimed.
-- Final format:check — PASS. XAMPP root redirects to the new build; HTML, JS and CSS return HTTP 200. Git status/diff inspected; root blueprint is staged and tracked, no commit made.
+- Final `npx pnpm@10.15.1 test` — PASS: **151 tests across 21 files**, including 48 new tests across 7 files.
+- Final `npx pnpm@10.15.1 lint` — PASS.
+- Final `npx pnpm@10.15.1 build` — PASS: React/Vite and Express/tsup.
+- Changed source/docs formatted with Prettier. `git diff --check` passed (only local Git LF/CRLF informational warnings).
+- New coverage: hand-calculated two-support reference, independent wall notch, removed polygon area, semantic datum identity, three-support generalization/order, joint control conversion, invalid placement/IDs/cuts, supported endpoints, old V2 numerical regression at 1/30/35/80 degrees, zero ridge/overhang, purity, inverse screen transforms, snapping and lane collisions.
+- Annotation fit tests confirm label bounds at 336px and 820px for assembly/joint detail at 1/35/80 degrees. These test renderer geometry, not actual browser CSS/font rendering.
+- Ten new jsdom UI tests verify same-model Quick/Builder, purlin addition/removal, exact position, units, invalid-state recovery, selection, contextual/enlarged detail, keyboard movement, dimensions/toolbox/PL/EN and simulated mouse/touch drag/commit/cancellation.
+- XAMPP serves `http://localhost/RoofCalc/apps/web/dist/#/calculators/common-rafter`; the root web build is the deployed local artifact.
+- Requested Browser `iab` returned unavailable; subsequent browser inventory was empty. No browser screenshot, real layout or native touch verification is claimed.
 
 **Known limitations / remaining QA:**
 
-- Desktop and ~360px mobile visual review remains pending because Browser is unavailable. jsdom checks interactions, not screen layout; the full Definition of Done is not yet claimed.
-- Plate block height (140 mm) and ridge block extension below the joint (70 mm) are schematic visual extents, explicitly marked in Support2D and documentation; they do not affect fabrication math.
-- At compact widths, the full chain is in the summary strip; broad-view SVG labels reduce to A→D. Detail dimensions remain visible.
-- Supported numerical ranges are stated in the geometry contract. Defaults are examples, not engineering recommendations.
-- No structural verification, kerf or production allowance, extra supports, compound cuts, persistence, auth, payments, PDF, email, PWA sync or 3D.
+- Desktop and 360px Browser review now covers the V4 Quick Calc and Builder skeleton. Native touch hardware remains unverified; simulated Pointer Events cover touch gestures.
+- One optional purlin in the UI. Solver can resolve multiple separated supports but no multi-purlin editor is exposed in this iteration.
+- Purlin has a horizontal contact plane and automatic elevation. Arbitrary fixed elevations/rotated supports are out of scope.
+- Wall/purlin height is real geometry. Ridge extension below the joint remains schematic and explicitly marked `visualExtentOnly`.
+- Semantic dimension lanes are an initial layout engine, not a general CAD solver. Compact views keep primary annotations and expose full details through the plan/contextual view.
+- No structural verification, allowances/kerf, persistence, accounts, payments, PDF, hip/valley members, CAD or 3D. Refresh discards the working session.
 
 **NEXT ACTION:**
 
-> Finish Iteration 002 visual QA in the requested Browser when available: open http://localhost/projects/RoofCalc/, review desktop and 360px layouts, verify no page overflow, select timber/plate/ridge cuts by touch and keyboard, switch all three views, inspect notch and ridge detail at 1/35/80 degrees and zero overhang/ridge thickness, confirm unit switches and readable datum labels. Fix evidenced UI issues and record verification. Do not automatically start Iteration 003.
+> After the commit and push, verify the root XAMPP URL with Ctrl+F5 on the intended workstation. Keep future source work in `C:/xampp/htdocs/RoofCalc`; do not recreate a nested Git repository. Do not begin Iteration 005 without a new explicit prompt.
 
 ---
 

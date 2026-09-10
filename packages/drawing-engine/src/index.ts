@@ -2,6 +2,33 @@ export interface Point {
   x: number;
   y: number;
 }
+export interface Point3D {
+  x: number;
+  y: number;
+  z: number;
+}
+export interface AxonometricProjectionOptions {
+  horizontalFactor?: number;
+  depthFactor?: number;
+}
+/** Projects y-up world XYZ into a renderer-neutral 2D axonometric plane. */
+export function projectAxonometric(
+  point: Point3D,
+  options: AxonometricProjectionOptions = {},
+): Point {
+  const horizontalFactor = options.horizontalFactor ?? Math.sqrt(3) / 2;
+  const depthFactor = options.depthFactor ?? 0.5;
+  if (
+    ![point.x, point.y, point.z, horizontalFactor, depthFactor].every(
+      Number.isFinite,
+    )
+  )
+    throw new RangeError('invalid_projection');
+  return {
+    x: (point.x - point.y) * horizontalFactor,
+    y: point.z - (point.x + point.y) * depthFactor,
+  };
+}
 export interface Bounds {
   minX: number;
   minY: number;
@@ -26,6 +53,10 @@ export interface DrawingDimension {
   edge?: 'top' | 'bottom';
   fromDatum?: string;
   toDatum?: string;
+  fromLabel?: string;
+  toLabel?: string;
+  group?: 'primary' | 'support' | 'joint';
+  priority?: number;
 }
 export interface DrawingAngle {
   id: string;
@@ -49,6 +80,7 @@ export interface DrawingPolygon {
 }
 export interface DrawingMarker {
   id: string;
+  label?: string;
   at: Point;
   selectionId?: string;
 }
@@ -188,9 +220,16 @@ export function fitDrawing(bounds: Bounds, viewport: Viewport) {
   const top = (viewport.height - height * scale) / 2;
   return {
     scale,
+    unproject: (point: Point): Point => ({
+      x: bounds.minX + (point.x - left) / scale,
+      y: bounds.maxY - (point.y - top) / scale,
+    }),
     project: (point: Point): Point => ({
       x: left + (point.x - bounds.minX) * scale,
       y: top + (bounds.maxY - point.y) * scale,
     }),
   };
 }
+
+export * from './interaction';
+export * from './lanes';
