@@ -148,11 +148,18 @@ export type SkeletonMemberKind =
   | 'rafter'
   | 'purlin';
 export interface SkeletonMember3D {
+  /** Stable physical placement ID, e.g. instance:rafter-pair-4:left. */
   id: EntityId;
+  /** Shared fabrication/source definition used by this physical member. */
+  prototypeId: EntityId;
+  /** UI semantic selection. Purlin rails intentionally select one support. */
   selectionId: EntityId;
   kind: SkeletonMemberKind;
   from: Point3D;
   to: Point3D;
+  section: TimberSection;
+  side: 'left' | 'right' | 'center';
+  stationMm?: number;
 }
 export interface GableRoofSkeleton {
   ridgeHeightMm: number;

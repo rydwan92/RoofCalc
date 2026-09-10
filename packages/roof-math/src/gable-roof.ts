@@ -14,18 +14,38 @@ import {
 } from './assembly';
 
 const positiveMm = z.number().finite().min(1).max(100000);
+const pitchDeg = z.number().finite().min(1).max(80);
 const support = supportSpecSchema;
 export const rafterSpacingSchema: z.ZodType<RafterSpacingSpec> = z.object({
   mode: z.enum(['fixed-spacing', 'fit-evenly']),
   spacingMm: positiveMm,
 });
+export function gableRidgeHeightMm(halfRunMm: number, pitchDegValue: number) {
+  return (
+    positiveMm.parse(halfRunMm) *
+    Math.tan((pitchDeg.parse(pitchDegValue) * Math.PI) / 180)
+  );
+}
+export function gablePitchDegFromRidgeHeight(
+  halfRunMm: number,
+  ridgeHeightMm: number,
+) {
+  const run = positiveMm.parse(halfRunMm);
+  if (!Number.isFinite(ridgeHeightMm) || ridgeHeightMm < 0)
+    throw new RangeError('invalid_ridge_height');
+  return (Math.atan(ridgeHeightMm / run) * 180) / Math.PI;
+}
+export function clampGablePitchDeg(pitchDegValue: number) {
+  if (!Number.isFinite(pitchDegValue)) throw new RangeError('invalid_pitch');
+  return Math.max(1, Math.min(80, pitchDegValue));
+}
 export const gableRoofTemplateSchema: z.ZodType<GableRoofTemplateSpec> = z
   .object({
     id: z.string().regex(/^template:[a-z][a-z0-9:-]*$/),
     type: z.literal('gable'),
     buildingLengthMm: positiveMm,
     halfRunMm: positiveMm,
-    pitchDeg: z.number().finite().min(1).max(80),
+    pitchDeg,
     eaveOverhangMm: z.number().finite().min(0).max(10000),
     rafterSpacing: rafterSpacingSchema,
     rafterSection: z.object({
@@ -152,13 +172,40 @@ export function assemblyFromGableTemplate(
   return assemblySpecSchema.parse(assemblyForTemplate(template));
 }
 
+/** Minimum half-run retaining every intermediate support before the ridge face. */
+export function minimumGableHalfRunMm(raw: GableRoofTemplateSpec) {
+  const template = gableRoofTemplateSchema.parse(raw);
+  return Math.max(
+    1,
+    ...template.intermediateSupports.map(
+      (support) =>
+        support.placement.xMm +
+        support.section.widthMm +
+        template.ridge.thicknessMm / 2 +
+        1,
+    ),
+  );
+}
+export function clampGableHalfRunMm(
+  raw: GableRoofTemplateSpec,
+  proposedMm: number,
+) {
+  if (!Number.isFinite(proposedMm)) throw new RangeError('invalid_half_run');
+  return Math.max(
+    minimumGableHalfRunMm(raw),
+    Math.min(100000, proposedMm),
+  );
+}
+
 export function resolveGableRoofTemplate(raw: GableRoofTemplateSpec) {
   const template = gableRoofTemplateSchema.parse(raw);
   const assemblySpec = assemblySpecSchema.parse(assemblyForTemplate(template));
   return {
     template,
-    ridgeHeightMm:
-      template.halfRunMm * Math.tan((template.pitchDeg * Math.PI) / 180),
+    ridgeHeightMm: gableRidgeHeightMm(
+      template.halfRunMm,
+      template.pitchDeg,
+    ),
     rafterSpacing: resolveRafterSpacing(
       template.buildingLengthMm,
       template.rafterSpacing,
@@ -180,39 +227,65 @@ export function createGableRoofSkeleton(
   const members: SkeletonMember3D[] = [
     {
       id: 'skeleton:wall-plate-left',
+      prototypeId: template.wallPlate.id,
       selectionId: template.wallPlate.id,
       kind: 'wall-plate',
       from: { x: -template.halfRunMm, y: 0, z: 0 },
       to: { x: -template.halfRunMm, y: alongLength, z: 0 },
+      section: {
+        widthMm: template.wallPlate.section.widthMm,
+        depthMm: template.wallPlate.section.heightMm,
+      },
+      side: 'left',
     },
     {
       id: 'skeleton:wall-plate-right',
+      prototypeId: template.wallPlate.id,
       selectionId: template.wallPlate.id,
       kind: 'wall-plate',
       from: { x: template.halfRunMm, y: 0, z: 0 },
       to: { x: template.halfRunMm, y: alongLength, z: 0 },
+      section: {
+        widthMm: template.wallPlate.section.widthMm,
+        depthMm: template.wallPlate.section.heightMm,
+      },
+      side: 'right',
     },
     {
       id: 'skeleton:ridge',
+      prototypeId: template.ridge.id,
       selectionId: template.ridge.id,
       kind: 'ridge',
       from: { x: 0, y: 0, z: ridgeHeightMm },
       to: { x: 0, y: alongLength, z: ridgeHeightMm },
+      section: {
+        widthMm: Math.max(template.ridge.thicknessMm, 1),
+        depthMm: template.rafterSection.depthMm,
+      },
+      side: 'center',
     },
     ...rafterSpacing.stations.flatMap((station) => [
       {
         id: `${station.id}:left`,
-        selectionId: resolved.calculation.assembly.member.id,
+        prototypeId: resolved.calculation.assembly.member.id,
+        selectionId: `${station.id}:left`,
         kind: 'rafter' as const,
         from: { x: -eaveX, y: station.alongBuildingMm, z: eaveZ },
         to: { x: 0, y: station.alongBuildingMm, z: ridgeHeightMm },
+        section: template.rafterSection,
+        side: 'left' as const,
+        stationMm: station.alongBuildingMm,
       },
       {
         id: `${station.id}:right`,
-        selectionId: resolved.calculation.assembly.member.id,
+        prototypeId: resolved.calculation.assembly.member.id,
+        selectionId: `${station.id}:right`,
         kind: 'rafter' as const,
         from: { x: eaveX, y: station.alongBuildingMm, z: eaveZ },
         to: { x: 0, y: station.alongBuildingMm, z: ridgeHeightMm },
+        section: template.rafterSection,
+        side: 'right' as const,
+        stationMm: station.alongBuildingMm,
       },
     ]),
     ...template.intermediateSupports.flatMap((support) => {
@@ -220,7 +293,8 @@ export function createGableRoofSkeleton(
       const height = xFromWall * slope;
       return [
         {
-          id: `skeleton:${support.id}:left`,
+          id: `instance:${support.id.replace('support:', '')}:left`,
+          prototypeId: support.id,
           selectionId: support.id,
           kind: 'purlin' as const,
           from: { x: -template.halfRunMm + xFromWall, y: 0, z: height },
@@ -229,9 +303,15 @@ export function createGableRoofSkeleton(
             y: alongLength,
             z: height,
           },
+          section: {
+            widthMm: support.section.widthMm,
+            depthMm: support.section.heightMm,
+          },
+          side: 'left' as const,
         },
         {
-          id: `skeleton:${support.id}:right`,
+          id: `instance:${support.id.replace('support:', '')}:right`,
+          prototypeId: support.id,
           selectionId: support.id,
           kind: 'purlin' as const,
           from: { x: template.halfRunMm - xFromWall, y: 0, z: height },
@@ -240,6 +320,11 @@ export function createGableRoofSkeleton(
             y: alongLength,
             z: height,
           },
+          section: {
+            widthMm: support.section.widthMm,
+            depthMm: support.section.heightMm,
+          },
+          side: 'right' as const,
         },
       ];
     }),

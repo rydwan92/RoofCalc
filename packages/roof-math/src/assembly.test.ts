@@ -5,7 +5,9 @@ import {
   assemblyDefaults,
   assemblyFromWorkbench,
   assemblySpecSchema,
+  clampPurlinPlacement,
   calculateAssembly,
+  purlinPlacementSegments,
   purlinRange,
 } from './assembly';
 import {
@@ -198,9 +200,55 @@ describe('shared assembly solver', () => {
     );
     expect(result.assembly.supports.at(-1)!.worldProfile).toEqual([]);
   });
-  it('does not add a second UI purlin or add one when there is no space', () => {
+  it('allocates multiple sequential purlins in free segments with ordered fabrication joints', () => {
     const one = addPurlin(assemblyDefaults);
-    expect(addPurlin(one)).toBe(one);
+    const two = addPurlin(one);
+    const three = addPurlin(two);
+    expect(assemblyDefaults.supports.filter((support) => support.kind === 'purlin')).toHaveLength(
+      0,
+    );
+    expect(one.supports.filter((support) => support.kind === 'purlin')).toHaveLength(
+      1,
+    );
+    expect(two.supports.filter((support) => support.kind === 'purlin')).toHaveLength(
+      2,
+    );
+    expect(three.supports.filter((support) => support.kind === 'purlin')).toHaveLength(
+      3,
+    );
+    expect(three.supports.map((support) => support.id)).toEqual([
+      'support:wall-plate-1',
+      'support:purlin-1',
+      'support:purlin-2',
+      'support:purlin-3',
+    ]);
+    const purlins = three.supports.filter((support) => support.kind === 'purlin');
+    expect(
+      purlinPlacementSegments(three, 140).every((segment) =>
+        purlins.every(
+          (support) =>
+            segment.max <= support.placement.xMm - 141 ||
+            segment.min >= support.placement.xMm + support.section.widthMm + 1,
+        ),
+      ),
+    ).toBe(true);
+    expect(assemblySpecSchema.safeParse(three).success).toBe(true);
+    const { plan } = calculateAssembly(three);
+    expect(plan.joints).toHaveLength(4);
+    expect(plan.joints.map((joint) => joint.stationMm)).toEqual(
+      [...plan.joints.map((joint) => joint.stationMm)].sort((a, b) => a - b),
+    );
+    const purlin = three.supports.find(
+      (support) => support.id === 'support:purlin-2',
+    )!;
+    const clamped = clampPurlinPlacement(three, purlin.id, 2000);
+    expect(clamped).not.toBe(2000);
+    const moved = structuredClone(three);
+    moved.supports.find((support) => support.id === purlin.id)!.placement.xMm =
+      clamped;
+    expect(assemblySpecSchema.safeParse(moved).success).toBe(true);
+  });
+  it('does not add a purlin when there is no free segment', () => {
     const short = structuredClone(assemblyDefaults);
     short.roof.runMm = 200;
     expect(() => addPurlin(short)).toThrow('no_purlin_space');

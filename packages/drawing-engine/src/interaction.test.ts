@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { fitDrawing, screenToWorld, snapPosition } from './index';
+import {
+  clampViewport,
+  fitDrawing,
+  screenToWorld,
+  snapPosition,
+  valueFromAxisDrag,
+  viewportPoint,
+} from './index';
 describe('canonical drag coordinates', () => {
   it.each([0.5, 1, 2.5])(
     'round-trips screen/world coordinates at scale %s including offsets and rotated matrices',
@@ -39,4 +46,38 @@ describe('canonical drag coordinates', () => {
       ),
     ).toThrow();
   });
+});
+it('maps a projected handle axis to canonical values and keeps camera state separate', () => {
+  expect(
+    valueFromAxisDrag({
+      startValueMm: 4000,
+      pointerStart: { x: 100, y: 100 },
+      pointerCurrent: { x: 160, y: 130 },
+      axisStart: { x: 0, y: 0 },
+      axisEnd: { x: 200, y: 100 },
+      axisLengthMm: 1000,
+    }),
+  ).toBeCloseTo(4300, 10);
+  expect(clampViewport({ zoom: 99, panX: 10, panY: -5 })).toEqual({
+    zoom: 3,
+    panX: 10,
+    panY: -5,
+  });
+  expect(
+    viewportPoint(
+      { x: 100, y: 100 },
+      { zoom: 2, panX: 10, panY: -20 },
+      { width: 400, height: 300 },
+    ),
+  ).toEqual({ x: 10, y: 30 });
+  expect(() =>
+    valueFromAxisDrag({
+      startValueMm: 1,
+      pointerStart: { x: 0, y: 0 },
+      pointerCurrent: { x: 1, y: 1 },
+      axisStart: { x: 0, y: 0 },
+      axisEnd: { x: 0, y: 0 },
+      axisLengthMm: 1,
+    }),
+  ).toThrow('invalid_drag_axis');
 });

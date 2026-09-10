@@ -406,21 +406,79 @@ export function purlinRange(
     max: spec.roof.runMm - spec.ridge.thicknessMm / 2 - widthMm - 1,
   };
 }
-/** UI proof is one optional purlin; the solver resolves any non-overlapping support list. */
+/** Legal left-face intervals for a purlin, excluding existing intermediate supports. */
+export function purlinPlacementSegments(
+  spec: AssemblySpec,
+  widthMm: number,
+  excludeSupportId?: string,
+): { min: number; max: number }[] {
+  const range = purlinRange(spec, widthMm);
+  const supports = spec.supports
+    .filter(
+      (support) =>
+        support.kind === 'purlin' && support.id !== excludeSupportId,
+    )
+    .sort((a, b) => a.placement.xMm - b.placement.xMm);
+  const segments: { min: number; max: number }[] = [];
+  let cursor = range.min;
+  for (const support of supports) {
+    const beforeSupport = Math.min(
+      range.max,
+      support.placement.xMm - widthMm - 1,
+    );
+    if (beforeSupport >= cursor) segments.push({ min: cursor, max: beforeSupport });
+    cursor = Math.max(cursor, support.placement.xMm + support.section.widthMm + 1);
+  }
+  if (cursor <= range.max) segments.push({ min: cursor, max: range.max });
+  return segments;
+}
+/** Clamps an interaction-only purlin move to the nearest legal free segment. */
+export function clampPurlinPlacement(
+  spec: AssemblySpec,
+  supportId: string,
+  proposedMm: number,
+): number {
+  const support = spec.supports.find(
+    (candidate) => candidate.id === supportId && candidate.kind === 'purlin',
+  );
+  if (!support || !Number.isFinite(proposedMm))
+    throw new RangeError('invalid_purlin_placement');
+  const segments = purlinPlacementSegments(
+    spec,
+    support.section.widthMm,
+    supportId,
+  );
+  if (!segments.length) throw new RangeError('no_purlin_space');
+  return segments
+    .map((segment) => Math.max(segment.min, Math.min(segment.max, proposedMm)))
+    .reduce((closest, candidate) =>
+      Math.abs(candidate - proposedMm) < Math.abs(closest - proposedMm)
+        ? candidate
+        : closest,
+    );
+}
+/** UI and templates share sequential, non-overlapping intermediate supports. */
 export function addPurlin(spec: AssemblySpec): AssemblySpec {
   assemblySpecSchema.parse(spec);
-  if (spec.supports.some((s) => s.kind === 'purlin')) return spec;
   const widthMm = 140,
-    range = purlinRange(spec, widthMm);
-  if (range.max < range.min) throw new RangeError('no_purlin_space');
+    segments = purlinPlacementSegments(spec, widthMm);
+  if (!segments.length) throw new RangeError('no_purlin_space');
+  const range = segments.reduce((largest, segment) =>
+    segment.max - segment.min > largest.max - largest.min ? segment : largest,
+  );
   const wall = spec.supports.find((s) => s.kind === 'wall-plate')!;
   const seat = Math.min(90, seatLength(wall, spec.roof.pitchDeg));
+  const existingNumbers = spec.supports.flatMap((support) => {
+    const match = /^support:purlin-(\d+)$/.exec(support.id);
+    return match ? [Number(match[1])] : [];
+  });
+  const nextNumber = Math.max(0, ...existingNumbers) + 1;
   const next: AssemblySpec = {
     ...spec,
     supports: [
       ...spec.supports,
       {
-        id: 'support:purlin-1',
+        id: `support:purlin-${nextNumber}`,
         kind: 'purlin',
         section: { widthMm, heightMm: 180 },
         placement: {

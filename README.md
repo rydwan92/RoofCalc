@@ -15,13 +15,13 @@ npx pnpm@10.15.1 dev
 
 Frontend: http://127.0.0.1:5173. API: http://127.0.0.1:3001/api/health. Przy globalnym pnpm można używać bezpośrednio `pnpm`.
 
-## Szybkie i Kreator — model 4.0.0
+## Szybkie i Kreator — model 5.0.0
 
 **Szybkie:** wpisz rzut do osi kalenicy, kąt połaci i okap. Wyniki oraz mały rysunek aktualizują się lokalnie. „Więcej ustawień” otwiera przekrój krokwi, murłatę, siedzisko i kalenicę. Dostępne są plan trasowania i przejście do Kreatora bez utraty dokładności lub podpór.
 
-**Kreator:** domyślnie pokazuje reaktywny, aksonometryczny szkielet dachu dwuspadowego: murłaty, kalenicę, powtarzalne pary krokwi i opcjonalną płatew. Długość budynku, rozstaw, tryb rozstawu, rzut, kąt i okap aktualizują od razu szkielet oraz wspólny wynik fabrication. Widok „Krokiew” zachowuje dokładny profil, inspector i detal zaciosu. Na telefonie narzędzia tworzą pasek, a właściwości otwierają dolny panel.
+**Kreator:** domyślnie pokazuje interaktywny, aksonometryczny szkielet z pełnymi 2.5D bryłami drewna. Każda krokiew ma fizyczny identyfikator i wskazuje wspólny prototyp produkcyjny K1. Uchwyty na szkielecie zmieniają kąt/wysokość kalenicy, rozpiętość i długość budynku; płatwie przesuwają się po połaci. Pary krokwi, zaciosy i wyniki fabrication aktualizują się z tego samego modelu. Undo/Redo, pan, zoom i Fit nie zmieniają geometrii poza świadomą edycją.
 
-**Płatew:** dodaj jedną podporę, wpisz pozycję od lewego lica murłaty albo przeciągnij ją myszą/palcem. Drag przyciąga do siatki i punktów odniesienia, ogranicza zakres i pokazuje aktualny wymiar. Strzałki przesuwają o 1 mm, Shift+strzałka o 10 mm. Esc anuluje gest. Inspector przyjmuje dokładne wartości bez przyciągania. Można zmienić szerokość, wysokość oraz sterować zaciosem przez siedzisko albo głębokość. Podpora automatycznie dopasowuje wysokość osadzenia do krokwi.
+**Płatwie:** dodaj kolejne podpory P1, P2, P3… tak długo, jak istnieje legalny odstęp. Każdą wybierzesz, przesuniesz uchwytem na szkielecie lub wpiszesz dokładną pozycję od lica murłaty. Drag przyciąga do 10 mm, nie pozwala nakładać podpór i można go anulować przez Esc. Można zmienić szerokość, wysokość oraz sterować zaciosem przez siedzisko albo głębokość.
 
 Płatew jest elementem domeny: zmiana położenia aktualizuje przecięcia, rzeczywisty wycięty profil, punkty trasowania i rysunek. Jej ruch nie zmienia długości całej krokwi przy stałych końcach. Datums mają semantyczne identyfikatory; A/B/C… są tylko generowanymi etykietami. Plan produkcyjny jest strukturą danych tłumaczoną przez UI na PL/EN. Jednostki mm/cm/m nie zmieniają geometrii.
 

@@ -60,7 +60,7 @@ describe('dual-mode parametric workbench', () => {
     builder();
     add();
     expect(
-      container.querySelector('[data-entity="skeleton:support:purlin-1:left"]'),
+      container.querySelector('[data-entity="instance:purlin-1:left"]'),
     ).toBeTruthy();
     rafterView();
     const before = container
@@ -111,7 +111,7 @@ describe('dual-mode parametric workbench', () => {
     builder();
     add();
     rafterView();
-    fireEvent.keyDown(canvasButton('Zacios · Płatew'), { key: 'Enter' });
+    fireEvent.keyDown(canvasButton('Zacios · Płatew P1'), { key: 'Enter' });
     expect(screen.getByTestId('detail-drawing')).toBeTruthy();
     expect(input('Pozycja od lica murłaty')).toBeTruthy();
     enter('Długość siedziska', '100');
@@ -169,14 +169,14 @@ describe('dual-mode parametric workbench', () => {
     add();
     rafterView();
     enter('Pozycja od lica murłaty', '2000');
-    fireEvent.keyDown(canvasButton('Płatew'), {
+    fireEvent.keyDown(canvasButton('Płatew P1'), {
       key: 'ArrowRight',
       shiftKey: true,
     });
     expect(purlin().placement.xMm).toBe(2010);
     const range = purlinRange(useAssembly.getState().spec, 140);
     enter('Pozycja od lica murłaty', String(range.max));
-    fireEvent.keyDown(canvasButton('Płatew'), { key: 'ArrowRight' });
+    fireEvent.keyDown(canvasButton('Płatew P1'), { key: 'ArrowRight' });
     expect(purlin().placement.xMm).toBe(range.max);
   });
   it('toggles toolbox/inspector/dimensions and translates the complete new workflow', async () => {
@@ -251,7 +251,7 @@ describe('dual-mode parametric workbench', () => {
         pointerType,
         button: 0,
       };
-      fireEvent.pointerDown(canvasButton('Płatew'), down);
+      fireEvent.pointerDown(canvasButton('Płatew P1'), down);
       fireEvent.pointerMove(drawing, {
         ...down,
         clientX: down.clientX + 300 * projection.scale * 0.75,
@@ -261,7 +261,7 @@ describe('dual-mode parametric workbench', () => {
       expect(input('Pozycja od lica murłaty').value).toBe('2300');
       fireEvent.pointerCancel(drawing, down);
       expect(purlin().placement.xMm).toBe(2000);
-      fireEvent.pointerDown(canvasButton('Płatew'), down);
+      fireEvent.pointerDown(canvasButton('Płatew P1'), down);
       fireEvent.pointerMove(drawing, {
         ...down,
         clientX: down.clientX + 500 * projection.scale * 0.75,
@@ -278,8 +278,8 @@ describe('dual-mode parametric workbench', () => {
       container.querySelectorAll('[data-entity^="instance:rafter-pair"]').length;
     const ridge = () =>
       container
-        .querySelector('[data-entity="skeleton:ridge"] .a-skeleton-line')!
-        .getAttribute('y1');
+        .querySelector('[data-entity="skeleton:ridge"] .a-skeleton-face')!
+        .getAttribute('points');
     const beforeCount = rafterCount();
     const beforeRidge = ridge();
     const beforeStock = screen.getByTestId('stock-length').textContent;
@@ -300,7 +300,147 @@ describe('dual-mode parametric workbench', () => {
     expect(screen.getByTestId('stock-length').textContent).not.toBe(beforeStock);
     add();
     expect(
-      container.querySelector('[data-entity="skeleton:support:purlin-1:right"]'),
+      container.querySelector('[data-entity="instance:purlin-1:right"]'),
     ).toBeTruthy();
+  });
+  it('opens a selected physical rafter instance in the shared fabrication view', () => {
+    const { container } = render(<App />);
+    builder();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Krokiew #4 - lewa' }),
+    );
+    expect(container.querySelectorAll('.kind-rafter.is-selected')).toHaveLength(1);
+    expect(screen.getByText('rafter-pair-4:left')).toBeTruthy();
+    expect(screen.getByText('Krokiew K1')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Otwórz element' }));
+    expect(screen.getByTestId('assembly-drawing')).toBeTruthy();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Wróć do szkieletu' }),
+    );
+    expect(screen.getByTestId('skeleton-drawing')).toBeTruthy();
+  });
+  it('adds and selects multiple independently resolved purlins in the skeleton', () => {
+    const { container } = render(<App />);
+    builder();
+    add();
+    add();
+    expect(screen.getByRole('button', { name: 'Płatew P2' })).toBeTruthy();
+    expect(
+      container.querySelector('[data-entity="instance:purlin-2:left"]'),
+    ).toBeTruthy();
+    expect(
+      container.querySelector('[data-entity="instance:purlin-2:right"]'),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Płatew P2' }));
+    expect(input('Pozycja od lica murłaty')).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: 'Właściwości elementu Płatew P2 −' }),
+    ).toBeTruthy();
+    const purlinBefore =
+      useAssembly.getState().template.intermediateSupports[1]!.placement.xMm;
+    fireEvent.keyDown(
+      screen.getAllByRole('slider', {
+        name: 'Przeciągnij, aby przesunąć płatew',
+      })[1]!,
+      { key: 'ArrowRight' },
+    );
+    expect(
+      useAssembly.getState().template.intermediateSupports[1]!.placement.xMm,
+    ).toBe(purlinBefore + 10);
+    expect(useAssembly.getState().template.intermediateSupports).toHaveLength(2);
+  });
+  it('adjusts skeleton handles through canonical history while camera controls leave geometry unchanged', () => {
+    render(<App />);
+    builder();
+    const before = structuredClone(useAssembly.getState().template);
+    const pitchHandle = screen.getByRole('slider', {
+      name: 'Przeciągnij, aby zmienić kąt połaci',
+    });
+    fireEvent.keyDown(pitchHandle, { key: 'ArrowUp' });
+    expect(useAssembly.getState().template.pitchDeg).toBe(35.5);
+    expect(
+      (screen.getByRole('button', { name: 'Cofnij' }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Cofnij' }));
+    expect(useAssembly.getState().template).toEqual(before);
+    fireEvent.click(screen.getByRole('button', { name: 'Ponów' }));
+    expect(useAssembly.getState().template.pitchDeg).toBe(35.5);
+    fireEvent.keyDown(
+      screen.getByRole('slider', {
+        name: 'Przeciągnij, aby zmienić rozpiętość',
+      }),
+      { key: 'ArrowRight' },
+    );
+    fireEvent.keyDown(
+      screen.getByRole('slider', {
+        name: 'Przeciągnij, aby zmienić długość budynku',
+      }),
+      { key: 'ArrowUp', shiftKey: true },
+    );
+    expect(useAssembly.getState().template.halfRunMm).toBe(4010);
+    expect(useAssembly.getState().template.buildingLengthMm).toBe(8100);
+    const afterEdit = structuredClone(useAssembly.getState().template);
+    fireEvent.click(screen.getByRole('button', { name: 'Powiększ rysunek' }));
+    expect(screen.getByText('120%')).toBeTruthy();
+    expect(useAssembly.getState().template).toEqual(afterEdit);
+    fireEvent.click(screen.getByRole('button', { name: 'Dopasuj' }));
+    expect(screen.getByText('100%')).toBeTruthy();
+  });
+  it('drags a skeleton purlin through one canonical transaction and restores it on cancellation', () => {
+    class TestPointerEvent extends MouseEvent {
+      pointerId: number;
+      pointerType: string;
+      constructor(type: string, init: PointerEventInit = {}) {
+        super(type, init);
+        this.pointerId = init.pointerId ?? 1;
+        this.pointerType = init.pointerType ?? 'mouse';
+      }
+    }
+    vi.stubGlobal('PointerEvent', TestPointerEvent);
+    const { container } = render(<App />);
+    builder();
+    add();
+    useAssembly.setState({ historyPast: [], historyFuture: [] });
+    const drawing = screen.getByTestId(
+      'skeleton-drawing',
+    ) as unknown as SVGSVGElement;
+    Object.defineProperties(drawing, {
+      getBoundingClientRect: {
+        value: () => ({ left: 0, top: 0, width: 820, height: 570 }),
+      },
+      setPointerCapture: { value: vi.fn() },
+      hasPointerCapture: { value: () => false },
+    });
+    const handle = container.querySelector('[data-handle="purlin"]')!;
+    const circle = handle.querySelector('circle')!;
+    const axis = handle.querySelector('line')!;
+    const start = {
+      x: Number(circle.getAttribute('cx')),
+      y: Number(circle.getAttribute('cy')),
+    };
+    const axisX = Number(axis.getAttribute('x2')) - Number(axis.getAttribute('x1'));
+    const axisY = Number(axis.getAttribute('y2')) - Number(axis.getAttribute('y1'));
+    const axisLength = Math.hypot(axisX, axisY);
+    const before = purlin().placement.xMm;
+    const pointer = { pointerId: 31, pointerType: 'mouse', button: 0 };
+    fireEvent.pointerDown(circle, { ...pointer, clientX: start.x, clientY: start.y });
+    fireEvent.pointerMove(drawing, {
+      ...pointer,
+      clientX: start.x + (axisX / axisLength) * 50,
+      clientY: start.y + (axisY / axisLength) * 50,
+    });
+    expect(purlin().placement.xMm).not.toBe(before);
+    fireEvent.pointerCancel(drawing, pointer);
+    expect(purlin().placement.xMm).toBe(before);
+    expect(useAssembly.getState().historyPast).toHaveLength(0);
+    fireEvent.pointerDown(circle, { ...pointer, clientX: start.x, clientY: start.y });
+    fireEvent.pointerMove(drawing, {
+      ...pointer,
+      clientX: start.x + (axisX / axisLength) * 50,
+      clientY: start.y + (axisY / axisLength) * 50,
+    });
+    fireEvent.pointerUp(drawing, pointer);
+    expect(useAssembly.getState().historyPast).toHaveLength(1);
   });
 });

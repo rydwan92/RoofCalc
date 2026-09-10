@@ -58,7 +58,8 @@
   box-shadow: 0 2px 6px #1d433a20;
 }
 .a-settings,
-.a-units {
+.a-units,
+.a-history {
   display: flex;
   align-items: center;
   gap: 3px;
@@ -67,6 +68,14 @@
   padding-right: 10px;
   border-right: 1px solid var(--a-line);
   margin-right: 5px;
+}
+.a-history {
+  padding-right: 5px;
+  border-right: 1px solid var(--a-line);
+}
+.a-history button:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
 }
 .a-settings button {
   border: 0;
@@ -497,42 +506,108 @@
   font-weight: 700;
   color: var(--a-green);
 }
+.a-skeleton-background {
+  fill: transparent;
+  cursor: grab;
+  touch-action: none;
+}
+.a-skeleton-background:active {
+  cursor: grabbing;
+}
+.a-handle-layer {
+  touch-action: none;
+}
+.a-skeleton-handle {
+  cursor: grab;
+  touch-action: none;
+}
+.a-skeleton-handle:active {
+  cursor: grabbing;
+}
+.a-handle-axis {
+  stroke: #168477;
+  stroke-width: 1.5px;
+  stroke-dasharray: 4 4;
+  opacity: 0.7;
+}
+.a-skeleton-handle circle {
+  fill: #fffdf5;
+  stroke: #087d71;
+  stroke-width: 3px;
+  filter: drop-shadow(0 1px 2px #18362b55);
+}
+.a-skeleton-handle.is-active circle,
+.a-skeleton-handle:hover circle {
+  fill: #c9e6c7;
+  stroke-width: 4px;
+}
+.a-handle-chip rect {
+  fill: #173d35;
+  stroke: #7bc3a1;
+  stroke-width: 1px;
+}
+.a-handle-chip text {
+  fill: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
 .a-skeleton-member {
   cursor: pointer;
 }
-.a-skeleton-hit {
-  stroke: transparent;
-  stroke-width: 20px;
+.a-skeleton-face {
+  stroke: #593e27;
+  stroke-width: 0.8px;
+  stroke-linejoin: round;
+  transition: fill 160ms ease, stroke 160ms ease, stroke-width 160ms ease;
 }
-.a-skeleton-line {
-  fill: none;
-  stroke-linecap: round;
-  transition: stroke-width 160ms ease, stroke 160ms ease;
+.a-skeleton-member.kind-rafter .face-bottom,
+.a-skeleton-member.kind-rafter .face-side-a,
+.a-skeleton-member.kind-rafter .face-side-b {
+  fill: #b87949;
 }
-.a-skeleton-member.kind-rafter .a-skeleton-line {
-  stroke: #b27445;
-  stroke-width: 3px;
+.a-skeleton-member.kind-rafter .face-top,
+.a-skeleton-member.kind-rafter .face-start,
+.a-skeleton-member.kind-rafter .face-end {
+  fill: #d49a62;
 }
-.a-skeleton-member.kind-wall-plate .a-skeleton-line {
-  stroke: #466b58;
-  stroke-width: 7px;
+.a-skeleton-member.kind-wall-plate .face-bottom,
+.a-skeleton-member.kind-wall-plate .face-side-a,
+.a-skeleton-member.kind-wall-plate .face-side-b {
+  fill: #49695d;
 }
-.a-skeleton-member.kind-ridge .a-skeleton-line {
-  stroke: #415b75;
-  stroke-width: 6px;
+.a-skeleton-member.kind-wall-plate .face-top,
+.a-skeleton-member.kind-wall-plate .face-start,
+.a-skeleton-member.kind-wall-plate .face-end {
+  fill: #719184;
 }
-.a-skeleton-member.kind-purlin .a-skeleton-line {
-  stroke: #93613c;
-  stroke-width: 5px;
-  stroke-dasharray: 10 4;
+.a-skeleton-member.kind-ridge .face-bottom,
+.a-skeleton-member.kind-ridge .face-side-a,
+.a-skeleton-member.kind-ridge .face-side-b {
+  fill: #4d657d;
 }
-.a-skeleton-member.is-selected .a-skeleton-line,
-.a-skeleton-member:hover .a-skeleton-line {
-  stroke: #127b70;
-  stroke-width: 8px;
+.a-skeleton-member.kind-ridge .face-top,
+.a-skeleton-member.kind-ridge .face-start,
+.a-skeleton-member.kind-ridge .face-end {
+  fill: #8397aa;
 }
-.a-skeleton-member.kind-rafter.is-selected .a-skeleton-line {
-  stroke-width: 4px;
+.a-skeleton-member.kind-purlin .face-bottom,
+.a-skeleton-member.kind-purlin .face-side-a,
+.a-skeleton-member.kind-purlin .face-side-b {
+  fill: #765234;
+}
+.a-skeleton-member.kind-purlin .face-top,
+.a-skeleton-member.kind-purlin .face-start,
+.a-skeleton-member.kind-purlin .face-end {
+  fill: #ae7b4d;
+}
+.a-skeleton-member.is-selected .a-skeleton-face,
+.a-skeleton-member:hover .a-skeleton-face {
+  stroke: #087d71;
+  stroke-width: 2.4px;
+}
+.a-skeleton-member.is-selected .face-top,
+.a-skeleton-member:hover .face-top {
+  fill: #b7d9b9;
 }
 .a-skeleton-metrics {
   display: grid;
@@ -608,6 +683,9 @@
   border-radius: 8px;
   background: #ffffffed;
 }
+.a-skeleton .a-canvas-controls {
+  bottom: 108px;
+}
 .a-canvas-controls button {
   display: grid;
   place-items: center;
@@ -673,6 +751,9 @@
 }
 .a-detail-lens {
   margin: 20px -8px 0;
+}
+.a-instance-facts .a-button {
+  width: 100%;
 }
 .a-detail-lens h3 {
   font-size: 12px;
@@ -890,6 +971,9 @@
   }
   .a-skeleton-metrics dd {
     font-size: 12px;
+  }
+  .a-skeleton .a-canvas-controls {
+    bottom: 106px;
   }
   .a-toolbox.is-collapsed .a-tool span {
     display: inline;

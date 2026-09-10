@@ -80,3 +80,58 @@ it('converts the controlling joint parameter without changing the notch', () => 
     10,
   );
 });
+it('undoes and redoes a committed numeric template edit without recording display state', () => {
+  const before = useAssembly.getState().template;
+  useAssembly.getState().setField('roof.pitchDeg', '42');
+  expect(useAssembly.getState().historyPast).toHaveLength(1);
+  useAssembly.getState().setUnit('m');
+  expect(useAssembly.getState().historyPast).toHaveLength(1);
+  useAssembly.getState().undo();
+  expect(useAssembly.getState().template).toEqual(before);
+  expect(useAssembly.getState().historyFuture).toHaveLength(1);
+  useAssembly.getState().redo();
+  expect(useAssembly.getState().template.pitchDeg).toBe(42);
+});
+it('updates canonical millimetres directly for drawing handles without display-unit conversion', () => {
+  useAssembly.getState().setUnit('m');
+  useAssembly.getState().setCanonicalField('roof.runMm', 4210.5);
+  expect(useAssembly.getState().template.halfRunMm).toBe(4210.5);
+  expect(useAssembly.getState().spec.roof.runMm).toBe(4210.5);
+});
+it('coalesces a purlin gesture and restores its start state when cancelled', () => {
+  useAssembly.getState().add();
+  useAssembly.setState({ historyPast: [], historyFuture: [] });
+  const start = useAssembly.getState().template.intermediateSupports[0]!.placement.xMm;
+  useAssembly.getState().beginTransaction();
+  useAssembly.getState().movePurlin('support:purlin-1', start + 100);
+  useAssembly.getState().movePurlin('support:purlin-1', start + 250);
+  expect(useAssembly.getState().historyPast).toHaveLength(0);
+  useAssembly.getState().commitTransaction();
+  expect(useAssembly.getState().historyPast).toHaveLength(1);
+  useAssembly.getState().undo();
+  expect(
+    useAssembly.getState().template.intermediateSupports[0]!.placement.xMm,
+  ).toBe(start);
+  useAssembly.getState().redo();
+  expect(
+    useAssembly.getState().template.intermediateSupports[0]!.placement.xMm,
+  ).toBe(start + 250);
+  useAssembly.getState().beginTransaction();
+  useAssembly.getState().movePurlin('support:purlin-1', start + 300);
+  useAssembly.getState().cancelTransaction();
+  expect(
+    useAssembly.getState().template.intermediateSupports[0]!.placement.xMm,
+  ).toBe(start + 250);
+});
+it('undoes and redoes adding and removing independently allocated purlins', () => {
+  useAssembly.getState().add();
+  useAssembly.getState().add();
+  expect(useAssembly.getState().template.intermediateSupports).toHaveLength(2);
+  useAssembly.getState().undo();
+  expect(useAssembly.getState().template.intermediateSupports).toHaveLength(1);
+  useAssembly.getState().redo();
+  useAssembly.getState().remove('support:purlin-2');
+  expect(useAssembly.getState().template.intermediateSupports).toHaveLength(1);
+  useAssembly.getState().undo();
+  expect(useAssembly.getState().template.intermediateSupports).toHaveLength(2);
+});

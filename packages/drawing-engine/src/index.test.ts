@@ -4,7 +4,9 @@ import {
   clipPolygon,
   fitDrawing,
   layoutDimension,
+  createTimberPrismFaces,
   projectAxonometric,
+  projectTimberPrismFaces,
 } from './index';
 
 it.each([2500, 13000])('fits %s mm without changing proportions', (length) => {
@@ -68,4 +70,44 @@ it('projects roof world axes into a stable axonometric plane', () => {
   expect(() => projectAxonometric({ x: NaN, y: 0, z: 0 })).toThrow(
     'invalid_projection',
   );
+});
+
+it('derives deterministic projected solid faces from a timber axis and section', () => {
+  const faces = createTimberPrismFaces(
+    {
+      from: { x: -2000, y: 0, z: 0 },
+      to: { x: 0, y: 0, z: 1400 },
+    },
+    { widthMm: 80, depthMm: 200 },
+    'along-roof',
+  );
+  expect(faces.map((face) => face.id)).toEqual([
+    'bottom',
+    'side-a',
+    'side-b',
+    'top',
+    'start',
+    'end',
+  ]);
+  expect(
+    faces
+      .flatMap((face) => face.points)
+      .every((point) => Number.isFinite(point.x)),
+  ).toBe(true);
+  const projected = projectTimberPrismFaces(faces);
+  expect(projected).toHaveLength(6);
+  expect(projected.map((face) => face.id)).toEqual(
+    projectTimberPrismFaces(faces).map((face) => face.id),
+  );
+  expect(boundsFromPoints(projected.flatMap((face) => face.projected))).toMatchObject({
+    minX: expect.any(Number),
+    maxY: expect.any(Number),
+  });
+  expect(() =>
+    createTimberPrismFaces(
+      { from: { x: 0, y: 0, z: 0 }, to: { x: 0, y: 0, z: 0 } },
+      { widthMm: 80, depthMm: 200 },
+      'along-roof',
+    ),
+  ).toThrow('invalid_prism_axis');
 });

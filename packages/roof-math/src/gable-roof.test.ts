@@ -3,7 +3,12 @@ import type { GableRoofTemplateSpec } from '@cieslacalc/timber-model';
 import { assemblyDefaults, calculateAssembly } from './assembly';
 import {
   assemblyFromGableTemplate,
+  clampGableHalfRunMm,
+  clampGablePitchDeg,
   createGableRoofSkeleton,
+  gablePitchDegFromRidgeHeight,
+  gableRidgeHeightMm,
+  minimumGableHalfRunMm,
   resolveGableRoofTemplate,
   resolveRafterSpacing,
 } from './gable-roof';
@@ -25,6 +30,30 @@ function template(): GableRoofTemplateSpec {
 }
 
 describe('gable roof template', () => {
+  it('round-trips ridge height and pitch through pure constrained gable helpers', () => {
+    const rise = gableRidgeHeightMm(4000, 35);
+    expect(gablePitchDegFromRidgeHeight(4000, rise)).toBeCloseTo(35, 10);
+    expect(clampGablePitchDeg(-10)).toBe(1);
+    expect(clampGablePitchDeg(99)).toBe(80);
+    expect(() => gablePitchDegFromRidgeHeight(4000, -1)).toThrow(
+      'invalid_ridge_height',
+    );
+  });
+  it('clamps half-run edits to the furthest support and ridge envelope', () => {
+    const spec = template();
+    spec.intermediateSupports = [
+      {
+        ...structuredClone(spec.wallPlate),
+        id: 'support:purlin-1',
+        kind: 'purlin',
+        section: { widthMm: 160, heightMm: 180 },
+        placement: { mode: 'horizontal-from-wall', xMm: 1800 },
+      },
+    ];
+    expect(minimumGableHalfRunMm(spec)).toBe(1981);
+    expect(clampGableHalfRunMm(spec, 100)).toBe(1981);
+    expect(clampGableHalfRunMm(spec, 4200.5)).toBe(4200.5);
+  });
   it('equalizes stations between both building ends in fit-evenly mode', () => {
     const spacing = resolveRafterSpacing(8100, {
       mode: 'fit-evenly',
@@ -84,12 +113,26 @@ describe('gable roof template', () => {
     expect(skeleton.members.filter((member) => member.kind === 'purlin')).toHaveLength(
       2,
     );
+    const rafters = skeleton.members.filter((member) => member.kind === 'rafter');
+    expect(new Set(rafters.map((member) => member.id)).size).toBe(rafters.length);
+    expect(new Set(rafters.map((member) => member.selectionId)).size).toBe(
+      rafters.length,
+    );
+    expect(new Set(rafters.map((member) => member.prototypeId))).toEqual(
+      new Set(['member:rafter-1']),
+    );
+    expect(rafters[6]).toMatchObject({
+      id: 'instance:rafter-pair-4:left',
+      side: 'left',
+      stationMm: 2209.090909090909,
+      section: spec.rafterSection,
+    });
     expect(skeleton.members.find((member) => member.kind === 'ridge')?.from.z).toBeCloseTo(
       skeleton.ridgeHeightMm,
       10,
     );
     expect(
-      skeleton.members.find((member) => member.id === 'skeleton:support:purlin-1:left')
+      skeleton.members.find((member) => member.id === 'instance:purlin-1:left')
         ?.from.z,
     ).toBeCloseTo(1800 * Math.tan((35 * Math.PI) / 180), 10);
   });

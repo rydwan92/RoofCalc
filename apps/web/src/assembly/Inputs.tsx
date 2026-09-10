@@ -62,6 +62,8 @@ export function NumberField({
           autoComplete="off"
           value={display}
           aria-invalid={invalid}
+          onFocus={() => state.beginTransaction()}
+          onBlur={() => state.commitTransaction()}
           onChange={(e) => state.setField(field, e.target.value)}
         />
         <span>{unit}</span>

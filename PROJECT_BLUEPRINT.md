@@ -1297,13 +1297,40 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
-> Updated 2026-09-10. Iteration 004 is implemented, visually verified and promoted into the root repository.
+> Updated 2026-09-10. Iteration 005 is implemented and fully validated in the root repository.
 
-**Iteration:** `004 — reactive gable roof skeleton + faster dual-mode UX`
+**Iteration:** `005 — interactive solid skeleton + multi-purlin Builder`
 
-**Status:** `IMPLEMENTED — VALIDATED — PUSHED`
+**Status:** `IMPLEMENTED — VALIDATED`
 
 **Working repository:** `C:/xampp/htdocs/RoofCalc`, origin `https://github.com/rydwan92/RoofCalc.git`. The former nested gitlink `RoofCalc/` was promoted into this root on 2026-09-10 only after matching hashes for V4 source and documentation were verified, then removed.
+
+**Iteration 005 completed:**
+
+- `SkeletonMember3D` now represents a unique physical placement with `id`, shared `prototypeId`, semantic selection ID, real section, side and optional building station. A selected rafter instance highlights only that physical member while the Inspector identifies its common K1 fabrication prototype.
+- `drawing-engine` provides pure rectangular timber-prism faces, stable axonometric face ordering, UI-only viewport transforms and a generic projected-axis drag mapper. The Skeleton SVG draws true 2.5D timber faces for rafters, wall plates, purlins and ridge without Three.js.
+- Builder exposes explicit ridge/pitch, span, building-length and purlin handles. They write back only canonical template values, snap to 0.5 degrees or 10 mm as appropriate, preserve exact numeric inputs and refresh fabrication through the unchanged common assembly solver.
+- Added legal free-segment resolution for dynamic intermediate supports. `+ Płatew` can allocate P1/P2/P3... with stable IDs while space remains; direct moves clamp to legal non-overlapping intervals and all resulting notches/stations remain ordered.
+- Added bounded 40-snapshot canonical history with begin/commit/cancel transactions. Drag frames coalesce into one undo step; invalid drafts, unit/language/view changes and viewport motion are excluded. Undo/Redo has accessible toolbar buttons and Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z and Ctrl/Cmd+Y shortcuts. Reset deliberately returns to the example and clears history.
+- Skeleton supports native non-passive wheel zoom, background pan and Fit. Camera state remains local to the component and never affects construction data. Keyboard arrows provide exact alternatives for all direct handles.
+- Contextual flow now opens a selected physical rafter in the fabrication view and offers a visible return to Skeleton. The Szkielet/Krokiew control remains as a compact fallback only. Quick Calc remains limited to the fast three-input path.
+- Added `docs/SKELETON_INTERACTION_GEOMETRY.md` and updated README/product copy to Model 5.0.
+
+**Iteration 005 validation:**
+
+- `npx pnpm@10.15.1 typecheck` passed.
+- `npx pnpm@10.15.1 test` passed: 171 tests across 22 files.
+- `npx pnpm@10.15.1 lint` passed after removal of one unused UI binding.
+- `npx pnpm@10.15.1 build` passed for Vite web and tsup API.
+- `git diff --check` passed; only Windows LF/CRLF informational warnings were emitted.
+- Browser QA at desktop: solid skeleton displays readable physical timber, ridge drag changed 35 degrees to 47.5 degrees and Undo restored 35 degrees, P2 drag changed its one canonical support position, span and building-length handles updated live, and wheel zoom changed 100% to 112% without page scrolling. Background pan changed only camera pixels and left Undo disabled/template unchanged.
+- Browser QA at 360 px: Quick remains compact, Builder solid skeleton and all three initial handles remain visible, bottom inspector can collapse, and document width did not exceed viewport width.
+
+**Iteration 005 limitations:**
+
+- Pinch-to-zoom was not added; native touch pointer dragging is covered by simulated pointer tests and requires hardware QA later.
+- The skeleton is intentionally explanatory 2.5D; there are no per-instance fabrication overrides, full 3D CAD, structural capacity claims or additional roof systems.
+- Exact numeric purlin input uses the broad wall-to-ridge interval and reports a local invalid draft if it overlaps a support; direct manipulation clamps to the nearest legal free segment.
 
 **Iteration 004 completed:**
 
@@ -1408,7 +1435,7 @@ If code is temporarily incomplete, explicitly list:
 
 **NEXT ACTION:**
 
-> Work only in `C:/xampp/htdocs/RoofCalc`. After source changes run `npx pnpm@10.15.1 build`, then open `http://localhost/RoofCalc/apps/web/dist/#/calculators/common-rafter` with Ctrl+F5. Do not recreate a nested Git repository or begin Iteration 005 without a new explicit prompt.
+> Perform user-acceptance QA of the V5 Builder on the intended desktop and touch device, especially pinch behavior (not implemented), multi-purlin placement under real job measurements and the production XAMPP URL after build. Fix only evidenced issues. Do not begin Iteration 006 without a new explicit prompt.
 
 ---
 

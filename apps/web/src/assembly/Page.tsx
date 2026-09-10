@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  ArrowLeft,
   Box,
   Columns3,
   House,
@@ -9,10 +10,18 @@ import {
   PanelLeftOpen,
   Plus,
   RotateCcw,
+  Redo2,
   Triangle,
+  Undo2,
   X,
 } from 'lucide-react';
-import { lengthUnits, purlinRange, resolveGableRoofTemplate } from '@cieslacalc/roof-math';
+import {
+  createGableRoofSkeleton,
+  lengthUnits,
+  purlinPlacementSegments,
+  resolveGableRoofTemplate,
+} from '@cieslacalc/roof-math';
+import { formatLength } from '../format';
 import { useAssembly } from './store';
 import {
   GeometryInputs,
@@ -29,20 +38,19 @@ import './styles.css';
 function Toolbox({ result }: { result: Calculation | null }) {
   const state = useAssembly(),
     { t } = useTranslation();
-  const purlin = state.spec.supports.find((s) => s.kind === 'purlin');
-  const range = purlinRange(state.spec, 140);
-  const canAdd = !!result && range.max >= range.min;
+  const canAdd =
+    !!result && purlinPlacementSegments(state.spec, 140).length > 0;
   const selectButton = (id: string, icon: ReactNode, label: string) => (
     <button
       key={id}
       className="a-tool"
-      title={t(`assembly.${label}`)}
-      aria-label={t(`assembly.${label}`)}
-      aria-pressed={state.selected === id}
+      title={label}
+      aria-label={label}
+      aria-pressed={state.selected === id || state.selectedPrototype === id}
       onClick={() => state.select(id)}
     >
       {icon}
-      <span>{t(`assembly.${label}`)}</span>
+      <span>{label}</span>
     </button>
   );
   return (
@@ -64,30 +72,43 @@ function Toolbox({ result }: { result: Calculation | null }) {
       </button>
       <section>
         <h2>{t('assembly.geometry')}</h2>
-        {selectButton('roof', <Triangle size={20} />, 'roof')}
+        {selectButton('roof', <Triangle size={20} />, t('assembly.roof'))}
       </section>
       <section>
         <h2>{t('assembly.timber')}</h2>
-        {selectButton(state.spec.member.id, <Box size={20} />, 'rafter')}
+        {selectButton(
+          state.spec.member.id,
+          <Box size={20} />,
+          t('assembly.rafter'),
+        )}
       </section>
       <section>
         <h2>{t('assembly.supports')}</h2>
-        {state.spec.supports.map((s) =>
-          selectButton(s.id, <Layers3 size={20} />, s.kind),
+        {state.spec.supports.map((support) => {
+          const number = /^support:purlin-(\d+)$/.exec(support.id)?.[1];
+          return selectButton(
+            support.id,
+            <Layers3 size={20} />,
+            number
+              ? `${t('assembly.purlin')} P${number}`
+              : t(`assembly.${support.kind}`),
+          );
+        })}
+        <button
+          className="a-tool a-add"
+          aria-label={t('assembly.addPurlin')}
+          title={canAdd ? t('assembly.addPurlin') : t('assembly.noSpace')}
+          disabled={!canAdd}
+          onClick={state.add}
+        >
+          <Plus size={20} />
+          <span>{t('assembly.addPurlin')}</span>
+        </button>
+        {selectButton(
+          state.spec.ridge.id,
+          <Columns3 size={20} />,
+          t('assembly.ridge'),
         )}
-        {!purlin && (
-          <button
-            className="a-tool a-add"
-            aria-label={t('assembly.addPurlin')}
-            title={canAdd ? t('assembly.addPurlin') : t('assembly.noSpace')}
-            disabled={!canAdd}
-            onClick={state.add}
-          >
-            <Plus size={20} />
-            <span>{t('assembly.addPurlin')}</span>
-          </button>
-        )}
-        {selectButton(state.spec.ridge.id, <Columns3 size={20} />, 'ridge')}
       </section>
     </aside>
   );
@@ -100,12 +121,23 @@ function Inspector({
   onEnlarge: () => void;
 }) {
   const state = useAssembly(),
-    { t } = useTranslation();
+    { t, i18n } = useTranslation();
   const support = state.spec.supports.find(
     (s) => s.id === state.selected || `joint:${s.id}` === state.selected,
   );
   const isCut =
     state.selected.startsWith('joint:') || state.selected.startsWith('cut:');
+  const rafterInstance =
+    state.selectedPrototype === state.spec.member.id
+      ? createGableRoofSkeleton(state.template).members.find(
+          (member) => member.id === state.selected,
+        )
+      : undefined;
+  const isRafter =
+    state.selected === state.spec.member.id ||
+    state.selectedPrototype === state.spec.member.id;
+  const length = (value: number) =>
+    `${formatLength(value, state.unit, i18n.language)} ${state.unit}`;
   return (
     <aside
       className={`a-inspector ${state.inspectorOpen ? 'is-open' : ''}`}
@@ -127,8 +159,38 @@ function Inspector({
       {state.inspectorOpen && (
         <div className="a-inspector-body">
           {state.selected === 'roof' && <GeometryInputs includeLayout />}
-          {(state.selected === state.spec.member.id ||
-            state.selected === 'cut:eave') && <TimberInputs />}
+          {rafterInstance && (
+            <section className="a-instance-facts">
+              <dl className="a-facts">
+                <div>
+                  <dt>{t('assembly.physicalInstance')}</dt>
+                  <dd>{rafterInstance.id.replace('instance:', '')}</dd>
+                </div>
+                <div>
+                  <dt>{t('assembly.side')}</dt>
+                  <dd>{t(`assembly.${rafterInstance.side}`)}</dd>
+                </div>
+                <div>
+                  <dt>{t('assembly.positionAlongBuilding')}</dt>
+                  <dd>{length(rafterInstance.stationMm ?? 0)}</dd>
+                </div>
+                <div>
+                  <dt>{t('assembly.prototype')}</dt>
+                  <dd>
+                    {t('assembly.rafter')} K
+                    {/-([0-9]+)$/.exec(rafterInstance.prototypeId)?.[1]}
+                  </dd>
+                </div>
+              </dl>
+              <button
+                className="a-button"
+                onClick={() => state.setView('rafter')}
+              >
+                {t('assembly.openMember')}
+              </button>
+            </section>
+          )}
+          {(isRafter || state.selected === 'cut:eave') && <TimberInputs />}
           {(state.selected === state.spec.ridge.id ||
             state.selected === 'cut:ridge') && (
             <NumberField
@@ -182,7 +244,22 @@ export function AssemblyPage() {
     <div
       className={`assembly-app mode-${state.mode}`}
       onKeyDown={(e) => {
-        if (e.key === 'Escape') setFocusId(undefined);
+        if (e.key === 'Escape') {
+          state.cancelTransaction();
+          setFocusId(undefined);
+          return;
+        }
+        if (!(e.ctrlKey || e.metaKey)) return;
+        const key = e.key.toLowerCase();
+        if (key === 'z') {
+          e.preventDefault();
+          if (e.shiftKey) state.redo();
+          else state.undo();
+        }
+        if (key === 'y') {
+          e.preventDefault();
+          state.redo();
+        }
       }}
     >
       <header className="a-header">
@@ -213,6 +290,28 @@ export function AssemblyPage() {
               </button>
             ))}
           </div>
+          {state.mode === 'builder' && (
+            <div className="a-history" role="group" aria-label={t('assembly.history')}>
+              <button
+                className="a-icon"
+                aria-label={t('assembly.undo')}
+                title={t('assembly.undo')}
+                disabled={!state.historyPast.length}
+                onClick={state.undo}
+              >
+                <Undo2 size={18} />
+              </button>
+              <button
+                className="a-icon"
+                aria-label={t('assembly.redo')}
+                title={t('assembly.redo')}
+                disabled={!state.historyFuture.length}
+                onClick={state.redo}
+              >
+                <Redo2 size={18} />
+              </button>
+            </div>
+          )}
           <button
             className="a-icon"
             aria-label={t('assembly.reset')}
@@ -318,6 +417,15 @@ export function AssemblyPage() {
                   >
                     <X size={16} />
                     {t('assembly.back')}
+                  </button>
+                )}
+                {!focusId && state.view === 'rafter' && (
+                  <button
+                    className="a-button a-back"
+                    onClick={() => state.setView('skeleton')}
+                  >
+                    <ArrowLeft size={16} />
+                    {t('assembly.backToSkeleton')}
                   </button>
                 )}
                 {focusId || state.view === 'rafter' ? (

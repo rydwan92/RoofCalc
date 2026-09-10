@@ -18,7 +18,7 @@ import {
   type DrawingDimension,
   type Point,
 } from '@cieslacalc/drawing-engine';
-import { purlinRange } from '@cieslacalc/roof-math';
+import { clampPurlinPlacement, purlinRange } from '@cieslacalc/roof-math';
 import { formatLength } from '../format';
 import { useAssembly } from './store';
 import type { Calculation } from './Inputs';
@@ -40,6 +40,9 @@ export function entityLabel(
   t: (key: string) => string,
 ): string {
   if (id === 'roof') return t('assembly.roof');
+  const instance = /^instance:rafter-pair-(\d+):(left|right)$/.exec(id);
+  if (instance)
+    return `${t('assembly.rafter')} #${instance[1]} - ${t(`assembly.${instance[2]}`)}`;
   if (id === state.spec.member.id) return t('assembly.rafter');
   if (id === state.spec.ridge.id) return t('assembly.ridge');
   if (id === 'cut:ridge') return t('assembly.ridgeCut');
@@ -47,9 +50,12 @@ export function entityLabel(
   const support = state.spec.supports.find(
     (s) => s.id === id || `joint:${s.id}` === id,
   );
-  return support
-    ? `${id.startsWith('joint:') ? `${t('assembly.notch')} · ` : ''}${t(`assembly.${support.kind}`)}`
-    : '';
+  if (!support) return '';
+  const number = /^support:purlin-(\d+)$/.exec(support.id)?.[1];
+  const label = number
+    ? `${t('assembly.purlin')} P${number}`
+    : t(`assembly.${support.kind}`);
+  return `${id.startsWith('joint:') ? `${t('assembly.notch')} · ` : ''}${label}`;
 }
 export function AssemblyCanvas({
   result,
@@ -124,7 +130,8 @@ export function AssemblyCanvas({
     const active = drag.current;
     if (!active) return;
     drag.current = null;
-    if (cancel) state.movePurlin(active.id, active.startMm);
+    if (cancel) state.cancelTransaction();
+    else state.commitTransaction();
     setFrozenProjection(null);
     setPreview(null);
     if (svg.current?.hasPointerCapture?.(active.pointerId))
@@ -152,6 +159,7 @@ export function AssemblyCanvas({
     );
     event.preventDefault();
     state.select(id);
+    state.beginTransaction();
     svg.current.focus();
     const mmPerPixel = 1 / (Math.hypot(matrix.a, matrix.b) * projection.scale);
     drag.current = {
@@ -181,10 +189,11 @@ export function AssemblyCanvas({
       active.mmPerPixel,
       [(active.range.min + active.range.max) / 2],
     );
-    state.movePurlin(active.id, snap.valueMm);
+    const xMm = clampPurlinPlacement(state.spec, active.id, snap.valueMm);
+    state.movePurlin(active.id, xMm);
     setPreview({
       id: active.id,
-      xMm: snap.valueMm,
+      xMm,
       kind: snap.kind,
       stepMm: snap.stepMm,
     });
@@ -208,12 +217,17 @@ export function AssemblyCanvas({
       const range = purlinRange(state.spec, support.section.widthMm);
       state.movePurlin(
         id,
-        Math.max(
-          range.min,
-          Math.min(
-            range.max,
-            support.placement.xMm +
-              (event.key === 'ArrowRight' ? 1 : -1) * (event.shiftKey ? 10 : 1),
+        clampPurlinPlacement(
+          state.spec,
+          id,
+          Math.max(
+            range.min,
+            Math.min(
+              range.max,
+              support.placement.xMm +
+                (event.key === 'ArrowRight' ? 1 : -1) *
+                  (event.shiftKey ? 10 : 1),
+            ),
           ),
         ),
       );
@@ -227,7 +241,8 @@ export function AssemblyCanvas({
           role: 'button',
           tabIndex: 0,
           'aria-label': entityLabel(id, state, t),
-          'aria-pressed': state.selected === id,
+          'aria-pressed':
+            state.selected === id || state.selectedPrototype === id,
           onClick: () => state.select(id),
           onKeyDown: (e: KeyboardEvent<SVGElement>) => keys(e, id),
           onPointerDown: (e: PointerEvent<SVGElement>) => start(e, id),
@@ -285,7 +300,7 @@ export function AssemblyCanvas({
             <polygon
               data-profile={shape.id}
               points={points(shape.points)}
-              className={`shape shape-${shape.role} ${state.selected === shape.selectionId ? 'is-selected' : ''}`}
+              className={`shape shape-${shape.role} ${state.selected === shape.selectionId || state.selectedPrototype === shape.selectionId ? 'is-selected' : ''}`}
             />
             {shape.id.includes('purlin') &&
               !compact &&
@@ -312,7 +327,7 @@ export function AssemblyCanvas({
           <g
             key={id}
             data-entity={id}
-            className={`cut-group ${state.selected === id ? 'is-selected' : ''}`}
+            className={`cut-group ${state.selected === id || state.selectedPrototype === id ? 'is-selected' : ''}`}
             {...interaction(
               model.lines.find((l) => (l.selectionId ?? l.id) === id)
                 ?.selectionId,

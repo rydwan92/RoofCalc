@@ -1,5 +1,87 @@
 import type { Point } from './index';
 
+export interface ViewportState {
+  zoom: number;
+  panX: number;
+  panY: number;
+}
+export const fittedViewport: ViewportState = { zoom: 1, panX: 0, panY: 0 };
+export function clampViewport(
+  viewport: ViewportState,
+  minZoom = 0.65,
+  maxZoom = 3,
+): ViewportState {
+  if (
+    ![viewport.zoom, viewport.panX, viewport.panY, minZoom, maxZoom].every(
+      Number.isFinite,
+    ) ||
+    minZoom <= 0 ||
+    maxZoom < minZoom
+  )
+    throw new RangeError('invalid_viewport');
+  return {
+    ...viewport,
+    zoom: Math.max(minZoom, Math.min(maxZoom, viewport.zoom)),
+  };
+}
+/** Applies UI-only pan/zoom around the canvas center without changing domain geometry. */
+export function viewportPoint(
+  point: Point,
+  viewport: ViewportState,
+  size: { width: number; height: number },
+): Point {
+  const state = clampViewport(viewport);
+  if (![point.x, point.y, size.width, size.height].every(Number.isFinite))
+    throw new RangeError('invalid_viewport_point');
+  return {
+    x: size.width / 2 + (point.x - size.width / 2) * state.zoom + state.panX,
+    y: size.height / 2 + (point.y - size.height / 2) * state.zoom + state.panY,
+  };
+}
+/** Converts a screen-space pointer delta along a projected axis to canonical millimetres. */
+export function valueFromAxisDrag({
+  startValueMm,
+  pointerStart,
+  pointerCurrent,
+  axisStart,
+  axisEnd,
+  axisLengthMm,
+}: {
+  startValueMm: number;
+  pointerStart: Point;
+  pointerCurrent: Point;
+  axisStart: Point;
+  axisEnd: Point;
+  axisLengthMm: number;
+}): number {
+  const dx = axisEnd.x - axisStart.x,
+    dy = axisEnd.y - axisStart.y,
+    lengthSquared = dx * dx + dy * dy;
+  if (
+    ![
+      startValueMm,
+      pointerStart.x,
+      pointerStart.y,
+      pointerCurrent.x,
+      pointerCurrent.y,
+      axisStart.x,
+      axisStart.y,
+      axisEnd.x,
+      axisEnd.y,
+      axisLengthMm,
+    ].every(Number.isFinite) ||
+    axisLengthMm <= 0 ||
+    lengthSquared <= 1e-8
+  )
+    throw new RangeError('invalid_drag_axis');
+  const pointerDx = pointerCurrent.x - pointerStart.x,
+    pointerDy = pointerCurrent.y - pointerStart.y;
+  return (
+    startValueMm +
+    ((pointerDx * dx + pointerDy * dy) / lengthSquared) * axisLengthMm
+  );
+}
+
 export interface AffineMatrix {
   a: number;
   b: number;

@@ -164,6 +164,15 @@ function committedTemplate(
   const spec = assemblyFromGableTemplate(template);
   return { template, spec, drafts, invalidFields };
 }
+interface DomainSnapshot {
+  template: GableRoofTemplateSpec;
+}
+const historyLimit = 40;
+const snapshot = (template: GableRoofTemplateSpec): DomainSnapshot => ({
+  template: structuredClone(template),
+});
+const sameTemplate = (a: GableRoofTemplateSpec, b: GableRoofTemplateSpec) =>
+  JSON.stringify(a) === JSON.stringify(b);
 interface AssemblyState {
   template: GableRoofTemplateSpec;
   spec: AssemblySpec;
@@ -171,25 +180,52 @@ interface AssemblyState {
   view: 'skeleton' | 'rafter';
   unit: LengthUnit;
   selected: string;
+  selectedPrototype?: string;
   collapsed: boolean;
   inspectorOpen: boolean;
   drafts: Partial<Record<EditField, string>>;
   invalidFields: Partial<Record<EditField, boolean>>;
+  historyPast: DomainSnapshot[];
+  historyFuture: DomainSnapshot[];
+  activeTransaction?: DomainSnapshot;
   setMode: (mode: 'quick' | 'builder') => void;
   setView: (view: 'skeleton' | 'rafter') => void;
   setUnit: (unit: LengthUnit) => void;
   setField: (field: EditField, raw: string) => void;
+  setCanonicalField: (field: EditField, value: number) => void;
   stepField: (field: EditField, delta: number) => void;
   setSpacingMode: (mode: RafterSpacingMode) => void;
   movePurlin: (id: string, xMm: number) => void;
   add: () => void;
   remove: (id: string) => void;
-  select: (id: string) => void;
+  select: (id: string, prototypeId?: string) => void;
+  beginTransaction: () => void;
+  commitTransaction: () => void;
+  cancelTransaction: () => void;
+  undo: () => void;
+  redo: () => void;
   setJointControl: (
     id: string,
     control: SupportSpec['joint']['control'],
   ) => void;
   reset: () => void;
+}
+function withHistory(
+  state: AssemblyState,
+  next: ReturnType<typeof committedTemplate>,
+) {
+  if (sameTemplate(state.template, next.template) || state.activeTransaction)
+    return next;
+  return {
+    ...next,
+    historyPast: [...state.historyPast, snapshot(state.template)].slice(
+      -historyLimit,
+    ),
+    historyFuture: [],
+  };
+}
+function restoredSnapshot(snapshotToRestore: DomainSnapshot) {
+  return committedTemplate(structuredClone(snapshotToRestore.template), {}, {});
 }
 export const useAssembly = create<AssemblyState>((set) => ({
   template: structuredClone(templateDefaults),
@@ -198,10 +234,14 @@ export const useAssembly = create<AssemblyState>((set) => ({
   view: 'skeleton',
   unit: 'mm',
   selected: 'roof',
+  selectedPrototype: undefined,
   collapsed: false,
   inspectorOpen: true,
   drafts: {},
   invalidFields: {},
+  historyPast: [],
+  historyFuture: [],
+  activeTransaction: undefined,
   setMode: (mode) => set({ mode }),
   setView: (view) => set({ view }),
   setUnit: (unit) =>
@@ -231,10 +271,29 @@ export const useAssembly = create<AssemblyState>((set) => ({
               : toMillimetres(parsed, state.unit);
         const template = editedTemplate(state.template, state.spec, field, value);
         delete invalidFields[field];
-        return committedTemplate(template, drafts, invalidFields);
+        return withHistory(
+          state,
+          committedTemplate(template, drafts, invalidFields),
+        );
       } catch {
         invalidFields[field] = true;
         return { drafts, invalidFields };
+      }
+    }),
+  setCanonicalField: (field, value) =>
+    set((state) => {
+      try {
+        const template = editedTemplate(state.template, state.spec, field, value);
+        const drafts = { ...state.drafts };
+        const invalidFields = { ...state.invalidFields };
+        delete drafts[field];
+        delete invalidFields[field];
+        return withHistory(
+          state,
+          committedTemplate(template, drafts, invalidFields),
+        );
+      } catch {
+        return state;
       }
     }),
   stepField: (field, delta) =>
@@ -246,7 +305,10 @@ export const useAssembly = create<AssemblyState>((set) => ({
         delete drafts[field];
         const invalidFields = { ...state.invalidFields };
         delete invalidFields[field];
-        return committedTemplate(template, drafts, invalidFields);
+        return withHistory(
+          state,
+          committedTemplate(template, drafts, invalidFields),
+        );
       } catch {
         return state;
       }
@@ -257,16 +319,22 @@ export const useAssembly = create<AssemblyState>((set) => ({
         ...state.template,
         rafterSpacing: { ...state.template.rafterSpacing, mode },
       };
-      return committedTemplate(template, state.drafts, state.invalidFields);
+      return withHistory(
+        state,
+        committedTemplate(template, state.drafts, state.invalidFields),
+      );
     }),
   movePurlin: (id, xMm) =>
     set((state) => {
       const field = supportField(id, 'xMm');
       const template = editedTemplate(state.template, state.spec, field, xMm);
-      return committedTemplate(
-        template,
-        { ...state.drafts, [field]: editableLength(xMm, state.unit) },
-        state.invalidFields,
+      return withHistory(
+        state,
+        committedTemplate(
+          template,
+          { ...state.drafts, [field]: editableLength(xMm, state.unit) },
+          state.invalidFields,
+        ),
       );
     }),
   add: () =>
@@ -276,8 +344,12 @@ export const useAssembly = create<AssemblyState>((set) => ({
         templateLayout(state.template),
       );
       return {
-        ...committedTemplate(template, state.drafts, state.invalidFields),
-        selected: 'support:purlin-1',
+        ...withHistory(
+          state,
+          committedTemplate(template, state.drafts, state.invalidFields),
+        ),
+        selected: template.intermediateSupports.at(-1)!.id,
+        selectedPrototype: undefined,
         inspectorOpen: true,
       };
     }),
@@ -300,15 +372,74 @@ export const useAssembly = create<AssemblyState>((set) => ({
         ),
       );
       return {
-        ...committedTemplate(
-          gableTemplateFromAssembly(spec, templateLayout(state.template)),
-          drafts,
-          invalidFields,
+        ...withHistory(
+          state,
+          committedTemplate(
+            gableTemplateFromAssembly(spec, templateLayout(state.template)),
+            drafts,
+            invalidFields,
+          ),
         ),
         selected: 'roof',
+        selectedPrototype: undefined,
       };
     }),
-  select: (selected) => set({ selected, inspectorOpen: true }),
+  select: (selected, selectedPrototype) =>
+    set({ selected, selectedPrototype, inspectorOpen: true }),
+  beginTransaction: () =>
+    set((state) =>
+      state.activeTransaction
+        ? state
+        : { activeTransaction: snapshot(state.template) },
+    ),
+  commitTransaction: () =>
+    set((state) => {
+      const start = state.activeTransaction;
+      if (!start) return state;
+      if (sameTemplate(start.template, state.template))
+        return { activeTransaction: undefined };
+      return {
+        activeTransaction: undefined,
+        historyPast: [...state.historyPast, start].slice(-historyLimit),
+        historyFuture: [],
+      };
+    }),
+  cancelTransaction: () =>
+    set((state) =>
+      state.activeTransaction
+        ? {
+            ...restoredSnapshot(state.activeTransaction),
+            activeTransaction: undefined,
+          }
+        : state,
+    ),
+  undo: () =>
+    set((state) => {
+      const previous = state.historyPast.at(-1);
+      if (!previous) return state;
+      return {
+        ...restoredSnapshot(previous),
+        historyPast: state.historyPast.slice(0, -1),
+        historyFuture: [snapshot(state.template), ...state.historyFuture].slice(
+          0,
+          historyLimit,
+        ),
+        activeTransaction: undefined,
+      };
+    }),
+  redo: () =>
+    set((state) => {
+      const next = state.historyFuture[0];
+      if (!next) return state;
+      return {
+        ...restoredSnapshot(next),
+        historyPast: [...state.historyPast, snapshot(state.template)].slice(
+          -historyLimit,
+        ),
+        historyFuture: state.historyFuture.slice(1),
+        activeTransaction: undefined,
+      };
+    }),
   setJointControl: (id, control) =>
     set((state) => {
       const spec = structuredClone(state.spec),
@@ -324,10 +455,13 @@ export const useAssembly = create<AssemblyState>((set) => ({
       delete drafts[supportField(id, 'valueMm')];
       const invalidFields = { ...state.invalidFields };
       delete invalidFields[supportField(id, 'valueMm')];
-      return committedTemplate(
-        gableTemplateFromAssembly(spec, templateLayout(state.template)),
-        drafts,
-        invalidFields,
+      return withHistory(
+        state,
+        committedTemplate(
+          gableTemplateFromAssembly(spec, templateLayout(state.template)),
+          drafts,
+          invalidFields,
+        ),
       );
     }),
   reset: () =>
@@ -337,8 +471,12 @@ export const useAssembly = create<AssemblyState>((set) => ({
       drafts: {},
       invalidFields: {},
       selected: 'roof',
+      selectedPrototype: undefined,
       inspectorOpen: true,
       view: 'skeleton',
+      historyPast: [],
+      historyFuture: [],
+      activeTransaction: undefined,
     }),
 }));
 

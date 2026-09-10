@@ -29,6 +29,191 @@ export function projectAxonometric(
     y: point.z - (point.x + point.y) * depthFactor,
   };
 }
+export type TimberPrismOrientation = 'along-roof' | 'along-building';
+export interface TimberPrismAxis {
+  from: Point3D;
+  to: Point3D;
+}
+export interface TimberPrismSection {
+  widthMm: number;
+  depthMm: number;
+}
+export interface TimberPrismFace {
+  id: 'bottom' | 'side-a' | 'side-b' | 'top' | 'start' | 'end';
+  points: [Point3D, Point3D, Point3D, Point3D];
+}
+export interface ProjectedTimberPrismFace extends TimberPrismFace {
+  projected: [Point, Point, Point, Point];
+  paintOrder: number;
+}
+const vector3 = (from: Point3D, to: Point3D): Point3D => ({
+  x: to.x - from.x,
+  y: to.y - from.y,
+  z: to.z - from.z,
+});
+const add3 = (point: Point3D, vector: Point3D): Point3D => ({
+  x: point.x + vector.x,
+  y: point.y + vector.y,
+  z: point.z + vector.z,
+});
+const scale3 = (vector: Point3D, scalar: number): Point3D => ({
+  x: vector.x * scalar,
+  y: vector.y * scalar,
+  z: vector.z * scalar,
+});
+function unit3(vector: Point3D): Point3D {
+  const length = Math.hypot(vector.x, vector.y, vector.z);
+  if (!Number.isFinite(length) || length <= 1e-8)
+    throw new RangeError('invalid_prism_axis');
+  return scale3(vector, 1 / length);
+}
+function prismCorner(
+  at: Point3D,
+  widthDirection: Point3D,
+  depthDirection: Point3D,
+  widthMm: number,
+  depthMm: number,
+  widthSign: -1 | 1,
+  depthSign: -1 | 1,
+) {
+  return add3(
+    add3(at, scale3(widthDirection, (widthMm / 2) * widthSign)),
+    scale3(depthDirection, (depthMm / 2) * depthSign),
+  );
+}
+/** Builds six deterministic rectangular timber faces from an axis and real section dimensions. */
+export function createTimberPrismFaces(
+  axis: TimberPrismAxis,
+  section: TimberPrismSection,
+  orientation: TimberPrismOrientation,
+): TimberPrismFace[] {
+  if (
+    ![
+      axis.from.x,
+      axis.from.y,
+      axis.from.z,
+      axis.to.x,
+      axis.to.y,
+      axis.to.z,
+      section.widthMm,
+      section.depthMm,
+    ].every(Number.isFinite) ||
+    section.widthMm <= 0 ||
+    section.depthMm <= 0
+  )
+    throw new RangeError('invalid_prism_section');
+  const direction = unit3(vector3(axis.from, axis.to));
+  const widthDirection =
+    orientation === 'along-roof'
+      ? { x: 0, y: 1, z: 0 }
+      : { x: 1, y: 0, z: 0 };
+  const depthDirection =
+    orientation === 'along-roof'
+      ? unit3({ x: direction.z, y: 0, z: -direction.x })
+      : { x: 0, y: 0, z: 1 };
+  const a = prismCorner(
+      axis.from,
+      widthDirection,
+      depthDirection,
+      section.widthMm,
+      section.depthMm,
+      -1,
+      -1,
+    ),
+    b = prismCorner(
+      axis.from,
+      widthDirection,
+      depthDirection,
+      section.widthMm,
+      section.depthMm,
+      1,
+      -1,
+    ),
+    c = prismCorner(
+      axis.from,
+      widthDirection,
+      depthDirection,
+      section.widthMm,
+      section.depthMm,
+      1,
+      1,
+    ),
+    d = prismCorner(
+      axis.from,
+      widthDirection,
+      depthDirection,
+      section.widthMm,
+      section.depthMm,
+      -1,
+      1,
+    ),
+    e = prismCorner(
+      axis.to,
+      widthDirection,
+      depthDirection,
+      section.widthMm,
+      section.depthMm,
+      -1,
+      -1,
+    ),
+    f = prismCorner(
+      axis.to,
+      widthDirection,
+      depthDirection,
+      section.widthMm,
+      section.depthMm,
+      1,
+      -1,
+    ),
+    g = prismCorner(
+      axis.to,
+      widthDirection,
+      depthDirection,
+      section.widthMm,
+      section.depthMm,
+      1,
+      1,
+    ),
+    h = prismCorner(
+      axis.to,
+      widthDirection,
+      depthDirection,
+      section.widthMm,
+      section.depthMm,
+      -1,
+      1,
+    );
+  return [
+    { id: 'bottom', points: [a, b, f, e] },
+    { id: 'side-a', points: [a, e, h, d] },
+    { id: 'side-b', points: [b, c, g, f] },
+    { id: 'top', points: [d, h, g, c] },
+    { id: 'start', points: [a, d, c, b] },
+    { id: 'end', points: [e, f, g, h] },
+  ];
+}
+/** Stable painter ordering avoids face flicker when the skeleton updates reactively. */
+export function projectTimberPrismFaces(
+  faces: TimberPrismFace[],
+): ProjectedTimberPrismFace[] {
+  const rank = new Map(faces.map((face, index) => [face.id, index]));
+  return faces
+    .map((face) => {
+      const projected = face.points.map((point) =>
+        projectAxonometric(point),
+      ) as ProjectedTimberPrismFace['projected'];
+      const centroid = projected.reduce(
+        (sum, point) => ({ x: sum.x + point.x / 4, y: sum.y + point.y / 4 }),
+        { x: 0, y: 0 },
+      );
+      return { ...face, projected, paintOrder: centroid.y };
+    })
+    .sort(
+      (a, b) =>
+        a.paintOrder - b.paintOrder ||
+        rank.get(a.id)! - rank.get(b.id)!,
+    );
+}
 export interface Bounds {
   minX: number;
   minY: number;
