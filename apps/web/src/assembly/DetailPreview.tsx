@@ -38,7 +38,7 @@ function DimensionValue({ dimension }: { dimension: DetailKeyDimension }) {
   );
 }
 
-function stepText(
+export function detailStepText(
   step: DetailFabricationStep,
   t: ReturnType<typeof useTranslation>['t'],
   length: (value: number) => string,
@@ -90,9 +90,11 @@ function stepText(
 export function DetailPreviewDrawing({
   preview,
   compact = false,
+  cutState = 'before',
 }: {
   preview: DetailPreviewModel;
   compact?: boolean;
+  cutState?: 'before' | 'after';
 }) {
   const container = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(compact ? 300 : 520);
@@ -108,13 +110,14 @@ export function DetailPreviewDrawing({
     return () => observer.disconnect();
   }, []);
   const height = compact ? 165 : width < 520 ? 230 : 285;
+  const drawing = preview.cutStates?.[cutState] ?? preview.drawing;
   const label = (dimension: DrawingDimension) =>
     `${formatLength(dimension.valueMm, state.unit, i18n.language)} ${state.unit}`;
   const visibleDimensions = compact
-    ? preview.drawing.dimensions.slice(0, 1)
-    : preview.drawing.dimensions;
+    ? drawing.dimensions.slice(0, 1)
+    : drawing.dimensions;
   const projection = fitDimensionedDrawing(
-    preview.drawing.bounds,
+    drawing.bounds,
     { width, height, padding: compact ? 26 : 52 },
     visibleDimensions,
     (dimension) => label(dimension).length * 6.5,
@@ -144,14 +147,14 @@ export function DetailPreviewDrawing({
         data-testid={`detail-preview-${preview.type}`}
       >
         <title>{t(`assembly.${preview.titleKey}`)}</title>
-        {preview.drawing.polygons?.map((polygon) => (
+        {drawing.polygons?.map((polygon) => (
           <polygon
             key={polygon.id}
             points={points(polygon.points)}
             className={`shape shape-${polygon.role}`}
           />
         ))}
-        {preview.drawing.lines.map((line) => {
+        {drawing.lines.map((line) => {
           const from = projection.project(line.from);
           const to = projection.project(line.to);
           return (
@@ -219,7 +222,7 @@ function PreviewSteps({ preview }: { preview: DetailPreviewModel }) {
       {preview.fabricationSteps.map((step, index) => (
         <li key={step.id}>
           <span>{index + 1}</span>
-          <p>{stepText(step, t, length, angle, state.unit)}</p>
+          <p>{detailStepText(step, t, length, angle, state.unit)}</p>
         </li>
       ))}
     </ol>
@@ -231,20 +234,24 @@ export function DetailDrawer({
   activeId,
   open,
   pinned,
+  cutState,
   onSelect,
   onToggle,
   onClose,
   onPin,
+  onCutStateChange,
   onZoom,
 }: {
   previews: DetailPreviewModel[];
   activeId?: string;
   open: boolean;
   pinned: boolean;
+  cutState: 'before' | 'after';
   onSelect: (id: string) => void;
   onToggle: () => void;
   onClose: () => void;
   onPin: () => void;
+  onCutStateChange: (state: 'before' | 'after') => void;
   onZoom: (preview: DetailPreviewModel) => void;
 }) {
   const { t } = useTranslation();
@@ -312,7 +319,25 @@ export function DetailDrawer({
             </div>
           )}
           <div className="a-detail-drawing-column">
-            <DetailPreviewDrawing preview={active} />
+            {active.cutStates && (
+              <div
+                className="a-cut-state-switch"
+                role="tablist"
+                aria-label={t('assembly.cutState')}
+              >
+                {(['before', 'after'] as const).map((state) => (
+                  <button
+                    key={state}
+                    role="tab"
+                    aria-selected={cutState === state}
+                    onClick={() => onCutStateChange(state)}
+                  >
+                    {t(`assembly.${state}Cut`)}
+                  </button>
+                ))}
+              </div>
+            )}
+            <DetailPreviewDrawing preview={active} cutState={cutState} />
             <button className="a-button" onClick={() => onZoom(active)}>
               <Maximize2 size={16} />
               {t('assembly.zoomToDetail')}

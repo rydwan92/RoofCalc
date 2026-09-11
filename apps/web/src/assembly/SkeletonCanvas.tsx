@@ -1,4 +1,5 @@
 import {
+  memo,
   useEffect,
   useMemo,
   useRef,
@@ -6,6 +7,7 @@ import {
   type KeyboardEvent,
   type PointerEvent,
 } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { Maximize, Minus, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -37,6 +39,11 @@ import type {
 } from '@cieslacalc/timber-model';
 import { formatLength } from '../format';
 import { useAssembly } from './store';
+import {
+  deriveWorkbenchProjectionPolicy,
+  initialWorkbenchViewState,
+  resolveMemberVisualState,
+} from './workbench';
 
 type HandleKind = 'pitch' | 'span' | 'length' | 'purlin';
 interface Handle {
@@ -86,15 +93,46 @@ function memberLabel(member: SkeletonMember3D, t: (key: string) => string) {
   return t(`assembly.${member.kind}`);
 }
 
-export function SkeletonCanvas({
+function SkeletonCanvasComponent({
   template,
   spacing,
+  relatedSupportId,
+  relatedIds,
 }: {
   template: RoofTemplateSpec;
   spacing: ResolvedRafterSpacing;
+  relatedSupportId?: string;
+  relatedIds?: ReadonlySet<string>;
 }) {
-  const state = useAssembly(),
-    { t, i18n } = useTranslation();
+  const selectedStore = useAssembly(
+    useShallow((store) => ({
+      spec: store.spec,
+      unit: store.unit,
+      selectedId: store.workbench.selectedId,
+      selectedPrototypeId: store.workbench.selectedPrototypeId,
+      viewPreset: store.workbench.viewPreset,
+      isolateSelection: store.workbench.isolateSelection,
+      dimensionLevel: store.workbench.dimensionLevel,
+      beginTransaction: store.beginTransaction,
+      cancelTransaction: store.cancelTransaction,
+      commitTransaction: store.commitTransaction,
+      movePurlin: store.movePurlin,
+      select: store.select,
+      setCanonicalField: store.setCanonicalField,
+    })),
+  );
+  const state = {
+    ...selectedStore,
+    workbench: {
+      ...initialWorkbenchViewState,
+      selectedId: selectedStore.selectedId,
+      selectedPrototypeId: selectedStore.selectedPrototypeId,
+      viewPreset: selectedStore.viewPreset,
+      isolateSelection: selectedStore.isolateSelection,
+      dimensionLevel: selectedStore.dimensionLevel,
+    },
+  };
+  const { t, i18n } = useTranslation();
   const container = useRef<HTMLDivElement>(null),
     svg = useRef<SVGSVGElement>(null),
     drag = useRef<Drag | null>(null);
@@ -128,6 +166,7 @@ export function SkeletonCanvas({
 
   const skeleton = useMemo(() => createRoofSkeleton(template), [template]);
   const height = width < 550 ? 400 : 570;
+  const policy = deriveWorkbenchProjectionPolicy(state.workbench, width < 550);
   const memberLayer = (member: SkeletonMember3D) =>
     member.kind === 'jack-rafter'
       ? 0
@@ -170,26 +209,33 @@ export function SkeletonCanvas({
   const worldPoint = (point: { x: number; y: number; z: number }) =>
     viewPoint(projectAxonometric(point));
   const spacingStationAxes =
-    template.type === 'gable'
-      ? spacing.stations.slice(0, 5).map((station) => ({
-          id: station.id,
-          alongBuildingMm: station.alongBuildingMm,
-          from: worldPoint({
-            x: -template.halfRunMm,
-            y: station.alongBuildingMm,
-            z: 0,
-          }),
-          to: worldPoint({
-            x: template.halfRunMm,
-            y: station.alongBuildingMm,
-            z: 0,
-          }),
-          dimensionPoint: worldPoint({
-            x: template.halfRunMm + 320,
-            y: station.alongBuildingMm,
-            z: 0,
-          }),
-        }))
+    template.type === 'gable' && policy.effectiveDimensionLevel !== 'minimal'
+      ? spacing.stations
+          .slice(
+            0,
+            policy.effectiveDimensionLevel === 'full'
+              ? spacing.stations.length
+              : 5,
+          )
+          .map((station) => ({
+            id: station.id,
+            alongBuildingMm: station.alongBuildingMm,
+            from: worldPoint({
+              x: -template.halfRunMm,
+              y: station.alongBuildingMm,
+              z: 0,
+            }),
+            to: worldPoint({
+              x: template.halfRunMm,
+              y: station.alongBuildingMm,
+              z: 0,
+            }),
+            dimensionPoint: worldPoint({
+              x: template.halfRunMm + 320,
+              y: station.alongBuildingMm,
+              z: 0,
+            }),
+          }))
       : [];
   const pointString = (points: Point[]) =>
     points
@@ -265,7 +311,7 @@ export function SkeletonCanvas({
     })),
   ];
   const selectedMember = skeleton.members.find(
-    (member) => member.selectionId === state.selected,
+    (member) => member.selectionId === state.workbench.selectedId,
   );
   const currentPointer = (event: PointerEvent<SVGElement>): Point => {
     const bounds = svg.current?.getBoundingClientRect();
@@ -476,10 +522,13 @@ export function SkeletonCanvas({
       }
     : undefined;
   return (
-    <div className="a-canvas a-skeleton" ref={container}>
+    <div
+      className={`a-canvas a-skeleton preset-${state.workbench.viewPreset} ${state.workbench.isolateSelection ? 'is-isolating' : ''}`}
+      ref={container}
+    >
       <div className="a-canvas-toolbar">
         <span>{t('assembly.skeleton')}</span>
-        <output aria-live="polite">
+        <span aria-live="polite">
           {template.type === 'hip'
             ? t('assembly.hipSkeletonCount', {
                 common: skeleton.members.filter(
@@ -494,7 +543,7 @@ export function SkeletonCanvas({
                   skeleton.members.filter((member) => member.kind === 'rafter')
                     .length / 2,
               })}
-        </output>
+        </span>
       </div>
       <svg
         ref={svg}
@@ -526,14 +575,16 @@ export function SkeletonCanvas({
           width={width}
           height={height}
         />
-        <g className="a-roof-guides" aria-hidden="true">
-          {guides.map((guide) => (
-            <polygon key={guide.id} points={pointString(guide.projected)} />
-          ))}
-        </g>
+        {policy.showRoofPlanes && (
+          <g className="a-roof-guides" aria-hidden="true">
+            {guides.map((guide) => (
+              <polygon key={guide.id} points={pointString(guide.projected)} />
+            ))}
+          </g>
+        )}
         {spacingStationAxes.length > 0 && (
           <g
-            className={`a-spacing-guides ${state.selected === 'roof' ? 'is-active' : ''}`}
+            className={`a-spacing-guides ${state.workbench.selectedId === 'roof' ? 'is-active' : ''}`}
             aria-hidden="true"
           >
             {spacingStationAxes.map((station, index) => {
@@ -594,13 +645,15 @@ export function SkeletonCanvas({
         )}
         <g className="a-skeleton-members">
           {solids.map(({ member, faces }) => {
-            const selected = state.selected === member.selectionId;
-            const related =
-              state.selected !== 'roof' &&
-              !selected &&
-              (state.selected === member.prototypeId ||
-                state.selectedPrototype === member.prototypeId);
-            const muted = state.selected !== 'roof' && !selected && !related;
+            const visualState = resolveMemberVisualState({
+              member,
+              view: state.workbench,
+              relatedSupportId,
+              relatedIds,
+            });
+            const selected = visualState === 'selected';
+            const related = visualState === 'related';
+            const muted = visualState === 'muted';
             return (
               <g
                 key={member.id}
@@ -613,7 +666,7 @@ export function SkeletonCanvas({
                       ? 'related'
                       : muted
                         ? 'muted'
-                        : 'default'
+                        : 'normal'
                 }
                 role="button"
                 tabIndex={0}
@@ -634,32 +687,34 @@ export function SkeletonCanvas({
             );
           })}
         </g>
-        <g className="a-handle-layer">
-          {handles.map((handle) => (
-            <g
-              key={handle.id}
-              data-handle={handle.kind}
-              className={`a-skeleton-handle ${activeHandle === handle.id ? 'is-active' : ''}`}
-              role="slider"
-              tabIndex={0}
-              aria-label={t(
-                `assembly.handle${handle.kind[0]!.toUpperCase()}${handle.kind.slice(1)}`,
-              )}
-              aria-valuenow={handleValue(handle)}
-              onPointerDown={(event) => startDrag(event, handle)}
-              onKeyDown={(event) => adjustHandle(event, handle)}
-            >
-              <line
-                className="a-handle-axis"
-                x1={handle.axisStart.x}
-                y1={handle.axisStart.y}
-                x2={handle.axisEnd.x}
-                y2={handle.axisEnd.y}
-              />
-              <circle cx={handle.at.x} cy={handle.at.y} r={9} />
-            </g>
-          ))}
-        </g>
+        {policy.showDirectManipulation && (
+          <g className="a-handle-layer">
+            {handles.map((handle) => (
+              <g
+                key={handle.id}
+                data-handle={handle.kind}
+                className={`a-skeleton-handle ${activeHandle === handle.id ? 'is-active' : ''}`}
+                role="slider"
+                tabIndex={0}
+                aria-label={t(
+                  `assembly.handle${handle.kind[0]!.toUpperCase()}${handle.kind.slice(1)}`,
+                )}
+                aria-valuenow={handleValue(handle)}
+                onPointerDown={(event) => startDrag(event, handle)}
+                onKeyDown={(event) => adjustHandle(event, handle)}
+              >
+                <line
+                  className="a-handle-axis"
+                  x1={handle.axisStart.x}
+                  y1={handle.axisStart.y}
+                  x2={handle.axisEnd.x}
+                  y2={handle.axisEnd.y}
+                />
+                <circle cx={handle.at.x} cy={handle.at.y} r={9} />
+              </g>
+            ))}
+          </g>
+        )}
         {preview && chipPosition && (
           <g className="a-handle-chip" pointerEvents="none">
             <rect
@@ -760,3 +815,5 @@ export function SkeletonCanvas({
     </div>
   );
 }
+
+export const SkeletonCanvas = memo(SkeletonCanvasComponent);

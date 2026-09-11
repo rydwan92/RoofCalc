@@ -4,6 +4,7 @@ import type {
   DrawingModel,
 } from '@cieslacalc/drawing-engine';
 import { datumDisplayLabel } from '@cieslacalc/drawing-engine';
+import { memberToWorld } from '@cieslacalc/roof-math';
 import type {
   FabricationPlan,
   FabricationStep,
@@ -11,6 +12,32 @@ import type {
   ResolvedHipRafter,
 } from '@cieslacalc/timber-model';
 import { createAssemblyDrawing } from './assembly';
+
+function createAssemblyCutStates(
+  assembly: ResolvedAssembly,
+  operationId: string,
+): NonNullable<DetailPreviewModel['cutStates']> {
+  const before = createAssemblyDrawing(assembly, operationId);
+  const member = before.polygons?.find(
+    (polygon) => polygon.id === assembly.member.id,
+  );
+  if (member)
+    member.points = assembly.member.stockProfile.map((point) =>
+      memberToWorld(point, assembly.member.frame),
+    );
+  const after = structuredClone(before);
+  after.polygons = after.polygons?.filter(
+    (polygon) => polygon.role !== 'removed',
+  );
+  const finalMember = after.polygons?.find(
+    (polygon) => polygon.id === assembly.member.id,
+  );
+  if (finalMember)
+    finalMember.points = assembly.member.profile.map((point) =>
+      memberToWorld(point, assembly.member.frame),
+    );
+  return { before, after };
+}
 
 function instruction(
   step: FabricationStep,
@@ -53,79 +80,87 @@ export function createAssemblyDetailPreviews(input: {
     input.plan.steps
       .filter((step) => step.operationId === operationId)
       .map((step, index) => instruction(step, index, labels));
-  const joints: DetailPreviewModel[] = input.assembly.joints.map((joint) => ({
-    id: `preview:${joint.id}`,
-    sourceSelectionId: joint.id,
-    type: 'birdsmouth-detail',
-    titleKey: 'birdsmouthDetail',
-    subjectMemberId: input.assembly.member.id,
-    subjectCode: 'K1',
-    relatedSupportId: joint.supportId,
-    localFrame: 'member-elevation',
-    drawing: createAssemblyDrawing(input.assembly, joint.id),
-    keyDimensions: [
-      {
-        id: `${joint.id}:seat`,
-        labelKey: 'seat',
-        value: joint.seatLengthMm,
-        unit: 'length',
-        referenceKey: 'seatReference',
-      },
-      {
-        id: `${joint.id}:depth`,
-        labelKey: 'notchDepth',
-        value: joint.normalDepthMm,
-        unit: 'length',
-        referenceKey: 'normalDepthReference',
-      },
-      {
-        id: `${joint.id}:remaining`,
-        labelKey: 'remaining',
-        value: joint.remainingDepthMm,
-        unit: 'length',
-      },
-      {
-        id: `${joint.id}:station`,
-        labelKey: 'position',
-        value: joint.stationMm,
-        unit: 'length',
-        referenceKey: 'topEdgeReference',
-      },
-    ],
-    fabricationSteps: stepsFor(joint.id),
-    warningKeys: [],
-  }));
-  const ridgeCuts: DetailPreviewModel[] = input.assembly.endCuts
-    .filter((cut) => cut.end === 'ridge')
-    .map((cut) => ({
-      id: `preview:${cut.id}`,
-      sourceSelectionId: cut.id,
-      type: 'ridge-cut-detail',
-      titleKey: 'ridgeCutDetail',
+  const joints: DetailPreviewModel[] = input.assembly.joints.map((joint) => {
+    const cutStates = createAssemblyCutStates(input.assembly, joint.id);
+    return {
+      id: `preview:${joint.id}`,
+      sourceSelectionId: joint.id,
+      type: 'birdsmouth-detail',
+      titleKey: 'birdsmouthDetail',
       subjectMemberId: input.assembly.member.id,
       subjectCode: 'K1',
-      relatedSupportId: cut.supportId,
+      relatedSupportId: joint.supportId,
       localFrame: 'member-elevation',
-      drawing: createAssemblyDrawing(input.assembly, cut.id),
+      drawing: cutStates.before,
+      cutStates,
       keyDimensions: [
         {
-          id: `${cut.id}:angle`,
-          labelKey: 'cutAngle',
-          value: cut.angleToMemberDeg,
-          unit: 'angle',
-          referenceKey: 'memberAxisReference',
+          id: `${joint.id}:seat`,
+          labelKey: 'seat',
+          value: joint.seatLengthMm,
+          unit: 'length',
+          referenceKey: 'seatReference',
         },
         {
-          id: `${cut.id}:station`,
+          id: `${joint.id}:depth`,
+          labelKey: 'notchDepth',
+          value: joint.normalDepthMm,
+          unit: 'length',
+          referenceKey: 'normalDepthReference',
+        },
+        {
+          id: `${joint.id}:remaining`,
+          labelKey: 'remaining',
+          value: joint.remainingDepthMm,
+          unit: 'length',
+        },
+        {
+          id: `${joint.id}:station`,
           labelKey: 'position',
-          value: cut.stationMm,
+          value: joint.stationMm,
           unit: 'length',
           referenceKey: 'topEdgeReference',
         },
       ],
-      fabricationSteps: stepsFor(cut.id),
+      fabricationSteps: stepsFor(joint.id),
       warningKeys: [],
-    }));
+    };
+  });
+  const ridgeCuts: DetailPreviewModel[] = input.assembly.endCuts
+    .filter((cut) => cut.end === 'ridge')
+    .map((cut) => {
+      const cutStates = createAssemblyCutStates(input.assembly, cut.id);
+      return {
+        id: `preview:${cut.id}`,
+        sourceSelectionId: cut.id,
+        type: 'ridge-cut-detail',
+        titleKey: 'ridgeCutDetail',
+        subjectMemberId: input.assembly.member.id,
+        subjectCode: 'K1',
+        relatedSupportId: cut.supportId,
+        localFrame: 'member-elevation',
+        drawing: cutStates.before,
+        cutStates,
+        keyDimensions: [
+          {
+            id: `${cut.id}:angle`,
+            labelKey: 'cutAngle',
+            value: cut.angleToMemberDeg,
+            unit: 'angle',
+            referenceKey: 'memberAxisReference',
+          },
+          {
+            id: `${cut.id}:station`,
+            labelKey: 'position',
+            value: cut.stationMm,
+            unit: 'length',
+            referenceKey: 'topEdgeReference',
+          },
+        ],
+        fabricationSteps: stepsFor(cut.id),
+        warningKeys: [],
+      };
+    });
   return [...joints, ...ridgeCuts];
 }
 
@@ -215,6 +250,21 @@ export function createHipRafterDetailPreview(
       },
     ],
   };
+  const afterDrawing: DrawingModel = structuredClone(drawing);
+  afterDrawing.polygons = [
+    {
+      id: hip.spec.id,
+      role: 'member',
+      selectionId: hip.spec.id,
+      points: [
+        { x: 0, y: -halfWidth },
+        { x: edgeX, y: -halfWidth },
+        { x: pointX, y: 0 },
+        { x: edgeX, y: halfWidth },
+        { x: 0, y: halfWidth },
+      ],
+    },
+  ];
   return {
     id: `preview:${cut.id}`,
     sourceSelectionId: cut.id,
@@ -224,6 +274,7 @@ export function createHipRafterDetailPreview(
     subjectCode: 'H1',
     localFrame: 'member-top-face',
     drawing,
+    cutStates: { before: drawing, after: afterDrawing },
     keyDimensions: [
       {
         id: `${cut.id}:plumb`,

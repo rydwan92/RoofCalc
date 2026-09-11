@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -17,7 +18,9 @@ import { useAssembly } from './store';
 
 beforeEach(async () => {
   useAssembly.getState().reset();
-  useAssembly.setState({ unit: 'mm', mode: 'quick', collapsed: false });
+  useAssembly.getState().setUnit('mm');
+  useAssembly.getState().setMode('quick');
+  useAssembly.getState().setToolboxCollapsed(false);
   await i18n.changeLanguage('pl');
 });
 afterEach(() => {
@@ -29,8 +32,7 @@ const enter = (name: string, value: string) =>
   fireEvent.change(input(name), { target: { value } });
 const builder = () =>
   fireEvent.click(screen.getByRole('button', { name: 'Kreator' }));
-const rafterView = () =>
-  fireEvent.click(screen.getByRole('tab', { name: 'Krokiew' }));
+const rafterView = () => act(() => useAssembly.getState().setView('rafter'));
 const add = () =>
   fireEvent.click(screen.getByRole('button', { name: 'Dodaj płatew' }));
 const purlin = () =>
@@ -134,6 +136,7 @@ describe('dual-mode parametric workbench', () => {
         .querySelector('[data-profile="member:rafter-1"]')!
         .getAttribute('points'),
     ).not.toBe(before);
+    fireEvent.click(screen.getByRole('tab', { name: 'Cięcia' }));
     expect(
       container.querySelector('[data-datum="datum:purlin-1-heel"]'),
     ).toBeTruthy();
@@ -183,9 +186,22 @@ describe('dual-mode parametric workbench', () => {
     expect(
       screen.getByRole('region', { name: 'Detal wykonawczy' }),
     ).toBeTruthy();
+    fireEvent.click(screen.getByRole('tab', { name: 'Po cięciu' }));
+    expect(useAssembly.getState().workbench.detailDrawer.cutState).toBe(
+      'after',
+    );
     expect(
-      screen.getByTestId('contextual-fabrication').getAttribute('data-context'),
-    ).toBe('joint');
+      screen.getByTestId('detail-drawer').querySelector('.shape-removed'),
+    ).toBeNull();
+    fireEvent.click(screen.getByRole('tab', { name: 'Przed cięciem' }));
+    expect(
+      screen.getByTestId('detail-drawer').querySelector('.shape-removed'),
+    ).toBeTruthy();
+    expect(
+      document
+        .querySelector('.a-member-preparation')
+        ?.getAttribute('data-family'),
+    ).toBe('K1');
     expect(input('Pozycja od lica murłaty')).toBeTruthy();
     enter('Długość siedziska', '100');
     expect(screen.getByTestId('selected-notch-depth').textContent).toBe(
@@ -223,10 +239,14 @@ describe('dual-mode parametric workbench', () => {
       })[0]!,
     );
     expect(screen.getByTestId('detail-preview-hip-cut-detail')).toBeTruthy();
-    expect(useAssembly.getState().selected).toBe('cut:hip-ridge-H1');
+    expect(useAssembly.getState().workbench.selectedId).toBe(
+      'cut:hip-ridge-H1',
+    );
     expect(
-      screen.getByTestId('contextual-fabrication').getAttribute('data-context'),
-    ).toBe('joint');
+      document
+        .querySelector('.a-member-preparation')
+        ?.getAttribute('data-family'),
+    ).toBe('H1');
   });
   it('retains the last valid drawing during an invalid draft and recovers through exact input', () => {
     const { container } = render(<App />);
@@ -296,8 +316,13 @@ describe('dual-mode parametric workbench', () => {
       screen.getByRole('button', { name: /Właściwości elementu Połać/ }),
     );
     expect(screen.queryByLabelText('Kąt połaci')).toBeNull();
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Wymiary' }));
-    expect(container.querySelector('.dimension-layer')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Minimalne' }));
+    expect(useAssembly.getState().workbench.dimensionLevel).toBe('minimal');
+    expect(
+      screen
+        .getByRole('button', { name: 'Minimalne' })
+        .getAttribute('aria-pressed'),
+    ).toBe('true');
     fireEvent.click(
       screen.getByRole('button', { name: 'Zmień język na angielski' }),
     );
@@ -391,13 +416,7 @@ describe('dual-mode parametric workbench', () => {
     const beforeCount = rafterCount();
     const beforeRidge = ridge();
     const beforeStock = screen.getByTestId('stock-length').textContent;
-    expect(
-      screen.getByRole('region', { name: 'Trasowanie krok po kroku' }),
-    ).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Pokaż trasowanie' }));
-    expect(
-      screen.getByRole('region', { name: 'Trasowanie krok po kroku' }),
-    ).toBeTruthy();
+    expect(screen.getByTestId('roof-fabrication-package')).toBeTruthy();
     enter('Długość budynku', '12000');
     enter('Rozstaw krokwi', '600');
     expect(rafterCount()).toBeGreaterThan(beforeCount);
@@ -421,7 +440,7 @@ describe('dual-mode parametric workbench', () => {
       1,
     );
     expect(screen.getByText('rafter-pair-4:left')).toBeTruthy();
-    expect(screen.getByText('Krokiew K1')).toBeTruthy();
+    expect(screen.getAllByText('Krokiew K1').length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole('button', { name: 'Otwórz element' }));
     expect(screen.getByTestId('assembly-drawing')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Wróć do szkieletu' }));
@@ -458,6 +477,31 @@ describe('dual-mode parametric workbench', () => {
     expect(useAssembly.getState().template.intermediateSupports).toHaveLength(
       2,
     );
+    const preparation = screen.getByTestId('roof-fabrication-package');
+    fireEvent.click(
+      within(preparation).getByRole('button', {
+        name: /K1.*Krokiew zwykła/,
+      }),
+    );
+    expect(
+      within(preparation).getByRole('tab', { name: 'Z1 Murłata' }),
+    ).toBeTruthy();
+    fireEvent.click(
+      within(preparation).getByRole('tab', { name: /Z\d Płatew P2/ }),
+    );
+    expect(useAssembly.getState().workbench.activeOperationId).toBe(
+      'joint:support:purlin-2',
+    );
+    expect(screen.getByTestId('detail-drawer').classList).toContain('is-open');
+    fireEvent.click(
+      within(preparation).getByRole('button', { name: 'Następna operacja' }),
+    );
+    expect(useAssembly.getState().workbench.activeOperationId).toBe(
+      'joint:support:purlin-1',
+    );
+    expect(
+      within(preparation).getByRole('tab', { name: /Z\d Płatew P1/ }),
+    ).toBeTruthy();
   });
   it('adjusts skeleton handles through canonical history while camera controls leave geometry unchanged', () => {
     render(<App />);
@@ -594,15 +638,17 @@ describe('dual-mode parametric workbench', () => {
         name: /Krokiew narożna H1.*przedni lewy narożnik/,
       }),
     );
-    expect(useAssembly.getState().selected).toBe('instance:hip:front-left');
+    expect(useAssembly.getState().workbench.selectedId).toBe(
+      'instance:hip:front-left',
+    );
     expect(screen.getByText('front-left')).toBeTruthy();
     fireEvent.click(
       screen.getByRole('button', { name: /Przygotuj krokiew narożną H1/ }),
     );
-    expect(useAssembly.getState().view).toBe('hip');
+    expect(useAssembly.getState().workbench.canvasView).toBe('hip');
     expect(screen.getByTestId('hip-fabrication-sheet')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Wróć do szkieletu' }));
-    expect(useAssembly.getState().view).toBe('skeleton');
+    expect(useAssembly.getState().workbench.canvasView).toBe('skeleton');
   });
 
   it('renders first-class J1 members and switches roof, prototype and instance results', () => {
@@ -616,12 +662,10 @@ describe('dual-mode parametric workbench', () => {
     expect(
       screen.getByRole('region', { name: 'Podsumowanie dachu' }),
     ).toBeTruthy();
-    expect(
-      screen.getByTestId('contextual-fabrication').getAttribute('data-context'),
-    ).toBe('roof');
+    expect(screen.getByTestId('roof-fabrication-package')).toBeTruthy();
 
     fireEvent.click(
-      container.querySelector('.a-toolbox [aria-label="Krokiew"]')!,
+      container.querySelector('.a-toolbox [aria-label="Krokiew K1"]')!,
     );
     expect(
       screen.getByRole('region', { name: 'Podsumowanie prototypu' }),
@@ -639,7 +683,9 @@ describe('dual-mode parametric workbench', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Kulawek J1' }));
-    expect(useAssembly.getState().selected).toBe('member:jack-rafter-J1');
+    expect(useAssembly.getState().workbench.selectedId).toBe(
+      'member:jack-rafter-J1',
+    );
     expect(
       screen.getByRole('region', { name: 'Podsumowanie prototypu' }),
     ).toBeTruthy();
@@ -650,10 +696,10 @@ describe('dual-mode parametric workbench', () => {
         name: /Kulawek J1\/1 · lewa · przedni lewy narożnik/,
       }),
     );
-    expect(useAssembly.getState().selected).toBe(
+    expect(useAssembly.getState().workbench.selectedId).toBe(
       'instance:jack:front-left:left:1',
     );
-    expect(useAssembly.getState().selectedPrototype).toBe(
+    expect(useAssembly.getState().workbench.selectedPrototypeId).toBe(
       'member:jack-rafter-J1',
     );
     expect(screen.getByTestId('jack-inspector')).toBeTruthy();
@@ -675,7 +721,21 @@ describe('dual-mode parametric workbench', () => {
       container
         .querySelector('[data-entity="instance:hip:front-left"]')
         ?.getAttribute('data-selection-state'),
-    ).toBe('muted');
+    ).toBe('related');
+    const projectBeforeIsolation = structuredClone(
+      useAssembly.getState().projectDocument,
+    );
+    const historyBeforeIsolation = useAssembly.getState().historyPast.length;
+    fireEvent.click(screen.getByRole('button', { name: 'Izoluj element' }));
+    expect(useAssembly.getState().workbench.isolateSelection).toBe(true);
+    expect(useAssembly.getState().projectDocument).toEqual(
+      projectBeforeIsolation,
+    );
+    expect(useAssembly.getState().historyPast).toHaveLength(
+      historyBeforeIsolation,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Pokaż cały dach' }));
+    expect(useAssembly.getState().workbench.isolateSelection).toBe(false);
 
     fireEvent.click(screen.getByRole('button', { name: 'Połać' }));
     expect(
@@ -691,23 +751,18 @@ describe('dual-mode parametric workbench', () => {
     expect(
       screen.getByRole('region', { name: 'Parametry podpory' }),
     ).toBeTruthy();
-    expect(
-      screen.getByTestId('contextual-fabrication').getAttribute('data-context'),
-    ).toBe('support');
+    expect(screen.getByTestId('roof-fabrication-package')).toBeTruthy();
 
     fireEvent.click(
       screen.getByRole('button', {
         name: /Kulawek J1\/2 · przód · przedni lewy narożnik/,
       }),
     );
-    expect(screen.getAllByText(/Odjęcie do fizycznego lica H1/)).toHaveLength(
-      2,
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'Pokaż trasowanie' }));
     expect(
-      screen.getByText(
-        /Odmierz .* po osi od okapu do teoretycznej płaszczyzny H1/,
-      ),
+      screen.getAllByText(/Odjęcie do fizycznego lica H1/).length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getByRole('tab', { name: /J1 .*Połączenie z H1/ }),
     ).toBeTruthy();
   });
 

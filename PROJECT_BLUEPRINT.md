@@ -1297,7 +1297,62 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
-> Updated 2026-09-10. Iteration 008 is complete in the root repository.
+> Updated 2026-09-11. Iteration 009 is complete in the root repository.
+
+**Iteration:** `009 — project workbench + smart views + fabrication package`
+
+**Status:** `COMPLETE — AUTOMATED VALIDATION PASS; NATIVE BROWSER QA UNAVAILABLE`
+
+**Iteration 009 completed:**
+
+- Read the complete mandatory AGENTS/Blueprint/North Star/V3–V9 architecture, H1/J1 geometry, research roadmap, approved V9 prompt and user-supplied problem statement before editing source. Preserved the untracked user file `git.txt`; no unrelated work was discarded.
+- Added the schema-versioned `RoofProjectDocumentV1` as the explicit serializable boundary for the canonical `RoofTemplateSpec`, including strict parse/create/serialize entry points. Zustand keeps this document synchronized with canonical edits, and Undo/Redo snapshots now contain the versioned document rather than ad hoc UI state.
+- Consolidated session-only state under `WorkbenchViewState`: Quick/Builder mode, selection/prototype, canvas context, view preset, isolation/focus, dimension level, whole-Toolbox and per-group collapse, Inspector, preparation workflow and Detail Drawer state. Units and raw/invalid drafts remain documented transient presentation/editor state; camera/drag hover state remains component-local. None of these values creates a project-history entry or enters serialization.
+- Added derived semantic projection policy for the intelligent `Konstrukcja` / `Cięcia` presets. Construction retains roof context, structural families, supports and direct handles; Cuts switches to cut datums/markers, active-operation context and heavy muting while disabling construction handles. Existing K1/H1 detail canvases remain contextual views rather than primary global modes.
+- Added `Izoluj element` / `Pokaż cały dach`, with roof planes retained as ghost context and selected, directly related and muted geometry distinguished consistently. Returning to roof selection exits isolation; isolation/focus is tested not to alter geometry, the canonical document or history.
+- Centralized `Minimalne` / `Robocze` / `Pełne` dimension policy. Working is the default, selection/focus unlocks useful support context, Full allows every available technical dimension on desktop, and narrow canvases automatically cap Full at Working while exact Inspector/Drawer values remain available.
+- Added a collapsible dynamic legend derived from the actual scene: gable exposes K1, hip adds H1/J1, and real purlins use stable P1/P2… labels. Selected, removed-material and guide semantics are separate from family styling.
+- Formalized pure `FabricationOperationSummary`, `MemberFabricationPackage` and `RoofFabricationPackage` projections. K1 reuses every existing wall/purlin notch and ridge-cut preview; H1 reuses the supported compound upper-cut preview; J1 groups exact varying instance lengths and exposes only the valid wall-seat/theoretical-H1 facts with explicit physical-face and purlin-joinery limitations.
+- Replaced the generic `Pokaż trasowanie` mental model with `Przygotowanie elementu` and `Plan przygotowania dachu`. K1/H1/J1 family cards expose physical quantities, section, grouped lengths, ordered operations, exact dimensions, steps, limitations and previous/next navigation; selecting an operation coordinates selection, the Cuts preset, contextual member view and Detail Drawer.
+- Added `Przed cięciem` / `Po cięciu` projections to canonical K1 and H1 details. Both states reuse one resolved operation: Before shows stock, cut lines and removed material; After shows the retained profile without a second cut formula. Quick compact cards and Builder details are derived from the same roof package.
+- Replaced inline Toolbox growth logic with typed web-layer tool descriptors for only the implemented roof, K1, conditional H1/J1, wall plate, real purlins, ridge and `+ Dodaj płatew`. Per-category collapse state is ready for a future real `+ Dodaj element` without adding fake tools or React concerns to domain packages.
+- Memoized roof resolution, skeleton and fabrication-package derivation across transient view changes. The skeleton now subscribes only to state used by its renderer and is memoized, so drawer-only state changes do not recompute the full scene. A small Rollup vendor split reduced the main application chunk below the Vite advisory threshold.
+
+**Project/view and fabrication contracts:**
+
+- Canonical persisted/revision-ready data is exactly `RoofProjectDocumentV1 { schemaVersion: 1, project: { roof } }`. `template` and `spec` are runtime access/solver projections; project history stores document snapshots. No persistence service exists yet.
+- `WorkbenchViewState`, units, drafts and component-local camera/gesture state are transient. View presets, isolation, dimensions, collapse, language, selection, focus and drawer state are deliberately outside Undo/Redo.
+- `RoofFabricationPackage` is a pure derivation from one resolved roof template. It contains ordered member-family packages; operation summaries link back to existing canonical plans/previews and never recalculate joinery.
+
+**Files changed / WIP:**
+
+- Canonical/project and fabrication: new `packages/calculator-core/src/project-document.ts`, `fabrication-package.ts` and tests; updated detail-preview projections/tests and calculator-core exports; extended renderer-neutral preview state in `packages/drawing-engine/src/index.ts`.
+- Web workbench: new `workbench.ts`, `WorkbenchControls.tsx`, `Toolbox.tsx`, `PreparationPlan.tsx` and tests; updated store/Page/Canvas/SkeletonCanvas/DetailPreview, integration tests, translations and responsive styling.
+- Performance/configuration: `apps/web/vite.config.ts`. Documentation: this checkpoint. `git.txt` remains an untracked user file and was not modified. There is no dependency/lockfile change, commit or push.
+
+**Performance before / after:**
+
+- Baseline: main `index-BPHbirx3.js` **531.08 kB / 156.46 kB gzip**, CSS **52.71 kB / 11.17 kB gzip**, with Vite's >500 kB advisory.
+- Final measured build: main application chunk **435.63 kB / 125.56 kB gzip**, plus `react-vendor` **51.29 / 18.04 kB**, localization **49.54 / 16.09 kB** and icons **10.27 / 2.30 kB**; CSS **58.59 / 12.14 kB**. The main-chunk advisory is gone. Splitting improves caching/load scheduling; it is not claimed as a reduction of all transferred JavaScript.
+
+**Iteration 009 validation and QA:**
+
+- Baseline passed typecheck, **237 tests across 26 files**, and web/API build. Final repository-pinned validation passes typecheck, lint, web/API production build, `git diff --check` and **252 tests across 29 files**.
+- Coverage includes project serialization/version rejection, exclusion of UI state, canonical Undo/Redo isolation, both view policies, all dimension levels and narrow fallback, gable/hip/P1 legend contents, typed tools, K1/H1 operation mapping, K1/H1/J1 quantities and deterministic length grouping/order, shared before/after geometry, Quick/Builder package equivalence, operation navigation for multiple real purlins and the unchanged 940/800 spacing contract.
+- The production preview returns HTTP 200. The requested Browser skill was used, but `iab`, Edge and Chrome each returned `Browser is not available`, and the browser inventory was empty. No native desktop/360 px screenshot, visual-overflow or hardware touch claim is made. Narrow dimension fallback, mobile bottom-sheet/layout rules and mouse/touch pointer flows remain covered by unit/jsdom/CSS checks.
+
+**Known limitations:**
+
+- H1 remains the approved coordinated top-face compound-cut projection with the explicit backed-versus-dropped warning; it is not a complete 3D saw-face model.
+- J1 remains measured to the theoretical H1 center plane. Physical H1-face deduction, J1-to-purlin joinery and a dedicated J1 cut drawing are intentionally not invented; the package reports these limits.
+- The optional controlled inline-edit proof was not added because the existing exact Inspector inputs already share the canonical validation path and the higher-priority project/view/fabrication boundary was completed without duplicating an editing surface.
+- Native desktop/mobile acceptance is outstanding only because no Browser surface was available. Persistence/database, auth, PDF, structural verification, collar ties, windows, covering and other Iteration 010+ scope were not started.
+
+**NEXT ACTION:**
+
+> When a Browser surface is available, run the Iteration 009 desktop and 360 px acceptance matrix against the production build: gable presets/isolation/dimensions/K1 operations/before-after/package; multiple-purlin mapping; hip H1/J1 grouping/limitations; Quick handoff; bottom-sheet usability and horizontal overflow. Then stop and await a new explicit user-approved iteration prompt. Do not begin Iteration 010 automatically.
+
+**Previous checkpoint — Iteration 008:**
 
 **Iteration:** `008 — cut detail previews + smart detail drawer + explicit spacing policies`
 

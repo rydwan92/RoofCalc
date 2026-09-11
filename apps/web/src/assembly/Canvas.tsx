@@ -21,6 +21,7 @@ import {
 import { clampPurlinPlacement, purlinRange } from '@cieslacalc/roof-math';
 import { formatLength } from '../format';
 import { useAssembly } from './store';
+import { deriveWorkbenchProjectionPolicy, dimensionAllowed } from './workbench';
 import type { Calculation } from './Inputs';
 
 type Projection = ReturnType<typeof fitDrawing>;
@@ -100,7 +101,6 @@ export function AssemblyCanvas({
     kind: 'grid' | 'target';
     stepMm: number;
   } | null>(null);
-  const [dimensions, setDimensions] = useState(true);
   useEffect(() => {
     if (!container.current || typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(([entry]) => {
@@ -115,12 +115,17 @@ export function AssemblyCanvas({
   }, [focusId]);
   const model = createAssemblyDrawing(result.assembly, focusId);
   const height = compact ? (focusId ? 245 : 250) : width < 550 ? 400 : 570;
+  const policy = deriveWorkbenchProjectionPolicy(state.workbench, width < 550);
   const length = (n: number) => formatLength(n, state.unit, i18n.language);
   const label = (d: DrawingDimension) =>
     `${d.fromLabel ? `${d.fromLabel}→${d.toLabel} · ` : ''}${length(d.valueMm)} ${state.unit}`;
   const visibleDimensions = model.dimensions.filter(
     (d) =>
-      d.valueMm > 1e-7 &&
+      dimensionAllowed(
+        d,
+        policy,
+        !!focusId || state.workbench.selectedId !== 'roof',
+      ) &&
       (focusId || (!compact && width >= 550) || d.group === 'primary'),
   );
   const projection =
@@ -263,7 +268,8 @@ export function AssemblyCanvas({
           tabIndex: 0,
           'aria-label': entityLabel(id, state, t),
           'aria-pressed':
-            state.selected === id || state.selectedPrototype === id,
+            state.workbench.selectedId === id ||
+            state.workbench.selectedPrototypeId === id,
           onClick: () =>
             state.select(
               id,
@@ -277,6 +283,29 @@ export function AssemblyCanvas({
   const lineGroups = Array.from(
     new Set(model.lines.map((l) => l.selectionId ?? l.id)),
   );
+  const relatedSupportId = result.assembly.joints.find(
+    (joint) =>
+      joint.id ===
+      (state.workbench.activeOperationId ?? state.workbench.selectedId),
+  )?.supportId;
+  const visualState = (selectionId?: string) => {
+    if (!selectionId) return 'normal';
+    if (
+      state.workbench.selectedId === selectionId ||
+      state.workbench.selectedId === selectionId.replace(/^joint:/, 'support:')
+    )
+      return 'selected';
+    if (
+      state.workbench.selectedPrototypeId === selectionId ||
+      relatedSupportId === selectionId ||
+      (!state.workbench.activeOperationId &&
+        state.workbench.selectedPrototypeId === state.spec.member.id &&
+        (selectionId === state.spec.ridge.id ||
+          state.spec.supports.some((support) => support.id === selectionId)))
+    )
+      return 'related';
+    return state.workbench.selectedId !== 'roof' ? 'muted' : 'normal';
+  };
   const guide = preview
     ? result.assembly.supports.find((s) => s.id === preview.id)?.topReference[0]
     : null;
@@ -285,14 +314,9 @@ export function AssemblyCanvas({
       {!compact && (
         <div className="a-canvas-toolbar">
           <span>{focusId ? t('assembly.detail') : t('assembly.drawing')}</span>
-          <label>
-            <input
-              type="checkbox"
-              checked={dimensions}
-              onChange={(e) => setDimensions(e.target.checked)}
-            />
-            {t('assembly.dimensions')}
-          </label>
+          <span aria-live="polite">
+            {t(`assembly.${policy.effectiveDimensionLevel}Dimensions`)}
+          </span>
         </div>
       )}
       <svg
@@ -321,13 +345,14 @@ export function AssemblyCanvas({
           <g
             key={shape.id}
             data-entity={shape.id}
+            data-selection-state={visualState(shape.selectionId)}
             {...interaction(shape.selectionId)}
             className={shape.id.includes('purlin') ? 'a-draggable' : ''}
           >
             <polygon
               data-profile={shape.id}
               points={points(shape.points)}
-              className={`shape shape-${shape.role} ${state.selected === shape.selectionId || state.selectedPrototype === shape.selectionId ? 'is-selected' : ''}`}
+              className={`shape shape-${shape.role} ${state.workbench.selectedId === shape.selectionId || state.workbench.selectedPrototypeId === shape.selectionId ? 'is-selected' : ''}`}
             />
             {shape.id.includes('purlin') &&
               !compact &&
@@ -354,7 +379,16 @@ export function AssemblyCanvas({
           <g
             key={id}
             data-entity={id}
-            className={`cut-group ${state.selected === id || state.selectedPrototype === id ? 'is-selected' : ''}`}
+            data-selection-state={
+              state.workbench.selectedId === id
+                ? 'selected'
+                : state.workbench.selectedPrototypeId === state.spec.member.id
+                  ? 'related'
+                  : policy.muteUnrelated
+                    ? 'muted'
+                    : 'normal'
+            }
+            className={`cut-group ${state.workbench.selectedId === id || state.workbench.selectedPrototypeId === id ? 'is-selected' : ''}`}
             {...interaction(
               model.lines.find((l) => (l.selectionId ?? l.id) === id)
                 ?.selectionId,
@@ -386,7 +420,7 @@ export function AssemblyCanvas({
               })}
           </g>
         ))}
-        {dimensions && (
+        {visibleDimensions.length > 0 && (
           <g className="dimension-layer" pointerEvents="none">
             {lanes.map(
               ({
@@ -417,7 +451,7 @@ export function AssemblyCanvas({
             )}
           </g>
         )}
-        {!focusId && (
+        {!focusId && (compact || policy.showDatums) && (
           <g className="a-markers" pointerEvents="none">
             {model.markers
               ?.filter(
@@ -480,7 +514,7 @@ export function AssemblyCanvas({
             </button>
           </div>
           <p className="a-canvas-hint">
-            {state.selected.includes('purlin')
+            {state.workbench.selectedId.includes('purlin')
               ? t('assembly.dragHint')
               : t('assembly.selectHint')}
           </p>

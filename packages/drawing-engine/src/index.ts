@@ -322,6 +322,11 @@ export interface DetailPreviewModel {
   relatedSupportId?: string;
   localFrame: DetailLocalFrame;
   drawing: DrawingModel;
+  /** Before/after projections of the same canonical fabrication operation. */
+  cutStates?: {
+    before: DrawingModel;
+    after: DrawingModel;
+  };
   keyDimensions: DetailKeyDimension[];
   fabricationSteps: DetailFabricationStep[];
   warningKeys: string[];

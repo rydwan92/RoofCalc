@@ -1,30 +1,15 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  createAssemblyDetailPreviews,
-  createHipRafterDetailPreview,
+  createRoofFabricationPackage,
+  detailPreviewsFromFabricationPackage,
 } from '@cieslacalc/calculator-core';
-import {
-  ArrowLeft,
-  Box,
-  Columns3,
-  House,
-  Layers3,
-  PanelLeftClose,
-  PanelLeftOpen,
-  Plus,
-  RotateCcw,
-  Redo2,
-  Triangle,
-  Undo2,
-  X,
-} from 'lucide-react';
+import { ArrowLeft, House, RotateCcw, Redo2, Undo2, X } from 'lucide-react';
 import {
   createRoofSkeleton,
   HIP_RAFTER_PROTOTYPE_ID,
   JACK_RAFTER_PROTOTYPE_ID,
   lengthUnits,
-  purlinPlacementSegments,
   resolveRoofTemplate,
 } from '@cieslacalc/roof-math';
 import type { DetailPreviewModel } from '@cieslacalc/drawing-engine';
@@ -49,139 +34,19 @@ import { SkeletonCanvas } from './SkeletonCanvas';
 import { HipFabricationSheet } from './HipFabricationSheet';
 import { DetailDrawer, QuickCutPreviews } from './DetailPreview';
 import {
-  ContextualFabrication,
   ContextualResults,
-  Fabrication,
   HipResults,
   Results,
   SpacingSummary,
 } from './Summary';
+import { Toolbox } from './Toolbox';
+import { WorkbenchControls } from './WorkbenchControls';
+import { PreparationPlan } from './PreparationPlan';
 import {
   resolveWorkbenchSelectionContext,
   type WorkbenchSelectionContext,
 } from './selection';
 import './styles.css';
-
-function Toolbox({
-  result,
-  detailPreviews,
-}: {
-  result: Calculation | null;
-  detailPreviews: DetailPreviewModel[];
-}) {
-  const state = useAssembly(),
-    { t } = useTranslation();
-  const canAdd =
-    !!result && purlinPlacementSegments(state.spec, 140).length > 0;
-  const selectButton = (id: string, icon: ReactNode, label: string) => (
-    <button
-      key={id}
-      className="a-tool"
-      title={label}
-      aria-label={label}
-      aria-pressed={state.selected === id || state.selectedPrototype === id}
-      onClick={() => state.select(id)}
-    >
-      {icon}
-      <span>{label}</span>
-    </button>
-  );
-  return (
-    <aside
-      className={`a-toolbox ${state.collapsed ? 'is-collapsed' : ''}`}
-      aria-label={t('assembly.toolbox')}
-    >
-      <button
-        className="a-collapse a-button"
-        aria-label={t(`assembly.${state.collapsed ? 'expand' : 'collapse'}`)}
-        onClick={() => useAssembly.setState({ collapsed: !state.collapsed })}
-      >
-        {state.collapsed ? (
-          <PanelLeftOpen size={18} />
-        ) : (
-          <PanelLeftClose size={18} />
-        )}
-        <span>{t('assembly.toolbox')}</span>
-      </button>
-      <section className="a-toolbox-active">
-        <h2>{t('assembly.activeSelection')}</h2>
-        <strong>{entityLabel(state.selected, state, t)}</strong>
-        {detailPreviews.length > 0 && (
-          <div className="a-toolbox-detail-shortcuts">
-            {detailPreviews.map((preview) => (
-              <button
-                key={preview.id}
-                className="a-tool"
-                aria-pressed={state.selected === preview.sourceSelectionId}
-                onClick={() =>
-                  state.select(
-                    preview.sourceSelectionId,
-                    preview.subjectMemberId,
-                  )
-                }
-              >
-                <Triangle size={18} />
-                <span>{t(`assembly.${preview.titleKey}`)}</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </section>
-      <details open>
-        <summary>{t('assembly.geometry')}</summary>
-        {selectButton('roof', <Triangle size={20} />, t('assembly.roof'))}
-      </details>
-      <details open>
-        <summary>{t('assembly.timber')}</summary>
-        {selectButton(
-          state.spec.member.id,
-          <Box size={20} />,
-          t('assembly.rafter'),
-        )}
-        {state.template.type === 'hip' &&
-          selectButton(
-            HIP_RAFTER_PROTOTYPE_ID,
-            <Box size={20} />,
-            `${t('assembly.hipRafter')} H1`,
-          )}
-        {state.template.type === 'hip' &&
-          selectButton(
-            JACK_RAFTER_PROTOTYPE_ID,
-            <Box size={20} />,
-            `${t('assembly.jackRafter')} J1`,
-          )}
-      </details>
-      <details open>
-        <summary>{t('assembly.supports')}</summary>
-        {state.spec.supports.map((support) => {
-          const number = /^support:purlin-(\d+)$/.exec(support.id)?.[1];
-          return selectButton(
-            support.id,
-            <Layers3 size={20} />,
-            number
-              ? `${t('assembly.purlin')} P${number}`
-              : t(`assembly.${support.kind}`),
-          );
-        })}
-        <button
-          className="a-tool a-add"
-          aria-label={t('assembly.addPurlin')}
-          title={canAdd ? t('assembly.addPurlin') : t('assembly.noSpace')}
-          disabled={!canAdd}
-          onClick={state.add}
-        >
-          <Plus size={20} />
-          <span>{t('assembly.addPurlin')}</span>
-        </button>
-        {selectButton(
-          state.spec.ridge.id,
-          <Columns3 size={20} />,
-          t('assembly.ridge'),
-        )}
-      </details>
-    </aside>
-  );
-}
 function Inspector({
   result,
   hip,
@@ -205,53 +70,53 @@ function Inspector({
 }) {
   const state = useAssembly(),
     { t, i18n } = useTranslation();
+  const workbench = state.workbench;
   const support = state.spec.supports.find(
-    (s) => s.id === state.selected || `joint:${s.id}` === state.selected,
+    (s) =>
+      s.id === workbench.selectedId || `joint:${s.id}` === workbench.selectedId,
   );
   const rafterInstance =
-    state.selectedPrototype === state.spec.member.id
-      ? skeleton.members.find((member) => member.id === state.selected)
+    workbench.selectedPrototypeId === state.spec.member.id
+      ? skeleton.members.find((member) => member.id === workbench.selectedId)
       : undefined;
   const hipInstance =
-    state.selectedPrototype === HIP_RAFTER_PROTOTYPE_ID
-      ? skeleton.members.find((member) => member.id === state.selected)
+    workbench.selectedPrototypeId === HIP_RAFTER_PROTOTYPE_ID
+      ? skeleton.members.find((member) => member.id === workbench.selectedId)
       : undefined;
   const jackInstance = context.kind === 'instance' ? context.jack : undefined;
   const isRafter =
-    state.selected === state.spec.member.id ||
-    state.selectedPrototype === state.spec.member.id;
+    workbench.selectedId === state.spec.member.id ||
+    workbench.selectedPrototypeId === state.spec.member.id;
   const isHip =
-    state.selected === HIP_RAFTER_PROTOTYPE_ID ||
-    state.selectedPrototype === HIP_RAFTER_PROTOTYPE_ID;
+    workbench.selectedId === HIP_RAFTER_PROTOTYPE_ID ||
+    workbench.selectedPrototypeId === HIP_RAFTER_PROTOTYPE_ID;
   const isJack =
-    state.selected === JACK_RAFTER_PROTOTYPE_ID ||
-    state.selectedPrototype === JACK_RAFTER_PROTOTYPE_ID;
+    workbench.selectedId === JACK_RAFTER_PROTOTYPE_ID ||
+    workbench.selectedPrototypeId === JACK_RAFTER_PROTOTYPE_ID;
   const length = (value: number) =>
     `${formatLength(value, state.unit, i18n.language)} ${state.unit}`;
   return (
     <aside
-      className={`a-inspector ${state.inspectorOpen ? 'is-open' : ''}`}
+      className={`a-inspector ${workbench.inspectorOpen ? 'is-open' : ''}`}
       aria-label={t('assembly.inspector')}
     >
       <button
         className="a-inspector-heading"
-        aria-expanded={state.inspectorOpen}
-        onClick={() =>
-          useAssembly.setState({ inspectorOpen: !state.inspectorOpen })
-        }
+        aria-expanded={workbench.inspectorOpen}
+        onClick={() => state.setInspectorOpen(!workbench.inspectorOpen)}
       >
         <span>
           <small>{t('assembly.inspector')}</small>
-          <strong>{entityLabel(state.selected, state, t)}</strong>
+          <strong>{entityLabel(workbench.selectedId, state, t)}</strong>
         </span>
-        <span>{state.inspectorOpen ? '−' : '+'}</span>
+        <span>{workbench.inspectorOpen ? '−' : '+'}</span>
       </button>
-      {state.inspectorOpen && (
+      {workbench.inspectorOpen && (
         <div className="a-inspector-body">
           <span className="a-context-badge">
             {t(`assembly.${context.kind}Context`)}
           </span>
-          {state.selected === 'roof' && (
+          {workbench.selectedId === 'roof' && (
             <>
               <GeometryInputs includeLayout />
               {spacingEntries.map((entry) => (
@@ -349,7 +214,7 @@ function Inspector({
               <p className="a-help">{t('assembly.hipFaceDeductionNote')}</p>
             </section>
           )}
-          {(isRafter || isJack || state.selected === 'cut:eave') && (
+          {(isRafter || isJack || workbench.selectedId === 'cut:eave') && (
             <TimberInputs />
           )}
           {isHip && hip && (
@@ -360,8 +225,8 @@ function Inspector({
               </button>
             </>
           )}
-          {(state.selected === state.spec.ridge.id ||
-            state.selected === 'cut:ridge') && (
+          {(workbench.selectedId === state.spec.ridge.id ||
+            workbench.selectedId === 'cut:ridge') && (
             <NumberField
               field="ridge.thicknessMm"
               label="ridgeWidth"
@@ -397,11 +262,8 @@ function Inspector({
 export function AssemblyPage() {
   const state = useAssembly(),
     { t, i18n } = useTranslation();
-  const [marking, setMarking] = useState(false),
-    [focusId, setFocusId] = useState<string | undefined>(),
-    [detailOpen, setDetailOpen] = useState(false),
-    [detailPinned, setDetailPinned] = useState(false),
-    [activeDetailId, setActiveDetailId] = useState<string | undefined>();
+  const workbench = state.workbench;
+  const drawer = workbench.detailDrawer;
   const brand = import.meta.env.VITE_BRAND_NAME || 'CieślaCalc';
   const templateResult = useMemo(
     () => resolveRoofTemplate(state.template),
@@ -414,13 +276,19 @@ export function AssemblyPage() {
   const selectionContext = useMemo(
     () =>
       resolveWorkbenchSelectionContext({
-        selected: state.selected,
+        selected: workbench.selectedId,
         template: state.template,
         spec: state.spec,
         resolved: templateResult,
         skeleton,
       }),
-    [state.selected, state.template, state.spec, templateResult, skeleton],
+    [
+      workbench.selectedId,
+      state.template,
+      state.spec,
+      templateResult,
+      skeleton,
+    ],
   );
   const result = templateResult.calculation;
   const hip =
@@ -454,24 +322,25 @@ export function AssemblyPage() {
           },
         ];
   const wall = state.spec.supports.find((s) => s.kind === 'wall-plate')!;
-  const commonDetailPreviews = useMemo(
-    () => (result ? createAssemblyDetailPreviews(result) : []),
-    [result],
-  );
-  const hipDetailPreview = useMemo(
-    () => (hip ? createHipRafterDetailPreview(hip) : undefined),
-    [hip],
+  const fabricationPackage = useMemo(
+    () => createRoofFabricationPackage(templateResult),
+    [templateResult],
   );
   const allDetailPreviews = useMemo(
-    () => [
-      ...commonDetailPreviews,
-      ...(hipDetailPreview ? [hipDetailPreview] : []),
-    ],
-    [commonDetailPreviews, hipDetailPreview],
+    () => detailPreviewsFromFabricationPackage(fabricationPackage),
+    [fabricationPackage],
+  );
+  const commonDetailPreviews = useMemo(
+    () => allDetailPreviews.filter((preview) => preview.subjectCode === 'K1'),
+    [allDetailPreviews],
+  );
+  const hipDetailPreview = useMemo(
+    () => allDetailPreviews.find((preview) => preview.subjectCode === 'H1'),
+    [allDetailPreviews],
   );
   const selectionDetailPreviews = useMemo(() => {
     const direct = allDetailPreviews.find(
-      (preview) => preview.sourceSelectionId === state.selected,
+      (preview) => preview.sourceSelectionId === workbench.selectedId,
     );
     if (direct) return [direct];
     if (selectionContext.kind === 'support')
@@ -493,7 +362,7 @@ export function AssemblyPage() {
     commonDetailPreviews,
     hipDetailPreview,
     selectionContext,
-    state.selected,
+    workbench.selectedId,
     state.spec.member.id,
   ]);
   const quickDetailPreviews = hip
@@ -505,48 +374,80 @@ export function AssemblyPage() {
           preview.type === 'ridge-cut-detail' ||
           preview.relatedSupportId === wall.id,
       );
-  const drawerPreviews = detailPinned
+  const activeOperation = fabricationPackage.families
+    .flatMap((family) => family.operations)
+    .find((operation) => operation.id === workbench.activeOperationId);
+  const relatedSelectionIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (activeOperation?.relatedSupportId)
+      ids.add(activeOperation.relatedSupportId);
+    const prototypeId = workbench.selectedPrototypeId;
+    if (!activeOperation && prototypeId === state.spec.member.id) {
+      state.spec.supports.forEach((support) => ids.add(support.id));
+      ids.add(state.spec.ridge.id);
+    }
+    if (prototypeId === HIP_RAFTER_PROTOTYPE_ID) {
+      ids.add(state.spec.supports[0]!.id);
+      ids.add(state.spec.ridge.id);
+    }
+    if (prototypeId === JACK_RAFTER_PROTOTYPE_ID) {
+      ids.add(state.spec.supports[0]!.id);
+      if (selectionContext.kind === 'instance' && selectionContext.jack)
+        ids.add(selectionContext.jack.spec.hipRafterInstanceId);
+      else ids.add(HIP_RAFTER_PROTOTYPE_ID);
+    }
+    return ids;
+  }, [
+    activeOperation,
+    selectionContext,
+    state.spec.member.id,
+    state.spec.ridge.id,
+    state.spec.supports,
+    workbench.selectedPrototypeId,
+  ]);
+  const drawerPreviews = drawer.pinned
     ? allDetailPreviews
     : selectionDetailPreviews;
   const changeMode = (mode: 'quick' | 'builder') => {
     state.setMode(mode);
     if (mode === 'builder' && window.matchMedia?.('(max-width: 800px)').matches)
-      useAssembly.setState({ inspectorOpen: false });
+      state.setInspectorOpen(false);
   };
   useEffect(() => {
     document.documentElement.lang = i18n.language;
     document.title = `${brand} — ${t('workshop')}`;
   }, [brand, i18n.language, t]);
   useEffect(() => {
-    setFocusId(undefined);
-  }, [state.selected, state.mode]);
-  useEffect(() => {
-    if (state.mode !== 'builder' || detailPinned) return;
+    if (workbench.mode !== 'builder' || drawer.pinned) return;
     const direct = allDetailPreviews.find(
-      (preview) => preview.sourceSelectionId === state.selected,
+      (preview) => preview.sourceSelectionId === workbench.selectedId,
     );
     if (direct) {
-      setActiveDetailId(direct.id);
-      setDetailOpen(true);
+      useAssembly
+        .getState()
+        .setDetailDrawer({ activePreviewId: direct.id, open: true });
+      useAssembly.getState().setViewPreset('cuts');
       if (window.matchMedia?.('(max-width: 800px)').matches)
-        useAssembly.setState({ inspectorOpen: false });
+        useAssembly.getState().setInspectorOpen(false);
       return;
     }
-    setActiveDetailId(selectionDetailPreviews[0]?.id);
+    useAssembly.getState().setDetailDrawer({
+      activePreviewId: selectionDetailPreviews[0]?.id,
+    });
   }, [
     allDetailPreviews,
-    detailPinned,
+    drawer.pinned,
     selectionDetailPreviews,
-    state.mode,
-    state.selected,
+    workbench.mode,
+    workbench.selectedId,
   ]);
   return (
     <div
-      className={`assembly-app mode-${state.mode}`}
+      className={`assembly-app mode-${workbench.mode}`}
       onKeyDown={(e) => {
         if (e.key === 'Escape') {
           state.cancelTransaction();
-          setFocusId(undefined);
+          state.setFocusId(undefined);
           return;
         }
         if (!(e.ctrlKey || e.metaKey)) return;
@@ -571,7 +472,7 @@ export function AssemblyPage() {
           {(['quick', 'builder'] as const).map((mode) => (
             <button
               key={mode}
-              aria-pressed={state.mode === mode}
+              aria-pressed={workbench.mode === mode}
               onClick={() => changeMode(mode)}
             >
               {t(`assembly.${mode}`)}
@@ -590,7 +491,7 @@ export function AssemblyPage() {
               </button>
             ))}
           </div>
-          {state.mode === 'builder' && (
+          {workbench.mode === 'builder' && (
             <div
               className="a-history"
               role="group"
@@ -621,7 +522,7 @@ export function AssemblyPage() {
             aria-label={t('assembly.reset')}
             onClick={() => {
               state.reset();
-              setFocusId(undefined);
+              state.setFocusId(undefined);
             }}
           >
             <RotateCcw size={18} />
@@ -646,12 +547,12 @@ export function AssemblyPage() {
             <h1>{t('assembly.title')}</h1>
             <strong className="a-member-subtitle">
               {state.template.type === 'hip'
-                ? `${t('assembly.hipRoof')} · ${state.selectedPrototype === JACK_RAFTER_PROTOTYPE_ID || state.selected === JACK_RAFTER_PROTOTYPE_ID ? `J1 ${t('assembly.jackRafter')}` : state.selectedPrototype === HIP_RAFTER_PROTOTYPE_ID || state.selected === HIP_RAFTER_PROTOTYPE_ID ? `H1 ${t('assembly.hipRafter')}` : state.selectedPrototype === state.spec.member.id || state.selected === state.spec.member.id ? `K1 ${t('assembly.commonRafter')}` : t('assembly.skeleton')}`
+                ? `${t('assembly.hipRoof')} · ${workbench.selectedPrototypeId === JACK_RAFTER_PROTOTYPE_ID || workbench.selectedId === JACK_RAFTER_PROTOTYPE_ID ? `J1 ${t('assembly.jackRafter')}` : workbench.selectedPrototypeId === HIP_RAFTER_PROTOTYPE_ID || workbench.selectedId === HIP_RAFTER_PROTOTYPE_ID ? `H1 ${t('assembly.hipRafter')}` : workbench.selectedPrototypeId === state.spec.member.id || workbench.selectedId === state.spec.member.id ? `K1 ${t('assembly.commonRafter')}` : t('assembly.skeleton')}`
                 : `K1 ${t('assembly.commonRafter')}`}
             </strong>
             <p>
               {t(
-                `assembly.${state.mode === 'quick' ? 'quickHint' : 'builderHint'}`,
+                `assembly.${workbench.mode === 'quick' ? 'quickHint' : 'builderHint'}`,
               )}
             </p>
           </div>
@@ -660,7 +561,7 @@ export function AssemblyPage() {
             {t('assembly.local')}
           </span>
         </div>
-        {state.mode === 'quick' ? (
+        {workbench.mode === 'quick' ? (
           <div className="a-quick-layout">
             <section className="a-quick-inputs">
               <RoofTypeSelector context="member" />
@@ -707,51 +608,29 @@ export function AssemblyPage() {
                 result && <AssemblyCanvas result={result} compact readOnly />
               )}
               <QuickCutPreviews previews={quickDetailPreviews} />
-              <button
-                className="a-button"
-                aria-expanded={marking}
-                onClick={() => setMarking((v) => !v)}
-              >
-                {t('assembly.steps')}
-              </button>
             </section>
           </div>
         ) : (
           <>
             <div
-              className={`a-builder-layout ${state.collapsed ? 'tools-collapsed' : ''}`}
+              className={`a-builder-layout ${workbench.toolboxCollapsed ? 'tools-collapsed' : ''}`}
             >
               <Toolbox
                 result={result}
                 detailPreviews={selectionDetailPreviews}
               />
               <section className="a-canvas-column">
-                <div
-                  className="a-view-switch"
-                  role="tablist"
-                  aria-label={t('assembly.view')}
-                >
-                  {(['skeleton', 'rafter'] as const).map((view) => (
-                    <button
-                      key={view}
-                      role="tab"
-                      aria-selected={state.view === view}
-                      onClick={() => state.setView(view)}
-                    >
-                      {t(`assembly.${view}`)}
-                    </button>
-                  ))}
-                </div>
-                {focusId && (
+                <WorkbenchControls skeleton={skeleton} />
+                {workbench.focusId && (
                   <button
                     className="a-button a-back"
-                    onClick={() => setFocusId(undefined)}
+                    onClick={() => state.setFocusId(undefined)}
                   >
                     <X size={16} />
                     {t('assembly.back')}
                   </button>
                 )}
-                {!focusId && state.view === 'rafter' && (
+                {!workbench.focusId && workbench.canvasView === 'rafter' && (
                   <button
                     className="a-button a-back"
                     onClick={() => state.setView('skeleton')}
@@ -760,19 +639,21 @@ export function AssemblyPage() {
                     {t('assembly.backToSkeleton')}
                   </button>
                 )}
-                {focusId ? (
-                  <AssemblyCanvas result={result} focusId={focusId} />
-                ) : state.view === 'hip' && hip ? (
+                {workbench.focusId ? (
+                  <AssemblyCanvas result={result} focusId={workbench.focusId} />
+                ) : workbench.canvasView === 'hip' && hip ? (
                   <HipFabricationSheet
                     hip={hip}
                     onBack={() => state.setView('skeleton')}
                   />
-                ) : state.view === 'rafter' ? (
+                ) : workbench.canvasView === 'rafter' ? (
                   <AssemblyCanvas result={result} />
                 ) : (
                   <SkeletonCanvas
                     template={state.template}
                     spacing={layoutSpacing}
+                    relatedSupportId={activeOperation?.relatedSupportId}
+                    relatedIds={relatedSelectionIds}
                   />
                 )}
               </section>
@@ -784,66 +665,55 @@ export function AssemblyPage() {
                 spacingEntries={spacingEntries}
                 detailPreviews={selectionDetailPreviews}
                 onOpenDetail={(preview) => {
-                  setActiveDetailId(preview.id);
-                  setDetailOpen(true);
+                  state.setViewPreset('cuts');
+                  state.setDetailDrawer({
+                    activePreviewId: preview.id,
+                    open: true,
+                  });
                 }}
               />
             </div>
             <DetailDrawer
               previews={drawerPreviews}
-              activeId={activeDetailId}
-              open={detailOpen}
-              pinned={detailPinned}
+              activeId={drawer.activePreviewId}
+              open={drawer.open}
+              pinned={drawer.pinned}
+              cutState={drawer.cutState}
               onSelect={(id) => {
                 const preview = allDetailPreviews.find(
                   (candidate) => candidate.id === id,
                 );
-                setActiveDetailId(id);
-                if (preview)
-                  state.select(
-                    preview.sourceSelectionId,
-                    preview.subjectMemberId,
-                  );
+                if (!preview) return;
+                state.activateOperation({
+                  operationId: preview.sourceSelectionId,
+                  prototypeId: preview.subjectMemberId,
+                  selectionId: preview.sourceSelectionId,
+                  previewId: preview.id,
+                });
               }}
-              onToggle={() => setDetailOpen((open) => !open)}
-              onClose={() => setDetailOpen(false)}
-              onPin={() => setDetailPinned((pinned) => !pinned)}
+              onToggle={() => state.setDetailDrawer({ open: !drawer.open })}
+              onClose={() => state.setDetailDrawer({ open: false })}
+              onPin={() => state.setDetailDrawer({ pinned: !drawer.pinned })}
+              onCutStateChange={(cutState) =>
+                state.setDetailDrawer({ cutState })
+              }
               onZoom={(preview) => {
                 if (preview.subjectCode === 'H1') {
                   state.setView('hip');
-                  setFocusId(undefined);
+                  state.setFocusId(undefined);
                 } else {
                   state.setView('rafter');
-                  setFocusId(preview.sourceSelectionId);
+                  state.setFocusId(preview.sourceSelectionId);
                 }
               }}
             />
+            <PreparationPlan roofPackage={fabricationPackage} />
             <ContextualResults
               context={selectionContext}
               resolved={templateResult}
               skeleton={skeleton}
             />
-            <ContextualFabrication
-              context={selectionContext}
-              resolved={templateResult}
-              expanded={marking}
-            />
-            {state.view !== 'hip' && (
-              <button
-                className="a-button"
-                aria-expanded={marking}
-                onClick={() => setMarking((v) => !v)}
-              >
-                {t('assembly.steps')}
-              </button>
-            )}
           </>
-        )}
-        {state.mode === 'quick' && result && marking && !hip && (
-          <Fabrication result={result} expanded={marking} />
-        )}
-        {hip && marking && state.mode === 'quick' && (
-          <HipFabricationSheet hip={hip} />
         )}
         <details className="a-assumptions">
           <summary>{t('assembly.assumptions')}</summary>

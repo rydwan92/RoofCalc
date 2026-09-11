@@ -1,0 +1,13 @@
+Wsyyłąnie: 
+git status
+git add .
+git commit -m "feat: add hip roof and hip rafter"
+git pull --rebase origin main
+git push origin main
+
+
+Ściąganie:
+cd C:\xampp\htdocs\RoofCalc
+git fetch origin
+git pull --ff-only origin main
+git status

@@ -99,6 +99,8 @@ export * from './workbench';
 export * from './assembly';
 export * from './hip-rafter';
 export * from './detail-preview';
+export * from './project-document';
+export * from './fabrication-package';
 export interface AccessPolicy {
   canUse(feature: FeatureKey): boolean;
 }

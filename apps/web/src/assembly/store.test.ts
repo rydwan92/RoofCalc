@@ -4,10 +4,15 @@ import {
   assemblySpecSchema,
   resolveRoofTemplate,
 } from '@cieslacalc/roof-math';
+import {
+  createRoofFabricationPackage,
+  detailPreviewsFromFabricationPackage,
+} from '@cieslacalc/calculator-core';
 import { supportField, useAssembly } from './store';
 beforeEach(() => {
   useAssembly.getState().reset();
-  useAssembly.setState({ unit: 'mm', mode: 'quick' });
+  useAssembly.getState().setUnit('mm');
+  useAssembly.getState().setMode('quick');
 });
 it('Quick and Builder retain one canonical template and fabrication plan', () => {
   useAssembly.getState().setField('roof.runMm', '4231,123456');
@@ -21,6 +26,20 @@ it('Quick and Builder retain one canonical template and fabrication plan', () =>
   const withPurlin = useAssembly.getState().spec;
   useAssembly.getState().setMode('quick');
   expect(useAssembly.getState().spec).toBe(withPurlin);
+});
+it('projects identical fabrication operations and details in Quick and Builder', () => {
+  const quickPackage = createRoofFabricationPackage(
+    resolveRoofTemplate(useAssembly.getState().template),
+  );
+  const quickDetails = detailPreviewsFromFabricationPackage(quickPackage);
+  useAssembly.getState().setMode('builder');
+  const builderPackage = createRoofFabricationPackage(
+    resolveRoofTemplate(useAssembly.getState().template),
+  );
+  expect(builderPackage).toEqual(quickPackage);
+  expect(detailPreviewsFromFabricationPackage(builderPackage)).toEqual(
+    quickDetails,
+  );
 });
 it('unit changes preserve precision and numeric positions, and raw editing uses the display unit', () => {
   useAssembly.getState().add();
@@ -255,4 +274,41 @@ it('undoes and redoes adding and removing independently allocated purlins', () =
   expect(useAssembly.getState().template.intermediateSupports).toHaveLength(1);
   useAssembly.getState().undo();
   expect(useAssembly.getState().template.intermediateSupports).toHaveLength(2);
+});
+it('keeps transient workbench changes outside project history and document', () => {
+  const before = structuredClone(useAssembly.getState().projectDocument);
+  useAssembly.getState().setMode('builder');
+  useAssembly.getState().setViewPreset('cuts');
+  useAssembly.getState().setDimensionLevel('full');
+  useAssembly.getState().setToolGroupCollapsed('timber', true);
+  useAssembly.getState().select('member:rafter-common-1');
+  useAssembly.getState().setIsolation(true);
+  useAssembly.getState().setFocusId('joint:support:wall-plate-1');
+  useAssembly.getState().setDetailDrawer({
+    open: true,
+    pinned: true,
+    activePreviewId: 'preview:joint:support:wall-plate-1',
+  });
+  expect(useAssembly.getState().projectDocument).toEqual(before);
+  expect(useAssembly.getState().historyPast).toHaveLength(0);
+
+  useAssembly.getState().setField('roof.pitchDeg', '42');
+  expect(useAssembly.getState().historyPast).toHaveLength(1);
+  expect(useAssembly.getState().projectDocument.project.roof.pitchDeg).toBe(42);
+  useAssembly.getState().undo();
+  expect(useAssembly.getState().projectDocument).toEqual(before);
+  expect(useAssembly.getState().workbench.viewPreset).toBe('cuts');
+  expect(useAssembly.getState().workbench.isolateSelection).toBe(true);
+  expect(useAssembly.getState().workbench.focusId).toBe(
+    'joint:support:wall-plate-1',
+  );
+});
+it('returns from isolation when the whole roof becomes the selection', () => {
+  const before = structuredClone(useAssembly.getState().projectDocument);
+  useAssembly.getState().select(useAssembly.getState().spec.member.id);
+  useAssembly.getState().setIsolation(true);
+  useAssembly.getState().select('roof');
+  expect(useAssembly.getState().workbench.isolateSelection).toBe(false);
+  expect(useAssembly.getState().projectDocument).toEqual(before);
+  expect(useAssembly.getState().historyPast).toHaveLength(0);
 });

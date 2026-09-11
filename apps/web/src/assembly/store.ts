@@ -1,11 +1,17 @@
 import { create } from 'zustand';
 import {
+  createRoofProjectDocument,
+  type RoofProjectDocumentV1,
+} from '@cieslacalc/calculator-core';
+import {
   addPurlin,
   assemblyDefaults,
   assemblyFromRoofTemplate,
   calculateBirdsmouth,
   convertRoofTemplate,
   gableTemplateFromAssembly,
+  HIP_RAFTER_PROTOTYPE_ID,
+  JACK_RAFTER_PROTOTYPE_ID,
   roofTemplateFromAssembly,
   seatLength,
   toMillimetres,
@@ -19,6 +25,15 @@ import type {
   SupportSpec,
 } from '@cieslacalc/timber-model';
 import { editableLength, parseDecimal } from '../format';
+import {
+  initialWorkbenchViewState,
+  type DimensionLevel,
+  type ViewPreset,
+  type WorkbenchCanvasView,
+  type WorkbenchMode,
+  type WorkbenchToolCategory,
+  type WorkbenchViewState,
+} from './workbench';
 
 export type SupportField = 'xMm' | 'widthMm' | 'heightMm' | 'valueMm';
 export type EditField =
@@ -175,35 +190,60 @@ function committedTemplate(
   invalidFields: Partial<Record<EditField, boolean>>,
 ) {
   const spec = assemblyFromRoofTemplate(template);
-  return { template, spec, drafts, invalidFields };
+  return {
+    projectDocument: createRoofProjectDocument(template),
+    template,
+    spec,
+    drafts,
+    invalidFields,
+  };
 }
 interface DomainSnapshot {
-  template: RoofTemplateSpec;
+  document: RoofProjectDocumentV1;
 }
 const historyLimit = 40;
 const snapshot = (template: RoofTemplateSpec): DomainSnapshot => ({
-  template: structuredClone(template),
+  document: createRoofProjectDocument(structuredClone(template)),
 });
 const sameTemplate = (a: RoofTemplateSpec, b: RoofTemplateSpec) =>
   JSON.stringify(a) === JSON.stringify(b);
-interface AssemblyState {
+export interface AssemblyState {
+  /** Future persistence/revision boundary. `template` and `spec` are runtime derivatives. */
+  projectDocument: RoofProjectDocumentV1;
   template: RoofTemplateSpec;
   spec: AssemblySpec;
-  mode: 'quick' | 'builder';
-  view: 'skeleton' | 'rafter' | 'hip';
+  /** Transient session/view state. Never serialized as project data. */
+  workbench: WorkbenchViewState;
   unit: LengthUnit;
-  selected: string;
-  selectedPrototype?: string;
-  collapsed: boolean;
-  inspectorOpen: boolean;
+  /** Transient editor text; canonical values are committed into projectDocument. */
   drafts: Partial<Record<EditField, string>>;
   invalidFields: Partial<Record<EditField, boolean>>;
   historyPast: DomainSnapshot[];
   historyFuture: DomainSnapshot[];
   activeTransaction?: DomainSnapshot;
-  setMode: (mode: 'quick' | 'builder') => void;
+  setMode: (mode: WorkbenchMode) => void;
   setRoofType: (type: RoofTemplateSpec['type']) => void;
-  setView: (view: 'skeleton' | 'rafter' | 'hip') => void;
+  setView: (view: WorkbenchCanvasView) => void;
+  setViewPreset: (preset: ViewPreset) => void;
+  setIsolation: (isolated: boolean) => void;
+  setDimensionLevel: (level: DimensionLevel) => void;
+  setToolboxCollapsed: (collapsed: boolean) => void;
+  setToolGroupCollapsed: (
+    category: WorkbenchToolCategory,
+    collapsed: boolean,
+  ) => void;
+  setInspectorOpen: (open: boolean) => void;
+  setPreparationExpanded: (expanded: boolean) => void;
+  setFocusId: (focusId?: string) => void;
+  setDetailDrawer: (
+    detail: Partial<WorkbenchViewState['detailDrawer']>,
+  ) => void;
+  activateOperation: (args: {
+    operationId: string;
+    prototypeId: string;
+    selectionId?: string;
+    previewId?: string;
+  }) => void;
   setUnit: (unit: LengthUnit) => void;
   setField: (field: EditField, raw: string) => void;
   setCanonicalField: (field: EditField, value: number) => void;
@@ -240,24 +280,27 @@ function withHistory(
   };
 }
 function restoredSnapshot(snapshotToRestore: DomainSnapshot) {
-  return committedTemplate(structuredClone(snapshotToRestore.template), {}, {});
+  return committedTemplate(
+    structuredClone(snapshotToRestore.document.project.roof),
+    {},
+    {},
+  );
 }
 export const useAssembly = create<AssemblyState>((set) => ({
+  projectDocument: createRoofProjectDocument(structuredClone(templateDefaults)),
   template: structuredClone(templateDefaults),
   spec: assemblyFromRoofTemplate(templateDefaults),
-  mode: 'quick',
-  view: 'skeleton',
+  workbench: structuredClone(initialWorkbenchViewState),
   unit: 'mm',
-  selected: 'roof',
-  selectedPrototype: undefined,
-  collapsed: false,
-  inspectorOpen: true,
   drafts: {},
   invalidFields: {},
   historyPast: [],
   historyFuture: [],
   activeTransaction: undefined,
-  setMode: (mode) => set({ mode }),
+  setMode: (mode) =>
+    set((state) => ({
+      workbench: { ...state.workbench, mode, focusId: undefined },
+    })),
   setRoofType: (type) =>
     set((state) => {
       const template = convertRoofTemplate(state.template, type);
@@ -266,12 +309,74 @@ export const useAssembly = create<AssemblyState>((set) => ({
           state,
           committedTemplate(template, state.drafts, state.invalidFields),
         ),
-        selected: 'roof',
-        selectedPrototype: undefined,
-        view: 'skeleton',
+        workbench: {
+          ...state.workbench,
+          selectedId: 'roof',
+          selectedPrototypeId: undefined,
+          canvasView: 'skeleton',
+          isolateSelection: false,
+          activeOperationId: undefined,
+        },
       };
     }),
-  setView: (view) => set({ view }),
+  setView: (canvasView) =>
+    set((state) => ({ workbench: { ...state.workbench, canvasView } })),
+  setViewPreset: (viewPreset) =>
+    set((state) => ({ workbench: { ...state.workbench, viewPreset } })),
+  setIsolation: (isolateSelection) =>
+    set((state) => ({ workbench: { ...state.workbench, isolateSelection } })),
+  setDimensionLevel: (dimensionLevel) =>
+    set((state) => ({ workbench: { ...state.workbench, dimensionLevel } })),
+  setToolboxCollapsed: (toolboxCollapsed) =>
+    set((state) => ({ workbench: { ...state.workbench, toolboxCollapsed } })),
+  setToolGroupCollapsed: (category, collapsed) =>
+    set((state) => ({
+      workbench: {
+        ...state.workbench,
+        collapsedToolGroups: collapsed
+          ? [...new Set([...state.workbench.collapsedToolGroups, category])]
+          : state.workbench.collapsedToolGroups.filter(
+              (candidate) => candidate !== category,
+            ),
+      },
+    })),
+  setInspectorOpen: (inspectorOpen) =>
+    set((state) => ({ workbench: { ...state.workbench, inspectorOpen } })),
+  setPreparationExpanded: (preparationExpanded) =>
+    set((state) => ({
+      workbench: { ...state.workbench, preparationExpanded },
+    })),
+  setFocusId: (focusId) =>
+    set((state) => ({ workbench: { ...state.workbench, focusId } })),
+  setDetailDrawer: (detail) =>
+    set((state) => ({
+      workbench: {
+        ...state.workbench,
+        detailDrawer: { ...state.workbench.detailDrawer, ...detail },
+      },
+    })),
+  activateOperation: ({ operationId, prototypeId, selectionId, previewId }) =>
+    set((state) => ({
+      workbench: {
+        ...state.workbench,
+        selectedId: selectionId ?? prototypeId,
+        selectedPrototypeId: prototypeId,
+        activeOperationId: operationId,
+        preparationExpanded: true,
+        viewPreset: 'cuts',
+        canvasView:
+          prototypeId === HIP_RAFTER_PROTOTYPE_ID
+            ? 'hip'
+            : prototypeId === JACK_RAFTER_PROTOTYPE_ID
+              ? state.workbench.canvasView
+              : 'rafter',
+        detailDrawer: {
+          ...state.workbench.detailDrawer,
+          open: !!previewId || state.workbench.detailDrawer.open,
+          activePreviewId: previewId,
+        },
+      },
+    })),
   setUnit: (unit) =>
     set((state) => ({
       unit,
@@ -413,9 +518,13 @@ export const useAssembly = create<AssemblyState>((set) => ({
           state,
           committedTemplate(template, state.drafts, state.invalidFields),
         ),
-        selected: template.intermediateSupports.at(-1)!.id,
-        selectedPrototype: undefined,
-        inspectorOpen: true,
+        workbench: {
+          ...state.workbench,
+          selectedId: template.intermediateSupports.at(-1)!.id,
+          selectedPrototypeId: undefined,
+          inspectorOpen: true,
+          activeOperationId: undefined,
+        },
       };
     }),
   remove: (id) =>
@@ -445,12 +554,32 @@ export const useAssembly = create<AssemblyState>((set) => ({
             invalidFields,
           ),
         ),
-        selected: 'roof',
-        selectedPrototype: undefined,
+        workbench: {
+          ...state.workbench,
+          selectedId: 'roof',
+          selectedPrototypeId: undefined,
+          isolateSelection: false,
+          activeOperationId: undefined,
+        },
       };
     }),
-  select: (selected, selectedPrototype) =>
-    set({ selected, selectedPrototype, inspectorOpen: true }),
+  select: (selectedId, selectedPrototypeId) =>
+    set((state) => ({
+      workbench: {
+        ...state.workbench,
+        selectedId,
+        selectedPrototypeId,
+        inspectorOpen: true,
+        preparationExpanded:
+          selectedId === 'roof'
+            ? false
+            : !!selectedPrototypeId || state.workbench.preparationExpanded,
+        isolateSelection:
+          selectedId === 'roof' ? false : state.workbench.isolateSelection,
+        activeOperationId: undefined,
+        focusId: undefined,
+      },
+    })),
   beginTransaction: () =>
     set((state) =>
       state.activeTransaction
@@ -461,7 +590,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
     set((state) => {
       const start = state.activeTransaction;
       if (!start) return state;
-      if (sameTemplate(start.template, state.template))
+      if (sameTemplate(start.document.project.roof, state.template))
         return { activeTransaction: undefined };
       return {
         activeTransaction: undefined,
@@ -530,20 +659,27 @@ export const useAssembly = create<AssemblyState>((set) => ({
       );
     }),
   reset: () =>
-    set({
+    set((state) => ({
+      projectDocument: createRoofProjectDocument(
+        structuredClone(templateDefaults),
+      ),
       template: structuredClone(templateDefaults),
       spec: assemblyFromRoofTemplate(templateDefaults),
       drafts: {},
       invalidFields: {},
-      selected: 'roof',
-      selectedPrototype: undefined,
-      inspectorOpen: true,
-      view: 'skeleton',
+      workbench: {
+        ...structuredClone(initialWorkbenchViewState),
+        mode: state.workbench.mode,
+      },
       historyPast: [],
       historyFuture: [],
       activeTransaction: undefined,
-    }),
+    })),
 }));
+
+export const selectCanonicalProject = (state: AssemblyState) =>
+  state.projectDocument;
+export const selectWorkbenchView = (state: AssemblyState) => state.workbench;
 
 function jointControlValue(
   support: SupportSpec,

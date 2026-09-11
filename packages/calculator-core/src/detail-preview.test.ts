@@ -35,6 +35,15 @@ describe('detail preview projections', () => {
       preview.drawing.polygons?.find((polygon) => polygon.role === 'removed')
         ?.points,
     ).toHaveLength(joint.removedProfile.length);
+    expect(preview.cutStates?.before).toBe(preview.drawing);
+    expect(
+      preview.cutStates?.after.polygons?.some(
+        (polygon) => polygon.role === 'removed',
+      ),
+    ).toBe(false);
+    expect(preview.cutStates?.after.lines).toEqual(
+      preview.cutStates?.before.lines,
+    );
     expect(preview.fabricationSteps.map((step) => step.action)).toEqual(
       calculation.plan.steps
         .filter((step) => step.operationId === joint.id)
@@ -90,6 +99,14 @@ describe('detail preview projections', () => {
     expect(
       preview.drawing.polygons?.some((polygon) => polygon.role === 'removed'),
     ).toBe(true);
+    expect(
+      preview.cutStates?.after.polygons?.some(
+        (polygon) => polygon.role === 'removed',
+      ),
+    ).toBe(false);
+    expect(preview.cutStates?.before.angles).toEqual(
+      preview.cutStates?.after.angles,
+    );
     expect(preview.fabricationSteps.map((step) => step.action)).toEqual([
       'measure-ridge-face',
       'mark-plumb',
