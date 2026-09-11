@@ -275,6 +275,31 @@ it('coalesces a purlin gesture and restores its start state when cancelled', () 
     useAssembly.getState().template.intermediateSupports[0]!.placement.xMm,
   ).toBe(start + 250);
 });
+it('applies an equal-gap purlin proposal as one canonical undo step', () => {
+  useAssembly.getState().add();
+  useAssembly.getState().add();
+  useAssembly.getState().add();
+  useAssembly.setState({ historyPast: [], historyFuture: [] });
+  const before = structuredClone(useAssembly.getState().template);
+  const documentBefore = structuredClone(useAssembly.getState().projectDocument);
+
+  useAssembly.getState().distributePurlins();
+
+  const positions = useAssembly
+    .getState()
+    .template.intermediateSupports.map((support) => support.placement.xMm);
+  expect(positions).toEqual([...positions].sort((a, b) => a - b));
+  expect(useAssembly.getState().historyPast).toHaveLength(1);
+  expect(useAssembly.getState().projectDocument).not.toEqual(documentBefore);
+  useAssembly.getState().undo();
+  expect(useAssembly.getState().template).toEqual(before);
+  useAssembly.getState().redo();
+  expect(
+    useAssembly
+      .getState()
+      .template.intermediateSupports.map((support) => support.placement.xMm),
+  ).toEqual(positions);
+});
 it('undoes and redoes adding and removing independently allocated purlins', () => {
   useAssembly.getState().add();
   useAssembly.getState().add();

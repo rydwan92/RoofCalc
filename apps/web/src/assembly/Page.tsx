@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { currentMemberInstance } from '@cieslacalc/calculator-core';
 import { ArrowLeft, House, RotateCcw, Redo2, Undo2, X } from 'lucide-react';
@@ -19,7 +19,11 @@ import {
 import { AssemblyCanvas } from './Canvas';
 import { SkeletonCanvas } from './SkeletonCanvas';
 import { HipFabricationSheet } from './HipFabricationSheet';
-import { DetailDrawer, QuickCutPreviews } from './DetailPreview';
+import {
+  DetailDrawer,
+  QuickCutPreviews,
+  QuickDetailDialog,
+} from './DetailPreview';
 import { ContextualResults, HipResults, Results } from './Summary';
 import { Toolbox } from './Toolbox';
 import { WorkbenchControls } from './WorkbenchControls';
@@ -32,6 +36,9 @@ import './styles.css';
 export function AssemblyPage() {
   const state = useAssembly(),
     { t, i18n } = useTranslation();
+  const [quickDetail, setQuickDetail] = useState<
+    (typeof allDetailPreviews)[number] | undefined
+  >();
   const workbench = state.workbench;
   const drawer = workbench.detailDrawer;
   const brand = import.meta.env.VITE_BRAND_NAME || 'CieślaCalc';
@@ -398,7 +405,10 @@ export function AssemblyPage() {
               ) : (
                 result && <AssemblyCanvas result={result} compact readOnly />
               )}
-              <QuickCutPreviews previews={quickDetailPreviews} />
+              <QuickCutPreviews
+                previews={quickDetailPreviews}
+                onOpen={setQuickDetail}
+              />
             </section>
           </div>
         ) : (
@@ -528,6 +538,22 @@ export function AssemblyPage() {
           <span>{t('assembly.noSave')}</span>
         </footer>
       </main>
+      {quickDetail && workbench.mode === 'quick' && (
+        <QuickDetailDialog
+          preview={quickDetail}
+          onClose={() => setQuickDetail(undefined)}
+          onOpenBuilder={(preview) => {
+            state.setMode('builder');
+            state.activateOperation({
+              operationId: preview.sourceSelectionId,
+              prototypeId: preview.subjectMemberId,
+              selectionId: preview.sourceSelectionId,
+              previewId: preview.id,
+            });
+            setQuickDetail(undefined);
+          }}
+        />
+      )}
     </div>
   );
 }

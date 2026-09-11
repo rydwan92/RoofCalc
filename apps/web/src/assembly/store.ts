@@ -9,6 +9,7 @@ import {
   assemblyFromRoofTemplate,
   calculateBirdsmouth,
   convertRoofTemplate,
+  distributePurlins,
   gableTemplateFromAssembly,
   HIP_RAFTER_PROTOTYPE_ID,
   JACK_RAFTER_PROTOTYPE_ID,
@@ -258,6 +259,7 @@ export interface AssemblyState {
   setSpacingMode: (mode: RafterSpacingMode) => void;
   setEndStationPolicy: (policy: EndStationPolicy) => void;
   movePurlin: (id: string, xMm: number) => void;
+  distributePurlins: () => void;
   add: () => void;
   remove: (id: string) => void;
   select: (id: string, prototypeId?: string) => void;
@@ -595,6 +597,35 @@ export const useAssembly = create<AssemblyState>((set) => ({
         committedTemplate(
           template,
           { ...state.drafts, [field]: editableLength(xMm, state.unit) },
+          state.invalidFields,
+        ),
+      );
+    }),
+  distributePurlins: () =>
+    set((state) => {
+      const proposal = distributePurlins(state.spec, {
+        supportIds: state.spec.supports
+          .filter((support) => support.kind === 'purlin')
+          .map((support) => support.id),
+        mode: 'equal-gaps',
+      });
+      const spec = structuredClone(state.spec);
+      const drafts = { ...state.drafts };
+      for (const position of proposal.positions) {
+        const support = spec.supports.find(
+          (candidate) => candidate.id === position.supportId,
+        )!;
+        support.placement.xMm = position.xMm;
+        drafts[supportField(position.supportId, 'xMm')] = editableLength(
+          position.xMm,
+          state.unit,
+        );
+      }
+      return withHistory(
+        state,
+        committedTemplate(
+          roofTemplateFromAssembly(spec, state.template),
+          drafts,
           state.invalidFields,
         ),
       );

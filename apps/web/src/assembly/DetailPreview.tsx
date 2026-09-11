@@ -203,7 +203,7 @@ export function DetailPreviewDrawing({
   );
 }
 
-function PreviewFacts({ preview }: { preview: DetailPreviewModel }) {
+export function PreviewFacts({ preview }: { preview: DetailPreviewModel }) {
   const { t } = useTranslation();
   return (
     <dl className="a-detail-facts">
@@ -222,7 +222,7 @@ function PreviewFacts({ preview }: { preview: DetailPreviewModel }) {
   );
 }
 
-function PreviewSteps({ preview }: { preview: DetailPreviewModel }) {
+export function PreviewSteps({ preview }: { preview: DetailPreviewModel }) {
   const state = useAssembly();
   const { t, i18n } = useTranslation();
   const length = (value: number) =>
@@ -373,10 +373,138 @@ export function DetailDrawer({
   );
 }
 
+export function QuickDetailDialog({
+  preview,
+  onClose,
+  onOpenBuilder,
+}: {
+  preview: DetailPreviewModel;
+  onClose: () => void;
+  onOpenBuilder: (preview: DetailPreviewModel) => void;
+}) {
+  const { t } = useTranslation();
+  const [cutState, setCutState] = useState<'before' | 'after'>('before');
+  const closeButton = useRef<HTMLButtonElement>(null);
+  const returnFocus = useRef<HTMLElement | null>(
+    document.activeElement instanceof HTMLElement ? document.activeElement : null,
+  );
+  useEffect(() => {
+    closeButton.current?.focus();
+    const previousFocus = returnFocus.current;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      previousFocus?.focus();
+    };
+  }, []);
+  return (
+    <div
+      className="a-quick-detail-backdrop"
+      role="presentation"
+      onPointerDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <section
+        className="a-quick-detail-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="quick-detail-title"
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') {
+            event.stopPropagation();
+            onClose();
+            return;
+          }
+          if (event.key === 'Tab') {
+            const focusable = Array.from(
+              event.currentTarget.querySelectorAll<HTMLElement>(
+                'button:not([disabled]), [href], input:not([disabled]), select:not([disabled])',
+              ),
+            );
+            const first = focusable[0];
+            const last = focusable.at(-1);
+            if (!first || !last) return;
+            if (event.shiftKey && document.activeElement === first) {
+              event.preventDefault();
+              last.focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+              event.preventDefault();
+              first.focus();
+            }
+          }
+        }}
+      >
+        <header>
+          <div>
+            <small>{preview.subjectCode}</small>
+            <h2 id="quick-detail-title">{t(`assembly.${preview.titleKey}`)}</h2>
+          </div>
+          <button
+            ref={closeButton}
+            className="a-icon"
+            aria-label={t('assembly.closeQuickDetail')}
+            onClick={onClose}
+          >
+            <X size={20} />
+          </button>
+        </header>
+        {preview.cutStates && (
+          <div
+            className="a-cut-state-switch"
+            role="tablist"
+            aria-label={t('assembly.cutState')}
+          >
+            {(['before', 'after'] as const).map((state) => (
+              <button
+                key={state}
+                role="tab"
+                aria-selected={cutState === state}
+                onClick={() => setCutState(state)}
+              >
+                {t(`assembly.${state}Cut`)}
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="a-quick-detail-content">
+          <div className="a-quick-detail-drawing">
+            <DetailPreviewDrawing preview={preview} cutState={cutState} />
+          </div>
+          <section>
+            <h3>{t('assembly.keyDimensions')}</h3>
+            <PreviewFacts preview={preview} />
+          </section>
+          <section>
+            <h3>{t('assembly.markingSteps')}</h3>
+            <PreviewSteps preview={preview} />
+            {preview.warningKeys.map((warning) => (
+              <p className="a-detail-warning" key={warning}>
+                {t(`assembly.${warning}`)}
+              </p>
+            ))}
+          </section>
+        </div>
+        <footer>
+          <button
+            className="a-button a-primary"
+            onClick={() => onOpenBuilder(preview)}
+          >
+            {t('assembly.openDetailInBuilder')}
+          </button>
+        </footer>
+      </section>
+    </div>
+  );
+}
+
 export function QuickCutPreviews({
   previews,
+  onOpen,
 }: {
   previews: DetailPreviewModel[];
+  onOpen: (preview: DetailPreviewModel) => void;
 }) {
   const { t } = useTranslation();
   if (!previews.length) return null;
@@ -391,7 +519,12 @@ export function QuickCutPreviews({
       </header>
       <div>
         {previews.map((preview) => (
-          <article key={preview.id}>
+          <button
+            key={preview.id}
+            className="a-quick-cut-card"
+            aria-label={`${preview.subjectCode} · ${t(`assembly.${preview.titleKey}`)}`}
+            onClick={() => onOpen(preview)}
+          >
             <h3>
               {preview.subjectCode} · {t(`assembly.${preview.titleKey}`)}
             </h3>
@@ -406,7 +539,7 @@ export function QuickCutPreviews({
                 </div>
               ))}
             </dl>
-          </article>
+          </button>
         ))}
       </div>
     </section>

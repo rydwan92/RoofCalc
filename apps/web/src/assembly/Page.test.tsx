@@ -68,6 +68,57 @@ describe('dual-mode parametric workbench', () => {
       screen.getAllByText(/Górne cięcie krokwi narożnej/).length,
     ).toBeGreaterThan(0);
   });
+  it('opens canonical Quick details, switches cut state, closes on Escape and hands off to Builder', () => {
+    render(<App />);
+    const initialDocument = structuredClone(
+      useAssembly.getState().projectDocument,
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'K1 · Zacios przy podporze' }),
+    );
+    const dialog = screen.getByRole('dialog', {
+      name: 'Zacios przy podporze',
+    });
+    expect(
+      within(dialog).getByTestId('detail-preview-birdsmouth-detail'),
+    ).toBeTruthy();
+    expect(dialog.querySelector('.shape-removed')).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole('tab', { name: 'Po cięciu' }));
+    expect(dialog.querySelector('.shape-removed')).toBeNull();
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(useAssembly.getState().projectDocument).toEqual(initialDocument);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'K1 · Zacios przy podporze' }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Zamknij szybki detal' }),
+    );
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'K1 · Cięcie kalenicowe' }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Otwórz detal w Kreatorze' }),
+    );
+    expect(useAssembly.getState().workbench.mode).toBe('builder');
+    expect(useAssembly.getState().workbench.viewPreset).toBe('cuts');
+    expect(useAssembly.getState().workbench.selectedId).toBe('cut:ridge');
+    expect(useAssembly.getState().workbench.detailDrawer.open).toBe(true);
+  });
+  it('keeps H1 warnings visible in its Quick detail dialog', () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Krokiew narożna' }));
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'H1 · Górne cięcie krokwi narożnej',
+      }),
+    );
+    expect(
+      screen.getByRole('dialog').textContent,
+    ).toContain('Nie wybiera automatycznie podcięcia grzbietu');
+  });
   it('explains the 940 / 800 maximum policy and exposes target deviation', () => {
     render(<App />);
     builder();
@@ -520,6 +571,33 @@ describe('dual-mode parametric workbench', () => {
       within(preparation).getByRole('tab', { name: /Z\d Płatew P1/ }),
     ).toBeTruthy();
   });
+  it('shows and applies the geometric equal-distribution proposal from the purlin group', () => {
+    render(<App />);
+    builder();
+    add();
+    add();
+    add();
+    useAssembly.setState({ historyPast: [], historyFuture: [] });
+    const documentBeforeProposal = structuredClone(
+      useAssembly.getState().projectDocument,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Akcje płatwi' }));
+    const dialog = screen.getByRole('dialog', { name: 'Rozmieść równo' });
+    expect(dialog.textContent).toContain('Rozmieszczenie geometryczne');
+    expect(useAssembly.getState().projectDocument).toEqual(documentBeforeProposal);
+    expect(useAssembly.getState().historyPast).toHaveLength(0);
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Zastosuj' }));
+    expect(useAssembly.getState().historyPast).toHaveLength(1);
+    expect(
+      useAssembly
+        .getState()
+        .template.intermediateSupports.map((support) => support.placement.xMm),
+    ).toEqual(
+      [...useAssembly.getState().template.intermediateSupports]
+        .map((support) => support.placement.xMm)
+        .sort((a, b) => a - b),
+    );
+  });
   it('adjusts skeleton handles through canonical history while camera controls leave geometry unchanged', () => {
     render(<App />);
     builder();
@@ -623,6 +701,72 @@ describe('dual-mode parametric workbench', () => {
     });
     fireEvent.pointerUp(drawing, pointer);
     expect(useAssembly.getState().historyPast).toHaveLength(1);
+  });
+  it('drags a purlin directly by its timber body without making wall plate or ridge draggable', () => {
+    class TestPointerEvent extends MouseEvent {
+      pointerId: number;
+      pointerType: string;
+      constructor(type: string, init: PointerEventInit = {}) {
+        super(type, init);
+        this.pointerId = init.pointerId ?? 1;
+        this.pointerType = init.pointerType ?? 'mouse';
+      }
+    }
+    vi.stubGlobal('PointerEvent', TestPointerEvent);
+    const { container } = render(<App />);
+    builder();
+    add();
+    const drawing = screen.getByTestId(
+      'skeleton-drawing',
+    ) as unknown as SVGSVGElement;
+    Object.defineProperties(drawing, {
+      getBoundingClientRect: {
+        value: () => ({ left: 0, top: 0, width: 820, height: 570 }),
+      },
+      setPointerCapture: { value: vi.fn() },
+      hasPointerCapture: { value: () => false },
+    });
+    const handle = container.querySelector('[data-handle="purlin"]')!;
+    const axis = handle.querySelector('line')!;
+    const hitTarget = container.querySelector(
+      '[data-purlin-hit-target="support:purlin-1"]',
+    )!;
+    const start = {
+      x: Number(axis.getAttribute('x1')),
+      y: Number(axis.getAttribute('y1')),
+    };
+    const axisX =
+      Number(axis.getAttribute('x2')) - Number(axis.getAttribute('x1'));
+    const axisY =
+      Number(axis.getAttribute('y2')) - Number(axis.getAttribute('y1'));
+    const axisLength = Math.hypot(axisX, axisY);
+    const before = purlin().placement.xMm;
+    const pointer = { pointerId: 42, pointerType: 'mouse', button: 0 };
+    fireEvent.pointerDown(hitTarget, {
+      ...pointer,
+      clientX: start.x,
+      clientY: start.y,
+    });
+    expect(useAssembly.getState().workbench.selectedId).toBe('support:purlin-1');
+    expect(useAssembly.getState().activeTransaction).toBeTruthy();
+    fireEvent.pointerMove(drawing, {
+      ...pointer,
+      clientX: start.x + (axisX / axisLength) * 50,
+      clientY: start.y + (axisY / axisLength) * 50,
+    });
+    expect(purlin().placement.xMm).not.toBe(before);
+    expect(screen.getByTestId('purlin-placement-guide')).toBeTruthy();
+    fireEvent.pointerUp(drawing, pointer);
+    expect(useAssembly.getState().historyPast).toHaveLength(2);
+    fireEvent.pointerDown(
+      container.querySelector('.kind-wall-plate')!,
+      pointer,
+    );
+    fireEvent.pointerDown(
+      container.querySelector('.kind-ridge')!,
+      pointer,
+    );
+    expect(useAssembly.getState().activeTransaction).toBeUndefined();
   });
   it('offers a fast H1 path with shared reactive math and coordinated drawings', () => {
     render(<App />);

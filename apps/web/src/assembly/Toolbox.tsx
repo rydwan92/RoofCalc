@@ -1,7 +1,8 @@
-import type { ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import {
   Box,
   Columns3,
+  Ellipsis,
   Layers3,
   PanelLeftClose,
   PanelLeftOpen,
@@ -10,7 +11,11 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { DetailPreviewModel } from '@cieslacalc/drawing-engine';
-import { purlinPlacementSegments } from '@cieslacalc/roof-math';
+import {
+  distributePurlins,
+  purlinPlacementSegments,
+} from '@cieslacalc/roof-math';
+import { formatLength } from '../format';
 import type { Calculation } from './Inputs';
 import { entityLabel } from './Canvas';
 import { useAssembly } from './store';
@@ -36,7 +41,8 @@ export function Toolbox({
   detailPreviews: DetailPreviewModel[];
 }) {
   const state = useAssembly();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const [distributionOpen, setDistributionOpen] = useState(false);
   const tools = createWorkbenchToolRegistry({
     template: state.template,
     spec: state.spec,
@@ -45,6 +51,20 @@ export function Toolbox({
   });
   const label = (tool: WorkbenchToolDescriptor) =>
     `${t(`assembly.${tool.labelKey}`)}${tool.code ? ` ${tool.code}` : ''}`;
+  const purlinTools = tools.filter(
+    (tool) => tool.selectionId?.startsWith('support:purlin-'),
+  );
+  const distribution = useMemo(() => {
+    if (!distributionOpen || !purlinTools.length) return undefined;
+    try {
+      return distributePurlins(state.spec, {
+        supportIds: purlinTools.map((tool) => tool.selectionId!),
+        mode: 'equal-gaps',
+      });
+    } catch {
+      return undefined;
+    }
+  }, [distributionOpen, purlinTools, state.spec]);
   const renderTool = (tool: WorkbenchToolDescriptor) => (
     <button
       key={tool.id}
@@ -131,7 +151,115 @@ export function Toolbox({
             >
               {t(`assembly.${category === 'support' ? 'supports' : category}`)}
             </summary>
-            {tools.filter((tool) => tool.category === category).map(renderTool)}
+            {category !== 'support' &&
+              tools
+                .filter((tool) => tool.category === category)
+                .map(renderTool)}
+            {category === 'support' && (
+              <>
+                {tools
+                  .filter(
+                    (tool) =>
+                      tool.category === 'support' &&
+                      tool.selectionId === 'support:wall-plate-1',
+                  )
+                  .map(renderTool)}
+                {purlinTools.length > 0 && (
+                  <section className="a-purlin-tool-group">
+                    <header>
+                      <strong>
+                        {t('assembly.purlins')} ({purlinTools.length})
+                      </strong>
+                      <button
+                        className="a-icon"
+                        aria-label={t('assembly.purlinActions')}
+                        aria-expanded={distributionOpen}
+                        title={t('assembly.purlinActions')}
+                        onClick={() => setDistributionOpen((open) => !open)}
+                      >
+                        <Ellipsis size={17} />
+                      </button>
+                    </header>
+                    {purlinTools.map(renderTool)}
+                    {distributionOpen && (
+                      <section
+                        className="a-purlin-distribution"
+                        role="dialog"
+                        aria-label={t('assembly.distributePurlins')}
+                      >
+                        <strong>{t('assembly.distributePurlins')}</strong>
+                        <span>{t('assembly.equalGaps')}</span>
+                        {distribution ? (
+                          <dl>
+                            {distribution.positions.map((position) => {
+                              const tool = purlinTools.find(
+                                (candidate) =>
+                                  candidate.selectionId === position.supportId,
+                              )!;
+                              const current = state.spec.supports.find(
+                                (support) => support.id === position.supportId,
+                              )!;
+                              return (
+                                <div key={position.supportId}>
+                                  <dt>{tool.code}</dt>
+                                  <dd>
+                                    {formatLength(
+                                      current.placement.xMm,
+                                      state.unit,
+                                      i18n.language,
+                                    )}{' '}
+                                    {state.unit} {'→'}{' '}
+                                    {formatLength(
+                                      position.xMm,
+                                      state.unit,
+                                      i18n.language,
+                                    )}{' '}
+                                    {state.unit}
+                                  </dd>
+                                </div>
+                              );
+                            })}
+                          </dl>
+                        ) : (
+                          <p>{t('assembly.noDistributionSpace')}</p>
+                        )}
+                        <p className="a-non-structural-note">
+                          {t('assembly.geometricDistributionWarning')}
+                        </p>
+                        <div className="a-purlin-distribution-actions">
+                          <button
+                            className="a-button"
+                            onClick={() => setDistributionOpen(false)}
+                          >
+                            {t('assembly.cancel')}
+                          </button>
+                          <button
+                            className="a-button a-primary"
+                            disabled={!distribution}
+                            onClick={() => {
+                              state.distributePurlins();
+                              setDistributionOpen(false);
+                            }}
+                          >
+                            {t('assembly.apply')}
+                          </button>
+                        </div>
+                      </section>
+                    )}
+                  </section>
+                )}
+                {tools
+                  .filter((tool) => tool.action === 'add-purlin')
+                  .map(renderTool)}
+                {tools
+                  .filter(
+                    (tool) =>
+                      tool.category === 'support' &&
+                      tool.selectionId === state.spec.ridge.id,
+                  )
+                  .map(renderTool)}
+              </>
+            )}
           </details>
         );
       })}

@@ -1297,7 +1297,55 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
-> Updated 2026-09-11. Iteration 010 is complete in the root repository.
+> Updated 2026-09-11. Iteration 011 is complete in the root repository.
+
+**Iteration:** `011 — Quick detail dialogs, direct purlin drag and geometric purlin layout`
+
+**Status:** `COMPLETE — AUTOMATED VALIDATION PASS; BROWSER QA COMPLETED WITH AUTOMATION LIMITATION NOTED`
+
+**Iteration 011 completed:**
+
+- Preserved the clean Iteration 010 baseline: typecheck, build and **266 tests across 31 files** passed before source work. No user work was discarded, committed or pushed.
+- Reworked Quick Calc desktop composition to use the available work area: the input column remains bounded while the results, member drawing and two canonical cut cards occupy the larger responsive column. Phone/tablet remains a simple stacked flow.
+- Turned K1 and H1 cut cards into keyboard-operable semantic buttons. They open `QuickDetailDialog`, which reuses `DetailPreviewModel`, `DetailPreviewDrawing`, dimensions, marking steps and warning keys already shared with Builder. No preview calculation or translated domain text was added.
+- Added a focus-restoring, focus-contained Quick dialog: desktop uses a large technical modal; narrow layouts use a bottom sheet. It supports close button, Escape, outside press, Before/After state, accessible title and background-scroll lock. H1 keeps its backed-versus-dropped limitation visible.
+- Added transient Quick-to-Builder handoff. It preserves the existing template, units, supports and timber inputs; activates the exact stable preview operation, selects the relevant prototype/operation, opens Builder in `Cięcia` and opens its existing canonical Detail Drawer. It creates no document/history entry.
+- Added pure `distributePurlins()` in `roof-math`. It validates the selected real purlins, preserves stable P-number order, calculates equal free gaps from wall-plate clearance to ridge-face clearance, supports varied purlin widths, never uses an end boundary, and rejects invalid/no-clearance requests explicitly. It is a geometric operation only.
+- Added one canonical `distributePurlins()` Zustand action. Applying a proposal updates all current intermediate supports together and creates exactly one Undo/Redo history entry; opening/cancelling the Toolbox proposal does not alter the document or history.
+- Reorganized existing supports in Toolbox as a `Płatwie (n)` group with individual P1...Pn controls and a compact action menu. The proposal displays current-to-proposed positions, then prominently states that count, section and position need structural verification. No structural recommendation, automatic count, sizing or safety language was added.
+- Made intermediate purlin timber directly draggable from its rendered body. A 32 px invisible SVG hit target routes to the existing `startDrag` -> `valueFromAxisDrag` -> `clampPurlinPlacement` -> `movePurlin` transaction. Wall plate and ridge do not inherit this behavior; the previous precision handle remains available. Hover/selected/grabbing states and an active placement guide/position chip are visible, while exact Inspector input remains the fallback.
+
+**V11 interaction and state contract:**
+
+- Purlin body movement changes only canonical `SupportSpec.placement.xMm` through the existing support resolver. The normal roof projection therefore recalculates associated K1 purlin joints, profiles, datums, stations and previews live; it does not use pixel construction data or a second solver.
+- `QuickDetailDialog`, its Before/After tab and the Toolbox distribution proposal are component-local transient UI state. Only applying a distribution or completing a purlin drag changes `RoofProjectDocumentV1.project.roof`.
+- Equal distribution means equal clear geometric gaps around the current purlins inside the already modeled wall/ridge limits. It does not choose a purlin quantity or assess structural suitability.
+
+**Files changed:**
+
+- Domain and regression coverage: `packages/roof-math/src/assembly.ts`, `packages/roof-math/src/assembly.test.ts`.
+- Web workbench and coverage: `apps/web/src/assembly/{DetailPreview,Page,SkeletonCanvas,Toolbox,store,workbench}.tsx` where applicable, corresponding `Page.test.tsx` and `store.test.ts`, translations and responsive styles.
+- Documentation: this checkpoint only. No dependency or lockfile change, persistence, database/auth, PDF/export, estimates, covering, openings, new members, statics or full 3D work was started.
+
+**Validation, performance and QA:**
+
+- Final direct-worktree validation passes: `npx pnpm@10.15.1 typecheck`, **275 tests across 31 files**, ESLint with no warnings/errors, web/API production build and `git diff --check`.
+- Added test coverage for equal-gap distributions of one/two/three purlins, invalid distribution requests, single Undo/Redo application, proposal/document exclusion, K1 modal opening/close/Escape/Before-After/handoff, H1 warning visibility, purlin body drag, active guide and non-draggable wall/ridge. Existing K1/H1/J1, multiple-support, spacing `940/800`, project-boundary and resolver tests remain green.
+- Actual web build: main **460.10 kB / 132.01 kB gzip**, CSS **70.18 kB / 14.16 kB gzip**, React **51.29 / 18.04 kB**, localization **49.54 / 16.09 kB**, icons **11.10 / 2.43 kB**. The main Vite advisory remains absent. Relative to V10, this adds about 7.4 kB JS and 4.6 kB CSS pre-gzip for the modal, Toolbox and interaction surface.
+- Browser QA against the current XAMPP production build passed at desktop `1440 x 900`: K1 modal measured **1080 x 573**, Before/After changed removed-material geometry from one polygon to zero, H1 warning was visible and no horizontal overflow occurred. Builder showed P1-P3 grouped proposal, non-structural warning, Apply and direct P2 body-drag state/guide with canonical position update from **2984.5** to **3839 mm**. A synthetic Playwright pointer reports the expected `setPointerCapture` limitation because no active native pointer exists; jsdom pointer tests cover transaction/cancel behavior. A raw Playwright mouse move did not reliably dispatch into the SVG hit region, so no hardware mouse/touch claim is made.
+- Browser QA at `360 x 800` passed for Quick: the detail sheet measured **360 x 736**, close and Builder actions remained reachable, and `scrollWidth <= clientWidth`.
+
+**Known limitations / assumptions:**
+
+- H1 remains the existing coordinated compound-cut explanation, not a complete saw-face solid. J1 remains measured to the theoretical H1 centre plane with no physical face deduction, J1-to-purlin joinery or invented J1 cut detail.
+- Equal distribution uses the explicit current wall/ridge placement limits and real member widths. It intentionally has no structural load/span/material logic and does not add snap modes beyond the existing constrained drag behavior.
+- Automated browser pointer injection cannot substitute for physical mouse/pen/touch verification of the SVG target, although the native production visual state, dispatched flow and unit tests pass.
+
+**NEXT ACTION:**
+
+> Review Iteration 011 in the browser on an actual mouse/touch device: drag every P1/P2/P3 body, cancel with Escape, test Undo/Redo after drag and distribution, inspect Quick K1/H1 dialog focus restoration and sheet scrolling. Fix only evidenced defects, then stop for user review/commit. Do not begin Iteration 012 automatically.
+
+**Previous checkpoint — Iteration 010:**
 
 **Iteration:** `010 — member instance workflow + spatial detail overlays + workbench UX hardening`
 

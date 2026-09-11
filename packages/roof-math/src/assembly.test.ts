@@ -7,6 +7,7 @@ import {
   assemblySpecSchema,
   clampPurlinPlacement,
   calculateAssembly,
+  distributePurlins,
   purlinPlacementSegments,
   purlinRange,
 } from './assembly';
@@ -252,5 +253,63 @@ describe('shared assembly solver', () => {
     const short = structuredClone(assemblyDefaults);
     short.roof.runMm = 200;
     expect(() => addPurlin(short)).toThrow('no_purlin_space');
+  });
+
+  it.each([1, 2, 3])(
+    'distributes %s existing purlin(s) with equal geometric clear gaps',
+    (count) => {
+      let spec = structuredClone(assemblyDefaults);
+      for (let index = 0; index < count; index += 1) spec = addPurlin(spec);
+      const purlins = spec.supports.filter(
+        (support) => support.kind === 'purlin',
+      );
+      const proposal = distributePurlins(spec, {
+        supportIds: purlins.map((support) => support.id),
+        mode: 'equal-gaps',
+      });
+      const positions = proposal.positions.map((position) => position.xMm);
+      expect(proposal.positions.map((position) => position.supportId)).toEqual(
+        purlins.map((support) => support.id),
+      );
+      expect(positions[0]).toBeGreaterThan(proposal.rangeStartMm);
+      expect(
+        positions.at(-1)! + purlins.at(-1)!.section.widthMm,
+      ).toBeLessThan(proposal.rangeEndMm);
+      const gaps = [
+        positions[0]! - proposal.rangeStartMm,
+        ...purlins.slice(1).map(
+          (support, index) =>
+            positions[index + 1]! - (positions[index]! + support.section.widthMm),
+        ),
+        proposal.rangeEndMm -
+          (positions.at(-1)! + purlins.at(-1)!.section.widthMm),
+      ];
+      gaps.forEach((gap) => expect(gap).toBeCloseTo(gaps[0]!, 10));
+    },
+  );
+
+  it('rejects incomplete, duplicate, and impossible purlin distribution requests', () => {
+    const spec = addPurlin(assemblyDefaults);
+    expect(() =>
+      distributePurlins(spec, {
+        supportIds: ['support:purlin-1', 'support:purlin-1'],
+        mode: 'equal-gaps',
+      }),
+    ).toThrow('invalid_purlin_distribution');
+    expect(() =>
+      distributePurlins(spec, {
+        supportIds: ['support:not-real'],
+        mode: 'equal-gaps',
+      }),
+    ).toThrow('invalid_purlin_distribution');
+    const short = structuredClone(spec);
+    short.roof.runMm = 302;
+    short.supports[1]!.placement.xMm = 141;
+    expect(() =>
+      distributePurlins(short, {
+        supportIds: ['support:purlin-1'],
+        mode: 'equal-gaps',
+      }),
+    ).toThrow('no_purlin_distribution_space');
   });
 });

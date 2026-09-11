@@ -150,6 +150,7 @@ function SkeletonCanvasComponent({
   const [width, setWidth] = useState(820);
   const [viewport, setViewport] = useState<ViewportState>(fittedViewport);
   const [activeHandle, setActiveHandle] = useState<string | null>(null);
+  const [hoveredPurlin, setHoveredPurlin] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   useEffect(() => {
     if (!container.current || typeof ResizeObserver === 'undefined') return;
@@ -522,6 +523,7 @@ function SkeletonCanvasComponent({
     )?.placement.xMm;
   };
   const activeHandleData = handles.find((handle) => handle.id === activeHandle);
+  const activePurlinDrag = activeHandleData?.kind === 'purlin';
   const chipWidth = preview
     ? Math.min(240, Math.max(110, preview.length * 7.2))
     : 0;
@@ -667,6 +669,23 @@ function SkeletonCanvasComponent({
             const selected = visualState === 'selected';
             const related = visualState === 'related';
             const muted = visualState === 'muted';
+            const purlinHandle =
+              member.kind === 'purlin'
+                ? handles.find(
+                    (handle) => handle.selectionId === member.selectionId,
+                  )
+                : undefined;
+            const editablePurlin =
+              policy.showDirectManipulation && !!purlinHandle;
+            const activePurlin =
+              activeHandle === purlinHandle?.id ||
+              hoveredPurlin === member.selectionId;
+            const axisFrom = editablePurlin
+              ? viewPoint(projectAxonometric(member.from))
+              : undefined;
+            const axisTo = editablePurlin
+              ? viewPoint(projectAxonometric(member.to))
+              : undefined;
             return (
               <g
                 key={member.id}
@@ -685,10 +704,33 @@ function SkeletonCanvasComponent({
                 tabIndex={0}
                 aria-label={memberLabel(member, t)}
                 aria-pressed={selected}
-                className={`a-skeleton-member kind-${member.kind} ${selected ? 'is-selected' : ''} ${related ? 'is-related' : ''} ${muted ? 'is-muted' : ''}`}
+                data-drag-state={
+                  activeHandle === purlinHandle?.id ? 'dragging' : undefined
+                }
+                className={`a-skeleton-member kind-${member.kind} ${selected ? 'is-selected' : ''} ${related ? 'is-related' : ''} ${muted ? 'is-muted' : ''} ${editablePurlin ? 'is-editable-purlin' : ''} ${activePurlin ? 'is-hover-editable' : ''}`}
                 onClick={() => select(member)}
                 onKeyDown={(event) => keySelect(event, member)}
+                onPointerEnter={() => {
+                  if (editablePurlin) setHoveredPurlin(member.selectionId);
+                }}
+                onPointerLeave={() => {
+                  if (hoveredPurlin === member.selectionId)
+                    setHoveredPurlin(null);
+                }}
+                onPointerDown={(event) => {
+                  if (purlinHandle) startDrag(event, purlinHandle);
+                }}
               >
+                {axisFrom && axisTo && (
+                  <line
+                    className="a-purlin-body-hit-target"
+                    data-purlin-hit-target={member.selectionId}
+                    x1={axisFrom.x}
+                    y1={axisFrom.y}
+                    x2={axisTo.x}
+                    y2={axisTo.y}
+                  />
+                )}
                 {faces.map((face) => (
                   <polygon
                     key={face.id}
@@ -744,6 +786,17 @@ function SkeletonCanvasComponent({
               </g>
             ))}
           </g>
+        )}
+        {activePurlinDrag && activeHandleData && (
+          <line
+            data-testid="purlin-placement-guide"
+            className="a-purlin-placement-guide"
+            x1={activeHandleData.axisStart.x}
+            y1={activeHandleData.axisStart.y}
+            x2={activeHandleData.axisEnd.x}
+            y2={activeHandleData.axisEnd.y}
+            pointerEvents="none"
+          />
         )}
         {preview && chipPosition && (
           <g className="a-handle-chip" pointerEvents="none">

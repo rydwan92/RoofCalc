@@ -457,6 +457,62 @@ export function clampPurlinPlacement(
         : closest,
     );
 }
+
+export interface PurlinDistributionRequest {
+  supportIds: readonly string[];
+  mode: 'equal-gaps';
+}
+
+export interface PurlinDistributionProposal {
+  mode: 'equal-gaps';
+  rangeStartMm: number;
+  rangeEndMm: number;
+  positions: ReadonlyArray<{ supportId: string; xMm: number }>;
+}
+
+/**
+ * Produces geometric, equal-clear-gap positions for the existing intermediate
+ * supports. It preserves stable P-number order and never selects a position
+ * on either legal boundary.
+ */
+export function distributePurlins(
+  spec: AssemblySpec,
+  request: PurlinDistributionRequest,
+): PurlinDistributionProposal {
+  assemblySpecSchema.parse(spec);
+  const requestedIds = new Set(request.supportIds);
+  if (!requestedIds.size || requestedIds.size !== request.supportIds.length)
+    throw new RangeError('invalid_purlin_distribution');
+  const purlins = spec.supports
+    .filter(
+      (support): support is SupportSpec =>
+        support.kind === 'purlin' && requestedIds.has(support.id),
+    )
+    .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
+  if (purlins.length !== requestedIds.size)
+    throw new RangeError('invalid_purlin_distribution');
+
+  const wall = spec.supports.find((support) => support.kind === 'wall-plate')!;
+  const rangeStartMm = wall.placement.xMm + wall.section.widthMm + 1;
+  const rangeEndMm = spec.roof.runMm - spec.ridge.thicknessMm / 2 - 1;
+  const totalPurlinWidthMm = purlins.reduce(
+    (sum, support) => sum + support.section.widthMm,
+    0,
+  );
+  const remainingClearSpaceMm =
+    rangeEndMm - rangeStartMm - totalPurlinWidthMm;
+  if (remainingClearSpaceMm <= 0)
+    throw new RangeError('no_purlin_distribution_space');
+  const gapMm = remainingClearSpaceMm / (purlins.length + 1);
+  let cursorMm = rangeStartMm + gapMm;
+  const positions = purlins.map((support) => {
+    const position = { supportId: support.id, xMm: cursorMm };
+    cursorMm += support.section.widthMm + gapMm;
+    return position;
+  });
+  return { mode: request.mode, rangeStartMm, rangeEndMm, positions };
+}
+
 /** UI and templates share sequential, non-overlapping intermediate supports. */
 export function addPurlin(spec: AssemblySpec): AssemblySpec {
   assemblySpecSchema.parse(spec);
