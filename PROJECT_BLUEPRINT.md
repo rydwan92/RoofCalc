@@ -1297,7 +1297,106 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+> Updated 2026-09-11 from clean V14 commit `15b7984aeb3edc75d475031d4ceea7f9faa3a5d0`. The V14 framing/composition implementation was audited before V15; the attached Iteration 015 contract controlled this iteration.
+
+**Iteration:** `015 — timber member schedule and quantity-engine foundation`
+
+**Status:** `COMPLETE IN SOURCE — AUTOMATED VALIDATION PASS; REQUIRED LIVE BROWSER/DEVICE QA UNAVAILABLE`
+
+**Completed V15 architecture and behavior:**
+
+- Added pure `@cieslacalc/quantity-core`, independent of React, DOM, Express, persistence, translations, prices and suppliers. It projects deterministic schedule rows, section groups, summaries and finite validation issues from the accepted composed `RoofSkeleton`.
+- Structural lengths use exact Euclidean physical 3D member axes in canonical millimetres. Equality grouping uses an explicit `1e-7 mm` computational tolerance and never rounded display text. Source physical instance IDs and shared prototype IDs remain traceable.
+- The schedule counts K1 common rafters, H1 hips, unequal J1 groups, wall plates, ridge, each purlin family and accepted O1/O2 opening headers plus lower/upper rafter segments. One physical instance is counted once.
+- V14 composition semantics are preserved: framing proposals and `needs-review`/unsupported/invalid/conflicting results do not enter quantities. Applying valid accepted framing removes the interrupted full K1 and adds actual composed headers/segments; Undo restores the previous schedule. Two independent openings are deterministic.
+- Rectangular volume is calculated only for complete valid sections. The current ridge contributes its geometric length but, because the domain exposes no complete ridge section, is excluded from volume and makes the total explicitly `partial`; no section fact is invented.
+- Optional battens are a separate roof-build-up projection of resolved visible clipped rows. V15 reports their row/segment geometry and section, not stock pieces or purchasing quantities.
+- Builder now has the fifth transient `Zestawienie` / `Schedule` preset and toolbox entry, with summary cards, family/length groups, expandable source instances, section aggregation, batten groups and a contextual inspector. Selecting timber or batten rows highlights the corresponding existing skeleton geometry without changing the project document or undo history.
+- Millimetres remain both canonical and the default workshop display unit. Aggregate schedule presentation uses metres and cubic metres only for readability. Quick Calc remains intentionally unchanged.
+- Added Polish/English UI copy and responsive rules for scrollable narrow preset navigation, stacking summaries/cards and mobile-friendly schedule rows.
+
+**V14 audit result before implementation:**
+
+- Canonical `RoofOpeningFramingSpec`, backward-compatible V1 project parsing, pure status resolver, accepted-composition pipeline and delete/apply/Undo/Redo semantics were present and matched their tests.
+- Accepted framing removed the affected full K1 and introduced deterministic lower/upper segments and two headers; proposal/review/conflict states did not change the composed physical assembly.
+- The clean baseline passed typecheck, 305 tests across 33 files, build and `git diff --check`; lint exited successfully with one old `proposalMembers` hook-dependency warning. V15 removed that warning by stabilizing the proposal-member derivation.
+
+**Validation:**
+
+- Final `pnpm typecheck`: PASS.
+- Final `pnpm test`: PASS — **324 tests across 34 files**.
+- Final `pnpm lint`: PASS with no warnings/errors.
+- Final production build: PASS — web main **536.23 kB / 151.73 kB gzip**, CSS **85.31 / 16.87 kB**, React **51.29 / 18.04 kB**, localization **49.54 / 16.09 kB**, icons **13.57 / 2.97 kB**; API ESM **1.11 kB**. Vite reports the known advisory that the main chunk exceeds 500 kB.
+- `git diff --check`: PASS.
+- Prettier check for all V15 changed source/docs: PASS. Repository-wide `pnpm format:check` remains non-zero because 75 pre-existing, untouched files are not formatted to the current Prettier configuration; those files were not rewritten as unrelated cleanup.
+
+**Browser, responsive and device QA:**
+
+- The production URL `http://localhost/projects/RoofCalc/apps/web/dist/` responds with HTTP 200 after the final build.
+- The explicitly requested in-app Browser was initialized according to its skill protocol, but the environment returned `Browser is not available: iab` before any tab could be opened.
+- Automated jsdom coverage verifies the fifth preset in Polish and English, Quick/Builder boundary, partial-volume warning, section and batten UI, row-to-skeleton highlighting, schedule-state history isolation, applied-framing/Undo effects, unequal J1 groups and reachability with a `360 px` drawing observer.
+- No live claim is made for actual layout, occlusion, text clipping, horizontal overflow or native mouse/touch behavior at desktop/tablet/mobile widths.
+
+**Known V15 boundaries:**
+
+- All lengths and volumes are geometric. V15 does not include stock lengths, cutting allowances, kerf, waste, splice strategy, optimization, prices, suppliers, purchasing, PDF/export or structural verification.
+- Ridge volume stays partial until a complete canonical ridge section exists.
+- Batten rows are resolved visible geometry, not commercial pieces. Tiles, sheets, membranes and covering quantities remain out of scope.
+- Quantity reports are derived and transient; they are intentionally absent from serialized project documents.
+
+**Files changed:**
+
+- `packages/quantity-core/package.json`
+- `packages/quantity-core/src/index.ts`
+- `packages/quantity-core/src/index.test.ts`
+- `apps/web/package.json`
+- `apps/web/src/assembly/MaterialSchedule.tsx`
+- `apps/web/src/assembly/Page.tsx`
+- `apps/web/src/assembly/Page.test.tsx`
+- `apps/web/src/assembly/SkeletonCanvas.tsx`
+- `apps/web/src/assembly/Toolbox.tsx`
+- `apps/web/src/assembly/WorkbenchControls.tsx`
+- `apps/web/src/assembly/store.ts`
+- `apps/web/src/assembly/store.test.ts`
+- `apps/web/src/assembly/workbench.ts`
+- `apps/web/src/assembly/workbench.test.ts`
+- `apps/web/src/assembly/styles.css`
+- `apps/web/src/assembly/translations.ts`
+- `docs/ARCHITECTURE_V15_QUANTITY_ENGINE_AND_MEMBER_SCHEDULE.md`
+- `docs/PROMPT_ITERATION_015_QUANTITY_ENGINE_TIMBER_SCHEDULE.md`
+- `pnpm-lock.yaml`
+- `PROJECT_BLUEPRINT.md`
+
+**NEXT ACTION:**
+
+> When the in-app Browser becomes available, run the V15 visual matrix on gable and hip roofs at wide desktop, `1440 x 900`, tablet and `360 x 800`: verify all family/section cards, partial ridge volume, accepted opening replacement, timber and batten highlighting, expanded source lists, no horizontal page overflow and touch reachability. Record and fix only evidenced UI defects, rerun the definition-of-done suite, and then wait for an explicit user-approved next iteration; do not begin procurement/costing work automatically.
+
+---
+
+**Previous checkpoint — Iteration 014:**
+
 > Updated 2026-09-11 from clean base `a3f2facc6253315d6f60f574a498f0d024db8db8`. The V13 contract was audited against the implementation; architecture documents were not treated as proof of behavior.
+
+**Iteration:** `014 — opening framing and composed roof adaptation`
+
+**Status:** `COMPLETE IN SOURCE — AUTOMATED VALIDATION PASS; BROWSER/DEVICE QA NOT YET RECORDED`
+
+**Verified V14 repository state before Iteration 015:**
+
+- The clean repository is at `15b7984aeb3edc75d475031d4ceea7f9faa3a5d0` and contains the V14 canonical `RoofOpeningFramingSpec`, backward-compatible V1 project parsing, pure framing resolver/status model and accepted-composition pipeline.
+- Accepted/current framing removes interrupted full K1 instances from the composed skeleton and adds deterministic lower/upper segments plus upper/lower headers. Proposal, `needs-review`, unsupported and conflicting results do not alter the composed physical assembly.
+- Apply/remove/delete and Undo/Redo operate on the complete versioned project document; deleting a roof window removes its dependent framing intent in the same transaction.
+- Multiple independent openings resolve deterministically; overlapping/shared interrupted regions are rejected as conflicts. The fabrication package adds only valid accepted header lengths and explicitly leaves header joinery unresolved.
+- Baseline validation on 2026-09-11: typecheck PASS; **305 tests across 33 files** PASS; build PASS; `git diff --check` PASS. Lint exits successfully with one pre-existing `proposalMembers` hook-dependency warning in `Page.tsx`.
+- Browser and physical-device QA were not completed before V15 and are not claimed here.
+
+**NEXT ACTION:**
+
+> Implement the explicitly approved Iteration 015 quantity-engine/member-schedule contract from the attached prompt. Use the accepted composed skeleton as the physical source, keep procurement/costing out of scope, add the fifth transient schedule preset, test opening effects and responsive UI, then replace this checkpoint with the final V15 state.
+
+---
+
+**Previous checkpoint — Iteration 013:**
 
 **Iteration:** `013 — interaction layer and professional roof workbench`
 

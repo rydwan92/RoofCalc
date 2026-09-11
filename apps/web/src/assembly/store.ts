@@ -253,6 +253,7 @@ export interface AssemblyState {
   setRoofType: (type: RoofTemplateSpec['type']) => void;
   setView: (view: WorkbenchCanvasView) => void;
   setViewPreset: (preset: ViewPreset) => void;
+  setScheduleSelection: (rowId?: string, instanceId?: string) => void;
   setIsolation: (isolated: boolean) => void;
   setDimensionLevel: (level: DimensionLevel) => void;
   setLayerVisibility: (
@@ -390,6 +391,8 @@ export const useAssembly = create<AssemblyState>((set) => ({
           selectedId: 'roof',
           selectedPrototypeId: undefined,
           selectedInstanceId: undefined,
+          selectedScheduleRowId: undefined,
+          selectedScheduleInstanceId: undefined,
           canvasView: 'skeleton',
           isolateSelection: false,
           activeOperationId: undefined,
@@ -411,6 +414,41 @@ export const useAssembly = create<AssemblyState>((set) => ({
           viewPreset === 'openings'
             ? state.workbench.placementFeedback
             : undefined,
+        selectedScheduleRowId:
+          viewPreset === 'materials'
+            ? state.workbench.selectedScheduleRowId
+            : undefined,
+        selectedScheduleInstanceId:
+          viewPreset === 'materials'
+            ? state.workbench.selectedScheduleInstanceId
+            : undefined,
+      },
+    })),
+  setScheduleSelection: (selectedScheduleRowId, selectedScheduleInstanceId) =>
+    set((state) => ({
+      workbench: {
+        ...state.workbench,
+        selectedId: selectedScheduleInstanceId ?? 'roof',
+        selectedPrototypeId: selectedScheduleInstanceId
+          ? state.workbench.selectedPrototypeId
+          : undefined,
+        selectedInstanceId: selectedScheduleInstanceId
+          ? state.workbench.selectedInstanceId
+          : undefined,
+        viewPreset: 'materials',
+        selectedScheduleRowId,
+        selectedScheduleInstanceId,
+        inspectorOpen: true,
+        placementTool: undefined,
+        placementFeedback: undefined,
+        activeOperationId: undefined,
+        focusId: undefined,
+        detailDrawer: {
+          ...state.workbench.detailDrawer,
+          open: false,
+          mode: 'collapsed',
+          activePreviewId: undefined,
+        },
       },
     })),
   setIsolation: (isolateSelection) =>
@@ -567,6 +605,14 @@ export const useAssembly = create<AssemblyState>((set) => ({
             ...state.workbench,
             placementTool: undefined,
             placementFeedback: undefined,
+          },
+        };
+      if (state.workbench.selectedScheduleRowId)
+        return {
+          workbench: {
+            ...state.workbench,
+            selectedScheduleRowId: undefined,
+            selectedScheduleInstanceId: undefined,
           },
         };
       if (state.workbench.detailDrawer.mode === 'focus')
@@ -1318,6 +1364,8 @@ export const useAssembly = create<AssemblyState>((set) => ({
           selectedId,
           selectedPrototypeId: nextPrototypeId,
           selectedInstanceId,
+          selectedScheduleRowId: undefined,
+          selectedScheduleInstanceId: undefined,
           inspectorOpen: true,
           preparationExpanded:
             selectedId === 'roof'

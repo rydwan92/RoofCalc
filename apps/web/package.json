@@ -11,6 +11,7 @@
     "@cieslacalc/timber-model": "workspace:*",
     "@cieslacalc/calculator-core": "workspace:*",
     "@cieslacalc/drawing-engine": "workspace:*",
+    "@cieslacalc/quantity-core": "workspace:*",
     "@cieslacalc/roof-math": "workspace:*",
     "@cieslacalc/shared": "workspace:*",
     "@cieslacalc/ui": "workspace:*",

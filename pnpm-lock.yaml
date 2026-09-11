@@ -87,6 +87,9 @@ importers:
       '@cieslacalc/drawing-engine':
         specifier: workspace:*
         version: link:../../packages/drawing-engine
+      '@cieslacalc/quantity-core':
+        specifier: workspace:*
+        version: link:../../packages/quantity-core
       '@cieslacalc/roof-math':
         specifier: workspace:*
         version: link:../../packages/roof-math
@@ -147,6 +150,16 @@ importers:
         version: 3.25.76
 
   packages/drawing-engine: {}
+
+  packages/quantity-core:
+    dependencies:
+      '@cieslacalc/timber-model':
+        specifier: workspace:*
+        version: link:../timber-model
+    devDependencies:
+      '@cieslacalc/roof-math':
+        specifier: workspace:*
+        version: link:../roof-math
 
   packages/roof-math:
     dependencies:

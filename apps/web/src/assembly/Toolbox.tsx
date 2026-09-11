@@ -4,6 +4,7 @@ import {
   Columns3,
   Ellipsis,
   Layers3,
+  ListTree,
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
@@ -339,6 +340,36 @@ export function Toolbox({
           <Layers3 size={20} />
           <span>{t('assembly.battens')}</span>
         </button>
+      </details>
+      <details open={!state.workbench.collapsedToolGroups.includes('quantity')}>
+        <summary
+          onClick={(event) => {
+            event.preventDefault();
+            state.setToolGroupCollapsed(
+              'quantity',
+              !state.workbench.collapsedToolGroups.includes('quantity'),
+            );
+          }}
+        >
+          {t('assembly.memberSchedule')}
+        </summary>
+        <button
+          className={`a-tool ${state.workbench.viewPreset === 'materials' ? 'is-active' : ''}`}
+          aria-pressed={state.workbench.viewPreset === 'materials'}
+          onClick={() => state.setViewPreset('materials')}
+        >
+          <ListTree size={20} />
+          <span>{t('assembly.timber')}</span>
+        </button>
+        {state.projectDocument.project.buildUp.battenLayout?.enabled && (
+          <button
+            className="a-tool"
+            onClick={() => state.setViewPreset('materials')}
+          >
+            <Layers3 size={20} />
+            <span>{t('assembly.battens')}</span>
+          </button>
+        )}
       </details>
     </aside>
   );

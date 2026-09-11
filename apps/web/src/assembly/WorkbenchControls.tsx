@@ -26,7 +26,15 @@ export function WorkbenchControls({ skeleton }: { skeleton: RoofSkeleton }) {
           role="tablist"
           aria-label={t('assembly.viewPreset')}
         >
-          {(['construction', 'openings', 'battens', 'cuts'] as ViewPreset[]).map((preset) => (
+          {(
+            [
+              'construction',
+              'openings',
+              'battens',
+              'cuts',
+              'materials',
+            ] as ViewPreset[]
+          ).map((preset) => (
             <button
               key={preset}
               role="tab"
@@ -62,13 +70,15 @@ export function WorkbenchControls({ skeleton }: { skeleton: RoofSkeleton }) {
             {t('assembly.view')}
           </summary>
           <div className="a-view-popover">
-            {([
-              ['dimensions', 'dimensions'],
-              ['labels', 'labels'],
-              ['structure', 'structureBackground'],
-              ['features', 'openings'],
-              ['battens', 'battens'],
-            ] as const).map(([layer, label]) => (
+            {(
+              [
+                ['dimensions', 'dimensions'],
+                ['labels', 'labels'],
+                ['structure', 'structureBackground'],
+                ['features', 'openings'],
+                ['battens', 'battens'],
+              ] as const
+            ).map(([layer, label]) => (
               <label key={layer}>
                 <input
                   type="checkbox"
@@ -84,17 +94,19 @@ export function WorkbenchControls({ skeleton }: { skeleton: RoofSkeleton }) {
               <legend>
                 <Ruler size={14} /> {t('assembly.dimensionLevel')}
               </legend>
-              {(['minimal', 'working', 'full'] as DimensionLevel[]).map((level) => (
-                <label key={level}>
-                  <input
-                    type="radio"
-                    name="dimension-level"
-                    checked={state.workbench.dimensionLevel === level}
-                    onChange={() => state.setDimensionLevel(level)}
-                  />
-                  {t(`assembly.${level}Dimensions`)}
-                </label>
-              ))}
+              {(['minimal', 'working', 'full'] as DimensionLevel[]).map(
+                (level) => (
+                  <label key={level}>
+                    <input
+                      type="radio"
+                      name="dimension-level"
+                      checked={state.workbench.dimensionLevel === level}
+                      onChange={() => state.setDimensionLevel(level)}
+                    />
+                    {t(`assembly.${level}Dimensions`)}
+                  </label>
+                ),
+              )}
             </fieldset>
             <button className="a-button a-fit-view" onClick={state.requestFit}>
               <Maximize size={15} />

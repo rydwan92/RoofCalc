@@ -8,11 +8,12 @@ import type {
 
 export type WorkbenchMode = 'quick' | 'builder';
 export type WorkbenchCanvasView = 'skeleton' | 'rafter' | 'hip';
-export type ViewPreset = 'construction' | 'openings' | 'battens' | 'cuts';
+export type ViewPreset =
+  'construction' | 'openings' | 'battens' | 'cuts' | 'materials';
 export type DimensionLevel = 'minimal' | 'working' | 'full';
 export type DetailDockMode = 'collapsed' | 'working' | 'focus';
 export type WorkbenchToolCategory =
-  'geometry' | 'timber' | 'support' | 'opening' | 'build-up';
+  'geometry' | 'timber' | 'support' | 'opening' | 'build-up' | 'quantity';
 export type VisualInteractionState =
   'normal' | 'hover' | 'selected' | 'related' | 'muted' | 'warning' | 'invalid';
 
@@ -48,6 +49,9 @@ export interface WorkbenchViewState {
   selectedPrototypeId?: string;
   /** Physical placement retained while an operation/detail becomes active. */
   selectedInstanceId?: string;
+  /** Derived quantity row/instance selection; never enters project data/history. */
+  selectedScheduleRowId?: string;
+  selectedScheduleInstanceId?: string;
   canvasView: WorkbenchCanvasView;
   viewPreset: ViewPreset;
   /** View restored when a contextual cut detail is closed. */
@@ -87,6 +91,8 @@ export const initialWorkbenchViewState: WorkbenchViewState = {
   selectedId: 'roof',
   selectedPrototypeId: undefined,
   selectedInstanceId: undefined,
+  selectedScheduleRowId: undefined,
+  selectedScheduleInstanceId: undefined,
   canvasView: 'skeleton',
   viewPreset: 'construction',
   returnViewPreset: undefined,
@@ -144,6 +150,7 @@ export function deriveWorkbenchProjectionPolicy(
   const cuts = view.viewPreset === 'cuts';
   const openings = view.viewPreset === 'openings';
   const battens = view.viewPreset === 'battens';
+  const materials = view.viewPreset === 'materials';
   return {
     showRoofPlanes: true,
     showPrimaryMembers: view.layerVisibility.structure,
@@ -152,13 +159,18 @@ export function deriveWorkbenchProjectionPolicy(
     showRoofFeatures:
       view.layerVisibility.features &&
       (openings || battens || view.selectedId.startsWith('feature:')),
-    showBattens: battens && view.layerVisibility.battens,
+    showBattens: (battens || materials) && view.layerVisibility.battens,
     showCutMarkers: cuts || !!view.selectedInstanceId,
     showDatums: cuts,
     showDimensions: view.layerVisibility.dimensions,
     showLabels: view.layerVisibility.labels,
-    showDirectManipulation: !cuts,
-    muteUnrelated: cuts || openings || battens || view.isolateSelection,
+    showDirectManipulation: !cuts && !materials,
+    muteUnrelated:
+      cuts ||
+      openings ||
+      battens ||
+      (materials && !!view.selectedScheduleRowId) ||
+      view.isolateSelection,
     isolateSelection: view.isolateSelection,
     effectiveDimensionLevel,
   };

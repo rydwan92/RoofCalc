@@ -1,0 +1,13 @@
+{
+  "name": "@cieslacalc/quantity-core",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@cieslacalc/timber-model": "workspace:*"
+  },
+  "devDependencies": {
+    "@cieslacalc/roof-math": "workspace:*"
+  }
+}

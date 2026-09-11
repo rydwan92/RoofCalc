@@ -39,6 +39,24 @@ describe('workbench view projection', () => {
     });
   });
 
+  it('keeps the Materials preset read-only and emphasizes only an active schedule selection', () => {
+    const passive = deriveWorkbenchProjectionPolicy({
+      ...initialWorkbenchViewState,
+      viewPreset: 'materials',
+    });
+    const selected = deriveWorkbenchProjectionPolicy({
+      ...initialWorkbenchViewState,
+      viewPreset: 'materials',
+      selectedScheduleRowId: 'quantity:structural-timber:K1:rafter:1',
+    });
+    expect(passive).toMatchObject({
+      showDirectManipulation: false,
+      showBattens: true,
+      muteUnrelated: false,
+    });
+    expect(selected.muteUnrelated).toBe(true);
+  });
+
   it('reduces Full dimensions to Working on narrow canvases', () => {
     const policy = deriveWorkbenchProjectionPolicy(
       { ...initialWorkbenchViewState, dimensionLevel: 'full' },

@@ -981,7 +981,9 @@ function SkeletonCanvasComponent({
         <span>
           {state.workbench.viewPreset === 'battens'
             ? t('assembly.battens')
-            : t('assembly.skeleton')}
+            : state.workbench.viewPreset === 'materials'
+              ? t('assembly.scheduleCanvas')
+              : t('assembly.skeleton')}
         </span>
         <span aria-live="polite">
           {state.workbench.viewPreset === 'battens' &&
@@ -1118,9 +1120,13 @@ function SkeletonCanvasComponent({
                 tabIndex={0}
                 data-batten-row={batten.rowId}
                 aria-label={`${t('assembly.battenRow')} ${batten.rowId.split(':').at(-1)}`}
-                aria-pressed={state.workbench.selectedId === batten.rowId}
+                aria-pressed={
+                  state.workbench.selectedId === batten.rowId ||
+                  relatedIds?.has(batten.rowId)
+                }
                 className={
-                  state.workbench.selectedId === batten.rowId
+                  state.workbench.selectedId === batten.rowId ||
+                  relatedIds?.has(batten.rowId)
                     ? 'is-selected'
                     : ''
                 }

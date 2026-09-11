@@ -388,6 +388,10 @@ describe('dual-mode parametric workbench', () => {
       await screen.findByRole('heading', { name: 'Roof workbench' }),
     ).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Add purlin' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('tab', { name: 'Schedule' }));
+    expect(
+      screen.getByRole('heading', { name: 'Member schedule' }),
+    ).toBeTruthy();
     expect(container.textContent).not.toContain('assembly.');
     expect(document.documentElement.lang).toBe('en');
   });
@@ -1270,6 +1274,125 @@ describe('dual-mode parametric workbench', () => {
     expect(
       screen.getByRole('tab', { name: /J1 .*Połączenie z H1/ }),
     ).toBeTruthy();
+  });
+
+  it('opens the geometry-based material schedule and highlights its source members without editing the project', () => {
+    const { container } = render(<App />);
+    expect(screen.queryByRole('tab', { name: 'Zestawienie' })).toBeNull();
+    expect(useAssembly.getState().unit).toBe('mm');
+    builder();
+    act(() => {
+      useAssembly.getState().setBattenLayout({
+        enabled: true,
+        battenHeightMm: 40,
+        battenWidthMm: 60,
+        gaugeMm: 350,
+        eaveOffsetMm: 250,
+      });
+      useAssembly.setState({ historyPast: [], historyFuture: [] });
+    });
+    const before = structuredClone(useAssembly.getState().projectDocument);
+    const historyLength = useAssembly.getState().historyPast.length;
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Zestawienie' }));
+    expect(screen.getByTestId('material-schedule')).toBeTruthy();
+    expect(screen.getByTestId('batten-quantity')).toBeTruthy();
+    expect(
+      container.querySelector('[data-volume-status="partial"]'),
+    ).toBeTruthy();
+    expect(
+      screen.getAllByText(/nie uwzględnia długości handlowych/i),
+    ).not.toHaveLength(0);
+
+    const battenRow = screen.getAllByTestId('material-build-up-row')[0]!;
+    fireEvent.click(battenRow);
+    expect(
+      container.querySelectorAll('[data-batten-row][aria-pressed="true"]')
+        .length,
+    ).toBeGreaterThan(0);
+
+    const row = screen.getAllByTestId('material-schedule-row')[0]!;
+    fireEvent.click(within(row).getAllByRole('button')[0]!);
+    expect(useAssembly.getState().workbench.selectedScheduleRowId).toBe(
+      row.getAttribute('data-row-id'),
+    );
+    expect(
+      container.querySelectorAll('[data-selection-state="related"]').length,
+    ).toBeGreaterThan(0);
+    expect(useAssembly.getState().projectDocument).toEqual(before);
+    expect(useAssembly.getState().historyPast).toHaveLength(historyLength);
+  });
+
+  it('preserves separate geometric length groups for hip-roof J1 members', () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Krokiew narożna' }));
+    builder();
+    fireEvent.click(screen.getByRole('tab', { name: 'Zestawienie' }));
+    const jackRows = screen
+      .getAllByTestId('material-schedule-row')
+      .filter((row) => row.getAttribute('data-family') === 'J1');
+    expect(jackRows.length).toBeGreaterThan(1);
+    expect(
+      new Set(jackRows.map((row) => row.textContent)).size,
+    ).toBeGreaterThan(1);
+  });
+
+  it('counts accepted opening headers and segments, then removes them from the schedule on undo', () => {
+    render(<App />);
+    builder();
+    act(() => {
+      useAssembly.getState().addRoofWindow();
+      useAssembly.getState().updateRoofWindow('feature:roof-window-1', {
+        widthMm: 600,
+        position: { uMm: 700, vMm: 1200 },
+      });
+      useAssembly.setState({ historyPast: [], historyFuture: [] });
+      useAssembly.getState().planOpeningFraming('feature:roof-window-1');
+      expect(
+        useAssembly.getState().applyOpeningFraming('feature:roof-window-1'),
+      ).toBe(true);
+      useAssembly.getState().setViewPreset('materials');
+    });
+    expect(
+      document.querySelectorAll('[data-member-kind="opening-header"]'),
+    ).toHaveLength(2);
+    expect(
+      document.querySelectorAll('[data-member-kind="rafter-segment"]'),
+    ).toHaveLength(2);
+
+    act(() => useAssembly.getState().undo());
+    expect(
+      document.querySelectorAll(
+        '[data-member-kind="opening-header"], [data-member-kind="rafter-segment"]',
+      ),
+    ).toHaveLength(0);
+  });
+
+  it('keeps the Materials preset reachable in a narrow Builder workspace', () => {
+    class NarrowResizeObserver {
+      constructor(private readonly callback: ResizeObserverCallback) {}
+      observe(target: Element) {
+        this.callback(
+          [
+            {
+              target,
+              contentRect: { width: 360 } as DOMRectReadOnly,
+            } as ResizeObserverEntry,
+          ],
+          this as unknown as ResizeObserver,
+        );
+      }
+      disconnect() {}
+      unobserve() {}
+    }
+    vi.stubGlobal('ResizeObserver', NarrowResizeObserver);
+    const { container } = render(<App />);
+    builder();
+    const preset = screen.getByRole('tab', { name: 'Zestawienie' });
+    fireEvent.click(preset);
+    expect(preset.getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByTestId('material-schedule')).toBeTruthy();
+    expect(container.querySelector('.a-material-workspace')).toBeTruthy();
   });
 
   it('keeps the instance workflow compact on a narrow drawing', () => {

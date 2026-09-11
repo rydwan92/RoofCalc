@@ -502,6 +502,30 @@ it('keeps transient workbench changes outside project history and document', () 
     'joint:support:wall-plate-1',
   );
 });
+it('keeps material schedule selection transient and outside undo history', () => {
+  const before = structuredClone(useAssembly.getState().projectDocument);
+  useAssembly.getState().setMode('builder');
+  useAssembly
+    .getState()
+    .setScheduleSelection('schedule:K1:5000', 'instance:rafter-pair-1:left');
+  expect(useAssembly.getState().workbench).toMatchObject({
+    viewPreset: 'materials',
+    selectedScheduleRowId: 'schedule:K1:5000',
+    selectedScheduleInstanceId: 'instance:rafter-pair-1:left',
+    inspectorOpen: true,
+  });
+  expect(useAssembly.getState().projectDocument).toEqual(before);
+  expect(useAssembly.getState().historyPast).toHaveLength(0);
+
+  useAssembly.getState().setViewPreset('construction');
+  expect(
+    useAssembly.getState().workbench.selectedScheduleRowId,
+  ).toBeUndefined();
+  expect(
+    useAssembly.getState().workbench.selectedScheduleInstanceId,
+  ).toBeUndefined();
+  expect(useAssembly.getState().projectDocument).toEqual(before);
+});
 it('returns from isolation when the whole roof becomes the selection', () => {
   const before = structuredClone(useAssembly.getState().projectDocument);
   useAssembly.getState().select(useAssembly.getState().spec.member.id);

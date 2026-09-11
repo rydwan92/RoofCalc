@@ -4,6 +4,10 @@ import {
   currentMemberInstance,
   withOpeningFramingFabrication,
 } from '@cieslacalc/calculator-core';
+import {
+  createRoofMemberSchedule,
+  type RoofMemberScheduleRow,
+} from '@cieslacalc/quantity-core';
 import { ArrowLeft, House, RotateCcw, Redo2, Undo2, X } from 'lucide-react';
 import {
   HIP_RAFTER_PROTOTYPE_ID,
@@ -12,6 +16,7 @@ import {
   createOpeningFramingDraft,
   resolveOpeningFraming,
   resolveOpeningFramingSet,
+  resolveBattenLayout,
 } from '@cieslacalc/roof-math';
 import { useAssembly } from './store';
 import {
@@ -36,6 +41,10 @@ import { WorkbenchControls } from './WorkbenchControls';
 import { PreparationPlan } from './PreparationPlan';
 import { Inspector } from './Inspector';
 import { WorkbenchContextBar } from './WorkbenchContextBar';
+import {
+  MaterialSchedule,
+  MaterialScheduleInspector,
+} from './MaterialSchedule';
 import { workbenchProjectResolver } from './workbench-project';
 import { resolveWorkbenchSelectionContext } from './selection';
 import './styles.css';
@@ -101,13 +110,16 @@ export function AssemblyPage() {
     state.template,
     workbench.openingFramingProposalFeatureId,
   ]);
-  const proposalMembers =
-    framingProposal?.status === 'resolved'
-      ? [
-          framingProposal.lowerFramingMember!.member,
-          framingProposal.upperFramingMember!.member,
-        ]
-      : [];
+  const proposalMembers = useMemo(
+    () =>
+      framingProposal?.status === 'resolved'
+        ? [
+            framingProposal.lowerFramingMember!.member,
+            framingProposal.upperFramingMember!.member,
+          ]
+        : [],
+    [framingProposal],
+  );
   const skeleton = useMemo(
     () => ({
       ...framingProjection.composedSkeleton,
@@ -130,6 +142,53 @@ export function AssemblyPage() {
         framingProjection.results,
       ),
     [baseFabricationPackage, framingProjection.results],
+  );
+  const battenLayout = state.projectDocument.project.buildUp.battenLayout;
+  const battenProjection = useMemo(
+    () =>
+      battenLayout?.enabled
+        ? resolveBattenLayout({
+            template: state.template,
+            layout: battenLayout,
+            features: state.projectDocument.project.features,
+          })
+        : { battens: [], totalLengthMm: 0 },
+    [battenLayout, state.projectDocument.project.features, state.template],
+  );
+  const memberSchedule = useMemo(
+    () =>
+      createRoofMemberSchedule({
+        // Proposals never enter quantities; only accepted/current composition does.
+        skeleton: framingProjection.composedSkeleton,
+        sectionOverrides: {
+          [state.template.ridge.id]: {
+            ...(state.template.ridge.thicknessMm > 0
+              ? { widthMm: state.template.ridge.thicknessMm }
+              : {}),
+            completeness: 'partial',
+          },
+        },
+        buildUp: battenLayout?.enabled
+          ? battenProjection.battens.map((batten) => ({
+              id: batten.id,
+              familyKey: 'L',
+              memberKind: 'batten' as const,
+              lengthMm: batten.usableLengthMm,
+              section: {
+                widthMm: battenLayout.battenWidthMm,
+                depthMm: battenLayout.battenHeightMm,
+              },
+              segmentCount: batten.segments.length,
+            }))
+          : [],
+      }),
+    [
+      battenLayout,
+      battenProjection.battens,
+      framingProjection.composedSkeleton,
+      state.template.ridge.id,
+      state.template.ridge.thicknessMm,
+    ],
   );
   const selectionContext = useMemo(
     () =>
@@ -242,6 +301,9 @@ export function AssemblyPage() {
   const activeOperation = fabricationPackage.families
     .flatMap((family) => family.operations)
     .find((operation) => operation.id === workbench.activeOperationId);
+  const selectedScheduleRow = memberSchedule.rows.find(
+    (row) => row.id === workbench.selectedScheduleRowId,
+  );
   const relatedSelectionIds = useMemo(() => {
     const ids = new Set<string>();
     activeInstance?.relatedInstanceIds.forEach((id) => ids.add(id));
@@ -271,6 +333,11 @@ export function AssemblyPage() {
       );
     selectedFraming?.affectedMemberInstanceIds.forEach((id) => ids.add(id));
     selectedFraming?.boundingMemberInstanceIds.forEach((id) => ids.add(id));
+    selectedScheduleRow?.sourceInstanceIds.forEach((id) => ids.add(id));
+    if (workbench.selectedScheduleInstanceId) {
+      ids.clear();
+      ids.add(workbench.selectedScheduleInstanceId);
+    }
     return ids;
   }, [
     activeOperation,
@@ -283,7 +350,25 @@ export function AssemblyPage() {
     workbench.selectedId,
     framingProposal,
     framingProjection.results,
+    selectedScheduleRow,
+    workbench.selectedScheduleInstanceId,
   ]);
+  const selectScheduleInstance = (
+    row: RoofMemberScheduleRow,
+    instanceId: string,
+  ) => {
+    const instance = memberInstances.find(
+      (candidate) => candidate.instanceId === instanceId,
+    );
+    if (instance)
+      state.navigateToInstance({
+        instanceId,
+        prototypeId: instance.prototypeId,
+        operationIds: instance.relatedOperationIds,
+      });
+    else state.select(instanceId, row.prototypeId);
+    state.setScheduleSelection(row.id, instanceId);
+  };
   const drawerPreviews = drawer.pinned
     ? allDetailPreviews
     : selectionDetailPreviews;
@@ -539,7 +624,27 @@ export function AssemblyPage() {
                     {t('assembly.backToSkeleton')}
                   </button>
                 )}
-                {workbench.focusId ? (
+                {workbench.viewPreset === 'materials' ? (
+                  <div className="a-material-workspace">
+                    <div className="a-material-canvas">
+                      <SkeletonCanvas
+                        template={state.template}
+                        skeleton={framingProjection.composedSkeleton}
+                        collisionSkeleton={baseSkeleton}
+                        spacing={layoutSpacing}
+                        relatedIds={relatedSelectionIds}
+                        activeInstance={activeInstance}
+                      />
+                    </div>
+                    <MaterialSchedule
+                      schedule={memberSchedule}
+                      selectedRowId={workbench.selectedScheduleRowId}
+                      selectedInstanceId={workbench.selectedScheduleInstanceId}
+                      onSelectRow={(row) => state.setScheduleSelection(row.id)}
+                      onSelectInstance={selectScheduleInstance}
+                    />
+                  </div>
+                ) : workbench.focusId ? (
                   <AssemblyCanvas result={result} focusId={workbench.focusId} />
                 ) : workbench.canvasView === 'hip' && hip ? (
                   <HipFabricationSheet
@@ -563,16 +668,20 @@ export function AssemblyPage() {
                   />
                 )}
               </section>
-              <Inspector
-                result={result}
-                hip={hip}
-                skeleton={baseSkeleton}
-                context={selectionContext}
-                spacingEntries={spacingEntries}
-                detailPreviews={selectionDetailPreviews}
-                activeInstance={activeInstance}
-                roofPackage={fabricationPackage}
-              />
+              {workbench.viewPreset === 'materials' ? (
+                <MaterialScheduleInspector schedule={memberSchedule} />
+              ) : (
+                <Inspector
+                  result={result}
+                  hip={hip}
+                  skeleton={baseSkeleton}
+                  context={selectionContext}
+                  spacingEntries={spacingEntries}
+                  detailPreviews={selectionDetailPreviews}
+                  activeInstance={activeInstance}
+                  roofPackage={fabricationPackage}
+                />
+              )}
             </div>
             <DetailDrawer
               previews={drawerPreviews}
