@@ -359,6 +359,52 @@ it('cancels roof-window placement without history and creates one canonical edit
   useAssembly.getState().undo();
   expect(useAssembly.getState().projectDocument).toEqual(before);
 });
+it('keeps a too-wide bay placement unchanged and reports exact geometric feedback', () => {
+  useAssembly.getState().addRoofWindow();
+  const id = 'feature:roof-window-1';
+  useAssembly.getState().updateRoofWindow(id, {
+    position: { uMm: 100, vMm: 1200 },
+  });
+  useAssembly.setState({ historyPast: [], historyFuture: [] });
+  const before = structuredClone(
+    useAssembly.getState().projectDocument.project.features[0]!,
+  );
+  expect(useAssembly.getState().placeRoofWindowBetweenRafters(id)).toBe(false);
+  expect(useAssembly.getState().projectDocument.project.features[0]).toEqual(
+    before,
+  );
+  expect(useAssembly.getState().historyPast).toHaveLength(0);
+  expect(useAssembly.getState().workbench.placementFeedback).toMatchObject({
+    featureId: id,
+    status: 'failed',
+    reason: 'opening-too-wide',
+    requiredWidthMm: 780,
+    availableWidthMm: 720,
+    memberInstanceIds: [
+      'instance:rafter-pair-1:left',
+      'instance:rafter-pair-2:left',
+    ],
+  });
+});
+it('switches contextual presets without persisting transient view state', () => {
+  useAssembly.getState().addRoofWindow();
+  useAssembly.setState({ historyPast: [], historyFuture: [] });
+  const before = structuredClone(useAssembly.getState().projectDocument);
+  const featureId =
+    useAssembly.getState().projectDocument.project.features[0]!.id;
+  useAssembly.getState().setViewPreset('construction');
+  useAssembly.getState().select(featureId);
+  expect(useAssembly.getState().workbench.viewPreset).toBe('openings');
+  useAssembly.getState().select('batten:roof-plane:left:1');
+  expect(useAssembly.getState().workbench.viewPreset).toBe('battens');
+  const member = memberInstances()[0]!;
+  useAssembly.getState().select(member.instanceId, member.prototypeId);
+  expect(useAssembly.getState().workbench.viewPreset).toBe('battens');
+  useAssembly.getState().select('roof');
+  expect(useAssembly.getState().workbench.viewPreset).toBe('construction');
+  expect(useAssembly.getState().projectDocument).toEqual(before);
+  expect(useAssembly.getState().historyPast).toHaveLength(0);
+});
 it('undoes and redoes adding and removing independently allocated purlins', () => {
   useAssembly.getState().add();
   useAssembly.getState().add();

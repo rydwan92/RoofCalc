@@ -797,6 +797,15 @@ describe('dual-mode parametric workbench', () => {
     );
     fireEvent.pointerEnter(plane);
     fireEvent.pointerMove(plane, { clientX: centre.x, clientY: centre.y });
+    expect(useAssembly.getState().workbench.placementTool?.roofPlaneId).toBe(
+      'roof-plane:left',
+    );
+    fireEvent.pointerLeave(plane);
+    expect(
+      useAssembly.getState().workbench.placementTool?.roofPlaneId,
+    ).toBeUndefined();
+    fireEvent.pointerEnter(plane);
+    fireEvent.pointerMove(plane, { clientX: centre.x, clientY: centre.y });
     fireEvent.click(plane, { clientX: centre.x, clientY: centre.y });
     expect(container.querySelector('[data-roof-window="feature:roof-window-1"]')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Okno dachowe O1' }));
@@ -839,6 +848,160 @@ describe('dual-mode parametric workbench', () => {
     expect(useAssembly.getState().historyPast).toHaveLength(1);
     act(() => useAssembly.getState().undo());
     expect(useAssembly.getState().projectDocument.project.features[0]!.widthMm).toBe(780);
+  });
+  it('commits a roof-window pointer drag as one undo step and fully cancels it with Escape', () => {
+    class TestPointerEvent extends MouseEvent {
+      pointerId: number;
+      pointerType: string;
+      constructor(type: string, init: PointerEventInit = {}) {
+        super(type, init);
+        this.pointerId = init.pointerId ?? 1;
+        this.pointerType = init.pointerType ?? 'mouse';
+      }
+    }
+    vi.stubGlobal('PointerEvent', TestPointerEvent);
+    const { container } = render(<App />);
+    builder();
+    act(() => useAssembly.getState().addRoofWindow());
+    act(() => useAssembly.setState({ historyPast: [], historyFuture: [] }));
+    const drawing = screen.getByTestId(
+      'skeleton-drawing',
+    ) as unknown as SVGSVGElement;
+    Object.defineProperties(drawing, {
+      getBoundingClientRect: {
+        value: () => ({ left: 0, top: 0, width: 820, height: 570 }),
+      },
+      setPointerCapture: { value: vi.fn() },
+      hasPointerCapture: { value: () => false },
+    });
+    const roofWindow = container.querySelector(
+      '[data-roof-window="feature:roof-window-1"]',
+    )!;
+    const before = structuredClone(
+      useAssembly.getState().projectDocument.project.features[0]!,
+    );
+    const pointer = { pointerId: 71, pointerType: 'mouse', button: 0 };
+    fireEvent.pointerDown(roofWindow, {
+      ...pointer,
+      clientX: 400,
+      clientY: 280,
+    });
+    fireEvent.pointerMove(drawing, {
+      ...pointer,
+      clientX: 430,
+      clientY: 295,
+    });
+    fireEvent.pointerMove(drawing, {
+      ...pointer,
+      clientX: 460,
+      clientY: 310,
+    });
+    expect(useAssembly.getState().historyPast).toHaveLength(0);
+    expect(
+      useAssembly.getState().projectDocument.project.features[0]!.position,
+    ).not.toEqual(before.position);
+    fireEvent.pointerUp(drawing, pointer);
+    expect(useAssembly.getState().historyPast).toHaveLength(1);
+    act(() => useAssembly.getState().undo());
+    expect(useAssembly.getState().projectDocument.project.features[0]).toEqual(
+      before,
+    );
+
+    fireEvent.pointerDown(roofWindow, {
+      ...pointer,
+      clientX: 400,
+      clientY: 280,
+    });
+    fireEvent.pointerMove(drawing, {
+      ...pointer,
+      clientX: 450,
+      clientY: 300,
+    });
+    fireEvent.keyDown(drawing, { key: 'Escape' });
+    expect(useAssembly.getState().activeTransaction).toBeUndefined();
+    expect(useAssembly.getState().projectDocument.project.features[0]).toEqual(
+      before,
+    );
+    expect(useAssembly.getState().historyPast).toHaveLength(0);
+    fireEvent.pointerMove(drawing, {
+      ...pointer,
+      clientX: 500,
+      clientY: 330,
+    });
+    expect(useAssembly.getState().projectDocument.project.features[0]).toEqual(
+      before,
+    );
+  });
+  it('nudges a roof window by 10, Shift 100 and Alt 1 mm with one undo entry each', () => {
+    const { container } = render(<App />);
+    builder();
+    act(() => useAssembly.getState().addRoofWindow());
+    act(() => useAssembly.setState({ historyPast: [], historyFuture: [] }));
+    const roofWindow = container.querySelector(
+      '[data-roof-window="feature:roof-window-1"]',
+    )!;
+    const start = useAssembly.getState().projectDocument.project.features[0]!;
+    fireEvent.keyDown(roofWindow, { key: 'ArrowRight' });
+    expect(
+      useAssembly.getState().projectDocument.project.features[0]!.position.uMm,
+    ).toBe(start.position.uMm + 10);
+    fireEvent.keyDown(roofWindow, { key: 'ArrowRight', shiftKey: true });
+    expect(
+      useAssembly.getState().projectDocument.project.features[0]!.position.uMm,
+    ).toBe(start.position.uMm + 110);
+    fireEvent.keyDown(roofWindow, { key: 'ArrowRight', altKey: true });
+    expect(
+      useAssembly.getState().projectDocument.project.features[0]!.position.uMm,
+    ).toBe(start.position.uMm + 111);
+    expect(useAssembly.getState().historyPast).toHaveLength(3);
+    act(() => useAssembly.getState().undo());
+    expect(
+      useAssembly.getState().projectDocument.project.features[0]!.position.uMm,
+    ).toBe(start.position.uMm + 110);
+  });
+  it('shows the exact colliding rafter and places a fitting window between rafters', () => {
+    const { container } = render(<App />);
+    builder();
+    act(() => useAssembly.getState().addRoofWindow());
+    const id = 'feature:roof-window-1';
+    act(() =>
+      useAssembly.getState().updateRoofWindow(id, {
+        widthMm: 500,
+        position: { uMm: 0, vMm: 1200 },
+      }),
+    );
+    act(() => useAssembly.setState({ historyPast: [], historyFuture: [] }));
+    const before = structuredClone(
+      useAssembly.getState().projectDocument.project.features[0]!,
+    );
+    expect(container.querySelector(`[data-roof-window="${id}"]`)?.getAttribute('data-collision')).toBe('true');
+    expect(
+      container.querySelector('[data-selection-state="warning"]'),
+    ).toBeTruthy();
+    expect(
+      screen.getAllByText(/Kolizja geometryczna z krokwią: K1-01/).length,
+    ).toBeGreaterThan(0);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Umieść między krokwiami' }),
+    );
+    const placed = useAssembly.getState().projectDocument.project.features[0]!;
+    expect(placed.widthMm).toBe(500);
+    expect(placed.position).not.toEqual(before.position);
+    expect(useAssembly.getState().historyPast).toHaveLength(1);
+    expect(useAssembly.getState().workbench.placementFeedback).toMatchObject({
+      featureId: id,
+      status: 'placed',
+    });
+    expect(
+      screen.getByText(/Otwór umieszczono geometrycznie pomiędzy/),
+    ).toBeTruthy();
+    expect(
+      screen.queryAllByText(/Kolizja geometryczna z krokwią:/),
+    ).toHaveLength(0);
+    act(() => useAssembly.getState().undo());
+    expect(useAssembly.getState().projectDocument.project.features[0]).toEqual(
+      before,
+    );
   });
   it('offers a fast H1 path with shared reactive math and coordinated drawings', () => {
     render(<App />);

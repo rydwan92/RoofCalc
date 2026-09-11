@@ -1297,43 +1297,58 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
-> Updated 2026-09-11. Iteration 012 is implemented in commit `f819085`; the V13 preflight audit repaired the stale checkpoint before new interaction work.
+> Updated 2026-09-11 from clean base `a3f2facc6253315d6f60f574a498f0d024db8db8`. The V13 contract was audited against the implementation; architecture documents were not treated as proof of behavior.
 
-**Iteration:** `012 — roof features, roof windows, battens, view system 2.0 and composition boundary`
+**Iteration:** `013 — interaction layer and professional roof workbench`
 
-**Status:** `IMPLEMENTED — DOCUMENTATION REPAIRED; V13 PREFLIGHT FOUND TWO BASELINE VALIDATION DEFECTS`
+**Status:** `PARTIAL — IMPLEMENTATION AND AUTOMATED VALIDATION COMPLETE; REQUIRED BROWSER/DEVICE QA UNAVAILABLE`
 
-**Actual Iteration 012 implementation:**
+**Verified V13 implementation:**
 
-- Added canonical `RoofWindowFeature`, `RoofPlanePosition`, `BattenLayoutSpec`, `RoofBuildUp` and renderer-neutral `RoofAssembly` types. `RoofProjectDocumentV1` now round-trips roof features and build-up data while accepting earlier schema-version-1 documents without those optional keys.
-- Added pure roof-plane local/world transforms for all current gable and regular-hip planes, clamping/default-window placement, structured K1/H1/J1 geometric collision projection, nearest geometric rafter-bay placement and deterministic batten rows with clipping around windows.
-- Extended canonical history so window add/remove/update/drag/place-between and batten-layout changes snapshot the complete project document. Selection, presets, layer visibility, Inspector/Drawer and camera remain transient.
-- Added the `Konstrukcja / Otwory / Łacenie / Cięcia` presets, compact advanced visibility control, Toolbox feature/build-up groups, roof-window Inspector, direct window-body drag, collision status, place-between action, derived batten rendering and batten totals.
-- Removed the obsolete visible purlin drag dots while retaining body drag and the exact Inspector input.
-- Preserved Quick Calc scope and the existing K1/H1/J1 fabrication pipeline.
+- Builder has a cancellable choose-plane/click-location roof-window tool with a live ghost, active-plane feedback and no project/history write until placement. Window dimensions and batten inputs use editable drafts with Enter/blur commit and Escape restore.
+- Roof windows support direct local-plane drag as one transaction, keyboard nudge at `10 mm`, `Shift = 100 mm`, `Alt = 1 mm`, one-step Undo/Redo and exact numeric fallback in Inspector.
+- Collision feedback derives from canonical K1/H1/J1 geometry, identifies concrete physical rafter instances, visually coordinates the colliding member, and offers a geometric `Umieść między krokwiami` action with explicit success/failure feedback.
+- Batten rows remain derived from canonical roof/build-up/window data, are selectable, show contextual row/segment data, and preserve the existing tested multi-window clipping behavior.
+- `Konstrukcja / Otwory / Łacenie / Cięcia` are semantic view presets. Selection moves to the relevant preset, member selection does not unnecessarily abandon the current useful preset, and roof selection returns to construction.
+- `Widok`, Fit, zoom controls, pointer-centred wheel zoom, Space-pan, double-click focus, three-state Detail Dock and responsive workbench composition are present in production code. Quick Calc remains intentionally free of roof-window/batten authoring.
 
-**V12 audit / incomplete requirements:**
+**Closeout fixes and added regression coverage:**
 
-- Added the missing `docs/ARCHITECTURE_V12_ROOF_FEATURES_BATTENS_AND_COMPOSITION.md`, which records the coordinate, composition, collision, build-up and persistence contracts plus the exact incomplete items.
-- Window creation still inserts immediately on the default left plane; it is not yet a cancellable choose-plane/click-location tool.
-- Feature/batten numeric fields commit per keystroke rather than draft -> one commit. Window keyboard nudge, coordinated member warning, placement ghost/status, batten row selection, top batten summary, professional `Widok` Fit/options, pointer-centred zoom/Space-pan/double-click focus and explicit three-state Detail Dock remain V13 work.
-- V12 browser/mobile QA was not recorded. No hardware pointer/touch claim is made.
-- V13 baseline: typecheck and web/API build pass. Lint fails on one unused `SkeletonMember3D` import in `roof-features.ts`; tests pass 282/283, with one legacy test still querying the removed visible purlin slider.
+- Fixed placement hover cleanup so leaving a roof plane clears both the local ghost and transient `placementTool.roofPlaneId`; an inactive plane can no longer remain semantically emphasized.
+- Fixed Escape during an active SVG drag so it cancels the canonical transaction, clears the local drag session and releases pointer capture. A later pointer move can no longer mutate the project after cancellation.
+- Added UI regression coverage for roof-window drag with multiple moves -> exactly one history entry -> exact Undo, plus Escape rollback and ignored later movement.
+- Added UI regression coverage for exact window nudge modifiers (`10 / 100 / 1 mm`), successful between-rafter placement, exact `K1-01` collision warning and coordinated warning state.
+- Added store coverage for a failed too-wide placement preserving the feature and history while reporting the exact bay/width data, and for contextual preset transitions remaining outside the project document/history.
+- Existing multiple-window batten splitting tests were retained rather than duplicated.
 
-**Files changed by V12:**
+**Validation:**
 
-- Domain/persistence: `packages/timber-model/src/index.ts`, `packages/roof-math/src/{roof-features,index}.ts`, feature tests, `packages/calculator-core/src/project-document.ts` and its tests.
-- Web workbench: `apps/web/src/assembly/{Inspector,Page,SkeletonCanvas,Summary,Toolbox,WorkbenchControls,selection,store,styles,translations,workbench}.*` and corresponding tests.
-- Documentation: V12 prompt; the missing V12 architecture document and this corrected checkpoint were added at the start of V13.
+- Clean-HEAD preflight before edits: `typecheck` PASS; **289 tests across 32 files** PASS; lint PASS with no warnings/errors; production build PASS; `git diff --check` PASS.
+- Final worktree validation: `typecheck` PASS; **294 tests across 32 files** PASS; lint PASS with no warnings/errors; production build PASS; `git diff --check` PASS.
+- Final production bundle: main **499.11 kB / 142.64 kB gzip**, CSS **77.86 / 15.58 kB**, React **51.29 / 18.04 kB**, localization **49.54 / 16.09 kB**, icons **12.22 / 2.64 kB**. The main chunk remains below the Vite advisory threshold.
 
-**Known boundary:**
+**Browser, responsive and touch QA:**
 
-- Window rectangles, clearance, collisions, bay placement and batten spacing are generic geometry only. They are not manufacturer opening requirements, structural approval or covering-specific installation guidance.
-- No opening framing, dormer, chimney, statics, covering catalogue, prices, estimating, auth/database, PDF or full 3D was started.
+- The XAMPP production URL `http://localhost/projects/RoofCalc/apps/web/dist/` responds with HTTP 200; the older path without `/projects/RoofCalc/` responds with 404.
+- The required in-app Browser inventory returned no available browser instances (`[]`). Under the Browser control protocol no alternative browser automation was substituted, so gable/hip review at wide desktop, `1440 x 900`, `768 px` and `360 x 800` could not truthfully be performed in this iteration.
+- No claim is made for native mouse, pen or touch behavior. In particular, Space-pan, pointer-centred wheel zoom, placement ghost, collision emphasis, two-window/batten composition, Detail Dock occlusion and mobile sheet reachability still require visual/device verification.
+- Because that QA is a stated V13 completion requirement, the iteration remains `PARTIAL`; no speculative polish or V14 work was started.
+
+**Files changed in this closeout:**
+
+- `apps/web/src/assembly/SkeletonCanvas.tsx`
+- `apps/web/src/assembly/Page.test.tsx`
+- `apps/web/src/assembly/store.test.ts`
+- `PROJECT_BLUEPRINT.md`
+
+**Known boundaries:**
+
+- Roof-window openings, clearances, collision checks and between-rafter placement are generic geometric guidance, not manufacturer installation requirements or structural approval.
+- Battens remain generic geometric rows and quantities, not a covering/product system. No opening framing, dormer, chimney, statics, prices/estimating, auth/database, PDF or full 3D was added.
 
 **NEXT ACTION:**
 
-> Execute `PROMPT_ITERATION_013_INTERACTION_LAYER_WORKBENCH.md`: first restore a green baseline, then implement the transient placement tool, interaction/history hardening, selectable batten workbench, professional view/dock/canvas controls, responsive layout and complete automated/browser QA. Do not begin Iteration 014.
+> When an in-app browser or physical device is available, run the V13 matrix on gable and hip at wide desktop, `1440 x 900`, `768 px` and `360 x 800`: inspect width use and panel/dock occlusion; exercise placement hover/ghost/cancel, O1 collision and successful placement, two windows with split battens, all presets, Space-pan, pointer-centred wheel zoom, Fit, focus, Undo/Redo and mobile sheet reachability. Record actual observations, fix only evidenced V13 polish defects, rerun the definition-of-done suite, then change this checkpoint to `COMPLETE` or retain `PARTIAL` with exact failures. Do not begin Iteration 014 automatically.
 
 ---
 

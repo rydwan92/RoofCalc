@@ -184,6 +184,7 @@ function SkeletonCanvasComponent({
   const container = useRef<HTMLDivElement>(null),
     svg = useRef<SVGSVGElement>(null),
     drag = useRef<Drag | null>(null);
+  const finishDragRef = useRef<(cancel: boolean) => void>(() => undefined);
   const [width, setWidth] = useState(820);
   const height = width < 550 ? 400 : width > 1000 ? 640 : 570;
   const [viewport, setViewport] = useState<ViewportState>(fittedViewport);
@@ -211,6 +212,10 @@ function SkeletonCanvasComponent({
       if (event.code === 'Space') {
         event.preventDefault();
         setSpacePressed(true);
+      }
+      if (event.key === 'Escape' && drag.current) {
+        event.preventDefault();
+        finishDragRef.current(true);
       }
     };
     const keyUp = (event: globalThis.KeyboardEvent) => {
@@ -628,6 +633,7 @@ function SkeletonCanvasComponent({
     if (svg.current?.hasPointerCapture(active.pointerId))
       svg.current.releasePointerCapture(active.pointerId);
   };
+  finishDragRef.current = finishDrag;
   const moveDrag = (event: PointerEvent<SVGSVGElement>) => {
     const active = drag.current;
     if (!active || active.pointerId !== event.pointerId) return;
@@ -957,7 +963,10 @@ function SkeletonCanvasComponent({
                   selectedStore.setRoofWindowPlacementPlane(plane.roofPlaneId)
                 }
                 onPointerMove={(event) => updatePlacementGhost(event, plane)}
-                onPointerLeave={() => setPlacementGhost(undefined)}
+                onPointerLeave={() => {
+                  setPlacementGhost(undefined);
+                  selectedStore.setRoofWindowPlacementPlane(undefined);
+                }}
                 onClick={(event) => {
                   event.stopPropagation();
                   const position = planePositionFromPointer(event, plane);
