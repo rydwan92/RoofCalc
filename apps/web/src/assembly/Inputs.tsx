@@ -68,6 +68,17 @@ export function NumberField({
           onFocus={() => state.beginTransaction()}
           onBlur={() => state.commitTransaction()}
           onChange={(e) => state.setField(field, e.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              state.commitTransaction();
+              event.currentTarget.blur();
+            } else if (event.key === 'Escape') {
+              event.preventDefault();
+              state.cancelTransaction();
+              event.currentTarget.blur();
+            }
+          }}
         />
         <span>{unit}</span>
         {step && (

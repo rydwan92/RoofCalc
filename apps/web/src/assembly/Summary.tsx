@@ -655,6 +655,8 @@ export function ContextualResults({
     );
   }
 
+  if (context.kind === 'batten-row') return null;
+
   const isSeat = context.jointKind === 'seat-notch';
   const isHipCut = context.jointKind === 'hip-end-cut';
   return (

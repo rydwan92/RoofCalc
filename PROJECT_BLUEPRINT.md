@@ -1297,7 +1297,47 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
-> Updated 2026-09-11. Iteration 011 is complete in the root repository.
+> Updated 2026-09-11. Iteration 012 is implemented in commit `f819085`; the V13 preflight audit repaired the stale checkpoint before new interaction work.
+
+**Iteration:** `012 — roof features, roof windows, battens, view system 2.0 and composition boundary`
+
+**Status:** `IMPLEMENTED — DOCUMENTATION REPAIRED; V13 PREFLIGHT FOUND TWO BASELINE VALIDATION DEFECTS`
+
+**Actual Iteration 012 implementation:**
+
+- Added canonical `RoofWindowFeature`, `RoofPlanePosition`, `BattenLayoutSpec`, `RoofBuildUp` and renderer-neutral `RoofAssembly` types. `RoofProjectDocumentV1` now round-trips roof features and build-up data while accepting earlier schema-version-1 documents without those optional keys.
+- Added pure roof-plane local/world transforms for all current gable and regular-hip planes, clamping/default-window placement, structured K1/H1/J1 geometric collision projection, nearest geometric rafter-bay placement and deterministic batten rows with clipping around windows.
+- Extended canonical history so window add/remove/update/drag/place-between and batten-layout changes snapshot the complete project document. Selection, presets, layer visibility, Inspector/Drawer and camera remain transient.
+- Added the `Konstrukcja / Otwory / Łacenie / Cięcia` presets, compact advanced visibility control, Toolbox feature/build-up groups, roof-window Inspector, direct window-body drag, collision status, place-between action, derived batten rendering and batten totals.
+- Removed the obsolete visible purlin drag dots while retaining body drag and the exact Inspector input.
+- Preserved Quick Calc scope and the existing K1/H1/J1 fabrication pipeline.
+
+**V12 audit / incomplete requirements:**
+
+- Added the missing `docs/ARCHITECTURE_V12_ROOF_FEATURES_BATTENS_AND_COMPOSITION.md`, which records the coordinate, composition, collision, build-up and persistence contracts plus the exact incomplete items.
+- Window creation still inserts immediately on the default left plane; it is not yet a cancellable choose-plane/click-location tool.
+- Feature/batten numeric fields commit per keystroke rather than draft -> one commit. Window keyboard nudge, coordinated member warning, placement ghost/status, batten row selection, top batten summary, professional `Widok` Fit/options, pointer-centred zoom/Space-pan/double-click focus and explicit three-state Detail Dock remain V13 work.
+- V12 browser/mobile QA was not recorded. No hardware pointer/touch claim is made.
+- V13 baseline: typecheck and web/API build pass. Lint fails on one unused `SkeletonMember3D` import in `roof-features.ts`; tests pass 282/283, with one legacy test still querying the removed visible purlin slider.
+
+**Files changed by V12:**
+
+- Domain/persistence: `packages/timber-model/src/index.ts`, `packages/roof-math/src/{roof-features,index}.ts`, feature tests, `packages/calculator-core/src/project-document.ts` and its tests.
+- Web workbench: `apps/web/src/assembly/{Inspector,Page,SkeletonCanvas,Summary,Toolbox,WorkbenchControls,selection,store,styles,translations,workbench}.*` and corresponding tests.
+- Documentation: V12 prompt; the missing V12 architecture document and this corrected checkpoint were added at the start of V13.
+
+**Known boundary:**
+
+- Window rectangles, clearance, collisions, bay placement and batten spacing are generic geometry only. They are not manufacturer opening requirements, structural approval or covering-specific installation guidance.
+- No opening framing, dormer, chimney, statics, covering catalogue, prices, estimating, auth/database, PDF or full 3D was started.
+
+**NEXT ACTION:**
+
+> Execute `PROMPT_ITERATION_013_INTERACTION_LAYER_WORKBENCH.md`: first restore a green baseline, then implement the transient placement tool, interaction/history hardening, selectable batten workbench, professional view/dock/canvas controls, responsive layout and complete automated/browser QA. Do not begin Iteration 014.
+
+---
+
+**Previous checkpoint — Iteration 011:**
 
 **Iteration:** `011 — Quick detail dialogs, direct purlin drag and geometric purlin layout`
 

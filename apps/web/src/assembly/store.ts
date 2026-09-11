@@ -16,7 +16,7 @@ import {
   gableTemplateFromAssembly,
   HIP_RAFTER_PROTOTYPE_ID,
   JACK_RAFTER_PROTOTYPE_ID,
-  placeRoofWindowBetweenRafters,
+  resolveRoofWindowPlacement,
   roofTemplateFromAssembly,
   seatLength,
   toMillimetres,
@@ -257,9 +257,11 @@ export interface AssemblyState {
   setInspectorOpen: (open: boolean) => void;
   setPreparationExpanded: (expanded: boolean) => void;
   setFocusId: (focusId?: string) => void;
+  requestFit: () => void;
   setDetailDrawer: (
     detail: Partial<WorkbenchViewState['detailDrawer']>,
   ) => void;
+  closeDetailDrawer: () => void;
   activateOperation: (args: {
     operationId: string;
     prototypeId: string;
@@ -273,6 +275,13 @@ export interface AssemblyState {
     operationIds: string[];
   }) => void;
   stepBackContext: () => void;
+  beginRoofWindowPlacement: () => void;
+  setRoofWindowPlacementPlane: (roofPlaneId?: string) => void;
+  cancelRoofWindowPlacement: () => void;
+  placeRoofWindowAt: (
+    roofPlaneId: string,
+    position: RoofWindowFeature['position'],
+  ) => string | undefined;
   setUnit: (unit: LengthUnit) => void;
   setField: (field: EditField, raw: string) => void;
   setCanonicalField: (field: EditField, value: number) => void;
@@ -368,7 +377,17 @@ export const useAssembly = create<AssemblyState>((set) => ({
   setView: (canvasView) =>
     set((state) => ({ workbench: { ...state.workbench, canvasView } })),
   setViewPreset: (viewPreset) =>
-    set((state) => ({ workbench: { ...state.workbench, viewPreset } })),
+    set((state) => ({
+      workbench: {
+        ...state.workbench,
+        viewPreset,
+        returnViewPreset: viewPreset === 'cuts' ? state.workbench.returnViewPreset : undefined,
+        placementTool:
+          viewPreset === 'openings' ? state.workbench.placementTool : undefined,
+        placementFeedback:
+          viewPreset === 'openings' ? state.workbench.placementFeedback : undefined,
+      },
+    })),
   setIsolation: (isolateSelection) =>
     set((state) => ({ workbench: { ...state.workbench, isolateSelection } })),
   setDimensionLevel: (dimensionLevel) =>
@@ -404,11 +423,46 @@ export const useAssembly = create<AssemblyState>((set) => ({
     })),
   setFocusId: (focusId) =>
     set((state) => ({ workbench: { ...state.workbench, focusId } })),
+  requestFit: () =>
+    set((state) => ({
+      workbench: {
+        ...state.workbench,
+        fitRequestId: state.workbench.fitRequestId + 1,
+      },
+    })),
   setDetailDrawer: (detail) =>
     set((state) => ({
       workbench: {
         ...state.workbench,
-        detailDrawer: { ...state.workbench.detailDrawer, ...detail },
+        detailDrawer: {
+          ...state.workbench.detailDrawer,
+          ...detail,
+          open:
+            detail.mode !== undefined
+              ? detail.mode !== 'collapsed'
+              : (detail.open ?? state.workbench.detailDrawer.open),
+          mode:
+            detail.open === false
+              ? 'collapsed'
+              : detail.open === true && detail.mode === undefined
+                ? 'working'
+                : (detail.mode ?? state.workbench.detailDrawer.mode),
+        },
+      },
+    })),
+  closeDetailDrawer: () =>
+    set((state) => ({
+      workbench: {
+        ...state.workbench,
+        viewPreset: state.workbench.returnViewPreset ?? state.workbench.viewPreset,
+        returnViewPreset: undefined,
+        activeOperationId: undefined,
+        detailDrawer: {
+          ...state.workbench.detailDrawer,
+          open: false,
+          mode: 'collapsed',
+          activePreviewId: undefined,
+        },
       },
     })),
   activateOperation: ({
@@ -432,6 +486,10 @@ export const useAssembly = create<AssemblyState>((set) => ({
           selectedInstanceId,
           activeOperationId: operationId,
           preparationExpanded: true,
+          returnViewPreset:
+            state.workbench.viewPreset === 'cuts'
+              ? state.workbench.returnViewPreset
+              : state.workbench.viewPreset,
           viewPreset: 'cuts',
           canvasView:
             prototypeId === HIP_RAFTER_PROTOTYPE_ID
@@ -442,6 +500,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
           detailDrawer: {
             ...state.workbench.detailDrawer,
             open: !!previewId,
+            mode: previewId ? 'working' : 'collapsed',
             activePreviewId: previewId,
           },
         },
@@ -468,6 +527,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
             : {
                 ...state.workbench.detailDrawer,
                 open: false,
+                mode: 'collapsed',
                 activePreviewId: undefined,
               },
         },
@@ -475,6 +535,36 @@ export const useAssembly = create<AssemblyState>((set) => ({
     }),
   stepBackContext: () =>
     set((state) => {
+      if (state.workbench.placementTool)
+        return {
+          workbench: {
+            ...state.workbench,
+            placementTool: undefined,
+            placementFeedback: undefined,
+          },
+        };
+      if (state.workbench.detailDrawer.mode === 'focus')
+        return {
+          workbench: {
+            ...state.workbench,
+            detailDrawer: {
+              ...state.workbench.detailDrawer,
+              open: true,
+              mode: 'working',
+            },
+          },
+        };
+      if (state.workbench.detailDrawer.mode === 'working')
+        return {
+          workbench: {
+            ...state.workbench,
+            detailDrawer: {
+              ...state.workbench.detailDrawer,
+              open: false,
+              mode: 'collapsed',
+            },
+          },
+        };
       const operationLike =
         !!state.workbench.activeOperationId ||
         state.workbench.selectedId.startsWith('joint:') ||
@@ -495,8 +585,11 @@ export const useAssembly = create<AssemblyState>((set) => ({
             detailDrawer: {
               ...state.workbench.detailDrawer,
               open: false,
+              mode: 'collapsed',
               activePreviewId: undefined,
             },
+            viewPreset: state.workbench.returnViewPreset ?? 'construction',
+            returnViewPreset: undefined,
           },
         };
       }
@@ -517,6 +610,97 @@ export const useAssembly = create<AssemblyState>((set) => ({
         };
       return state;
     }),
+  beginRoofWindowPlacement: () =>
+    set((state) => ({
+      workbench: {
+        ...state.workbench,
+        viewPreset: 'openings',
+        canvasView: 'skeleton',
+        placementTool: { kind: 'roof-window', step: 'choose-plane' },
+        placementFeedback: undefined,
+        activeOperationId: undefined,
+        focusId: undefined,
+      },
+    })),
+  setRoofWindowPlacementPlane: (roofPlaneId) =>
+    set((state) => {
+      if (!state.workbench.placementTool) return state;
+      return {
+        workbench: {
+          ...state.workbench,
+          placementTool: {
+            kind: 'roof-window',
+            step: roofPlaneId ? 'position' : 'choose-plane',
+            roofPlaneId,
+          },
+        },
+      };
+    }),
+  cancelRoofWindowPlacement: () =>
+    set((state) => ({
+      workbench: {
+        ...state.workbench,
+        placementTool: undefined,
+        placementFeedback: undefined,
+      },
+    })),
+  placeRoofWindowAt: (roofPlaneId, position) => {
+    let createdId: string | undefined;
+    set((state) => {
+      if (!state.workbench.placementTool) return state;
+      const nextNumber =
+        Math.max(
+          0,
+          ...state.projectDocument.project.features.map((feature) =>
+            Number(/roof-window-(\d+)$/.exec(feature.id)?.[1] ?? 0),
+          ),
+        ) + 1;
+      let feature: RoofWindowFeature;
+      try {
+        const seed = createDefaultRoofWindow(state.template, roofPlaneId);
+        feature = clampRoofWindow(state.template, {
+          ...seed,
+          id: `feature:roof-window-${nextNumber}`,
+          position: {
+            uMm: position.uMm - seed.widthMm / 2,
+            vMm: position.vMm - seed.heightMm / 2,
+          },
+        });
+      } catch {
+        return {
+          workbench: {
+            ...state.workbench,
+            placementFeedback: {
+              status: 'failed',
+              reason: 'no-rafter-bay',
+            },
+          },
+        };
+      }
+      createdId = feature.id;
+      const document = createRoofProjectDocument(state.template, {
+        features: [...state.projectDocument.project.features, feature],
+        buildUp: state.projectDocument.project.buildUp,
+      });
+      return {
+        ...withHistory(
+          state,
+          committedDocument(document, state.drafts, state.invalidFields),
+        ),
+        workbench: {
+          ...state.workbench,
+          selectedId: feature.id,
+          selectedPrototypeId: undefined,
+          selectedInstanceId: undefined,
+          viewPreset: 'openings',
+          inspectorOpen: true,
+          placementTool: undefined,
+          placementFeedback: { featureId: feature.id, status: 'placed' },
+        },
+      };
+    });
+    return createdId;
+  },
   setUnit: (unit) =>
     set((state) => ({
       unit,
@@ -706,6 +890,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
           selectedInstanceId: undefined,
           viewPreset: 'openings',
           inspectorOpen: true,
+          placementFeedback: { featureId: feature.id, status: 'placed' },
         },
       };
     }),
@@ -725,27 +910,39 @@ export const useAssembly = create<AssemblyState>((set) => ({
           state,
           committedDocument(document, state.drafts, state.invalidFields),
         ),
-        workbench: { ...state.workbench, selectedId: 'roof' },
+        workbench: {
+          ...state.workbench,
+          selectedId: 'roof',
+          placementFeedback: undefined,
+        },
       };
     }),
   updateRoofWindow: (id, patch) =>
     set((state) => {
-      const features = state.projectDocument.project.features.map((feature) => {
-        if (feature.id !== id || feature.kind !== 'roof-window') return feature;
-        return clampRoofWindow(state.template, {
-          ...feature,
-          ...patch,
-          position: patch.position ?? feature.position,
+      let features;
+      try {
+        features = state.projectDocument.project.features.map((feature) => {
+          if (feature.id !== id || feature.kind !== 'roof-window') return feature;
+          return clampRoofWindow(state.template, {
+            ...feature,
+            ...patch,
+            position: patch.position ?? feature.position,
+          });
         });
-      });
+      } catch {
+        return state;
+      }
       const document = createRoofProjectDocument(state.template, {
         features,
         buildUp: state.projectDocument.project.buildUp,
       });
-      return withHistory(
-        state,
-        committedDocument(document, state.drafts, state.invalidFields),
-      );
+      return {
+        ...withHistory(
+          state,
+          committedDocument(document, state.drafts, state.invalidFields),
+        ),
+        workbench: { ...state.workbench, placementFeedback: undefined },
+      };
     }),
   moveRoofWindow: (id, position) =>
     set((state) => {
@@ -754,17 +951,25 @@ export const useAssembly = create<AssemblyState>((set) => ({
           candidate.id === id && candidate.kind === 'roof-window',
       );
       if (!feature) return state;
-      const moved = clampRoofWindow(state.template, { ...feature, position });
+      let moved: RoofWindowFeature;
+      try {
+        moved = clampRoofWindow(state.template, { ...feature, position });
+      } catch {
+        return state;
+      }
       const document = createRoofProjectDocument(state.template, {
         features: state.projectDocument.project.features.map((candidate) =>
           candidate.id === id ? moved : candidate,
         ),
         buildUp: state.projectDocument.project.buildUp,
       });
-      return withHistory(
-        state,
-        committedDocument(document, state.drafts, state.invalidFields),
-      );
+      return {
+        ...withHistory(
+          state,
+          committedDocument(document, state.drafts, state.invalidFields),
+        ),
+        workbench: { ...state.workbench, placementFeedback: undefined },
+      };
     }),
   placeRoofWindowBetweenRafters: (id) => {
     let placed = false;
@@ -774,12 +979,25 @@ export const useAssembly = create<AssemblyState>((set) => ({
           candidate.id === id && candidate.kind === 'roof-window',
       );
       if (!feature) return state;
-      const placement = placeRoofWindowBetweenRafters({
+      const placement = resolveRoofWindowPlacement({
         template: state.template,
         skeleton: createRoofSkeleton(state.template),
         feature,
       });
-      if (!placement) return state;
+      if (!placement.placed)
+        return {
+          workbench: {
+            ...state.workbench,
+            placementFeedback: {
+              featureId: id,
+              status: 'failed',
+              reason: placement.reason,
+              memberInstanceIds: placement.nearestBay?.memberInstanceIds,
+              availableWidthMm: placement.nearestBay?.availableWidthMm,
+              requiredWidthMm: placement.requiredWidthMm,
+            },
+          },
+        };
       placed = true;
       const document = createRoofProjectDocument(state.template, {
         features: state.projectDocument.project.features.map((candidate) =>
@@ -787,10 +1005,22 @@ export const useAssembly = create<AssemblyState>((set) => ({
         ),
         buildUp: state.projectDocument.project.buildUp,
       });
-      return withHistory(
-        state,
-        committedDocument(document, state.drafts, state.invalidFields),
-      );
+      return {
+        ...withHistory(
+          state,
+          committedDocument(document, state.drafts, state.invalidFields),
+        ),
+        workbench: {
+          ...state.workbench,
+          placementFeedback: {
+            featureId: id,
+            status: 'placed',
+            memberInstanceIds: placement.bay.memberInstanceIds,
+            availableWidthMm: placement.bay.availableWidthMm,
+            requiredWidthMm: placement.bay.requiredWidthMm,
+          },
+        },
+      };
     });
     return placed;
   },
@@ -896,6 +1126,13 @@ export const useAssembly = create<AssemblyState>((set) => ({
             : operationLike
               ? state.workbench.selectedInstanceId
               : undefined;
+      const contextualPreset = selectedId.startsWith('feature:')
+        ? 'openings'
+        : selectedId.startsWith('batten:')
+          ? 'battens'
+          : selectedId === 'roof'
+            ? 'construction'
+            : state.workbench.viewPreset;
       return {
         workbench: {
           ...state.workbench,
@@ -911,6 +1148,12 @@ export const useAssembly = create<AssemblyState>((set) => ({
             selectedId === 'roof' ? false : state.workbench.isolateSelection,
           activeOperationId: undefined,
           focusId: undefined,
+          viewPreset: contextualPreset,
+          placementTool: undefined,
+          placementFeedback:
+            selectedId.startsWith('feature:')
+              ? state.workbench.placementFeedback
+              : undefined,
         },
       };
     }),

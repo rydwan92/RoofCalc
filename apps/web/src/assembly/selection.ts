@@ -30,6 +30,7 @@ export type WorkbenchSelectionContext =
       support?: SupportSpec;
     }
   | { kind: 'roof-window'; feature: RoofFeature }
+  | { kind: 'batten-row'; id: string }
   | {
       kind: 'joint';
       jointKind: 'seat-notch';
@@ -59,6 +60,7 @@ export function resolveWorkbenchSelectionContext(args: {
 
   const feature = features.find((candidate) => candidate.id === selected);
   if (feature) return { kind: 'roof-window', feature };
+  if (selected.startsWith('batten:')) return { kind: 'batten-row', id: selected };
 
   const prototype = resolved.memberPrototypes.find(
     (candidate) => candidate.id === selected,

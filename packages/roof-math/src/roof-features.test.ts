@@ -11,6 +11,7 @@ import {
   projectPlaneWorldToLocal,
   resolveBattenLayout,
   resolveRoofFeatureCollisions,
+  resolveRoofWindowPlacement,
   resolveRoofPlaneBasis,
 } from './roof-features';
 
@@ -53,6 +54,20 @@ describe('roof feature geometry', () => {
     expect(resolveRoofFeatureCollisions({ template: roof, skeleton, feature: placed!.feature })).toEqual([]);
   });
 
+  it('reports a too-wide geometric opening using clear face-to-face bay width', () => {
+    const roof = template();
+    const skeleton = createRoofSkeleton(roof);
+    const feature = { ...window({ uMm: 100, vMm: 1200 }), clearanceMm: 30 };
+    const placement = resolveRoofWindowPlacement({ template: roof, skeleton, feature });
+    expect(placement).toMatchObject({
+      placed: false,
+      reason: 'opening-too-wide',
+      requiredWidthMm: 840,
+    });
+    if (placement.placed || !placement.nearestBay) throw new Error('expected nearest bay');
+    expect(placement.nearestBay.availableWidthMm).toBe(820);
+  });
+
   it('projects deterministic batten rows and splits rows intersecting a roof window', () => {
     const roof = template();
     const layout = { enabled: true, roofPlaneIds: ['roof-plane:left'], battenHeightMm: 40, battenWidthMm: 60, gaugeMm: 350, eaveOffsetMm: 250 };
@@ -62,5 +77,43 @@ describe('roof feature geometry', () => {
     expect(withoutWindow.battens).toHaveLength(withWindow.battens.length);
     expect(withWindow.battens.some((batten) => batten.segments.length === 2)).toBe(true);
     expect(withWindow.totalLengthMm).toBeLessThan(withoutWindow.totalLengthMm);
+  });
+
+  it('clips multiple geometric openings at an exact row station without persisting rows', () => {
+    const roof = template();
+    const layout = {
+      enabled: true,
+      roofPlaneIds: ['roof-plane:left'],
+      battenHeightMm: 40,
+      battenWidthMm: 60,
+      gaugeMm: 350,
+      eaveOffsetMm: 900,
+    };
+    const result = resolveBattenLayout({
+      template: roof,
+      layout,
+      features: [window({ uMm: 1000, vMm: 900 }), { ...window({ uMm: 2200, vMm: 900 }), id: 'feature:roof-window-2' }],
+    });
+    expect(result.battens[0]).toMatchObject({ stationMm: 900 });
+    expect(result.battens[0]!.segments).toHaveLength(3);
+    expect(result.totalLengthMm).toBe(
+      result.battens.reduce((total, row) => total + row.usableLengthMm, 0),
+    );
+  });
+
+  it('rejects non-finite or non-positive batten geometry before row iteration', () => {
+    const roof = template();
+    expect(() =>
+      resolveBattenLayout({
+        template: roof,
+        layout: {
+          enabled: true,
+          battenHeightMm: 40,
+          battenWidthMm: 60,
+          gaugeMm: Number.NaN,
+          eaveOffsetMm: 0,
+        },
+      }),
+    ).toThrow('invalid_batten_gauge');
   });
 });

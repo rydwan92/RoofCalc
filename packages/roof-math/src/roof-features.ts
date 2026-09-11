@@ -6,7 +6,6 @@ import type {
   RoofSkeleton,
   RoofTemplateSpec,
   RoofWindowFeature,
-  SkeletonMember3D,
 } from '@cieslacalc/timber-model';
 
 export interface RoofPlaneBasis {
@@ -42,6 +41,30 @@ export interface BattenLayoutResult {
   battens: ResolvedBatten[];
   totalLengthMm: number;
 }
+
+export interface RoofWindowBay {
+  memberInstanceIds: [string, string];
+  /** Clear distance between the physical rafter faces. */
+  availableWidthMm: number;
+  /** Geometric opening plus the explicitly configured clearance on both sides. */
+  requiredWidthMm: number;
+  openingFromUMm: number;
+  openingToUMm: number;
+  centreUMm: number;
+}
+
+export type RoofWindowPlacementResult =
+  | {
+      placed: true;
+      feature: RoofWindowFeature;
+      bay: RoofWindowBay;
+    }
+  | {
+      placed: false;
+      reason: 'no-rafter-bay' | 'opening-too-wide';
+      nearestBay?: RoofWindowBay;
+      requiredWidthMm: number;
+    };
 
 const EPSILON = 1e-6;
 const point = (x: number, y: number, z: number): Point3D => ({ x, y, z });
@@ -153,8 +176,14 @@ export function clampRoofWindow(template: RoofTemplateSpec, feature: RoofWindowF
   const maxV = Math.max(...basis.polygon.map((item) => item.vMm));
   if (feature.heightMm > maxV - minV) throw new RangeError('roof_window_too_tall');
   const vMm = clampValue(feature.position.vMm, minV, maxV - feature.heightMm);
-  const bottom = intervalsAtV(basis.polygon, vMm)[0];
-  const top = intervalsAtV(basis.polygon, vMm + feature.heightMm)[0];
+  const bottom = intervalsAtV(
+    basis.polygon,
+    Math.min(maxV - EPSILON, Math.max(minV + EPSILON, vMm)),
+  )[0];
+  const top = intervalsAtV(
+    basis.polygon,
+    Math.min(maxV - EPSILON, Math.max(minV + EPSILON, vMm + feature.heightMm)),
+  )[0];
   if (!bottom || !top) throw new RangeError('roof_window_outside_plane');
   const minU = Math.max(bottom.fromUMm, top.fromUMm);
   const maxU = Math.min(bottom.toUMm, top.toUMm) - feature.widthMm;
@@ -176,9 +205,18 @@ export function createDefaultRoofWindow(template: RoofTemplateSpec, roofPlaneId 
   return clampRoofWindow(template, { ...window, position: { ...window.position, uMm: (middle.fromUMm + middle.toUMm - window.widthMm) / 2 } });
 }
 
-function segmentIntersectsRect(a: RoofPlanePosition, b: RoofPlanePosition, window: RoofWindowFeature): boolean {
-  const minU = window.position.uMm, maxU = minU + window.widthMm;
-  const minV = window.position.vMm, maxV = minV + window.heightMm;
+function segmentIntersectsRect(
+  a: RoofPlanePosition,
+  b: RoofPlanePosition,
+  window: RoofWindowFeature,
+  memberHalfWidthMm = 0,
+): boolean {
+  const clearance = window.clearanceMm ?? 0;
+  const margin = clearance + memberHalfWidthMm;
+  const minU = window.position.uMm - margin;
+  const maxU = window.position.uMm + window.widthMm + margin;
+  const minV = window.position.vMm - margin;
+  const maxV = window.position.vMm + window.heightMm + margin;
   let start = 0, end = 1;
   for (const [p, q] of [
     [-(b.uMm - a.uMm), a.uMm - minU], [b.uMm - a.uMm, maxU - a.uMm],
@@ -198,22 +236,108 @@ export function resolveRoofFeatureCollisions(args: { template: RoofTemplateSpec;
     const fromOffset = subtract(member.from, basis.origin);
     const toOffset = subtract(member.to, basis.origin);
     if (Math.max(Math.abs(dot(fromOffset, basis.normal)), Math.abs(dot(toOffset, basis.normal))) > member.section.widthMm / 2 + 1) return false;
-    return segmentIntersectsRect(projectPlaneWorldToLocal(basis, member.from), projectPlaneWorldToLocal(basis, member.to), args.feature);
+    return segmentIntersectsRect(
+      projectPlaneWorldToLocal(basis, member.from),
+      projectPlaneWorldToLocal(basis, member.to),
+      args.feature,
+      member.section.widthMm / 2,
+    );
   }).map((member) => ({ featureId: args.feature.id, memberInstanceId: member.id, memberPrototypeId: member.prototypeId, type: 'intersects' as const }));
 }
 
-export function placeRoofWindowBetweenRafters(args: { template: RoofTemplateSpec; skeleton: RoofSkeleton; feature: RoofWindowFeature }): { feature: RoofWindowFeature; memberInstanceIds: [string, string] } | undefined {
+export function resolveRoofWindowBays(args: {
+  template: RoofTemplateSpec;
+  skeleton: RoofSkeleton;
+  feature: RoofWindowFeature;
+}): RoofWindowBay[] {
   const basis = resolveRoofPlaneBasis(args.template, args.feature.roofPlaneId);
   const clearance = args.feature.clearanceMm ?? 0;
-  const rafters = args.skeleton.members.filter((member) => ['rafter', 'jack-rafter'].includes(member.kind)).filter((member) => {
-    const offset = subtract(member.from, basis.origin);
-    return Math.abs(dot(offset, basis.normal)) <= member.section.widthMm / 2 + 1;
-  }).map((member) => ({ member, uMm: (projectPlaneWorldToLocal(basis, member.from).uMm + projectPlaneWorldToLocal(basis, member.to).uMm) / 2 })).sort((a, b) => a.uMm - b.uMm);
-  const candidates = rafters.slice(1).map((right, index) => ({ left: rafters[index]!, right })).filter(({ left, right }) => right.uMm - left.uMm >= args.feature.widthMm + clearance * 2);
-  const nearest = candidates.sort((a, b) => Math.abs((a.left.uMm + a.right.uMm) / 2 - args.feature.position.uMm) - Math.abs((b.left.uMm + b.right.uMm) / 2 - args.feature.position.uMm))[0];
-  if (!nearest) return undefined;
-  const feature = clampRoofWindow(args.template, { ...args.feature, position: { ...args.feature.position, uMm: (nearest.left.uMm + nearest.right.uMm - args.feature.widthMm) / 2 } });
-  return { feature, memberInstanceIds: [nearest.left.member.id, nearest.right.member.id] };
+  const requiredWidthMm = args.feature.widthMm + clearance * 2;
+  const rafters = args.skeleton.members
+    .filter((member) => ['rafter', 'jack-rafter'].includes(member.kind))
+    .filter((member) => {
+      const fromOffset = subtract(member.from, basis.origin);
+      const toOffset = subtract(member.to, basis.origin);
+      return Math.max(
+        Math.abs(dot(fromOffset, basis.normal)),
+        Math.abs(dot(toOffset, basis.normal)),
+      ) <= member.section.widthMm / 2 + 1;
+    })
+    .map((member) => ({
+      member,
+      uMm:
+        (projectPlaneWorldToLocal(basis, member.from).uMm +
+          projectPlaneWorldToLocal(basis, member.to).uMm) /
+        2,
+    }))
+    .sort((a, b) => a.uMm - b.uMm);
+
+  return rafters.slice(1).map((right, index) => {
+    const left = rafters[index]!;
+    const openingFromUMm = left.uMm + left.member.section.widthMm / 2;
+    const openingToUMm = right.uMm - right.member.section.widthMm / 2;
+    return {
+      memberInstanceIds: [left.member.id, right.member.id],
+      availableWidthMm: Math.max(0, openingToUMm - openingFromUMm),
+      requiredWidthMm,
+      openingFromUMm,
+      openingToUMm,
+      centreUMm: (openingFromUMm + openingToUMm) / 2,
+    };
+  });
+}
+
+export function resolveNearestRoofWindowBay(args: {
+  template: RoofTemplateSpec;
+  skeleton: RoofSkeleton;
+  feature: RoofWindowFeature;
+}): RoofWindowBay | undefined {
+  const featureCentreUMm = args.feature.position.uMm + args.feature.widthMm / 2;
+  return resolveRoofWindowBays(args).sort(
+    (a, b) =>
+      Math.abs(a.centreUMm - featureCentreUMm) -
+      Math.abs(b.centreUMm - featureCentreUMm),
+  )[0];
+}
+
+export function resolveRoofWindowPlacement(args: {
+  template: RoofTemplateSpec;
+  skeleton: RoofSkeleton;
+  feature: RoofWindowFeature;
+}): RoofWindowPlacementResult {
+  const nearestBay = resolveNearestRoofWindowBay(args);
+  const requiredWidthMm =
+    args.feature.widthMm + (args.feature.clearanceMm ?? 0) * 2;
+  if (!nearestBay)
+    return { placed: false, reason: 'no-rafter-bay', requiredWidthMm };
+  if (nearestBay.availableWidthMm + EPSILON < requiredWidthMm)
+    return {
+      placed: false,
+      reason: 'opening-too-wide',
+      nearestBay,
+      requiredWidthMm,
+    };
+  const clearance = args.feature.clearanceMm ?? 0;
+  const feature = clampRoofWindow(args.template, {
+    ...args.feature,
+    position: {
+      ...args.feature.position,
+      uMm: nearestBay.centreUMm - args.feature.widthMm / 2,
+    },
+    clearanceMm: clearance,
+  });
+  return { placed: true, feature, bay: nearestBay };
+}
+
+/** Backward-compatible convenience wrapper for callers that only need success/undefined. */
+export function placeRoofWindowBetweenRafters(args: {
+  template: RoofTemplateSpec;
+  skeleton: RoofSkeleton;
+  feature: RoofWindowFeature;
+}): { feature: RoofWindowFeature; memberInstanceIds: [string, string] } | undefined {
+  const result = resolveRoofWindowPlacement(args);
+  if (!result.placed) return undefined;
+  return { feature: result.feature, memberInstanceIds: result.bay.memberInstanceIds };
 }
 
 function subtractIntervals(source: BattenSegment[], holes: BattenSegment[]) {
@@ -228,7 +352,22 @@ function subtractIntervals(source: BattenSegment[], holes: BattenSegment[]) {
 
 export function resolveBattenLayout(args: { template: RoofTemplateSpec; layout: BattenLayoutSpec; features?: RoofFeature[] }): BattenLayoutResult {
   if (!args.layout.enabled) return { battens: [], totalLengthMm: 0 };
-  if (!(args.layout.gaugeMm > 0)) throw new RangeError('invalid_batten_gauge');
+  if (!Number.isFinite(args.layout.gaugeMm) || !(args.layout.gaugeMm > 0))
+    throw new RangeError('invalid_batten_gauge');
+  if (
+    !Number.isFinite(args.layout.battenWidthMm) ||
+    !Number.isFinite(args.layout.battenHeightMm) ||
+    !(args.layout.battenWidthMm > 0) ||
+    !(args.layout.battenHeightMm > 0)
+  )
+    throw new RangeError('invalid_batten_section');
+  if (
+    !Number.isFinite(args.layout.eaveOffsetMm) ||
+    args.layout.eaveOffsetMm < 0 ||
+    !Number.isFinite(args.layout.ridgeOffsetMm ?? 0) ||
+    (args.layout.ridgeOffsetMm ?? 0) < 0
+  )
+    throw new RangeError('invalid_batten_offset');
   const planeIds = args.layout.roofPlaneIds ?? (args.template.type === 'gable' ? ['roof-plane:left', 'roof-plane:right'] : ['roof-plane:left', 'roof-plane:right', 'roof-plane:front', 'roof-plane:rear']);
   const battens = planeIds.flatMap((roofPlaneId) => {
     const basis = resolveRoofPlaneBasis(args.template, roofPlaneId);

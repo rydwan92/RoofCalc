@@ -41,6 +41,11 @@ export function entityLabel(
   t: (key: string) => string,
 ): string {
   if (id === 'roof') return t('assembly.roof');
+  const roofWindow = /^feature:roof-window-(\d+)$/.exec(id);
+  if (roofWindow)
+    return `${t('assembly.geometricOpening')} O${roofWindow[1]}`;
+  const batten = /^batten:roof-plane:[^:]+:(\d+)$/.exec(id);
+  if (batten) return `${t('assembly.battenRow')} ${batten[1]}`;
   const hip =
     /^instance:hip:(front-left|front-right|rear-left|rear-right)$/.exec(id);
   if (hip) return `${t('assembly.hipRafter')} H1 · ${t(`assembly.${hip[1]}`)}`;
@@ -95,6 +100,10 @@ export function AssemblyCanvas({
   const [frozenProjection, setFrozenProjection] = useState<Projection | null>(
     null,
   );
+  useEffect(() => {
+    setZoom(1);
+    setFrozenProjection(null);
+  }, [state.workbench.fitRequestId]);
   const [preview, setPreview] = useState<{
     id: string;
     xMm: number;

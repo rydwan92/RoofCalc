@@ -263,8 +263,20 @@ export function Toolbox({
           </details>
         );
       })}
-      <details open>
-        <summary>{t('assembly.openings')}</summary>
+      <details
+        open={!state.workbench.collapsedToolGroups.includes('opening')}
+      >
+        <summary
+          onClick={(event) => {
+            event.preventDefault();
+            state.setToolGroupCollapsed(
+              'opening',
+              !state.workbench.collapsedToolGroups.includes('opening'),
+            );
+          }}
+        >
+          {t('assembly.openings')} ({state.projectDocument.project.features.length})
+        </summary>
         {state.projectDocument.project.features.map((feature) => (
           <button
             key={feature.id}
@@ -279,13 +291,33 @@ export function Toolbox({
             <span>{t('assembly.roofWindow')} {feature.id.replace('feature:roof-window-', 'O')}</span>
           </button>
         ))}
-        <button className="a-tool a-add" onClick={() => state.addRoofWindow()}>
+        <button
+          className={`a-tool a-add ${state.workbench.placementTool ? 'is-active' : ''}`}
+          aria-pressed={!!state.workbench.placementTool}
+          onClick={() =>
+            state.workbench.placementTool
+              ? state.cancelRoofWindowPlacement()
+              : state.beginRoofWindowPlacement()
+          }
+        >
           <Plus size={20} />
           <span>{t('assembly.addRoofWindow')}</span>
         </button>
       </details>
-      <details open>
-        <summary>{t('assembly.roofBuildUp')}</summary>
+      <details
+        open={!state.workbench.collapsedToolGroups.includes('build-up')}
+      >
+        <summary
+          onClick={(event) => {
+            event.preventDefault();
+            state.setToolGroupCollapsed(
+              'build-up',
+              !state.workbench.collapsedToolGroups.includes('build-up'),
+            );
+          }}
+        >
+          {t('assembly.roofBuildUp')}
+        </summary>
         <button
           className={`a-tool ${state.projectDocument.project.buildUp.battenLayout?.enabled ? 'is-active' : ''}`}
           onClick={() => {

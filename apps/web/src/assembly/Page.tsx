@@ -236,7 +236,7 @@ export function AssemblyPage() {
   ]);
   return (
     <div
-      className={`assembly-app mode-${workbench.mode}`}
+      className={`assembly-app mode-${workbench.mode} detail-${drawer.mode}`}
       onKeyDown={(e) => {
         const target = e.target as HTMLElement;
         if (
@@ -248,6 +248,11 @@ export function AssemblyPage() {
           if (state.activeTransaction) state.cancelTransaction();
           else if (workbench.focusId) state.setFocusId(undefined);
           else state.stepBackContext();
+          return;
+        }
+        if (e.key.toLowerCase() === 'f' && workbench.mode === 'builder') {
+          e.preventDefault();
+          state.requestFit();
           return;
         }
         if (!(e.ctrlKey || e.metaKey)) return;
@@ -483,6 +488,7 @@ export function AssemblyPage() {
               previews={drawerPreviews}
               activeId={drawer.activePreviewId}
               open={drawer.open}
+              mode={drawer.mode}
               pinned={drawer.pinned}
               cutState={drawer.cutState}
               onSelect={(id) => {
@@ -497,8 +503,8 @@ export function AssemblyPage() {
                   previewId: preview.id,
                 });
               }}
-              onToggle={() => state.setDetailDrawer({ open: !drawer.open })}
-              onClose={() => state.setDetailDrawer({ open: false })}
+              onModeChange={(mode) => state.setDetailDrawer({ mode })}
+              onClose={state.closeDetailDrawer}
               onPin={() => state.setDetailDrawer({ pinned: !drawer.pinned })}
               onCutStateChange={(cutState) =>
                 state.setDetailDrawer({ cutState })
@@ -513,15 +519,20 @@ export function AssemblyPage() {
                 }
               }}
             />
-            <PreparationPlan
-              roofPackage={fabricationPackage}
-              activeInstance={activeInstance}
-            />
-            <ContextualResults
-              context={selectionContext}
-              resolved={templateResult}
-              skeleton={skeleton}
-            />
+            {(workbench.viewPreset === 'construction' ||
+              workbench.viewPreset === 'cuts') && (
+              <>
+                <PreparationPlan
+                  roofPackage={fabricationPackage}
+                  activeInstance={activeInstance}
+                />
+                <ContextualResults
+                  context={selectionContext}
+                  resolved={templateResult}
+                  skeleton={skeleton}
+                />
+              </>
+            )}
           </>
         )}
         <details className="a-assumptions">

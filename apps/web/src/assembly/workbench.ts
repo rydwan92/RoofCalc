@@ -10,6 +10,7 @@ export type WorkbenchMode = 'quick' | 'builder';
 export type WorkbenchCanvasView = 'skeleton' | 'rafter' | 'hip';
 export type ViewPreset = 'construction' | 'openings' | 'battens' | 'cuts';
 export type DimensionLevel = 'minimal' | 'working' | 'full';
+export type DetailDockMode = 'collapsed' | 'working' | 'focus';
 export type WorkbenchToolCategory =
   | 'geometry'
   | 'timber'
@@ -18,6 +19,21 @@ export type WorkbenchToolCategory =
   | 'build-up';
 export type VisualInteractionState =
   'normal' | 'hover' | 'selected' | 'related' | 'muted' | 'warning' | 'invalid';
+
+export interface RoofWindowPlacementToolState {
+  kind: 'roof-window';
+  step: 'choose-plane' | 'position';
+  roofPlaneId?: string;
+}
+
+export interface RoofWindowPlacementFeedback {
+  featureId?: string;
+  status: 'placed' | 'failed';
+  reason?: 'no-rafter-bay' | 'opening-too-wide';
+  memberInstanceIds?: [string, string];
+  availableWidthMm?: number;
+  requiredWidthMm?: number;
+}
 
 export interface OperationMarkerLayoutInput {
   id: string;
@@ -38,6 +54,8 @@ export interface WorkbenchViewState {
   selectedInstanceId?: string;
   canvasView: WorkbenchCanvasView;
   viewPreset: ViewPreset;
+  /** View restored when a contextual cut detail is closed. */
+  returnViewPreset?: ViewPreset;
   isolateSelection: boolean;
   dimensionLevel: DimensionLevel;
   toolboxCollapsed: boolean;
@@ -45,15 +63,21 @@ export interface WorkbenchViewState {
   inspectorOpen: boolean;
   preparationExpanded: boolean;
   focusId?: string;
+  placementTool?: RoofWindowPlacementToolState;
+  placementFeedback?: RoofWindowPlacementFeedback;
+  /** Monotonic view-only signal consumed by the canvas. */
+  fitRequestId: number;
   activeOperationId?: string;
   detailDrawer: {
     open: boolean;
+    mode: DetailDockMode;
     pinned: boolean;
     activePreviewId?: string;
     cutState: 'before' | 'after';
   };
   layerVisibility: {
     dimensions: boolean;
+    labels: boolean;
     structure: boolean;
     features: boolean;
     battens: boolean;
@@ -67,6 +91,7 @@ export const initialWorkbenchViewState: WorkbenchViewState = {
   selectedInstanceId: undefined,
   canvasView: 'skeleton',
   viewPreset: 'construction',
+  returnViewPreset: undefined,
   isolateSelection: false,
   dimensionLevel: 'working',
   toolboxCollapsed: false,
@@ -74,15 +99,20 @@ export const initialWorkbenchViewState: WorkbenchViewState = {
   inspectorOpen: true,
   preparationExpanded: false,
   focusId: undefined,
+  placementTool: undefined,
+  placementFeedback: undefined,
+  fitRequestId: 0,
   activeOperationId: undefined,
   detailDrawer: {
     open: false,
+    mode: 'collapsed',
     pinned: false,
     activePreviewId: undefined,
     cutState: 'before',
   },
   layerVisibility: {
     dimensions: true,
+    labels: true,
     structure: true,
     features: true,
     battens: true,
@@ -99,6 +129,7 @@ export interface WorkbenchProjectionPolicy {
   showCutMarkers: boolean;
   showDatums: boolean;
   showDimensions: boolean;
+  showLabels: boolean;
   showDirectManipulation: boolean;
   muteUnrelated: boolean;
   isolateSelection: boolean;
@@ -117,7 +148,7 @@ export function deriveWorkbenchProjectionPolicy(
   return {
     showRoofPlanes: true,
     showPrimaryMembers: view.layerVisibility.structure,
-    showSecondaryMembers: view.layerVisibility.structure && !openings && !battens,
+    showSecondaryMembers: view.layerVisibility.structure && !battens,
     showSupports: true,
     showRoofFeatures:
       view.layerVisibility.features &&
@@ -126,6 +157,7 @@ export function deriveWorkbenchProjectionPolicy(
     showCutMarkers: cuts || !!view.selectedInstanceId,
     showDatums: cuts,
     showDimensions: view.layerVisibility.dimensions,
+    showLabels: view.layerVisibility.labels,
     showDirectManipulation: !cuts,
     muteUnrelated: cuts || openings || battens || view.isolateSelection,
     isolateSelection: view.isolateSelection,
@@ -303,6 +335,15 @@ export interface WorkbenchToolDescriptor {
   code?: string;
   icon: ToolIconKey;
   enabled: boolean;
+}
+
+export function memberInstanceCode(id: string) {
+  const common = /instance:(?:rafter-pair|hip-common-pair)-(\d+):/.exec(id);
+  if (common) return `K1-${common[1]!.padStart(2, '0')}`;
+  const jack = /instance:jack:[^:]+:[^:]+:(\d+)$/.exec(id);
+  if (jack) return `J1-${jack[1]!.padStart(2, '0')}`;
+  if (id.startsWith('instance:hip:')) return 'H1';
+  return id;
 }
 
 /** Web-layer registry for real, currently implemented workbench tools only. */

@@ -231,6 +231,12 @@ describe('dual-mode parametric workbench', () => {
       screen.getByTestId('detail-drawer').classList.contains('is-open'),
     ).toBe(true);
     expect(screen.getByTestId('detail-preview-birdsmouth-detail')).toBeTruthy();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Tryb skupienia panelu detalu' }),
+    );
+    expect(useAssembly.getState().workbench.detailDrawer.mode).toBe('focus');
+    fireEvent.keyDown(document.querySelector('.assembly-app')!, { key: 'Escape' });
+    expect(useAssembly.getState().workbench.detailDrawer.mode).toBe('working');
     expect(
       screen.getByTestId('detail-drawer').querySelector('.shape-removed'),
     ).toBeTruthy();
@@ -367,13 +373,12 @@ describe('dual-mode parametric workbench', () => {
       screen.getByRole('button', { name: /Właściwości elementu Połać/ }),
     );
     expect(screen.queryByLabelText('Kąt połaci')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Minimalne' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Minimalne' }));
     expect(useAssembly.getState().workbench.dimensionLevel).toBe('minimal');
     expect(
-      screen
-        .getByRole('button', { name: 'Minimalne' })
-        .getAttribute('aria-pressed'),
-    ).toBe('true');
+      (screen.getByRole('radio', { name: 'Minimalne' }) as HTMLInputElement)
+        .checked,
+    ).toBe(true);
     fireEvent.click(
       screen.getByRole('button', { name: 'Zmień język na angielski' }),
     );
@@ -511,6 +516,10 @@ describe('dual-mode parametric workbench', () => {
     fireEvent.keyDown(container.querySelector('.assembly-app')!, {
       key: 'Escape',
     });
+    expect(useAssembly.getState().workbench.detailDrawer.mode).toBe('collapsed');
+    fireEvent.keyDown(container.querySelector('.assembly-app')!, {
+      key: 'Escape',
+    });
     expect(useAssembly.getState().workbench.activeOperationId).toBeUndefined();
     expect(screen.getByTestId('skeleton-drawing')).toBeTruthy();
   });
@@ -534,9 +543,7 @@ describe('dual-mode parametric workbench', () => {
     const purlinBefore =
       useAssembly.getState().template.intermediateSupports[1]!.placement.xMm;
     fireEvent.keyDown(
-      screen.getAllByRole('slider', {
-        name: 'Przeciągnij, aby przesunąć płatew',
-      })[1]!,
+      container.querySelector('[data-entity="instance:purlin-2:left"]')!,
       { key: 'ArrowRight' },
     );
     expect(
@@ -633,7 +640,7 @@ describe('dual-mode parametric workbench', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Powiększ rysunek' }));
     expect(screen.getByText('120%')).toBeTruthy();
     expect(useAssembly.getState().template).toEqual(afterEdit);
-    fireEvent.click(screen.getByRole('button', { name: 'Dopasuj' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Dopasuj' }).at(-1)!);
     expect(screen.getByText('100%')).toBeTruthy();
   });
   it('drags a skeleton purlin through one canonical transaction and restores it on cancellation', () => {
@@ -767,20 +774,71 @@ describe('dual-mode parametric workbench', () => {
     expect(useAssembly.getState().activeTransaction).toBeUndefined();
     expect(container.querySelector('[data-handle="purlin"]')).toBeNull();
   });
-  it('adds, selects and positions a canonical roof window and shows the batten layer', () => {
+  it('places a canonical geometric opening on a roof plane and selects a derived batten row', () => {
     const { container } = render(<App />);
     builder();
-    fireEvent.click(screen.getByRole('button', { name: 'Dodaj okno dachowe' }));
+    const before = structuredClone(useAssembly.getState().projectDocument);
+    fireEvent.click(screen.getByRole('button', { name: 'Dodaj okno' }));
     expect(useAssembly.getState().workbench.viewPreset).toBe('openings');
+    expect(useAssembly.getState().projectDocument).toEqual(before);
+    expect(screen.getByText(/Wybierz połać i wskaż miejsce/)).toBeTruthy();
+    const drawing = screen.getByTestId('skeleton-drawing');
+    Object.defineProperty(drawing, 'getBoundingClientRect', {
+      value: () => ({ left: 0, top: 0, width: 820, height: 570 }),
+    });
+    const plane = container.querySelector('[data-roof-plane="roof-plane:left"]')!;
+    const points = plane
+      .getAttribute('points')!
+      .split(' ')
+      .map((point) => point.split(',').map(Number));
+    const centre = points.reduce(
+      (sum, [x, y]) => ({ x: sum.x + x! / points.length, y: sum.y + y! / points.length }),
+      { x: 0, y: 0 },
+    );
+    fireEvent.pointerEnter(plane);
+    fireEvent.pointerMove(plane, { clientX: centre.x, clientY: centre.y });
+    fireEvent.click(plane, { clientX: centre.x, clientY: centre.y });
     expect(container.querySelector('[data-roof-window="feature:roof-window-1"]')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Okno dachowe O1' }));
-    expect(screen.getByLabelText('Szerokość okna')).toBeTruthy();
+    expect(screen.getByLabelText('Szerokość otworu')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Umieść między krokwiami' }));
-    expect(screen.getByText('Otwór znajduje się geometrycznie między krokwiami.')).toBeTruthy();
+    expect(screen.getByRole('alert').textContent).toContain(
+      'Otwór nie mieści się w polu',
+    );
     fireEvent.click(screen.getByRole('tab', { name: 'Łacenie' }));
     fireEvent.click(screen.getByRole('button', { name: 'Łacenie' }));
     expect(screen.getByTestId('batten-inspector')).toBeTruthy();
-    expect(container.querySelectorAll('.a-batten-layer line').length).toBeGreaterThan(0);
+    expect(container.querySelectorAll('.a-batten-segment').length).toBeGreaterThan(0);
+    fireEvent.click(container.querySelector('[data-batten-row]')!);
+    expect(screen.getByTestId('batten-row-detail')).toBeTruthy();
+  });
+  it('cancels the opening tool with Escape and commits a numeric draft as one undo step', () => {
+    const { container } = render(<App />);
+    builder();
+    fireEvent.click(screen.getByRole('button', { name: 'Dodaj okno' }));
+    fireEvent.keyDown(container.querySelector('.assembly-app')!, { key: 'Escape' });
+    expect(useAssembly.getState().workbench.placementTool).toBeUndefined();
+    expect(useAssembly.getState().projectDocument.project.features).toEqual([]);
+    expect(useAssembly.getState().historyPast).toHaveLength(0);
+
+    act(() => useAssembly.getState().addRoofWindow());
+    act(() => useAssembly.setState({ historyPast: [], historyFuture: [] }));
+    const widthField = screen.getByLabelText('Szerokość otworu') as HTMLInputElement;
+    fireEvent.focus(widthField);
+    fireEvent.change(widthField, { target: { value: '' } });
+    expect(widthField.value).toBe('');
+    expect(widthField.getAttribute('aria-invalid')).toBe('true');
+    expect(useAssembly.getState().projectDocument.project.features[0]!.widthMm).toBe(780);
+    fireEvent.keyDown(widthField, { key: 'Escape' });
+    expect(widthField.value).toBe('780');
+    fireEvent.focus(widthField);
+    fireEvent.change(widthField, { target: { value: '800' } });
+    expect(useAssembly.getState().projectDocument.project.features[0]!.widthMm).toBe(780);
+    fireEvent.keyDown(widthField, { key: 'Enter' });
+    expect(useAssembly.getState().projectDocument.project.features[0]!.widthMm).toBe(800);
+    expect(useAssembly.getState().historyPast).toHaveLength(1);
+    act(() => useAssembly.getState().undo());
+    expect(useAssembly.getState().projectDocument.project.features[0]!.widthMm).toBe(780);
   });
   it('offers a fast H1 path with shared reactive math and coordinated drawings', () => {
     render(<App />);

@@ -337,6 +337,28 @@ it('coalesces a roof-window drag transaction and restores its canonical local po
   useAssembly.getState().cancelTransaction();
   expect(useAssembly.getState().projectDocument.project.features[0]!.position).toEqual(feature.position);
 });
+it('cancels roof-window placement without history and creates one canonical edit on click', () => {
+  const before = structuredClone(useAssembly.getState().projectDocument);
+  useAssembly.getState().beginRoofWindowPlacement();
+  expect(useAssembly.getState().workbench.placementTool).toMatchObject({
+    kind: 'roof-window',
+    step: 'choose-plane',
+  });
+  expect(useAssembly.getState().historyPast).toHaveLength(0);
+  useAssembly.getState().cancelRoofWindowPlacement();
+  expect(useAssembly.getState().projectDocument).toEqual(before);
+
+  useAssembly.getState().beginRoofWindowPlacement();
+  const id = useAssembly
+    .getState()
+    .placeRoofWindowAt('roof-plane:left', { uMm: 4000, vMm: 2200 });
+  expect(id).toBe('feature:roof-window-1');
+  expect(useAssembly.getState().workbench.placementTool).toBeUndefined();
+  expect(useAssembly.getState().historyPast).toHaveLength(1);
+  expect(useAssembly.getState().projectDocument.project.features).toHaveLength(1);
+  useAssembly.getState().undo();
+  expect(useAssembly.getState().projectDocument).toEqual(before);
+});
 it('undoes and redoes adding and removing independently allocated purlins', () => {
   useAssembly.getState().add();
   useAssembly.getState().add();
@@ -447,6 +469,11 @@ it('preserves an operation across compatible instances and steps back by context
 
   useAssembly.getState().stepBackContext();
   expect(useAssembly.getState().workbench).toMatchObject({
+    activeOperationId: operation.operationId,
+    detailDrawer: { mode: 'collapsed', open: false },
+  });
+  useAssembly.getState().stepBackContext();
+  expect(useAssembly.getState().workbench).toMatchObject({
     selectedId: second.instanceId,
     selectedInstanceId: second.instanceId,
     activeOperationId: undefined,
@@ -457,6 +484,22 @@ it('preserves an operation across compatible instances and steps back by context
     selectedInstanceId: undefined,
     selectedPrototypeId: undefined,
   });
+});
+
+it('restores the previous meaningful preset when the detail dock is closed', () => {
+  const instance = memberInstances()[0]!;
+  const operation = instance.operations.find((candidate) => candidate.detailPreviewId)!;
+  useAssembly.getState().setViewPreset('openings');
+  useAssembly.getState().activateOperation({
+    operationId: operation.operationId,
+    prototypeId: instance.prototypeId,
+    instanceId: instance.instanceId,
+    previewId: operation.detailPreviewId,
+  });
+  expect(useAssembly.getState().workbench.viewPreset).toBe('cuts');
+  useAssembly.getState().closeDetailDrawer();
+  expect(useAssembly.getState().workbench.viewPreset).toBe('openings');
+  expect(useAssembly.getState().workbench.detailDrawer.mode).toBe('collapsed');
 });
 
 it('opens no stale detail for a limited J1 operation', () => {

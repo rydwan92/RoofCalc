@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ChevronDown, Maximize2, Pin, PinOff, X } from 'lucide-react';
+import { ChevronDown, Maximize2, Minimize2, Pin, PinOff, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
   fitDimensionedDrawing,
@@ -244,10 +244,11 @@ export function DetailDrawer({
   previews,
   activeId,
   open,
+  mode,
   pinned,
   cutState,
   onSelect,
-  onToggle,
+  onModeChange,
   onClose,
   onPin,
   onCutStateChange,
@@ -256,10 +257,11 @@ export function DetailDrawer({
   previews: DetailPreviewModel[];
   activeId?: string;
   open: boolean;
+  mode: 'collapsed' | 'working' | 'focus';
   pinned: boolean;
   cutState: 'before' | 'after';
   onSelect: (id: string) => void;
-  onToggle: () => void;
+  onModeChange: (mode: 'collapsed' | 'working' | 'focus') => void;
   onClose: () => void;
   onPin: () => void;
   onCutStateChange: (state: 'before' | 'after') => void;
@@ -271,14 +273,14 @@ export function DetailDrawer({
   if (!active) return null;
   return (
     <section
-      className={`a-detail-drawer ${open ? 'is-open' : 'is-collapsed'} ${pinned ? 'is-pinned' : ''}`}
+      className={`a-detail-drawer ${open ? 'is-open' : 'is-collapsed'} mode-${mode} ${pinned ? 'is-pinned' : ''}`}
       aria-label={t('assembly.detailDrawer')}
       data-testid="detail-drawer"
     >
       <header>
         <button
           className="a-detail-drawer-title"
-          onClick={onToggle}
+          onClick={() => onModeChange(open ? 'collapsed' : 'working')}
           aria-expanded={open}
         >
           <ChevronDown size={18} />
@@ -290,6 +292,22 @@ export function DetailDrawer({
           </span>
         </button>
         <div>
+          <button
+            className="a-icon"
+            aria-label={t('assembly.minimizeDetail')}
+            aria-pressed={mode === 'collapsed'}
+            onClick={() => onModeChange('collapsed')}
+          >
+            <Minimize2 size={17} />
+          </button>
+          <button
+            className="a-icon"
+            aria-label={t('assembly.focusDetail')}
+            aria-pressed={mode === 'focus'}
+            onClick={() => onModeChange(mode === 'focus' ? 'working' : 'focus')}
+          >
+            <Maximize2 size={17} />
+          </button>
           <button
             className="a-icon a-pin-detail"
             aria-pressed={pinned}

@@ -1,6 +1,7 @@
 import {
   memo,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type KeyboardEvent,
@@ -27,11 +28,14 @@ import {
   clampGablePitchDeg,
   clampRoofHalfRunMm,
   clampPurlinPlacement,
+  clampRoofWindow,
+  createDefaultRoofWindow,
   gablePitchDegFromRidgeHeight,
   gableRidgeHeightMm,
   projectPlaneLocalToWorld,
   resolveBattenLayout,
   resolveRoofFeatureCollisions,
+  resolveNearestRoofWindowBay,
   resolveRoofPlaneBasis,
 } from '@cieslacalc/roof-math';
 import type {
@@ -48,6 +52,7 @@ import { useAssembly } from './store';
 import {
   deriveWorkbenchProjectionPolicy,
   initialWorkbenchViewState,
+  memberInstanceCode,
   resolveMemberVisualState,
 } from './workbench';
 
@@ -77,6 +82,18 @@ interface Drag {
   vAxis?: Point;
 }
 const handleRangeMm = 1000;
+
+function clampCanvasViewport(
+  viewport: ViewportState,
+  size: { width: number; height: number },
+) {
+  const clamped = clampViewport(viewport);
+  return {
+    ...clamped,
+    panX: Math.max(-size.width * 1.5, Math.min(size.width * 1.5, clamped.panX)),
+    panY: Math.max(-size.height * 1.5, Math.min(size.height * 1.5, clamped.panY)),
+  };
+}
 
 function memberLabel(member: SkeletonMember3D, t: (key: string) => string) {
   if (member.kind === 'hip-rafter')
@@ -131,6 +148,8 @@ function SkeletonCanvasComponent({
       activeOperationId: store.workbench.activeOperationId,
       layerVisibility: store.workbench.layerVisibility,
       detailDrawerOpen: store.workbench.detailDrawer.open,
+      placementTool: store.workbench.placementTool,
+      fitRequestId: store.workbench.fitRequestId,
       features: store.projectDocument.project.features,
       battenLayout: store.projectDocument.project.buildUp.battenLayout,
       beginTransaction: store.beginTransaction,
@@ -138,6 +157,8 @@ function SkeletonCanvasComponent({
       commitTransaction: store.commitTransaction,
       movePurlin: store.movePurlin,
       moveRoofWindow: store.moveRoofWindow,
+      setRoofWindowPlacementPlane: store.setRoofWindowPlacementPlane,
+      placeRoofWindowAt: store.placeRoofWindowAt,
       select: store.select,
       setCanonicalField: store.setCanonicalField,
       activateOperation: store.activateOperation,
@@ -154,6 +175,8 @@ function SkeletonCanvasComponent({
       isolateSelection: selectedStore.isolateSelection,
       dimensionLevel: selectedStore.dimensionLevel,
       activeOperationId: selectedStore.activeOperationId,
+      placementTool: selectedStore.placementTool,
+      fitRequestId: selectedStore.fitRequestId,
       layerVisibility: selectedStore.layerVisibility,
     },
   };
@@ -162,10 +185,16 @@ function SkeletonCanvasComponent({
     svg = useRef<SVGSVGElement>(null),
     drag = useRef<Drag | null>(null);
   const [width, setWidth] = useState(820);
+  const height = width < 550 ? 400 : width > 1000 ? 640 : 570;
   const [viewport, setViewport] = useState<ViewportState>(fittedViewport);
   const [activeHandle, setActiveHandle] = useState<string | null>(null);
   const [hoveredPurlin, setHoveredPurlin] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [spacePressed, setSpacePressed] = useState(false);
+  const [placementGhost, setPlacementGhost] = useState<{
+    roofPlaneId: string;
+    feature: RoofWindowFeature;
+  }>();
   useEffect(() => {
     if (!container.current || typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(([entry]) => {
@@ -175,22 +204,60 @@ function SkeletonCanvasComponent({
     return () => observer.disconnect();
   }, []);
   useEffect(() => {
+    const keyDown = (event: globalThis.KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.matches('input, textarea, select') || target?.isContentEditable)
+        return;
+      if (event.code === 'Space') {
+        event.preventDefault();
+        setSpacePressed(true);
+      }
+    };
+    const keyUp = (event: globalThis.KeyboardEvent) => {
+      if (event.code === 'Space') setSpacePressed(false);
+    };
+    window.addEventListener('keydown', keyDown);
+    window.addEventListener('keyup', keyUp);
+    return () => {
+      window.removeEventListener('keydown', keyDown);
+      window.removeEventListener('keyup', keyUp);
+    };
+  }, []);
+  useEffect(() => {
+    setViewport(fittedViewport);
+  }, [selectedStore.fitRequestId]);
+  useEffect(() => {
     const element = svg.current;
     if (!element) return;
     const zoom = (event: WheelEvent) => {
       event.preventDefault();
-      setViewport((current) =>
-        clampViewport({
+      const bounds = element.getBoundingClientRect();
+      const pointer = {
+        x: ((event.clientX - bounds.left) / bounds.width) * width,
+        y: ((event.clientY - bounds.top) / bounds.height) * height,
+      };
+      setViewport((current) => {
+        const nextZoom = clampCanvasViewport({
           ...current,
           zoom: current.zoom * (event.deltaY < 0 ? 1.12 : 1 / 1.12),
-        }),
-      );
+        }, { width, height }).zoom;
+        const centre = { x: width / 2, y: height / 2 };
+        const ratio = nextZoom / current.zoom;
+        return clampCanvasViewport({
+          zoom: nextZoom,
+          panX:
+            pointer.x - centre.x -
+            (pointer.x - centre.x - current.panX) * ratio,
+          panY:
+            pointer.y - centre.y -
+            (pointer.y - centre.y - current.panY) * ratio,
+        }, { width, height });
+      });
     };
     element.addEventListener('wheel', zoom, { passive: false });
     return () => element.removeEventListener('wheel', zoom);
-  }, []);
+  }, [height, width]);
 
-  const height = width < 550 ? 400 : 570;
   const policy = deriveWorkbenchProjectionPolicy(state.workbench, width < 550);
   const memberLayer = (member: SkeletonMember3D) =>
     member.kind === 'jack-rafter'
@@ -335,8 +402,37 @@ function SkeletonCanvasComponent({
       axisLengthMm: handleRangeMm,
     })),
   ];
-  const roofWindows = selectedStore.features.filter(
-    (feature): feature is RoofWindowFeature => feature.kind === 'roof-window',
+  const roofWindows = useMemo(
+    () =>
+      selectedStore.features.filter(
+        (feature): feature is RoofWindowFeature => feature.kind === 'roof-window',
+      ),
+    [selectedStore.features],
+  );
+  const windowCollisionIds = useMemo(
+    () =>
+      new Map(
+        roofWindows.map((feature) => [
+          feature.id,
+          new Set(
+            resolveRoofFeatureCollisions({ template, skeleton, feature }).map(
+              (collision) => collision.memberInstanceId,
+            ),
+          ),
+        ]),
+      ),
+    [roofWindows, skeleton, template],
+  );
+  const battenResult = useMemo(
+    () =>
+      selectedStore.battenLayout?.enabled
+        ? resolveBattenLayout({
+            template,
+            layout: selectedStore.battenLayout,
+            features: selectedStore.features,
+          })
+        : { battens: [], totalLengthMm: 0 },
+    [selectedStore.battenLayout, selectedStore.features, template],
   );
   const windowOverlays = roofWindows.map((feature) => {
     const basis = resolveRoofPlaneBasis(template, feature.roofPlaneId);
@@ -346,11 +442,7 @@ function SkeletonCanvasComponent({
       { uMm: feature.position.uMm + feature.widthMm, vMm: feature.position.vMm + feature.heightMm },
       { uMm: feature.position.uMm, vMm: feature.position.vMm + feature.heightMm },
     ].map((local) => worldPoint(projectPlaneLocalToWorld(basis, local)));
-    const collisionIds = new Set(
-      resolveRoofFeatureCollisions({ template, skeleton, feature }).map(
-        (collision) => collision.memberInstanceId,
-      ),
-    );
+    const collisionIds = windowCollisionIds.get(feature.id) ?? new Set<string>();
     const origin = worldPoint(projectPlaneLocalToWorld(basis, feature.position));
     const uEnd = worldPoint(
       projectPlaneLocalToWorld(basis, {
@@ -366,16 +458,57 @@ function SkeletonCanvasComponent({
     );
     return { feature, corners, collisionIds, origin, uAxis: { x: uEnd.x - origin.x, y: uEnd.y - origin.y }, vAxis: { x: vEnd.x - origin.x, y: vEnd.y - origin.y } };
   });
+  const selectedWindowOverlay = windowOverlays.find(
+    (overlay) => overlay.feature.id === state.workbench.selectedId,
+  );
+  const selectedCollisionIds = selectedWindowOverlay?.collisionIds ?? new Set<string>();
+  const selectedBay = selectedWindowOverlay
+    ? resolveNearestRoofWindowBay({
+        template,
+        skeleton,
+        feature: selectedWindowOverlay.feature,
+      })
+    : undefined;
+  const selectedBatten = battenResult.battens.find(
+    (batten) => batten.id === state.workbench.selectedId,
+  );
+  const bayMemberIds = new Set(selectedBay?.memberInstanceIds ?? []);
+  const roofPlaneIds =
+    template.type === 'gable'
+      ? ['roof-plane:left', 'roof-plane:right']
+      : [
+          'roof-plane:left',
+          'roof-plane:right',
+          'roof-plane:front',
+          'roof-plane:rear',
+        ];
+  const placementPlanes = roofPlaneIds.map((roofPlaneId) => {
+    const basis = resolveRoofPlaneBasis(template, roofPlaneId);
+    const origin = worldPoint(projectPlaneLocalToWorld(basis, { uMm: 0, vMm: 0 }));
+    const uEnd = worldPoint(projectPlaneLocalToWorld(basis, { uMm: 100, vMm: 0 }));
+    const vEnd = worldPoint(projectPlaneLocalToWorld(basis, { uMm: 0, vMm: 100 }));
+    return {
+      roofPlaneId,
+      basis,
+      corners: basis.polygon.map((local) =>
+        worldPoint(projectPlaneLocalToWorld(basis, local)),
+      ),
+      origin,
+      uAxis: { x: uEnd.x - origin.x, y: uEnd.y - origin.y },
+      vAxis: { x: vEnd.x - origin.x, y: vEnd.y - origin.y },
+    };
+  });
   const battenLines =
-    policy.showBattens && selectedStore.battenLayout?.enabled
-      ? resolveBattenLayout({
-          template,
-          layout: selectedStore.battenLayout,
-          features: selectedStore.features,
-        }).battens.flatMap((batten) => {
+    policy.showBattens
+      ? battenResult.battens.flatMap((batten) => {
           const basis = resolveRoofPlaneBasis(template, batten.roofPlaneId);
           return batten.segments.map((segment) => ({
             id: `${batten.id}:${segment.fromUMm}`,
+            rowId: batten.id,
+            roofPlaneId: batten.roofPlaneId,
+            stationMm: batten.stationMm,
+            usableLengthMm: batten.usableLengthMm,
+            segmentCount: batten.segments.length,
             from: worldPoint(projectPlaneLocalToWorld(basis, { uMm: segment.fromUMm, vMm: batten.stationMm })),
             to: worldPoint(projectPlaneLocalToWorld(basis, { uMm: segment.toUMm, vMm: batten.stationMm })),
           }));
@@ -386,13 +519,55 @@ function SkeletonCanvasComponent({
       member.id === state.workbench.selectedInstanceId ||
       member.selectionId === state.workbench.selectedId,
   );
-  const currentPointer = (event: PointerEvent<SVGElement>): Point => {
+  const currentPointer = (event: { clientX: number; clientY: number }): Point => {
     const bounds = svg.current?.getBoundingClientRect();
     if (!bounds) return { x: 0, y: 0 };
     return {
       x: ((event.clientX - bounds.left) / bounds.width) * width,
       y: ((event.clientY - bounds.top) / bounds.height) * height,
     };
+  };
+  const planePositionFromPointer = (
+    event: { clientX: number; clientY: number },
+    plane: (typeof placementPlanes)[number],
+  ) => {
+    const pointer = currentPointer(event);
+    const deltaX = pointer.x - plane.origin.x;
+    const deltaY = pointer.y - plane.origin.y;
+    const determinant =
+      plane.uAxis.x * plane.vAxis.y - plane.uAxis.y * plane.vAxis.x;
+    if (Math.abs(determinant) < 0.001) return undefined;
+    return {
+      uMm:
+        ((deltaX * plane.vAxis.y - deltaY * plane.vAxis.x) / determinant) *
+        100,
+      vMm:
+        ((plane.uAxis.x * deltaY - plane.uAxis.y * deltaX) / determinant) *
+        100,
+    };
+  };
+  const updatePlacementGhost = (
+    event: PointerEvent<SVGElement>,
+    plane: (typeof placementPlanes)[number],
+  ) => {
+    if (!selectedStore.placementTool) return;
+    const position = planePositionFromPointer(event, plane);
+    if (!position) return;
+    const seed = createDefaultRoofWindow(template, plane.roofPlaneId);
+    try {
+      setPlacementGhost({
+        roofPlaneId: plane.roofPlaneId,
+        feature: clampRoofWindow(template, {
+          ...seed,
+          position: {
+            uMm: position.uMm - seed.widthMm / 2,
+            vMm: position.vMm - seed.heightMm / 2,
+          },
+        }),
+      });
+    } catch {
+      setPlacementGhost(undefined);
+    }
   };
   const startDrag = (event: PointerEvent<SVGElement>, handle: Handle) => {
     if (event.button !== 0 && event.pointerType !== 'touch') return;
@@ -459,11 +634,11 @@ function SkeletonCanvasComponent({
     if (active.kind === 'pan') {
       const pointer = currentPointer(event);
       setViewport(
-        clampViewport({
+        clampCanvasViewport({
           ...active.viewport,
           panX: active.viewport.panX + pointer.x - active.startPointer.x,
           panY: active.viewport.panY + pointer.y - active.startPointer.y,
-        }),
+        }, { width, height }),
       );
       return;
     }
@@ -485,7 +660,14 @@ function SkeletonCanvasComponent({
         uMm: active.startPosition.uMm + uDeltaMm,
         vMm: active.startPosition.vMm + vDeltaMm,
       });
-      setPreview(t('assembly.roofWindow'));
+      const draggedWindow = roofWindows.find(
+        (feature) => feature.id === active.featureId,
+      );
+      setPreview(
+        draggedWindow
+          ? `${draggedWindow.id.replace('feature:roof-window-', 'O')} · ${Math.round(draggedWindow.widthMm)} × ${Math.round(draggedWindow.heightMm)} mm`
+          : t('assembly.roofWindow'),
+      );
       return;
     }
     if (
@@ -533,9 +715,10 @@ function SkeletonCanvasComponent({
   };
   const beginPan = (event: PointerEvent<SVGSVGElement>) => {
     if (
-      event.button !== 0 &&
       event.button !== 1 &&
-      event.pointerType !== 'touch'
+      event.pointerType !== 'touch' &&
+      !(event.button === 0 && spacePressed) &&
+      event.button !== 0
     )
       return;
     if ((event.target as SVGElement).dataset.skeletonBackground !== 'true')
@@ -560,6 +743,45 @@ function SkeletonCanvasComponent({
       event.preventDefault();
       select(member);
     }
+  };
+  const nudgeWindow = (
+    event: KeyboardEvent<SVGGElement>,
+    feature: RoofWindowFeature,
+  ) => {
+    const direction =
+      event.key === 'ArrowLeft'
+        ? { uMm: -1, vMm: 0 }
+        : event.key === 'ArrowRight'
+          ? { uMm: 1, vMm: 0 }
+          : event.key === 'ArrowUp'
+            ? { uMm: 0, vMm: 1 }
+            : event.key === 'ArrowDown'
+              ? { uMm: 0, vMm: -1 }
+              : undefined;
+    if (!direction) return false;
+    event.preventDefault();
+    const stepMm = event.altKey ? 1 : event.shiftKey ? 100 : 10;
+    state.beginTransaction();
+    state.moveRoofWindow(feature.id, {
+      uMm: feature.position.uMm + direction.uMm * stepMm,
+      vMm: feature.position.vMm + direction.vMm * stepMm,
+    });
+    state.commitTransaction();
+    return true;
+  };
+  const focusScreenPoints = (points: Point[]) => {
+    if (!points.length) return;
+    const centre = points.reduce(
+      (sum, point) => ({ x: sum.x + point.x / points.length, y: sum.y + point.y / points.length }),
+      { x: 0, y: 0 },
+    );
+    setViewport((current) =>
+      clampCanvasViewport({
+        zoom: Math.max(current.zoom, 1.8),
+        panX: current.panX + width / 2 - centre.x,
+        panY: current.panY + height / 2 - centre.y,
+      }, { width, height }),
+    );
   };
   const adjustHandle = (event: KeyboardEvent<SVGGElement>, handle: Handle) => {
     if (event.key === 'Escape') {
@@ -633,16 +855,39 @@ function SkeletonCanvasComponent({
         ),
         y: Math.max(8, activeHandleData.at.y - 40),
       }
+    : drag.current?.kind === 'roof-window' && selectedWindowOverlay
+      ? {
+          x: Math.max(8, Math.min(width - chipWidth - 8, selectedWindowOverlay.corners[1]!.x + 14)),
+          y: Math.max(8, selectedWindowOverlay.corners[1]!.y - 36),
+        }
+      : undefined;
+  const placementGhostCorners = placementGhost
+    ? (() => {
+        const basis = resolveRoofPlaneBasis(template, placementGhost.roofPlaneId);
+        const feature = placementGhost.feature;
+        return [
+          feature.position,
+          { uMm: feature.position.uMm + feature.widthMm, vMm: feature.position.vMm },
+          { uMm: feature.position.uMm + feature.widthMm, vMm: feature.position.vMm + feature.heightMm },
+          { uMm: feature.position.uMm, vMm: feature.position.vMm + feature.heightMm },
+        ].map((local) => worldPoint(projectPlaneLocalToWorld(basis, local)));
+      })()
     : undefined;
   return (
     <div
-      className={`a-canvas a-skeleton preset-${state.workbench.viewPreset} ${state.workbench.isolateSelection ? 'is-isolating' : ''}`}
+      className={`a-canvas a-skeleton preset-${state.workbench.viewPreset} ${state.workbench.isolateSelection ? 'is-isolating' : ''} ${spacePressed ? 'is-space-pan' : ''} ${selectedStore.placementTool ? 'is-placement-tool' : ''}`}
       ref={container}
     >
       <div className="a-canvas-toolbar">
-        <span>{t('assembly.skeleton')}</span>
+        <span>
+          {state.workbench.viewPreset === 'battens'
+            ? t('assembly.battens')
+            : t('assembly.skeleton')}
+        </span>
         <span aria-live="polite">
-          {template.type === 'hip'
+          {state.workbench.viewPreset === 'battens' && selectedStore.battenLayout?.enabled
+            ? `${battenResult.battens.length} ${t('assembly.battenRows').toLowerCase()} · ${Math.round(selectedStore.battenLayout.gaugeMm)} mm · ${new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 1 }).format(battenResult.totalLengthMm / 1000)} m`
+            : template.type === 'hip'
             ? t('assembly.hipSkeletonCount', {
                 common: skeleton.members.filter(
                   (member) => member.kind === 'rafter',
@@ -658,6 +903,11 @@ function SkeletonCanvasComponent({
               })}
         </span>
       </div>
+      {selectedStore.placementTool && (
+        <div className="a-placement-banner" role="status">
+          {t('assembly.placementChoosePlane')}
+        </div>
+      )}
       <svg
         ref={svg}
         className="a-drawing"
@@ -688,17 +938,110 @@ function SkeletonCanvasComponent({
           width={width}
           height={height}
         />
+        {selectedStore.placementTool && (
+          <g className="a-placement-planes">
+            {placementPlanes.map((plane) => (
+              <polygon
+                key={plane.roofPlaneId}
+                data-roof-plane={plane.roofPlaneId}
+                data-active={
+                  selectedStore.placementTool?.roofPlaneId === plane.roofPlaneId ||
+                  placementGhost?.roofPlaneId === plane.roofPlaneId ||
+                  undefined
+                }
+                points={plane.corners
+                  .map((corner) => `${corner.x},${corner.y}`)
+                  .join(' ')}
+                onPointerDown={(event) => event.stopPropagation()}
+                onPointerEnter={() =>
+                  selectedStore.setRoofWindowPlacementPlane(plane.roofPlaneId)
+                }
+                onPointerMove={(event) => updatePlacementGhost(event, plane)}
+                onPointerLeave={() => setPlacementGhost(undefined)}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  const position = planePositionFromPointer(event, plane);
+                  if (position)
+                    selectedStore.placeRoofWindowAt(plane.roofPlaneId, position);
+                  setPlacementGhost(undefined);
+                }}
+              />
+            ))}
+          </g>
+        )}
         {policy.showRoofPlanes && (
           <g className="a-roof-guides" aria-hidden="true">
             {guides.map((guide) => (
-              <polygon key={guide.id} points={pointString(guide.projected)} />
+              <polygon
+                key={guide.id}
+                className={
+                  selectedWindowOverlay?.feature.roofPlaneId === guide.id
+                    ? 'is-selected-plane'
+                    : undefined
+                }
+                points={pointString(guide.projected)}
+              />
             ))}
+          </g>
+        )}
+        {placementGhostCorners && (
+          <g className="a-roof-window-ghost" pointerEvents="none">
+            <polygon
+              points={placementGhostCorners
+                .map((corner) => `${corner.x},${corner.y}`)
+                .join(' ')}
+            />
+            {policy.showLabels && (
+              <text
+                x={placementGhostCorners[0]!.x + 8}
+                y={placementGhostCorners[0]!.y - 8}
+              >
+                780 × 1180 mm
+              </text>
+            )}
           </g>
         )}
         {policy.showBattens && (
           <g className="a-batten-layer" aria-label={t('assembly.battens')}>
             {battenLines.map((batten) => (
-              <line key={batten.id} x1={batten.from.x} y1={batten.from.y} x2={batten.to.x} y2={batten.to.y} />
+              <g
+                key={batten.id}
+                role="button"
+                tabIndex={0}
+                data-batten-row={batten.rowId}
+                aria-label={`${t('assembly.battenRow')} ${batten.rowId.split(':').at(-1)}`}
+                aria-pressed={state.workbench.selectedId === batten.rowId}
+                className={state.workbench.selectedId === batten.rowId ? 'is-selected' : ''}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  state.select(batten.rowId);
+                }}
+                onDoubleClick={(event) => {
+                  event.stopPropagation();
+                  focusScreenPoints([batten.from, batten.to]);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    state.select(batten.rowId);
+                  }
+                }}
+              >
+                <line
+                  className="a-batten-hit-target"
+                  x1={batten.from.x}
+                  y1={batten.from.y}
+                  x2={batten.to.x}
+                  y2={batten.to.y}
+                />
+                <line
+                  className="a-batten-segment"
+                  x1={batten.from.x}
+                  y1={batten.from.y}
+                  x2={batten.to.x}
+                  y2={batten.to.y}
+                />
+              </g>
             ))}
           </g>
         )}
@@ -779,7 +1122,9 @@ function SkeletonCanvasComponent({
               relatedIds,
             });
             const selected = visualState === 'selected';
-            const related = visualState === 'related';
+            const warning = selectedCollisionIds.has(member.id);
+            const bayBoundary = bayMemberIds.has(member.id);
+            const related = visualState === 'related' || bayBoundary;
             const muted = visualState === 'muted';
             const purlinHandle =
               member.kind === 'purlin'
@@ -804,7 +1149,9 @@ function SkeletonCanvasComponent({
                 data-entity={member.id}
                 data-prototype={member.prototypeId}
                 data-selection-state={
-                  selected
+                  warning
+                    ? 'warning'
+                    : selected
                     ? 'selected'
                     : related
                       ? 'related'
@@ -819,9 +1166,24 @@ function SkeletonCanvasComponent({
                 data-drag-state={
                   activeHandle === purlinHandle?.id ? 'dragging' : undefined
                 }
-                className={`a-skeleton-member kind-${member.kind} ${selected ? 'is-selected' : ''} ${related ? 'is-related' : ''} ${muted ? 'is-muted' : ''} ${editablePurlin ? 'is-editable-purlin' : ''} ${activePurlin ? 'is-hover-editable' : ''}`}
+                className={`a-skeleton-member kind-${member.kind} ${selected ? 'is-selected' : ''} ${related ? 'is-related' : ''} ${warning ? 'is-warning' : ''} ${muted && !warning && !bayBoundary ? 'is-muted' : ''} ${editablePurlin ? 'is-editable-purlin' : ''} ${activePurlin ? 'is-hover-editable' : ''}`}
                 onClick={() => select(member)}
-                onKeyDown={(event) => keySelect(event, member)}
+                onDoubleClick={(event) => {
+                  event.stopPropagation();
+                  focusScreenPoints(
+                    faces.flatMap((face) => face.projected.map(viewPoint)),
+                  );
+                }}
+                onKeyDown={(event) => {
+                  if (
+                    purlinHandle &&
+                    ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)
+                  ) {
+                    adjustHandle(event, purlinHandle);
+                    return;
+                  }
+                  keySelect(event, member);
+                }}
                 onPointerEnter={() => {
                   if (editablePurlin) setHoveredPurlin(member.selectionId);
                 }}
@@ -870,7 +1232,12 @@ function SkeletonCanvasComponent({
                   data-collision={collides || undefined}
                   className={`a-roof-window ${selected ? 'is-selected' : ''} ${collides ? 'is-collision' : ''}`}
                   onClick={(event) => { event.stopPropagation(); state.select(overlay.feature.id); }}
+                  onDoubleClick={(event) => {
+                    event.stopPropagation();
+                    focusScreenPoints(overlay.corners);
+                  }}
                   onKeyDown={(event) => {
+                    if (nudgeWindow(event, overlay.feature)) return;
                     if (event.key === 'Enter' || event.key === ' ') {
                       event.preventDefault();
                       state.select(overlay.feature.id);
@@ -879,7 +1246,22 @@ function SkeletonCanvasComponent({
                   onPointerDown={(event) => startWindowDrag(event, overlay)}
                 >
                   <polygon points={overlay.corners.map((corner) => `${corner.x},${corner.y}`).join(' ')} />
-                  {collides && <title>{t('assembly.windowCollision')}</title>}
+                  {policy.showLabels && (
+                    <text
+                      x={overlay.corners.reduce((sum, point) => sum + point.x, 0) / 4}
+                      y={overlay.corners.reduce((sum, point) => sum + point.y, 0) / 4}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                    >
+                      {overlay.feature.id.replace('feature:roof-window-', 'O')}
+                    </text>
+                  )}
+                  {collides && (
+                    <title>
+                      {t('assembly.windowCollision')}:{' '}
+                      {[...overlay.collisionIds].map(memberInstanceCode).join(', ')}
+                    </title>
+                  )}
                 </g>
               );
             })}
@@ -956,6 +1338,39 @@ function SkeletonCanvasComponent({
           </g>
         )}
       </svg>
+      {selectedWindowOverlay && (
+        <div
+          className={`a-window-hud ${selectedWindowOverlay.collisionIds.size ? 'is-warning' : ''}`}
+          role="status"
+        >
+          <strong>
+            {selectedWindowOverlay.feature.id.replace('feature:roof-window-', 'O')} ·{' '}
+            {Math.round(selectedWindowOverlay.feature.widthMm)} ×{' '}
+            {Math.round(selectedWindowOverlay.feature.heightMm)} mm
+          </strong>
+          {selectedBay && (
+            <span>{selectedBay.memberInstanceIds.map(memberInstanceCode).join(' — ')}</span>
+          )}
+          {selectedWindowOverlay.collisionIds.size > 0 && (
+            <span>
+              ⚠ {t('assembly.windowCollision')}:{' '}
+              {[...selectedWindowOverlay.collisionIds].map(memberInstanceCode).join(', ')}
+            </span>
+          )}
+        </div>
+      )}
+      {selectedBatten && !selectedWindowOverlay && (
+        <div className="a-window-hud a-batten-hud" role="status">
+          <strong>
+            L{selectedBatten.id.split(':').at(-1)} ·{' '}
+            {selectedStore.battenLayout?.gaugeMm ?? 0} mm
+          </strong>
+          <span>
+            {Math.round(selectedBatten.usableLengthMm)} mm ·{' '}
+            {selectedBatten.segments.length} {t('assembly.battenSegments').toLowerCase()}
+          </span>
+        </div>
+      )}
       <div
         className="a-canvas-controls"
         role="group"
@@ -966,7 +1381,10 @@ function SkeletonCanvasComponent({
           disabled={viewport.zoom <= 0.65}
           onClick={() =>
             setViewport((current) =>
-              clampViewport({ ...current, zoom: current.zoom - 0.2 }),
+              clampCanvasViewport(
+                { ...current, zoom: current.zoom - 0.2 },
+                { width, height },
+              ),
             )
           }
         >
@@ -978,7 +1396,10 @@ function SkeletonCanvasComponent({
           disabled={viewport.zoom >= 3}
           onClick={() =>
             setViewport((current) =>
-              clampViewport({ ...current, zoom: current.zoom + 0.2 }),
+              clampCanvasViewport(
+                { ...current, zoom: current.zoom + 0.2 },
+                { width, height },
+              ),
             )
           }
         >
