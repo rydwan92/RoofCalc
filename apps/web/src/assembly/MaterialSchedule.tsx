@@ -6,6 +6,8 @@ import type {
   RoofMemberSchedule,
   RoofMemberScheduleRow,
 } from '@cieslacalc/quantity-core';
+import type { LengthUnit } from '@cieslacalc/roof-math';
+import { formatLength } from '../format';
 import { memberInstanceCode } from './workbench';
 import { useAssembly } from './store';
 
@@ -19,16 +21,20 @@ function cubicMetres(valueMm3: number | undefined, locale: string) {
     : `${new Intl.NumberFormat(locale, { maximumFractionDigits: 3 }).format(valueMm3 / 1_000_000_000)} m³`;
 }
 
-function millimetres(valueMm: number, locale: string) {
-  return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(valueMm)} mm`;
+function displayLength(valueMm: number, unit: LengthUnit, locale: string) {
+  return `${formatLength(valueMm, unit, locale)} ${unit}`;
 }
 
-function sectionText(section: QuantitySection, locale: string) {
+function sectionText(
+  section: QuantitySection,
+  unit: LengthUnit,
+  locale: string,
+) {
   if (section.completeness !== 'complete' || section.depthMm === undefined)
     return section.widthMm === undefined
       ? '—'
-      : `${new Intl.NumberFormat(locale).format(section.widthMm)} mm · ?`;
-  return `${new Intl.NumberFormat(locale).format(section.widthMm!)} × ${new Intl.NumberFormat(locale).format(section.depthMm)} mm`;
+      : `${formatLength(section.widthMm, unit, locale)} ${unit} · ?`;
+  return `${formatLength(section.widthMm!, unit, locale)} × ${formatLength(section.depthMm, unit, locale)} ${unit}`;
 }
 
 function rowName(
@@ -74,6 +80,7 @@ export function MaterialSchedule({
   onSelectRow: (row: RoofMemberScheduleRow) => void;
   onSelectInstance: (row: RoofMemberScheduleRow, instanceId: string) => void;
 }) {
+  const state = useAssembly();
   const { t, i18n } = useTranslation();
   const [perspective, setPerspective] = useState<'families' | 'sections'>(
     'families',
@@ -157,7 +164,7 @@ export function MaterialSchedule({
                 <strong>{familyKey}</strong>
                 <span>{rowName(rows[0]!, t)}</span>
                 <small>
-                  {sectionText(rows[0]!.section, i18n.language)} ·{' '}
+                  {sectionText(rows[0]!.section, state.unit, i18n.language)} ·{' '}
                   {rows.reduce((total, row) => total + row.quantity, 0)}{' '}
                   {t('assembly.piecesShort')}
                 </small>
@@ -178,9 +185,13 @@ export function MaterialSchedule({
                   >
                     <span>
                       <b>{rowName(row, t)}</b>
-                      <small>{sectionText(row.section, i18n.language)}</small>
+                      <small>
+                        {sectionText(row.section, state.unit, i18n.language)}
+                      </small>
                     </span>
-                    <strong>{millimetres(row.lengthMm, i18n.language)}</strong>
+                    <strong>
+                      {displayLength(row.lengthMm, state.unit, i18n.language)}
+                    </strong>
                     <span>
                       {row.quantity} {t('assembly.piecesShort')}
                       <small>{metres(row.totalLengthMm, i18n.language)}</small>
@@ -220,7 +231,9 @@ export function MaterialSchedule({
           <div>
             {schedule.sectionGroups.map((group) => (
               <article key={group.id}>
-                <strong>{sectionText(group.section, i18n.language)}</strong>
+                <strong>
+                  {sectionText(group.section, state.unit, i18n.language)}
+                </strong>
                 <span>{group.familyKeys.join(' · ')}</span>
                 <dl>
                   <div>
@@ -279,7 +292,7 @@ export function MaterialSchedule({
                 <span>
                   <b>
                     {rowName(row, t)} ·{' '}
-                    {sectionText(row.section, i18n.language)}
+                    {sectionText(row.section, state.unit, i18n.language)}
                   </b>
                   <small>
                     {row.quantity} {t('assembly.derivedAxes')}
@@ -340,11 +353,13 @@ export function MaterialScheduleInspector({
               </div>
               <div>
                 <dt>{t('assembly.section')}</dt>
-                <dd>{sectionText(row.section, i18n.language)}</dd>
+                <dd>{sectionText(row.section, state.unit, i18n.language)}</dd>
               </div>
               <div>
                 <dt>{t('assembly.geometricLength')}</dt>
-                <dd>{millimetres(row.lengthMm, i18n.language)}</dd>
+                <dd>
+                  {displayLength(row.lengthMm, state.unit, i18n.language)}
+                </dd>
               </div>
               <div>
                 <dt>{t('assembly.pieceCount')}</dt>

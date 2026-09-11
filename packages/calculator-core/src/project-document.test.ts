@@ -21,7 +21,7 @@ describe('RoofProjectDocumentV1', () => {
       project: { roof, features: [], openingFraming: [], buildUp: {} },
     });
     expect(serialized).not.toMatch(
-      /selected|hover|camera|drawer|toolbox|viewport|dimensionLevel/,
+      /selected|hover|camera|drawer|toolbox|viewport|dimensionLevel|measurement|workspaceFocus/,
     );
   });
 
@@ -125,5 +125,23 @@ describe('RoofProjectDocumentV1', () => {
         JSON.stringify({ schemaVersion: 2, project: { roof: {} } }),
       ),
     ).toThrow();
+  });
+
+  it('round-trips an optional ridge section depth and accepts older roofs without it', () => {
+    const roof = gableTemplateFromAssembly(assemblyDefaults);
+    roof.ridge.depthMm = 220;
+    const document = createRoofProjectDocument(roof);
+
+    expect(
+      parseRoofProjectDocument(serializeRoofProjectDocument(document)).project
+        .roof.ridge.depthMm,
+    ).toBe(220);
+
+    delete roof.ridge.depthMm;
+    expect(
+      parseRoofProjectDocument(
+        JSON.stringify({ schemaVersion: 1, project: { roof } }),
+      ).project.roof.ridge.depthMm,
+    ).toBeUndefined();
   });
 });

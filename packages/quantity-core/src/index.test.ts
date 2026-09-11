@@ -244,6 +244,28 @@ describe('quantity-core geometric member schedule', () => {
     expect(report.timberSummary.excludedVolumeQuantity).toBe(1);
   });
 
+  it('includes ridge volume only when its full optional section is provided', () => {
+    const roof = template();
+    const report = createRoofMemberSchedule({
+      skeleton: createRoofSkeleton(roof),
+      sectionOverrides: {
+        [roof.ridge.id]: {
+          widthMm: roof.ridge.thicknessMm,
+          depthMm: 220,
+          completeness: 'complete',
+        },
+      },
+    });
+    const ridge = report.timberRows.find((row) => row.memberKind === 'ridge');
+
+    expect(ridge?.section).toMatchObject({
+      widthMm: roof.ridge.thicknessMm,
+      depthMm: 220,
+      completeness: 'complete',
+    });
+    expect(ridge?.volumeMm3).toBeDefined();
+  });
+
   it('uses only accepted composed framing and restores the original schedule exactly', () => {
     const roof = template();
     const feature = opening();

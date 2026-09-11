@@ -42,8 +42,7 @@ export function entityLabel(
 ): string {
   if (id === 'roof') return t('assembly.roof');
   const roofWindow = /^feature:roof-window-(\d+)$/.exec(id);
-  if (roofWindow)
-    return `${t('assembly.geometricOpening')} O${roofWindow[1]}`;
+  if (roofWindow) return `${t('assembly.geometricOpening')} O${roofWindow[1]}`;
   const batten = /^batten:roof-plane:[^:]+:(\d+)$/.exec(id);
   if (batten) return `${t('assembly.battenRow')} ${batten[1]}`;
   const hip =
@@ -524,7 +523,10 @@ export function AssemblyCanvas({
           </div>
           <p className="a-canvas-hint">
             {state.workbench.selectedId.includes('purlin')
-              ? t('assembly.dragHint')
+              ? t('assembly.dragHint', {
+                  step: length(10),
+                  unit: state.unit,
+                })
               : t('assembly.selectHint')}
           </p>
         </>
@@ -538,7 +540,10 @@ export function AssemblyCanvas({
           <small>
             {preview.kind === 'target'
               ? t('assembly.snapped')
-              : t('assembly.grid', { step: preview.stepMm })}
+              : t('assembly.grid', {
+                  step: length(preview.stepMm),
+                  unit: state.unit,
+                })}
           </small>
         </output>
       )}

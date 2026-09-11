@@ -45,6 +45,7 @@ export const hipRoofTemplateSchema: z.ZodType<HipRoofTemplateSpec> = z
     ridge: z.object({
       id: z.string().regex(/^[a-z][a-z0-9:-]*$/),
       thicknessMm: z.number().finite().min(0).max(1000),
+      depthMm: z.number().finite().min(1).max(2000).optional(),
     }),
     intermediateSupports: z.array(supportSpecSchema),
   })
@@ -474,7 +475,7 @@ export function createHipRoofSkeletonFromResolved(
             to: ridgeEnd,
             section: {
               widthMm: Math.max(template.ridge.thicknessMm, 1),
-              depthMm: template.rafterSection.depthMm,
+              depthMm: template.ridge.depthMm ?? template.rafterSection.depthMm,
             },
             side: 'center' as const,
           },

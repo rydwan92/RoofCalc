@@ -13,13 +13,16 @@ import { useTranslation } from 'react-i18next';
 import {
   boundsFromPoints,
   clampViewport,
+  createSpacingDimensionPresentation,
   createTimberPrismFaces,
   fittedViewport,
   fitDrawing,
   projectAxonometric,
   projectTimberPrismFaces,
   valueFromAxisDrag,
+  visiblePriorityLabelIds,
   viewportPoint,
+  type MeasurementSnapPoint,
   type Point,
   type ViewportState,
 } from '@cieslacalc/drawing-engine';
@@ -163,6 +166,7 @@ function SkeletonCanvasComponent({
       layerVisibility: store.workbench.layerVisibility,
       detailDrawerOpen: store.workbench.detailDrawer.open,
       placementTool: store.workbench.placementTool,
+      measurement: store.workbench.measurement,
       fitRequestId: store.workbench.fitRequestId,
       features: store.projectDocument.project.features,
       battenLayout: store.projectDocument.project.buildUp.battenLayout,
@@ -178,6 +182,7 @@ function SkeletonCanvasComponent({
       select: store.select,
       setCanonicalField: store.setCanonicalField,
       activateOperation: store.activateOperation,
+      chooseMeasurementPoint: store.chooseMeasurementPoint,
     })),
   );
   const state = {
@@ -193,6 +198,7 @@ function SkeletonCanvasComponent({
       dimensionLevel: selectedStore.dimensionLevel,
       activeOperationId: selectedStore.activeOperationId,
       placementTool: selectedStore.placementTool,
+      measurement: selectedStore.measurement,
       fitRequestId: selectedStore.fitRequestId,
       layerVisibility: selectedStore.layerVisibility,
     },
@@ -207,6 +213,9 @@ function SkeletonCanvasComponent({
   const [viewport, setViewport] = useState<ViewportState>(fittedViewport);
   const [activeHandle, setActiveHandle] = useState<string | null>(null);
   const [hoveredPurlin, setHoveredPurlin] = useState<string | null>(null);
+  const [hoveredMemberId, setHoveredMemberId] = useState<string | null>(null);
+  const [hoveredMeasurePoint, setHoveredMeasurePoint] =
+    useState<MeasurementSnapPoint>();
   const [preview, setPreview] = useState<string | null>(null);
   const [spacePressed, setSpacePressed] = useState(false);
   const [placementGhost, setPlacementGhost] = useState<{
@@ -248,9 +257,6 @@ function SkeletonCanvasComponent({
       window.removeEventListener('keyup', keyUp);
     };
   }, []);
-  useEffect(() => {
-    setViewport(fittedViewport);
-  }, [selectedStore.fitRequestId]);
   useEffect(() => {
     const element = svg.current;
     if (!element) return;
@@ -322,46 +328,55 @@ function SkeletonCanvasComponent({
     ...guide,
     projected: guide.points.map((point) => projectAxonometric(point)),
   }));
-  const fit = fitDrawing(
+  const candidateFit = fitDrawing(
     boundsFromPoints([
       ...solids.flatMap(({ faces }) => faces.flatMap((face) => face.projected)),
       ...guides.flatMap((guide) => guide.projected),
     ]),
     { width, height, padding: width < 550 ? 44 : 88 },
   );
+  const candidateFitRef = useRef(candidateFit);
+  candidateFitRef.current = candidateFit;
+  const activeFitRef = useRef(candidateFit);
+  useEffect(() => {
+    activeFitRef.current = candidateFitRef.current;
+    setViewport({ ...fittedViewport });
+  }, [height, selectedStore.fitRequestId, width]);
+  const fit = activeFitRef.current;
   const viewPoint = (point: Point) =>
     viewportPoint(fit.project(point), viewport, { width, height });
   const worldPoint = (point: { x: number; y: number; z: number }) =>
     viewPoint(projectAxonometric(point));
   const spacingStationAxes =
     template.type === 'gable' && policy.effectiveDimensionLevel !== 'minimal'
-      ? spacing.stations
-          .slice(
-            0,
-            policy.effectiveDimensionLevel === 'full'
-              ? spacing.stations.length
-              : 5,
-          )
-          .map((station) => ({
-            id: station.id,
-            alongBuildingMm: station.alongBuildingMm,
-            from: worldPoint({
-              x: -template.halfRunMm,
-              y: station.alongBuildingMm,
-              z: 0,
-            }),
-            to: worldPoint({
-              x: template.halfRunMm,
-              y: station.alongBuildingMm,
-              z: 0,
-            }),
-            dimensionPoint: worldPoint({
-              x: template.halfRunMm + 320,
-              y: station.alongBuildingMm,
-              z: 0,
-            }),
-          }))
+      ? spacing.stations.map((station) => ({
+          id: station.id,
+          alongBuildingMm: station.alongBuildingMm,
+          from: worldPoint({
+            x: -template.halfRunMm,
+            y: station.alongBuildingMm,
+            z: 0,
+          }),
+          to: worldPoint({
+            x: template.halfRunMm,
+            y: station.alongBuildingMm,
+            z: 0,
+          }),
+          dimensionPoint: worldPoint({
+            x: template.halfRunMm + 320,
+            y: station.alongBuildingMm,
+            z: 0,
+          }),
+        }))
       : [];
+  const spacingDimensions = createSpacingDimensionPresentation(
+    spacing.stations,
+    template.type === 'gable' ? policy.effectiveDimensionLevel : 'minimal',
+  );
+  const spacingSummaryDimensions = createSpacingDimensionPresentation(
+    spacing.stations,
+    'working',
+  );
   const pointString = (points: Point[]) =>
     points
       .map(viewPoint)
@@ -443,6 +458,55 @@ function SkeletonCanvasComponent({
       ),
     [selectedStore.features],
   );
+  const measurementCandidates = useMemo(() => {
+    const candidates: MeasurementSnapPoint[] = [
+      ...skeleton.members.flatMap((member) =>
+        (['from', 'to'] as const).map((end) => ({
+          id: `measure:${member.id}:${end}`,
+          label: `${memberInstanceCode(member.id)} · ${end === 'from' ? 'A' : 'B'}`,
+          point: member[end],
+        })),
+      ),
+      ...surfaceGeometry.planes.flatMap((plane) =>
+        plane.worldPolygon.map((point, index) => ({
+          id: `measure:${plane.roofPlaneId}:vertex:${index + 1}`,
+          label: `${plane.roofPlaneId.replace('roof-plane:', '')} · V${index + 1}`,
+          point,
+          roofPlaneId: plane.roofPlaneId,
+        })),
+      ),
+      ...roofWindows.flatMap((feature) => {
+        const basis = resolveRoofPlaneBasis(template, feature.roofPlaneId);
+        const locals = [
+          feature.position,
+          {
+            uMm: feature.position.uMm + feature.widthMm,
+            vMm: feature.position.vMm,
+          },
+          {
+            uMm: feature.position.uMm + feature.widthMm,
+            vMm: feature.position.vMm + feature.heightMm,
+          },
+          {
+            uMm: feature.position.uMm,
+            vMm: feature.position.vMm + feature.heightMm,
+          },
+        ];
+        return locals.map((local, index) => ({
+          id: `measure:${feature.id}:corner:${index + 1}`,
+          label: `${feature.id.replace('feature:roof-window-', 'O')} · ${String.fromCharCode(65 + index)}`,
+          point: projectPlaneLocalToWorld(basis, local),
+          roofPlaneId: feature.roofPlaneId,
+        }));
+      }),
+    ].sort((a, b) => a.id.localeCompare(b.id));
+    const unique = new Map<string, MeasurementSnapPoint>();
+    for (const candidate of candidates) {
+      const key = `${candidate.point.x}:${candidate.point.y}:${candidate.point.z}`;
+      if (!unique.has(key)) unique.set(key, candidate);
+    }
+    return [...unique.values()];
+  }, [roofWindows, skeleton.members, surfaceGeometry.planes, template]);
   const windowCollisionIds = useMemo(
     () =>
       new Map(
@@ -518,6 +582,22 @@ function SkeletonCanvasComponent({
   );
   const selectedCollisionIds =
     selectedWindowOverlay?.collisionIds ?? new Set<string>();
+  const visibleWindowLabelIds = visiblePriorityLabelIds(
+    windowOverlays.map((overlay) => {
+      const centre = {
+        x: overlay.corners.reduce((sum, point) => sum + point.x, 0) / 4,
+        y: overlay.corners.reduce((sum, point) => sum + point.y, 0) / 4,
+      };
+      const selected = state.workbench.selectedId === overlay.feature.id;
+      const warning = overlay.collisionIds.size > 0;
+      return {
+        id: overlay.feature.id,
+        priority: selected ? 110 : warning ? 100 : 10,
+        protected: warning || selected,
+        bounds: { x: centre.x - 24, y: centre.y - 9, width: 48, height: 18 },
+      };
+    }),
+  );
   const selectedBay = selectedWindowOverlay
     ? resolveNearestRoofWindowBay({
         template,
@@ -612,6 +692,23 @@ function SkeletonCanvasComponent({
       y: ((event.clientY - bounds.top) / bounds.height) * height,
     };
   };
+  const measurementPointAt = (event: { clientX: number; clientY: number }) => {
+    const pointer = currentPointer(event);
+    return measurementCandidates
+      .map((candidate) => ({
+        candidate,
+        distance: Math.hypot(
+          worldPoint(candidate.point).x - pointer.x,
+          worldPoint(candidate.point).y - pointer.y,
+        ),
+      }))
+      .filter((item) => item.distance <= (width < 550 ? 28 : 20))
+      .sort(
+        (a, b) =>
+          a.distance - b.distance ||
+          a.candidate.id.localeCompare(b.candidate.id),
+      )[0]?.candidate;
+  };
   const planePositionFromPointer = (
     event: { clientX: number; clientY: number },
     plane: (typeof placementPlanes)[number],
@@ -653,6 +750,7 @@ function SkeletonCanvasComponent({
     }
   };
   const startDrag = (event: PointerEvent<SVGElement>, handle: Handle) => {
+    if (selectedStore.measurement) return;
     if (event.button !== 0 && event.pointerType !== 'touch') return;
     const parent = svg.current;
     if (!parent) return;
@@ -687,6 +785,7 @@ function SkeletonCanvasComponent({
     event: PointerEvent<SVGElement>,
     overlay: (typeof windowOverlays)[number],
   ) => {
+    if (selectedStore.measurement) return;
     if (event.button !== 0 && event.pointerType !== 'touch') return;
     event.preventDefault();
     event.stopPropagation();
@@ -761,7 +860,7 @@ function SkeletonCanvasComponent({
       );
       setPreview(
         draggedWindow
-          ? `${draggedWindow.id.replace('feature:roof-window-', 'O')} · ${Math.round(draggedWindow.widthMm)} × ${Math.round(draggedWindow.heightMm)} mm`
+          ? `${draggedWindow.id.replace('feature:roof-window-', 'O')} · ${length(draggedWindow.widthMm)} × ${length(draggedWindow.heightMm)}`
           : t('assembly.roofWindow'),
       );
       return;
@@ -829,8 +928,10 @@ function SkeletonCanvasComponent({
     };
     event.currentTarget.setPointerCapture(event.pointerId);
   };
-  const select = (member: SkeletonMember3D) =>
-    state.select(member.selectionId, member.prototypeId);
+  const select = (member: SkeletonMember3D) => {
+    if (!selectedStore.measurement)
+      state.select(member.selectionId, member.prototypeId);
+  };
   const keySelect = (
     event: KeyboardEvent<SVGGElement>,
     member: SkeletonMember3D,
@@ -993,6 +1094,20 @@ function SkeletonCanvasComponent({
         ].map((local) => worldPoint(projectPlaneLocalToWorld(basis, local)));
       })()
     : undefined;
+  const hoveredMember = skeleton.members.find(
+    (member) => member.id === hoveredMemberId,
+  );
+  const identityMember = selectedMember ?? hoveredMember;
+  const identityMemberLengthMm = identityMember
+    ? Math.hypot(
+        identityMember.to.x - identityMember.from.x,
+        identityMember.to.y - identityMember.from.y,
+        identityMember.to.z - identityMember.from.z,
+      )
+    : undefined;
+  const measurementFrom = selectedStore.measurement?.firstPoint;
+  const measurementTo =
+    selectedStore.measurement?.result?.to ?? hoveredMeasurePoint;
   return (
     <div
       className={`a-canvas a-skeleton preset-${state.workbench.viewPreset} layer-view-${state.workbench.buildUpView} ${state.workbench.isolateSelection ? 'is-isolating' : ''} ${spacePressed ? 'is-space-pan' : ''} ${selectedStore.placementTool ? 'is-placement-tool' : ''}`}
@@ -1010,7 +1125,7 @@ function SkeletonCanvasComponent({
           {state.workbench.viewPreset === 'layers' &&
           state.workbench.buildUpView === 'battens' &&
           selectedStore.battenLayout?.enabled
-            ? `${battenResult.battens.length} ${t('assembly.battenRows').toLowerCase()} · ${Math.round(selectedStore.battenLayout.gaugeMm)} mm · ${new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 1 }).format(battenResult.totalLengthMm / 1000)} m`
+            ? `${battenResult.battens.length} ${t('assembly.battenRows').toLowerCase()} · ${length(selectedStore.battenLayout.gaugeMm)} · ${new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 1 }).format(battenResult.totalLengthMm / 1000)} m`
             : template.type === 'hip'
               ? t('assembly.hipSkeletonCount', {
                   common: skeleton.members.filter(
@@ -1037,6 +1152,7 @@ function SkeletonCanvasComponent({
         ref={svg}
         className="a-drawing"
         data-testid="skeleton-drawing"
+        data-fit-scale={fit.scale}
         role="group"
         aria-label={t(
           `assembly.${template.type === 'hip' ? 'hipSkeletonDrawing' : 'skeletonDrawing'}`,
@@ -1187,7 +1303,8 @@ function SkeletonCanvasComponent({
                 x={placementGhostCorners[0]!.x + 8}
                 y={placementGhostCorners[0]!.y - 8}
               >
-                780 × 1180 mm
+                {length(placementGhost!.feature.widthMm)} ×{' '}
+                {length(placementGhost!.feature.heightMm)}
               </text>
             )}
           </g>
@@ -1298,57 +1415,58 @@ function SkeletonCanvasComponent({
             className={`a-spacing-guides ${state.workbench.selectedId === 'roof' ? 'is-active' : ''}`}
             aria-hidden="true"
           >
-            {spacingStationAxes.map((station, index) => {
-              const previous = spacingStationAxes[index - 1];
+            {spacingStationAxes.map((station) => (
+              <line
+                key={station.id}
+                data-testid="spacing-station-axis"
+                className="a-spacing-station-axis"
+                x1={station.from.x}
+                y1={station.from.y}
+                x2={station.to.x}
+                y2={station.to.y}
+              />
+            ))}
+            {spacingDimensions.map((dimension) => {
+              const from = spacingStationAxes[dimension.fromStationIndex]!;
+              const to = spacingStationAxes[dimension.toStationIndex]!;
+              const laneOffset = dimension.lane * 18;
               return (
-                <g key={station.id}>
+                <g
+                  key={dimension.id}
+                  data-testid="spacing-bay-dimension"
+                  data-spacing-presentation={
+                    dimension.representative ? 'representative' : 'individual'
+                  }
+                >
                   <line
-                    data-testid="spacing-station-axis"
-                    className="a-spacing-station-axis"
-                    x1={station.from.x}
-                    y1={station.from.y}
-                    x2={station.to.x}
-                    y2={station.to.y}
+                    className="a-spacing-dimension-line"
+                    x1={from.dimensionPoint.x + laneOffset}
+                    y1={from.dimensionPoint.y}
+                    x2={to.dimensionPoint.x + laneOffset}
+                    y2={to.dimensionPoint.y}
                   />
-                  {previous && (
-                    <g data-testid="spacing-bay-dimension">
-                      <line
-                        className="a-spacing-dimension-line"
-                        x1={previous.dimensionPoint.x}
-                        y1={previous.dimensionPoint.y}
-                        x2={station.dimensionPoint.x}
-                        y2={station.dimensionPoint.y}
-                      />
-                      <circle
-                        cx={previous.dimensionPoint.x}
-                        cy={previous.dimensionPoint.y}
-                        r={2.5}
-                      />
-                      <circle
-                        cx={station.dimensionPoint.x}
-                        cy={station.dimensionPoint.y}
-                        r={2.5}
-                      />
-                      <text
-                        x={
-                          (previous.dimensionPoint.x +
-                            station.dimensionPoint.x) /
-                            2 +
-                          7
-                        }
-                        y={
-                          (previous.dimensionPoint.y +
-                            station.dimensionPoint.y) /
-                            2 -
-                          5
-                        }
-                      >
-                        {length(
-                          station.alongBuildingMm - previous.alongBuildingMm,
-                        )}
-                      </text>
-                    </g>
-                  )}
+                  <circle
+                    cx={from.dimensionPoint.x + laneOffset}
+                    cy={from.dimensionPoint.y}
+                    r={2.5}
+                  />
+                  <circle
+                    cx={to.dimensionPoint.x + laneOffset}
+                    cy={to.dimensionPoint.y}
+                    r={2.5}
+                  />
+                  <text
+                    x={
+                      (from.dimensionPoint.x + to.dimensionPoint.x) / 2 +
+                      laneOffset +
+                      7
+                    }
+                    y={(from.dimensionPoint.y + to.dimensionPoint.y) / 2 - 5}
+                  >
+                    {dimension.representative
+                      ? `${dimension.count} × ${length(dimension.spacingMm)}`
+                      : length(dimension.spacingMm)}
+                  </text>
                 </g>
               );
             })}
@@ -1441,9 +1559,11 @@ function SkeletonCanvasComponent({
                     keySelect(event, member);
                   }}
                   onPointerEnter={() => {
+                    setHoveredMemberId(member.id);
                     if (editablePurlin) setHoveredPurlin(member.selectionId);
                   }}
                   onPointerLeave={() => {
+                    if (hoveredMemberId === member.id) setHoveredMemberId(null);
                     if (hoveredPurlin === member.selectionId)
                       setHoveredPurlin(null);
                   }}
@@ -1510,26 +1630,30 @@ function SkeletonCanvasComponent({
                       .map((corner) => `${corner.x},${corner.y}`)
                       .join(' ')}
                   />
-                  {policy.showLabels && (
-                    <text
-                      x={
-                        overlay.corners.reduce(
-                          (sum, point) => sum + point.x,
-                          0,
-                        ) / 4
-                      }
-                      y={
-                        overlay.corners.reduce(
-                          (sum, point) => sum + point.y,
-                          0,
-                        ) / 4
-                      }
-                      textAnchor="middle"
-                      dominantBaseline="middle"
-                    >
-                      {overlay.feature.id.replace('feature:roof-window-', 'O')}
-                    </text>
-                  )}
+                  {policy.showLabels &&
+                    visibleWindowLabelIds.has(overlay.feature.id) && (
+                      <text
+                        x={
+                          overlay.corners.reduce(
+                            (sum, point) => sum + point.x,
+                            0,
+                          ) / 4
+                        }
+                        y={
+                          overlay.corners.reduce(
+                            (sum, point) => sum + point.y,
+                            0,
+                          ) / 4
+                        }
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                      >
+                        {overlay.feature.id.replace(
+                          'feature:roof-window-',
+                          'O',
+                        )}
+                      </text>
+                    )}
                   {collides && (
                     <title>
                       {t('assembly.windowCollision')}:{' '}
@@ -1615,7 +1739,89 @@ function SkeletonCanvasComponent({
             </text>
           </g>
         )}
+        {selectedStore.measurement && (
+          <g className="a-measure-layer">
+            {measurementFrom && measurementTo && (
+              <line
+                data-testid="measure-line"
+                x1={worldPoint(measurementFrom.point).x}
+                y1={worldPoint(measurementFrom.point).y}
+                x2={worldPoint(measurementTo.point).x}
+                y2={worldPoint(measurementTo.point).y}
+              />
+            )}
+            {[measurementFrom, measurementTo]
+              .filter((point): point is MeasurementSnapPoint => !!point)
+              .map((point, index) => (
+                <circle
+                  key={`${point.id}:${index}`}
+                  data-testid={
+                    index === 0 ? 'measure-first-point' : 'measure-snap-point'
+                  }
+                  cx={worldPoint(point.point).x}
+                  cy={worldPoint(point.point).y}
+                  r={index === 0 ? 7 : 6}
+                />
+              ))}
+            <rect
+              className="a-measure-hit-layer"
+              width={width}
+              height={height}
+              fill="transparent"
+              role="button"
+              aria-label={t('assembly.measurePickPoint')}
+              onPointerMove={(event) =>
+                setHoveredMeasurePoint(measurementPointAt(event))
+              }
+              onPointerLeave={() => setHoveredMeasurePoint(undefined)}
+              onPointerDown={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                const point = measurementPointAt(event);
+                if (point) selectedStore.chooseMeasurementPoint(point);
+              }}
+            />
+          </g>
+        )}
       </svg>
+      {selectedStore.measurement && (
+        <div className="a-measure-hud" role="status" data-testid="measure-hud">
+          <strong>{t('assembly.measure')}</strong>
+          {selectedStore.measurement.result ? (
+            <>
+              <span>
+                {selectedStore.measurement.result.from.label} →{' '}
+                {selectedStore.measurement.result.to.label}
+              </span>
+              <b>{length(selectedStore.measurement.result.distanceMm)}</b>
+            </>
+          ) : measurementFrom ? (
+            <span>
+              {t('assembly.measurePickSecond', {
+                point: measurementFrom.label,
+              })}
+            </span>
+          ) : (
+            <span>{t('assembly.measurePickFirst')}</span>
+          )}
+        </div>
+      )}
+      {identityMember &&
+        identityMemberLengthMm !== undefined &&
+        !selectedWindowOverlay && (
+          <div
+            className={`a-member-hud ${selectedMember ? 'is-selected' : 'is-hover'}`}
+            role="status"
+            data-testid="member-local-hud"
+          >
+            <strong>{memberInstanceCode(identityMember.id)}</strong>
+            <span>{length(identityMemberLengthMm)}</span>
+            <span>
+              {length(identityMember.section.widthMm)} ×{' '}
+              {length(identityMember.section.depthMm)}
+            </span>
+          </div>
+        )}
       {selectedWindowOverlay && (
         <div
           className={`a-window-hud ${selectedWindowOverlay.collisionIds.size ? 'is-warning' : ''}`}
@@ -1626,8 +1832,8 @@ function SkeletonCanvasComponent({
               'feature:roof-window-',
               'O',
             )}{' '}
-            · {Math.round(selectedWindowOverlay.feature.widthMm)} ×{' '}
-            {Math.round(selectedWindowOverlay.feature.heightMm)} mm
+            · {length(selectedWindowOverlay.feature.widthMm)} ×{' '}
+            {length(selectedWindowOverlay.feature.heightMm)}
           </strong>
           {selectedBay && (
             <span>
@@ -1650,10 +1856,10 @@ function SkeletonCanvasComponent({
         <div className="a-window-hud a-batten-hud" role="status">
           <strong>
             L{selectedBatten.id.split(':').at(-1)} ·{' '}
-            {selectedStore.battenLayout?.gaugeMm ?? 0} mm
+            {length(selectedStore.battenLayout?.gaugeMm ?? 0)}
           </strong>
           <span>
-            {Math.round(selectedBatten.usableLengthMm)} mm ·{' '}
+            {length(selectedBatten.usableLengthMm)} ·{' '}
             {selectedBatten.segments.length}{' '}
             {t('assembly.battenSegments').toLowerCase()}
           </span>
@@ -1695,7 +1901,10 @@ function SkeletonCanvasComponent({
         </button>
         <button
           aria-label={t('assembly.fit')}
-          onClick={() => setViewport(fittedViewport)}
+          onClick={() => {
+            activeFitRef.current = candidateFitRef.current;
+            setViewport({ ...fittedViewport });
+          }}
         >
           <Maximize size={16} />
         </button>
@@ -1728,7 +1937,12 @@ function SkeletonCanvasComponent({
             )}
           </dt>
           <dd>
-            {spacing.bayCount} × {length(spacing.actualSpacingMm)}
+            {spacingSummaryDimensions
+              .map(
+                (dimension) =>
+                  `${dimension.count} × ${length(dimension.spacingMm)}`,
+              )
+              .join(' + ')}
           </dd>
         </div>
         <div>

@@ -396,7 +396,8 @@ export function Toolbox({
             </button>
             <button
               className="a-layer-toggle"
-              aria-pressed={layer.enabled}
+              role="switch"
+              aria-checked={layer.enabled}
               aria-label={`${t(`assembly.${layer.label}`)} · ${t(`assembly.${layer.enabled ? 'enabled' : 'disabled'}`)}`}
               onClick={layer.toggle}
             >

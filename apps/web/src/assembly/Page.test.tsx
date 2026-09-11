@@ -41,6 +41,22 @@ const canvasButton = (name: string) =>
   within(screen.getByTestId('assembly-drawing')).getByRole('button', { name });
 
 describe('dual-mode parametric workbench', () => {
+  it('uses centimetres consistently in Quick Calc and Builder when preferred', async () => {
+    act(() => useAssembly.getState().setUnit('cm'));
+    render(<App />);
+
+    expect(input('Rzut do osi kalenicy').value).toBe('400');
+    expect(useAssembly.getState().unit).toBe('cm');
+    builder();
+    await screen.findByTestId('skeleton-drawing');
+    expect(useAssembly.getState().unit).toBe('cm');
+    expect(
+      screen
+        .getAllByLabelText('Rzut do osi kalenicy')
+        .every((field) => (field as HTMLInputElement).value === '400'),
+    ).toBe(true);
+  });
+
   it('starts with three basic inputs and transfers exact geometry and results to Builder', () => {
     render(<App />);
     expect(document.querySelectorAll('.a-basic-fields input')).toHaveLength(3);
@@ -147,7 +163,21 @@ describe('dual-mode parametric workbench', () => {
       screen.getAllByText(/żadne pole nie przekracza 800 mm/).length,
     ).toBeGreaterThan(0);
     expect(screen.getAllByTestId('spacing-station-axis')).toHaveLength(3);
+    expect(screen.getAllByTestId('spacing-bay-dimension')).toHaveLength(1);
+    expect(screen.getByTestId('spacing-bay-dimension').textContent).toContain(
+      '2 × 470 mm',
+    );
+    fireEvent.click(screen.getByRole('radio', { name: 'Pełne' }));
     expect(screen.getAllByTestId('spacing-bay-dimension')).toHaveLength(2);
+    expect(
+      screen
+        .getAllByTestId('spacing-bay-dimension')
+        .every(
+          (node) =>
+            node.getAttribute('data-spacing-presentation') === 'individual',
+        ),
+    ).toBe(true);
+    fireEvent.click(screen.getByRole('radio', { name: 'Robocze' }));
     fireEvent.change(screen.getByLabelText('Sposób rozstawu'), {
       target: { value: 'target-even-spacing' },
     });
@@ -395,6 +425,40 @@ describe('dual-mode parametric workbench', () => {
     expect(container.textContent).not.toContain('assembly.');
     expect(document.documentElement.lang).toBe('en');
   });
+  it('keeps workspace focus and exact 3D measurement transient with Escape cancellation', () => {
+    const { container } = render(<App />);
+    builder();
+    const app = container.querySelector('.assembly-app')!;
+    const project = structuredClone(useAssembly.getState().projectDocument);
+    const historyLength = useAssembly.getState().historyPast.length;
+
+    fireEvent.click(screen.getByRole('button', { name: 'Skup widok' }));
+    expect(container.querySelector('.is-workspace-focus')).toBeTruthy();
+    fireEvent.keyDown(app, { key: 'Escape' });
+    expect(container.querySelector('.is-workspace-focus')).toBeNull();
+
+    fireEvent.keyDown(app, { key: 'm' });
+    expect(screen.getByTestId('measure-hud').textContent).toContain(
+      'Wskaż pierwszy punkt',
+    );
+    act(() => {
+      useAssembly.getState().chooseMeasurementPoint({
+        id: 'a',
+        label: 'A',
+        point: { x: 0, y: 0, z: 0 },
+      });
+      useAssembly.getState().chooseMeasurementPoint({
+        id: 'b',
+        label: 'B',
+        point: { x: 300, y: 400, z: 1200 },
+      });
+    });
+    expect(screen.getByTestId('measure-hud').textContent).toContain('1300 mm');
+    expect(useAssembly.getState().projectDocument).toEqual(project);
+    expect(useAssembly.getState().historyPast).toHaveLength(historyLength);
+    fireEvent.keyDown(app, { key: 'Escape' });
+    expect(screen.queryByTestId('measure-hud')).toBeNull();
+  });
   it.each(['mouse', 'touch'])(
     'drags with %s through the screen transform, updates live and supports cancellation',
     (pointerType) => {
@@ -500,6 +564,9 @@ describe('dual-mode parametric workbench', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Krokiew #4 - lewa' }));
     expect(container.querySelectorAll('.kind-rafter.is-selected')).toHaveLength(
       1,
+    );
+    expect(screen.getByTestId('member-local-hud').textContent).toContain(
+      'K1-04',
     );
     expect(screen.getByText('instance:rafter-pair-4:left')).toBeTruthy();
     expect(screen.getAllByText('Krokiew K1').length).toBeGreaterThan(0);
@@ -619,11 +686,14 @@ describe('dual-mode parametric workbench', () => {
     render(<App />);
     builder();
     const before = structuredClone(useAssembly.getState().template);
+    const drawing = screen.getByTestId('skeleton-drawing');
+    const fitScaleBeforeEdit = drawing.getAttribute('data-fit-scale');
     const pitchHandle = screen.getByRole('slider', {
       name: 'Przeciągnij, aby zmienić kąt połaci',
     });
     fireEvent.keyDown(pitchHandle, { key: 'ArrowUp' });
     expect(useAssembly.getState().template.pitchDeg).toBe(35.5);
+    expect(drawing.getAttribute('data-fit-scale')).toBe(fitScaleBeforeEdit);
     expect(
       (screen.getByRole('button', { name: 'Cofnij' }) as HTMLButtonElement)
         .disabled,
@@ -781,10 +851,13 @@ describe('dual-mode parametric workbench', () => {
     expect(useAssembly.getState().activeTransaction).toBeUndefined();
     expect(container.querySelector('[data-handle="purlin"]')).toBeNull();
   });
-  it('places a canonical geometric opening on a roof plane and selects a derived batten row', () => {
+  it('places a canonical geometric opening on a roof plane and selects a derived batten row', async () => {
+    vi.stubGlobal('PointerEvent', MouseEvent);
     const { container } = render(<App />);
     builder();
+    await screen.findByTestId('skeleton-drawing');
     const before = structuredClone(useAssembly.getState().projectDocument);
+    act(() => useAssembly.getState().setUnit('cm'));
     fireEvent.click(screen.getByRole('button', { name: 'Dodaj okno' }));
     expect(useAssembly.getState().workbench.viewPreset).toBe('openings');
     expect(useAssembly.getState().projectDocument).toEqual(before);
@@ -808,17 +881,38 @@ describe('dual-mode parametric workbench', () => {
       { x: 0, y: 0 },
     );
     fireEvent.pointerEnter(plane);
-    fireEvent.pointerMove(plane, { clientX: centre.x, clientY: centre.y });
+    let activePlane = container.querySelector(
+      '[data-roof-plane="roof-plane:left"]',
+    )!;
+    fireEvent.pointerMove(activePlane, {
+      clientX: centre.x,
+      clientY: centre.y,
+    });
     expect(useAssembly.getState().workbench.placementTool?.roofPlaneId).toBe(
       'roof-plane:left',
     );
-    fireEvent.pointerLeave(plane);
+    fireEvent.pointerLeave(activePlane);
     expect(
       useAssembly.getState().workbench.placementTool?.roofPlaneId,
     ).toBeUndefined();
-    fireEvent.pointerEnter(plane);
-    fireEvent.pointerMove(plane, { clientX: centre.x, clientY: centre.y });
-    fireEvent.click(plane, { clientX: centre.x, clientY: centre.y });
+    activePlane = container.querySelector(
+      '[data-roof-plane="roof-plane:left"]',
+    )!;
+    fireEvent.pointerEnter(activePlane);
+    activePlane = container.querySelector(
+      '[data-roof-plane="roof-plane:left"]',
+    )!;
+    fireEvent.pointerMove(activePlane, {
+      clientX: centre.x,
+      clientY: centre.y,
+    });
+    expect(
+      container.querySelector('.a-roof-window-ghost')?.textContent,
+    ).toContain('78 cm × 118 cm');
+    expect(
+      container.querySelector('.a-roof-window-ghost')?.textContent,
+    ).not.toContain('mm');
+    fireEvent.click(activePlane, { clientX: centre.x, clientY: centre.y });
     expect(
       container.querySelector('[data-roof-window="feature:roof-window-1"]'),
     ).toBeTruthy();
@@ -832,7 +926,16 @@ describe('dual-mode parametric workbench', () => {
     );
     fireEvent.click(screen.getByRole('tab', { name: 'Warstwy' }));
     fireEvent.click(screen.getByRole('tab', { name: 'Łaty' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Łaty · Wyłączona' }));
+    const battenSwitch = screen.getByRole('switch', {
+      name: 'Łaty · Wyłączona',
+    });
+    expect(battenSwitch.getAttribute('aria-checked')).toBe('false');
+    fireEvent.click(battenSwitch);
+    expect(
+      screen
+        .getByRole('switch', { name: 'Łaty · Włączona' })
+        .getAttribute('aria-checked'),
+    ).toBe('true');
     expect(screen.getByTestId('batten-inspector')).toBeTruthy();
     expect(
       container.querySelectorAll('.a-batten-segment').length,

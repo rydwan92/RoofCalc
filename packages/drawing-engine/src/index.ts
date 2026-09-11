@@ -1,3 +1,6 @@
+export * from './dimension-presentation';
+export * from './measurement';
+
 export interface Point {
   x: number;
   y: number;

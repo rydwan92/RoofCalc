@@ -22,4 +22,12 @@ describe('decimal editing and presentation', () => {
     expect(formatLength(5249.374921, 'm', 'pl')).toBe('5,249');
     expect(formatLength(5249.374921, 'm', 'en')).toBe('5.249');
   });
+  it('uses the shared precision policy without meaningless trailing zeros', () => {
+    expect(formatLength(800, 'mm', 'en')).toBe('800');
+    expect(formatLength(800, 'cm', 'en')).toBe('80');
+    expect(formatLength(800, 'm', 'en')).toBe('0.8');
+    expect(formatLength(774.7, 'mm', 'en')).toBe('774.7');
+    expect(formatLength(774.7, 'cm', 'en')).toBe('77.47');
+    expect(formatLength(774.7, 'm', 'en')).toBe('0.775');
+  });
 });

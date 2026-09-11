@@ -30,7 +30,6 @@ import {
   TimberInputs,
 } from './Inputs';
 import { AssemblyCanvas } from './Canvas';
-import { SkeletonCanvas } from './SkeletonCanvas';
 import { HipFabricationSheet } from './HipFabricationSheet';
 import {
   DetailDrawer,
@@ -51,6 +50,11 @@ import './styles.css';
 const MaterialSchedule = lazy(() =>
   import('./MaterialSchedule').then((module) => ({
     default: module.MaterialSchedule,
+  })),
+);
+const SkeletonCanvas = lazy(() =>
+  import('./SkeletonCanvas').then((module) => ({
+    default: module.SkeletonCanvas,
   })),
 );
 const MaterialScheduleInspector = lazy(() =>
@@ -216,7 +220,14 @@ export function AssemblyPage() {
             ...(state.template.ridge.thicknessMm > 0
               ? { widthMm: state.template.ridge.thicknessMm }
               : {}),
-            completeness: 'partial',
+            ...(state.template.ridge.depthMm !== undefined
+              ? { depthMm: state.template.ridge.depthMm }
+              : {}),
+            completeness:
+              state.template.ridge.thicknessMm > 0 &&
+              state.template.ridge.depthMm !== undefined
+                ? 'complete'
+                : 'partial',
           },
         },
         buildUp: [
@@ -270,6 +281,7 @@ export function AssemblyPage() {
       framingProjection.composedSkeleton,
       membrane,
       state.template.ridge.id,
+      state.template.ridge.depthMm,
       state.template.ridge.thicknessMm,
       surfaceProjection.planes,
     ],
@@ -501,8 +513,16 @@ export function AssemblyPage() {
           return;
         if (e.key === 'Escape') {
           if (state.activeTransaction) state.cancelTransaction();
+          else if (workbench.measurement) state.cancelMeasurement();
+          else if (workbench.workspaceFocus.active)
+            state.setWorkspaceFocus(false);
           else if (workbench.focusId) state.setFocusId(undefined);
           else state.stepBackContext();
+          return;
+        }
+        if (e.key.toLowerCase() === 'm' && workbench.mode === 'builder') {
+          e.preventDefault();
+          state.toggleMeasurement();
           return;
         }
         if (e.key.toLowerCase() === 'f' && workbench.mode === 'builder') {
@@ -649,6 +669,13 @@ export function AssemblyPage() {
                   label="ridgeWidth"
                   max={1000}
                 />
+                <NumberField
+                  field="ridge.depthMm"
+                  label="ridgeDepth"
+                  min={1}
+                  max={2000}
+                  optional
+                />
               </details>
               {state.spec.supports.some((s) => s.kind === 'purlin') && (
                 <p className="a-help">{t('assembly.purlinPresent')}</p>
@@ -676,7 +703,7 @@ export function AssemblyPage() {
         ) : (
           <>
             <div
-              className={`a-builder-layout ${workbench.toolboxCollapsed ? 'tools-collapsed' : ''}`}
+              className={`a-builder-layout ${workbench.toolboxCollapsed ? 'tools-collapsed' : ''} ${workbench.workspaceFocus.active ? 'is-workspace-focus' : ''}`}
             >
               <Toolbox
                 result={result}
@@ -689,6 +716,7 @@ export function AssemblyPage() {
                   activeInstance={activeInstance}
                   roofPackage={fabricationPackage}
                   activeOperation={activeOperation}
+                  selectedScheduleRow={selectedScheduleRow}
                 />
                 {workbench.viewPreset === 'layers' && (
                   <BuildUpSummaryBar
@@ -745,16 +773,18 @@ export function AssemblyPage() {
                       className="a-material-canvas"
                       data-material-surface="drawing"
                     >
-                      <SkeletonCanvas
-                        template={state.template}
-                        skeleton={framingProjection.composedSkeleton}
-                        collisionSkeleton={baseSkeleton}
-                        spacing={layoutSpacing}
-                        relatedIds={relatedSelectionIds}
-                        activeInstance={activeInstance}
-                        surfaceGeometry={surfaceProjection}
-                        counterBattens={counterBattenProjection}
-                      />
+                      <Suspense fallback={<div className="a-loading-panel" />}>
+                        <SkeletonCanvas
+                          template={state.template}
+                          skeleton={framingProjection.composedSkeleton}
+                          collisionSkeleton={baseSkeleton}
+                          spacing={layoutSpacing}
+                          relatedIds={relatedSelectionIds}
+                          activeInstance={activeInstance}
+                          surfaceGeometry={surfaceProjection}
+                          counterBattens={counterBattenProjection}
+                        />
+                      </Suspense>
                     </div>
                     <div data-material-surface="schedule">
                       <Suspense fallback={<div className="a-loading-panel" />}>
@@ -782,20 +812,22 @@ export function AssemblyPage() {
                 ) : workbench.canvasView === 'rafter' ? (
                   <AssemblyCanvas result={result} />
                 ) : (
-                  <SkeletonCanvas
-                    template={state.template}
-                    skeleton={skeleton}
-                    collisionSkeleton={baseSkeleton}
-                    proposalMemberIds={
-                      new Set(proposalMembers.map((member) => member.id))
-                    }
-                    spacing={layoutSpacing}
-                    relatedSupportId={activeOperation?.relatedSupportId}
-                    relatedIds={relatedSelectionIds}
-                    activeInstance={activeInstance}
-                    surfaceGeometry={surfaceProjection}
-                    counterBattens={counterBattenProjection}
-                  />
+                  <Suspense fallback={<div className="a-loading-panel" />}>
+                    <SkeletonCanvas
+                      template={state.template}
+                      skeleton={skeleton}
+                      collisionSkeleton={baseSkeleton}
+                      proposalMemberIds={
+                        new Set(proposalMembers.map((member) => member.id))
+                      }
+                      spacing={layoutSpacing}
+                      relatedSupportId={activeOperation?.relatedSupportId}
+                      relatedIds={relatedSelectionIds}
+                      activeInstance={activeInstance}
+                      surfaceGeometry={surfaceProjection}
+                      counterBattens={counterBattenProjection}
+                    />
+                  </Suspense>
                 )}
               </section>
               {workbench.viewPreset === 'materials' ? (

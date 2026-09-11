@@ -1297,6 +1297,66 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+> Iteration 017 completed in source on 2026-09-11 from clean commit `162613584d7f1d0f09f226bf4d691fd0ee223c74`. The user-approved attached V17 contract superseded the V16 browser-only `NEXT ACTION`.
+
+**Iteration:** `017 — Professional Workbench Polish, Units 2.0, smart dimensioning, measurement and ridge completion`
+
+**Status:** `COMPLETE IN SOURCE — AUTOMATED VALIDATION PASS; REQUIRED LIVE BROWSER/DEVICE QA UNAVAILABLE`
+
+**Baseline and V16 audit:**
+
+- Clean `main` at `1626135`; `git diff`, `git diff --stat` and `git diff --check` were empty/pass.
+- The shell has no global `pnpm`; the repository-pinned `npx pnpm@10.15.1` path passed typecheck, **339 tests across 36 files**, lint and production build.
+- Baseline web build: main **554.23 kB / 156.87 kB gzip**, Material Schedule **8.34 / 2.25 kB**, CSS **90.96 / 17.81 kB**, React **51.29 / 18.04 kB**, localization **49.54 / 16.09 kB**, icons **15.18 / 3.35 kB**; the known Vite >500 kB main-chunk advisory remains.
+- The audit confirmed duplicated `unit: 'mm'` defaults, no persisted display preference, literal millimetre presentation in Skeleton/Inspector/Schedule, repetitive SVG bay labels in Working mode, dense ungrouped roof Inspector controls and a ridge quantity override that is always partial because canonical ridge intent has thickness only.
+- The explicitly requested in-app Browser was initialized according to its skill protocol and returned `Browser is not available: iab`; no live visual/device QA is claimed.
+
+**Completed V17 architecture and behavior:**
+
+- Added one versioned, fault-tolerant web preference boundary with first-visit `cm`. Both Quick and Builder stores load/save through it; project reset preserves the preference, and unit changes remain outside project data and Undo/Redo.
+- Made the display precision policy explicit in the shared formatter: at most 1 decimal in mm, 2 in cm and 3 in m with no canonical rounding. Audited the skeleton, placement/drag/window/batten HUDs, Inspector, Material Schedule, context strip and 2D drag hints so ordinary lengths respect the current unit. Explicit aggregate lengths, areas and volumes retain m, m² and m³.
+- Added pure drawing-engine spacing presentation. Minimal has no bay labels; default Working collapses consecutive equal bays to an exact representative `count × spacing` and preserves a distinct remainder; Full exposes every exact bay on alternating lanes. The roof spacing solver and canonical stations are unchanged.
+- Added a deterministic screen-label priority helper. Selected/warning labels are protected and lower-priority overlapping roof-window labels are suppressed without creating a generic CAD label engine.
+- Added restrained local hover/selection feedback for physical skeleton members. The canvas HUD shows the generated physical code, exact 3D axis length and known section; the Inspector remains the exact/full edit surface.
+- Refined the context strip around the current task and selection, including physical member codes and schedule family/length/count context. Reorganized the roof Inspector into main parameters, layout, result and collapsed advanced section controls. Toolbox remains the select/add/enable surface; layer enable controls are explicit keyboard-operable ARIA switches.
+- Added desktop bounded sticky Toolbox/Inspector plus sticky task/context controls. Added transient workspace focus, which remembers/restores panel state with Escape and is separate from camera Fit.
+- Added a transient canonical 3D Measure tool with toolbar action and `M` shortcut. It snaps to memoized member endpoints, roof-plane vertices and projected roof-window corners; screen coordinates choose a candidate only, while the exact result is `Math.hypot(dx,dy,dz)` over canonical world millimetres. It blocks construction drags while active, restarts cleanly, cancels on Escape/task switch and creates no project/history/serialization state.
+- Added optional canonical `ridge.depthMm` with schema-V1 backward compatibility, exact Inspector input, clear/unset behavior, Undo/Redo and serialization. Quantity volume remains partial for old/incomplete ridge intent and includes the ridge only when the complete manual rectangular section exists. The previous skeleton depth fallback remains visual only and is not interpreted as quantity or structural advice.
+- Separated latest candidate fit bounds from the active skeleton camera fit. Canonical edits preserve the current projection/pan/zoom; explicit Fit or a viewport-size change adopts current bounds. `SkeletonCanvas` is now a task-level lazy chunk.
+- Added `docs/ARCHITECTURE_V17_UNITS_DIMENSIONS_MEASUREMENT_UX.md` and the repository V17 contract.
+
+**Files changed:**
+
+- Web preference/formatting: `apps/web/src/{unit-preference,format,store}.{ts,test.ts}` where applicable.
+- Web workbench: `apps/web/src/assembly/{Canvas,Inputs,Inspector,MaterialSchedule,Page,SkeletonCanvas,Toolbox,WorkbenchContextBar,WorkbenchControls,store,workbench}.tsx`/`.ts` where applicable, tests, translations and responsive styles.
+- Pure presentation/measurement: new `packages/drawing-engine/src/dimension-presentation.ts`, `measurement.ts`, their tests and barrel exports.
+- Ridge contract/coverage: timber-model ridge type, roof-math assembly/gable/hip schemas and skeleton projections, calculator-core project-document tests and quantity-core tests.
+- Documentation: the two V17 documents and this checkpoint. No dependency/lockfile change, commit, push, persistence service, product/costing, export or structural module was added.
+
+**Validation, performance and QA:**
+
+- Final repository-pinned TypeScript and ESLint checks pass with no warnings/errors.
+- Vitest passes **354 tests across 39 files**, up from 339/36. New coverage includes first/restored cm, all-unit preference round trips, reset/history isolation, precision examples, spacing grouping/remainder/full lanes, label priority, member HUD, placement ghost units, layer switch semantics, focus restore, exact Measure state/result/unit/Escape/task clearing/no history, no pixel distance, active-fit camera preservation and ridge partial/complete/undo/round-trip behavior.
+- Production web/API build passes. Web output: main **530.03 kB / 150.05 kB gzip**, lazy Skeleton Canvas **35.36 / 10.94 kB**, lazy Material Schedule **8.28 / 2.26 kB**, CSS **92.96 / 18.22 kB**, React **51.29 / 18.04 kB**, localization **49.54 / 16.09 kB**, icons **15.18 / 3.35 kB**; API ESM **1.11 kB**. Relative to V16, the main chunk is **24.20 kB smaller** before gzip despite V17 functionality. Vite still reports its >500 kB advisory for the main chunk.
+- Changed-file Prettier verification and `git diff --check` pass.
+- jsdom covers the 360 px workbench route already established by V16 plus the new touch-sized Measure hit policy and transient interactions. The requested in-app Browser returned `Browser is not available: iab`, so no live 1440×900/1024/768/360×800, native pointer/touch, clipping or horizontal-overflow claim is made.
+
+**Known limitations / assumptions:**
+
+- Measure V17 exposes exact direct 3D distance only. It does not invent plane-local deltas where two points lack one rigorous shared plane, and it does not persist measurements as construction objects.
+- The small collision policy currently governs the labels introduced/affected in this pass; it is intentionally not a general annotation-layout engine. Full mode can remain dense by user choice, while narrow policy still caps it to Working.
+- Ridge depth is manual geometric intent, not a default, migration, recommended section or structural verification. Old documents remain partial until the user supplies it.
+- The main chunk is reduced but remains above Vite's advisory threshold. Further splitting should follow measured task boundaries rather than fragmenting primitives.
+- Live visual/device acceptance remains outstanding only because the explicitly requested Browser surface was unavailable.
+
+**NEXT ACTION:**
+
+> When the in-app Browser is available, run the V17 production acceptance matrix on gable and hip at 1440×900, 1024, 768 and 360×800. Include a long 19-bay gable in Working and Full, cm/mm/m, member hover/selection HUD, opening placement ghost, all layer switches, long Inspector scrolling, workspace focus restore, Measure by mouse and touch, camera preservation through pitch/span/length edits, explicit Fit and horizontal overflow. Fix only evidenced V17 defects, rerun the definition-of-done suite, then stop for user review. Do not begin V18 automatically.
+
+---
+
+**Previous checkpoint — Iteration 016:**
+
 > Iteration 016 completed 2026-09-11 from clean commit `de1cbd2fef06f52015f2b85425a88b001927237b`. The attached V16 contract superseded the prior V15 `NEXT ACTION`. Baseline before edits: typecheck PASS, 324 tests across 34 files PASS, lint PASS, build PASS with main web chunk 536.23 kB / 151.73 kB gzip, `git diff --check` PASS.
 
 **Iteration:** `016 — Professional Workbench 2.0 and roof build-up geometry`

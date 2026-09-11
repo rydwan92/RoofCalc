@@ -12,12 +12,14 @@ export function NumberField({
   min = 0,
   max = 100000,
   step,
+  optional = false,
 }: {
   field: EditField;
   label: string;
   min?: number;
   max?: number;
   step?: number;
+  optional?: boolean;
 }) {
   const { t } = useTranslation();
   const state = useAssembly();
@@ -26,7 +28,7 @@ export function NumberField({
   const value = editValue(state.spec, field, state.template);
   const invalid =
     !!state.invalidFields[field] ||
-    !Number.isFinite(value) ||
+    (!optional && !Number.isFinite(value)) ||
     value < min ||
     value > max;
   const limit = (n: number) =>
@@ -96,7 +98,9 @@ export function NumberField({
       <small>
         {invalid
           ? t('assembly.invalidField')
-          : `${limit(min)}–${limit(max)} ${unit}`}
+          : optional && !Number.isFinite(value)
+            ? t('assembly.optionalManualValue')
+            : `${limit(min)}–${limit(max)} ${unit}`}
       </small>
     </label>
   );

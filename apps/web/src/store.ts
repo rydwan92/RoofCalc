@@ -10,6 +10,7 @@ import type {
   WorkbenchView,
 } from '@cieslacalc/calculator-core';
 import { editableLength, parseDecimal } from './format';
+import { loadDisplayUnit, saveDisplayUnit } from './unit-preference';
 
 export const fields = [
   'geometry.runMm',
@@ -106,10 +107,11 @@ interface WorkbenchState {
   toggleDimensions: () => void;
   reset: () => void;
 }
+const initialDisplayUnit = loadDisplayUnit();
 export const useWorkbench = create<WorkbenchState>((set) => ({
   input: structuredClone(workbenchDefaults),
-  draft: draftFor(workbenchDefaults, 'mm'),
-  unit: 'mm',
+  draft: draftFor(workbenchDefaults, initialDisplayUnit),
+  unit: initialDisplayUnit,
   selected: 'geometry',
   view: 'assembly',
   detailTarget: 'birdsmouth',
@@ -134,7 +136,8 @@ export const useWorkbench = create<WorkbenchState>((set) => ({
         input: setValue(state.input, field, value),
       };
     }),
-  setUnit: (unit) =>
+  setUnit: (unit) => {
+    saveDisplayUnit(unit);
     set((state) => ({
       unit,
       draft: Object.fromEntries(
@@ -148,7 +151,8 @@ export const useWorkbench = create<WorkbenchState>((set) => ({
           ];
         }),
       ) as Record<Field, string>,
-    })),
+    }));
+  },
   select: (selected) =>
     set((state) => ({
       selected,

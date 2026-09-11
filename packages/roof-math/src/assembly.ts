@@ -53,7 +53,11 @@ export const assemblySpecSchema: z.ZodType<AssemblySpec> = z
       section: z.object({ widthMm: mm(1, 1000), depthMm: mm(1, 2000) }),
     }),
     supports: z.array(supportSpecSchema).min(1),
-    ridge: z.object({ id: entityId, thicknessMm: mm(0, 1000) }),
+    ridge: z.object({
+      id: entityId,
+      thicknessMm: mm(0, 1000),
+      depthMm: mm(1, 2000).optional(),
+    }),
   })
   .superRefine((spec, ctx) => {
     const issue = (path: (string | number)[], message: string) =>
@@ -415,8 +419,7 @@ export function purlinPlacementSegments(
   const range = purlinRange(spec, widthMm);
   const supports = spec.supports
     .filter(
-      (support) =>
-        support.kind === 'purlin' && support.id !== excludeSupportId,
+      (support) => support.kind === 'purlin' && support.id !== excludeSupportId,
     )
     .sort((a, b) => a.placement.xMm - b.placement.xMm);
   const segments: { min: number; max: number }[] = [];
@@ -426,8 +429,12 @@ export function purlinPlacementSegments(
       range.max,
       support.placement.xMm - widthMm - 1,
     );
-    if (beforeSupport >= cursor) segments.push({ min: cursor, max: beforeSupport });
-    cursor = Math.max(cursor, support.placement.xMm + support.section.widthMm + 1);
+    if (beforeSupport >= cursor)
+      segments.push({ min: cursor, max: beforeSupport });
+    cursor = Math.max(
+      cursor,
+      support.placement.xMm + support.section.widthMm + 1,
+    );
   }
   if (cursor <= range.max) segments.push({ min: cursor, max: range.max });
   return segments;
@@ -499,8 +506,7 @@ export function distributePurlins(
     (sum, support) => sum + support.section.widthMm,
     0,
   );
-  const remainingClearSpaceMm =
-    rangeEndMm - rangeStartMm - totalPurlinWidthMm;
+  const remainingClearSpaceMm = rangeEndMm - rangeStartMm - totalPurlinWidthMm;
   if (remainingClearSpaceMm <= 0)
     throw new RangeError('no_purlin_distribution_space');
   const gapMm = remainingClearSpaceMm / (purlins.length + 1);

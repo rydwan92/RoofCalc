@@ -701,3 +701,67 @@ it('opens no stale detail for a limited J1 operation', () => {
     detailDrawer: { open: false, activePreviewId: undefined },
   });
 });
+
+it('keeps the display-unit preference transient across reset', () => {
+  useAssembly.setState({ historyPast: [], historyFuture: [] });
+  const project = structuredClone(useAssembly.getState().projectDocument);
+
+  useAssembly.getState().setUnit('cm');
+  useAssembly.getState().reset();
+
+  expect(useAssembly.getState().unit).toBe('cm');
+  expect(useAssembly.getState().projectDocument).toEqual(project);
+  expect(useAssembly.getState().historyPast).toHaveLength(0);
+});
+
+it('measures exact canonical 3D points without changing the project or history', () => {
+  useAssembly.getState().setMode('builder');
+  useAssembly.setState({ historyPast: [], historyFuture: [] });
+  const project = structuredClone(useAssembly.getState().projectDocument);
+
+  useAssembly.getState().toggleMeasurement();
+  useAssembly.getState().chooseMeasurementPoint({
+    id: 'a',
+    label: 'A',
+    point: { x: 0, y: 0, z: 0 },
+  });
+  useAssembly.getState().chooseMeasurementPoint({
+    id: 'b',
+    label: 'B',
+    point: { x: 300, y: 400, z: 1200 },
+  });
+
+  expect(useAssembly.getState().workbench.measurement?.result?.distanceMm).toBe(
+    1300,
+  );
+  expect(useAssembly.getState().projectDocument).toEqual(project);
+  expect(useAssembly.getState().historyPast).toHaveLength(0);
+  useAssembly.getState().cancelMeasurement();
+  expect(useAssembly.getState().workbench.measurement).toBeUndefined();
+  useAssembly.getState().toggleMeasurement();
+  useAssembly.getState().setViewPreset('materials');
+  expect(useAssembly.getState().workbench.measurement).toBeUndefined();
+  useAssembly.getState().toggleMeasurement();
+  useAssembly.getState().beginRoofWindowPlacement();
+  expect(useAssembly.getState().workbench.measurement).toBeUndefined();
+  useAssembly.getState().toggleMeasurement();
+  expect(useAssembly.getState().workbench.placementTool).toBeUndefined();
+});
+
+it('edits, clears and undoes the optional ridge depth canonically', () => {
+  expect(useAssembly.getState().template.ridge.depthMm).toBeUndefined();
+  useAssembly.setState({ historyPast: [], historyFuture: [] });
+
+  useAssembly.getState().setField('ridge.depthMm', '22');
+  expect(useAssembly.getState().template.ridge.depthMm).toBe(22);
+  expect(
+    useAssembly.getState().projectDocument.project.roof.ridge.depthMm,
+  ).toBe(22);
+  expect(useAssembly.getState().historyPast).toHaveLength(1);
+
+  useAssembly.getState().undo();
+  expect(useAssembly.getState().template.ridge.depthMm).toBeUndefined();
+  useAssembly.getState().setField('ridge.depthMm', '22');
+  useAssembly.getState().setField('ridge.depthMm', '');
+  expect(useAssembly.getState().template.ridge.depthMm).toBeUndefined();
+});

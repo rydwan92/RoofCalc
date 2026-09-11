@@ -104,7 +104,7 @@ export interface AssemblySpec {
   roof: { runMm: number; pitchDeg: number; overhangMm: number };
   member: { id: EntityId; section: TimberSection };
   supports: SupportSpec[];
-  ridge: { id: EntityId; thicknessMm: number };
+  ridge: { id: EntityId; thicknessMm: number; depthMm?: number };
 }
 export type RafterSpacingMode =
   'max-even-spacing' | 'target-even-spacing' | 'fixed-module';

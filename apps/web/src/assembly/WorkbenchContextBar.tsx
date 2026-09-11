@@ -13,8 +13,10 @@ import {
   type MemberInstanceContext,
   type RoofFabricationPackage,
 } from '@cieslacalc/calculator-core';
+import type { RoofMemberScheduleRow } from '@cieslacalc/quantity-core';
 import { formatLength } from '../format';
 import { useAssembly } from './store';
+import { memberInstanceCode } from './workbench';
 
 function familyName(
   code: MemberInstanceContext['familyCode'],
@@ -40,11 +42,13 @@ export function WorkbenchContextBar({
   activeInstance,
   roofPackage,
   activeOperation,
+  selectedScheduleRow,
 }: {
   instances: MemberInstanceContext[];
   activeInstance?: MemberInstanceContext;
   roofPackage: RoofFabricationPackage;
   activeOperation?: FabricationOperationSummary;
+  selectedScheduleRow?: RoofMemberScheduleRow;
 }) {
   const state = useAssembly();
   const { t, i18n } = useTranslation();
@@ -73,23 +77,39 @@ export function WorkbenchContextBar({
   const length = (value: number) =>
     `${formatLength(value, state.unit, i18n.language)} ${state.unit}`;
   const selectedId = state.workbench.selectedId;
-  const simpleSelection = selectedId.startsWith('surface:roof-plane:')
-    ? t(`assembly.${selectedId.replace('surface:roof-plane:', '')}`)
-    : selectedId.startsWith('counter-batten:')
-      ? `${t('assembly.counterBattens')} · ${selectedId.split(':').at(-2) ?? ''}`
-      : selectedId.startsWith('batten:')
-        ? `${t('assembly.battens')} · ${selectedId.split(':').at(-1) ?? ''}`
-        : selectedId.startsWith('feature:roof-window-')
-          ? `${t('assembly.roofWindow')} O${selectedId.split('-').at(-1)}`
-          : selectedId.startsWith('support:purlin-')
-            ? `${t('assembly.purlins')} P${selectedId.split('-').at(-1)}`
-            : selectedId === 'layer:membrane'
-              ? t('assembly.membrane')
-              : selectedId === 'layer:counter-battens'
-                ? t('assembly.counterBattens')
-                : selectedId === 'layer:battens'
-                  ? t('assembly.battens')
-                  : undefined;
+  const selectedWindow = state.projectDocument.project.features.find(
+    (feature) => feature.id === selectedId && feature.kind === 'roof-window',
+  );
+  const selectedPlane = /roof-plane:(left|right|front|rear)/.exec(
+    selectedId,
+  )?.[1];
+  const scheduleSection = selectedScheduleRow?.section.widthMm
+    ? selectedScheduleRow.section.depthMm === undefined
+      ? `${length(selectedScheduleRow.section.widthMm)} × ?`
+      : `${length(selectedScheduleRow.section.widthMm)} × ${length(selectedScheduleRow.section.depthMm)}`
+    : selectedScheduleRow?.familyKey;
+  const scheduleSelection = selectedScheduleRow
+    ? `${scheduleSection} · ${selectedScheduleRow.quantity} ${t('assembly.piecesShort')}`
+    : undefined;
+  const simpleSelection =
+    scheduleSelection ??
+    (selectedId.startsWith('surface:roof-plane:')
+      ? t(`assembly.${selectedId.replace('surface:roof-plane:', '')}`)
+      : selectedId.startsWith('counter-batten:')
+        ? `${t('assembly.counterBattens')} · ${selectedPlane ? t(`assembly.${selectedPlane}`) : ''}`
+        : selectedId.startsWith('batten:')
+          ? `${t('assembly.battens')} · ${selectedPlane ? t(`assembly.${selectedPlane}`) : ''}`
+          : selectedId.startsWith('feature:roof-window-')
+            ? `${t('assembly.roofWindow')} O${selectedId.split('-').at(-1)}${selectedWindow ? ` · ${t(`assembly.${selectedWindow.roofPlaneId.replace('roof-plane:', '')}`)}` : ''}`
+            : selectedId.startsWith('support:purlin-')
+              ? `${t('assembly.purlins')} P${selectedId.split('-').at(-1)}`
+              : selectedId === 'layer:membrane'
+                ? t('assembly.membrane')
+                : selectedId === 'layer:counter-battens'
+                  ? t('assembly.counterBattens')
+                  : selectedId === 'layer:battens'
+                    ? t('assembly.battens')
+                    : undefined);
   return (
     <section
       className="a-context-bar"
@@ -111,22 +131,26 @@ export function WorkbenchContextBar({
             </strong>
           </>
         )}
-        <span aria-hidden="true">·</span>
-        <button
-          onClick={() => state.select('roof')}
-          aria-current={
-            state.workbench.selectedId === 'roof' ? 'page' : undefined
-          }
-        >
-          {t(`assembly.${roofPackage.roofType}Roof`)}
-        </button>
+        {!activeInstance && !simpleSelection && !activeOperation && (
+          <>
+            <span aria-hidden="true">·</span>
+            <button
+              onClick={() => state.select('roof')}
+              aria-current={
+                state.workbench.selectedId === 'roof' ? 'page' : undefined
+              }
+            >
+              {t(`assembly.${roofPackage.roofType}Roof`)}
+            </button>
+          </>
+        )}
         {simpleSelection && (
           <>
             <span aria-hidden="true">·</span>
             <strong aria-current="page">{simpleSelection}</strong>
           </>
         )}
-        {family && (
+        {family && !activeInstance && (
           <>
             <span aria-hidden="true">›</span>
             <button
@@ -143,10 +167,8 @@ export function WorkbenchContextBar({
           <>
             <span aria-hidden="true">›</span>
             <button onClick={() => goTo(activeInstance)}>
-              {t('assembly.instanceShort', {
-                current: activeInstance.instanceIndex,
-                total: activeInstance.instanceCount,
-              })}
+              {memberInstanceCode(activeInstance.instanceId)} ·{' '}
+              {familyName(activeInstance.familyCode, t)}
             </button>
           </>
         )}

@@ -1,4 +1,8 @@
-import type { DrawingDimension } from '@cieslacalc/drawing-engine';
+import type {
+  DrawingDimension,
+  MeasurementResult,
+  MeasurementSnapPoint,
+} from '@cieslacalc/drawing-engine';
 import type {
   AssemblySpec,
   RoofSkeleton,
@@ -67,6 +71,16 @@ export interface WorkbenchViewState {
   collapsedToolGroups: WorkbenchToolCategory[];
   inspectorOpen: boolean;
   preparationExpanded: boolean;
+  workspaceFocus: {
+    active: boolean;
+    restoreToolboxCollapsed?: boolean;
+    restoreInspectorOpen?: boolean;
+  };
+  measurement?: {
+    active: true;
+    firstPoint?: MeasurementSnapPoint;
+    result?: MeasurementResult;
+  };
   focusId?: string;
   placementTool?: RoofWindowPlacementToolState;
   placementFeedback?: RoofWindowPlacementFeedback;
@@ -111,6 +125,8 @@ export const initialWorkbenchViewState: WorkbenchViewState = {
   collapsedToolGroups: [],
   inspectorOpen: true,
   preparationExpanded: false,
+  workspaceFocus: { active: false },
+  measurement: undefined,
   focusId: undefined,
   placementTool: undefined,
   placementFeedback: undefined,

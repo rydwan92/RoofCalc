@@ -5,6 +5,7 @@ import {
   Layers3,
   ListTree,
   Maximize,
+  Maximize2,
   Ruler,
   Scissors,
   SlidersHorizontal,
@@ -75,6 +76,27 @@ export function WorkbenchControls({ skeleton }: { skeleton: RoofSkeleton }) {
         </div>
       )}
       <div className="a-smart-view-controls">
+        <button
+          className="a-isolate-button a-measure-button"
+          aria-pressed={!!state.workbench.measurement}
+          title={t('assembly.measureShortcut')}
+          onClick={state.toggleMeasurement}
+        >
+          <Ruler size={16} />
+          {t('assembly.measure')}
+        </button>
+        <button
+          className="a-isolate-button a-workspace-focus-button"
+          aria-pressed={state.workbench.workspaceFocus.active}
+          onClick={() =>
+            state.setWorkspaceFocus(!state.workbench.workspaceFocus.active)
+          }
+        >
+          <Maximize2 size={16} />
+          {t(
+            `assembly.${state.workbench.workspaceFocus.active ? 'restoreWorkspace' : 'focusWorkspace'}`,
+          )}
+        </button>
         {!state.workbench.selectedInstanceId && (
           <button
             className="a-isolate-button"

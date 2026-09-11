@@ -14,6 +14,7 @@ import {
   resolveRoofFeatureCollisions,
   resolveNearestRoofWindowBay,
   roofPlaneIds,
+  toMillimetres,
   type CounterBattenLayoutResult,
   type RoofSurfaceGeometryResult,
 } from '@cieslacalc/roof-math';
@@ -24,11 +25,14 @@ import type {
   RoofWindowFeature,
 } from '@cieslacalc/timber-model';
 import { entityLabel } from './Canvas';
+import { editableLength, formatLength, parseDecimal } from '../format';
 import {
   GeometryInputs,
   HipTimberInputs,
   NumberField,
+  RoofTypeSelector,
   SupportInputs,
+  TemplateInputs,
   TimberInputs,
   type Calculation,
 } from './Inputs';
@@ -116,15 +120,49 @@ export function Inspector({
           )}
           {workbench.selectedId === 'roof' && (
             <>
-              <GeometryInputs includeLayout />
-              {spacingEntries.map((entry) => (
-                <SpacingSummary
-                  key={`${entry.headingKey ?? 'gable'}:${entry.spacing.mode}`}
-                  spacing={entry.spacing}
-                  stationLabelKey={entry.stationLabelKey}
-                  headingKey={entry.headingKey}
-                />
-              ))}
+              <RoofTypeSelector context="roof" />
+              <section className="a-inspector-group is-primary">
+                <h3>{t('assembly.mainParameters')}</h3>
+                <GeometryInputs />
+              </section>
+              <TemplateInputs />
+              <section className="a-inspector-group is-result">
+                <h3>{t('assembly.result')}</h3>
+                {spacingEntries.map((entry) => (
+                  <SpacingSummary
+                    key={`${entry.headingKey ?? 'gable'}:${entry.spacing.mode}`}
+                    spacing={entry.spacing}
+                    stationLabelKey={entry.stationLabelKey}
+                    headingKey={entry.headingKey}
+                  />
+                ))}
+              </section>
+              <details className="a-inspector-advanced">
+                <summary>{t('assembly.advanced')}</summary>
+                <div>
+                  <h3>K1 · {t('assembly.commonRafter')}</h3>
+                  <TimberInputs />
+                  {state.template.type === 'hip' && (
+                    <>
+                      <h3>H1 · {t('assembly.hipRafter')}</h3>
+                      <HipTimberInputs />
+                    </>
+                  )}
+                  <h3>{t('assembly.ridge')}</h3>
+                  <NumberField
+                    field="ridge.thicknessMm"
+                    label="ridgeWidth"
+                    max={1000}
+                  />
+                  <NumberField
+                    field="ridge.depthMm"
+                    label="ridgeDepth"
+                    min={1}
+                    max={2000}
+                    optional
+                  />
+                </div>
+              </details>
             </>
           )}
           {roofWindow && (
@@ -153,11 +191,20 @@ export function Inspector({
           )}
           {(workbench.selectedId === state.spec.ridge.id ||
             workbench.selectedId === 'cut:ridge') && (
-            <NumberField
-              field="ridge.thicknessMm"
-              label="ridgeWidth"
-              max={1000}
-            />
+            <>
+              <NumberField
+                field="ridge.thicknessMm"
+                label="ridgeWidth"
+                max={1000}
+              />
+              <NumberField
+                field="ridge.depthMm"
+                label="ridgeDepth"
+                min={1}
+                max={2000}
+                optional
+              />
+            </>
           )}
           {support && <SupportInputs support={support} result={result} />}
           {detailPreviews.length > 0 && (
@@ -191,7 +238,7 @@ export function Inspector({
   );
 }
 
-function DraftMillimetreField({
+function DraftLengthField({
   label,
   value,
   min = 0,
@@ -204,18 +251,23 @@ function DraftMillimetreField({
 }) {
   const state = useAssembly();
   const { t } = useTranslation();
-  const [raw, setRaw] = useState(String(value));
-  useEffect(() => setRaw(String(value)), [value]);
-  const parsed = Number(raw.replace(',', '.'));
-  const invalid = raw.trim() === '' || !Number.isFinite(parsed) || parsed < min;
-  const restore = () => setRaw(String(value));
+  const [raw, setRaw] = useState(editableLength(value, state.unit));
+  useEffect(
+    () => setRaw(editableLength(value, state.unit)),
+    [state.unit, value],
+  );
+  const parsed = parseDecimal(raw);
+  const canonicalValue =
+    parsed === null ? Number.NaN : toMillimetres(parsed, state.unit);
+  const invalid = !Number.isFinite(canonicalValue) || canonicalValue < min;
+  const restore = () => setRaw(editableLength(value, state.unit));
   const commit = () => {
     if (invalid) {
       state.cancelTransaction();
       restore();
       return;
     }
-    onCommit(parsed);
+    onCommit(canonicalValue);
     state.commitTransaction();
   };
   return (
@@ -245,7 +297,7 @@ function DraftMillimetreField({
             }
           }}
         />
-        <span>mm</span>
+        <span>{state.unit}</span>
       </div>
       {invalid && <small>{t('assembly.invalidField')}</small>}
     </label>
@@ -342,6 +394,8 @@ function CounterBattenInspector({
   const selected = result.rows.find(
     (row) => row.id === state.workbench.selectedId,
   );
+  const length = (value: number) =>
+    `${formatLength(value, state.unit, i18n.language)} ${state.unit}`;
   const planeIds = roofPlaneIds(state.template);
   const activePlaneIds = layout.roofPlaneIds ?? planeIds;
   const update = (field: 'widthMm' | 'heightMm', value: number) =>
@@ -353,13 +407,13 @@ function CounterBattenInspector({
     >
       <h3>{t('assembly.counterBattens')}</h3>
       <h4>{t('assembly.section')}</h4>
-      <DraftMillimetreField
+      <DraftLengthField
         label={t('assembly.width')}
         value={layout.widthMm}
         min={1}
         onCommit={(value) => update('widthMm', value)}
       />
-      <DraftMillimetreField
+      <DraftLengthField
         label={t('assembly.height')}
         value={layout.heightMm}
         min={1}
@@ -412,7 +466,7 @@ function CounterBattenInspector({
       {selected && (
         <p className="a-layer-selection-detail">
           {memberInstanceCode(selected.sourceMemberId)} ·{' '}
-          {Math.round(selected.visibleLengthMm)} mm · {selected.segments.length}{' '}
+          {length(selected.visibleLengthMm)} · {selected.segments.length}{' '}
           {t('assembly.segments').toLowerCase()}
         </p>
       )}
@@ -447,6 +501,8 @@ function BattenLayoutInspector() {
   );
   const planeName = (id: string) =>
     t(`assembly.${id.replace('roof-plane:', '')}`);
+  const length = (value: number) =>
+    `${formatLength(value, state.unit, i18n.language)} ${state.unit}`;
   return (
     <section className="a-batten-inspector" data-testid="batten-inspector">
       <h3>{t('assembly.battens')}</h3>
@@ -461,7 +517,7 @@ function BattenLayoutInspector() {
           ['battenHeightMm', 'battenHeight'],
         ] as const
       ).map(([field, label]) => (
-        <DraftMillimetreField
+        <DraftLengthField
           key={field}
           label={t(`assembly.${label}`)}
           value={layout[field]}
@@ -477,7 +533,7 @@ function BattenLayoutInspector() {
           ['ridgeOffsetMm', 'battenRidgeOffset'],
         ] as const
       ).map(([field, label]) => (
-        <DraftMillimetreField
+        <DraftLengthField
           key={field}
           label={t(`assembly.${label}`)}
           value={layout[field] ?? 0}
@@ -502,7 +558,7 @@ function BattenLayoutInspector() {
         </div>
         <div>
           <dt>{t('assembly.battenGauge')}</dt>
-          <dd>{layout.gaugeMm} mm</dd>
+          <dd>{length(layout.gaugeMm)}</dd>
         </div>
       </dl>
       {selectedRow && (
@@ -520,11 +576,11 @@ function BattenLayoutInspector() {
             </div>
             <div>
               <dt>{t('assembly.battenPosition')}</dt>
-              <dd>{Math.round(selectedRow.stationMm)} mm</dd>
+              <dd>{length(selectedRow.stationMm)}</dd>
             </div>
             <div>
               <dt>{t('assembly.battenLength')}</dt>
-              <dd>{Math.round(selectedRow.usableLengthMm)} mm</dd>
+              <dd>{length(selectedRow.usableLengthMm)}</dd>
             </div>
             <div>
               <dt>{t('assembly.battenSegments')}</dt>
@@ -535,7 +591,7 @@ function BattenLayoutInspector() {
             {selectedRow.segments.map((segment, index) => (
               <li key={`${segment.fromUMm}:${segment.toUMm}`}>
                 {t('assembly.segment')} {index + 1}:{' '}
-                {Math.round(segment.toUMm - segment.fromUMm)} mm
+                {length(segment.toUMm - segment.fromUMm)}
               </li>
             ))}
           </ol>
@@ -553,7 +609,9 @@ function RoofWindowInspector({
   skeleton: RoofSkeleton;
 }) {
   const state = useAssembly();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const length = (value: number) =>
+    `${formatLength(value, state.unit, i18n.language)} ${state.unit}`;
   const collisions = resolveRoofFeatureCollisions({
     template: state.template,
     skeleton,
@@ -636,7 +694,7 @@ function RoofWindowInspector({
           ['vMm', 'windowPositionV', feature.position.vMm],
         ] as const
       ).map(([field, label, value]) => (
-        <DraftMillimetreField
+        <DraftLengthField
           key={field}
           label={t(`assembly.${label}`)}
           value={value}
@@ -653,7 +711,7 @@ function RoofWindowInspector({
         <p className="a-window-bay">
           {t('assembly.nearestBay')}:{' '}
           {nearestBay.memberInstanceIds.map(memberInstanceCode).join(' — ')} ·{' '}
-          {Math.round(nearestBay.availableWidthMm)} mm
+          {length(nearestBay.availableWidthMm)}
         </p>
       )}
       {feedback?.status === 'placed' && feedback.memberInstanceIds && (
@@ -666,7 +724,7 @@ function RoofWindowInspector({
         <p className="a-window-warning" role="alert">
           {feedback.reason === 'opening-too-wide' &&
           feedback.availableWidthMm !== undefined
-            ? `${t('assembly.openingTooWide')} ${Math.round(feedback.requiredWidthMm ?? feature.widthMm)} mm / ${Math.round(feedback.availableWidthMm)} mm.`
+            ? `${t('assembly.openingTooWide')} ${length(feedback.requiredWidthMm ?? feature.widthMm)} / ${length(feedback.availableWidthMm)}.`
             : t('assembly.noRafterBay')}
         </p>
       )}
@@ -710,11 +768,11 @@ function RoofWindowInspector({
               </div>
               <div>
                 <dt>{t('assembly.upperHeader')}</dt>
-                <dd>{Math.round(framing.upperFramingMember!.lengthMm)} mm</dd>
+                <dd>{length(framing.upperFramingMember!.lengthMm)}</dd>
               </div>
               <div>
                 <dt>{t('assembly.lowerHeader')}</dt>
-                <dd>{Math.round(framing.lowerFramingMember!.lengthMm)} mm</dd>
+                <dd>{length(framing.lowerFramingMember!.lengthMm)}</dd>
               </div>
             </dl>
             <p className="a-limit-note">

@@ -4,6 +4,10 @@ import {
   type RoofProjectDocumentV1,
 } from '@cieslacalc/calculator-core';
 import {
+  measureDistance3d,
+  type MeasurementSnapPoint,
+} from '@cieslacalc/drawing-engine';
+import {
   addPurlin,
   assemblyDefaults,
   assemblyFromRoofTemplate,
@@ -38,6 +42,7 @@ import type {
   SupportSpec,
 } from '@cieslacalc/timber-model';
 import { editableLength, parseDecimal } from '../format';
+import { loadDisplayUnit, saveDisplayUnit } from '../unit-preference';
 import {
   initialWorkbenchViewState,
   type BuildUpView,
@@ -60,6 +65,7 @@ export type EditField =
   | 'hip.widthMm'
   | 'hip.depthMm'
   | 'ridge.thicknessMm'
+  | 'ridge.depthMm'
   | 'template.buildingLengthMm'
   | 'template.rafterSpacingMm'
   | `support/${string}/${SupportField}`;
@@ -80,6 +86,7 @@ export function editableFields(spec: AssemblySpec): EditField[] {
     'member.widthMm',
     'member.depthMm',
     'ridge.thicknessMm',
+    'ridge.depthMm',
     'template.buildingLengthMm',
     'template.rafterSpacingMm',
     ...spec.supports.flatMap((s) =>
@@ -102,6 +109,7 @@ export function editValue(
     return template?.type === 'hip' ? template.hipRafterSection.widthMm : NaN;
   if (field === 'hip.depthMm')
     return template?.type === 'hip' ? template.hipRafterSection.depthMm : NaN;
+  if (field === 'ridge.depthMm') return spec.ridge.depthMm ?? NaN;
   if (field.startsWith('support/')) {
     const [, id, key] = field.split('/');
     const support = spec.supports.find((s) => s.id === id)!;
@@ -157,6 +165,10 @@ function editedSpec(
         break;
       case 'ridge.thicknessMm':
         next.ridge.thicknessMm = value;
+        break;
+      case 'ridge.depthMm':
+        if (Number.isFinite(value)) next.ridge.depthMm = value;
+        else delete next.ridge.depthMm;
         break;
     }
   }
@@ -273,6 +285,10 @@ export interface AssemblyState {
   ) => void;
   setInspectorOpen: (open: boolean) => void;
   setPreparationExpanded: (expanded: boolean) => void;
+  setWorkspaceFocus: (active: boolean) => void;
+  toggleMeasurement: () => void;
+  chooseMeasurementPoint: (point: MeasurementSnapPoint) => void;
+  cancelMeasurement: () => void;
   setFocusId: (focusId?: string) => void;
   requestFit: () => void;
   setDetailDrawer: (
@@ -371,7 +387,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
   template: structuredClone(templateDefaults),
   spec: assemblyFromRoofTemplate(templateDefaults),
   workbench: structuredClone(initialWorkbenchViewState),
-  unit: 'mm',
+  unit: loadDisplayUnit(),
   drafts: {},
   invalidFields: {},
   historyPast: [],
@@ -379,7 +395,13 @@ export const useAssembly = create<AssemblyState>((set) => ({
   activeTransaction: undefined,
   setMode: (mode) =>
     set((state) => ({
-      workbench: { ...state.workbench, mode, focusId: undefined },
+      workbench: {
+        ...state.workbench,
+        mode,
+        focusId: undefined,
+        measurement:
+          mode === 'builder' ? state.workbench.measurement : undefined,
+      },
     })),
   setRoofType: (type) =>
     set((state) => {
@@ -404,6 +426,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
           canvasView: 'skeleton',
           isolateSelection: false,
           activeOperationId: undefined,
+          measurement: undefined,
         },
       };
     }),
@@ -414,6 +437,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
       workbench: {
         ...state.workbench,
         viewPreset,
+        measurement: undefined,
         returnViewPreset:
           viewPreset === 'cuts' ? state.workbench.returnViewPreset : undefined,
         placementTool:
@@ -529,6 +553,68 @@ export const useAssembly = create<AssemblyState>((set) => ({
   setPreparationExpanded: (preparationExpanded) =>
     set((state) => ({
       workbench: { ...state.workbench, preparationExpanded },
+    })),
+  setWorkspaceFocus: (active) =>
+    set((state) => {
+      if (active === state.workbench.workspaceFocus.active) return state;
+      if (active)
+        return {
+          workbench: {
+            ...state.workbench,
+            toolboxCollapsed: true,
+            inspectorOpen: false,
+            workspaceFocus: {
+              active: true,
+              restoreToolboxCollapsed: state.workbench.toolboxCollapsed,
+              restoreInspectorOpen: state.workbench.inspectorOpen,
+            },
+          },
+        };
+      return {
+        workbench: {
+          ...state.workbench,
+          toolboxCollapsed:
+            state.workbench.workspaceFocus.restoreToolboxCollapsed ?? false,
+          inspectorOpen:
+            state.workbench.workspaceFocus.restoreInspectorOpen ?? true,
+          workspaceFocus: { active: false },
+        },
+      };
+    }),
+  toggleMeasurement: () =>
+    set((state) => ({
+      workbench: {
+        ...state.workbench,
+        measurement: state.workbench.measurement ? undefined : { active: true },
+        placementTool: undefined,
+        placementFeedback: undefined,
+      },
+    })),
+  chooseMeasurementPoint: (point) =>
+    set((state) => {
+      const current = state.workbench.measurement;
+      if (!current) return state;
+      if (!current.firstPoint || current.result)
+        return {
+          workbench: {
+            ...state.workbench,
+            measurement: { active: true, firstPoint: point },
+          },
+        };
+      return {
+        workbench: {
+          ...state.workbench,
+          measurement: {
+            active: true,
+            firstPoint: current.firstPoint,
+            result: measureDistance3d(current.firstPoint, point),
+          },
+        },
+      };
+    }),
+  cancelMeasurement: () =>
+    set((state) => ({
+      workbench: { ...state.workbench, measurement: undefined },
     })),
   setFocusId: (focusId) =>
     set((state) => ({ workbench: { ...state.workbench, focusId } })),
@@ -734,6 +820,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         ...state.workbench,
         viewPreset: 'openings',
         canvasView: 'skeleton',
+        measurement: undefined,
         placementTool: { kind: 'roof-window', step: 'choose-plane' },
         placementFeedback: undefined,
         activeOperationId: undefined,
@@ -820,7 +907,8 @@ export const useAssembly = create<AssemblyState>((set) => ({
     });
     return createdId;
   },
-  setUnit: (unit) =>
+  setUnit: (unit) => {
+    saveDisplayUnit(unit);
     set((state) => ({
       unit,
       drafts: Object.fromEntries(
@@ -832,7 +920,8 @@ export const useAssembly = create<AssemblyState>((set) => ({
             ),
         ),
       ),
-    })),
+    }));
+  },
   setField: (field, raw) =>
     set((state) => {
       const parsed = parseDecimal(raw);
