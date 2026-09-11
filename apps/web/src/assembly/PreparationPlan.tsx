@@ -55,6 +55,9 @@ export function PreparationPlan({
         (operation) => operation.id === state.workbench.activeOperationId,
       ),
     );
+  const selectedOpeningFraming = roofPackage.openingFraming.find(
+    (item) => item.featureId === state.workbench.selectedId,
+  );
   const activeOperation = selectedFamily?.operations.find(
     (operation) => operation.id === state.workbench.activeOperationId,
   );
@@ -167,7 +170,60 @@ export function PreparationPlan({
             </small>
           </button>
         ))}
+        {roofPackage.openingFraming.map((item) => (
+          <button
+            key={item.id}
+            className="a-preparation-card"
+            aria-pressed={selectedOpeningFraming?.id === item.id}
+            onClick={() => {
+              state.select(item.featureId);
+              state.setViewPreset('openings');
+              state.setPreparationExpanded(true);
+            }}
+          >
+            <strong>
+              {item.featureId.replace('feature:roof-window-', 'O')}
+            </strong>
+            <span>{t('assembly.openingFraming')}</span>
+            <b>{t('assembly.pieces', { count: item.members.length })}</b>
+            <small>{t('assembly.lengthResolvedOnly')}</small>
+          </button>
+        ))}
       </div>
+      {selectedOpeningFraming && state.workbench.preparationExpanded && (
+        <div className="a-member-preparation" data-family="opening-framing">
+          <header>
+            <div>
+              <strong>
+                {selectedOpeningFraming.featureId.replace(
+                  'feature:roof-window-',
+                  'O',
+                )}{' '}
+                · {t('assembly.openingFraming')}
+              </strong>
+              <span>
+                {length(selectedOpeningFraming.section.widthMm)} ×{' '}
+                {length(selectedOpeningFraming.section.depthMm)}
+              </span>
+            </div>
+          </header>
+          <div className="a-length-groups">
+            {selectedOpeningFraming.members.map((member) => (
+              <span key={member.id}>
+                <strong>
+                  {t(
+                    `assembly.${member.role === 'upper-header' ? 'upperHeader' : 'lowerHeader'}`,
+                  )}
+                </strong>{' '}
+                {length(member.lengthMm)}
+              </span>
+            ))}
+          </div>
+          <p className="a-limit-note">
+            {t('assembly.openingFramingJoineryUnresolved')}
+          </p>
+        </div>
+      )}
       {selectedFamily && state.workbench.preparationExpanded && (
         <div className="a-member-preparation" data-family={selectedFamily.code}>
           <header>

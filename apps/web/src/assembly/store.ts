@@ -11,12 +11,15 @@ import {
   clampRoofWindow,
   convertRoofTemplate,
   createDefaultRoofWindow,
+  createOpeningFramingDraft,
   createRoofSkeleton,
   distributePurlins,
   gableTemplateFromAssembly,
   HIP_RAFTER_PROTOTYPE_ID,
   JACK_RAFTER_PROTOTYPE_ID,
   resolveRoofWindowPlacement,
+  resolveOpeningFraming,
+  resolveOpeningFramingSet,
   roofTemplateFromAssembly,
   seatLength,
   toMillimetres,
@@ -28,6 +31,7 @@ import type {
   EndStationPolicy,
   RafterSpacingMode,
   RoofTemplateSpec,
+  RoofOpeningFramingSpec,
   RoofWindowFeature,
   SupportSpec,
 } from '@cieslacalc/timber-model';
@@ -201,6 +205,7 @@ function committedTemplate(
   return {
     projectDocument: createRoofProjectDocument(template, {
       features: currentDocument?.project.features ?? [],
+      openingFraming: currentDocument?.project.openingFraming ?? [],
       buildUp: currentDocument?.project.buildUp ?? {},
     }),
     template,
@@ -214,7 +219,12 @@ function committedDocument(
   drafts: Partial<Record<EditField, string>>,
   invalidFields: Partial<Record<EditField, boolean>>,
 ) {
-  return committedTemplate(document.project.roof, drafts, invalidFields, document);
+  return committedTemplate(
+    document.project.roof,
+    drafts,
+    invalidFields,
+    document,
+  );
 }
 interface DomainSnapshot {
   document: RoofProjectDocumentV1;
@@ -294,10 +304,19 @@ export interface AssemblyState {
   removeRoofWindow: (id: string) => void;
   updateRoofWindow: (
     id: string,
-    patch: Partial<Pick<RoofWindowFeature, 'roofPlaneId' | 'widthMm' | 'heightMm' | 'clearanceMm' | 'position'>>,
+    patch: Partial<
+      Pick<
+        RoofWindowFeature,
+        'roofPlaneId' | 'widthMm' | 'heightMm' | 'clearanceMm' | 'position'
+      >
+    >,
   ) => void;
   moveRoofWindow: (id: string, position: RoofWindowFeature['position']) => void;
   placeRoofWindowBetweenRafters: (id: string) => boolean;
+  planOpeningFraming: (featureId: string) => void;
+  cancelOpeningFramingProposal: () => void;
+  applyOpeningFraming: (featureId: string) => boolean;
+  removeOpeningFraming: (featureId: string) => void;
   setBattenLayout: (layout?: BattenLayoutSpec) => void;
   add: () => void;
   remove: (id: string) => void;
@@ -317,7 +336,10 @@ function withHistory(
   state: AssemblyState,
   next: ReturnType<typeof committedTemplate>,
 ) {
-  if (sameDocument(state.projectDocument, next.projectDocument) || state.activeTransaction)
+  if (
+    sameDocument(state.projectDocument, next.projectDocument) ||
+    state.activeTransaction
+  )
     return next;
   return {
     ...next,
@@ -381,11 +403,14 @@ export const useAssembly = create<AssemblyState>((set) => ({
       workbench: {
         ...state.workbench,
         viewPreset,
-        returnViewPreset: viewPreset === 'cuts' ? state.workbench.returnViewPreset : undefined,
+        returnViewPreset:
+          viewPreset === 'cuts' ? state.workbench.returnViewPreset : undefined,
         placementTool:
           viewPreset === 'openings' ? state.workbench.placementTool : undefined,
         placementFeedback:
-          viewPreset === 'openings' ? state.workbench.placementFeedback : undefined,
+          viewPreset === 'openings'
+            ? state.workbench.placementFeedback
+            : undefined,
       },
     })),
   setIsolation: (isolateSelection) =>
@@ -454,7 +479,8 @@ export const useAssembly = create<AssemblyState>((set) => ({
     set((state) => ({
       workbench: {
         ...state.workbench,
-        viewPreset: state.workbench.returnViewPreset ?? state.workbench.viewPreset,
+        viewPreset:
+          state.workbench.returnViewPreset ?? state.workbench.viewPreset,
         returnViewPreset: undefined,
         activeOperationId: undefined,
         detailDrawer: {
@@ -680,6 +706,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
       createdId = feature.id;
       const document = createRoofProjectDocument(state.template, {
         features: [...state.projectDocument.project.features, feature],
+        openingFraming: state.projectDocument.project.openingFraming,
         buildUp: state.projectDocument.project.buildUp,
       });
       return {
@@ -735,7 +762,12 @@ export const useAssembly = create<AssemblyState>((set) => ({
         delete invalidFields[field];
         return withHistory(
           state,
-          committedTemplate(template, drafts, invalidFields, state.projectDocument),
+          committedTemplate(
+            template,
+            drafts,
+            invalidFields,
+            state.projectDocument,
+          ),
         );
       } catch {
         invalidFields[field] = true;
@@ -757,7 +789,12 @@ export const useAssembly = create<AssemblyState>((set) => ({
         delete invalidFields[field];
         return withHistory(
           state,
-          committedTemplate(template, drafts, invalidFields, state.projectDocument),
+          committedTemplate(
+            template,
+            drafts,
+            invalidFields,
+            state.projectDocument,
+          ),
         );
       } catch {
         return state;
@@ -779,7 +816,12 @@ export const useAssembly = create<AssemblyState>((set) => ({
         delete invalidFields[field];
         return withHistory(
           state,
-          committedTemplate(template, drafts, invalidFields, state.projectDocument),
+          committedTemplate(
+            template,
+            drafts,
+            invalidFields,
+            state.projectDocument,
+          ),
         );
       } catch {
         return state;
@@ -803,7 +845,12 @@ export const useAssembly = create<AssemblyState>((set) => ({
       };
       return withHistory(
         state,
-        committedTemplate(template, state.drafts, state.invalidFields, state.projectDocument),
+        committedTemplate(
+          template,
+          state.drafts,
+          state.invalidFields,
+          state.projectDocument,
+        ),
       );
     }),
   setEndStationPolicy: (endPolicy) =>
@@ -815,7 +862,12 @@ export const useAssembly = create<AssemblyState>((set) => ({
       };
       return withHistory(
         state,
-        committedTemplate(template, state.drafts, state.invalidFields, state.projectDocument),
+        committedTemplate(
+          template,
+          state.drafts,
+          state.invalidFields,
+          state.projectDocument,
+        ),
       );
     }),
   movePurlin: (id, xMm) =>
@@ -864,18 +916,20 @@ export const useAssembly = create<AssemblyState>((set) => ({
     }),
   addRoofWindow: () =>
     set((state) => {
-      const nextNumber = Math.max(
-        0,
-        ...state.projectDocument.project.features.map(
-          (feature) => Number(/roof-window-(\d+)$/.exec(feature.id)?.[1] ?? 0),
-        ),
-      ) + 1;
+      const nextNumber =
+        Math.max(
+          0,
+          ...state.projectDocument.project.features.map((feature) =>
+            Number(/roof-window-(\d+)$/.exec(feature.id)?.[1] ?? 0),
+          ),
+        ) + 1;
       const feature = {
         ...createDefaultRoofWindow(state.template),
         id: `feature:roof-window-${nextNumber}`,
       };
       const document = createRoofProjectDocument(state.template, {
         features: [...state.projectDocument.project.features, feature],
+        openingFraming: state.projectDocument.project.openingFraming,
         buildUp: state.projectDocument.project.buildUp,
       });
       return {
@@ -903,6 +957,9 @@ export const useAssembly = create<AssemblyState>((set) => ({
         return state;
       const document = createRoofProjectDocument(state.template, {
         features,
+        openingFraming: state.projectDocument.project.openingFraming.filter(
+          (spec) => spec.featureId !== id,
+        ),
         buildUp: state.projectDocument.project.buildUp,
       });
       return {
@@ -914,6 +971,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
           ...state.workbench,
           selectedId: 'roof',
           placementFeedback: undefined,
+          openingFramingProposalFeatureId: undefined,
         },
       };
     }),
@@ -922,7 +980,8 @@ export const useAssembly = create<AssemblyState>((set) => ({
       let features;
       try {
         features = state.projectDocument.project.features.map((feature) => {
-          if (feature.id !== id || feature.kind !== 'roof-window') return feature;
+          if (feature.id !== id || feature.kind !== 'roof-window')
+            return feature;
           return clampRoofWindow(state.template, {
             ...feature,
             ...patch,
@@ -934,6 +993,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
       }
       const document = createRoofProjectDocument(state.template, {
         features,
+        openingFraming: state.projectDocument.project.openingFraming,
         buildUp: state.projectDocument.project.buildUp,
       });
       return {
@@ -961,6 +1021,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         features: state.projectDocument.project.features.map((candidate) =>
           candidate.id === id ? moved : candidate,
         ),
+        openingFraming: state.projectDocument.project.openingFraming,
         buildUp: state.projectDocument.project.buildUp,
       });
       return {
@@ -1003,6 +1064,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         features: state.projectDocument.project.features.map((candidate) =>
           candidate.id === id ? placement.feature : candidate,
         ),
+        openingFraming: state.projectDocument.project.openingFraming,
         buildUp: state.projectDocument.project.buildUp,
       });
       return {
@@ -1024,10 +1086,127 @@ export const useAssembly = create<AssemblyState>((set) => ({
     });
     return placed;
   },
+  planOpeningFraming: (featureId) =>
+    set((state) => {
+      const feature = state.projectDocument.project.features.find(
+        (candidate): candidate is RoofWindowFeature =>
+          candidate.id === featureId && candidate.kind === 'roof-window',
+      );
+      if (!feature) return state;
+      const result = resolveOpeningFraming({
+        template: state.template,
+        skeleton: createRoofSkeleton(state.template),
+        feature,
+        framingSpec: createOpeningFramingDraft(state.template, featureId),
+      });
+      if (result.status !== 'resolved') return state;
+      return {
+        workbench: {
+          ...state.workbench,
+          viewPreset: 'openings',
+          selectedId: featureId,
+          openingFramingProposalFeatureId: featureId,
+        },
+      };
+    }),
+  cancelOpeningFramingProposal: () =>
+    set((state) => ({
+      workbench: {
+        ...state.workbench,
+        openingFramingProposalFeatureId: undefined,
+      },
+    })),
+  applyOpeningFraming: (featureId) => {
+    let applied = false;
+    set((state) => {
+      const feature = state.projectDocument.project.features.find(
+        (candidate): candidate is RoofWindowFeature =>
+          candidate.id === featureId && candidate.kind === 'roof-window',
+      );
+      if (!feature) return state;
+      const existing = state.projectDocument.project.openingFraming.find(
+        (spec) => spec.featureId === featureId,
+      );
+      const draft: RoofOpeningFramingSpec = {
+        ...(existing ?? createOpeningFramingDraft(state.template, featureId)),
+        acceptedGeometrySignature: '',
+      };
+      const candidateSpecs = [
+        ...state.projectDocument.project.openingFraming.filter(
+          (spec) => spec.featureId !== featureId,
+        ),
+        draft,
+      ];
+      const projection = resolveOpeningFramingSet({
+        template: state.template,
+        skeleton: createRoofSkeleton(state.template),
+        features: state.projectDocument.project.features,
+        framingSpecs: candidateSpecs,
+      });
+      const result = projection.results.find(
+        (candidate) => candidate.featureId === featureId,
+      );
+      if (!result || result.status !== 'resolved' || !result.geometrySignature)
+        return state;
+      const accepted = {
+        ...draft,
+        acceptedGeometrySignature: result.geometrySignature,
+      };
+      const document = createRoofProjectDocument(state.template, {
+        features: state.projectDocument.project.features,
+        openingFraming: candidateSpecs.map((spec) =>
+          spec.featureId === featureId ? accepted : spec,
+        ),
+        buildUp: state.projectDocument.project.buildUp,
+      });
+      applied = true;
+      return {
+        ...withHistory(
+          state,
+          committedDocument(document, state.drafts, state.invalidFields),
+        ),
+        workbench: {
+          ...state.workbench,
+          selectedId: featureId,
+          viewPreset: 'openings',
+          openingFramingProposalFeatureId: undefined,
+        },
+      };
+    });
+    return applied;
+  },
+  removeOpeningFraming: (featureId) =>
+    set((state) => {
+      const openingFraming =
+        state.projectDocument.project.openingFraming.filter(
+          (spec) => spec.featureId !== featureId,
+        );
+      if (
+        openingFraming.length ===
+        state.projectDocument.project.openingFraming.length
+      )
+        return state;
+      const document = createRoofProjectDocument(state.template, {
+        features: state.projectDocument.project.features,
+        openingFraming,
+        buildUp: state.projectDocument.project.buildUp,
+      });
+      return {
+        ...withHistory(
+          state,
+          committedDocument(document, state.drafts, state.invalidFields),
+        ),
+        workbench: {
+          ...state.workbench,
+          openingFramingProposalFeatureId: undefined,
+        },
+      };
+    }),
   setBattenLayout: (battenLayout) =>
     set((state) => {
       const document = createRoofProjectDocument(state.template, {
         features: state.projectDocument.project.features,
+        openingFraming: state.projectDocument.project.openingFraming,
         buildUp: { ...state.projectDocument.project.buildUp, battenLayout },
       });
       return withHistory(
@@ -1150,10 +1329,9 @@ export const useAssembly = create<AssemblyState>((set) => ({
           focusId: undefined,
           viewPreset: contextualPreset,
           placementTool: undefined,
-          placementFeedback:
-            selectedId.startsWith('feature:')
-              ? state.workbench.placementFeedback
-              : undefined,
+          placementFeedback: selectedId.startsWith('feature:')
+            ? state.workbench.placementFeedback
+            : undefined,
         },
       };
     }),
@@ -1191,10 +1369,10 @@ export const useAssembly = create<AssemblyState>((set) => ({
       return {
         ...restoredSnapshot(previous),
         historyPast: state.historyPast.slice(0, -1),
-        historyFuture: [snapshot(state.projectDocument), ...state.historyFuture].slice(
-          0,
-          historyLimit,
-        ),
+        historyFuture: [
+          snapshot(state.projectDocument),
+          ...state.historyFuture,
+        ].slice(0, historyLimit),
         activeTransaction: undefined,
       };
     }),
@@ -1204,9 +1382,10 @@ export const useAssembly = create<AssemblyState>((set) => ({
       if (!next) return state;
       return {
         ...restoredSnapshot(next),
-        historyPast: [...state.historyPast, snapshot(state.projectDocument)].slice(
-          -historyLimit,
-        ),
+        historyPast: [
+          ...state.historyPast,
+          snapshot(state.projectDocument),
+        ].slice(-historyLimit),
         historyFuture: state.historyFuture.slice(1),
         activeTransaction: undefined,
       };

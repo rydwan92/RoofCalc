@@ -281,7 +281,9 @@ it('applies an equal-gap purlin proposal as one canonical undo step', () => {
   useAssembly.getState().add();
   useAssembly.setState({ historyPast: [], historyFuture: [] });
   const before = structuredClone(useAssembly.getState().template);
-  const documentBefore = structuredClone(useAssembly.getState().projectDocument);
+  const documentBefore = structuredClone(
+    useAssembly.getState().projectDocument,
+  );
 
   useAssembly.getState().distributePurlins();
 
@@ -313,16 +315,25 @@ it('stores roof windows and batten settings in complete undoable project snapsho
     gaugeMm: 350,
     eaveOffsetMm: 250,
   });
-  expect(useAssembly.getState().projectDocument.project.buildUp.battenLayout).toMatchObject({ gaugeMm: 350 });
+  expect(
+    useAssembly.getState().projectDocument.project.buildUp.battenLayout,
+  ).toMatchObject({ gaugeMm: 350 });
   useAssembly.getState().undo();
   expect(useAssembly.getState().projectDocument.project.buildUp).toEqual({});
-  expect(useAssembly.getState().projectDocument.project.features).toEqual([feature]);
+  expect(useAssembly.getState().projectDocument.project.features).toEqual([
+    feature,
+  ]);
   useAssembly.getState().undo();
   expect(useAssembly.getState().projectDocument).toEqual(before);
   useAssembly.getState().redo();
   useAssembly.getState().redo();
-  expect(useAssembly.getState().projectDocument.project.features).toEqual([feature]);
-  expect(useAssembly.getState().projectDocument.project.buildUp.battenLayout?.enabled).toBe(true);
+  expect(useAssembly.getState().projectDocument.project.features).toEqual([
+    feature,
+  ]);
+  expect(
+    useAssembly.getState().projectDocument.project.buildUp.battenLayout
+      ?.enabled,
+  ).toBe(true);
 });
 it('coalesces a roof-window drag transaction and restores its canonical local position', () => {
   useAssembly.getState().addRoofWindow();
@@ -335,7 +346,9 @@ it('coalesces a roof-window drag transaction and restores its canonical local po
   });
   expect(useAssembly.getState().historyPast).toHaveLength(0);
   useAssembly.getState().cancelTransaction();
-  expect(useAssembly.getState().projectDocument.project.features[0]!.position).toEqual(feature.position);
+  expect(
+    useAssembly.getState().projectDocument.project.features[0]!.position,
+  ).toEqual(feature.position);
 });
 it('cancels roof-window placement without history and creates one canonical edit on click', () => {
   const before = structuredClone(useAssembly.getState().projectDocument);
@@ -355,7 +368,9 @@ it('cancels roof-window placement without history and creates one canonical edit
   expect(id).toBe('feature:roof-window-1');
   expect(useAssembly.getState().workbench.placementTool).toBeUndefined();
   expect(useAssembly.getState().historyPast).toHaveLength(1);
-  expect(useAssembly.getState().projectDocument.project.features).toHaveLength(1);
+  expect(useAssembly.getState().projectDocument.project.features).toHaveLength(
+    1,
+  );
   useAssembly.getState().undo();
   expect(useAssembly.getState().projectDocument).toEqual(before);
 });
@@ -385,6 +400,48 @@ it('keeps a too-wide bay placement unchanged and reports exact geometric feedbac
       'instance:rafter-pair-2:left',
     ],
   });
+});
+it('previews, applies, undoes and cascade-removes opening framing as canonical transactions', () => {
+  useAssembly.getState().addRoofWindow();
+  const id = 'feature:roof-window-1';
+  useAssembly.getState().updateRoofWindow(id, {
+    widthMm: 600,
+    position: { uMm: 700, vMm: 1200 },
+  });
+  useAssembly.setState({ historyPast: [], historyFuture: [] });
+  const before = structuredClone(useAssembly.getState().projectDocument);
+
+  useAssembly.getState().planOpeningFraming(id);
+  expect(useAssembly.getState().workbench.openingFramingProposalFeatureId).toBe(
+    id,
+  );
+  expect(useAssembly.getState().projectDocument).toEqual(before);
+  expect(useAssembly.getState().historyPast).toHaveLength(0);
+  useAssembly.getState().cancelOpeningFramingProposal();
+  expect(useAssembly.getState().historyPast).toHaveLength(0);
+
+  useAssembly.getState().planOpeningFraming(id);
+  expect(useAssembly.getState().applyOpeningFraming(id)).toBe(true);
+  const applied = structuredClone(useAssembly.getState().projectDocument);
+  expect(applied.project.openingFraming).toHaveLength(1);
+  expect(applied.project.openingFraming[0]!.acceptedGeometrySignature).not.toBe(
+    '',
+  );
+  expect(useAssembly.getState().historyPast).toHaveLength(1);
+  useAssembly.getState().undo();
+  expect(useAssembly.getState().projectDocument).toEqual(before);
+  useAssembly.getState().redo();
+  expect(useAssembly.getState().projectDocument).toEqual(applied);
+
+  useAssembly.setState({ historyPast: [], historyFuture: [] });
+  useAssembly.getState().removeRoofWindow(id);
+  expect(useAssembly.getState().projectDocument.project.features).toEqual([]);
+  expect(useAssembly.getState().projectDocument.project.openingFraming).toEqual(
+    [],
+  );
+  expect(useAssembly.getState().historyPast).toHaveLength(1);
+  useAssembly.getState().undo();
+  expect(useAssembly.getState().projectDocument).toEqual(applied);
 });
 it('switches contextual presets without persisting transient view state', () => {
   useAssembly.getState().addRoofWindow();
@@ -534,7 +591,9 @@ it('preserves an operation across compatible instances and steps back by context
 
 it('restores the previous meaningful preset when the detail dock is closed', () => {
   const instance = memberInstances()[0]!;
-  const operation = instance.operations.find((candidate) => candidate.detailPreviewId)!;
+  const operation = instance.operations.find(
+    (candidate) => candidate.detailPreviewId,
+  )!;
   useAssembly.getState().setViewPreset('openings');
   useAssembly.getState().activateOperation({
     operationId: operation.operationId,

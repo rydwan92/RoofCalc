@@ -8,7 +8,10 @@ import type {
   ResolvedMemberPrototype,
   TimberSection,
 } from '@cieslacalc/timber-model';
-import { resolveRoofTemplate } from '@cieslacalc/roof-math';
+import {
+  resolveRoofTemplate,
+  type OpeningFramingResult,
+} from '@cieslacalc/roof-math';
 import {
   createAssemblyDetailPreviews,
   createHipRafterDetailPreview,
@@ -54,6 +57,21 @@ export interface MemberFabricationPackage {
 export interface RoofFabricationPackage {
   roofType: 'gable' | 'hip';
   families: MemberFabricationPackage[];
+  openingFraming: OpeningFramingFabricationItem[];
+  warningKeys: string[];
+}
+
+export interface OpeningFramingFabricationItem {
+  id: string;
+  featureId: string;
+  section: TimberSection;
+  members: Array<{
+    id: string;
+    role: 'upper-header' | 'lower-header';
+    lengthMm: number;
+    quantity: 1;
+  }>;
+  operationStatus: 'limited';
   warningKeys: string[];
 }
 
@@ -284,7 +302,53 @@ export function createRoofFabricationPackage(
   const warningKeys = [
     ...new Set(families.flatMap((family) => family.warningKeys)),
   ];
-  return { roofType: resolved.template.type, families, warningKeys };
+  return {
+    roofType: resolved.template.type,
+    families,
+    openingFraming: [],
+    warningKeys,
+  };
+}
+
+/** Adds only genuinely resolved header lengths; end joinery stays explicitly limited. */
+export function withOpeningFramingFabrication(
+  roofPackage: RoofFabricationPackage,
+  results: OpeningFramingResult[],
+): RoofFabricationPackage {
+  const openingFraming = results
+    .filter(
+      (result) =>
+        result.status === 'resolved' &&
+        result.reviewStatus === 'valid' &&
+        !!result.framingSpecId &&
+        !!result.upperFramingMember &&
+        !!result.lowerFramingMember,
+    )
+    .map((result) => ({
+      id: result.framingSpecId!,
+      featureId: result.featureId,
+      section: result.upperFramingMember!.member.section,
+      members: [result.lowerFramingMember!, result.upperFramingMember!].map(
+        (member) => ({
+          id: member.id,
+          role: member.role,
+          lengthMm: member.lengthMm,
+          quantity: 1 as const,
+        }),
+      ),
+      operationStatus: 'limited' as const,
+      warningKeys: ['openingFramingJoineryUnresolved'],
+    }));
+  return {
+    ...roofPackage,
+    openingFraming,
+    warningKeys: [
+      ...new Set([
+        ...roofPackage.warningKeys,
+        ...openingFraming.flatMap((item) => item.warningKeys),
+      ]),
+    ],
+  };
 }
 
 export function detailPreviewsFromFabricationPackage(

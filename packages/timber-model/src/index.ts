@@ -351,6 +351,17 @@ export interface RoofWindowFeature {
   clearanceMm?: number;
 }
 export type RoofFeature = RoofWindowFeature;
+/** Canonical intent for a geometric response to one roof opening. */
+export interface RoofOpeningFramingSpec {
+  id: EntityId;
+  kind: 'roof-opening-framing';
+  featureId: EntityId;
+  headerSection: TimberSection;
+  /** Clear plane-local distance from the opening edge to the header axis. */
+  edgeOffsetMm: number;
+  /** Signature of the roof/member field explicitly accepted by the user. */
+  acceptedGeometrySignature: string;
+}
 export interface BattenLayoutSpec {
   enabled: boolean;
   roofPlaneIds?: string[];
@@ -367,10 +378,18 @@ export interface RoofBuildUp {
 export interface RoofAssembly {
   roof: RoofTemplateSpec;
   features: RoofFeature[];
+  openingFraming: RoofOpeningFramingSpec[];
   buildUp: RoofBuildUp;
 }
 export type SkeletonMemberKind =
-  'wall-plate' | 'ridge' | 'rafter' | 'hip-rafter' | 'jack-rafter' | 'purlin';
+  | 'wall-plate'
+  | 'ridge'
+  | 'rafter'
+  | 'hip-rafter'
+  | 'jack-rafter'
+  | 'purlin'
+  | 'opening-header'
+  | 'rafter-segment';
 export type SkeletonMemberSide =
   | 'left'
   | 'right'

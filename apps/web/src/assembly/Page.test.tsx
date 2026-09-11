@@ -115,9 +115,9 @@ describe('dual-mode parametric workbench', () => {
         name: 'H1 · Górne cięcie krokwi narożnej',
       }),
     );
-    expect(
-      screen.getByRole('dialog').textContent,
-    ).toContain('Nie wybiera automatycznie podcięcia grzbietu');
+    expect(screen.getByRole('dialog').textContent).toContain(
+      'Nie wybiera automatycznie podcięcia grzbietu',
+    );
   });
   it('explains the 940 / 800 maximum policy and exposes target deviation', () => {
     render(<App />);
@@ -235,7 +235,9 @@ describe('dual-mode parametric workbench', () => {
       screen.getByRole('button', { name: 'Tryb skupienia panelu detalu' }),
     );
     expect(useAssembly.getState().workbench.detailDrawer.mode).toBe('focus');
-    fireEvent.keyDown(document.querySelector('.assembly-app')!, { key: 'Escape' });
+    fireEvent.keyDown(document.querySelector('.assembly-app')!, {
+      key: 'Escape',
+    });
     expect(useAssembly.getState().workbench.detailDrawer.mode).toBe('working');
     expect(
       screen.getByTestId('detail-drawer').querySelector('.shape-removed'),
@@ -516,7 +518,9 @@ describe('dual-mode parametric workbench', () => {
     fireEvent.keyDown(container.querySelector('.assembly-app')!, {
       key: 'Escape',
     });
-    expect(useAssembly.getState().workbench.detailDrawer.mode).toBe('collapsed');
+    expect(useAssembly.getState().workbench.detailDrawer.mode).toBe(
+      'collapsed',
+    );
     fireEvent.keyDown(container.querySelector('.assembly-app')!, {
       key: 'Escape',
     });
@@ -591,7 +595,9 @@ describe('dual-mode parametric workbench', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Akcje płatwi' }));
     const dialog = screen.getByRole('dialog', { name: 'Rozmieść równo' });
     expect(dialog.textContent).toContain('Rozmieszczenie geometryczne');
-    expect(useAssembly.getState().projectDocument).toEqual(documentBeforeProposal);
+    expect(useAssembly.getState().projectDocument).toEqual(
+      documentBeforeProposal,
+    );
     expect(useAssembly.getState().historyPast).toHaveLength(0);
     fireEvent.click(within(dialog).getByRole('button', { name: 'Zastosuj' }));
     expect(useAssembly.getState().historyPast).toHaveLength(1);
@@ -673,11 +679,9 @@ describe('dual-mode parametric workbench', () => {
     )!;
     const start = {
       x:
-        (Number(body.getAttribute('x1')) + Number(body.getAttribute('x2'))) /
-        2,
+        (Number(body.getAttribute('x1')) + Number(body.getAttribute('x2'))) / 2,
       y:
-        (Number(body.getAttribute('y1')) + Number(body.getAttribute('y2'))) /
-        2,
+        (Number(body.getAttribute('y1')) + Number(body.getAttribute('y2'))) / 2,
     };
     const before = purlin().placement.xMm;
     const pointer = { pointerId: 31, pointerType: 'mouse', button: 0 };
@@ -752,7 +756,9 @@ describe('dual-mode parametric workbench', () => {
       clientX: start.x,
       clientY: start.y,
     });
-    expect(useAssembly.getState().workbench.selectedId).toBe('support:purlin-1');
+    expect(useAssembly.getState().workbench.selectedId).toBe(
+      'support:purlin-1',
+    );
     expect(useAssembly.getState().activeTransaction).toBeTruthy();
     fireEvent.pointerMove(drawing, {
       ...pointer,
@@ -767,10 +773,7 @@ describe('dual-mode parametric workbench', () => {
       container.querySelector('.kind-wall-plate')!,
       pointer,
     );
-    fireEvent.pointerDown(
-      container.querySelector('.kind-ridge')!,
-      pointer,
-    );
+    fireEvent.pointerDown(container.querySelector('.kind-ridge')!, pointer);
     expect(useAssembly.getState().activeTransaction).toBeUndefined();
     expect(container.querySelector('[data-handle="purlin"]')).toBeNull();
   });
@@ -786,13 +789,18 @@ describe('dual-mode parametric workbench', () => {
     Object.defineProperty(drawing, 'getBoundingClientRect', {
       value: () => ({ left: 0, top: 0, width: 820, height: 570 }),
     });
-    const plane = container.querySelector('[data-roof-plane="roof-plane:left"]')!;
+    const plane = container.querySelector(
+      '[data-roof-plane="roof-plane:left"]',
+    )!;
     const points = plane
       .getAttribute('points')!
       .split(' ')
       .map((point) => point.split(',').map(Number));
     const centre = points.reduce(
-      (sum, [x, y]) => ({ x: sum.x + x! / points.length, y: sum.y + y! / points.length }),
+      (sum, [x, y]) => ({
+        x: sum.x + x! / points.length,
+        y: sum.y + y! / points.length,
+      }),
       { x: 0, y: 0 },
     );
     fireEvent.pointerEnter(plane);
@@ -807,17 +815,23 @@ describe('dual-mode parametric workbench', () => {
     fireEvent.pointerEnter(plane);
     fireEvent.pointerMove(plane, { clientX: centre.x, clientY: centre.y });
     fireEvent.click(plane, { clientX: centre.x, clientY: centre.y });
-    expect(container.querySelector('[data-roof-window="feature:roof-window-1"]')).toBeTruthy();
+    expect(
+      container.querySelector('[data-roof-window="feature:roof-window-1"]'),
+    ).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Okno dachowe O1' }));
     expect(screen.getByLabelText('Szerokość otworu')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Umieść między krokwiami' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Umieść między krokwiami' }),
+    );
     expect(screen.getByRole('alert').textContent).toContain(
       'Otwór nie mieści się w polu',
     );
     fireEvent.click(screen.getByRole('tab', { name: 'Łacenie' }));
     fireEvent.click(screen.getByRole('button', { name: 'Łacenie' }));
     expect(screen.getByTestId('batten-inspector')).toBeTruthy();
-    expect(container.querySelectorAll('.a-batten-segment').length).toBeGreaterThan(0);
+    expect(
+      container.querySelectorAll('.a-batten-segment').length,
+    ).toBeGreaterThan(0);
     fireEvent.click(container.querySelector('[data-batten-row]')!);
     expect(screen.getByTestId('batten-row-detail')).toBeTruthy();
   });
@@ -825,29 +839,86 @@ describe('dual-mode parametric workbench', () => {
     const { container } = render(<App />);
     builder();
     fireEvent.click(screen.getByRole('button', { name: 'Dodaj okno' }));
-    fireEvent.keyDown(container.querySelector('.assembly-app')!, { key: 'Escape' });
+    fireEvent.keyDown(container.querySelector('.assembly-app')!, {
+      key: 'Escape',
+    });
     expect(useAssembly.getState().workbench.placementTool).toBeUndefined();
     expect(useAssembly.getState().projectDocument.project.features).toEqual([]);
     expect(useAssembly.getState().historyPast).toHaveLength(0);
 
     act(() => useAssembly.getState().addRoofWindow());
     act(() => useAssembly.setState({ historyPast: [], historyFuture: [] }));
-    const widthField = screen.getByLabelText('Szerokość otworu') as HTMLInputElement;
+    const widthField = screen.getByLabelText(
+      'Szerokość otworu',
+    ) as HTMLInputElement;
     fireEvent.focus(widthField);
     fireEvent.change(widthField, { target: { value: '' } });
     expect(widthField.value).toBe('');
     expect(widthField.getAttribute('aria-invalid')).toBe('true');
-    expect(useAssembly.getState().projectDocument.project.features[0]!.widthMm).toBe(780);
+    expect(
+      useAssembly.getState().projectDocument.project.features[0]!.widthMm,
+    ).toBe(780);
     fireEvent.keyDown(widthField, { key: 'Escape' });
     expect(widthField.value).toBe('780');
     fireEvent.focus(widthField);
     fireEvent.change(widthField, { target: { value: '800' } });
-    expect(useAssembly.getState().projectDocument.project.features[0]!.widthMm).toBe(780);
+    expect(
+      useAssembly.getState().projectDocument.project.features[0]!.widthMm,
+    ).toBe(780);
     fireEvent.keyDown(widthField, { key: 'Enter' });
-    expect(useAssembly.getState().projectDocument.project.features[0]!.widthMm).toBe(800);
+    expect(
+      useAssembly.getState().projectDocument.project.features[0]!.widthMm,
+    ).toBe(800);
     expect(useAssembly.getState().historyPast).toHaveLength(1);
     act(() => useAssembly.getState().undo());
-    expect(useAssembly.getState().projectDocument.project.features[0]!.widthMm).toBe(780);
+    expect(
+      useAssembly.getState().projectDocument.project.features[0]!.widthMm,
+    ).toBe(780);
+  });
+  it('previews geometric opening framing before one-step apply and composes interrupted rafters', () => {
+    const { container } = render(<App />);
+    builder();
+    act(() => {
+      useAssembly.getState().addRoofWindow();
+      useAssembly.getState().updateRoofWindow('feature:roof-window-1', {
+        widthMm: 600,
+        position: { uMm: 700, vMm: 1200 },
+      });
+      useAssembly.setState({ historyPast: [], historyFuture: [] });
+    });
+    expect(screen.getAllByText(/K1-02/).length).toBeGreaterThan(0);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Zaplanuj obramowanie' }),
+    );
+    expect(
+      useAssembly.getState().projectDocument.project.openingFraming,
+    ).toEqual([]);
+    expect(useAssembly.getState().historyPast).toHaveLength(0);
+    expect(
+      container.querySelectorAll('.kind-opening-header.is-framing-proposal'),
+    ).toHaveLength(2);
+    expect(
+      screen.getByText(
+        'Układ i przekroje wymagają weryfikacji konstrukcyjnej.',
+      ),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Zastosuj' }));
+    expect(
+      useAssembly.getState().projectDocument.project.openingFraming,
+    ).toHaveLength(1);
+    expect(useAssembly.getState().historyPast).toHaveLength(1);
+    expect(container.querySelectorAll('.kind-opening-header')).toHaveLength(2);
+    expect(container.querySelectorAll('.kind-rafter-segment')).toHaveLength(2);
+    expect(
+      container.querySelector('[data-entity="instance:rafter-pair-2:left"]'),
+    ).toBeNull();
+    act(() => useAssembly.getState().undo());
+    expect(
+      useAssembly.getState().projectDocument.project.openingFraming,
+    ).toEqual([]);
+    expect(
+      container.querySelector('[data-entity="instance:rafter-pair-2:left"]'),
+    ).toBeTruthy();
   });
   it('commits a roof-window pointer drag as one undo step and fully cancels it with Escape', () => {
     class TestPointerEvent extends MouseEvent {
@@ -974,7 +1045,11 @@ describe('dual-mode parametric workbench', () => {
     const before = structuredClone(
       useAssembly.getState().projectDocument.project.features[0]!,
     );
-    expect(container.querySelector(`[data-roof-window="${id}"]`)?.getAttribute('data-collision')).toBe('true');
+    expect(
+      container
+        .querySelector(`[data-roof-window="${id}"]`)
+        ?.getAttribute('data-collision'),
+    ).toBe('true');
     expect(
       container.querySelector('[data-selection-state="warning"]'),
     ).toBeTruthy();

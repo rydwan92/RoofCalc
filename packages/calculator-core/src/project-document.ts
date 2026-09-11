@@ -1,6 +1,11 @@
 import { z } from 'zod';
 import { roofTemplateSchema } from '@cieslacalc/roof-math';
-import type { RoofBuildUp, RoofFeature, RoofTemplateSpec } from '@cieslacalc/timber-model';
+import type {
+  RoofBuildUp,
+  RoofFeature,
+  RoofOpeningFramingSpec,
+  RoofTemplateSpec,
+} from '@cieslacalc/timber-model';
 
 const roofFeatureSchema: z.ZodType<RoofFeature> = z.object({
   id: z.string().min(1),
@@ -12,12 +17,28 @@ const roofFeatureSchema: z.ZodType<RoofFeature> = z.object({
   clearanceMm: z.number().nonnegative().optional(),
 });
 const roofBuildUpSchema: z.ZodType<RoofBuildUp> = z.object({
-  battenLayout: z.object({
-    enabled: z.boolean(), roofPlaneIds: z.array(z.string().min(1)).optional(),
-    battenHeightMm: z.number().positive(), battenWidthMm: z.number().positive(),
-    gaugeMm: z.number().positive(), eaveOffsetMm: z.number().nonnegative(),
-    ridgeOffsetMm: z.number().nonnegative().optional(),
-  }).optional(),
+  battenLayout: z
+    .object({
+      enabled: z.boolean(),
+      roofPlaneIds: z.array(z.string().min(1)).optional(),
+      battenHeightMm: z.number().positive(),
+      battenWidthMm: z.number().positive(),
+      gaugeMm: z.number().positive(),
+      eaveOffsetMm: z.number().nonnegative(),
+      ridgeOffsetMm: z.number().nonnegative().optional(),
+    })
+    .optional(),
+});
+const roofOpeningFramingSchema: z.ZodType<RoofOpeningFramingSpec> = z.object({
+  id: z.string().min(1),
+  kind: z.literal('roof-opening-framing'),
+  featureId: z.string().min(1),
+  headerSection: z.object({
+    widthMm: z.number().positive(),
+    depthMm: z.number().positive(),
+  }),
+  edgeOffsetMm: z.number().nonnegative(),
+  acceptedGeometrySignature: z.string(),
 });
 
 /** Canonical, serializable boundary for future project persistence and revisions. */
@@ -26,6 +47,7 @@ export interface RoofProjectDocumentV1 {
   project: {
     roof: RoofTemplateSpec;
     features: RoofFeature[];
+    openingFraming: RoofOpeningFramingSpec[];
     buildUp: RoofBuildUp;
   };
 }
@@ -36,6 +58,7 @@ export const roofProjectDocumentV1Schema = z
     project: z.object({
       roof: roofTemplateSchema,
       features: z.array(roofFeatureSchema).optional(),
+      openingFraming: z.array(roofOpeningFramingSchema).optional(),
       buildUp: roofBuildUpSchema.optional(),
     }),
   })
@@ -44,17 +67,28 @@ export const roofProjectDocumentV1Schema = z
     project: {
       ...document.project,
       features: document.project.features ?? [],
+      openingFraming: document.project.openingFraming ?? [],
       buildUp: document.project.buildUp ?? {},
     },
   }));
 
 export function createRoofProjectDocument(
   roof: RoofTemplateSpec,
-  composition: Pick<RoofProjectDocumentV1['project'], 'features' | 'buildUp'> = { features: [], buildUp: {} },
+  composition: Partial<
+    Pick<
+      RoofProjectDocumentV1['project'],
+      'features' | 'openingFraming' | 'buildUp'
+    >
+  > = {},
 ): RoofProjectDocumentV1 {
   return roofProjectDocumentV1Schema.parse({
     schemaVersion: 1,
-    project: { roof, ...composition },
+    project: {
+      roof,
+      features: composition.features ?? [],
+      openingFraming: composition.openingFraming ?? [],
+      buildUp: composition.buildUp ?? {},
+    },
   });
 }
 

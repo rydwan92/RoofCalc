@@ -12,11 +12,7 @@ export type ViewPreset = 'construction' | 'openings' | 'battens' | 'cuts';
 export type DimensionLevel = 'minimal' | 'working' | 'full';
 export type DetailDockMode = 'collapsed' | 'working' | 'focus';
 export type WorkbenchToolCategory =
-  | 'geometry'
-  | 'timber'
-  | 'support'
-  | 'opening'
-  | 'build-up';
+  'geometry' | 'timber' | 'support' | 'opening' | 'build-up';
 export type VisualInteractionState =
   'normal' | 'hover' | 'selected' | 'related' | 'muted' | 'warning' | 'invalid';
 
@@ -65,6 +61,8 @@ export interface WorkbenchViewState {
   focusId?: string;
   placementTool?: RoofWindowPlacementToolState;
   placementFeedback?: RoofWindowPlacementFeedback;
+  /** Transient preview; applying it is the only canonical/history mutation. */
+  openingFramingProposalFeatureId?: string;
   /** Monotonic view-only signal consumed by the canvas. */
   fitRequestId: number;
   activeOperationId?: string;
@@ -101,6 +99,7 @@ export const initialWorkbenchViewState: WorkbenchViewState = {
   focusId: undefined,
   placementTool: undefined,
   placementFeedback: undefined,
+  openingFramingProposalFeatureId: undefined,
   fitRequestId: 0,
   activeOperationId: undefined,
   detailDrawer: {

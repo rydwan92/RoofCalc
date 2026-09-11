@@ -51,8 +51,8 @@ export function Toolbox({
   });
   const label = (tool: WorkbenchToolDescriptor) =>
     `${t(`assembly.${tool.labelKey}`)}${tool.code ? ` ${tool.code}` : ''}`;
-  const purlinTools = tools.filter(
-    (tool) => tool.selectionId?.startsWith('support:purlin-'),
+  const purlinTools = tools.filter((tool) =>
+    tool.selectionId?.startsWith('support:purlin-'),
   );
   const distribution = useMemo(() => {
     if (!distributionOpen || !purlinTools.length) return undefined;
@@ -263,9 +263,7 @@ export function Toolbox({
           </details>
         );
       })}
-      <details
-        open={!state.workbench.collapsedToolGroups.includes('opening')}
-      >
+      <details open={!state.workbench.collapsedToolGroups.includes('opening')}>
         <summary
           onClick={(event) => {
             event.preventDefault();
@@ -275,7 +273,8 @@ export function Toolbox({
             );
           }}
         >
-          {t('assembly.openings')} ({state.projectDocument.project.features.length})
+          {t('assembly.openings')} (
+          {state.projectDocument.project.features.length})
         </summary>
         {state.projectDocument.project.features.map((feature) => (
           <button
@@ -288,7 +287,13 @@ export function Toolbox({
             }}
           >
             <Box size={20} />
-            <span>{t('assembly.roofWindow')} {feature.id.replace('feature:roof-window-', 'O')}</span>
+            <span>
+              {t('assembly.roofWindow')}{' '}
+              {feature.id.replace('feature:roof-window-', 'O')}
+              {state.projectDocument.project.openingFraming.some(
+                (spec) => spec.featureId === feature.id,
+              ) && <small>✓ {t('assembly.geometricFraming')}</small>}
+            </span>
           </button>
         ))}
         <button
@@ -304,9 +309,7 @@ export function Toolbox({
           <span>{t('assembly.addRoofWindow')}</span>
         </button>
       </details>
-      <details
-        open={!state.workbench.collapsedToolGroups.includes('build-up')}
-      >
+      <details open={!state.workbench.collapsedToolGroups.includes('build-up')}>
         <summary
           onClick={(event) => {
             event.preventDefault();
@@ -323,8 +326,11 @@ export function Toolbox({
           onClick={() => {
             state.setBattenLayout(
               state.projectDocument.project.buildUp.battenLayout ?? {
-                enabled: true, battenHeightMm: 40, battenWidthMm: 60,
-                gaugeMm: 350, eaveOffsetMm: 250,
+                enabled: true,
+                battenHeightMm: 40,
+                battenWidthMm: 60,
+                gaugeMm: 350,
+                eaveOffsetMm: 250,
               },
             );
             state.setViewPreset('battens');

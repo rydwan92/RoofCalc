@@ -4,10 +4,14 @@ import {
   convertRoofTemplate,
   gableTemplateFromAssembly,
   resolveRoofTemplate,
+  createOpeningFramingDraft,
+  createRoofSkeleton,
+  resolveOpeningFraming,
 } from '@cieslacalc/roof-math';
 import {
   createRoofFabricationPackage,
   detailPreviewsFromFabricationPackage,
+  withOpeningFramingFabrication,
 } from './fabrication-package';
 
 describe('roof fabrication package', () => {
@@ -69,5 +73,54 @@ describe('roof fabrication package', () => {
     expect(createRoofFabricationPackage(resolved)).toEqual(
       createRoofFabricationPackage(resolved),
     );
+  });
+
+  it('adds resolved opening headers with exact lengths and limited joinery', () => {
+    const roof = gableTemplateFromAssembly(assemblyDefaults, {
+      id: 'template:opening-package',
+      buildingLengthMm: 8100,
+      rafterSpacing: { mode: 'max-even-spacing', spacingMm: 1000 },
+    });
+    const feature = {
+      id: 'feature:roof-window-1',
+      kind: 'roof-window' as const,
+      roofPlaneId: 'roof-plane:left',
+      widthMm: 780,
+      heightMm: 1180,
+      position: { uMm: 800, vMm: 1200 },
+    };
+    const draft = createOpeningFramingDraft(roof, feature.id);
+    const proposal = resolveOpeningFraming({
+      template: roof,
+      skeleton: createRoofSkeleton(roof),
+      feature,
+      framingSpec: draft,
+    });
+    const accepted = resolveOpeningFraming({
+      template: roof,
+      skeleton: createRoofSkeleton(roof),
+      feature,
+      framingSpec: {
+        ...draft,
+        acceptedGeometrySignature: proposal.geometrySignature!,
+      },
+    });
+    const packageWithOpening = withOpeningFramingFabrication(
+      createRoofFabricationPackage(resolveRoofTemplate(roof)),
+      [accepted],
+    );
+    expect(packageWithOpening.openingFraming[0]).toMatchObject({
+      featureId: feature.id,
+      operationStatus: 'limited',
+      members: [
+        { role: 'lower-header', quantity: 1 },
+        { role: 'upper-header', quantity: 1 },
+      ],
+    });
+    expect(
+      packageWithOpening.openingFraming[0]!.members.every(
+        (member) => member.lengthMm > 0,
+      ),
+    ).toBe(true);
   });
 });

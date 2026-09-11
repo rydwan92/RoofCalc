@@ -1,11 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { currentMemberInstance } from '@cieslacalc/calculator-core';
+import {
+  currentMemberInstance,
+  withOpeningFramingFabrication,
+} from '@cieslacalc/calculator-core';
 import { ArrowLeft, House, RotateCcw, Redo2, Undo2, X } from 'lucide-react';
 import {
   HIP_RAFTER_PROTOTYPE_ID,
   JACK_RAFTER_PROTOTYPE_ID,
   lengthUnits,
+  createOpeningFramingDraft,
+  resolveOpeningFraming,
+  resolveOpeningFramingSet,
 } from '@cieslacalc/roof-math';
 import { useAssembly } from './store';
 import {
@@ -48,11 +54,83 @@ export function AssemblyPage() {
   );
   const {
     resolved: templateResult,
-    skeleton,
-    fabricationPackage,
+    skeleton: baseSkeleton,
+    fabricationPackage: baseFabricationPackage,
     memberInstances,
     detailPreviews: allDetailPreviews,
   } = project;
+  const roofWindows = state.projectDocument.project.features.filter(
+    (feature) => feature.kind === 'roof-window',
+  );
+  const framingProjection = useMemo(
+    () =>
+      resolveOpeningFramingSet({
+        template: state.template,
+        skeleton: baseSkeleton,
+        features: roofWindows,
+        framingSpecs: state.projectDocument.project.openingFraming,
+      }),
+    [
+      baseSkeleton,
+      roofWindows,
+      state.projectDocument.project.openingFraming,
+      state.template,
+    ],
+  );
+  const framingProposal = useMemo(() => {
+    const featureId = workbench.openingFramingProposalFeatureId;
+    if (!featureId) return undefined;
+    const feature = roofWindows.find((candidate) => candidate.id === featureId);
+    if (!feature) return undefined;
+    const existing = state.projectDocument.project.openingFraming.find(
+      (spec) => spec.featureId === featureId,
+    );
+    return resolveOpeningFraming({
+      template: state.template,
+      skeleton: baseSkeleton,
+      feature,
+      framingSpec: {
+        ...(existing ?? createOpeningFramingDraft(state.template, featureId)),
+        acceptedGeometrySignature: '',
+      },
+    });
+  }, [
+    baseSkeleton,
+    roofWindows,
+    state.projectDocument.project.openingFraming,
+    state.template,
+    workbench.openingFramingProposalFeatureId,
+  ]);
+  const proposalMembers =
+    framingProposal?.status === 'resolved'
+      ? [
+          framingProposal.lowerFramingMember!.member,
+          framingProposal.upperFramingMember!.member,
+        ]
+      : [];
+  const skeleton = useMemo(
+    () => ({
+      ...framingProjection.composedSkeleton,
+      members: [
+        ...framingProjection.composedSkeleton.members,
+        ...proposalMembers.filter(
+          (member) =>
+            !framingProjection.composedSkeleton.members.some(
+              (candidate) => candidate.id === member.id,
+            ),
+        ),
+      ],
+    }),
+    [framingProjection.composedSkeleton, proposalMembers],
+  );
+  const fabricationPackage = useMemo(
+    () =>
+      withOpeningFramingFabrication(
+        baseFabricationPackage,
+        framingProjection.results,
+      ),
+    [baseFabricationPackage, framingProjection.results],
+  );
   const selectionContext = useMemo(
     () =>
       resolveWorkbenchSelectionContext({
@@ -60,7 +138,7 @@ export function AssemblyPage() {
         template: state.template,
         spec: state.spec,
         resolved: templateResult,
-        skeleton,
+        skeleton: baseSkeleton,
         features: state.projectDocument.project.features,
       }),
     [
@@ -68,7 +146,7 @@ export function AssemblyPage() {
       state.template,
       state.spec,
       templateResult,
-      skeleton,
+      baseSkeleton,
       state.projectDocument.project.features,
     ],
   );
@@ -111,9 +189,7 @@ export function AssemblyPage() {
   useEffect(() => {
     if (!workbench.selectedInstanceId || activeInstance) return;
     const prototypeId = workbench.selectedPrototypeId;
-    useAssembly
-      .getState()
-      .select(prototypeId ?? 'roof', prototypeId);
+    useAssembly.getState().select(prototypeId ?? 'roof', prototypeId);
   }, [
     activeInstance,
     workbench.selectedInstanceId,
@@ -188,6 +264,13 @@ export function AssemblyPage() {
         ids.add(selectionContext.jack.spec.hipRafterInstanceId);
       else ids.add(HIP_RAFTER_PROTOTYPE_ID);
     }
+    const selectedFraming =
+      framingProposal ??
+      framingProjection.results.find(
+        (result) => result.featureId === workbench.selectedId,
+      );
+    selectedFraming?.affectedMemberInstanceIds.forEach((id) => ids.add(id));
+    selectedFraming?.boundingMemberInstanceIds.forEach((id) => ids.add(id));
     return ids;
   }, [
     activeOperation,
@@ -197,6 +280,9 @@ export function AssemblyPage() {
     state.spec.ridge.id,
     state.spec.supports,
     workbench.selectedPrototypeId,
+    workbench.selectedId,
+    framingProposal,
+    framingProjection.results,
   ]);
   const drawerPreviews = drawer.pinned
     ? allDetailPreviews
@@ -466,6 +552,10 @@ export function AssemblyPage() {
                   <SkeletonCanvas
                     template={state.template}
                     skeleton={skeleton}
+                    collisionSkeleton={baseSkeleton}
+                    proposalMemberIds={
+                      new Set(proposalMembers.map((member) => member.id))
+                    }
                     spacing={layoutSpacing}
                     relatedSupportId={activeOperation?.relatedSupportId}
                     relatedIds={relatedSelectionIds}
@@ -476,7 +566,7 @@ export function AssemblyPage() {
               <Inspector
                 result={result}
                 hip={hip}
-                skeleton={skeleton}
+                skeleton={baseSkeleton}
                 context={selectionContext}
                 spacingEntries={spacingEntries}
                 detailPreviews={selectionDetailPreviews}

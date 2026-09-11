@@ -16,7 +16,10 @@ describe('RoofProjectDocumentV1', () => {
     const serialized = serializeRoofProjectDocument(document);
 
     expect(parseRoofProjectDocument(serialized)).toEqual(document);
-    expect(JSON.parse(serialized)).toEqual({ schemaVersion: 1, project: { roof, features: [], buildUp: {} } });
+    expect(JSON.parse(serialized)).toEqual({
+      schemaVersion: 1,
+      project: { roof, features: [], openingFraming: [], buildUp: {} },
+    });
     expect(serialized).not.toMatch(
       /selected|hover|camera|drawer|toolbox|viewport|dimensionLevel/,
     );
@@ -25,11 +28,70 @@ describe('RoofProjectDocumentV1', () => {
   it('round-trips roof windows and batten settings while accepting earlier V1 documents', () => {
     const roof = gableTemplateFromAssembly(assemblyDefaults);
     const document = createRoofProjectDocument(roof, {
-      features: [{ id: 'feature:roof-window-1', kind: 'roof-window', roofPlaneId: 'roof-plane:left', widthMm: 780, heightMm: 1180, position: { uMm: 900, vMm: 1200 } }],
-      buildUp: { battenLayout: { enabled: true, battenHeightMm: 40, battenWidthMm: 60, gaugeMm: 350, eaveOffsetMm: 250 } },
+      features: [
+        {
+          id: 'feature:roof-window-1',
+          kind: 'roof-window',
+          roofPlaneId: 'roof-plane:left',
+          widthMm: 780,
+          heightMm: 1180,
+          position: { uMm: 900, vMm: 1200 },
+        },
+      ],
+      buildUp: {
+        battenLayout: {
+          enabled: true,
+          battenHeightMm: 40,
+          battenWidthMm: 60,
+          gaugeMm: 350,
+          eaveOffsetMm: 250,
+        },
+      },
     });
-    expect(parseRoofProjectDocument(serializeRoofProjectDocument(document))).toEqual(document);
-    expect(parseRoofProjectDocument(JSON.stringify({ schemaVersion: 1, project: { roof } })).project).toMatchObject({ features: [], buildUp: {} });
+    expect(
+      parseRoofProjectDocument(serializeRoofProjectDocument(document)),
+    ).toEqual(document);
+    expect(
+      parseRoofProjectDocument(
+        JSON.stringify({ schemaVersion: 1, project: { roof } }),
+      ).project,
+    ).toMatchObject({ features: [], openingFraming: [], buildUp: {} });
+  });
+
+  it('round-trips optional V14 opening-framing intent while keeping V13 documents compatible', () => {
+    const roof = gableTemplateFromAssembly(assemblyDefaults);
+    const document = createRoofProjectDocument(roof, {
+      features: [
+        {
+          id: 'feature:roof-window-1',
+          kind: 'roof-window',
+          roofPlaneId: 'roof-plane:left',
+          widthMm: 780,
+          heightMm: 1180,
+          position: { uMm: 900, vMm: 1200 },
+        },
+      ],
+      openingFraming: [
+        {
+          id: 'opening-framing:feature:roof-window-1',
+          kind: 'roof-opening-framing',
+          featureId: 'feature:roof-window-1',
+          headerSection: { widthMm: 80, depthMm: 200 },
+          edgeOffsetMm: 80,
+          acceptedGeometrySignature: 'geometry-v14',
+        },
+      ],
+    });
+    expect(
+      parseRoofProjectDocument(serializeRoofProjectDocument(document)),
+    ).toEqual(document);
+    const v13 = parseRoofProjectDocument(
+      JSON.stringify({
+        schemaVersion: 1,
+        project: { roof, features: document.project.features, buildUp: {} },
+      }),
+    );
+    expect(v13.project.openingFraming).toEqual([]);
   });
 
   it('rejects unknown document versions and invalid roof input', () => {

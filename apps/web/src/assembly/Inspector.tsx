@@ -8,6 +8,8 @@ import type { DetailPreviewModel } from '@cieslacalc/drawing-engine';
 import {
   HIP_RAFTER_PROTOTYPE_ID,
   JACK_RAFTER_PROTOTYPE_ID,
+  createOpeningFramingDraft,
+  resolveOpeningFraming,
   resolveBattenLayout,
   resolveRoofFeatureCollisions,
   resolveNearestRoofWindowBay,
@@ -118,10 +120,10 @@ export function Inspector({
               ))}
             </>
           )}
-          {roofWindow && <RoofWindowInspector feature={roofWindow} skeleton={skeleton} />}
-          {workbench.viewPreset === 'battens' && (
-            <BattenLayoutInspector />
+          {roofWindow && (
+            <RoofWindowInspector feature={roofWindow} skeleton={skeleton} />
           )}
+          {workbench.viewPreset === 'battens' && <BattenLayoutInspector />}
           {(isRafter || isJack || workbench.selectedId === 'cut:eave') && (
             <TimberInputs />
           )}
@@ -263,10 +265,12 @@ function BattenLayoutInspector() {
       <h3>{t('assembly.battens')}</h3>
       <p>{t('assembly.battenGeometricNote')}</p>
       <h4>{t('assembly.battenGeometry')}</h4>
-      {([
-        ['battenWidthMm', 'battenWidth'],
-        ['battenHeightMm', 'battenHeight'],
-      ] as const).map(([field, label]) => (
+      {(
+        [
+          ['battenWidthMm', 'battenWidth'],
+          ['battenHeightMm', 'battenHeight'],
+        ] as const
+      ).map(([field, label]) => (
         <DraftMillimetreField
           key={field}
           label={t(`assembly.${label}`)}
@@ -276,11 +280,13 @@ function BattenLayoutInspector() {
         />
       ))}
       <h4>{t('assembly.battenDistribution')}</h4>
-      {([
-        ['gaugeMm', 'battenGauge'],
-        ['eaveOffsetMm', 'battenEaveOffset'],
-        ['ridgeOffsetMm', 'battenRidgeOffset'],
-      ] as const).map(([field, label]) => (
+      {(
+        [
+          ['gaugeMm', 'battenGauge'],
+          ['eaveOffsetMm', 'battenEaveOffset'],
+          ['ridgeOffsetMm', 'battenRidgeOffset'],
+        ] as const
+      ).map(([field, label]) => (
         <DraftMillimetreField
           key={field}
           label={t(`assembly.${label}`)}
@@ -291,23 +297,55 @@ function BattenLayoutInspector() {
       ))}
       <h4>{t('assembly.battenResult')}</h4>
       <dl className="a-batten-results">
-        <div><dt>{t('assembly.battenRows')}</dt><dd>{result.battens.length}</dd></div>
-        <div><dt>{t('assembly.battenTotalLength')}</dt><dd>{new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 1 }).format(result.totalLengthMm / 1000)} m</dd></div>
-        <div><dt>{t('assembly.battenGauge')}</dt><dd>{layout.gaugeMm} mm</dd></div>
+        <div>
+          <dt>{t('assembly.battenRows')}</dt>
+          <dd>{result.battens.length}</dd>
+        </div>
+        <div>
+          <dt>{t('assembly.battenTotalLength')}</dt>
+          <dd>
+            {new Intl.NumberFormat(i18n.language, {
+              maximumFractionDigits: 1,
+            }).format(result.totalLengthMm / 1000)}{' '}
+            m
+          </dd>
+        </div>
+        <div>
+          <dt>{t('assembly.battenGauge')}</dt>
+          <dd>{layout.gaugeMm} mm</dd>
+        </div>
       </dl>
       {selectedRow && (
-        <section className="a-batten-row-detail" data-testid="batten-row-detail">
-          <h4>{t('assembly.battenRow')} {selectedRow.id.split(':').at(-1)}</h4>
+        <section
+          className="a-batten-row-detail"
+          data-testid="batten-row-detail"
+        >
+          <h4>
+            {t('assembly.battenRow')} {selectedRow.id.split(':').at(-1)}
+          </h4>
           <dl>
-            <div><dt>{t('assembly.roofPlane')}</dt><dd>{planeName(selectedRow.roofPlaneId)}</dd></div>
-            <div><dt>{t('assembly.battenPosition')}</dt><dd>{Math.round(selectedRow.stationMm)} mm</dd></div>
-            <div><dt>{t('assembly.battenLength')}</dt><dd>{Math.round(selectedRow.usableLengthMm)} mm</dd></div>
-            <div><dt>{t('assembly.battenSegments')}</dt><dd>{selectedRow.segments.length}</dd></div>
+            <div>
+              <dt>{t('assembly.roofPlane')}</dt>
+              <dd>{planeName(selectedRow.roofPlaneId)}</dd>
+            </div>
+            <div>
+              <dt>{t('assembly.battenPosition')}</dt>
+              <dd>{Math.round(selectedRow.stationMm)} mm</dd>
+            </div>
+            <div>
+              <dt>{t('assembly.battenLength')}</dt>
+              <dd>{Math.round(selectedRow.usableLengthMm)} mm</dd>
+            </div>
+            <div>
+              <dt>{t('assembly.battenSegments')}</dt>
+              <dd>{selectedRow.segments.length}</dd>
+            </div>
           </dl>
           <ol>
             {selectedRow.segments.map((segment, index) => (
               <li key={`${segment.fromUMm}:${segment.toUMm}`}>
-                {t('assembly.segment')} {index + 1}: {Math.round(segment.toUMm - segment.fromUMm)} mm
+                {t('assembly.segment')} {index + 1}:{' '}
+                {Math.round(segment.toUMm - segment.fromUMm)} mm
               </li>
             ))}
           </ol>
@@ -336,6 +374,18 @@ function RoofWindowInspector({
     skeleton,
     feature,
   });
+  const framingSpec = state.projectDocument.project.openingFraming.find(
+    (spec) => spec.featureId === feature.id,
+  );
+  const framing = resolveOpeningFraming({
+    template: state.template,
+    skeleton,
+    feature,
+    framingSpec:
+      framingSpec ?? createOpeningFramingDraft(state.template, feature.id),
+  });
+  const proposalActive =
+    state.workbench.openingFramingProposalFeatureId === feature.id;
   const feedback =
     state.workbench.placementFeedback?.featureId === feature.id
       ? state.workbench.placementFeedback
@@ -347,13 +397,21 @@ function RoofWindowInspector({
     state.updateRoofWindow(
       feature.id,
       field === 'uMm' || field === 'vMm'
-        ? { position: { ...feature.position, [field === 'uMm' ? 'uMm' : 'vMm']: value } }
+        ? {
+            position: {
+              ...feature.position,
+              [field === 'uMm' ? 'uMm' : 'vMm']: value,
+            },
+          }
         : { [field]: value },
     );
   };
   return (
     <section className="a-window-inspector">
-      <h3>{t('assembly.geometricOpening')} {feature.id.replace('feature:roof-window-', 'O')}</h3>
+      <h3>
+        {t('assembly.geometricOpening')}{' '}
+        {feature.id.replace('feature:roof-window-', 'O')}
+      </h3>
       <p className="a-help">{t('assembly.geometricOpeningNote')}</p>
       <label className="a-select-label">
         {t('assembly.roofPlane')}
@@ -380,12 +438,14 @@ function RoofWindowInspector({
           ))}
         </select>
       </label>
-      {([
-        ['widthMm', 'windowWidth', feature.widthMm],
-        ['heightMm', 'windowHeight', feature.heightMm],
-        ['uMm', 'windowPositionU', feature.position.uMm],
-        ['vMm', 'windowPositionV', feature.position.vMm],
-      ] as const).map(([field, label, value]) => (
+      {(
+        [
+          ['widthMm', 'windowWidth', feature.widthMm],
+          ['heightMm', 'windowHeight', feature.heightMm],
+          ['uMm', 'windowPositionU', feature.position.uMm],
+          ['vMm', 'windowPositionV', feature.position.vMm],
+        ] as const
+      ).map(([field, label, value]) => (
         <DraftMillimetreField
           key={field}
           label={t(`assembly.${label}`)}
@@ -401,25 +461,132 @@ function RoofWindowInspector({
       </p>
       {nearestBay && (
         <p className="a-window-bay">
-          {t('assembly.nearestBay')}: {nearestBay.memberInstanceIds.map(memberInstanceCode).join(' — ')} · {Math.round(nearestBay.availableWidthMm)} mm
+          {t('assembly.nearestBay')}:{' '}
+          {nearestBay.memberInstanceIds.map(memberInstanceCode).join(' — ')} ·{' '}
+          {Math.round(nearestBay.availableWidthMm)} mm
         </p>
       )}
       {feedback?.status === 'placed' && feedback.memberInstanceIds && (
         <p className="a-window-success">
-          {t('assembly.windowPlacedBetween')}: {feedback.memberInstanceIds.map(memberInstanceCode).join(' — ')}.
+          {t('assembly.windowPlacedBetween')}:{' '}
+          {feedback.memberInstanceIds.map(memberInstanceCode).join(' — ')}.
         </p>
       )}
       {feedback?.status === 'failed' && (
         <p className="a-window-warning" role="alert">
-          {feedback.reason === 'opening-too-wide' && feedback.availableWidthMm !== undefined
+          {feedback.reason === 'opening-too-wide' &&
+          feedback.availableWidthMm !== undefined
             ? `${t('assembly.openingTooWide')} ${Math.round(feedback.requiredWidthMm ?? feature.widthMm)} mm / ${Math.round(feedback.availableWidthMm)} mm.`
             : t('assembly.noRafterBay')}
         </p>
       )}
-      <button className="a-button a-primary" onClick={() => state.placeRoofWindowBetweenRafters(feature.id)}>
+      <button
+        className="a-button a-primary"
+        onClick={() => state.placeRoofWindowBetweenRafters(feature.id)}
+      >
         {t('assembly.placeBetweenRafters')}
       </button>
-      <button className="a-button" onClick={() => state.removeRoofWindow(feature.id)}>
+      <section
+        className="a-opening-framing-inspector"
+        data-framing-status={framing.status}
+      >
+        <h4>{t('assembly.openingFraming')}</h4>
+        {framing.status === 'resolved' && (
+          <>
+            <dl>
+              <div>
+                <dt>{t('assembly.framingStatus')}</dt>
+                <dd>
+                  {t(
+                    `assembly.${framing.reviewStatus === 'needs-review' ? 'framingNeedsReview' : framingSpec ? 'framingApplied' : 'framingAvailable'}`,
+                  )}
+                </dd>
+              </div>
+              <div>
+                <dt>{t('assembly.boundingRafters')}</dt>
+                <dd>
+                  {framing.boundingMemberInstanceIds
+                    .map(memberInstanceCode)
+                    .join(' — ')}
+                </dd>
+              </div>
+              <div>
+                <dt>{t('assembly.interruptedRafters')}</dt>
+                <dd>
+                  {framing.affectedMemberInstanceIds
+                    .map(memberInstanceCode)
+                    .join(', ')}
+                </dd>
+              </div>
+              <div>
+                <dt>{t('assembly.upperHeader')}</dt>
+                <dd>{Math.round(framing.upperFramingMember!.lengthMm)} mm</dd>
+              </div>
+              <div>
+                <dt>{t('assembly.lowerHeader')}</dt>
+                <dd>{Math.round(framing.lowerFramingMember!.lengthMm)} mm</dd>
+              </div>
+            </dl>
+            <p className="a-limit-note">
+              {t('assembly.openingFramingStructuralWarning')}
+            </p>
+            {proposalActive ? (
+              <div className="a-framing-actions">
+                <button
+                  className="a-button a-primary"
+                  onClick={() => state.applyOpeningFraming(feature.id)}
+                >
+                  {t('assembly.applyFraming')}
+                </button>
+                <button
+                  className="a-button"
+                  onClick={state.cancelOpeningFramingProposal}
+                >
+                  {t('assembly.cancelFraming')}
+                </button>
+              </div>
+            ) : framingSpec ? (
+              <div className="a-framing-actions">
+                {framing.reviewStatus === 'needs-review' && (
+                  <button
+                    className="a-button a-primary"
+                    onClick={() => state.planOpeningFraming(feature.id)}
+                  >
+                    {t('assembly.recheckFraming')}
+                  </button>
+                )}
+                <button
+                  className="a-button"
+                  onClick={() => state.removeOpeningFraming(feature.id)}
+                >
+                  {t('assembly.removeFraming')}
+                </button>
+              </div>
+            ) : (
+              <button
+                className="a-button a-primary"
+                onClick={() => state.planOpeningFraming(feature.id)}
+              >
+                {t('assembly.planOpeningFraming')}
+              </button>
+            )}
+          </>
+        )}
+        {framing.status === 'not-needed' && (
+          <p className="a-window-clear">{t('assembly.framingNotNeeded')}</p>
+        )}
+        {framing.status !== 'resolved' && framing.status !== 'not-needed' && (
+          <p className="a-window-warning" role="alert">
+            {t(
+              `assembly.${framing.status === 'unsupported-complex-boundary' ? 'framingUnsupported' : framing.status === 'no-bounding-rafters' ? 'framingNoBounds' : framing.status === 'conflict' ? 'framingConflict' : 'framingInvalid'}`,
+            )}
+          </p>
+        )}
+      </section>
+      <button
+        className="a-button"
+        onClick={() => state.removeRoofWindow(feature.id)}
+      >
         {t('assembly.removeRoofWindow')}
       </button>
     </section>
