@@ -29,12 +29,17 @@ import {
   clampPurlinPlacement,
   gablePitchDegFromRidgeHeight,
   gableRidgeHeightMm,
+  projectPlaneLocalToWorld,
+  resolveBattenLayout,
+  resolveRoofFeatureCollisions,
+  resolveRoofPlaneBasis,
 } from '@cieslacalc/roof-math';
 import type {
   HipRoofSkeleton,
   ResolvedRafterSpacing,
   RoofSkeleton,
   RoofTemplateSpec,
+  RoofWindowFeature,
   SkeletonMember3D,
 } from '@cieslacalc/timber-model';
 import { formatLength } from '../format';
@@ -57,7 +62,7 @@ interface Handle {
   selectionId?: string;
 }
 interface Drag {
-  kind: HandleKind | 'pan';
+  kind: HandleKind | 'roof-window' | 'pan';
   pointerId: number;
   startPointer: Point;
   startValue?: number;
@@ -66,6 +71,10 @@ interface Drag {
   axisStart?: Point;
   axisEnd?: Point;
   axisLengthMm?: number;
+  featureId?: string;
+  startPosition?: RoofWindowFeature['position'];
+  uAxis?: Point;
+  vAxis?: Point;
 }
 const handleRangeMm = 1000;
 
@@ -120,11 +129,15 @@ function SkeletonCanvasComponent({
       isolateSelection: store.workbench.isolateSelection,
       dimensionLevel: store.workbench.dimensionLevel,
       activeOperationId: store.workbench.activeOperationId,
+      layerVisibility: store.workbench.layerVisibility,
       detailDrawerOpen: store.workbench.detailDrawer.open,
+      features: store.projectDocument.project.features,
+      battenLayout: store.projectDocument.project.buildUp.battenLayout,
       beginTransaction: store.beginTransaction,
       cancelTransaction: store.cancelTransaction,
       commitTransaction: store.commitTransaction,
       movePurlin: store.movePurlin,
+      moveRoofWindow: store.moveRoofWindow,
       select: store.select,
       setCanonicalField: store.setCanonicalField,
       activateOperation: store.activateOperation,
@@ -141,6 +154,7 @@ function SkeletonCanvasComponent({
       isolateSelection: selectedStore.isolateSelection,
       dimensionLevel: selectedStore.dimensionLevel,
       activeOperationId: selectedStore.activeOperationId,
+      layerVisibility: selectedStore.layerVisibility,
     },
   };
   const { t, i18n } = useTranslation();
@@ -321,6 +335,52 @@ function SkeletonCanvasComponent({
       axisLengthMm: handleRangeMm,
     })),
   ];
+  const roofWindows = selectedStore.features.filter(
+    (feature): feature is RoofWindowFeature => feature.kind === 'roof-window',
+  );
+  const windowOverlays = roofWindows.map((feature) => {
+    const basis = resolveRoofPlaneBasis(template, feature.roofPlaneId);
+    const corners = [
+      feature.position,
+      { uMm: feature.position.uMm + feature.widthMm, vMm: feature.position.vMm },
+      { uMm: feature.position.uMm + feature.widthMm, vMm: feature.position.vMm + feature.heightMm },
+      { uMm: feature.position.uMm, vMm: feature.position.vMm + feature.heightMm },
+    ].map((local) => worldPoint(projectPlaneLocalToWorld(basis, local)));
+    const collisionIds = new Set(
+      resolveRoofFeatureCollisions({ template, skeleton, feature }).map(
+        (collision) => collision.memberInstanceId,
+      ),
+    );
+    const origin = worldPoint(projectPlaneLocalToWorld(basis, feature.position));
+    const uEnd = worldPoint(
+      projectPlaneLocalToWorld(basis, {
+        uMm: feature.position.uMm + 100,
+        vMm: feature.position.vMm,
+      }),
+    );
+    const vEnd = worldPoint(
+      projectPlaneLocalToWorld(basis, {
+        uMm: feature.position.uMm,
+        vMm: feature.position.vMm + 100,
+      }),
+    );
+    return { feature, corners, collisionIds, origin, uAxis: { x: uEnd.x - origin.x, y: uEnd.y - origin.y }, vAxis: { x: vEnd.x - origin.x, y: vEnd.y - origin.y } };
+  });
+  const battenLines =
+    policy.showBattens && selectedStore.battenLayout?.enabled
+      ? resolveBattenLayout({
+          template,
+          layout: selectedStore.battenLayout,
+          features: selectedStore.features,
+        }).battens.flatMap((batten) => {
+          const basis = resolveRoofPlaneBasis(template, batten.roofPlaneId);
+          return batten.segments.map((segment) => ({
+            id: `${batten.id}:${segment.fromUMm}`,
+            from: worldPoint(projectPlaneLocalToWorld(basis, { uMm: segment.fromUMm, vMm: batten.stationMm })),
+            to: worldPoint(projectPlaneLocalToWorld(basis, { uMm: segment.toUMm, vMm: batten.stationMm })),
+          }));
+        })
+      : [];
   const selectedMember = skeleton.members.find(
     (member) =>
       member.id === state.workbench.selectedInstanceId ||
@@ -365,6 +425,23 @@ function SkeletonCanvasComponent({
     setActiveHandle(handle.id);
     parent.setPointerCapture(event.pointerId);
   };
+  const startWindowDrag = (
+    event: PointerEvent<SVGElement>,
+    overlay: (typeof windowOverlays)[number],
+  ) => {
+    if (event.button !== 0 && event.pointerType !== 'touch') return;
+    event.preventDefault();
+    event.stopPropagation();
+    state.beginTransaction();
+    state.select(overlay.feature.id);
+    drag.current = {
+      kind: 'roof-window', pointerId: event.pointerId,
+      startPointer: currentPointer(event), viewport,
+      featureId: overlay.feature.id, startPosition: overlay.feature.position,
+      uAxis: overlay.uAxis, vAxis: overlay.vAxis,
+    };
+    svg.current?.setPointerCapture(event.pointerId);
+  };
   const finishDrag = (cancel: boolean) => {
     const active = drag.current;
     if (!active) return;
@@ -388,6 +465,27 @@ function SkeletonCanvasComponent({
           panY: active.viewport.panY + pointer.y - active.startPointer.y,
         }),
       );
+      return;
+    }
+    if (
+      active.kind === 'roof-window' &&
+      active.featureId &&
+      active.startPosition &&
+      active.uAxis &&
+      active.vAxis
+    ) {
+      const pointer = currentPointer(event);
+      const deltaX = pointer.x - active.startPointer.x;
+      const deltaY = pointer.y - active.startPointer.y;
+      const determinant = active.uAxis.x * active.vAxis.y - active.uAxis.y * active.vAxis.x;
+      if (Math.abs(determinant) < 0.001) return;
+      const uDeltaMm = ((deltaX * active.vAxis.y - deltaY * active.vAxis.x) / determinant) * 100;
+      const vDeltaMm = ((active.uAxis.x * deltaY - active.uAxis.y * deltaX) / determinant) * 100;
+      state.moveRoofWindow(active.featureId, {
+        uMm: active.startPosition.uMm + uDeltaMm,
+        vMm: active.startPosition.vMm + vDeltaMm,
+      });
+      setPreview(t('assembly.roofWindow'));
       return;
     }
     if (
@@ -597,6 +695,13 @@ function SkeletonCanvasComponent({
             ))}
           </g>
         )}
+        {policy.showBattens && (
+          <g className="a-batten-layer" aria-label={t('assembly.battens')}>
+            {battenLines.map((batten) => (
+              <line key={batten.id} x1={batten.from.x} y1={batten.from.y} x2={batten.to.x} y2={batten.to.y} />
+            ))}
+          </g>
+        )}
         {spacingStationAxes.length > 0 && (
           <g
             className={`a-spacing-guides ${state.workbench.selectedId === 'roof' ? 'is-active' : ''}`}
@@ -659,7 +764,14 @@ function SkeletonCanvasComponent({
           </g>
         )}
         <g className="a-skeleton-members">
-          {solids.map(({ member, faces }) => {
+          {solids
+            .filter(({ member }) => {
+              const secondary = member.kind === 'rafter' || member.kind === 'jack-rafter';
+              return secondary
+                ? policy.showSecondaryMembers || state.workbench.selectedId === member.id
+                : policy.showPrimaryMembers || state.workbench.selectedId === member.id;
+            })
+            .map(({ member, faces }) => {
             const visualState = resolveMemberVisualState({
               member,
               view: state.workbench,
@@ -742,6 +854,37 @@ function SkeletonCanvasComponent({
             );
           })}
         </g>
+        {policy.showRoofFeatures && (
+          <g className="a-roof-feature-layer">
+            {windowOverlays.map((overlay) => {
+              const selected = state.workbench.selectedId === overlay.feature.id;
+              const collides = overlay.collisionIds.size > 0;
+              return (
+                <g
+                  key={overlay.feature.id}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`${t('assembly.roofWindow')} ${overlay.feature.id}`}
+                  aria-pressed={selected}
+                  data-roof-window={overlay.feature.id}
+                  data-collision={collides || undefined}
+                  className={`a-roof-window ${selected ? 'is-selected' : ''} ${collides ? 'is-collision' : ''}`}
+                  onClick={(event) => { event.stopPropagation(); state.select(overlay.feature.id); }}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      state.select(overlay.feature.id);
+                    }
+                  }}
+                  onPointerDown={(event) => startWindowDrag(event, overlay)}
+                >
+                  <polygon points={overlay.corners.map((corner) => `${corner.x},${corner.y}`).join(' ')} />
+                  {collides && <title>{t('assembly.windowCollision')}</title>}
+                </g>
+              );
+            })}
+          </g>
+        )}
         {policy.showCutMarkers && activeInstance && (
           <MemberInstanceOverlay
             instance={activeInstance}
@@ -761,7 +904,7 @@ function SkeletonCanvasComponent({
         )}
         {policy.showDirectManipulation && (
           <g className="a-handle-layer">
-            {handles.map((handle) => (
+            {handles.filter((handle) => handle.kind !== 'purlin').map((handle) => (
               <g
                 key={handle.id}
                 data-handle={handle.kind}

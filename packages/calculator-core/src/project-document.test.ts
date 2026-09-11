@@ -16,13 +16,20 @@ describe('RoofProjectDocumentV1', () => {
     const serialized = serializeRoofProjectDocument(document);
 
     expect(parseRoofProjectDocument(serialized)).toEqual(document);
-    expect(JSON.parse(serialized)).toEqual({
-      schemaVersion: 1,
-      project: { roof },
-    });
+    expect(JSON.parse(serialized)).toEqual({ schemaVersion: 1, project: { roof, features: [], buildUp: {} } });
     expect(serialized).not.toMatch(
       /selected|hover|camera|drawer|toolbox|viewport|dimensionLevel/,
     );
+  });
+
+  it('round-trips roof windows and batten settings while accepting earlier V1 documents', () => {
+    const roof = gableTemplateFromAssembly(assemblyDefaults);
+    const document = createRoofProjectDocument(roof, {
+      features: [{ id: 'feature:roof-window-1', kind: 'roof-window', roofPlaneId: 'roof-plane:left', widthMm: 780, heightMm: 1180, position: { uMm: 900, vMm: 1200 } }],
+      buildUp: { battenLayout: { enabled: true, battenHeightMm: 40, battenWidthMm: 60, gaugeMm: 350, eaveOffsetMm: 250 } },
+    });
+    expect(parseRoofProjectDocument(serializeRoofProjectDocument(document))).toEqual(document);
+    expect(parseRoofProjectDocument(JSON.stringify({ schemaVersion: 1, project: { roof } })).project).toMatchObject({ features: [], buildUp: {} });
   });
 
   it('rejects unknown document versions and invalid roof input', () => {

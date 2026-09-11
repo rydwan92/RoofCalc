@@ -8,9 +8,14 @@ import type {
 
 export type WorkbenchMode = 'quick' | 'builder';
 export type WorkbenchCanvasView = 'skeleton' | 'rafter' | 'hip';
-export type ViewPreset = 'construction' | 'cuts';
+export type ViewPreset = 'construction' | 'openings' | 'battens' | 'cuts';
 export type DimensionLevel = 'minimal' | 'working' | 'full';
-export type WorkbenchToolCategory = 'geometry' | 'timber' | 'support';
+export type WorkbenchToolCategory =
+  | 'geometry'
+  | 'timber'
+  | 'support'
+  | 'opening'
+  | 'build-up';
 export type VisualInteractionState =
   'normal' | 'hover' | 'selected' | 'related' | 'muted' | 'warning' | 'invalid';
 
@@ -47,6 +52,12 @@ export interface WorkbenchViewState {
     activePreviewId?: string;
     cutState: 'before' | 'after';
   };
+  layerVisibility: {
+    dimensions: boolean;
+    structure: boolean;
+    features: boolean;
+    battens: boolean;
+  };
 }
 
 export const initialWorkbenchViewState: WorkbenchViewState = {
@@ -70,6 +81,12 @@ export const initialWorkbenchViewState: WorkbenchViewState = {
     activePreviewId: undefined,
     cutState: 'before',
   },
+  layerVisibility: {
+    dimensions: true,
+    structure: true,
+    features: true,
+    battens: true,
+  },
 };
 
 export interface WorkbenchProjectionPolicy {
@@ -77,6 +94,8 @@ export interface WorkbenchProjectionPolicy {
   showPrimaryMembers: boolean;
   showSecondaryMembers: boolean;
   showSupports: boolean;
+  showRoofFeatures: boolean;
+  showBattens: boolean;
   showCutMarkers: boolean;
   showDatums: boolean;
   showDimensions: boolean;
@@ -93,16 +112,22 @@ export function deriveWorkbenchProjectionPolicy(
   const effectiveDimensionLevel =
     narrow && view.dimensionLevel === 'full' ? 'working' : view.dimensionLevel;
   const cuts = view.viewPreset === 'cuts';
+  const openings = view.viewPreset === 'openings';
+  const battens = view.viewPreset === 'battens';
   return {
     showRoofPlanes: true,
-    showPrimaryMembers: true,
-    showSecondaryMembers: true,
+    showPrimaryMembers: view.layerVisibility.structure,
+    showSecondaryMembers: view.layerVisibility.structure && !openings && !battens,
     showSupports: true,
+    showRoofFeatures:
+      view.layerVisibility.features &&
+      (openings || battens || view.selectedId.startsWith('feature:')),
+    showBattens: battens && view.layerVisibility.battens,
     showCutMarkers: cuts || !!view.selectedInstanceId,
     showDatums: cuts,
-    showDimensions: true,
+    showDimensions: view.layerVisibility.dimensions,
     showDirectManipulation: !cuts,
-    muteUnrelated: cuts || view.isolateSelection,
+    muteUnrelated: cuts || openings || battens || view.isolateSelection,
     isolateSelection: view.isolateSelection,
     effectiveDimensionLevel,
   };

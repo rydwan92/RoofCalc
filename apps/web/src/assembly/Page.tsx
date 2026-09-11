@@ -61,6 +61,7 @@ export function AssemblyPage() {
         spec: state.spec,
         resolved: templateResult,
         skeleton,
+        features: state.projectDocument.project.features,
       }),
     [
       workbench.selectedId,
@@ -68,6 +69,7 @@ export function AssemblyPage() {
       state.spec,
       templateResult,
       skeleton,
+      state.projectDocument.project.features,
     ],
   );
   const result = templateResult.calculation;

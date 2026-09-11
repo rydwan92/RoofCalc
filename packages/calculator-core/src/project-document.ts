@@ -1,29 +1,60 @@
 import { z } from 'zod';
 import { roofTemplateSchema } from '@cieslacalc/roof-math';
-import type { RoofTemplateSpec } from '@cieslacalc/timber-model';
+import type { RoofBuildUp, RoofFeature, RoofTemplateSpec } from '@cieslacalc/timber-model';
+
+const roofFeatureSchema: z.ZodType<RoofFeature> = z.object({
+  id: z.string().min(1),
+  kind: z.literal('roof-window'),
+  roofPlaneId: z.string().min(1),
+  widthMm: z.number().positive(),
+  heightMm: z.number().positive(),
+  position: z.object({ uMm: z.number().finite(), vMm: z.number().finite() }),
+  clearanceMm: z.number().nonnegative().optional(),
+});
+const roofBuildUpSchema: z.ZodType<RoofBuildUp> = z.object({
+  battenLayout: z.object({
+    enabled: z.boolean(), roofPlaneIds: z.array(z.string().min(1)).optional(),
+    battenHeightMm: z.number().positive(), battenWidthMm: z.number().positive(),
+    gaugeMm: z.number().positive(), eaveOffsetMm: z.number().nonnegative(),
+    ridgeOffsetMm: z.number().nonnegative().optional(),
+  }).optional(),
+});
 
 /** Canonical, serializable boundary for future project persistence and revisions. */
 export interface RoofProjectDocumentV1 {
   schemaVersion: 1;
   project: {
     roof: RoofTemplateSpec;
+    features: RoofFeature[];
+    buildUp: RoofBuildUp;
   };
 }
 
-export const roofProjectDocumentV1Schema: z.ZodType<RoofProjectDocumentV1> =
-  z.object({
+export const roofProjectDocumentV1Schema = z
+  .object({
     schemaVersion: z.literal(1),
     project: z.object({
       roof: roofTemplateSchema,
+      features: z.array(roofFeatureSchema).optional(),
+      buildUp: roofBuildUpSchema.optional(),
     }),
-  });
+  })
+  .transform((document): RoofProjectDocumentV1 => ({
+    ...document,
+    project: {
+      ...document.project,
+      features: document.project.features ?? [],
+      buildUp: document.project.buildUp ?? {},
+    },
+  }));
 
 export function createRoofProjectDocument(
   roof: RoofTemplateSpec,
+  composition: Pick<RoofProjectDocumentV1['project'], 'features' | 'buildUp'> = { features: [], buildUp: {} },
 ): RoofProjectDocumentV1 {
   return roofProjectDocumentV1Schema.parse({
     schemaVersion: 1,
-    project: { roof },
+    project: { roof, ...composition },
   });
 }
 

@@ -11,6 +11,11 @@
   --a-guide-fill-alt: #7ca49a14;
   --a-timber-secondary-dark: #a77750;
   --a-timber-secondary-light: #d3ad82;
+  --a-feature: #356cab;
+  --a-feature-fill: #dceafd;
+  --a-batten: #a66532;
+  --a-warning: #b35b2d;
+  --a-warning-fill: #fff0df;
   color: #223c32;
 }
 .assembly-app button,
@@ -774,6 +779,57 @@
 .a-isolate-button:disabled {
   opacity: 0.42;
 }
+.a-view-options {
+  position: relative;
+}
+.a-view-options summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--a-line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--a-green);
+  font-size: 10px;
+  font-weight: 750;
+  list-style: none;
+}
+.a-view-options summary::-webkit-details-marker {
+  display: none;
+}
+.a-view-options[open] summary {
+  border-color: var(--a-selection);
+  background: var(--a-selection-soft);
+}
+.a-view-options label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  font-size: 10px;
+}
+.a-view-options label input {
+  accent-color: var(--a-selection);
+}
+.a-view-options[open] > label {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  min-width: 158px;
+  padding: 0 10px;
+  background: #fff;
+}
+.a-view-options[open] > label:first-of-type {
+  margin-top: 5px;
+  border-radius: 7px 7px 0 0;
+}
+.a-view-options[open] > label:last-of-type {
+  padding-bottom: 7px;
+  border-radius: 0 0 7px 7px;
+  box-shadow: 0 8px 18px #18362b22;
+}
 .a-dynamic-legend {
   align-self: start;
   min-width: 155px;
@@ -1072,6 +1128,116 @@
   stroke-width: 3px;
   stroke-dasharray: 7 5;
   opacity: 0.9;
+}
+.a-roof-feature-layer {
+  touch-action: none;
+}
+.a-roof-window {
+  cursor: grab;
+  touch-action: none;
+}
+.a-roof-window polygon {
+  fill: var(--a-feature-fill);
+  fill-opacity: 0.88;
+  stroke: var(--a-feature);
+  stroke-width: 2.4px;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.a-roof-window:hover polygon,
+.a-roof-window:focus-visible polygon,
+.a-roof-window.is-selected polygon {
+  stroke-width: 4px;
+  filter: drop-shadow(0 2px 3px #193b5b55);
+}
+.a-roof-window:focus-visible {
+  outline: none;
+}
+.a-roof-window.is-collision polygon {
+  fill: var(--a-warning-fill);
+  stroke: var(--a-warning);
+  stroke-dasharray: 7 4;
+}
+.a-batten-layer {
+  pointer-events: none;
+}
+.a-batten-layer line {
+  stroke: var(--a-batten);
+  stroke-width: 2.25px;
+  opacity: 0.88;
+  vector-effect: non-scaling-stroke;
+}
+.preset-battens .a-skeleton-members {
+  opacity: 0.25;
+}
+.preset-openings .a-skeleton-member.is-muted {
+  opacity: 0.22;
+}
+.a-window-inspector,
+.a-batten-inspector {
+  margin-top: 12px;
+  border-top: 3px solid var(--a-feature);
+  padding-top: 12px;
+}
+.a-batten-inspector {
+  border-color: var(--a-batten);
+}
+.a-window-inspector h3,
+.a-batten-inspector h3 {
+  margin: 0 0 10px;
+  font-size: 13px;
+}
+.a-batten-inspector > p {
+  margin: 0 0 12px;
+  color: var(--a-muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+.a-window-warning,
+.a-window-clear {
+  margin: 8px 0;
+  border-left: 3px solid var(--a-warning);
+  padding: 8px;
+  background: var(--a-warning-fill);
+  color: #754122;
+  font-size: 10px;
+  line-height: 1.4;
+}
+.a-window-clear {
+  border-color: var(--a-selection);
+  background: var(--a-selection-soft);
+  color: #214d41;
+}
+.a-window-inspector .a-button {
+  width: 100%;
+  margin-top: 6px;
+}
+.a-batten-results {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  margin: 8px 0 0;
+}
+.a-batten-results > div {
+  min-width: 0;
+  padding: 7px;
+  border-radius: 5px;
+  background: #fbf3e9;
+}
+.a-batten-results dt,
+.a-batten-results dd {
+  margin: 0;
+}
+.a-batten-results dt {
+  color: var(--a-muted);
+  font-size: 8px;
+}
+.a-batten-results dd {
+  margin-top: 3px;
+  color: #70401e;
+  font-size: 11px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
 }
 .a-skeleton-member:hover .face-top,
 .a-skeleton-member:focus-visible .face-top {
@@ -2968,6 +3134,21 @@
   }
   .a-quick-detail-dialog > footer .a-primary {
     width: 100%;
+  }
+  .a-view-presets {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+  .a-view-presets button {
+    flex: 0 0 auto;
+    min-width: 74px;
+  }
+  .a-batten-results {
+    grid-template-columns: 1fr;
+  }
+  .a-window-inspector .a-field,
+  .a-batten-inspector .a-field {
+    margin-bottom: 10px;
   }
   .a-detail-drawer-body {
     grid-template-columns: 1fr;

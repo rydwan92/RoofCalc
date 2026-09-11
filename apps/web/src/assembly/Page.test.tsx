@@ -661,43 +661,42 @@ describe('dual-mode parametric workbench', () => {
       setPointerCapture: { value: vi.fn() },
       hasPointerCapture: { value: () => false },
     });
-    const handle = container.querySelector('[data-handle="purlin"]')!;
-    const circle = handle.querySelector('circle')!;
-    const axis = handle.querySelector('line')!;
+    const body = container.querySelector(
+      '[data-purlin-hit-target="support:purlin-1"]',
+    )!;
     const start = {
-      x: Number(circle.getAttribute('cx')),
-      y: Number(circle.getAttribute('cy')),
+      x:
+        (Number(body.getAttribute('x1')) + Number(body.getAttribute('x2'))) /
+        2,
+      y:
+        (Number(body.getAttribute('y1')) + Number(body.getAttribute('y2'))) /
+        2,
     };
-    const axisX =
-      Number(axis.getAttribute('x2')) - Number(axis.getAttribute('x1'));
-    const axisY =
-      Number(axis.getAttribute('y2')) - Number(axis.getAttribute('y1'));
-    const axisLength = Math.hypot(axisX, axisY);
     const before = purlin().placement.xMm;
     const pointer = { pointerId: 31, pointerType: 'mouse', button: 0 };
-    fireEvent.pointerDown(circle, {
+    fireEvent.pointerDown(body, {
       ...pointer,
       clientX: start.x,
       clientY: start.y,
     });
     fireEvent.pointerMove(drawing, {
       ...pointer,
-      clientX: start.x + (axisX / axisLength) * 50,
-      clientY: start.y + (axisY / axisLength) * 50,
+      clientX: start.x + 50,
+      clientY: start.y - 20,
     });
     expect(purlin().placement.xMm).not.toBe(before);
     fireEvent.pointerCancel(drawing, pointer);
     expect(purlin().placement.xMm).toBe(before);
     expect(useAssembly.getState().historyPast).toHaveLength(0);
-    fireEvent.pointerDown(circle, {
+    fireEvent.pointerDown(body, {
       ...pointer,
       clientX: start.x,
       clientY: start.y,
     });
     fireEvent.pointerMove(drawing, {
       ...pointer,
-      clientX: start.x + (axisX / axisLength) * 50,
-      clientY: start.y + (axisY / axisLength) * 50,
+      clientX: start.x + 50,
+      clientY: start.y - 20,
     });
     fireEvent.pointerUp(drawing, pointer);
     expect(useAssembly.getState().historyPast).toHaveLength(1);
@@ -726,20 +725,19 @@ describe('dual-mode parametric workbench', () => {
       setPointerCapture: { value: vi.fn() },
       hasPointerCapture: { value: () => false },
     });
-    const handle = container.querySelector('[data-handle="purlin"]')!;
-    const axis = handle.querySelector('line')!;
     const hitTarget = container.querySelector(
       '[data-purlin-hit-target="support:purlin-1"]',
     )!;
     const start = {
-      x: Number(axis.getAttribute('x1')),
-      y: Number(axis.getAttribute('y1')),
+      x:
+        (Number(hitTarget.getAttribute('x1')) +
+          Number(hitTarget.getAttribute('x2'))) /
+        2,
+      y:
+        (Number(hitTarget.getAttribute('y1')) +
+          Number(hitTarget.getAttribute('y2'))) /
+        2,
     };
-    const axisX =
-      Number(axis.getAttribute('x2')) - Number(axis.getAttribute('x1'));
-    const axisY =
-      Number(axis.getAttribute('y2')) - Number(axis.getAttribute('y1'));
-    const axisLength = Math.hypot(axisX, axisY);
     const before = purlin().placement.xMm;
     const pointer = { pointerId: 42, pointerType: 'mouse', button: 0 };
     fireEvent.pointerDown(hitTarget, {
@@ -751,8 +749,8 @@ describe('dual-mode parametric workbench', () => {
     expect(useAssembly.getState().activeTransaction).toBeTruthy();
     fireEvent.pointerMove(drawing, {
       ...pointer,
-      clientX: start.x + (axisX / axisLength) * 50,
-      clientY: start.y + (axisY / axisLength) * 50,
+      clientX: start.x + 50,
+      clientY: start.y - 20,
     });
     expect(purlin().placement.xMm).not.toBe(before);
     expect(screen.getByTestId('purlin-placement-guide')).toBeTruthy();
@@ -767,6 +765,22 @@ describe('dual-mode parametric workbench', () => {
       pointer,
     );
     expect(useAssembly.getState().activeTransaction).toBeUndefined();
+    expect(container.querySelector('[data-handle="purlin"]')).toBeNull();
+  });
+  it('adds, selects and positions a canonical roof window and shows the batten layer', () => {
+    const { container } = render(<App />);
+    builder();
+    fireEvent.click(screen.getByRole('button', { name: 'Dodaj okno dachowe' }));
+    expect(useAssembly.getState().workbench.viewPreset).toBe('openings');
+    expect(container.querySelector('[data-roof-window="feature:roof-window-1"]')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Okno dachowe O1' }));
+    expect(screen.getByLabelText('Szerokość okna')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Umieść między krokwiami' }));
+    expect(screen.getByText('Otwór znajduje się geometrycznie między krokwiami.')).toBeTruthy();
+    fireEvent.click(screen.getByRole('tab', { name: 'Łacenie' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Łacenie' }));
+    expect(screen.getByTestId('batten-inspector')).toBeTruthy();
+    expect(container.querySelectorAll('.a-batten-layer line').length).toBeGreaterThan(0);
   });
   it('offers a fast H1 path with shared reactive math and coordinated drawings', () => {
     render(<App />);

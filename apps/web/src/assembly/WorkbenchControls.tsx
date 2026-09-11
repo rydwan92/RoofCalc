@@ -1,4 +1,4 @@
-import { Eye, EyeOff, Ruler } from 'lucide-react';
+import { Eye, EyeOff, Ruler, SlidersHorizontal } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { RoofSkeleton } from '@cieslacalc/timber-model';
 import { useAssembly } from './store';
@@ -26,7 +26,7 @@ export function WorkbenchControls({ skeleton }: { skeleton: RoofSkeleton }) {
           role="tablist"
           aria-label={t('assembly.viewPreset')}
         >
-          {(['construction', 'cuts'] as ViewPreset[]).map((preset) => (
+          {(['construction', 'openings', 'battens', 'cuts'] as ViewPreset[]).map((preset) => (
             <button
               key={preset}
               role="tab"
@@ -72,6 +72,29 @@ export function WorkbenchControls({ skeleton }: { skeleton: RoofSkeleton }) {
             )}
           </button>
         )}
+        <details className="a-view-options">
+          <summary>
+            <SlidersHorizontal size={15} />
+            {t('assembly.view')}
+          </summary>
+          {([
+            ['dimensions', 'dimensions'],
+            ['structure', 'structureBackground'],
+            ['features', 'openings'],
+            ['battens', 'battens'],
+          ] as const).map(([layer, label]) => (
+            <label key={layer}>
+              <input
+                type="checkbox"
+                checked={state.workbench.layerVisibility[layer]}
+                onChange={(event) =>
+                  state.setLayerVisibility(layer, event.target.checked)
+                }
+              />
+              {t(`assembly.${label}`)}
+            </label>
+          ))}
+        </details>
       </div>
       <details className="a-dynamic-legend" open>
         <summary>{t('assembly.legend')}</summary>

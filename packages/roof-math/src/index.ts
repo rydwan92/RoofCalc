@@ -12,3 +12,4 @@ export * from './hip-rafter';
 export * from './jack-rafter';
 export * from './hip-roof';
 export * from './roof-template';
+export * from './roof-features';

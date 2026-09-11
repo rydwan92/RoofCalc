@@ -263,6 +263,45 @@ export function Toolbox({
           </details>
         );
       })}
+      <details open>
+        <summary>{t('assembly.openings')}</summary>
+        {state.projectDocument.project.features.map((feature) => (
+          <button
+            key={feature.id}
+            className="a-tool"
+            aria-pressed={state.workbench.selectedId === feature.id}
+            onClick={() => {
+              state.select(feature.id);
+              state.setViewPreset('openings');
+            }}
+          >
+            <Box size={20} />
+            <span>{t('assembly.roofWindow')} {feature.id.replace('feature:roof-window-', 'O')}</span>
+          </button>
+        ))}
+        <button className="a-tool a-add" onClick={() => state.addRoofWindow()}>
+          <Plus size={20} />
+          <span>{t('assembly.addRoofWindow')}</span>
+        </button>
+      </details>
+      <details open>
+        <summary>{t('assembly.roofBuildUp')}</summary>
+        <button
+          className={`a-tool ${state.projectDocument.project.buildUp.battenLayout?.enabled ? 'is-active' : ''}`}
+          onClick={() => {
+            state.setBattenLayout(
+              state.projectDocument.project.buildUp.battenLayout ?? {
+                enabled: true, battenHeightMm: 40, battenWidthMm: 60,
+                gaugeMm: 350, eaveOffsetMm: 250,
+              },
+            );
+            state.setViewPreset('battens');
+          }}
+        >
+          <Layers3 size={20} />
+          <span>{t('assembly.battens')}</span>
+        </button>
+      </details>
     </aside>
   );
 }

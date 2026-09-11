@@ -336,6 +336,39 @@ export interface Point3D {
   y: number;
   z: number;
 }
+/** Canonical coordinates on a resolved roof plane: u follows the eave, v rises up-slope. */
+export interface RoofPlanePosition {
+  uMm: number;
+  vMm: number;
+}
+export interface RoofWindowFeature {
+  id: EntityId;
+  kind: 'roof-window';
+  roofPlaneId: string;
+  widthMm: number;
+  heightMm: number;
+  position: RoofPlanePosition;
+  clearanceMm?: number;
+}
+export type RoofFeature = RoofWindowFeature;
+export interface BattenLayoutSpec {
+  enabled: boolean;
+  roofPlaneIds?: string[];
+  battenHeightMm: number;
+  battenWidthMm: number;
+  gaugeMm: number;
+  eaveOffsetMm: number;
+  ridgeOffsetMm?: number;
+}
+export interface RoofBuildUp {
+  battenLayout?: BattenLayoutSpec;
+}
+/** Renderer-neutral canonical roof composition, ready for future attachments/subassemblies. */
+export interface RoofAssembly {
+  roof: RoofTemplateSpec;
+  features: RoofFeature[];
+  buildUp: RoofBuildUp;
+}
 export type SkeletonMemberKind =
   'wall-plate' | 'ridge' | 'rafter' | 'hip-rafter' | 'jack-rafter' | 'purlin';
 export type SkeletonMemberSide =

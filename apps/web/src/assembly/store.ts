@@ -8,11 +8,15 @@ import {
   assemblyDefaults,
   assemblyFromRoofTemplate,
   calculateBirdsmouth,
+  clampRoofWindow,
   convertRoofTemplate,
+  createDefaultRoofWindow,
+  createRoofSkeleton,
   distributePurlins,
   gableTemplateFromAssembly,
   HIP_RAFTER_PROTOTYPE_ID,
   JACK_RAFTER_PROTOTYPE_ID,
+  placeRoofWindowBetweenRafters,
   roofTemplateFromAssembly,
   seatLength,
   toMillimetres,
@@ -20,9 +24,11 @@ import {
 } from '@cieslacalc/roof-math';
 import type {
   AssemblySpec,
+  BattenLayoutSpec,
   EndStationPolicy,
   RafterSpacingMode,
   RoofTemplateSpec,
+  RoofWindowFeature,
   SupportSpec,
 } from '@cieslacalc/timber-model';
 import { editableLength, parseDecimal } from '../format';
@@ -189,24 +195,35 @@ function committedTemplate(
   template: RoofTemplateSpec,
   drafts: Partial<Record<EditField, string>>,
   invalidFields: Partial<Record<EditField, boolean>>,
+  currentDocument?: RoofProjectDocumentV1,
 ) {
   const spec = assemblyFromRoofTemplate(template);
   return {
-    projectDocument: createRoofProjectDocument(template),
+    projectDocument: createRoofProjectDocument(template, {
+      features: currentDocument?.project.features ?? [],
+      buildUp: currentDocument?.project.buildUp ?? {},
+    }),
     template,
     spec,
     drafts,
     invalidFields,
   };
 }
+function committedDocument(
+  document: RoofProjectDocumentV1,
+  drafts: Partial<Record<EditField, string>>,
+  invalidFields: Partial<Record<EditField, boolean>>,
+) {
+  return committedTemplate(document.project.roof, drafts, invalidFields, document);
+}
 interface DomainSnapshot {
   document: RoofProjectDocumentV1;
 }
 const historyLimit = 40;
-const snapshot = (template: RoofTemplateSpec): DomainSnapshot => ({
-  document: createRoofProjectDocument(structuredClone(template)),
+const snapshot = (document: RoofProjectDocumentV1): DomainSnapshot => ({
+  document: structuredClone(document),
 });
-const sameTemplate = (a: RoofTemplateSpec, b: RoofTemplateSpec) =>
+const sameDocument = (a: RoofProjectDocumentV1, b: RoofProjectDocumentV1) =>
   JSON.stringify(a) === JSON.stringify(b);
 export interface AssemblyState {
   /** Future persistence/revision boundary. `template` and `spec` are runtime derivatives. */
@@ -228,6 +245,10 @@ export interface AssemblyState {
   setViewPreset: (preset: ViewPreset) => void;
   setIsolation: (isolated: boolean) => void;
   setDimensionLevel: (level: DimensionLevel) => void;
+  setLayerVisibility: (
+    layer: keyof WorkbenchViewState['layerVisibility'],
+    visible: boolean,
+  ) => void;
   setToolboxCollapsed: (collapsed: boolean) => void;
   setToolGroupCollapsed: (
     category: WorkbenchToolCategory,
@@ -260,6 +281,15 @@ export interface AssemblyState {
   setEndStationPolicy: (policy: EndStationPolicy) => void;
   movePurlin: (id: string, xMm: number) => void;
   distributePurlins: () => void;
+  addRoofWindow: () => void;
+  removeRoofWindow: (id: string) => void;
+  updateRoofWindow: (
+    id: string,
+    patch: Partial<Pick<RoofWindowFeature, 'roofPlaneId' | 'widthMm' | 'heightMm' | 'clearanceMm' | 'position'>>,
+  ) => void;
+  moveRoofWindow: (id: string, position: RoofWindowFeature['position']) => void;
+  placeRoofWindowBetweenRafters: (id: string) => boolean;
+  setBattenLayout: (layout?: BattenLayoutSpec) => void;
   add: () => void;
   remove: (id: string) => void;
   select: (id: string, prototypeId?: string) => void;
@@ -278,11 +308,11 @@ function withHistory(
   state: AssemblyState,
   next: ReturnType<typeof committedTemplate>,
 ) {
-  if (sameTemplate(state.template, next.template) || state.activeTransaction)
+  if (sameDocument(state.projectDocument, next.projectDocument) || state.activeTransaction)
     return next;
   return {
     ...next,
-    historyPast: [...state.historyPast, snapshot(state.template)].slice(
+    historyPast: [...state.historyPast, snapshot(state.projectDocument)].slice(
       -historyLimit,
     ),
     historyFuture: [],
@@ -293,6 +323,7 @@ function restoredSnapshot(snapshotToRestore: DomainSnapshot) {
     structuredClone(snapshotToRestore.document.project.roof),
     {},
     {},
+    snapshotToRestore.document,
   );
 }
 export const useAssembly = create<AssemblyState>((set) => ({
@@ -316,7 +347,12 @@ export const useAssembly = create<AssemblyState>((set) => ({
       return {
         ...withHistory(
           state,
-          committedTemplate(template, state.drafts, state.invalidFields),
+          committedTemplate(
+            template,
+            state.drafts,
+            state.invalidFields,
+            state.projectDocument,
+          ),
         ),
         workbench: {
           ...state.workbench,
@@ -337,6 +373,16 @@ export const useAssembly = create<AssemblyState>((set) => ({
     set((state) => ({ workbench: { ...state.workbench, isolateSelection } })),
   setDimensionLevel: (dimensionLevel) =>
     set((state) => ({ workbench: { ...state.workbench, dimensionLevel } })),
+  setLayerVisibility: (layer, visible) =>
+    set((state) => ({
+      workbench: {
+        ...state.workbench,
+        layerVisibility: {
+          ...state.workbench.layerVisibility,
+          [layer]: visible,
+        },
+      },
+    })),
   setToolboxCollapsed: (toolboxCollapsed) =>
     set((state) => ({ workbench: { ...state.workbench, toolboxCollapsed } })),
   setToolGroupCollapsed: (category, collapsed) =>
@@ -505,7 +551,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         delete invalidFields[field];
         return withHistory(
           state,
-          committedTemplate(template, drafts, invalidFields),
+          committedTemplate(template, drafts, invalidFields, state.projectDocument),
         );
       } catch {
         invalidFields[field] = true;
@@ -527,7 +573,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         delete invalidFields[field];
         return withHistory(
           state,
-          committedTemplate(template, drafts, invalidFields),
+          committedTemplate(template, drafts, invalidFields, state.projectDocument),
         );
       } catch {
         return state;
@@ -549,7 +595,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         delete invalidFields[field];
         return withHistory(
           state,
-          committedTemplate(template, drafts, invalidFields),
+          committedTemplate(template, drafts, invalidFields, state.projectDocument),
         );
       } catch {
         return state;
@@ -573,7 +619,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
       };
       return withHistory(
         state,
-        committedTemplate(template, state.drafts, state.invalidFields),
+        committedTemplate(template, state.drafts, state.invalidFields, state.projectDocument),
       );
     }),
   setEndStationPolicy: (endPolicy) =>
@@ -585,7 +631,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
       };
       return withHistory(
         state,
-        committedTemplate(template, state.drafts, state.invalidFields),
+        committedTemplate(template, state.drafts, state.invalidFields, state.projectDocument),
       );
     }),
   movePurlin: (id, xMm) =>
@@ -598,6 +644,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
           template,
           { ...state.drafts, [field]: editableLength(xMm, state.unit) },
           state.invalidFields,
+          state.projectDocument,
         ),
       );
     }),
@@ -627,7 +674,135 @@ export const useAssembly = create<AssemblyState>((set) => ({
           roofTemplateFromAssembly(spec, state.template),
           drafts,
           state.invalidFields,
+          state.projectDocument,
         ),
+      );
+    }),
+  addRoofWindow: () =>
+    set((state) => {
+      const nextNumber = Math.max(
+        0,
+        ...state.projectDocument.project.features.map(
+          (feature) => Number(/roof-window-(\d+)$/.exec(feature.id)?.[1] ?? 0),
+        ),
+      ) + 1;
+      const feature = {
+        ...createDefaultRoofWindow(state.template),
+        id: `feature:roof-window-${nextNumber}`,
+      };
+      const document = createRoofProjectDocument(state.template, {
+        features: [...state.projectDocument.project.features, feature],
+        buildUp: state.projectDocument.project.buildUp,
+      });
+      return {
+        ...withHistory(
+          state,
+          committedDocument(document, state.drafts, state.invalidFields),
+        ),
+        workbench: {
+          ...state.workbench,
+          selectedId: feature.id,
+          selectedPrototypeId: undefined,
+          selectedInstanceId: undefined,
+          viewPreset: 'openings',
+          inspectorOpen: true,
+        },
+      };
+    }),
+  removeRoofWindow: (id) =>
+    set((state) => {
+      const features = state.projectDocument.project.features.filter(
+        (feature) => feature.id !== id,
+      );
+      if (features.length === state.projectDocument.project.features.length)
+        return state;
+      const document = createRoofProjectDocument(state.template, {
+        features,
+        buildUp: state.projectDocument.project.buildUp,
+      });
+      return {
+        ...withHistory(
+          state,
+          committedDocument(document, state.drafts, state.invalidFields),
+        ),
+        workbench: { ...state.workbench, selectedId: 'roof' },
+      };
+    }),
+  updateRoofWindow: (id, patch) =>
+    set((state) => {
+      const features = state.projectDocument.project.features.map((feature) => {
+        if (feature.id !== id || feature.kind !== 'roof-window') return feature;
+        return clampRoofWindow(state.template, {
+          ...feature,
+          ...patch,
+          position: patch.position ?? feature.position,
+        });
+      });
+      const document = createRoofProjectDocument(state.template, {
+        features,
+        buildUp: state.projectDocument.project.buildUp,
+      });
+      return withHistory(
+        state,
+        committedDocument(document, state.drafts, state.invalidFields),
+      );
+    }),
+  moveRoofWindow: (id, position) =>
+    set((state) => {
+      const feature = state.projectDocument.project.features.find(
+        (candidate): candidate is RoofWindowFeature =>
+          candidate.id === id && candidate.kind === 'roof-window',
+      );
+      if (!feature) return state;
+      const moved = clampRoofWindow(state.template, { ...feature, position });
+      const document = createRoofProjectDocument(state.template, {
+        features: state.projectDocument.project.features.map((candidate) =>
+          candidate.id === id ? moved : candidate,
+        ),
+        buildUp: state.projectDocument.project.buildUp,
+      });
+      return withHistory(
+        state,
+        committedDocument(document, state.drafts, state.invalidFields),
+      );
+    }),
+  placeRoofWindowBetweenRafters: (id) => {
+    let placed = false;
+    set((state) => {
+      const feature = state.projectDocument.project.features.find(
+        (candidate): candidate is RoofWindowFeature =>
+          candidate.id === id && candidate.kind === 'roof-window',
+      );
+      if (!feature) return state;
+      const placement = placeRoofWindowBetweenRafters({
+        template: state.template,
+        skeleton: createRoofSkeleton(state.template),
+        feature,
+      });
+      if (!placement) return state;
+      placed = true;
+      const document = createRoofProjectDocument(state.template, {
+        features: state.projectDocument.project.features.map((candidate) =>
+          candidate.id === id ? placement.feature : candidate,
+        ),
+        buildUp: state.projectDocument.project.buildUp,
+      });
+      return withHistory(
+        state,
+        committedDocument(document, state.drafts, state.invalidFields),
+      );
+    });
+    return placed;
+  },
+  setBattenLayout: (battenLayout) =>
+    set((state) => {
+      const document = createRoofProjectDocument(state.template, {
+        features: state.projectDocument.project.features,
+        buildUp: { ...state.projectDocument.project.buildUp, battenLayout },
+      });
+      return withHistory(
+        state,
+        committedDocument(document, state.drafts, state.invalidFields),
       );
     }),
   add: () =>
@@ -639,7 +814,12 @@ export const useAssembly = create<AssemblyState>((set) => ({
       return {
         ...withHistory(
           state,
-          committedTemplate(template, state.drafts, state.invalidFields),
+          committedTemplate(
+            template,
+            state.drafts,
+            state.invalidFields,
+            state.projectDocument,
+          ),
         ),
         workbench: {
           ...state.workbench,
@@ -676,6 +856,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
             roofTemplateFromAssembly(spec, state.template),
             drafts,
             invalidFields,
+            state.projectDocument,
           ),
         ),
         workbench: {
@@ -737,13 +918,13 @@ export const useAssembly = create<AssemblyState>((set) => ({
     set((state) =>
       state.activeTransaction
         ? state
-        : { activeTransaction: snapshot(state.template) },
+        : { activeTransaction: snapshot(state.projectDocument) },
     ),
   commitTransaction: () =>
     set((state) => {
       const start = state.activeTransaction;
       if (!start) return state;
-      if (sameTemplate(start.document.project.roof, state.template))
+      if (sameDocument(start.document, state.projectDocument))
         return { activeTransaction: undefined };
       return {
         activeTransaction: undefined,
@@ -767,7 +948,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
       return {
         ...restoredSnapshot(previous),
         historyPast: state.historyPast.slice(0, -1),
-        historyFuture: [snapshot(state.template), ...state.historyFuture].slice(
+        historyFuture: [snapshot(state.projectDocument), ...state.historyFuture].slice(
           0,
           historyLimit,
         ),
@@ -780,7 +961,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
       if (!next) return state;
       return {
         ...restoredSnapshot(next),
-        historyPast: [...state.historyPast, snapshot(state.template)].slice(
+        historyPast: [...state.historyPast, snapshot(state.projectDocument)].slice(
           -historyLimit,
         ),
         historyFuture: state.historyFuture.slice(1),
@@ -808,6 +989,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
           roofTemplateFromAssembly(spec, state.template),
           drafts,
           invalidFields,
+          state.projectDocument,
         ),
       );
     }),

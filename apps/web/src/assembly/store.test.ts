@@ -300,6 +300,43 @@ it('applies an equal-gap purlin proposal as one canonical undo step', () => {
       .template.intermediateSupports.map((support) => support.placement.xMm),
   ).toEqual(positions);
 });
+it('stores roof windows and batten settings in complete undoable project snapshots', () => {
+  const before = structuredClone(useAssembly.getState().projectDocument);
+  useAssembly.getState().addRoofWindow();
+  const feature = useAssembly.getState().projectDocument.project.features[0]!;
+  expect(feature.position.uMm).toBeGreaterThanOrEqual(0);
+  expect(useAssembly.getState().workbench.viewPreset).toBe('openings');
+  useAssembly.getState().setBattenLayout({
+    enabled: true,
+    battenHeightMm: 40,
+    battenWidthMm: 60,
+    gaugeMm: 350,
+    eaveOffsetMm: 250,
+  });
+  expect(useAssembly.getState().projectDocument.project.buildUp.battenLayout).toMatchObject({ gaugeMm: 350 });
+  useAssembly.getState().undo();
+  expect(useAssembly.getState().projectDocument.project.buildUp).toEqual({});
+  expect(useAssembly.getState().projectDocument.project.features).toEqual([feature]);
+  useAssembly.getState().undo();
+  expect(useAssembly.getState().projectDocument).toEqual(before);
+  useAssembly.getState().redo();
+  useAssembly.getState().redo();
+  expect(useAssembly.getState().projectDocument.project.features).toEqual([feature]);
+  expect(useAssembly.getState().projectDocument.project.buildUp.battenLayout?.enabled).toBe(true);
+});
+it('coalesces a roof-window drag transaction and restores its canonical local position', () => {
+  useAssembly.getState().addRoofWindow();
+  useAssembly.setState({ historyPast: [], historyFuture: [] });
+  const feature = useAssembly.getState().projectDocument.project.features[0]!;
+  useAssembly.getState().beginTransaction();
+  useAssembly.getState().moveRoofWindow(feature.id, {
+    uMm: feature.position.uMm + 100,
+    vMm: feature.position.vMm + 100,
+  });
+  expect(useAssembly.getState().historyPast).toHaveLength(0);
+  useAssembly.getState().cancelTransaction();
+  expect(useAssembly.getState().projectDocument.project.features[0]!.position).toEqual(feature.position);
+});
 it('undoes and redoes adding and removing independently allocated purlins', () => {
   useAssembly.getState().add();
   useAssembly.getState().add();

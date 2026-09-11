@@ -625,6 +625,36 @@ export function ContextualResults({
     );
   }
 
+  if (context.kind === 'roof-window') {
+    const feature = context.feature;
+    return (
+      <section
+        className="a-context-results"
+        aria-label={t('assembly.roofWindow')}
+        data-context="roof-window"
+      >
+        <header>
+          <span>{t('assembly.roofWindow')}</span>
+          <strong>{feature.id.replace('feature:roof-window-', 'O')}</strong>
+        </header>
+        <div className="a-results">
+          <Metric label={t('assembly.windowWidth')} main>
+            {length(feature.widthMm)}
+          </Metric>
+          <Metric label={t('assembly.windowHeight')}>
+            {length(feature.heightMm)}
+          </Metric>
+          <Metric label={t('assembly.windowPositionU')}>
+            {length(feature.position.uMm)}
+          </Metric>
+          <Metric label={t('assembly.windowPositionV')}>
+            {length(feature.position.vMm)}
+          </Metric>
+        </div>
+      </section>
+    );
+  }
+
   const isSeat = context.jointKind === 'seat-notch';
   const isHipCut = context.jointKind === 'hip-end-cut';
   return (

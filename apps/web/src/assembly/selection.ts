@@ -5,6 +5,7 @@ import type {
   ResolvedJackRafterInstance,
   ResolvedJoint,
   ResolvedMemberPrototype,
+  RoofFeature,
   RoofSkeleton,
   RoofTemplateSpec,
   SkeletonMember3D,
@@ -28,6 +29,7 @@ export type WorkbenchSelectionContext =
       supportKind: 'wall-plate' | 'purlin' | 'ridge';
       support?: SupportSpec;
     }
+  | { kind: 'roof-window'; feature: RoofFeature }
   | {
       kind: 'joint';
       jointKind: 'seat-notch';
@@ -50,9 +52,13 @@ export function resolveWorkbenchSelectionContext(args: {
   spec: AssemblySpec;
   resolved: ResolvedRoofTemplate;
   skeleton: RoofSkeleton;
+  features?: RoofFeature[];
 }): WorkbenchSelectionContext {
-  const { selected, spec, resolved, skeleton } = args;
+  const { selected, spec, resolved, skeleton, features = [] } = args;
   if (selected === 'roof') return { kind: 'roof' };
+
+  const feature = features.find((candidate) => candidate.id === selected);
+  if (feature) return { kind: 'roof-window', feature };
 
   const prototype = resolved.memberPrototypes.find(
     (candidate) => candidate.id === selected,
