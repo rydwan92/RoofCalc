@@ -14,10 +14,23 @@ export type WorkbenchToolCategory = 'geometry' | 'timber' | 'support';
 export type VisualInteractionState =
   'normal' | 'hover' | 'selected' | 'related' | 'muted' | 'warning' | 'invalid';
 
+export interface OperationMarkerLayoutInput {
+  id: string;
+  at: { x: number; y: number };
+  active: boolean;
+}
+
+export interface OperationMarkerLayout extends OperationMarkerLayoutInput {
+  marker: { x: number; y: number };
+  compact: boolean;
+}
+
 export interface WorkbenchViewState {
   mode: WorkbenchMode;
   selectedId: string;
   selectedPrototypeId?: string;
+  /** Physical placement retained while an operation/detail becomes active. */
+  selectedInstanceId?: string;
   canvasView: WorkbenchCanvasView;
   viewPreset: ViewPreset;
   isolateSelection: boolean;
@@ -40,6 +53,7 @@ export const initialWorkbenchViewState: WorkbenchViewState = {
   mode: 'quick',
   selectedId: 'roof',
   selectedPrototypeId: undefined,
+  selectedInstanceId: undefined,
   canvasView: 'skeleton',
   viewPreset: 'construction',
   isolateSelection: false,
@@ -84,7 +98,7 @@ export function deriveWorkbenchProjectionPolicy(
     showPrimaryMembers: true,
     showSecondaryMembers: true,
     showSupports: true,
-    showCutMarkers: cuts,
+    showCutMarkers: cuts || !!view.selectedInstanceId,
     showDatums: cuts,
     showDimensions: true,
     showDirectManipulation: !cuts,
@@ -114,6 +128,7 @@ export function resolveMemberVisualState(args: {
 }): Exclude<VisualInteractionState, 'hover' | 'warning' | 'invalid'> {
   const { member, view, relatedSupportId, relatedIds } = args;
   const selected =
+    view.selectedInstanceId === member.id ||
     view.selectedId === member.selectionId ||
     view.selectedId === member.id ||
     view.selectedId === member.prototypeId;
@@ -128,6 +143,55 @@ export function resolveMemberVisualState(args: {
   if (related) return 'related';
   if (view.selectedId !== 'roof') return 'muted';
   return 'normal';
+}
+
+/** Small deterministic presentation policy; operation anchors stay canonical. */
+export function layoutOperationMarkers(
+  inputs: readonly OperationMarkerLayoutInput[],
+  narrow: boolean,
+): OperationMarkerLayout[] {
+  const offsets = narrow
+    ? [
+        { x: 0, y: -18 },
+        { x: 15, y: -25 },
+        { x: -15, y: -25 },
+        { x: 20, y: 4 },
+        { x: -20, y: 4 },
+      ]
+    : [
+        { x: 0, y: -24 },
+        { x: 22, y: -34 },
+        { x: -22, y: -34 },
+        { x: 30, y: 4 },
+        { x: -30, y: 4 },
+        { x: 0, y: 22 },
+      ];
+  const threshold = narrow ? 25 : 38;
+  const placed: { x: number; y: number }[] = [];
+  const layouts = new Map<string, OperationMarkerLayout>();
+  for (const input of [...inputs].sort(
+    (a, b) => Number(b.active) - Number(a.active) || a.id.localeCompare(b.id),
+  )) {
+    const candidate =
+      offsets.find((offset) => {
+        const point = { x: input.at.x + offset.x, y: input.at.y + offset.y };
+        return placed.every(
+          (other) =>
+            Math.hypot(point.x - other.x, point.y - other.y) >= threshold,
+        );
+      }) ?? offsets[placed.length % offsets.length]!;
+    const marker = {
+      x: input.at.x + candidate.x,
+      y: input.at.y + candidate.y,
+    };
+    placed.push(marker);
+    layouts.set(input.id, {
+      ...input,
+      marker,
+      compact: narrow || !input.active,
+    });
+  }
+  return inputs.map((input) => layouts.get(input.id)!);
 }
 
 export type LegendRole = 'family' | 'selected' | 'removed' | 'guide';

@@ -8,6 +8,7 @@ import type {
 import {
   assemblyFromGableTemplate,
   createGableRoofSkeleton,
+  createGableRoofSkeletonFromResolved,
   gableRoofTemplateSchema,
   gableTemplateFromAssembly,
   minimumGableHalfRunMm,
@@ -16,6 +17,7 @@ import {
 import {
   assemblyFromHipTemplate,
   createHipRoofSkeleton,
+  createHipRoofSkeletonFromResolved,
   hipRoofTemplateSchema,
   hipTemplateFromAssembly,
   resolveHipRoofTemplate,
@@ -60,6 +62,14 @@ export function createRoofSkeleton(template: RoofTemplateSpec) {
   return template.type === 'gable'
     ? createGableRoofSkeleton(template)
     : createHipRoofSkeleton(template);
+}
+
+export function createRoofSkeletonFromResolved(
+  resolved: ReturnType<typeof resolveRoofTemplate>,
+) {
+  return 'hipRafter' in resolved
+    ? createHipRoofSkeletonFromResolved(resolved)
+    : createGableRoofSkeletonFromResolved(resolved);
 }
 
 export function convertRoofTemplate(

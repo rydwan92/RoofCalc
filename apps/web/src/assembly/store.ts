@@ -242,8 +242,15 @@ export interface AssemblyState {
     operationId: string;
     prototypeId: string;
     selectionId?: string;
+    instanceId?: string;
     previewId?: string;
   }) => void;
+  navigateToInstance: (args: {
+    instanceId: string;
+    prototypeId: string;
+    operationIds: string[];
+  }) => void;
+  stepBackContext: () => void;
   setUnit: (unit: LengthUnit) => void;
   setField: (field: EditField, raw: string) => void;
   setCanonicalField: (field: EditField, value: number) => void;
@@ -313,6 +320,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
           ...state.workbench,
           selectedId: 'roof',
           selectedPrototypeId: undefined,
+          selectedInstanceId: undefined,
           canvasView: 'skeleton',
           isolateSelection: false,
           activeOperationId: undefined,
@@ -355,28 +363,112 @@ export const useAssembly = create<AssemblyState>((set) => ({
         detailDrawer: { ...state.workbench.detailDrawer, ...detail },
       },
     })),
-  activateOperation: ({ operationId, prototypeId, selectionId, previewId }) =>
-    set((state) => ({
-      workbench: {
-        ...state.workbench,
-        selectedId: selectionId ?? prototypeId,
-        selectedPrototypeId: prototypeId,
-        activeOperationId: operationId,
-        preparationExpanded: true,
-        viewPreset: 'cuts',
-        canvasView:
-          prototypeId === HIP_RAFTER_PROTOTYPE_ID
-            ? 'hip'
-            : prototypeId === JACK_RAFTER_PROTOTYPE_ID
-              ? state.workbench.canvasView
-              : 'rafter',
-        detailDrawer: {
-          ...state.workbench.detailDrawer,
-          open: !!previewId || state.workbench.detailDrawer.open,
-          activePreviewId: previewId,
+  activateOperation: ({
+    operationId,
+    prototypeId,
+    selectionId,
+    instanceId,
+    previewId,
+  }) =>
+    set((state) => {
+      const selectedInstanceId =
+        instanceId ??
+        (state.workbench.selectedPrototypeId === prototypeId
+          ? state.workbench.selectedInstanceId
+          : undefined);
+      return {
+        workbench: {
+          ...state.workbench,
+          selectedId: selectionId ?? operationId,
+          selectedPrototypeId: prototypeId,
+          selectedInstanceId,
+          activeOperationId: operationId,
+          preparationExpanded: true,
+          viewPreset: 'cuts',
+          canvasView:
+            prototypeId === HIP_RAFTER_PROTOTYPE_ID
+              ? 'hip'
+              : prototypeId === JACK_RAFTER_PROTOTYPE_ID
+                ? 'skeleton'
+                : 'rafter',
+          detailDrawer: {
+            ...state.workbench.detailDrawer,
+            open: !!previewId,
+            activePreviewId: previewId,
+          },
         },
-      },
-    })),
+      };
+    }),
+  navigateToInstance: ({ instanceId, prototypeId, operationIds }) =>
+    set((state) => {
+      const activeOperationId = operationIds.includes(
+        state.workbench.activeOperationId ?? '',
+      )
+        ? state.workbench.activeOperationId
+        : undefined;
+      return {
+        workbench: {
+          ...state.workbench,
+          selectedId: activeOperationId ?? instanceId,
+          selectedPrototypeId: prototypeId,
+          selectedInstanceId: instanceId,
+          activeOperationId,
+          inspectorOpen: true,
+          preparationExpanded: true,
+          detailDrawer: activeOperationId
+            ? state.workbench.detailDrawer
+            : {
+                ...state.workbench.detailDrawer,
+                open: false,
+                activePreviewId: undefined,
+              },
+        },
+      };
+    }),
+  stepBackContext: () =>
+    set((state) => {
+      const operationLike =
+        !!state.workbench.activeOperationId ||
+        state.workbench.selectedId.startsWith('joint:') ||
+        state.workbench.selectedId.startsWith('cut:');
+      if (operationLike) {
+        const selectedId =
+          state.workbench.selectedInstanceId ??
+          state.workbench.selectedPrototypeId ??
+          'roof';
+        return {
+          workbench: {
+            ...state.workbench,
+            selectedId,
+            activeOperationId: undefined,
+            canvasView: state.workbench.selectedInstanceId
+              ? 'skeleton'
+              : state.workbench.canvasView,
+            detailDrawer: {
+              ...state.workbench.detailDrawer,
+              open: false,
+              activePreviewId: undefined,
+            },
+          },
+        };
+      }
+      if (
+        state.workbench.selectedInstanceId ||
+        state.workbench.selectedId !== 'roof'
+      )
+        return {
+          workbench: {
+            ...state.workbench,
+            selectedId: 'roof',
+            selectedPrototypeId: undefined,
+            selectedInstanceId: undefined,
+            activeOperationId: undefined,
+            isolateSelection: false,
+            canvasView: 'skeleton',
+          },
+        };
+      return state;
+    }),
   setUnit: (unit) =>
     set((state) => ({
       unit,
@@ -522,6 +614,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
           ...state.workbench,
           selectedId: template.intermediateSupports.at(-1)!.id,
           selectedPrototypeId: undefined,
+          selectedInstanceId: undefined,
           inspectorOpen: true,
           activeOperationId: undefined,
         },
@@ -558,28 +651,57 @@ export const useAssembly = create<AssemblyState>((set) => ({
           ...state.workbench,
           selectedId: 'roof',
           selectedPrototypeId: undefined,
+          selectedInstanceId: undefined,
           isolateSelection: false,
           activeOperationId: undefined,
         },
       };
     }),
   select: (selectedId, selectedPrototypeId) =>
-    set((state) => ({
-      workbench: {
-        ...state.workbench,
-        selectedId,
-        selectedPrototypeId,
-        inspectorOpen: true,
-        preparationExpanded:
-          selectedId === 'roof'
-            ? false
-            : !!selectedPrototypeId || state.workbench.preparationExpanded,
-        isolateSelection:
-          selectedId === 'roof' ? false : state.workbench.isolateSelection,
-        activeOperationId: undefined,
-        focusId: undefined,
-      },
-    })),
+    set((state) => {
+      const operationLike =
+        selectedId.startsWith('joint:') || selectedId.startsWith('cut:');
+      const prototypeSelection =
+        selectedId === state.spec.member.id ||
+        selectedId === HIP_RAFTER_PROTOTYPE_ID ||
+        selectedId === JACK_RAFTER_PROTOTYPE_ID;
+      const instanceSelection =
+        selectedId.startsWith('instance:') && !!selectedPrototypeId;
+      const nextPrototypeId =
+        selectedId === 'roof'
+          ? undefined
+          : (selectedPrototypeId ??
+            (prototypeSelection
+              ? selectedId
+              : operationLike
+                ? state.workbench.selectedPrototypeId
+                : undefined));
+      const selectedInstanceId =
+        selectedId === 'roof'
+          ? undefined
+          : instanceSelection
+            ? selectedId
+            : operationLike
+              ? state.workbench.selectedInstanceId
+              : undefined;
+      return {
+        workbench: {
+          ...state.workbench,
+          selectedId,
+          selectedPrototypeId: nextPrototypeId,
+          selectedInstanceId,
+          inspectorOpen: true,
+          preparationExpanded:
+            selectedId === 'roof'
+              ? false
+              : !!nextPrototypeId || state.workbench.preparationExpanded,
+          isolateSelection:
+            selectedId === 'roof' ? false : state.workbench.isolateSelection,
+          activeOperationId: undefined,
+          focusId: undefined,
+        },
+      };
+    }),
   beginTransaction: () =>
     set((state) =>
       state.activeTransaction

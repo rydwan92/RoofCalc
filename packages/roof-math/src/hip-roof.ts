@@ -402,7 +402,12 @@ const wallSection = (template: HipRoofTemplateSpec) => ({
 export function createHipRoofSkeleton(
   raw: HipRoofTemplateSpec,
 ): HipRoofSkeleton {
-  const resolved = resolveHipRoofTemplate(raw);
+  return createHipRoofSkeletonFromResolved(resolveHipRoofTemplate(raw));
+}
+
+export function createHipRoofSkeletonFromResolved(
+  resolved: ReturnType<typeof resolveHipRoofTemplate>,
+): HipRoofSkeleton {
   const { template, ridgeHeightMm, ridgeLengthMm } = resolved;
   const r = template.halfRunMm;
   const length = template.buildingLengthMm;

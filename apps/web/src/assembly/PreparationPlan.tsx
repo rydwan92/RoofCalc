@@ -2,6 +2,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type {
   FabricationOperationSummary,
+  MemberInstanceContext,
   MemberFabricationPackage,
   RoofFabricationPackage,
 } from '@cieslacalc/calculator-core';
@@ -36,8 +37,10 @@ function operationName(
 
 export function PreparationPlan({
   roofPackage,
+  activeInstance,
 }: {
   roofPackage: RoofFabricationPackage;
+  activeInstance?: MemberInstanceContext;
 }) {
   const state = useAssembly();
   const { t, i18n } = useTranslation();
@@ -55,6 +58,11 @@ export function PreparationPlan({
   const activeOperation = selectedFamily?.operations.find(
     (operation) => operation.id === state.workbench.activeOperationId,
   );
+  const activeLengthGroup = activeInstance
+    ? selectedFamily?.lengthGroups.find((group) =>
+        group.instanceIds.includes(activeInstance.instanceId),
+      )
+    : undefined;
   const activate = (operation: FabricationOperationSummary) =>
     state.activateOperation({
       operationId: operation.id,
@@ -62,6 +70,10 @@ export function PreparationPlan({
       selectionId: operation.detailPreview
         ? operation.detailPreview.sourceSelectionId
         : operation.memberPrototypeId,
+      instanceId:
+        activeInstance?.prototypeId === operation.memberPrototypeId
+          ? activeInstance.instanceId
+          : undefined,
       previewId: operation.detailPreview?.id,
     });
   const navigate = (direction: -1 | 1) => {
@@ -168,6 +180,16 @@ export function PreparationPlan({
                 {length(selectedFamily.section.widthMm)} ×{' '}
                 {length(selectedFamily.section.depthMm)}
               </span>
+              {activeInstance?.prototypeId === selectedFamily.prototypeId && (
+                <span>
+                  {t('assembly.instanceOf', {
+                    current: activeInstance.instanceIndex,
+                    total: activeInstance.instanceCount,
+                  })}{' '}
+                  · {t('assembly.lengthGroup')}{' '}
+                  {activeInstance.lengthGroupId.split(':').at(-1)}
+                </span>
+              )}
             </div>
             <button
               className="a-text-button"
@@ -207,7 +229,10 @@ export function PreparationPlan({
           </div>
           <div className="a-length-groups">
             {selectedFamily.lengthGroups.map((group) => (
-              <span key={`${group.lengthMm}:${group.quantity}`}>
+              <span
+                key={`${group.lengthMm}:${group.quantity}`}
+                data-active={group === activeLengthGroup || undefined}
+              >
                 <strong>{group.quantity}×</strong> {length(group.lengthMm)}
               </span>
             ))}

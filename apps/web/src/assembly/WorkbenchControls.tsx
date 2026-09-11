@@ -53,21 +53,25 @@ export function WorkbenchControls({ skeleton }: { skeleton: RoofSkeleton }) {
             </button>
           ))}
         </div>
-        <button
-          className="a-isolate-button"
-          aria-pressed={state.workbench.isolateSelection}
-          disabled={state.workbench.selectedId === 'roof'}
-          onClick={() => state.setIsolation(!state.workbench.isolateSelection)}
-        >
-          {state.workbench.isolateSelection ? (
-            <Eye size={16} />
-          ) : (
-            <EyeOff size={16} />
-          )}
-          {t(
-            `assembly.${state.workbench.isolateSelection ? 'showWholeRoof' : 'isolateElement'}`,
-          )}
-        </button>
+        {!state.workbench.selectedInstanceId && (
+          <button
+            className="a-isolate-button"
+            aria-pressed={state.workbench.isolateSelection}
+            disabled={state.workbench.selectedId === 'roof'}
+            onClick={() =>
+              state.setIsolation(!state.workbench.isolateSelection)
+            }
+          >
+            {state.workbench.isolateSelection ? (
+              <Eye size={16} />
+            ) : (
+              <EyeOff size={16} />
+            )}
+            {t(
+              `assembly.${state.workbench.isolateSelection ? 'showWholeRoof' : 'isolateElement'}`,
+            )}
+          </button>
+        )}
       </div>
       <details className="a-dynamic-legend" open>
         <summary>{t('assembly.legend')}</summary>

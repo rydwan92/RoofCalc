@@ -1297,7 +1297,60 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
-> Updated 2026-09-11. Iteration 009 is complete in the root repository.
+> Updated 2026-09-11. Iteration 010 is complete in the root repository.
+
+**Iteration:** `010 — member instance workflow + spatial detail overlays + workbench UX hardening`
+
+**Status:** `COMPLETE — AUTOMATED VALIDATION PASS; NATIVE BROWSER QA UNAVAILABLE`
+
+**Iteration 010 completed:**
+
+- Confirmed the clean `main` baseline at `7f98a858f13e7d1d2b13e6538cdb15f02f8a7f1c` (`V9 prompt 11.09`). Baseline typecheck/build pass; the established suite contains 252 tests across 29 files.
+- Read the complete AGENTS/Blueprint/North Star/V3–V9 architecture, H1/J1 geometry, research roadmap, approved V9 prompt and both user-supplied V10 briefs before source work. Added the approved synthesis in `docs/PROMPT_ITERATION_010.md` and established `docs/ARCHITECTURE_V10_MEMBER_INSTANCE_WORKFLOW.md` before implementation.
+- Added renderer-neutral `MemberInstanceContext` and `MemberInstanceOperationContext` projections in calculator-core. Every selectable K1/H1/J1 physical member maps to its stable instance ID, shared fabrication prototype, exact deterministic length group, section, spatial identity, existing package operations, member-axis world anchors and explicit limitations. No cut formula, translation, pixel or React concern entered the domain projection.
+- Added pure family/current/previous/next, instance-to-fabrication and instance-to-operation selectors. Ordering is deterministic: K1 station/side, four H1 corners, and J1 corner/plane/ordinal. Mirrored pieces retain separate IDs; K1/H1 reuse shared fabrication definitions; every J1 maps by ID to its exact length group.
+- Extended transient `WorkbenchViewState` with `selectedInstanceId`, safe instance navigation and operation → instance → roof `Escape` steps. Instance, isolation, detail and navigation actions do not mutate `RoofProjectDocumentV1` or create Undo/Redo history. Global shortcuts are ignored while an exact form input is active; invalid/stale instance selection falls back safely after a canonical layout change.
+- Added an interactive roof/family/instance/operation breadcrumb and compact instance navigator with previous/next, family index, exact length, shared prototype, active length group, `Pokaż na dachu` and isolation. Navigation keeps a compatible active operation and returns to the exact instance after closing a detail.
+- Added the physical-instance Inspector and an orientation minimap derived from the existing canonical skeleton. The Inspector exposes family, index/count, stable ID, side/plane/corner, station, exact length, section, group, prototype sharing, operations and honest H1/J1 limits; it does not add per-instance overrides.
+- Added pointer- and keyboard-operable semantic operation markers to the selected physical member. Marker anchors come from resolved package stations/endpoints projected through the same skeleton viewport. Deterministic collision layout prioritizes the active operation, compacts secondary/narrow markers and keeps full information in Inspector/Drawer.
+- Unified marker, Inspector, Preparation Plan and Detail Drawer activation through the same operation state. Real K1/H1 previews switch to Cuts and open the canonical Before/After detail while preserving instance context; unsupported J1 operations close stale preview content and keep their theoretical-H1-face/purlin-joinery limitations visible instead of inventing geometry.
+- Added explicit K1 local-detail orientation labels for upper/lower edge, outer-eave datum and eave-to-ridge direction. H1 retains coordinated plan/elevation/top-face references and its backed-versus-dropped warning. J1 remains an exact instance/length/group workflow without a fabricated cut drawing.
+- Hardened composition by extracting `Inspector`, `WorkbenchContextBar`, `MemberInstanceInspector`, `MemberInstanceOverlay` and `OrientationMiniMap`; `AssemblyPage` now composes them. `workbench-project.ts` owns one memoized template projection for resolved roof, skeleton, fabrication package, instances and previews.
+- Removed the hidden duplicate resolver call: new `createRoofSkeletonFromResolved()` plus gable/hip resolved-skeleton entry points build the skeleton from the already-resolved roof. A measured resolver test proves repeated transient selections, operations, isolation and zoom context reuse one projection; a new canonical template identity resolves exactly once again.
+- Added responsive/focus styling for the context bar, navigator, minimap, Inspector and operation overlay. A simulated 360 px `ResizeObserver` DOM test confirms narrow markers collapse to tappable codes and the four-action navigator remains present; native layout/overflow acceptance is still outstanding because no browser surface exists.
+
+**Final instance/operation contract:**
+
+- Persisted/revision-ready state remains exactly `RoofProjectDocumentV1.project.roof`; instance, operation, navigation, breadcrumb, drawer, isolation and camera state remain transient.
+- `MemberInstanceContext` carries `instanceId`, `prototypeId`, `familyCode`, physical kind/order, side/plane/corner/station, exact length, stable length-group ID, section, related instances/operations and warnings. `MemberInstanceOperationContext` carries the existing operation ID/code/status/support/station, normalized member-axis position, canonical world point, reference direction, material-removal semantic, optional real preview ID and warnings.
+- An absent `detailPreviewId` is a supported state, not an error. It selects and explains the operation without displaying a false cut detail.
+
+**Files changed:**
+
+- Documentation/checkpoint: `docs/PROMPT_ITERATION_010.md`, `docs/ARCHITECTURE_V10_MEMBER_INSTANCE_WORKFLOW.md`, `PROJECT_BLUEPRINT.md`.
+- Domain/math: new calculator-core `member-instance.ts` and tests plus barrel export; new resolved-skeleton entry points in roof-math `gable-roof.ts`, `hip-roof.ts` and `roof-template.ts`.
+- Web architecture/UI: new `workbench-project.ts` and test, `Inspector.tsx`, `WorkbenchContextBar.tsx`, `MemberInstanceInspector.tsx`, `MemberInstanceOverlay.tsx`, `OrientationMiniMap.tsx`; updated Page, SkeletonCanvas, WorkbenchControls, PreparationPlan, DetailPreview, workbench/store logic and tests, translations and responsive styles.
+- No dependency/lockfile change, database/auth/PDF/export work, commit or push was made.
+
+**Validation, performance and QA:**
+
+- Final pinned checks pass: TypeScript, ESLint, `git diff --check`, web production build and API production build.
+- Final tests: **266 passed across 31 files**, up from 252/29. Coverage includes mirrored K1 instances, all four H1, exact multiple J1 groups, deterministic wrap navigation, operation anchoring/no-preview safety, document/history exclusion, shared Quick/Builder math, 940/800 spacing, multiple purlins, keyboard markers, breadcrumb/navigator/locator, Cuts/Drawer synchronization, `Escape` return, form-shortcut exclusion and narrow marker behavior.
+- The actual expensive projection resolves once per canonical template identity; skeleton generation now consumes the resolved roof and does not invoke the roof solver a second time. View-only changes are excluded from the resolver input and covered by a call-count test.
+- Final web build: main **452.70 kB / 130.01 kB gzip**, React **51.29 / 18.04 kB**, localization **49.54 / 16.09 kB**, icons **10.75 / 2.39 kB**, CSS **65.54 / 13.30 kB**. The Vite 500 kB advisory remains absent. The feature increases the V9 main chunk by about 17.1 kB and CSS by about 7.0 kB before gzip; no broad performance-regression claim is made beyond the measured build and resolver boundary.
+- The requested Computer Use/Browser skill was used, but `iab` returned `Browser is not available` and the complete browser/application inventory was empty. Therefore no native 1440×900, 768 px, 360×800, screenshot, horizontal-overflow or hardware touch claim is made. DOM, geometry, keyboard, simulated narrow-resize and responsive-CSS checks pass.
+
+**Known limitations / assumptions:**
+
+- H1 is still the approved coordinated compound-cut explanation, not a complete saw-face solid; backing versus dropping remains explicit. J1 remains measured to the theoretical H1 centre plane; physical H1-face deduction, J1-to-purlin joinery and dedicated J1 cut previews remain intentionally unresolved and visible.
+- K1/H1/J1 fabrication remains shared by prototype/length group; individual production overrides were deliberately not introduced. Length-group IDs depend on deterministic package order and never on rounded display values.
+- Native browser acceptance is the only unfinished Iteration 010 validation item. Persistence/database, login, projects/revisions UI, PDF/export, costing, covering, openings, new roof types, structural verification, full CAD/Three.js and other excluded scope were not started.
+
+**NEXT ACTION:**
+
+> When a Browser surface is available, run the production build through the Iteration 010 desktop 1440×900, tablet 768 px and mobile 360×800 acceptance matrix: gable with two purlins, rectangular/square hip, representative K1/all H1/several J1, breadcrumb/navigator/locator, marker collisions, isolation, Cuts, Before/After, `Escape`, Undo/Redo, pan/zoom/Fit and horizontal overflow. Fix only evidenced defects, then stop for user review/commit. Do not begin Iteration 011 automatically.
+
+**Previous checkpoint — Iteration 009:**
 
 **Iteration:** `009 — project workbench + smart views + fabrication package`
 

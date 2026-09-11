@@ -101,6 +101,7 @@ export * from './hip-rafter';
 export * from './detail-preview';
 export * from './project-document';
 export * from './fabrication-package';
+export * from './member-instance';
 export interface AccessPolicy {
   canUse(feature: FeatureKey): boolean;
 }

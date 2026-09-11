@@ -5,10 +5,22 @@ import {
   resolveRoofTemplate,
 } from '@cieslacalc/roof-math';
 import {
+  createMemberInstanceContexts,
   createRoofFabricationPackage,
   detailPreviewsFromFabricationPackage,
 } from '@cieslacalc/calculator-core';
 import { supportField, useAssembly } from './store';
+import { createRoofSkeleton } from '@cieslacalc/roof-math';
+
+function memberInstances() {
+  const template = useAssembly.getState().template;
+  const resolved = resolveRoofTemplate(template);
+  return createMemberInstanceContexts({
+    resolved,
+    skeleton: createRoofSkeleton(template),
+    roofPackage: createRoofFabricationPackage(resolved),
+  });
+}
 beforeEach(() => {
   useAssembly.getState().reset();
   useAssembly.getState().setUnit('mm');
@@ -311,4 +323,104 @@ it('returns from isolation when the whole roof becomes the selection', () => {
   expect(useAssembly.getState().workbench.isolateSelection).toBe(false);
   expect(useAssembly.getState().projectDocument).toEqual(before);
   expect(useAssembly.getState().historyPast).toHaveLength(0);
+});
+
+it('selects and navigates physical member instances without editing the project', () => {
+  useAssembly.getState().setRoofType('hip');
+  useAssembly.setState({ historyPast: [], historyFuture: [] });
+  const beforeDocument = structuredClone(
+    useAssembly.getState().projectDocument,
+  );
+  const hips = memberInstances().filter(
+    (instance) => instance.familyCode === 'H1',
+  );
+  const first = hips[0]!;
+  const second = hips[1]!;
+
+  useAssembly.getState().select(first.instanceId, first.prototypeId);
+  expect(useAssembly.getState().workbench).toMatchObject({
+    selectedId: first.instanceId,
+    selectedInstanceId: first.instanceId,
+    selectedPrototypeId: first.prototypeId,
+  });
+  useAssembly.getState().navigateToInstance({
+    instanceId: second.instanceId,
+    prototypeId: second.prototypeId,
+    operationIds: second.relatedOperationIds,
+  });
+  expect(useAssembly.getState().workbench.selectedInstanceId).toBe(
+    second.instanceId,
+  );
+  expect(useAssembly.getState().projectDocument).toEqual(beforeDocument);
+  expect(useAssembly.getState().historyPast).toHaveLength(0);
+});
+
+it('preserves an operation across compatible instances and steps back by context', () => {
+  useAssembly.getState().setRoofType('hip');
+  const hips = memberInstances().filter(
+    (instance) => instance.familyCode === 'H1',
+  );
+  const first = hips[0]!;
+  const second = hips[1]!;
+  const operation = first.operations.find(
+    (candidate) => candidate.detailPreviewId,
+  )!;
+
+  useAssembly.getState().activateOperation({
+    operationId: operation.operationId,
+    prototypeId: first.prototypeId,
+    instanceId: first.instanceId,
+    previewId: operation.detailPreviewId,
+  });
+  expect(useAssembly.getState().workbench.detailDrawer.open).toBe(true);
+  useAssembly.getState().navigateToInstance({
+    instanceId: second.instanceId,
+    prototypeId: second.prototypeId,
+    operationIds: second.relatedOperationIds,
+  });
+  expect(useAssembly.getState().workbench).toMatchObject({
+    selectedInstanceId: second.instanceId,
+    activeOperationId: operation.operationId,
+  });
+
+  useAssembly.getState().stepBackContext();
+  expect(useAssembly.getState().workbench).toMatchObject({
+    selectedId: second.instanceId,
+    selectedInstanceId: second.instanceId,
+    activeOperationId: undefined,
+  });
+  useAssembly.getState().stepBackContext();
+  expect(useAssembly.getState().workbench).toMatchObject({
+    selectedId: 'roof',
+    selectedInstanceId: undefined,
+    selectedPrototypeId: undefined,
+  });
+});
+
+it('opens no stale detail for a limited J1 operation', () => {
+  useAssembly.getState().setRoofType('hip');
+  const jack = memberInstances().find(
+    (instance) => instance.familyCode === 'J1',
+  )!;
+  const operation = jack.operations.find(
+    (candidate) => candidate.status === 'limited',
+  )!;
+  useAssembly.getState().setDetailDrawer({
+    open: true,
+    activePreviewId: 'stale-preview',
+  });
+
+  useAssembly.getState().activateOperation({
+    operationId: operation.operationId,
+    prototypeId: jack.prototypeId,
+    instanceId: jack.instanceId,
+    previewId: operation.detailPreviewId,
+  });
+
+  expect(useAssembly.getState().workbench).toMatchObject({
+    selectedInstanceId: jack.instanceId,
+    activeOperationId: operation.operationId,
+    canvasView: 'skeleton',
+    detailDrawer: { open: false, activePreviewId: undefined },
+  });
 });

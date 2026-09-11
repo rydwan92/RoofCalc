@@ -1,7 +1,6 @@
 import {
   memo,
   useEffect,
-  useMemo,
   useRef,
   useState,
   type KeyboardEvent,
@@ -23,21 +22,23 @@ import {
   type Point,
   type ViewportState,
 } from '@cieslacalc/drawing-engine';
+import type { MemberInstanceContext } from '@cieslacalc/calculator-core';
 import {
   clampGablePitchDeg,
   clampRoofHalfRunMm,
   clampPurlinPlacement,
-  createRoofSkeleton,
   gablePitchDegFromRidgeHeight,
   gableRidgeHeightMm,
 } from '@cieslacalc/roof-math';
 import type {
   HipRoofSkeleton,
   ResolvedRafterSpacing,
+  RoofSkeleton,
   RoofTemplateSpec,
   SkeletonMember3D,
 } from '@cieslacalc/timber-model';
 import { formatLength } from '../format';
+import { MemberInstanceOverlay } from './MemberInstanceOverlay';
 import { useAssembly } from './store';
 import {
   deriveWorkbenchProjectionPolicy,
@@ -95,14 +96,18 @@ function memberLabel(member: SkeletonMember3D, t: (key: string) => string) {
 
 function SkeletonCanvasComponent({
   template,
+  skeleton,
   spacing,
   relatedSupportId,
   relatedIds,
+  activeInstance,
 }: {
   template: RoofTemplateSpec;
+  skeleton: RoofSkeleton;
   spacing: ResolvedRafterSpacing;
   relatedSupportId?: string;
   relatedIds?: ReadonlySet<string>;
+  activeInstance?: MemberInstanceContext;
 }) {
   const selectedStore = useAssembly(
     useShallow((store) => ({
@@ -110,15 +115,19 @@ function SkeletonCanvasComponent({
       unit: store.unit,
       selectedId: store.workbench.selectedId,
       selectedPrototypeId: store.workbench.selectedPrototypeId,
+      selectedInstanceId: store.workbench.selectedInstanceId,
       viewPreset: store.workbench.viewPreset,
       isolateSelection: store.workbench.isolateSelection,
       dimensionLevel: store.workbench.dimensionLevel,
+      activeOperationId: store.workbench.activeOperationId,
+      detailDrawerOpen: store.workbench.detailDrawer.open,
       beginTransaction: store.beginTransaction,
       cancelTransaction: store.cancelTransaction,
       commitTransaction: store.commitTransaction,
       movePurlin: store.movePurlin,
       select: store.select,
       setCanonicalField: store.setCanonicalField,
+      activateOperation: store.activateOperation,
     })),
   );
   const state = {
@@ -127,9 +136,11 @@ function SkeletonCanvasComponent({
       ...initialWorkbenchViewState,
       selectedId: selectedStore.selectedId,
       selectedPrototypeId: selectedStore.selectedPrototypeId,
+      selectedInstanceId: selectedStore.selectedInstanceId,
       viewPreset: selectedStore.viewPreset,
       isolateSelection: selectedStore.isolateSelection,
       dimensionLevel: selectedStore.dimensionLevel,
+      activeOperationId: selectedStore.activeOperationId,
     },
   };
   const { t, i18n } = useTranslation();
@@ -164,7 +175,6 @@ function SkeletonCanvasComponent({
     return () => element.removeEventListener('wheel', zoom);
   }, []);
 
-  const skeleton = useMemo(() => createRoofSkeleton(template), [template]);
   const height = width < 550 ? 400 : 570;
   const policy = deriveWorkbenchProjectionPolicy(state.workbench, width < 550);
   const memberLayer = (member: SkeletonMember3D) =>
@@ -311,7 +321,9 @@ function SkeletonCanvasComponent({
     })),
   ];
   const selectedMember = skeleton.members.find(
-    (member) => member.selectionId === state.workbench.selectedId,
+    (member) =>
+      member.id === state.workbench.selectedInstanceId ||
+      member.selectionId === state.workbench.selectedId,
   );
   const currentPointer = (event: PointerEvent<SVGElement>): Point => {
     const bounds = svg.current?.getBoundingClientRect();
@@ -429,7 +441,8 @@ function SkeletonCanvasComponent({
       return;
     if ((event.target as SVGElement).dataset.skeletonBackground !== 'true')
       return;
-    state.select('roof');
+    if (!state.workbench.activeOperationId && !selectedStore.detailDrawerOpen)
+      state.select('roof');
     drag.current = {
       kind: 'pan',
       pointerId: event.pointerId,
@@ -687,6 +700,23 @@ function SkeletonCanvasComponent({
             );
           })}
         </g>
+        {policy.showCutMarkers && activeInstance && (
+          <MemberInstanceOverlay
+            instance={activeInstance}
+            activeOperationId={state.workbench.activeOperationId}
+            project={worldPoint}
+            narrow={width < 550}
+            onActivate={(operation) =>
+              state.activateOperation({
+                operationId: operation.operationId,
+                prototypeId: activeInstance.prototypeId,
+                selectionId: operation.operationId,
+                instanceId: activeInstance.instanceId,
+                previewId: operation.detailPreviewId,
+              })
+            }
+          />
+        )}
         {policy.showDirectManipulation && (
           <g className="a-handle-layer">
             {handles.map((handle) => (

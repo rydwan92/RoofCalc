@@ -140,6 +140,17 @@ export function DetailPreviewDrawing({
       <span className="a-detail-frame">
         {t(`assembly.${preview.localFrame}`)}
       </span>
+      {!compact && preview.subjectCode === 'K1' && (
+        <div
+          className="a-detail-orientation"
+          aria-label={t('assembly.memberOrientation')}
+        >
+          <span>{t('assembly.topEdge')}</span>
+          <span>{t('assembly.bottomEdge')}</span>
+          <span>{t('assembly.eaveToRidge')}</span>
+          <span>{t('assembly.outerEaveDatum')}</span>
+        </div>
+      )}
       <svg
         viewBox={`0 0 ${width} ${height}`}
         role="img"

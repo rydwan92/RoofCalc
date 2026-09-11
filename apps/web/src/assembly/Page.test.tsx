@@ -439,11 +439,28 @@ describe('dual-mode parametric workbench', () => {
     expect(container.querySelectorAll('.kind-rafter.is-selected')).toHaveLength(
       1,
     );
-    expect(screen.getByText('rafter-pair-4:left')).toBeTruthy();
+    expect(screen.getByText('instance:rafter-pair-4:left')).toBeTruthy();
     expect(screen.getAllByText('Krokiew K1').length).toBeGreaterThan(0);
-    fireEvent.click(screen.getByRole('button', { name: 'Otwórz element' }));
+    expect(screen.getByTestId('instance-navigator').textContent).toContain(
+      'K1 7/22',
+    );
+    expect(screen.getByTestId('orientation-minimap')).toBeTruthy();
+    const operation = within(
+      screen.getByTestId('member-instance-overlay'),
+    ).getAllByRole('button')[0]!;
+    fireEvent.keyDown(operation, { key: 'Enter' });
+    expect(useAssembly.getState().workbench.activeOperationId).toBeTruthy();
+    expect(useAssembly.getState().workbench.selectedInstanceId).toBe(
+      'instance:rafter-pair-4:left',
+    );
     expect(screen.getByTestId('assembly-drawing')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Wróć do szkieletu' }));
+    expect(screen.getByLabelText('Orientacja elementu').textContent).toContain(
+      'Kierunek: okap → kalenica',
+    );
+    fireEvent.keyDown(container.querySelector('.assembly-app')!, {
+      key: 'Escape',
+    });
+    expect(useAssembly.getState().workbench.activeOperationId).toBeUndefined();
     expect(screen.getByTestId('skeleton-drawing')).toBeTruthy();
   });
   it('adds and selects multiple independently resolved purlins in the skeleton', () => {
@@ -641,7 +658,20 @@ describe('dual-mode parametric workbench', () => {
     expect(useAssembly.getState().workbench.selectedId).toBe(
       'instance:hip:front-left',
     );
-    expect(screen.getByText('front-left')).toBeTruthy();
+    expect(screen.getByText('instance:hip:front-left')).toBeTruthy();
+    expect(screen.getByTestId('orientation-minimap')).toBeTruthy();
+    expect(screen.getByTestId('instance-navigator').textContent).toContain(
+      'H1 1/4',
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Następny element tej rodziny' }),
+    );
+    expect(useAssembly.getState().workbench.selectedInstanceId).toBe(
+      'instance:hip:front-right',
+    );
+    expect(screen.getByTestId('instance-navigator').textContent).toContain(
+      'H1 2/4',
+    );
     fireEvent.click(
       screen.getByRole('button', { name: /Przygotuj krokiew narożną H1/ }),
     );
@@ -702,7 +732,11 @@ describe('dual-mode parametric workbench', () => {
     expect(useAssembly.getState().workbench.selectedPrototypeId).toBe(
       'member:jack-rafter-J1',
     );
-    expect(screen.getByTestId('jack-inspector')).toBeTruthy();
+    expect(
+      screen
+        .getByTestId('member-instance-inspector')
+        .getAttribute('data-family'),
+    ).toBe('J1');
     expect(
       screen.getByRole('region', { name: 'Parametry konkretnej sztuki' }),
     ).toBeTruthy();
@@ -722,6 +756,24 @@ describe('dual-mode parametric workbench', () => {
         .querySelector('[data-entity="instance:hip:front-left"]')
         ?.getAttribute('data-selection-state'),
     ).toBe('related');
+    const limitedOperation = screen
+      .getByTestId('member-instance-overlay')
+      .querySelector<SVGGElement>(
+        '.a-operation-marker[data-operation-status="limited"]',
+      )!;
+    fireEvent.keyDown(limitedOperation, { key: ' ' });
+    expect(useAssembly.getState().workbench.activeOperationId).toBeTruthy();
+    expect(useAssembly.getState().workbench.detailDrawer.open).toBe(false);
+    expect(useAssembly.getState().workbench.canvasView).toBe('skeleton');
+    expect(
+      document.querySelector('.a-length-groups span[data-active="true"]'),
+    ).toBeTruthy();
+    fireEvent.keyDown(container.querySelector('.assembly-app')!, {
+      key: 'Escape',
+    });
+    expect(useAssembly.getState().workbench.selectedInstanceId).toBe(
+      'instance:jack:front-left:left:1',
+    );
     const projectBeforeIsolation = structuredClone(
       useAssembly.getState().projectDocument,
     );
@@ -764,6 +816,53 @@ describe('dual-mode parametric workbench', () => {
     expect(
       screen.getByRole('tab', { name: /J1 .*Połączenie z H1/ }),
     ).toBeTruthy();
+  });
+
+  it('keeps the instance workflow compact on a narrow drawing', () => {
+    class NarrowResizeObserver {
+      constructor(private readonly callback: ResizeObserverCallback) {}
+      observe(target: Element) {
+        this.callback(
+          [
+            {
+              target,
+              contentRect: { width: 360 } as DOMRectReadOnly,
+            } as ResizeObserverEntry,
+          ],
+          this as unknown as ResizeObserver,
+        );
+      }
+      disconnect() {}
+      unobserve() {}
+    }
+    vi.stubGlobal('ResizeObserver', NarrowResizeObserver);
+    const { container } = render(<App />);
+    builder();
+    fireEvent.click(screen.getByRole('button', { name: 'Krokiew #1 - lewa' }));
+
+    const overlay = screen.getByTestId('member-instance-overlay');
+    expect(
+      overlay.querySelectorAll('.a-operation-badge').length,
+    ).toBeGreaterThan(0);
+    expect(overlay.querySelector('.a-operation-label-bg')).toBeNull();
+    expect(
+      screen.getByTestId('instance-navigator').querySelectorAll('button'),
+    ).toHaveLength(4);
+    expect(container.querySelector('.a-context-breadcrumb')).toBeTruthy();
+  });
+
+  it('does not run global history shortcuts while an exact input is active', () => {
+    render(<App />);
+    builder();
+    enter('Kąt połaci', '42');
+    const historyLength = useAssembly.getState().historyPast.length;
+
+    fireEvent.keyDown(input('Kąt połaci'), { key: 'z', ctrlKey: true });
+    fireEvent.keyDown(input('Kąt połaci'), { key: 'Escape' });
+
+    expect(useAssembly.getState().template.pitchDeg).toBe(42);
+    expect(useAssembly.getState().historyPast).toHaveLength(historyLength);
+    expect(useAssembly.getState().workbench.selectedId).toBe('roof');
   });
 
   it('renders the square hip as a zero-ridge pyramid and a rectangle with a ridge', () => {

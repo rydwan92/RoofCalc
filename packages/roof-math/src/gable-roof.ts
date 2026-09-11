@@ -273,7 +273,12 @@ export function resolveGableRoofTemplate(raw: GableRoofTemplateSpec) {
 export function createGableRoofSkeleton(
   raw: GableRoofTemplateSpec,
 ): GableRoofSkeleton {
-  const resolved = resolveGableRoofTemplate(raw);
+  return createGableRoofSkeletonFromResolved(resolveGableRoofTemplate(raw));
+}
+
+export function createGableRoofSkeletonFromResolved(
+  resolved: ReturnType<typeof resolveGableRoofTemplate>,
+): GableRoofSkeleton {
   const { template, ridgeHeightMm, rafterSpacing } = resolved;
   const slope = Math.tan((template.pitchDeg * Math.PI) / 180);
   const eaveX = template.halfRunMm + template.eaveOverhangMm;

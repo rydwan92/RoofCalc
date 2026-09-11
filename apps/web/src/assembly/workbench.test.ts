@@ -14,6 +14,7 @@ import {
   deriveWorkbenchProjectionPolicy,
   dimensionAllowed,
   initialWorkbenchViewState,
+  layoutOperationMarkers,
 } from './workbench';
 
 describe('workbench view projection', () => {
@@ -148,5 +149,24 @@ describe('workbench view projection', () => {
     );
     expect(JSON.stringify(document)).not.toContain('isolateSelection');
     expect(isolated.isolateSelection).toBe(true);
+  });
+
+  it('lays out active and compact operation markers deterministically', () => {
+    const input = [
+      { id: 'Z1', at: { x: 100, y: 100 }, active: false },
+      { id: 'Z2', at: { x: 102, y: 101 }, active: true },
+      { id: 'K1', at: { x: 104, y: 102 }, active: false },
+    ];
+    const first = layoutOperationMarkers(input, false);
+    expect(layoutOperationMarkers(input, false)).toEqual(first);
+    expect(first.find((marker) => marker.id === 'Z2')?.compact).toBe(false);
+    expect(first.filter((marker) => marker.compact)).toHaveLength(2);
+    expect(
+      new Set(first.map((marker) => `${marker.marker.x}:${marker.marker.y}`))
+        .size,
+    ).toBe(3);
+    expect(
+      layoutOperationMarkers(input, true).every((marker) => marker.compact),
+    ).toBe(true);
   });
 });
