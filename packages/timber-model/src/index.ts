@@ -371,7 +371,19 @@ export interface BattenLayoutSpec {
   eaveOffsetMm: number;
   ridgeOffsetMm?: number;
 }
+export interface MembraneLayerSpec {
+  enabled: boolean;
+  roofPlaneIds?: string[];
+}
+export interface CounterBattenLayoutSpec {
+  enabled: boolean;
+  roofPlaneIds?: string[];
+  widthMm: number;
+  heightMm: number;
+}
 export interface RoofBuildUp {
+  membrane?: MembraneLayerSpec;
+  counterBattens?: CounterBattenLayoutSpec;
   battenLayout?: BattenLayoutSpec;
 }
 /** Renderer-neutral canonical roof composition, ready for future attachments/subassemblies. */

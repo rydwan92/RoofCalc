@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   currentMemberInstance,
@@ -17,6 +17,8 @@ import {
   resolveOpeningFraming,
   resolveOpeningFramingSet,
   resolveBattenLayout,
+  resolveCounterBattenLayout,
+  resolveRoofSurfaceGeometry,
 } from '@cieslacalc/roof-math';
 import { useAssembly } from './store';
 import {
@@ -41,13 +43,21 @@ import { WorkbenchControls } from './WorkbenchControls';
 import { PreparationPlan } from './PreparationPlan';
 import { Inspector } from './Inspector';
 import { WorkbenchContextBar } from './WorkbenchContextBar';
-import {
-  MaterialSchedule,
-  MaterialScheduleInspector,
-} from './MaterialSchedule';
+import { BuildUpSummaryBar } from './BuildUpWorkspace';
 import { workbenchProjectResolver } from './workbench-project';
 import { resolveWorkbenchSelectionContext } from './selection';
 import './styles.css';
+
+const MaterialSchedule = lazy(() =>
+  import('./MaterialSchedule').then((module) => ({
+    default: module.MaterialSchedule,
+  })),
+);
+const MaterialScheduleInspector = lazy(() =>
+  import('./MaterialSchedule').then((module) => ({
+    default: module.MaterialScheduleInspector,
+  })),
+);
 export function AssemblyPage() {
   const state = useAssembly(),
     { t, i18n } = useTranslation();
@@ -144,6 +154,47 @@ export function AssemblyPage() {
     [baseFabricationPackage, framingProjection.results],
   );
   const battenLayout = state.projectDocument.project.buildUp.battenLayout;
+  const membrane = state.projectDocument.project.buildUp.membrane;
+  const counterBattens = state.projectDocument.project.buildUp.counterBattens;
+  const surfaceProjection = useMemo(
+    () =>
+      resolveRoofSurfaceGeometry({
+        template: state.template,
+        features: state.projectDocument.project.features,
+      }),
+    [state.projectDocument.project.features, state.template],
+  );
+  const membraneAreaMm2 = membrane?.enabled
+    ? surfaceProjection.planes
+        .filter(
+          (plane) =>
+            membrane.roofPlaneIds === undefined ||
+            membrane.roofPlaneIds.includes(plane.roofPlaneId),
+        )
+        .reduce((sum, plane) => sum + plane.netAreaMm2, 0)
+    : 0;
+  const counterBattenProjection = useMemo(
+    () =>
+      counterBattens
+        ? resolveCounterBattenLayout({
+            template: state.template,
+            skeleton: framingProjection.composedSkeleton,
+            layout: counterBattens,
+            features: state.projectDocument.project.features,
+          })
+        : {
+            status: 'disabled' as const,
+            rows: [],
+            totalVisibleLengthMm: 0,
+            warnings: [],
+          },
+    [
+      counterBattens,
+      framingProjection.composedSkeleton,
+      state.projectDocument.project.features,
+      state.template,
+    ],
+  );
   const battenProjection = useMemo(
     () =>
       battenLayout?.enabled
@@ -168,26 +219,59 @@ export function AssemblyPage() {
             completeness: 'partial',
           },
         },
-        buildUp: battenLayout?.enabled
-          ? battenProjection.battens.map((batten) => ({
-              id: batten.id,
-              familyKey: 'L',
-              memberKind: 'batten' as const,
-              lengthMm: batten.usableLengthMm,
-              section: {
-                widthMm: battenLayout.battenWidthMm,
-                depthMm: battenLayout.battenHeightMm,
-              },
-              segmentCount: batten.segments.length,
-            }))
+        buildUp: [
+          ...(counterBattens?.enabled
+            ? counterBattenProjection.rows.map((row) => ({
+                id: row.id,
+                familyKey: 'KL',
+                memberKind: 'counter-batten' as const,
+                lengthMm: row.visibleLengthMm,
+                section: row.section,
+                segmentCount: row.segments.length,
+                warningKeys: row.warnings,
+              }))
+            : []),
+          ...(battenLayout?.enabled
+            ? battenProjection.battens.map((batten) => ({
+                id: batten.id,
+                familyKey: 'L',
+                memberKind: 'batten' as const,
+                lengthMm: batten.usableLengthMm,
+                section: {
+                  widthMm: battenLayout.battenWidthMm,
+                  depthMm: battenLayout.battenHeightMm,
+                },
+                segmentCount: batten.segments.length,
+              }))
+            : []),
+        ],
+        surfaceBuildUp: membrane?.enabled
+          ? surfaceProjection.planes
+              .filter(
+                (plane) =>
+                  membrane.roofPlaneIds === undefined ||
+                  membrane.roofPlaneIds.includes(plane.roofPlaneId),
+              )
+              .map((plane) => ({
+                id: `surface:${plane.roofPlaneId}`,
+                familyKey: 'MEM',
+                memberKind: 'membrane' as const,
+                roofPlaneId: plane.roofPlaneId,
+                areaMm2: plane.netAreaMm2,
+                warningKeys: plane.issues.map((issue) => issue.code),
+              }))
           : [],
       }),
     [
       battenLayout,
       battenProjection.battens,
+      counterBattens?.enabled,
+      counterBattenProjection.rows,
       framingProjection.composedSkeleton,
+      membrane,
       state.template.ridge.id,
       state.template.ridge.thicknessMm,
+      surfaceProjection.planes,
     ],
   );
   const selectionContext = useMemo(
@@ -599,13 +683,26 @@ export function AssemblyPage() {
                 detailPreviews={selectionDetailPreviews}
               />
               <section className="a-canvas-column">
+                <WorkbenchControls skeleton={skeleton} />
                 <WorkbenchContextBar
                   instances={memberInstances}
                   activeInstance={activeInstance}
                   roofPackage={fabricationPackage}
                   activeOperation={activeOperation}
                 />
-                <WorkbenchControls skeleton={skeleton} />
+                {workbench.viewPreset === 'layers' && (
+                  <BuildUpSummaryBar
+                    membraneEnabled={!!membrane?.enabled}
+                    membraneAreaMm2={membraneAreaMm2}
+                    counterBattensEnabled={!!counterBattens?.enabled}
+                    counterBattenLengthMm={
+                      counterBattenProjection.totalVisibleLengthMm
+                    }
+                    battensEnabled={!!battenLayout?.enabled}
+                    battenLengthMm={battenProjection.totalLengthMm}
+                    limited={counterBattenProjection.status === 'limited'}
+                  />
+                )}
                 {workbench.focusId && (
                   <button
                     className="a-button a-back"
@@ -625,8 +722,29 @@ export function AssemblyPage() {
                   </button>
                 )}
                 {workbench.viewPreset === 'materials' ? (
-                  <div className="a-material-workspace">
-                    <div className="a-material-canvas">
+                  <div
+                    className={`a-material-workspace material-view-${workbench.materialsView}`}
+                  >
+                    <div
+                      className="a-material-local-switch"
+                      role="tablist"
+                      aria-label={t('assembly.materialWorkspaceView')}
+                    >
+                      {(['schedule', 'drawing'] as const).map((view) => (
+                        <button
+                          key={view}
+                          role="tab"
+                          aria-selected={workbench.materialsView === view}
+                          onClick={() => state.setMaterialsView(view)}
+                        >
+                          {t(`assembly.${view}MaterialView`)}
+                        </button>
+                      ))}
+                    </div>
+                    <div
+                      className="a-material-canvas"
+                      data-material-surface="drawing"
+                    >
                       <SkeletonCanvas
                         template={state.template}
                         skeleton={framingProjection.composedSkeleton}
@@ -634,15 +752,25 @@ export function AssemblyPage() {
                         spacing={layoutSpacing}
                         relatedIds={relatedSelectionIds}
                         activeInstance={activeInstance}
+                        surfaceGeometry={surfaceProjection}
+                        counterBattens={counterBattenProjection}
                       />
                     </div>
-                    <MaterialSchedule
-                      schedule={memberSchedule}
-                      selectedRowId={workbench.selectedScheduleRowId}
-                      selectedInstanceId={workbench.selectedScheduleInstanceId}
-                      onSelectRow={(row) => state.setScheduleSelection(row.id)}
-                      onSelectInstance={selectScheduleInstance}
-                    />
+                    <div data-material-surface="schedule">
+                      <Suspense fallback={<div className="a-loading-panel" />}>
+                        <MaterialSchedule
+                          schedule={memberSchedule}
+                          selectedRowId={workbench.selectedScheduleRowId}
+                          selectedInstanceId={
+                            workbench.selectedScheduleInstanceId
+                          }
+                          onSelectRow={(row) =>
+                            state.setScheduleSelection(row.id)
+                          }
+                          onSelectInstance={selectScheduleInstance}
+                        />
+                      </Suspense>
+                    </div>
                   </div>
                 ) : workbench.focusId ? (
                   <AssemblyCanvas result={result} focusId={workbench.focusId} />
@@ -665,11 +793,15 @@ export function AssemblyPage() {
                     relatedSupportId={activeOperation?.relatedSupportId}
                     relatedIds={relatedSelectionIds}
                     activeInstance={activeInstance}
+                    surfaceGeometry={surfaceProjection}
+                    counterBattens={counterBattenProjection}
                   />
                 )}
               </section>
               {workbench.viewPreset === 'materials' ? (
-                <MaterialScheduleInspector schedule={memberSchedule} />
+                <Suspense fallback={<aside className="a-inspector" />}>
+                  <MaterialScheduleInspector schedule={memberSchedule} />
+                </Suspense>
               ) : (
                 <Inspector
                   result={result}
@@ -680,6 +812,8 @@ export function AssemblyPage() {
                   detailPreviews={selectionDetailPreviews}
                   activeInstance={activeInstance}
                   roofPackage={fabricationPackage}
+                  surfaceGeometry={surfaceProjection}
+                  counterBattens={counterBattenProjection}
                 />
               )}
             </div>

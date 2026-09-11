@@ -44,6 +44,20 @@ export function Toolbox({
   const state = useAssembly();
   const { t, i18n } = useTranslation();
   const [distributionOpen, setDistributionOpen] = useState(false);
+  const buildUp = state.projectDocument.project.buildUp;
+  const membrane = buildUp.membrane ?? { enabled: false };
+  const counterBattens = buildUp.counterBattens ?? {
+    enabled: false,
+    widthMm: 40,
+    heightMm: 60,
+  };
+  const battens = buildUp.battenLayout ?? {
+    enabled: false,
+    battenHeightMm: 40,
+    battenWidthMm: 60,
+    gaugeMm: 350,
+    eaveOffsetMm: 250,
+  };
   const tools = createWorkbenchToolRegistry({
     template: state.template,
     spec: state.spec,
@@ -322,24 +336,74 @@ export function Toolbox({
         >
           {t('assembly.roofBuildUp')}
         </summary>
-        <button
-          className={`a-tool ${state.projectDocument.project.buildUp.battenLayout?.enabled ? 'is-active' : ''}`}
-          onClick={() => {
-            state.setBattenLayout(
-              state.projectDocument.project.buildUp.battenLayout ?? {
-                enabled: true,
-                battenHeightMm: 40,
-                battenWidthMm: 60,
-                gaugeMm: 350,
-                eaveOffsetMm: 250,
+        {(
+          [
+            {
+              id: 'membrane',
+              label: 'membrane',
+              enabled: membrane.enabled,
+              select: () => {
+                state.select('layer:membrane');
+                state.setBuildUpView('membrane');
               },
-            );
-            state.setViewPreset('battens');
-          }}
-        >
-          <Layers3 size={20} />
-          <span>{t('assembly.battens')}</span>
-        </button>
+              toggle: () =>
+                state.setMembraneLayer({
+                  ...membrane,
+                  enabled: !membrane.enabled,
+                }),
+            },
+            {
+              id: 'counterBattens',
+              label: 'counterBattens',
+              enabled: counterBattens.enabled,
+              select: () => {
+                state.select('layer:counter-battens');
+                state.setBuildUpView('counterBattens');
+              },
+              toggle: () =>
+                state.setCounterBattenLayout({
+                  ...counterBattens,
+                  enabled: !counterBattens.enabled,
+                }),
+            },
+            {
+              id: 'battens',
+              label: 'battens',
+              enabled: battens.enabled,
+              select: () => {
+                state.select('layer:battens');
+                state.setBuildUpView('battens');
+              },
+              toggle: () =>
+                state.setBattenLayout({
+                  ...battens,
+                  enabled: !battens.enabled,
+                }),
+            },
+          ] as const
+        ).map((layer) => (
+          <div className="a-layer-tool-row" key={layer.id}>
+            <button
+              className="a-tool"
+              aria-pressed={
+                state.workbench.selectedId ===
+                `layer:${layer.id === 'counterBattens' ? 'counter-battens' : layer.id}`
+              }
+              onClick={layer.select}
+            >
+              <Layers3 size={20} />
+              <span>{t(`assembly.${layer.label}`)}</span>
+            </button>
+            <button
+              className="a-layer-toggle"
+              aria-pressed={layer.enabled}
+              aria-label={`${t(`assembly.${layer.label}`)} · ${t(`assembly.${layer.enabled ? 'enabled' : 'disabled'}`)}`}
+              onClick={layer.toggle}
+            >
+              {layer.enabled ? t('assembly.on') : t('assembly.off')}
+            </button>
+          </div>
+        ))}
       </details>
       <details open={!state.workbench.collapsedToolGroups.includes('quantity')}>
         <summary
@@ -361,13 +425,15 @@ export function Toolbox({
           <ListTree size={20} />
           <span>{t('assembly.timber')}</span>
         </button>
-        {state.projectDocument.project.buildUp.battenLayout?.enabled && (
+        {(buildUp.membrane?.enabled ||
+          buildUp.counterBattens?.enabled ||
+          buildUp.battenLayout?.enabled) && (
           <button
             className="a-tool"
             onClick={() => state.setViewPreset('materials')}
           >
             <Layers3 size={20} />
-            <span>{t('assembly.battens')}</span>
+            <span>{t('assembly.roofBuildUp')}</span>
           </button>
         )}
       </details>

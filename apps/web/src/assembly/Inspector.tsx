@@ -13,6 +13,9 @@ import {
   resolveBattenLayout,
   resolveRoofFeatureCollisions,
   resolveNearestRoofWindowBay,
+  roofPlaneIds,
+  type CounterBattenLayoutResult,
+  type RoofSurfaceGeometryResult,
 } from '@cieslacalc/roof-math';
 import type {
   ResolvedHipRafter,
@@ -44,6 +47,8 @@ export function Inspector({
   detailPreviews,
   activeInstance,
   roofPackage,
+  surfaceGeometry,
+  counterBattens,
 }: {
   result: Calculation | null;
   hip?: ResolvedHipRafter;
@@ -57,6 +62,8 @@ export function Inspector({
   detailPreviews: DetailPreviewModel[];
   activeInstance?: MemberInstanceContext;
   roofPackage: RoofFabricationPackage;
+  surfaceGeometry: RoofSurfaceGeometryResult;
+  counterBattens: CounterBattenLayoutResult;
 }) {
   const state = useAssembly();
   const { t } = useTranslation();
@@ -123,7 +130,16 @@ export function Inspector({
           {roofWindow && (
             <RoofWindowInspector feature={roofWindow} skeleton={skeleton} />
           )}
-          {workbench.viewPreset === 'battens' && <BattenLayoutInspector />}
+          {workbench.viewPreset === 'layers' &&
+            workbench.buildUpView === 'membrane' && (
+              <MembraneInspector geometry={surfaceGeometry} />
+            )}
+          {workbench.viewPreset === 'layers' &&
+            workbench.buildUpView === 'counterBattens' && (
+              <CounterBattenInspector result={counterBattens} />
+            )}
+          {workbench.viewPreset === 'layers' &&
+            workbench.buildUpView === 'battens' && <BattenLayoutInspector />}
           {(isRafter || isJack || workbench.selectedId === 'cut:eave') && (
             <TimberInputs />
           )}
@@ -236,6 +252,177 @@ function DraftMillimetreField({
   );
 }
 
+function area(valueMm2: number, locale: string) {
+  return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(valueMm2 / 1_000_000)} m²`;
+}
+
+function MembraneInspector({
+  geometry,
+}: {
+  geometry: RoofSurfaceGeometryResult;
+}) {
+  const state = useAssembly();
+  const { t, i18n } = useTranslation();
+  const layer = state.projectDocument.project.buildUp.membrane ?? {
+    enabled: false,
+  };
+  const selectedPlaneId = state.workbench.selectedId.startsWith('surface:')
+    ? state.workbench.selectedId.replace('surface:', '')
+    : undefined;
+  const selectedPlane = geometry.planes.find(
+    (plane) => plane.roofPlaneId === selectedPlaneId,
+  );
+  const facts = selectedPlane ?? geometry;
+  const planeIds = geometry.planes.map((plane) => plane.roofPlaneId);
+  const activePlaneIds = layer.roofPlaneIds ?? planeIds;
+  return (
+    <section className="a-layer-inspector" data-testid="membrane-inspector">
+      <h3>{t('assembly.membrane')}</h3>
+      <dl className="a-facts">
+        <div>
+          <dt>{t('assembly.status')}</dt>
+          <dd>{t(`assembly.${layer.enabled ? 'enabled' : 'disabled'}`)}</dd>
+        </div>
+        <div>
+          <dt>{t('assembly.roofPlanes')}</dt>
+          <dd>{activePlaneIds.length}</dd>
+        </div>
+        <div>
+          <dt>{t('assembly.grossArea')}</dt>
+          <dd>{area(facts.grossAreaMm2, i18n.language)}</dd>
+        </div>
+        <div>
+          <dt>{t('assembly.openingArea')}</dt>
+          <dd>{area(facts.openingAreaMm2, i18n.language)}</dd>
+        </div>
+        <div>
+          <dt>{t('assembly.netGeometricArea')}</dt>
+          <dd>{area(facts.netAreaMm2, i18n.language)}</dd>
+        </div>
+      </dl>
+      <fieldset className="a-plane-choice">
+        <legend>{t('assembly.roofPlanes')}</legend>
+        {planeIds.map((planeId) => (
+          <label key={planeId}>
+            <input
+              type="checkbox"
+              checked={activePlaneIds.includes(planeId)}
+              onChange={(event) => {
+                const next = event.target.checked
+                  ? [...new Set([...activePlaneIds, planeId])]
+                  : activePlaneIds.filter((id) => id !== planeId);
+                state.setMembraneLayer({
+                  ...layer,
+                  enabled: layer.enabled,
+                  roofPlaneIds: next,
+                });
+              }}
+            />
+            {t(`assembly.${planeId.replace('roof-plane:', '')}`)}
+          </label>
+        ))}
+      </fieldset>
+      <p className="a-limit-note">{t('assembly.membraneBoundaryNote')}</p>
+    </section>
+  );
+}
+
+function CounterBattenInspector({
+  result,
+}: {
+  result: CounterBattenLayoutResult;
+}) {
+  const state = useAssembly();
+  const { t, i18n } = useTranslation();
+  const layout = state.projectDocument.project.buildUp.counterBattens ?? {
+    enabled: false,
+    widthMm: 40,
+    heightMm: 60,
+  };
+  const selected = result.rows.find(
+    (row) => row.id === state.workbench.selectedId,
+  );
+  const planeIds = roofPlaneIds(state.template);
+  const activePlaneIds = layout.roofPlaneIds ?? planeIds;
+  const update = (field: 'widthMm' | 'heightMm', value: number) =>
+    state.setCounterBattenLayout({ ...layout, [field]: value });
+  return (
+    <section
+      className="a-layer-inspector"
+      data-testid="counter-batten-inspector"
+    >
+      <h3>{t('assembly.counterBattens')}</h3>
+      <h4>{t('assembly.section')}</h4>
+      <DraftMillimetreField
+        label={t('assembly.width')}
+        value={layout.widthMm}
+        min={1}
+        onCommit={(value) => update('widthMm', value)}
+      />
+      <DraftMillimetreField
+        label={t('assembly.height')}
+        value={layout.heightMm}
+        min={1}
+        onCommit={(value) => update('heightMm', value)}
+      />
+      <fieldset className="a-plane-choice">
+        <legend>{t('assembly.roofPlanes')}</legend>
+        {planeIds.map((planeId) => (
+          <label key={planeId}>
+            <input
+              type="checkbox"
+              checked={activePlaneIds.includes(planeId)}
+              onChange={(event) => {
+                const next = event.target.checked
+                  ? [...new Set([...activePlaneIds, planeId])]
+                  : activePlaneIds.filter((id) => id !== planeId);
+                state.setCounterBattenLayout({
+                  ...layout,
+                  roofPlaneIds: next,
+                });
+              }}
+            />
+            {t(`assembly.${planeId.replace('roof-plane:', '')}`)}
+          </label>
+        ))}
+      </fieldset>
+      <h4>{t('assembly.result')}</h4>
+      <dl className="a-facts">
+        <div>
+          <dt>{t('assembly.axisSegmentCount')}</dt>
+          <dd>
+            {result.rows.length} /{' '}
+            {result.rows.reduce((sum, row) => sum + row.segments.length, 0)}
+          </dd>
+        </div>
+        <div>
+          <dt>{t('assembly.totalVisibleGeometricLength')}</dt>
+          <dd>
+            {new Intl.NumberFormat(i18n.language, {
+              maximumFractionDigits: 2,
+            }).format(result.totalVisibleLengthMm / 1000)}{' '}
+            m
+          </dd>
+        </div>
+        <div>
+          <dt>{t('assembly.roofPlanes')}</dt>
+          <dd>{new Set(result.rows.map((row) => row.roofPlaneId)).size}</dd>
+        </div>
+      </dl>
+      {selected && (
+        <p className="a-layer-selection-detail">
+          {memberInstanceCode(selected.sourceMemberId)} ·{' '}
+          {Math.round(selected.visibleLengthMm)} mm · {selected.segments.length}{' '}
+          {t('assembly.segments').toLowerCase()}
+        </p>
+      )}
+      {result.status === 'limited' && (
+        <p className="a-limit-note">{t('assembly.counterBattenLimited')}</p>
+      )}
+    </section>
+  );
+}
+
 function BattenLayoutInspector() {
   const state = useAssembly();
   const { t, i18n } = useTranslation();
@@ -263,7 +450,10 @@ function BattenLayoutInspector() {
   return (
     <section className="a-batten-inspector" data-testid="batten-inspector">
       <h3>{t('assembly.battens')}</h3>
-      <p>{t('assembly.battenGeometricNote')}</p>
+      <details className="a-layer-help">
+        <summary>{t('assembly.geometryHelp')}</summary>
+        <p>{t('assembly.battenGeometricNote')}</p>
+      </details>
       <h4>{t('assembly.battenGeometry')}</h4>
       {(
         [

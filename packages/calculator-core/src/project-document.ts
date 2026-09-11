@@ -17,6 +17,20 @@ const roofFeatureSchema: z.ZodType<RoofFeature> = z.object({
   clearanceMm: z.number().nonnegative().optional(),
 });
 const roofBuildUpSchema: z.ZodType<RoofBuildUp> = z.object({
+  membrane: z
+    .object({
+      enabled: z.boolean(),
+      roofPlaneIds: z.array(z.string().min(1)).optional(),
+    })
+    .optional(),
+  counterBattens: z
+    .object({
+      enabled: z.boolean(),
+      roofPlaneIds: z.array(z.string().min(1)).optional(),
+      widthMm: z.number().positive(),
+      heightMm: z.number().positive(),
+    })
+    .optional(),
   battenLayout: z
     .object({
       enabled: z.boolean(),

@@ -1,5 +1,5 @@
 import { ChevronRight, Cuboid, Ruler, Shapes } from 'lucide-react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type {
   QuantitySection,
@@ -43,6 +43,7 @@ function rowName(
     return t(
       `assembly.${row.role === 'upper' ? 'upperRafterSegment' : 'lowerRafterSegment'}`,
     );
+  if (row.memberKind === 'counter-batten') return t('assembly.counterBattens');
   return t(`assembly.scheduleKind.${row.memberKind}`);
 }
 
@@ -74,6 +75,9 @@ export function MaterialSchedule({
   onSelectInstance: (row: RoofMemberScheduleRow, instanceId: string) => void;
 }) {
   const { t, i18n } = useTranslation();
+  const [perspective, setPerspective] = useState<'families' | 'sections'>(
+    'families',
+  );
   const families = useMemo(() => {
     const result = new Map<string, RoofMemberScheduleRow[]>();
     schedule.timberRows.forEach((row) =>
@@ -129,118 +133,140 @@ export function MaterialSchedule({
           })}
         </p>
       )}
-      <div className="a-schedule-families">
-        {families.map(([familyKey, rows]) => (
-          <section key={familyKey} className="a-schedule-family">
-            <header>
-              <strong>{familyKey}</strong>
-              <span>{rowName(rows[0]!, t)}</span>
-              <small>
-                {rows.reduce((total, row) => total + row.quantity, 0)}{' '}
-                {t('assembly.piecesShort')}
-              </small>
-            </header>
-            {rows.map((row) => (
-              <article
-                key={row.id}
-                className={selectedRowId === row.id ? 'is-selected' : ''}
-                data-testid="material-schedule-row"
-                data-row-id={row.id}
-                data-family={row.familyKey}
-                data-member-kind={row.memberKind}
-              >
-                <button
-                  type="button"
-                  aria-pressed={selectedRowId === row.id}
-                  onClick={() => onSelectRow(row)}
-                >
-                  <span>
-                    <b>{rowName(row, t)}</b>
-                    <small>{sectionText(row.section, i18n.language)}</small>
-                  </span>
-                  <strong>{millimetres(row.lengthMm, i18n.language)}</strong>
-                  <span>
-                    {row.quantity} {t('assembly.piecesShort')}
-                    <small>{metres(row.totalLengthMm, i18n.language)}</small>
-                  </span>
-                  <ChevronRight size={16} />
-                </button>
-                <details className="a-schedule-instances">
-                  <summary>
-                    {t('assembly.sourceMembers')} (
-                    {row.sourceInstanceIds.length})
-                  </summary>
-                  <div>
-                    {row.sourceInstanceIds.map((id) => (
-                      <button
-                        key={id}
-                        type="button"
-                        aria-pressed={selectedInstanceId === id}
-                        onClick={() => onSelectInstance(row, id)}
-                      >
-                        {instanceName(id, row, t)}
-                      </button>
-                    ))}
-                  </div>
-                </details>
-              </article>
-            ))}
-          </section>
+      <div
+        className="a-schedule-perspective"
+        role="tablist"
+        aria-label={t('assembly.schedulePerspective')}
+      >
+        {(['families', 'sections'] as const).map((view) => (
+          <button
+            key={view}
+            role="tab"
+            aria-selected={perspective === view}
+            onClick={() => setPerspective(view)}
+          >
+            {t(`assembly.${view}Perspective`)}
+          </button>
         ))}
       </div>
-      <section className="a-section-groups">
-        <header>
-          <small>{t('assembly.sectionSummary')}</small>
-          <h3>{t('assembly.timberBySection')}</h3>
-        </header>
-        <div>
-          {schedule.sectionGroups.map((group) => (
-            <article key={group.id}>
-              <strong>{sectionText(group.section, i18n.language)}</strong>
-              <span>{group.familyKeys.join(' · ')}</span>
-              <dl>
-                <div>
-                  <dt>{t('assembly.elements')}</dt>
-                  <dd>{group.quantity}</dd>
-                </div>
-                <div>
-                  <dt>{t('assembly.totalGeometricLength')}</dt>
-                  <dd>{metres(group.totalLengthMm, i18n.language)}</dd>
-                </div>
-                <div>
-                  <dt>{t('assembly.geometricVolume')}</dt>
-                  <dd>{cubicMetres(group.volumeMm3, i18n.language)}</dd>
-                </div>
-              </dl>
-            </article>
+      {perspective === 'families' && (
+        <div className="a-schedule-families">
+          {families.map(([familyKey, rows]) => (
+            <section key={familyKey} className="a-schedule-family">
+              <header>
+                <strong>{familyKey}</strong>
+                <span>{rowName(rows[0]!, t)}</span>
+                <small>
+                  {sectionText(rows[0]!.section, i18n.language)} ·{' '}
+                  {rows.reduce((total, row) => total + row.quantity, 0)}{' '}
+                  {t('assembly.piecesShort')}
+                </small>
+              </header>
+              {rows.map((row) => (
+                <article
+                  key={row.id}
+                  className={selectedRowId === row.id ? 'is-selected' : ''}
+                  data-testid="material-schedule-row"
+                  data-row-id={row.id}
+                  data-family={row.familyKey}
+                  data-member-kind={row.memberKind}
+                >
+                  <button
+                    type="button"
+                    aria-pressed={selectedRowId === row.id}
+                    onClick={() => onSelectRow(row)}
+                  >
+                    <span>
+                      <b>{rowName(row, t)}</b>
+                      <small>{sectionText(row.section, i18n.language)}</small>
+                    </span>
+                    <strong>{millimetres(row.lengthMm, i18n.language)}</strong>
+                    <span>
+                      {row.quantity} {t('assembly.piecesShort')}
+                      <small>{metres(row.totalLengthMm, i18n.language)}</small>
+                    </span>
+                    <ChevronRight size={16} />
+                  </button>
+                  <details className="a-schedule-instances">
+                    <summary>
+                      {t('assembly.sourceMembers')} (
+                      {row.sourceInstanceIds.length})
+                    </summary>
+                    <div>
+                      {row.sourceInstanceIds.map((id) => (
+                        <button
+                          key={id}
+                          type="button"
+                          aria-pressed={selectedInstanceId === id}
+                          onClick={() => onSelectInstance(row, id)}
+                        >
+                          {instanceName(id, row, t)}
+                        </button>
+                      ))}
+                    </div>
+                  </details>
+                </article>
+              ))}
+            </section>
           ))}
         </div>
-      </section>
-      {schedule.buildUpRows.length > 0 && (
-        <section className="a-batten-quantity" data-testid="batten-quantity">
+      )}
+      {perspective === 'sections' && (
+        <section className="a-section-groups">
+          <header>
+            <small>{t('assembly.sectionSummary')}</small>
+            <h3>{t('assembly.timberBySection')}</h3>
+          </header>
+          <div>
+            {schedule.sectionGroups.map((group) => (
+              <article key={group.id}>
+                <strong>{sectionText(group.section, i18n.language)}</strong>
+                <span>{group.familyKeys.join(' · ')}</span>
+                <dl>
+                  <div>
+                    <dt>{t('assembly.elements')}</dt>
+                    <dd>{group.quantity}</dd>
+                  </div>
+                  <div>
+                    <dt>{t('assembly.totalGeometricLength')}</dt>
+                    <dd>{metres(group.totalLengthMm, i18n.language)}</dd>
+                  </div>
+                  <div>
+                    <dt>{t('assembly.geometricVolume')}</dt>
+                    <dd>{cubicMetres(group.volumeMm3, i18n.language)}</dd>
+                  </div>
+                </dl>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+      {(schedule.buildUpRows.length > 0 ||
+        schedule.surfaceBuildUpRows.length > 0) && (
+        <section
+          className="a-batten-quantity"
+          data-testid="batten-quantity"
+          data-build-up-quantity="true"
+        >
           <header>
             <small>{t('assembly.roofBuildUp')}</small>
-            <h3>{t('assembly.battens')}</h3>
+            <h3>{t('assembly.roofLayers')}</h3>
           </header>
-          <dl>
-            <div>
-              <dt>{t('assembly.derivedRows')}</dt>
-              <dd>{schedule.buildUpSummary.quantity}</dd>
-            </div>
-            <div>
-              <dt>{t('assembly.totalVisibleGeometricLength')}</dt>
-              <dd>
-                {metres(schedule.buildUpSummary.totalLengthMm, i18n.language)}
-              </dd>
-            </div>
-            <div>
-              <dt>{t('assembly.section')}</dt>
-              <dd>
-                {sectionText(schedule.buildUpRows[0]!.section, i18n.language)}
-              </dd>
-            </div>
-          </dl>
-          <div className="a-batten-groups">
+          <div className="a-build-up-quantity-groups">
+            {schedule.surfaceBuildUpRows.map((row) => (
+              <article key={row.id}>
+                <span>
+                  <b>{t('assembly.membrane')}</b>
+                  <small>{t('assembly.netGeometric')}</small>
+                </span>
+                <strong>
+                  {new Intl.NumberFormat(i18n.language, {
+                    maximumFractionDigits: 2,
+                  }).format(row.areaMm2 / 1_000_000)}{' '}
+                  m²
+                </strong>
+              </article>
+            ))}
             {schedule.buildUpRows.map((row) => (
               <button
                 key={row.id}
@@ -251,16 +277,19 @@ export function MaterialSchedule({
                 onClick={() => onSelectRow(row)}
               >
                 <span>
-                  <b>{millimetres(row.lengthMm, i18n.language)}</b>
+                  <b>
+                    {rowName(row, t)} ·{' '}
+                    {sectionText(row.section, i18n.language)}
+                  </b>
                   <small>
-                    {row.quantity} {t('assembly.derivedRows')}
+                    {row.quantity} {t('assembly.derivedAxes')}
                   </small>
                 </span>
                 <strong>{metres(row.totalLengthMm, i18n.language)}</strong>
               </button>
             ))}
           </div>
-          <p>{t('assembly.battenQuantityBoundary')}</p>
+          <p>{t('assembly.buildUpQuantityBoundary')}</p>
         </section>
       )}
     </section>

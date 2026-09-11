@@ -390,7 +390,7 @@ describe('dual-mode parametric workbench', () => {
     expect(screen.getByRole('button', { name: 'Add purlin' })).toBeTruthy();
     fireEvent.click(screen.getByRole('tab', { name: 'Schedule' }));
     expect(
-      screen.getByRole('heading', { name: 'Member schedule' }),
+      await screen.findByRole('heading', { name: 'Member schedule' }),
     ).toBeTruthy();
     expect(container.textContent).not.toContain('assembly.');
     expect(document.documentElement.lang).toBe('en');
@@ -830,8 +830,9 @@ describe('dual-mode parametric workbench', () => {
     expect(screen.getByRole('alert').textContent).toContain(
       'Otwór nie mieści się w polu',
     );
-    fireEvent.click(screen.getByRole('tab', { name: 'Łacenie' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Łacenie' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Warstwy' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Łaty' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Łaty · Wyłączona' }));
     expect(screen.getByTestId('batten-inspector')).toBeTruthy();
     expect(
       container.querySelectorAll('.a-batten-segment').length,
@@ -1276,7 +1277,44 @@ describe('dual-mode parametric workbench', () => {
     ).toBeTruthy();
   });
 
-  it('opens the geometry-based material schedule and highlights its source members without editing the project', () => {
+  it('keeps roof build-up navigation transient and exposes membrane and counter-battens in drawing and schedule', async () => {
+    const { container } = render(<App />);
+    expect(screen.queryByRole('tab', { name: 'Warstwy' })).toBeNull();
+    builder();
+    act(() => {
+      useAssembly.getState().setMembraneLayer({ enabled: true });
+      useAssembly.getState().setCounterBattenLayout({
+        enabled: true,
+        widthMm: 50,
+        heightMm: 30,
+      });
+      useAssembly.setState({ historyPast: [], historyFuture: [] });
+    });
+    const before = structuredClone(useAssembly.getState().projectDocument);
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Warstwy' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Membrana' }));
+    expect(container.querySelectorAll('[data-roof-surface]')).toHaveLength(2);
+    fireEvent.click(screen.getByRole('tab', { name: 'Kontrłaty' }));
+    expect(
+      container.querySelectorAll('[data-counter-batten-row]').length,
+    ).toBeGreaterThan(0);
+    expect(useAssembly.getState().projectDocument).toEqual(before);
+    expect(useAssembly.getState().historyPast).toHaveLength(0);
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Zestawienie' }));
+    expect(await screen.findByTestId('material-schedule')).toBeTruthy();
+    expect(container.querySelectorAll('[data-build-up-quantity]')).toHaveLength(
+      1,
+    );
+    expect(
+      container.querySelectorAll('.a-build-up-quantity-groups > *'),
+    ).toHaveLength(2);
+    expect(screen.getAllByText('Membrana').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Kontrłaty').length).toBeGreaterThan(0);
+  });
+
+  it('opens the geometry-based material schedule and highlights its source members without editing the project', async () => {
     const { container } = render(<App />);
     expect(screen.queryByRole('tab', { name: 'Zestawienie' })).toBeNull();
     expect(useAssembly.getState().unit).toBe('mm');
@@ -1295,7 +1333,7 @@ describe('dual-mode parametric workbench', () => {
     const historyLength = useAssembly.getState().historyPast.length;
 
     fireEvent.click(screen.getByRole('tab', { name: 'Zestawienie' }));
-    expect(screen.getByTestId('material-schedule')).toBeTruthy();
+    expect(await screen.findByTestId('material-schedule')).toBeTruthy();
     expect(screen.getByTestId('batten-quantity')).toBeTruthy();
     expect(
       container.querySelector('[data-volume-status="partial"]'),
@@ -1323,11 +1361,12 @@ describe('dual-mode parametric workbench', () => {
     expect(useAssembly.getState().historyPast).toHaveLength(historyLength);
   });
 
-  it('preserves separate geometric length groups for hip-roof J1 members', () => {
+  it('preserves separate geometric length groups for hip-roof J1 members', async () => {
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: 'Krokiew narożna' }));
     builder();
     fireEvent.click(screen.getByRole('tab', { name: 'Zestawienie' }));
+    await screen.findByTestId('material-schedule');
     const jackRows = screen
       .getAllByTestId('material-schedule-row')
       .filter((row) => row.getAttribute('data-family') === 'J1');
@@ -1337,7 +1376,7 @@ describe('dual-mode parametric workbench', () => {
     ).toBeGreaterThan(1);
   });
 
-  it('counts accepted opening headers and segments, then removes them from the schedule on undo', () => {
+  it('counts accepted opening headers and segments, then removes them from the schedule on undo', async () => {
     render(<App />);
     builder();
     act(() => {
@@ -1353,6 +1392,7 @@ describe('dual-mode parametric workbench', () => {
       ).toBe(true);
       useAssembly.getState().setViewPreset('materials');
     });
+    await screen.findByTestId('material-schedule');
     expect(
       document.querySelectorAll('[data-member-kind="opening-header"]'),
     ).toHaveLength(2);
@@ -1368,7 +1408,7 @@ describe('dual-mode parametric workbench', () => {
     ).toHaveLength(0);
   });
 
-  it('keeps the Materials preset reachable in a narrow Builder workspace', () => {
+  it('keeps the Materials preset reachable in a narrow Builder workspace', async () => {
     class NarrowResizeObserver {
       constructor(private readonly callback: ResizeObserverCallback) {}
       observe(target: Element) {
@@ -1391,7 +1431,7 @@ describe('dual-mode parametric workbench', () => {
     const preset = screen.getByRole('tab', { name: 'Zestawienie' });
     fireEvent.click(preset);
     expect(preset.getAttribute('aria-selected')).toBe('true');
-    expect(screen.getByTestId('material-schedule')).toBeTruthy();
+    expect(await screen.findByTestId('material-schedule')).toBeTruthy();
     expect(container.querySelector('.a-material-workspace')).toBeTruthy();
   });
 

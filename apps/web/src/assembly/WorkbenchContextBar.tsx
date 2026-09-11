@@ -72,6 +72,24 @@ export function WorkbenchContextBar({
   };
   const length = (value: number) =>
     `${formatLength(value, state.unit, i18n.language)} ${state.unit}`;
+  const selectedId = state.workbench.selectedId;
+  const simpleSelection = selectedId.startsWith('surface:roof-plane:')
+    ? t(`assembly.${selectedId.replace('surface:roof-plane:', '')}`)
+    : selectedId.startsWith('counter-batten:')
+      ? `${t('assembly.counterBattens')} · ${selectedId.split(':').at(-2) ?? ''}`
+      : selectedId.startsWith('batten:')
+        ? `${t('assembly.battens')} · ${selectedId.split(':').at(-1) ?? ''}`
+        : selectedId.startsWith('feature:roof-window-')
+          ? `${t('assembly.roofWindow')} O${selectedId.split('-').at(-1)}`
+          : selectedId.startsWith('support:purlin-')
+            ? `${t('assembly.purlins')} P${selectedId.split('-').at(-1)}`
+            : selectedId === 'layer:membrane'
+              ? t('assembly.membrane')
+              : selectedId === 'layer:counter-battens'
+                ? t('assembly.counterBattens')
+                : selectedId === 'layer:battens'
+                  ? t('assembly.battens')
+                  : undefined;
   return (
     <section
       className="a-context-bar"
@@ -82,6 +100,18 @@ export function WorkbenchContextBar({
         className="a-context-breadcrumb"
         aria-label={t('assembly.breadcrumb')}
       >
+        <strong className="a-context-task">
+          {t(`assembly.${state.workbench.viewPreset}Preset`)}
+        </strong>
+        {state.workbench.viewPreset === 'layers' && (
+          <>
+            <span aria-hidden="true">·</span>
+            <strong>
+              {t(`assembly.${state.workbench.buildUpView}LayerView`)}
+            </strong>
+          </>
+        )}
+        <span aria-hidden="true">·</span>
         <button
           onClick={() => state.select('roof')}
           aria-current={
@@ -90,6 +120,12 @@ export function WorkbenchContextBar({
         >
           {t(`assembly.${roofPackage.roofType}Roof`)}
         </button>
+        {simpleSelection && (
+          <>
+            <span aria-hidden="true">·</span>
+            <strong aria-current="page">{simpleSelection}</strong>
+          </>
+        )}
         {family && (
           <>
             <span aria-hidden="true">›</span>

@@ -58,6 +58,31 @@ describe('RoofProjectDocumentV1', () => {
     ).toMatchObject({ features: [], openingFraming: [], buildUp: {} });
   });
 
+  it('round-trips membrane and counter-batten intent without changing the V1 schema', () => {
+    const roof = gableTemplateFromAssembly(assemblyDefaults);
+    const document = createRoofProjectDocument(roof, {
+      buildUp: {
+        membrane: {
+          enabled: true,
+          roofPlaneIds: ['roof-plane:left'],
+        },
+        counterBattens: {
+          enabled: true,
+          roofPlaneIds: ['roof-plane:left', 'roof-plane:right'],
+          widthMm: 50,
+          heightMm: 30,
+        },
+      },
+    });
+
+    const parsed = parseRoofProjectDocument(
+      serializeRoofProjectDocument(document),
+    );
+    expect(parsed).toEqual(document);
+    expect(parsed.schemaVersion).toBe(1);
+    expect(parsed.project.buildUp.counterBattens?.widthMm).toBe(50);
+  });
+
   it('round-trips optional V14 opening-framing intent while keeping V13 documents compatible', () => {
     const roof = gableTemplateFromAssembly(assemblyDefaults);
     const document = createRoofProjectDocument(roof, {

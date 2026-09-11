@@ -453,14 +453,57 @@ it('switches contextual presets without persisting transient view state', () => 
   useAssembly.getState().select(featureId);
   expect(useAssembly.getState().workbench.viewPreset).toBe('openings');
   useAssembly.getState().select('batten:roof-plane:left:1');
-  expect(useAssembly.getState().workbench.viewPreset).toBe('battens');
+  expect(useAssembly.getState().workbench.viewPreset).toBe('layers');
   const member = memberInstances()[0]!;
   useAssembly.getState().select(member.instanceId, member.prototypeId);
-  expect(useAssembly.getState().workbench.viewPreset).toBe('battens');
+  expect(useAssembly.getState().workbench.viewPreset).toBe('layers');
   useAssembly.getState().select('roof');
   expect(useAssembly.getState().workbench.viewPreset).toBe('construction');
   expect(useAssembly.getState().projectDocument).toEqual(before);
   expect(useAssembly.getState().historyPast).toHaveLength(0);
+});
+
+it('stores membrane and counter-battens canonically while keeping layer navigation transient', () => {
+  const before = structuredClone(useAssembly.getState().projectDocument);
+  useAssembly.getState().setMode('builder');
+  useAssembly.getState().setViewPreset('layers');
+  useAssembly.getState().setBuildUpView('membrane');
+  useAssembly.getState().setMaterialsView('drawing');
+  expect(useAssembly.getState().projectDocument).toEqual(before);
+  expect(useAssembly.getState().historyPast).toHaveLength(0);
+
+  useAssembly.getState().setMembraneLayer({
+    enabled: true,
+    roofPlaneIds: ['roof-plane:left'],
+  });
+  expect(useAssembly.getState().historyPast).toHaveLength(1);
+  expect(
+    useAssembly.getState().projectDocument.project.buildUp.membrane,
+  ).toEqual({ enabled: true, roofPlaneIds: ['roof-plane:left'] });
+
+  useAssembly.getState().beginTransaction();
+  useAssembly.getState().setCounterBattenLayout({
+    enabled: true,
+    widthMm: 45,
+    heightMm: 25,
+  });
+  useAssembly.getState().setCounterBattenLayout({
+    enabled: true,
+    widthMm: 50,
+    heightMm: 30,
+  });
+  useAssembly.getState().commitTransaction();
+  expect(useAssembly.getState().historyPast).toHaveLength(2);
+  expect(
+    useAssembly.getState().projectDocument.project.buildUp.counterBattens,
+  ).toMatchObject({ widthMm: 50, heightMm: 30 });
+
+  useAssembly.getState().undo();
+  expect(
+    useAssembly.getState().projectDocument.project.buildUp.counterBattens,
+  ).toBeUndefined();
+  useAssembly.getState().undo();
+  expect(useAssembly.getState().projectDocument).toEqual(before);
 });
 it('undoes and redoes adding and removing independently allocated purlins', () => {
   useAssembly.getState().add();

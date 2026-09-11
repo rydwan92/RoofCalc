@@ -1,4 +1,15 @@
-import { Eye, EyeOff, Maximize, Ruler, SlidersHorizontal } from 'lucide-react';
+import {
+  Eye,
+  EyeOff,
+  Hammer,
+  Layers3,
+  ListTree,
+  Maximize,
+  Ruler,
+  Scissors,
+  SlidersHorizontal,
+  SquareDashed,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { RoofSkeleton } from '@cieslacalc/timber-model';
 import { useAssembly } from './store';
@@ -6,7 +17,6 @@ import {
   createWorkbenchLegend,
   deriveWorkbenchProjectionPolicy,
   type DimensionLevel,
-  type ViewPreset,
 } from './workbench';
 
 export function WorkbenchControls({ skeleton }: { skeleton: RoofSkeleton }) {
@@ -18,33 +28,53 @@ export function WorkbenchControls({ skeleton }: { skeleton: RoofSkeleton }) {
     policy,
     hasSelection: state.workbench.selectedId !== 'roof',
   });
+  const tasks = [
+    ['construction', Hammer],
+    ['openings', SquareDashed],
+    ['layers', Layers3],
+    ['cuts', Scissors],
+    ['materials', ListTree],
+  ] as const;
   return (
     <div className="a-workbench-controls">
-      <div className="a-smart-view-controls">
+      <div
+        className="a-view-presets a-task-ribbon"
+        role="tablist"
+        aria-label={t('assembly.viewPreset')}
+      >
+        {tasks.map(([preset, Icon]) => (
+          <button
+            key={preset}
+            role="tab"
+            aria-selected={state.workbench.viewPreset === preset}
+            onClick={() => state.setViewPreset(preset)}
+          >
+            <Icon size={16} aria-hidden="true" />
+            <span>{t(`assembly.${preset}Preset`)}</span>
+          </button>
+        ))}
+      </div>
+      {state.workbench.viewPreset === 'layers' && (
         <div
-          className="a-view-presets"
+          className="a-layer-switch"
           role="tablist"
-          aria-label={t('assembly.viewPreset')}
+          aria-label={t('assembly.roofBuildUp')}
         >
-          {(
-            [
-              'construction',
-              'openings',
-              'battens',
-              'cuts',
-              'materials',
-            ] as ViewPreset[]
-          ).map((preset) => (
-            <button
-              key={preset}
-              role="tab"
-              aria-selected={state.workbench.viewPreset === preset}
-              onClick={() => state.setViewPreset(preset)}
-            >
-              {t(`assembly.${preset}Preset`)}
-            </button>
-          ))}
+          {(['overview', 'membrane', 'counterBattens', 'battens'] as const).map(
+            (view) => (
+              <button
+                key={view}
+                role="tab"
+                aria-selected={state.workbench.buildUpView === view}
+                onClick={() => state.setBuildUpView(view)}
+              >
+                {t(`assembly.${view}LayerView`)}
+              </button>
+            ),
+          )}
         </div>
+      )}
+      <div className="a-smart-view-controls">
         {!state.workbench.selectedInstanceId && (
           <button
             className="a-isolate-button"
@@ -76,6 +106,8 @@ export function WorkbenchControls({ skeleton }: { skeleton: RoofSkeleton }) {
                 ['labels', 'labels'],
                 ['structure', 'structureBackground'],
                 ['features', 'openings'],
+                ['membrane', 'membrane'],
+                ['counterBattens', 'counterBattens'],
                 ['battens', 'battens'],
               ] as const
             ).map(([layer, label]) => (
@@ -115,8 +147,17 @@ export function WorkbenchControls({ skeleton }: { skeleton: RoofSkeleton }) {
           </div>
         </details>
       </div>
-      <details className="a-dynamic-legend" open>
-        <summary>{t('assembly.legend')}</summary>
+      <details className="a-dynamic-legend">
+        <summary>
+          {t('assembly.legend')}
+          <span aria-hidden="true">
+            {legend
+              .slice(0, 3)
+              .map((entry) => entry.code)
+              .filter(Boolean)
+              .join(' · ')}
+          </span>
+        </summary>
         <div>
           {legend.map((entry) => (
             <span key={entry.id} data-legend-role={entry.role}>

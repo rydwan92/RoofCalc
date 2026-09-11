@@ -37,6 +37,8 @@ import {
   resolveRoofFeatureCollisions,
   resolveNearestRoofWindowBay,
   resolveRoofPlaneBasis,
+  type CounterBattenLayoutResult,
+  type RoofSurfaceGeometryResult,
 } from '@cieslacalc/roof-math';
 import type {
   HipRoofSkeleton,
@@ -132,6 +134,8 @@ function SkeletonCanvasComponent({
   relatedSupportId,
   relatedIds,
   activeInstance,
+  surfaceGeometry,
+  counterBattens,
 }: {
   template: RoofTemplateSpec;
   skeleton: RoofSkeleton;
@@ -141,6 +145,8 @@ function SkeletonCanvasComponent({
   relatedSupportId?: string;
   relatedIds?: ReadonlySet<string>;
   activeInstance?: MemberInstanceContext;
+  surfaceGeometry: RoofSurfaceGeometryResult;
+  counterBattens: CounterBattenLayoutResult;
 }) {
   const selectedStore = useAssembly(
     useShallow((store) => ({
@@ -150,6 +156,7 @@ function SkeletonCanvasComponent({
       selectedPrototypeId: store.workbench.selectedPrototypeId,
       selectedInstanceId: store.workbench.selectedInstanceId,
       viewPreset: store.workbench.viewPreset,
+      buildUpView: store.workbench.buildUpView,
       isolateSelection: store.workbench.isolateSelection,
       dimensionLevel: store.workbench.dimensionLevel,
       activeOperationId: store.workbench.activeOperationId,
@@ -159,6 +166,8 @@ function SkeletonCanvasComponent({
       fitRequestId: store.workbench.fitRequestId,
       features: store.projectDocument.project.features,
       battenLayout: store.projectDocument.project.buildUp.battenLayout,
+      membrane: store.projectDocument.project.buildUp.membrane,
+      counterBattenLayout: store.projectDocument.project.buildUp.counterBattens,
       beginTransaction: store.beginTransaction,
       cancelTransaction: store.cancelTransaction,
       commitTransaction: store.commitTransaction,
@@ -179,6 +188,7 @@ function SkeletonCanvasComponent({
       selectedPrototypeId: selectedStore.selectedPrototypeId,
       selectedInstanceId: selectedStore.selectedInstanceId,
       viewPreset: selectedStore.viewPreset,
+      buildUpView: selectedStore.buildUpView,
       isolateSelection: selectedStore.isolateSelection,
       dimensionLevel: selectedStore.dimensionLevel,
       activeOperationId: selectedStore.activeOperationId,
@@ -575,6 +585,17 @@ function SkeletonCanvasComponent({
         }));
       })
     : [];
+  const counterBattenLines =
+    policy.showCounterBattens && selectedStore.counterBattenLayout?.enabled
+      ? counterBattens.rows.flatMap((row) =>
+          row.segments.map((segment, index) => ({
+            id: `${row.id}:${index}`,
+            rowId: row.id,
+            from: worldPoint(segment.from),
+            to: worldPoint(segment.to),
+          })),
+        )
+      : [];
   const selectedMember = skeleton.members.find(
     (member) =>
       member.id === state.workbench.selectedInstanceId ||
@@ -974,19 +995,20 @@ function SkeletonCanvasComponent({
     : undefined;
   return (
     <div
-      className={`a-canvas a-skeleton preset-${state.workbench.viewPreset} ${state.workbench.isolateSelection ? 'is-isolating' : ''} ${spacePressed ? 'is-space-pan' : ''} ${selectedStore.placementTool ? 'is-placement-tool' : ''}`}
+      className={`a-canvas a-skeleton preset-${state.workbench.viewPreset} layer-view-${state.workbench.buildUpView} ${state.workbench.isolateSelection ? 'is-isolating' : ''} ${spacePressed ? 'is-space-pan' : ''} ${selectedStore.placementTool ? 'is-placement-tool' : ''}`}
       ref={container}
     >
       <div className="a-canvas-toolbar">
         <span>
-          {state.workbench.viewPreset === 'battens'
-            ? t('assembly.battens')
+          {state.workbench.viewPreset === 'layers'
+            ? t(`assembly.${state.workbench.buildUpView}LayerView`)
             : state.workbench.viewPreset === 'materials'
               ? t('assembly.scheduleCanvas')
               : t('assembly.skeleton')}
         </span>
         <span aria-live="polite">
-          {state.workbench.viewPreset === 'battens' &&
+          {state.workbench.viewPreset === 'layers' &&
+          state.workbench.buildUpView === 'battens' &&
           selectedStore.battenLayout?.enabled
             ? `${battenResult.battens.length} ${t('assembly.battenRows').toLowerCase()} · ${Math.round(selectedStore.battenLayout.gaugeMm)} mm · ${new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 1 }).format(battenResult.totalLengthMm / 1000)} m`
             : template.type === 'hip'
@@ -1094,6 +1116,65 @@ function SkeletonCanvasComponent({
             ))}
           </g>
         )}
+        {policy.showMembrane && (
+          <g
+            className={`a-membrane-layer ${selectedStore.membrane?.enabled ? '' : 'is-disabled'}`}
+            aria-label={t('assembly.membrane')}
+          >
+            {placementPlanes.map((plane) => {
+              const surfaceId = `surface:${plane.roofPlaneId}`;
+              const selected = state.workbench.selectedId === surfaceId;
+              const included =
+                selectedStore.membrane?.roofPlaneIds === undefined ||
+                selectedStore.membrane.roofPlaneIds.includes(plane.roofPlaneId);
+              const holes = windowOverlays.filter(
+                (overlay) => overlay.feature.roofPlaneId === plane.roofPlaneId,
+              );
+              const maskId = `surface-mask-${plane.roofPlaneId.replaceAll(':', '-')}`;
+              const surface = surfaceGeometry.planes.find(
+                (candidate) => candidate.roofPlaneId === plane.roofPlaneId,
+              );
+              return (
+                <g key={surfaceId}>
+                  <mask id={maskId}>
+                    <polygon points={pointString(plane.corners)} fill="white" />
+                    {holes.map((hole) => (
+                      <polygon
+                        key={hole.feature.id}
+                        points={pointString(hole.corners)}
+                        fill="black"
+                      />
+                    ))}
+                  </mask>
+                  <polygon
+                    points={pointString(plane.corners)}
+                    mask={`url(#${maskId})`}
+                    role="button"
+                    tabIndex={0}
+                    aria-pressed={selected}
+                    aria-label={`${t('assembly.roofPlane')} ${t(`assembly.${plane.roofPlaneId.replace('roof-plane:', '')}`)} · ${surface ? new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 1 }).format(surface.netAreaMm2 / 1_000_000) : 0} m²`}
+                    data-roof-surface={surfaceId}
+                    className={`${selected ? 'is-selected' : ''} ${included ? '' : 'is-excluded'}`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      state.select(surfaceId);
+                    }}
+                    onDoubleClick={(event) => {
+                      event.stopPropagation();
+                      focusScreenPoints(plane.corners);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        state.select(surfaceId);
+                      }
+                    }}
+                  />
+                </g>
+              );
+            })}
+          </g>
+        )}
         {placementGhostCorners && (
           <g className="a-roof-window-ghost" pointerEvents="none">
             <polygon
@@ -1161,6 +1242,55 @@ function SkeletonCanvasComponent({
                 />
               </g>
             ))}
+          </g>
+        )}
+        {policy.showCounterBattens && (
+          <g
+            className="a-counter-batten-layer"
+            aria-label={t('assembly.counterBattens')}
+          >
+            {counterBattenLines.map((row) => {
+              const selected = state.workbench.selectedId === row.rowId;
+              return (
+                <g
+                  key={row.id}
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={selected}
+                  data-counter-batten-row={row.rowId}
+                  className={selected ? 'is-selected' : ''}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    state.select(row.rowId);
+                  }}
+                  onDoubleClick={(event) => {
+                    event.stopPropagation();
+                    focusScreenPoints([row.from, row.to]);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      state.select(row.rowId);
+                    }
+                  }}
+                >
+                  <line
+                    className="a-counter-batten-hit-target"
+                    x1={row.from.x}
+                    y1={row.from.y}
+                    x2={row.to.x}
+                    y2={row.to.y}
+                  />
+                  <line
+                    className="a-counter-batten-segment"
+                    x1={row.from.x}
+                    y1={row.from.y}
+                    x2={row.to.x}
+                    y2={row.to.y}
+                  />
+                </g>
+              );
+            })}
           </g>
         )}
         {spacingStationAxes.length > 0 && (

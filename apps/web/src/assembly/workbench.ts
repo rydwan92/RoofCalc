@@ -9,7 +9,10 @@ import type {
 export type WorkbenchMode = 'quick' | 'builder';
 export type WorkbenchCanvasView = 'skeleton' | 'rafter' | 'hip';
 export type ViewPreset =
-  'construction' | 'openings' | 'battens' | 'cuts' | 'materials';
+  'construction' | 'openings' | 'layers' | 'cuts' | 'materials';
+export type BuildUpView =
+  'overview' | 'membrane' | 'counterBattens' | 'battens';
+export type MaterialsView = 'schedule' | 'drawing';
 export type DimensionLevel = 'minimal' | 'working' | 'full';
 export type DetailDockMode = 'collapsed' | 'working' | 'focus';
 export type WorkbenchToolCategory =
@@ -54,6 +57,8 @@ export interface WorkbenchViewState {
   selectedScheduleInstanceId?: string;
   canvasView: WorkbenchCanvasView;
   viewPreset: ViewPreset;
+  buildUpView: BuildUpView;
+  materialsView: MaterialsView;
   /** View restored when a contextual cut detail is closed. */
   returnViewPreset?: ViewPreset;
   isolateSelection: boolean;
@@ -82,6 +87,8 @@ export interface WorkbenchViewState {
     labels: boolean;
     structure: boolean;
     features: boolean;
+    membrane: boolean;
+    counterBattens: boolean;
     battens: boolean;
   };
 }
@@ -95,6 +102,8 @@ export const initialWorkbenchViewState: WorkbenchViewState = {
   selectedScheduleInstanceId: undefined,
   canvasView: 'skeleton',
   viewPreset: 'construction',
+  buildUpView: 'overview',
+  materialsView: 'schedule',
   returnViewPreset: undefined,
   isolateSelection: false,
   dimensionLevel: 'working',
@@ -120,6 +129,8 @@ export const initialWorkbenchViewState: WorkbenchViewState = {
     labels: true,
     structure: true,
     features: true,
+    membrane: true,
+    counterBattens: true,
     battens: true,
   },
 };
@@ -130,6 +141,8 @@ export interface WorkbenchProjectionPolicy {
   showSecondaryMembers: boolean;
   showSupports: boolean;
   showRoofFeatures: boolean;
+  showMembrane: boolean;
+  showCounterBattens: boolean;
   showBattens: boolean;
   showCutMarkers: boolean;
   showDatums: boolean;
@@ -149,17 +162,31 @@ export function deriveWorkbenchProjectionPolicy(
     narrow && view.dimensionLevel === 'full' ? 'working' : view.dimensionLevel;
   const cuts = view.viewPreset === 'cuts';
   const openings = view.viewPreset === 'openings';
-  const battens = view.viewPreset === 'battens';
+  const layers = view.viewPreset === 'layers';
+  const membrane =
+    layers &&
+    (view.buildUpView === 'overview' || view.buildUpView === 'membrane');
+  const counterBattens =
+    layers &&
+    (view.buildUpView === 'overview' || view.buildUpView === 'counterBattens');
   const materials = view.viewPreset === 'materials';
   return {
     showRoofPlanes: true,
     showPrimaryMembers: view.layerVisibility.structure,
-    showSecondaryMembers: view.layerVisibility.structure && !battens,
+    showSecondaryMembers:
+      view.layerVisibility.structure &&
+      (!layers || view.buildUpView === 'counterBattens'),
     showSupports: true,
     showRoofFeatures:
       view.layerVisibility.features &&
-      (openings || battens || view.selectedId.startsWith('feature:')),
-    showBattens: (battens || materials) && view.layerVisibility.battens,
+      (openings || layers || view.selectedId.startsWith('feature:')),
+    showMembrane: membrane && view.layerVisibility.membrane,
+    showCounterBattens: counterBattens && view.layerVisibility.counterBattens,
+    showBattens:
+      ((layers &&
+        (view.buildUpView === 'overview' || view.buildUpView === 'battens')) ||
+        materials) &&
+      view.layerVisibility.battens,
     showCutMarkers: cuts || !!view.selectedInstanceId,
     showDatums: cuts,
     showDimensions: view.layerVisibility.dimensions,
@@ -168,7 +195,7 @@ export function deriveWorkbenchProjectionPolicy(
     muteUnrelated:
       cuts ||
       openings ||
-      battens ||
+      layers ||
       (materials && !!view.selectedScheduleRowId) ||
       view.isolateSelection,
     isolateSelection: view.isolateSelection,

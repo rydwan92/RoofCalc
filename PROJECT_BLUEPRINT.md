@@ -1297,6 +1297,89 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+> Iteration 016 completed 2026-09-11 from clean commit `de1cbd2fef06f52015f2b85425a88b001927237b`. The attached V16 contract superseded the prior V15 `NEXT ACTION`. Baseline before edits: typecheck PASS, 324 tests across 34 files PASS, lint PASS, build PASS with main web chunk 536.23 kB / 151.73 kB gzip, `git diff --check` PASS.
+
+**Iteration:** `016 — Professional Workbench 2.0 and roof build-up geometry`
+
+**Status:** `COMPLETE IN SOURCE — AUTOMATED VALIDATION PASS; REQUIRED LIVE BROWSER/DEVICE QA UNAVAILABLE`
+
+**V15 prerequisite audit:**
+
+- `quantity-core` remained pure and derived from the accepted composed physical skeleton. Opening-framing proposals were not counted; accepted framing replaced the interrupted K1 with its physical headers/segments, and schedule selection stayed transient.
+- Battens remained resolved visible geometry rather than commercial pieces; Quick Calc exposed no material quantities; incomplete ridge section kept timber volume explicitly partial; no derived quantity result entered the serialized project document.
+
+**Completed V16 architecture and behavior:**
+
+- Added pure `resolveRoofSurfaceGeometry` for gable and hip templates. It returns deterministic roof-plane local/world polygons, gross/opening-union/net area and eave/ridge/hip boundary metrics. Openings are clipped to their assigned plane, overlaps are counted once through exact polynomial cell partitioning, and invalid/outside/unknown cases return deterministic finite issues.
+- Extended canonical `RoofBuildUp` with optional membrane and counter-batten intent while preserving schema-version-1 compatibility. Derived geometry and all task/subview/schedule state remain absent from serialization.
+- Added pure gable `resolveCounterBattenLayout` from accepted physical common-rafter axes. Accepted opening segments regroup to one source rafter, rows extend over the real plane and split around roof windows without duplicate quantities. Hip counter-battens return an explicit `limited` status instead of guessed H1/J1 geometry.
+- Extended `quantity-core` with separate surface build-up rows for net geometric membrane area and linear build-up rows for counter-batten/batten visible lengths. Structural timber, linear build-up and surface build-up retain distinct units and meanings.
+- Replaced the old Builder preset row with a five-task ribbon: `Konstrukcja`, `Otwory`, `Warstwy`, `Cięcia`, `Zestawienie`. `Warstwy` provides transient `Przegląd`, `Membrana`, `Kontrłaty`, `Łaty` subviews, compact summary metrics, selectable masked roof surfaces, selectable counter-batten axes and contextual inspectors with exact numeric section inputs.
+- Moved the task ribbon above the compact context path, collapsed the legend by default and coordinated stale opening/cut/schedule state when changing tasks. Layer toggles and dimensions are canonical/undoable; navigation, grouping and drawing/schedule switches create no history.
+- Reworked Schedule with element/section perspectives, separate membrane square metres from counter-batten/batten metres, a wide drawing/schedule split and a narrow local surface switch. The schedule/inspector module now builds as a separate lazy-loaded chunk.
+- Expanded the professional desktop grid and responsive rules: dominant canvas, compact sidebars, horizontally reachable task/layer ribbons, one major Schedule surface on narrow screens, 44 px primary task targets and 16 px mobile numeric inputs. Quick Calc remains unchanged and does not expose Builder task navigation.
+- Added Polish/English copy, `ARCHITECTURE_V16_WORKBENCH_AND_ROOF_BUILDUP.md` and the repository iteration contract.
+
+**Validation:**
+
+- Final `pnpm typecheck`: PASS.
+- Final `pnpm test`: PASS — **339 tests across 36 files**.
+- Final `pnpm lint`: PASS with no warnings/errors.
+- Final production build: PASS — web main **554.23 kB / 156.87 kB gzip**, lazy Material Schedule **8.34 / 2.25 kB**, CSS **90.96 / 17.81 kB**, React **51.29 / 18.04 kB**, localization **49.54 / 16.09 kB**, icons **15.18 / 3.35 kB**; API ESM **1.11 kB**. Vite retains the known advisory that the main chunk exceeds 500 kB.
+- Built production URL `http://localhost/projects/RoofCalc/apps/web/dist/`: HTTP 200.
+- Final changed-file Prettier check and `git diff --check`: PASS.
+
+**Browser, responsive and device QA:**
+
+- Automated jsdom coverage verifies task reachability, Quick/Builder boundary, layer subviews, membrane and counter-batten drawing geometry, separate schedule quantities, transient navigation/history, accepted framing quantities and a `360 px` schedule workspace observer.
+- The explicitly requested in-app Browser was initialized according to its skill protocol, but this environment returned `Browser is not available: iab` before a tab could be opened.
+- No live claim is made for visual hierarchy, text clipping, horizontal page overflow, native pointer/touch behavior or desktop/tablet/mobile screenshots.
+
+**Known V16 boundaries:**
+
+- Membrane area is net geometric surface only. It excludes laps, upstands, roll widths, allowances, waste and manufacturer requirements.
+- Counter-batten and batten results are visible geometric axes/rows, not stock or purchasing pieces. Hip counter-battens remain explicitly limited until compound face/reference geometry is researched.
+- Products, prices, suppliers, procurement, cut optimization, export/PDF, persistence services and structural verification remain out of scope. Ridge volume remains partial until a complete canonical ridge section exists.
+- The existing main-bundle size advisory remains; Schedule is now isolated in a lazy chunk, while further splitting requires a dedicated performance pass.
+
+**Files changed:**
+
+- `packages/timber-model/src/index.ts`
+- `packages/roof-math/src/index.ts`
+- `packages/roof-math/src/roof-surface.ts`
+- `packages/roof-math/src/roof-surface.test.ts`
+- `packages/roof-math/src/counter-battens.ts`
+- `packages/roof-math/src/counter-battens.test.ts`
+- `packages/calculator-core/src/project-document.ts`
+- `packages/calculator-core/src/project-document.test.ts`
+- `packages/quantity-core/src/index.ts`
+- `packages/quantity-core/src/index.test.ts`
+- `apps/web/src/assembly/BuildUpWorkspace.tsx`
+- `apps/web/src/assembly/Inspector.tsx`
+- `apps/web/src/assembly/MaterialSchedule.tsx`
+- `apps/web/src/assembly/Page.tsx`
+- `apps/web/src/assembly/Page.test.tsx`
+- `apps/web/src/assembly/SkeletonCanvas.tsx`
+- `apps/web/src/assembly/Toolbox.tsx`
+- `apps/web/src/assembly/WorkbenchContextBar.tsx`
+- `apps/web/src/assembly/WorkbenchControls.tsx`
+- `apps/web/src/assembly/store.ts`
+- `apps/web/src/assembly/store.test.ts`
+- `apps/web/src/assembly/styles.css`
+- `apps/web/src/assembly/translations.ts`
+- `apps/web/src/assembly/workbench.ts`
+- `docs/ARCHITECTURE_V16_WORKBENCH_AND_ROOF_BUILDUP.md`
+- `docs/PROMPT_ITERATION_016_WORKBENCH_ROOF_BUILDUP.md`
+- `PROJECT_BLUEPRINT.md`
+
+**NEXT ACTION:**
+
+> When the in-app Browser becomes available, run the V16 visual matrix on gable and hip roofs at wide desktop, `1440 × 900`, tablet and `360 × 800`: verify ribbon/context hierarchy, all four layer subviews, overlapping-opening membrane masks, counter-batten selection/splits, Schedule perspectives and local mobile surface switch, no page overflow and native mouse/touch reachability. Fix only evidenced defects, rerun the definition-of-done suite, update this checkpoint, then wait for an explicit user-approved iteration; do not begin procurement, costing or hip counter-batten approximation automatically.
+
+---
+
+**Previous checkpoint — Iteration 015:**
+
 > Updated 2026-09-11 from clean V14 commit `15b7984aeb3edc75d475031d4ceea7f9faa3a5d0`. The V14 framing/composition implementation was audited before V15; the attached Iteration 015 contract controlled this iteration.
 
 **Iteration:** `015 — timber member schedule and quantity-engine foundation`

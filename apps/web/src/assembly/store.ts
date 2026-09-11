@@ -28,18 +28,22 @@ import {
 import type {
   AssemblySpec,
   BattenLayoutSpec,
+  CounterBattenLayoutSpec,
   EndStationPolicy,
   RafterSpacingMode,
   RoofTemplateSpec,
   RoofOpeningFramingSpec,
+  MembraneLayerSpec,
   RoofWindowFeature,
   SupportSpec,
 } from '@cieslacalc/timber-model';
 import { editableLength, parseDecimal } from '../format';
 import {
   initialWorkbenchViewState,
+  type BuildUpView,
   type DimensionLevel,
   type ViewPreset,
+  type MaterialsView,
   type WorkbenchCanvasView,
   type WorkbenchMode,
   type WorkbenchToolCategory,
@@ -253,6 +257,8 @@ export interface AssemblyState {
   setRoofType: (type: RoofTemplateSpec['type']) => void;
   setView: (view: WorkbenchCanvasView) => void;
   setViewPreset: (preset: ViewPreset) => void;
+  setBuildUpView: (view: BuildUpView) => void;
+  setMaterialsView: (view: MaterialsView) => void;
   setScheduleSelection: (rowId?: string, instanceId?: string) => void;
   setIsolation: (isolated: boolean) => void;
   setDimensionLevel: (level: DimensionLevel) => void;
@@ -319,6 +325,8 @@ export interface AssemblyState {
   applyOpeningFraming: (featureId: string) => boolean;
   removeOpeningFraming: (featureId: string) => void;
   setBattenLayout: (layout?: BattenLayoutSpec) => void;
+  setMembraneLayer: (layer?: MembraneLayerSpec) => void;
+  setCounterBattenLayout: (layout?: CounterBattenLayoutSpec) => void;
   add: () => void;
   remove: (id: string) => void;
   select: (id: string, prototypeId?: string) => void;
@@ -422,7 +430,45 @@ export const useAssembly = create<AssemblyState>((set) => ({
           viewPreset === 'materials'
             ? state.workbench.selectedScheduleInstanceId
             : undefined,
+        openingFramingProposalFeatureId:
+          viewPreset === 'openings'
+            ? state.workbench.openingFramingProposalFeatureId
+            : undefined,
+        activeOperationId:
+          viewPreset === 'cuts' ? state.workbench.activeOperationId : undefined,
+        focusId: viewPreset === 'cuts' ? state.workbench.focusId : undefined,
+        detailDrawer:
+          viewPreset === 'cuts'
+            ? state.workbench.detailDrawer
+            : {
+                ...state.workbench.detailDrawer,
+                open: false,
+                mode: 'collapsed',
+                activePreviewId: undefined,
+              },
       },
+    })),
+  setBuildUpView: (buildUpView) =>
+    set((state) => ({
+      workbench: {
+        ...state.workbench,
+        viewPreset: 'layers',
+        buildUpView,
+        selectedScheduleRowId: undefined,
+        selectedScheduleInstanceId: undefined,
+        activeOperationId: undefined,
+        focusId: undefined,
+        detailDrawer: {
+          ...state.workbench.detailDrawer,
+          open: false,
+          mode: 'collapsed',
+          activePreviewId: undefined,
+        },
+      },
+    })),
+  setMaterialsView: (materialsView) =>
+    set((state) => ({
+      workbench: { ...state.workbench, materialsView },
     })),
   setScheduleSelection: (selectedScheduleRowId, selectedScheduleInstanceId) =>
     set((state) => ({
@@ -1260,6 +1306,30 @@ export const useAssembly = create<AssemblyState>((set) => ({
         committedDocument(document, state.drafts, state.invalidFields),
       );
     }),
+  setMembraneLayer: (membrane) =>
+    set((state) => {
+      const document = createRoofProjectDocument(state.template, {
+        features: state.projectDocument.project.features,
+        openingFraming: state.projectDocument.project.openingFraming,
+        buildUp: { ...state.projectDocument.project.buildUp, membrane },
+      });
+      return withHistory(
+        state,
+        committedDocument(document, state.drafts, state.invalidFields),
+      );
+    }),
+  setCounterBattenLayout: (counterBattens) =>
+    set((state) => {
+      const document = createRoofProjectDocument(state.template, {
+        features: state.projectDocument.project.features,
+        openingFraming: state.projectDocument.project.openingFraming,
+        buildUp: { ...state.projectDocument.project.buildUp, counterBattens },
+      });
+      return withHistory(
+        state,
+        committedDocument(document, state.drafts, state.invalidFields),
+      );
+    }),
   add: () =>
     set((state) => {
       const template = roofTemplateFromAssembly(
@@ -1353,8 +1423,11 @@ export const useAssembly = create<AssemblyState>((set) => ({
               : undefined;
       const contextualPreset = selectedId.startsWith('feature:')
         ? 'openings'
-        : selectedId.startsWith('batten:')
-          ? 'battens'
+        : selectedId.startsWith('batten:') ||
+            selectedId.startsWith('counter-batten:') ||
+            selectedId.startsWith('surface:') ||
+            selectedId.startsWith('layer:')
+          ? 'layers'
           : selectedId === 'roof'
             ? 'construction'
             : state.workbench.viewPreset;
@@ -1376,6 +1449,13 @@ export const useAssembly = create<AssemblyState>((set) => ({
           activeOperationId: undefined,
           focusId: undefined,
           viewPreset: contextualPreset,
+          buildUpView: selectedId.startsWith('surface:')
+            ? 'membrane'
+            : selectedId.startsWith('counter-batten:')
+              ? 'counterBattens'
+              : selectedId.startsWith('batten:')
+                ? 'battens'
+                : state.workbench.buildUpView,
           placementTool: undefined,
           placementFeedback: selectedId.startsWith('feature:')
             ? state.workbench.placementFeedback

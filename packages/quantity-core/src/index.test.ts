@@ -362,4 +362,54 @@ describe('quantity-core geometric member schedule', () => {
       report.buildUpRows.every((row) => row.lengthBasis === 'resolved-visible'),
     ).toBe(true);
   });
+
+  it('keeps membrane area separate from counter-batten and batten lengths', () => {
+    const report = createRoofMemberSchedule({
+      skeleton: skeleton([]),
+      buildUp: [
+        {
+          id: 'counter-batten:roof-plane:left:1',
+          familyKey: 'KL',
+          memberKind: 'counter-batten',
+          lengthMm: 5200,
+          section: { widthMm: 40, depthMm: 60 },
+        },
+        {
+          id: 'batten:roof-plane:left:1',
+          familyKey: 'L',
+          memberKind: 'batten',
+          lengthMm: 8100,
+          section: { widthMm: 60, depthMm: 40 },
+        },
+      ],
+      surfaceBuildUp: [
+        {
+          id: 'surface:roof-plane:left',
+          familyKey: 'MEM',
+          memberKind: 'membrane',
+          roofPlaneId: 'roof-plane:left',
+          areaMm2: 81_200_000,
+        },
+        {
+          id: 'surface:roof-plane:right',
+          familyKey: 'MEM',
+          memberKind: 'membrane',
+          roofPlaneId: 'roof-plane:right',
+          areaMm2: 79_500_000,
+        },
+      ],
+    });
+    expect(report.buildUpRows.map((row) => row.memberKind)).toEqual([
+      'counter-batten',
+      'batten',
+    ]);
+    expect(report.surfaceBuildUpRows).toEqual([
+      expect.objectContaining({
+        memberKind: 'membrane',
+        areaMm2: 160_700_000,
+        basis: 'net-geometric',
+      }),
+    ]);
+    expect(report.surfaceBuildUpSummary.areaMm2).toBe(160_700_000);
+  });
 });

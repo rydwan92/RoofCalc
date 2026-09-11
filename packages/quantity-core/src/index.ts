@@ -18,16 +18,39 @@ export interface QuantitySection {
   completeness: 'complete' | 'partial' | 'unknown';
 }
 
-export type ScheduleMemberKind = SkeletonMemberKind | 'batten';
+export type ScheduleMemberKind =
+  SkeletonMemberKind | 'batten' | 'counter-batten';
 
 export interface LinearBuildUpSource {
   id: string;
   familyKey: string;
-  memberKind: 'batten';
+  memberKind: 'batten' | 'counter-batten';
   lengthMm: number;
   section: TimberSection;
   segmentCount?: number;
   warningKeys?: string[];
+}
+
+export interface SurfaceBuildUpSource {
+  id: string;
+  familyKey: string;
+  memberKind: 'membrane';
+  areaMm2: number;
+  roofPlaneId?: string;
+  warningKeys?: string[];
+}
+
+export interface RoofSurfaceQuantityRow {
+  id: string;
+  category: 'roof-build-up';
+  familyKey: string;
+  memberKind: 'membrane';
+  sourceIds: string[];
+  roofPlaneIds: string[];
+  areaMm2: number;
+  unit: 'm2';
+  basis: 'net-geometric';
+  warningKeys: string[];
 }
 
 export interface RoofMemberScheduleRow {
@@ -70,16 +93,18 @@ export interface QuantitySummary {
 
 export interface QuantityIssue {
   sourceId: string;
-  code: 'invalid-axis' | 'invalid-length' | 'invalid-section';
+  code: 'invalid-axis' | 'invalid-length' | 'invalid-section' | 'invalid-area';
 }
 
 export interface RoofMemberSchedule {
   rows: RoofMemberScheduleRow[];
   timberRows: RoofMemberScheduleRow[];
   buildUpRows: RoofMemberScheduleRow[];
+  surfaceBuildUpRows: RoofSurfaceQuantityRow[];
   sectionGroups: QuantitySectionGroup[];
   timberSummary: QuantitySummary;
   buildUpSummary: QuantitySummary;
+  surfaceBuildUpSummary: { areaMm2: number };
   issues: QuantityIssue[];
 }
 
@@ -88,6 +113,7 @@ export interface CreateRoofMemberScheduleInput {
   /** Exact canonical section facts keyed by prototype. Use partial for display-only skeleton sections. */
   sectionOverrides?: Readonly<Record<string, QuantitySection>>;
   buildUp?: readonly LinearBuildUpSource[];
+  surfaceBuildUp?: readonly SurfaceBuildUpSource[];
   equalityToleranceMm?: number;
 }
 
@@ -365,6 +391,42 @@ function createSectionGroups(
     );
 }
 
+function createSurfaceBuildUpRows(
+  sources: readonly SurfaceBuildUpSource[],
+  issues: QuantityIssue[],
+): RoofSurfaceQuantityRow[] {
+  const groups = new Map<string, SurfaceBuildUpSource[]>();
+  for (const source of sources) {
+    if (!Number.isFinite(source.areaMm2) || source.areaMm2 < 0) {
+      issues.push({ sourceId: source.id, code: 'invalid-area' });
+      continue;
+    }
+    const key = `${source.familyKey}|${source.memberKind}`;
+    groups.set(key, [...(groups.get(key) ?? []), source]);
+  }
+  return [...groups.values()]
+    .map((items) => {
+      const first = items[0]!;
+      return {
+        id: `quantity:roof-build-up:${first.familyKey}:membrane`,
+        category: 'roof-build-up' as const,
+        familyKey: first.familyKey,
+        memberKind: 'membrane' as const,
+        sourceIds: items.map((item) => item.id).sort(),
+        roofPlaneIds: items
+          .flatMap((item) => (item.roofPlaneId ? [item.roofPlaneId] : []))
+          .sort(),
+        areaMm2: items.reduce((sum, item) => sum + item.areaMm2, 0),
+        unit: 'm2' as const,
+        basis: 'net-geometric' as const,
+        warningKeys: [
+          ...new Set(items.flatMap((item) => item.warningKeys ?? [])),
+        ].sort(),
+      };
+    })
+    .sort((a, b) => a.id.localeCompare(b.id));
+}
+
 /**
  * Projects the accepted composed physical assembly into a deterministic geometric
  * schedule. It never calculates stock lengths, allowances, prices or cut geometry.
@@ -441,13 +503,21 @@ export function createRoofMemberSchedule(
   const rows = groupSources([...timberSources, ...buildUpSources], toleranceMm);
   const timberRows = rows.filter((row) => row.category === 'structural-timber');
   const buildUpRows = rows.filter((row) => row.category === 'roof-build-up');
+  const surfaceBuildUpRows = createSurfaceBuildUpRows(
+    input.surfaceBuildUp ?? [],
+    issues,
+  );
   return {
     rows,
     timberRows,
     buildUpRows,
+    surfaceBuildUpRows,
     sectionGroups: createSectionGroups(timberRows),
     timberSummary: summary(timberRows),
     buildUpSummary: summary(buildUpRows),
+    surfaceBuildUpSummary: {
+      areaMm2: surfaceBuildUpRows.reduce((sum, row) => sum + row.areaMm2, 0),
+    },
     issues: issues.sort(
       (a, b) =>
         a.sourceId.localeCompare(b.sourceId) || a.code.localeCompare(b.code),
