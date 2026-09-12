@@ -11,6 +11,7 @@ export default defineConfig({
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
           localization: ['i18next', 'react-i18next'],
           icons: ['lucide-react'],
+          'covering-core': ['@cieslacalc/covering-core'],
         },
       },
     },

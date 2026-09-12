@@ -6,6 +6,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
   within,
 } from '@testing-library/react';
 import { App } from '../App';
@@ -1635,5 +1636,94 @@ describe('dual-mode parametric workbench', () => {
     enter('Długość budynku', '7999');
     expect(input('Długość budynku').getAttribute('aria-invalid')).toBe('true');
     expect(useAssembly.getState().template.buildingLengthMm).toBe(10000);
+  });
+
+  it('opens the Builder-only covering task, creates one canonical manual tile and routes missing battens', async () => {
+    render(<App />);
+    expect(screen.queryByRole('tab', { name: 'Pokrycie' })).toBeNull();
+    builder();
+    const coveringTab = screen.getByRole('tab', { name: 'Pokrycie' });
+    const historyBeforeTask = useAssembly.getState().historyPast.length;
+    fireEvent.click(coveringTab);
+    expect(useAssembly.getState().historyPast).toHaveLength(historyBeforeTask);
+    expect(await screen.findByTestId('covering-empty')).toBeTruthy();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Dodaj dachówkę ręcznie' }),
+    );
+    expect(await screen.findByTestId('covering-workspace')).toBeTruthy();
+    expect(useAssembly.getState().historyPast).toHaveLength(
+      historyBeforeTask + 1,
+    );
+    expect(
+      useAssembly.getState().projectDocument.project.coverings[0],
+    ).toMatchObject({
+      selectedInstallationModeId: 'manual-standard',
+      layoutIntent: { horizontalAlignment: 'centered' },
+      product: { technicalSpecSnapshot: { kind: 'roof-tile' } },
+    });
+    expect(screen.getAllByText(/Włącz i skonfiguruj łaty/)).toHaveLength(2);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Przejdź do Warstwy → Łaty' }),
+    );
+    expect(useAssembly.getState().workbench).toMatchObject({
+      viewPreset: 'layers',
+      buildUpView: 'battens',
+    });
+  });
+
+  it('shows a batten-aware tile grid, opening cut-outs and a separate covering schedule section', async () => {
+    render(<App />);
+    builder();
+    act(() =>
+      useAssembly.getState().setBattenLayout({
+        enabled: true,
+        battenHeightMm: 40,
+        battenWidthMm: 60,
+        gaugeMm: 350,
+        eaveOffsetMm: 250,
+      }),
+    );
+    fireEvent.click(screen.getByRole('tab', { name: 'Pokrycie' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Dodaj dachówkę ręcznie' }),
+    );
+    expect(await screen.findByTestId('tile-layout-drawing')).toBeTruthy();
+    expect(
+      document.querySelectorAll('.a-tile-fragment').length,
+    ).toBeGreaterThan(0);
+    expect(screen.queryByText(/cena|katalog/i)).toBeNull();
+    const tilePositionCount = () =>
+      Number(
+        [...document.querySelectorAll('.a-covering-counts span')]
+          .find((element) => element.textContent?.startsWith('Pozycje'))
+          ?.querySelector('b')?.textContent,
+      );
+    const positionsBeforeOpening = tilePositionCount();
+
+    act(() => {
+      useAssembly.getState().addRoofWindow();
+      useAssembly.getState().setViewPreset('covering');
+    });
+    expect(document.querySelector('.a-covering-opening')).toBeTruthy();
+    expect(tilePositionCount()).not.toBe(positionsBeforeOpening);
+
+    act(() => useAssembly.getState().setViewPreset('materials'));
+    expect(await screen.findByTestId('covering-quantity')).toBeTruthy();
+    expect(screen.getByText('Dachówki')).toBeTruthy();
+    act(() =>
+      useAssembly.getState().setBattenLayout({
+        enabled: true,
+        battenHeightMm: 40,
+        battenWidthMm: 60,
+        gaugeMm: 500,
+        eaveOffsetMm: 250,
+      }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByTestId('covering-quantity')).toBeNull(),
+    );
+    act(() => useAssembly.getState().undo());
+    expect(await screen.findByTestId('covering-quantity')).toBeTruthy();
   });
 });

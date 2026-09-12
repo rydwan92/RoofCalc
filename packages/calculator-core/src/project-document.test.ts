@@ -168,6 +168,10 @@ describe('RoofProjectDocumentV1', () => {
           id: 'standard',
           coverWidthMm: 300,
           gaugeRangeMm: { min: 312, max: 345 },
+          coursePattern: {
+            layers: [{ id: 'base', horizontalOffsetFraction: 0 }],
+            battenRowOffsetCycle: [0, 0.5],
+          },
           minPitchDeg: 22,
         },
       ],
@@ -191,6 +195,11 @@ describe('RoofProjectDocumentV1', () => {
             },
             technicalSpecSnapshot,
           },
+          layoutIntent: {
+            kind: 'roof-tile',
+            horizontalAlignment: 'manual',
+            planeOffsetsMm: { 'roof-plane:left': 75 },
+          },
         },
       ],
     });
@@ -201,6 +210,12 @@ describe('RoofProjectDocumentV1', () => {
     expect(parsed.project.coverings).toEqual(document.project.coverings);
     expect(parsed.project.coverings[0]!.product.technicalSpecSnapshot).toEqual(
       technicalSpecSnapshot,
+    );
+    expect(parsed.project.coverings[0]!.layoutIntent).toEqual(
+      document.project.coverings[0]!.layoutIntent,
+    );
+    expect(serializeRoofProjectDocument(document)).not.toMatch(
+      /tile-course:|visibleFragments|totalPositions/,
     );
 
     const v17 = parseRoofProjectDocument(

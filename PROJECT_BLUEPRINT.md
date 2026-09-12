@@ -1297,6 +1297,63 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+> Iteration 019 completed in source on 2026-09-12 from clean commit `af635994e9cf3f7b72153319b4c10d733376661e` (`V18`). The user-approved attached V19 contract superseded the V18 `NEXT ACTION`.
+
+**Iteration:** `019 — Roof Tile Engine, Covering Workbench, Batten-Aware Tile Layout and Covering Quantities`
+
+**Status:** `COMPLETE IN SOURCE — AUTOMATED VALIDATION PASS; REQUIRED LIVE BROWSER/DEVICE QA UNAVAILABLE`
+
+**V18 audit and baseline:** clean `main`; typecheck PASS; **386 tests across 40 files** PASS; lint PASS; production build PASS; `git diff --check` PASS. Baseline web main **548.10 kB / 154.37 kB gzip**, lazy Skeleton Canvas **36.95 / 11.38 kB**, Material Schedule **8.28 / 2.27 kB**, CSS **94.80 / 18.50 kB**. The V18 covering snapshot/catalogue/pricing boundary and all opening productivity, units, framing, build-up and quantity regressions remained intact.
+
+**Research revalidation and domain contract:**
+
+- Rechecked official current BMI Braas Teviva, Wienerberger Koramic Alegra 8 and BMI Braas Opal technical material for physical size, cover width, gauge, declared consumption, pitch and straight/staggered/scale/crown course behavior. Updated the dated evidence in `docs/domain/COVERING_PRODUCT_MODEL.md`; manufacturer facts remain research/test-fixture evidence and do not form a production catalogue.
+- Extended the existing V18 roof-tile installation mode additively with a generic `coursePattern`: normalized per-layer cover-width offsets plus a repeating batten-row offset cycle. Old V18 snapshots still parse. Missing pattern information is valid snapshot data but produces explicit incomplete layout issue `tile-placement-pattern-required`; no straight pattern is guessed.
+- Added canonical `RoofTileLayoutIntent` on covering assignments for centered, from-U-min and manual per-plane offsets in millimetres. Derived courses/positions/fragments/counts and selected plane remain outside `ProjectDocument`. Store/UI mutations are canonical, one-step Undo/Redo edits; task and plane selection remain zero-history view state.
+
+**Tile Engine:**
+
+- Added a pure `RoofTileLayoutStrategy` in `@cieslacalc/covering-core` over neutral plane polygons, rectangular openings and renderer-neutral resolved batten rows. `covering-core` imports neither `roof-math` nor `timber-model` and contains no React, DOM, database, catalogue, price or manufacturer branching.
+- Resolved battens are the only vertical course source. Actual adjacent row spacings are checked against the selected mode range; absent/single-row battens and too-small/too-large gauges produce structured incomplete/incompatible issues with no automatic repair.
+- Uses one deterministic cover-width U grid per plane. Centered, edge-anchored and manual origins remain coherent around openings; row/layer offsets move the shared grid rather than restarting columns at batten segments. Stable IDs/order derive from assignment, plane, row, layer and column.
+- Clips coverage cells against generic gable and hip polygons and subtracts canonical roof windows. Results distinguish full, roof-edge cut, opening cut and disconnected split-by-opening positions while preserving visible fragments and explicitly avoiding any offcut-reuse claim. Non-finite/invalid inputs cannot leak NaN/Infinity into trusted output.
+- Declared pcs/m² produces a separate net-area reference range. Only resolved layouts emit `piece` quantity sources with stable geometric basis and explicit no-waste/breakage/accessory warnings.
+
+**Workbench and schedule:**
+
+- Added the real Builder-only `Pokrycie / Covering` task in the requested task order; Quick Calc is unchanged. The lazy `CoveringWorkspace` provides a practical manual product path, exact unit-aware primary/advanced fields, optional installation-mode selection, plane assignment, three pattern configurations, alignment intent, compatibility status and navigation to `Warstwy → Łaty`.
+- Added a plane-local coverage SVG with light batten context, openings, visibly distinct full/edge/opening/split fragments and plane tabs. Above **1,200 visible fragments**, rendering switches to course lines while exact domain counts remain unchanged. Responsive CSS stacks the canvas/editor and keeps controls touch-accessible.
+- Added compact status/course/position/full/cut/cover-width facts, manual-source and no-waste messaging, and a contextual covering Inspector. `Zestawienie` now has a separate covering-product section with geometric pieces, full/cut counts, net area and declared-consumption reference; it never mixes pcs with timber/build-up totals.
+- Added a dedicated `covering-core` production chunk plus lazy covering UI boundaries. No fake catalogue, sheet/seam controls, pricing, VAT, discount or Cost Engine UI was added.
+
+**Files changed:**
+
+- Covering domain/engine/tests: `packages/covering-core/src/{index,tile-layout}.{ts,test.ts}`.
+- Quantity/project boundaries and tests: `packages/quantity-core/src/index.{ts,test.ts}` and `packages/calculator-core/src/project-document.test.ts`.
+- Web workbench/tests: new `apps/web/src/assembly/CoveringWorkspace.tsx`; `Page`, `MaterialSchedule`, `WorkbenchControls`, `store`, `workbench`, translations, responsive styles and `apps/web/vite.config.ts`.
+- Documentation: actual V19 prompt, V19 architecture, revalidated covering research and this checkpoint.
+
+**Validation, performance and QA:**
+
+- Final repository-pinned typecheck PASS; ESLint PASS; **405 tests across 41 files PASS**; production web/API build PASS; `git diff --check` PASS. Changed source/docs were formatted with repository Prettier; the verbatim user contract is intentionally byte-text equivalent after newline normalization.
+- Final web output: main **500.16 kB / 143.80 kB gzip**, dedicated covering-core **65.60 / 16.06 kB**, lazy Covering Workspace **14.16 / 4.00 kB**, Material Schedule **9.62 / 2.54 kB**, Skeleton Canvas **36.99 / 11.40 kB**, CSS **98.75 / 19.16 kB**, React **51.29 / 18.04 kB**, localization **49.54 / 16.09 kB**, icons **17.08 / 3.64 kB**; API ESM **1.11 kB**. The main is down **47.94 kB / 10.57 kB gzip** versus V18 through the explicit covering-core chunk, but Vite still emits its known >500 kB advisory at 500.16 kB.
+- Pure/store/jsdom tests cover backward parsing, patterns, deterministic gable/hip grids, edges, openings/splits, multiple planes, actual gauge/pitch failures, declared reference, trusted/untrusted quantities, history, responsive task reachability, empty/manual UI, batten navigation, grid/opening rendering, schedule rederivation and absence of price/catalogue controls.
+- The explicitly requested in-app Browser was initialized according to its skill protocol and returned no available browser instance both before and after implementation (`agent.browsers.list() → []`). Therefore no live 1440×900/1024/768/360×800 rendering, native pointer/touch, clipping or horizontal-overflow claim is made.
+
+**Known limitations / assumptions:**
+
+- V19 positions are geometric coverage cells, not physical profiled tile outlines or purchase quantities. Eave/ridge special courses, half/verge/ridge/ventilation tiles, fastening, accessories, waste, breakage, packages, offcut optimization, stock, prices, structural verification and exports are intentionally absent.
+- Current openings are rectangular roof-window voids and current roof topology is gable/hip. A split position does not guarantee all fragments can be cut from one purchased tile.
+- Compatibility covers implemented pitch and actual regular batten-spacing facts only; it is not a safety, waterproofing or installation approval. Conditional underlay/manufacturer requirements remain external documentation.
+- The workspace currently edits the first roof-tile assignment; the canonical model and quantity engine support deterministic multiple assignments, while assignment management/catalogue selection remains future UI work.
+- Live visual/mobile acceptance remains outstanding only because the required in-app Browser surface was unavailable.
+
+**NEXT ACTION:**
+
+> Prepare Iteration 020 — metal covering engines for modular/fixed or cut-to-length sheet and standing seam on the same neutral covering layout/quantity contracts. Reverify current official technical revisions first. Do not begin V20 automatically; do not add pricing or a catalogue backend without a separately approved iteration.
+
+---
+
 > Iteration 018 started on 2026-09-12 from clean commit `5d3442baf3968ffcb6b03c504c70a8e27658124f` (`V17`). The user-approved attached V18 contract supersedes the V17 browser-only `NEXT ACTION`.
 
 **Iteration:** `018 — Opening Productivity and Covering Platform`

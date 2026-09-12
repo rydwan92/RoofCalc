@@ -61,6 +61,44 @@ const opening = (
   position,
 });
 
+it('keeps geometric covering pieces separate from timber and build-up quantities', () => {
+  const report = createRoofMemberSchedule({
+    skeleton: skeleton([physicalMember('instance:rafter-pair-1:left', 5000)]),
+    covering: [
+      {
+        id: 'covering-quantity:main',
+        coveringAssignmentId: 'covering:main',
+        sourceRoofPlaneIds: ['roof-plane:right', 'roof-plane:left'],
+        unit: 'piece',
+        quantity: 286,
+        fullPositions: 248,
+        cutPositions: 38,
+        basis: 'roof-tile-geometric-coverage-position-v1',
+        productDisplay: { familyName: 'Manual tile' },
+        netAreaMm2: 25_000_000,
+        declaredQuantityRange: { minimum: 245, maximum: 268 },
+        warningKeys: ['no-waste-breakage-accessories-or-offcut-reuse'],
+      },
+    ],
+  });
+
+  expect(report.coveringRows).toEqual([
+    expect.objectContaining({
+      category: 'covering-product',
+      assignmentId: 'covering:main',
+      quantity: 286,
+      fullPositions: 248,
+      cutPositions: 38,
+      roofPlaneIds: ['roof-plane:left', 'roof-plane:right'],
+      netAreaMm2: 25_000_000,
+      declaredQuantityRange: { minimum: 245, maximum: 268 },
+    }),
+  ]);
+  expect(report.coveringSummary.quantity).toBe(286);
+  expect(report.timberSummary.quantity).toBe(1);
+  expect(report.buildUpSummary.quantity).toBe(0);
+});
+
 function acceptedSpec(
   roof: ReturnType<typeof template>,
   feature: RoofWindowFeature,

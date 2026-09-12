@@ -305,6 +305,59 @@ export function MaterialSchedule({
           <p>{t('assembly.buildUpQuantityBoundary')}</p>
         </section>
       )}
+      {schedule.coveringRows.length > 0 && (
+        <section
+          className="a-covering-quantity"
+          data-testid="covering-quantity"
+        >
+          <header>
+            <small>{t('assembly.covering')}</small>
+            <h3>{t('assembly.roofTiles')}</h3>
+          </header>
+          <div>
+            {schedule.coveringRows.map((row) => (
+              <article key={row.id}>
+                <span>
+                  <b>
+                    {row.productDisplay?.familyName ??
+                      t('assembly.manualRoofTile')}
+                  </b>
+                  <small>{t('assembly.geometricTileLayout')}</small>
+                </span>
+                <strong>
+                  {row.quantity} {t('assembly.piecesShort')}
+                </strong>
+                <small>
+                  {t('assembly.fullTiles')}: {row.fullPositions ?? 0} ·{' '}
+                  {t('assembly.cutTiles')}: {row.cutPositions ?? 0}
+                </small>
+                {row.netAreaMm2 !== undefined && (
+                  <small>
+                    {new Intl.NumberFormat(i18n.language, {
+                      maximumFractionDigits: 2,
+                    }).format(row.netAreaMm2 / 1_000_000)}{' '}
+                    m² {t('assembly.netGeometric')}
+                  </small>
+                )}
+                {row.declaredQuantityRange && (
+                  <small>
+                    {t('assembly.declaredConsumption')}:{' '}
+                    {new Intl.NumberFormat(i18n.language, {
+                      maximumFractionDigits: 1,
+                    }).format(row.declaredQuantityRange.minimum)}
+                    –
+                    {new Intl.NumberFormat(i18n.language, {
+                      maximumFractionDigits: 1,
+                    }).format(row.declaredQuantityRange.maximum)}{' '}
+                    {t('assembly.piecesShort')}
+                  </small>
+                )}
+              </article>
+            ))}
+          </div>
+          <p>{t('assembly.coveringQuantityBoundary')}</p>
+        </section>
+      )}
     </section>
   );
 }

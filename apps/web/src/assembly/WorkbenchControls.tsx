@@ -4,6 +4,7 @@ import {
   Hammer,
   Layers3,
   ListTree,
+  Grid3X3,
   Maximize,
   Maximize2,
   Ruler,
@@ -33,6 +34,7 @@ export function WorkbenchControls({ skeleton }: { skeleton: RoofSkeleton }) {
     ['construction', Hammer],
     ['openings', SquareDashed],
     ['layers', Layers3],
+    ['covering', Grid3X3],
     ['cuts', Scissors],
     ['materials', ListTree],
   ] as const;

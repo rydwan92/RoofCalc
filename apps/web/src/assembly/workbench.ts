@@ -13,7 +13,7 @@ import type {
 export type WorkbenchMode = 'quick' | 'builder';
 export type WorkbenchCanvasView = 'skeleton' | 'rafter' | 'hip';
 export type ViewPreset =
-  'construction' | 'openings' | 'layers' | 'cuts' | 'materials';
+  'construction' | 'openings' | 'layers' | 'covering' | 'cuts' | 'materials';
 export type BuildUpView =
   'overview' | 'membrane' | 'counterBattens' | 'battens';
 export type MaterialsView = 'schedule' | 'drawing';
@@ -198,6 +198,7 @@ export function deriveWorkbenchProjectionPolicy(
   const cuts = view.viewPreset === 'cuts';
   const openings = view.viewPreset === 'openings';
   const layers = view.viewPreset === 'layers';
+  const covering = view.viewPreset === 'covering';
   const membrane =
     layers &&
     (view.buildUpView === 'overview' || view.buildUpView === 'membrane');
@@ -214,23 +215,28 @@ export function deriveWorkbenchProjectionPolicy(
     showSupports: true,
     showRoofFeatures:
       view.layerVisibility.features &&
-      (openings || layers || view.selectedId.startsWith('feature:')),
+      (openings ||
+        layers ||
+        covering ||
+        view.selectedId.startsWith('feature:')),
     showMembrane: membrane && view.layerVisibility.membrane,
     showCounterBattens: counterBattens && view.layerVisibility.counterBattens,
     showBattens:
       ((layers &&
         (view.buildUpView === 'overview' || view.buildUpView === 'battens')) ||
-        materials) &&
+        materials ||
+        covering) &&
       view.layerVisibility.battens,
     showCutMarkers: cuts || !!view.selectedInstanceId,
     showDatums: cuts,
     showDimensions: view.layerVisibility.dimensions,
     showLabels: view.layerVisibility.labels,
-    showDirectManipulation: !cuts && !materials,
+    showDirectManipulation: !cuts && !materials && !covering,
     muteUnrelated:
       cuts ||
       openings ||
       layers ||
+      covering ||
       (materials && !!view.selectedScheduleRowId) ||
       view.isolateSelection,
     isolateSelection: view.isolateSelection,

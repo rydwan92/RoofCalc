@@ -5,6 +5,11 @@ import {
   withOpeningFramingFabrication,
 } from '@cieslacalc/calculator-core';
 import {
+  createRoofTileQuantitySource,
+  resolveRoofTileLayout,
+  type CoveringAssignmentSpec,
+} from '@cieslacalc/covering-core';
+import {
   createRoofMemberSchedule,
   type RoofMemberScheduleRow,
 } from '@cieslacalc/quantity-core';
@@ -63,6 +68,32 @@ const MaterialScheduleInspector = lazy(() =>
     default: module.MaterialScheduleInspector,
   })),
 );
+const CoveringWorkspace = lazy(() =>
+  import('./CoveringWorkspace').then((module) => ({
+    default: module.CoveringWorkspace,
+  })),
+);
+const CoveringInspector = lazy(() =>
+  import('./CoveringWorkspace').then((module) => ({
+    default: module.CoveringInspector,
+  })),
+);
+
+type TileAssignment = CoveringAssignmentSpec & {
+  product: CoveringAssignmentSpec['product'] & {
+    technicalSpecSnapshot: Extract<
+      CoveringAssignmentSpec['product']['technicalSpecSnapshot'],
+      { kind: 'roof-tile' }
+    >;
+  };
+};
+
+function isTileAssignment(
+  assignment: CoveringAssignmentSpec,
+): assignment is TileAssignment {
+  return assignment.product.technicalSpecSnapshot.kind === 'roof-tile';
+}
+
 export function AssemblyPage() {
   const state = useAssembly(),
     { t, i18n } = useTranslation();
@@ -234,6 +265,70 @@ export function AssemblyPage() {
         : { battens: [], totalLengthMm: 0 },
     [battenLayout, state.projectDocument.project.features, state.template],
   );
+  const tileAssignments =
+    state.projectDocument.project.coverings.filter(isTileAssignment);
+  const tileLayouts = useMemo(
+    () =>
+      tileAssignments.map((assignment) =>
+        resolveRoofTileLayout({
+          assignmentId: assignment.id,
+          roofPlaneIds: assignment.roofPlaneIds,
+          roofSurfaceGeometry: surfaceProjection.planes.map((plane) => ({
+            roofPlaneId: plane.roofPlaneId,
+            pitchDeg: state.template.pitchDeg,
+            localPolygon: plane.polygon,
+            netAreaMm2: plane.netAreaMm2,
+          })),
+          openings: roofWindows.map((feature) => ({
+            id: feature.id,
+            roofPlaneId: feature.roofPlaneId,
+            fromUMm: feature.position.uMm,
+            toUMm: feature.position.uMm + feature.widthMm,
+            fromVMm: feature.position.vMm,
+            toVMm: feature.position.vMm + feature.heightMm,
+          })),
+          battens: battenProjection.battens.map((batten) => ({
+            id: batten.id,
+            roofPlaneId: batten.roofPlaneId,
+            stationVMm: batten.stationMm,
+            segments: batten.segments,
+          })),
+          productSpec: assignment.product.technicalSpecSnapshot,
+          selectedInstallationModeId: assignment.selectedInstallationModeId,
+          layoutIntent: assignment.layoutIntent ?? {
+            kind: 'roof-tile',
+            horizontalAlignment: 'centered',
+          },
+        }),
+      ),
+    [
+      battenProjection.battens,
+      roofWindows,
+      state.template.pitchDeg,
+      surfaceProjection.planes,
+      tileAssignments,
+    ],
+  );
+  const activeTileAssignment = tileAssignments[0];
+  const activeTileLayout = activeTileAssignment
+    ? tileLayouts.find(
+        (layout) => layout.assignmentId === activeTileAssignment.id,
+      )
+    : undefined;
+  const coveringQuantitySources = useMemo(
+    () =>
+      tileLayouts.flatMap((layout) => {
+        const assignment = tileAssignments.find(
+          (candidate) => candidate.id === layout.assignmentId,
+        );
+        const source = createRoofTileQuantitySource({
+          layout,
+          productDisplay: assignment?.product.displaySnapshot,
+        });
+        return source ? [source] : [];
+      }),
+    [tileAssignments, tileLayouts],
+  );
   const memberSchedule = useMemo(
     () =>
       createRoofMemberSchedule({
@@ -296,12 +391,14 @@ export function AssemblyPage() {
                 warningKeys: plane.issues.map((issue) => issue.code),
               }))
           : [],
+        covering: coveringQuantitySources,
       }),
     [
       battenLayout,
       battenProjection.battens,
       counterBattens?.enabled,
       counterBattenProjection.rows,
+      coveringQuantitySources,
       framingProjection.composedSkeleton,
       membrane,
       state.template.ridge.id,
@@ -849,6 +946,15 @@ export function AssemblyPage() {
                       </Suspense>
                     </div>
                   </div>
+                ) : workbench.viewPreset === 'covering' ? (
+                  <Suspense fallback={<div className="a-loading-panel" />}>
+                    <CoveringWorkspace
+                      assignment={activeTileAssignment}
+                      layout={activeTileLayout}
+                      surfaceGeometry={surfaceProjection}
+                      battens={battenProjection}
+                    />
+                  </Suspense>
                 ) : workbench.focusId ? (
                   <AssemblyCanvas result={result} focusId={workbench.focusId} />
                 ) : workbench.canvasView === 'hip' && hip ? (
@@ -880,6 +986,10 @@ export function AssemblyPage() {
               {workbench.viewPreset === 'materials' ? (
                 <Suspense fallback={<aside className="a-inspector" />}>
                   <MaterialScheduleInspector schedule={memberSchedule} />
+                </Suspense>
+              ) : workbench.viewPreset === 'covering' ? (
+                <Suspense fallback={<aside className="a-inspector" />}>
+                  <CoveringInspector layout={activeTileLayout} />
                 </Suspense>
               ) : (
                 <Inspector

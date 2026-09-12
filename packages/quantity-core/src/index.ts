@@ -40,6 +40,44 @@ export interface SurfaceBuildUpSource {
   warningKeys?: string[];
 }
 
+export interface CoveringProductQuantitySource {
+  id: string;
+  coveringAssignmentId: string;
+  sourceRoofPlaneIds: string[];
+  unit: 'piece';
+  quantity: number;
+  fullPositions?: number;
+  cutPositions?: number;
+  splitPositions?: number;
+  basis: string;
+  productDisplay?: {
+    manufacturer?: string;
+    familyName?: string;
+    variantName?: string;
+  };
+  netAreaMm2?: number;
+  declaredQuantityRange?: { minimum: number; maximum: number };
+  warningKeys?: string[];
+}
+
+export interface CoveringQuantityRow {
+  id: string;
+  category: 'covering-product';
+  assignmentId: string;
+  sourceIds: string[];
+  roofPlaneIds: string[];
+  unit: 'pcs';
+  quantity: number;
+  fullPositions?: number;
+  cutPositions?: number;
+  splitPositions?: number;
+  basis: string;
+  productDisplay?: CoveringProductQuantitySource['productDisplay'];
+  netAreaMm2?: number;
+  declaredQuantityRange?: { minimum: number; maximum: number };
+  warningKeys: string[];
+}
+
 export interface RoofSurfaceQuantityRow {
   id: string;
   category: 'roof-build-up';
@@ -93,7 +131,12 @@ export interface QuantitySummary {
 
 export interface QuantityIssue {
   sourceId: string;
-  code: 'invalid-axis' | 'invalid-length' | 'invalid-section' | 'invalid-area';
+  code:
+    | 'invalid-axis'
+    | 'invalid-length'
+    | 'invalid-section'
+    | 'invalid-area'
+    | 'invalid-quantity';
 }
 
 export interface RoofMemberSchedule {
@@ -101,10 +144,12 @@ export interface RoofMemberSchedule {
   timberRows: RoofMemberScheduleRow[];
   buildUpRows: RoofMemberScheduleRow[];
   surfaceBuildUpRows: RoofSurfaceQuantityRow[];
+  coveringRows: CoveringQuantityRow[];
   sectionGroups: QuantitySectionGroup[];
   timberSummary: QuantitySummary;
   buildUpSummary: QuantitySummary;
   surfaceBuildUpSummary: { areaMm2: number };
+  coveringSummary: { quantity: number };
   issues: QuantityIssue[];
 }
 
@@ -114,6 +159,7 @@ export interface CreateRoofMemberScheduleInput {
   sectionOverrides?: Readonly<Record<string, QuantitySection>>;
   buildUp?: readonly LinearBuildUpSource[];
   surfaceBuildUp?: readonly SurfaceBuildUpSource[];
+  covering?: readonly CoveringProductQuantitySource[];
   equalityToleranceMm?: number;
 }
 
@@ -427,6 +473,41 @@ function createSurfaceBuildUpRows(
     .sort((a, b) => a.id.localeCompare(b.id));
 }
 
+function createCoveringRows(
+  sources: readonly CoveringProductQuantitySource[],
+  issues: QuantityIssue[],
+): CoveringQuantityRow[] {
+  const rows: CoveringQuantityRow[] = [];
+  for (const source of [...sources].sort(
+    (a, b) =>
+      a.coveringAssignmentId.localeCompare(b.coveringAssignmentId) ||
+      a.id.localeCompare(b.id),
+  )) {
+    if (!Number.isFinite(source.quantity) || source.quantity < 0) {
+      issues.push({ sourceId: source.id, code: 'invalid-quantity' });
+      continue;
+    }
+    rows.push({
+      id: `quantity:covering:${source.coveringAssignmentId}`,
+      category: 'covering-product',
+      assignmentId: source.coveringAssignmentId,
+      sourceIds: [source.id],
+      roofPlaneIds: [...new Set(source.sourceRoofPlaneIds)].sort(),
+      unit: 'pcs',
+      quantity: source.quantity,
+      fullPositions: source.fullPositions,
+      cutPositions: source.cutPositions,
+      splitPositions: source.splitPositions,
+      basis: source.basis,
+      productDisplay: source.productDisplay,
+      netAreaMm2: source.netAreaMm2,
+      declaredQuantityRange: source.declaredQuantityRange,
+      warningKeys: [...new Set(source.warningKeys ?? [])].sort(),
+    });
+  }
+  return rows;
+}
+
 /**
  * Projects the accepted composed physical assembly into a deterministic geometric
  * schedule. It never calculates stock lengths, allowances, prices or cut geometry.
@@ -507,16 +588,21 @@ export function createRoofMemberSchedule(
     input.surfaceBuildUp ?? [],
     issues,
   );
+  const coveringRows = createCoveringRows(input.covering ?? [], issues);
   return {
     rows,
     timberRows,
     buildUpRows,
     surfaceBuildUpRows,
+    coveringRows,
     sectionGroups: createSectionGroups(timberRows),
     timberSummary: summary(timberRows),
     buildUpSummary: summary(buildUpRows),
     surfaceBuildUpSummary: {
       areaMm2: surfaceBuildUpRows.reduce((sum, row) => sum + row.areaMm2, 0),
+    },
+    coveringSummary: {
+      quantity: coveringRows.reduce((sum, row) => sum + row.quantity, 0),
     },
     issues: issues.sort(
       (a, b) =>

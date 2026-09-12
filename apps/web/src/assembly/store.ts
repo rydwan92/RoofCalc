@@ -1804,7 +1804,8 @@ export const useAssembly = create<AssemblyState>((set) => ({
         ? 'openings'
         : selectedId.startsWith('batten:') ||
             selectedId.startsWith('counter-batten:') ||
-            selectedId.startsWith('surface:') ||
+            (selectedId.startsWith('surface:') &&
+              state.workbench.viewPreset !== 'covering') ||
             selectedId.startsWith('layer:')
           ? 'layers'
           : selectedId === 'roof'

@@ -6,6 +6,7 @@ import {
   coveringProductSelectionSchema,
   coveringTechnicalSpecSchema,
   modularSheetTechnicalSpecSchema,
+  roofTileLayoutIntentSchema,
   roofTileTechnicalSpecSchema,
   standingSeamTechnicalSpecSchema,
   type RoofTileTechnicalSpec,
@@ -36,6 +37,11 @@ const tile = (): RoofTileTechnicalSpec => ({
 });
 
 describe('covering technical product contracts', () => {
+  it('keeps old V18 roof-tile snapshots parseable without guessing a course pattern', () => {
+    const parsed = roofTileTechnicalSpecSchema.parse(tile());
+    expect(parsed.installationModes[0]!.coursePattern).toBeUndefined();
+  });
+
   it('parses a tile with physical dimensions and multiple installation modes', () => {
     const parsed = roofTileTechnicalSpecSchema.parse(tile());
     expect(parsed.installationModes.map((mode) => mode.id)).toEqual([
@@ -279,5 +285,26 @@ describe('covering technical product contracts', () => {
         selectedInstallationModeId: 'missing',
       }).success,
     ).toBe(false);
+  });
+
+  it('round-trips explicit tile layout intent while keeping it optional', () => {
+    expect(
+      roofTileLayoutIntentSchema.parse({
+        kind: 'roof-tile',
+        horizontalAlignment: 'manual',
+        planeOffsetsMm: { 'roof-plane:left': 75 },
+      }),
+    ).toEqual({
+      kind: 'roof-tile',
+      horizontalAlignment: 'manual',
+      planeOffsetsMm: { 'roof-plane:left': 75 },
+    });
+    expect(
+      coveringAssignmentSpecSchema.parse({
+        id: 'covering:legacy',
+        roofPlaneIds: ['roof-plane:left'],
+        product: { technicalSpecSnapshot: tile() },
+      }).layoutIntent,
+    ).toBeUndefined();
   });
 });

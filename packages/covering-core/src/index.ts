@@ -12,10 +12,27 @@ const rangeSchema = z
   .object({ min: finitePositive, max: finitePositive })
   .refine((range) => range.min <= range.max, 'invalid_range');
 
+const normalizedOffsetFraction = z.number().finite().min(0).lt(1);
+
+export const tileCoursePatternSchema = z.object({
+  layers: z
+    .array(
+      z.object({
+        id: stableId,
+        horizontalOffsetFraction: normalizedOffsetFraction,
+      }),
+    )
+    .min(1)
+    .refine(uniqueIds, 'duplicate_tile_pattern_layer'),
+  battenRowOffsetCycle: z.array(normalizedOffsetFraction).min(1),
+});
+
 export const tileInstallationModeSchema = z.object({
   id: stableId,
   coverWidthMm: finitePositive,
   gaugeRangeMm: rangeSchema,
+  /** Additive in V19: absent V18 snapshots remain valid but cannot be laid out. */
+  coursePattern: tileCoursePatternSchema.optional(),
   declaredUnitsPerM2: rangeSchema.optional(),
   minPitchDeg: pitchDeg.optional(),
   technicalConditionId: stableId.optional(),
@@ -112,6 +129,7 @@ export const coveringTechnicalSpecSchema = z.union([
 export type RoofTileInstallationMode = z.infer<
   typeof tileInstallationModeSchema
 >;
+export type TileCoursePattern = z.infer<typeof tileCoursePatternSchema>;
 export type RoofTileTechnicalSpec = z.infer<typeof roofTileTechnicalSpecSchema>;
 export type ModularSheetTechnicalSpec = z.infer<
   typeof modularSheetTechnicalSpecSchema
@@ -147,6 +165,26 @@ export type CoveringProductSelection = z.infer<
   typeof coveringProductSelectionSchema
 >;
 
+export const roofTileLayoutIntentSchema = z
+  .object({
+    kind: z.literal('roof-tile'),
+    horizontalAlignment: z.enum(['centered', 'from-u-min', 'manual']),
+    planeOffsetsMm: z.record(stableId, z.number().finite()).optional(),
+  })
+  .superRefine((intent, context) => {
+    if (
+      intent.horizontalAlignment === 'manual' &&
+      (!intent.planeOffsetsMm || !Object.keys(intent.planeOffsetsMm).length)
+    )
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['planeOffsetsMm'],
+        message: 'manual_tile_offset_required',
+      });
+  });
+
+export type RoofTileLayoutIntent = z.infer<typeof roofTileLayoutIntentSchema>;
+
 export const coveringAssignmentSpecSchema = z
   .object({
     id: stableId,
@@ -159,6 +197,7 @@ export const coveringAssignmentSpecSchema = z
       ),
     product: coveringProductSelectionSchema,
     selectedInstallationModeId: stableId.optional(),
+    layoutIntent: roofTileLayoutIntentSchema.optional(),
   })
   .superRefine((assignment, context) => {
     const selected = assignment.selectedInstallationModeId;
@@ -306,6 +345,13 @@ export interface CoveringRoofSurfaceGeometry {
   netAreaMm2: number;
 }
 
+export interface CoveringBattenRow {
+  id: string;
+  roofPlaneId: string;
+  stationVMm: number;
+  segments: readonly { fromUMm: number; toUMm: number }[];
+}
+
 export interface CoveringOpeningGeometry {
   id: string;
   roofPlaneId: string;
@@ -322,13 +368,14 @@ export interface CoveringLayoutInput<
   roofSurfaceGeometry: readonly CoveringRoofSurfaceGeometry[];
   openings: readonly CoveringOpeningGeometry[];
   buildUp: { battenGaugeMm?: number };
+  battens?: readonly CoveringBattenRow[];
   productSpec: TSpec;
   layoutIntent: TIntent;
 }
 
 export interface CoveringLayoutResult {
   kind: CoveringKind;
-  status: 'resolved' | 'limited' | 'invalid';
+  status: 'resolved' | 'limited' | 'incomplete' | 'incompatible' | 'invalid';
   roofPlaneIds: string[];
   issueCodes: string[];
 }
@@ -349,5 +396,14 @@ export interface CoveringQuantitySource {
   sourceRoofPlaneIds: string[];
   unit: 'piece' | 'metre' | 'square-metre';
   quantity: number;
+  fullPositions?: number;
+  cutPositions?: number;
+  splitPositions?: number;
   basis: string;
+  productDisplay?: CoveringProductSelection['displaySnapshot'];
+  netAreaMm2?: number;
+  declaredQuantityRange?: { minimum: number; maximum: number };
+  warningKeys?: string[];
 }
+
+export * from './tile-layout';

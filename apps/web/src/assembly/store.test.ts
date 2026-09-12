@@ -921,3 +921,61 @@ it('edits, clears and undoes the optional ridge depth canonically', () => {
   useAssembly.getState().setField('ridge.depthMm', '');
   expect(useAssembly.getState().template.ridge.depthMm).toBeUndefined();
 });
+
+it('commits roof-tile layout intent as one undoable domain edit while task switching stays transient', () => {
+  const assignment = {
+    id: 'covering:roof-tile-1',
+    roofPlaneIds: ['roof-plane:left'],
+    selectedInstallationModeId: 'manual-standard',
+    layoutIntent: {
+      kind: 'roof-tile' as const,
+      horizontalAlignment: 'centered' as const,
+    },
+    product: {
+      technicalSpecSnapshot: {
+        schemaVersion: 1 as const,
+        kind: 'roof-tile' as const,
+        installationModes: [
+          {
+            id: 'manual-standard',
+            coverWidthMm: 300,
+            gaugeRangeMm: { min: 300, max: 380 },
+            coursePattern: {
+              layers: [{ id: 'base', horizontalOffsetFraction: 0 }],
+              battenRowOffsetCycle: [0],
+            },
+          },
+        ],
+      },
+    },
+  };
+  useAssembly.setState({ historyPast: [], historyFuture: [] });
+  useAssembly.getState().setViewPreset('covering');
+  expect(useAssembly.getState().historyPast).toHaveLength(0);
+
+  useAssembly.getState().setCoveringAssignments([assignment]);
+  useAssembly.getState().setCoveringAssignments([
+    {
+      ...assignment,
+      roofPlaneIds: ['roof-plane:left', 'roof-plane:right'],
+      layoutIntent: {
+        kind: 'roof-tile',
+        horizontalAlignment: 'manual',
+        planeOffsetsMm: { 'roof-plane:left': 75 },
+      },
+    },
+  ]);
+  expect(useAssembly.getState().historyPast).toHaveLength(2);
+  expect(
+    useAssembly.getState().projectDocument.project.coverings[0]!.layoutIntent,
+  ).toMatchObject({ horizontalAlignment: 'manual' });
+
+  useAssembly.getState().undo();
+  expect(
+    useAssembly.getState().projectDocument.project.coverings[0]!.layoutIntent,
+  ).toEqual(assignment.layoutIntent);
+  useAssembly.getState().redo();
+  expect(
+    useAssembly.getState().projectDocument.project.coverings[0]!.roofPlaneIds,
+  ).toEqual(['roof-plane:left', 'roof-plane:right']);
+});
