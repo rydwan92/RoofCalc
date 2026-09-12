@@ -943,6 +943,41 @@ describe('dual-mode parametric workbench', () => {
     fireEvent.click(container.querySelector('[data-batten-row]')!);
     expect(screen.getByTestId('batten-row-detail')).toBeTruthy();
   });
+  it('duplicates by keyboard and exposes accessible group-selection alignment tools', async () => {
+    render(<App />);
+    builder();
+    await screen.findByTestId('skeleton-drawing');
+    act(() => {
+      useAssembly.getState().addRoofWindow();
+      useAssembly.getState().addRoofWindow();
+      useAssembly.getState().updateRoofWindow('feature:roof-window-1', {
+        position: { uMm: 900, vMm: 1500 },
+      });
+      useAssembly.setState({ historyPast: [], historyFuture: [] });
+    });
+    expect(screen.getByRole('button', { name: 'Powiel' })).toBeTruthy();
+    fireEvent.keyDown(window, { key: 'd', ctrlKey: true });
+    expect(useAssembly.getState().workbench.placementTool).toMatchObject({
+      mode: 'duplicate',
+      sourceFeatureId: 'feature:roof-window-2',
+    });
+    expect(useAssembly.getState().historyPast).toHaveLength(0);
+    expect(screen.getByText(/Wskaż pozycję kopii/)).toBeTruthy();
+    act(() => useAssembly.getState().cancelRoofWindowPlacement());
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Dodaj O1 do zaznaczenia grupowego' }),
+    );
+    expect(useAssembly.getState().workbench.selectedFeatureIds).toEqual([
+      'feature:roof-window-2',
+      'feature:roof-window-1',
+    ]);
+    expect(screen.getByText('Układ zaznaczonych okien')).toBeTruthy();
+    expect(screen.getAllByText('Zaznaczone okna: 2')).toHaveLength(2);
+    fireEvent.click(screen.getByRole('button', { name: 'Osie środkowe' }));
+    expect(useAssembly.getState().historyPast).toHaveLength(1);
+    expect(screen.getByText('Otwory: 2')).toBeTruthy();
+  });
   it('cancels the opening tool with Escape and commits a numeric draft as one undo step', () => {
     const { container } = render(<App />);
     builder();

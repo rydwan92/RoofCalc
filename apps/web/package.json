@@ -8,6 +8,7 @@
     "build": "vite build"
   },
   "dependencies": {
+    "@cieslacalc/covering-core": "workspace:*",
     "@cieslacalc/timber-model": "workspace:*",
     "@cieslacalc/calculator-core": "workspace:*",
     "@cieslacalc/drawing-engine": "workspace:*",

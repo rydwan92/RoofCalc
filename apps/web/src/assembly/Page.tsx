@@ -18,6 +18,7 @@ import {
   resolveOpeningFramingSet,
   resolveBattenLayout,
   resolveCounterBattenLayout,
+  resolveRoofFeatureCollisions,
   resolveRoofSurfaceGeometry,
 } from '@cieslacalc/roof-math';
 import { useAssembly } from './store';
@@ -99,6 +100,29 @@ export function AssemblyPage() {
       state.projectDocument.project.openingFraming,
       state.template,
     ],
+  );
+  const openingSummary = useMemo(
+    () => ({
+      total: roofWindows.length,
+      collisions: roofWindows.filter(
+        (feature) =>
+          resolveRoofFeatureCollisions({
+            template: state.template,
+            skeleton: baseSkeleton,
+            feature,
+          }).length > 0,
+      ).length,
+      acceptedFraming: framingProjection.results.filter(
+        (result) =>
+          result.status === 'resolved' &&
+          result.reviewStatus === 'valid' &&
+          !!result.framingSpecId,
+      ).length,
+      needsReview: framingProjection.results.filter(
+        (result) => !!result.framingSpecId && result.reviewStatus !== 'valid',
+      ).length,
+    }),
+    [baseSkeleton, framingProjection.results, roofWindows, state.template],
   );
   const framingProposal = useMemo(() => {
     const featureId = workbench.openingFramingProposalFeatureId;
@@ -478,6 +502,28 @@ export function AssemblyPage() {
     document.title = `${brand} — ${t('workshop')}`;
   }, [brand, i18n.language, t]);
   useEffect(() => {
+    if (workbench.mode !== 'builder') return;
+    const duplicateSelectedWindow = (event: globalThis.KeyboardEvent) => {
+      const target = event.target;
+      if (
+        (target instanceof HTMLElement &&
+          (target.matches('input, textarea, select') ||
+            target.isContentEditable)) ||
+        !(event.ctrlKey || event.metaKey) ||
+        event.key.toLowerCase() !== 'd'
+      )
+        return;
+      const selected = roofWindows.find(
+        (feature) => feature.id === useAssembly.getState().workbench.selectedId,
+      );
+      if (!selected) return;
+      event.preventDefault();
+      useAssembly.getState().beginRoofWindowDuplicatePlacement(selected.id);
+    };
+    window.addEventListener('keydown', duplicateSelectedWindow);
+    return () => window.removeEventListener('keydown', duplicateSelectedWindow);
+  }, [roofWindows, workbench.mode]);
+  useEffect(() => {
     if (workbench.mode !== 'builder' || drawer.pinned) return;
     const direct = allDetailPreviews.find(
       (preview) => preview.sourceSelectionId === workbench.selectedId,
@@ -717,6 +763,7 @@ export function AssemblyPage() {
                   roofPackage={fabricationPackage}
                   activeOperation={activeOperation}
                   selectedScheduleRow={selectedScheduleRow}
+                  openingSummary={openingSummary}
                 />
                 {workbench.viewPreset === 'layers' && (
                   <BuildUpSummaryBar

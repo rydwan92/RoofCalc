@@ -26,8 +26,10 @@ export type VisualInteractionState =
 
 export interface RoofWindowPlacementToolState {
   kind: 'roof-window';
+  mode: 'new' | 'duplicate';
   step: 'choose-plane' | 'position';
   roofPlaneId?: string;
+  sourceFeatureId?: string;
 }
 
 export interface RoofWindowPlacementFeedback {
@@ -37,6 +39,18 @@ export interface RoofWindowPlacementFeedback {
   memberInstanceIds?: [string, string];
   availableWidthMm?: number;
   requiredWidthMm?: number;
+}
+
+export interface RoofWindowLayoutFeedback {
+  status: 'applied' | 'rejected';
+  operation: 'align' | 'distribute';
+  reason?:
+    | 'not-enough-windows'
+    | 'anchor-not-found'
+    | 'cross-plane-selection'
+    | 'alignment-does-not-fit'
+    | 'distribution-does-not-fit';
+  clearGapMm?: number;
 }
 
 export interface OperationMarkerLayoutInput {
@@ -53,6 +67,8 @@ export interface OperationMarkerLayout extends OperationMarkerLayoutInput {
 export interface WorkbenchViewState {
   mode: WorkbenchMode;
   selectedId: string;
+  /** Primary selection remains selectedId; these canonical feature IDs are transient. */
+  selectedFeatureIds: string[];
   selectedPrototypeId?: string;
   /** Physical placement retained while an operation/detail becomes active. */
   selectedInstanceId?: string;
@@ -84,6 +100,7 @@ export interface WorkbenchViewState {
   focusId?: string;
   placementTool?: RoofWindowPlacementToolState;
   placementFeedback?: RoofWindowPlacementFeedback;
+  windowLayoutFeedback?: RoofWindowLayoutFeedback;
   /** Transient preview; applying it is the only canonical/history mutation. */
   openingFramingProposalFeatureId?: string;
   /** Monotonic view-only signal consumed by the canvas. */
@@ -110,6 +127,7 @@ export interface WorkbenchViewState {
 export const initialWorkbenchViewState: WorkbenchViewState = {
   mode: 'quick',
   selectedId: 'roof',
+  selectedFeatureIds: [],
   selectedPrototypeId: undefined,
   selectedInstanceId: undefined,
   selectedScheduleRowId: undefined,
@@ -130,6 +148,7 @@ export const initialWorkbenchViewState: WorkbenchViewState = {
   focusId: undefined,
   placementTool: undefined,
   placementFeedback: undefined,
+  windowLayoutFeedback: undefined,
   openingFramingProposalFeatureId: undefined,
   fitRequestId: 0,
   activeOperationId: undefined,

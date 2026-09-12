@@ -43,12 +43,19 @@ export function WorkbenchContextBar({
   roofPackage,
   activeOperation,
   selectedScheduleRow,
+  openingSummary,
 }: {
   instances: MemberInstanceContext[];
   activeInstance?: MemberInstanceContext;
   roofPackage: RoofFabricationPackage;
   activeOperation?: FabricationOperationSummary;
   selectedScheduleRow?: RoofMemberScheduleRow;
+  openingSummary: {
+    total: number;
+    collisions: number;
+    acceptedFraming: number;
+    needsReview: number;
+  };
 }) {
   const state = useAssembly();
   const { t, i18n } = useTranslation();
@@ -92,6 +99,11 @@ export function WorkbenchContextBar({
     ? `${scheduleSection} · ${selectedScheduleRow.quantity} ${t('assembly.piecesShort')}`
     : undefined;
   const simpleSelection =
+    (state.workbench.selectedFeatureIds.length > 1
+      ? t('assembly.selectedWindows', {
+          count: state.workbench.selectedFeatureIds.length,
+        })
+      : undefined) ??
     scheduleSelection ??
     (selectedId.startsWith('surface:roof-plane:')
       ? t(`assembly.${selectedId.replace('surface:roof-plane:', '')}`)
@@ -181,6 +193,31 @@ export function WorkbenchContextBar({
           </>
         )}
       </nav>
+      {state.workbench.viewPreset === 'openings' && (
+        <div
+          className="a-opening-context-facts"
+          aria-label={t('assembly.openingSummary')}
+        >
+          <span>
+            {t('assembly.openingCount', { count: openingSummary.total })}
+          </span>
+          <span>
+            {t('assembly.openingCollisionCount', {
+              count: openingSummary.collisions,
+            })}
+          </span>
+          <span>
+            {t('assembly.acceptedFramingCount', {
+              count: openingSummary.acceptedFraming,
+            })}
+          </span>
+          <span>
+            {t('assembly.framingReviewCount', {
+              count: openingSummary.needsReview,
+            })}
+          </span>
+        </div>
+      )}
       {activeInstance && (
         <div className="a-instance-navigator" data-testid="instance-navigator">
           <div className="a-instance-navigator-title">

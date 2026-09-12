@@ -9,6 +9,7 @@ import {
   HIP_RAFTER_PROTOTYPE_ID,
   JACK_RAFTER_PROTOTYPE_ID,
   createOpeningFramingDraft,
+  distributeRoofWindowsAlongEave,
   resolveOpeningFraming,
   resolveBattenLayout,
   resolveRoofFeatureCollisions,
@@ -16,6 +17,7 @@ import {
   roofPlaneIds,
   toMillimetres,
   type CounterBattenLayoutResult,
+  type RoofWindowAlignmentMode,
   type RoofSurfaceGeometryResult,
 } from '@cieslacalc/roof-math';
 import type {
@@ -90,6 +92,11 @@ export function Inspector({
     (feature): feature is RoofWindowFeature =>
       feature.id === workbench.selectedId && feature.kind === 'roof-window',
   );
+  const selectedRoofWindows = state.projectDocument.project.features.filter(
+    (feature): feature is RoofWindowFeature =>
+      feature.kind === 'roof-window' &&
+      workbench.selectedFeatureIds.includes(feature.id),
+  );
   return (
     <aside
       className={`a-inspector ${workbench.inspectorOpen ? 'is-open' : ''}`}
@@ -102,7 +109,13 @@ export function Inspector({
       >
         <span>
           <small>{t('assembly.inspector')}</small>
-          <strong>{entityLabel(workbench.selectedId, state, t)}</strong>
+          <strong>
+            {selectedRoofWindows.length > 1
+              ? t('assembly.selectedWindows', {
+                  count: selectedRoofWindows.length,
+                })
+              : entityLabel(workbench.selectedId, state, t)}
+          </strong>
         </span>
         <span>{workbench.inspectorOpen ? '−' : '+'}</span>
       </button>
@@ -165,9 +178,11 @@ export function Inspector({
               </details>
             </>
           )}
-          {roofWindow && (
+          {selectedRoofWindows.length > 1 ? (
+            <RoofWindowGroupInspector features={selectedRoofWindows} />
+          ) : roofWindow ? (
             <RoofWindowInspector feature={roofWindow} skeleton={skeleton} />
-          )}
+          ) : null}
           {workbench.viewPreset === 'layers' &&
             workbench.buildUpView === 'membrane' && (
               <MembraneInspector geometry={surfaceGeometry} />
@@ -601,6 +616,110 @@ function BattenLayoutInspector() {
   );
 }
 
+function RoofWindowGroupInspector({
+  features,
+}: {
+  features: RoofWindowFeature[];
+}) {
+  const state = useAssembly();
+  const { t, i18n } = useTranslation();
+  const [distributionPreviewOpen, setDistributionPreviewOpen] = useState(false);
+  const distribution = distributeRoofWindowsAlongEave({
+    template: state.template,
+    windows: features,
+  });
+  const align = (mode: RoofWindowAlignmentMode) => {
+    setDistributionPreviewOpen(false);
+    state.alignSelectedRoofWindows(mode);
+  };
+  const feedback = state.workbench.windowLayoutFeedback;
+  const primary = features.find(
+    (feature) => feature.id === state.workbench.selectedId,
+  );
+  return (
+    <section className="a-window-group-inspector">
+      <div className="a-window-inspector-title">
+        <h3>{t('assembly.windowGroupTools')}</h3>
+        <button className="a-button" onClick={state.clearRoofWindowSelection}>
+          {t('assembly.clearWindowSelection')}
+        </button>
+      </div>
+      <p className="a-help">
+        {t('assembly.windowGroupAnchor', {
+          id: primary?.id.replace('feature:roof-window-', 'O') ?? '—',
+        })}
+      </p>
+      <div className="a-window-layout-actions" role="group">
+        {(
+          [
+            ['lower-edge', 'alignLowerEdges'],
+            ['centre', 'alignCentres'],
+            ['upper-edge', 'alignUpperEdges'],
+          ] as const
+        ).map(([mode, label]) => (
+          <button key={mode} className="a-button" onClick={() => align(mode)}>
+            {t(`assembly.${label}`)}
+          </button>
+        ))}
+      </div>
+      {features.length < 3 ? (
+        <p className="a-help">{t('assembly.distributionNeedsThree')}</p>
+      ) : (
+        <button
+          className="a-button"
+          onClick={() => setDistributionPreviewOpen(true)}
+        >
+          {t('assembly.previewWindowDistribution')}
+        </button>
+      )}
+      {distributionPreviewOpen && (
+        <div className="a-window-distribution-preview" role="status">
+          {distribution.status === 'ready' ? (
+            <>
+              <strong>{t('assembly.windowDistributionPreview')}</strong>
+              <span>
+                {t('assembly.equalClearGap')}:{' '}
+                {formatLength(
+                  distribution.clearGapMm,
+                  state.unit,
+                  i18n.language,
+                )}{' '}
+                {state.unit}
+              </span>
+              <div className="a-framing-actions">
+                <button
+                  className="a-button a-primary"
+                  onClick={() => {
+                    state.distributeSelectedRoofWindows();
+                    setDistributionPreviewOpen(false);
+                  }}
+                >
+                  {t('assembly.apply')}
+                </button>
+                <button
+                  className="a-button"
+                  onClick={() => setDistributionPreviewOpen(false)}
+                >
+                  {t('assembly.cancel')}
+                </button>
+              </div>
+            </>
+          ) : (
+            <p className="a-window-warning" role="alert">
+              {t(`assembly.windowLayout_${distribution.reason}`)}
+            </p>
+          )}
+        </div>
+      )}
+      {feedback?.status === 'rejected' && (
+        <p className="a-window-warning" role="alert">
+          {t(`assembly.windowLayout_${feedback.reason}`)}
+        </p>
+      )}
+    </section>
+  );
+}
+
 function RoofWindowInspector({
   feature,
   skeleton,
@@ -656,10 +775,18 @@ function RoofWindowInspector({
   };
   return (
     <section className="a-window-inspector">
-      <h3>
-        {t('assembly.geometricOpening')}{' '}
-        {feature.id.replace('feature:roof-window-', 'O')}
-      </h3>
+      <div className="a-window-inspector-title">
+        <h3>
+          {t('assembly.geometricOpening')}{' '}
+          {feature.id.replace('feature:roof-window-', 'O')}
+        </h3>
+        <button
+          className="a-button"
+          onClick={() => state.beginRoofWindowDuplicatePlacement(feature.id)}
+        >
+          {t('assembly.duplicateWindow')}
+        </button>
+      </div>
       <p className="a-help">{t('assembly.geometricOpeningNote')}</p>
       <label className="a-select-label">
         {t('assembly.roofPlane')}

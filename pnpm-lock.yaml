@@ -84,6 +84,9 @@ importers:
       '@cieslacalc/calculator-core':
         specifier: workspace:*
         version: link:../../packages/calculator-core
+      '@cieslacalc/covering-core':
+        specifier: workspace:*
+        version: link:../../packages/covering-core
       '@cieslacalc/drawing-engine':
         specifier: workspace:*
         version: link:../../packages/drawing-engine
@@ -133,6 +136,9 @@ importers:
 
   packages/calculator-core:
     dependencies:
+      '@cieslacalc/covering-core':
+        specifier: workspace:*
+        version: link:../covering-core
       '@cieslacalc/drawing-engine':
         specifier: workspace:*
         version: link:../drawing-engine
@@ -145,6 +151,12 @@ importers:
       '@cieslacalc/timber-model':
         specifier: workspace:*
         version: link:../timber-model
+      zod:
+        specifier: ^3.25.0
+        version: 3.25.76
+
+  packages/covering-core:
+    dependencies:
       zod:
         specifier: ^3.25.0
         version: 3.25.76

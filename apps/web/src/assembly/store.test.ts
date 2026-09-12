@@ -374,6 +374,162 @@ it('cancels roof-window placement without history and creates one canonical edit
   useAssembly.getState().undo();
   expect(useAssembly.getState().projectDocument).toEqual(before);
 });
+it('duplicates an opening as a placement transaction without copying framing', () => {
+  useAssembly.getState().addRoofWindow();
+  const sourceId = 'feature:roof-window-1';
+  useAssembly.getState().updateRoofWindow(sourceId, {
+    widthMm: 600,
+    heightMm: 900,
+    clearanceMm: 55,
+    position: { uMm: 700, vMm: 1200 },
+  });
+  useAssembly.getState().planOpeningFraming(sourceId);
+  expect(useAssembly.getState().applyOpeningFraming(sourceId)).toBe(true);
+  useAssembly.setState({ historyPast: [], historyFuture: [] });
+  const before = structuredClone(useAssembly.getState().projectDocument);
+
+  expect(
+    useAssembly.getState().beginRoofWindowDuplicatePlacement(sourceId),
+  ).toBe(true);
+  expect(useAssembly.getState().workbench.placementTool).toMatchObject({
+    mode: 'duplicate',
+    step: 'position',
+    roofPlaneId: 'roof-plane:left',
+    sourceFeatureId: sourceId,
+  });
+  expect(useAssembly.getState().historyPast).toHaveLength(0);
+  useAssembly.getState().cancelRoofWindowPlacement();
+  expect(useAssembly.getState().projectDocument).toEqual(before);
+
+  useAssembly.getState().beginRoofWindowDuplicatePlacement(sourceId);
+  const duplicateId = useAssembly
+    .getState()
+    .placeRoofWindowAt('roof-plane:left', { uMm: 3000, vMm: 1300 });
+  expect(duplicateId).toBe('feature:roof-window-2');
+  const duplicate = useAssembly
+    .getState()
+    .projectDocument.project.features.find(
+      (feature) => feature.id === duplicateId,
+    );
+  expect(duplicate).toMatchObject({
+    widthMm: 600,
+    heightMm: 900,
+    clearanceMm: 55,
+    roofPlaneId: 'roof-plane:left',
+  });
+  expect(
+    useAssembly.getState().projectDocument.project.openingFraming,
+  ).toHaveLength(1);
+  expect(
+    useAssembly.getState().projectDocument.project.openingFraming[0]?.featureId,
+  ).toBe(sourceId);
+  expect(useAssembly.getState().historyPast).toHaveLength(1);
+  useAssembly.getState().undo();
+  expect(useAssembly.getState().projectDocument).toEqual(before);
+});
+it('keeps multi-selection transient and aligns selected windows in one undo step', () => {
+  useAssembly.getState().beginRoofWindowPlacement();
+  const first = useAssembly
+    .getState()
+    .placeRoofWindowAt('roof-plane:left', { uMm: 700, vMm: 800 })!;
+  useAssembly.getState().beginRoofWindowPlacement();
+  const second = useAssembly
+    .getState()
+    .placeRoofWindowAt('roof-plane:left', { uMm: 2500, vMm: 1500 })!;
+  useAssembly.getState().updateRoofWindow(second, { heightMm: 900 });
+  useAssembly.setState({ historyPast: [], historyFuture: [] });
+  const before = structuredClone(useAssembly.getState().projectDocument);
+
+  useAssembly.getState().selectRoofWindow(first);
+  useAssembly.getState().selectRoofWindow(second, true);
+  expect(useAssembly.getState().workbench.selectedFeatureIds).toEqual([
+    first,
+    second,
+  ]);
+  expect(useAssembly.getState().historyPast).toHaveLength(0);
+  expect(JSON.stringify(useAssembly.getState().projectDocument)).not.toContain(
+    'selectedFeatureIds',
+  );
+
+  const result = useAssembly.getState().alignSelectedRoofWindows('centre');
+  expect(result.status).toBe('ready');
+  expect(useAssembly.getState().historyPast).toHaveLength(1);
+  const windows = useAssembly.getState().projectDocument.project.features;
+  expect(
+    windows.map((feature) => feature.position.vMm + feature.heightMm / 2),
+  ).toEqual([800, 800]);
+  useAssembly.getState().undo();
+  expect(useAssembly.getState().projectDocument).toEqual(before);
+});
+it('previews and applies equal clear opening gaps as one canonical history entry', () => {
+  const ids = [500, 2200, 5000].map((uMm) => {
+    useAssembly.getState().beginRoofWindowPlacement();
+    return useAssembly
+      .getState()
+      .placeRoofWindowAt('roof-plane:left', { uMm, vMm: 900 })!;
+  });
+  useAssembly.getState().updateRoofWindow(ids[1]!, { widthMm: 900 });
+  useAssembly.setState({ historyPast: [], historyFuture: [] });
+  ids.forEach((id, index) =>
+    useAssembly.getState().selectRoofWindow(id, index > 0),
+  );
+  const before = structuredClone(useAssembly.getState().projectDocument);
+  const result = useAssembly.getState().distributeSelectedRoofWindows();
+  expect(result.status).toBe('ready');
+  expect(useAssembly.getState().historyPast).toHaveLength(1);
+  if (result.status !== 'ready') throw new Error('expected distribution');
+  const ordered = useAssembly.getState().projectDocument.project.features;
+  const gaps = ordered
+    .slice(1)
+    .map(
+      (feature, index) =>
+        feature.position.uMm -
+        (ordered[index]!.position.uMm + ordered[index]!.widthMm),
+    );
+  expect(gaps[0]).toBeCloseTo(result.clearGapMm);
+  expect(gaps[1]).toBeCloseTo(result.clearGapMm);
+  useAssembly.getState().undo();
+  expect(useAssembly.getState().projectDocument).toEqual(before);
+});
+it('stores covering snapshots canonically and restores them through undo', () => {
+  const before = structuredClone(useAssembly.getState().projectDocument);
+  useAssembly.getState().setCoveringAssignments([
+    {
+      id: 'covering:left',
+      roofPlaneIds: ['roof-plane:left'],
+      selectedInstallationModeId: 'scale',
+      product: {
+        catalogRef: {
+          productId: 'bmi-opal',
+          technicalRevisionId: '2026-09-12',
+          variantId: 'brown-engobe',
+        },
+        technicalSpecSnapshot: {
+          schemaVersion: 1,
+          kind: 'roof-tile',
+          physicalWidthMm: 180,
+          physicalLengthMm: 380,
+          material: 'ceramic',
+          installationModes: [
+            {
+              id: 'scale',
+              coverWidthMm: 180,
+              gaugeRangeMm: { min: 145, max: 165 },
+              minPitchDeg: 30,
+            },
+          ],
+        },
+      },
+    },
+  ]);
+  expect(useAssembly.getState().historyPast).toHaveLength(1);
+  expect(
+    useAssembly.getState().projectDocument.project.coverings[0]?.product
+      .catalogRef?.technicalRevisionId,
+  ).toBe('2026-09-12');
+  useAssembly.getState().undo();
+  expect(useAssembly.getState().projectDocument).toEqual(before);
+});
 it('keeps a too-wide bay placement unchanged and reports exact geometric feedback', () => {
   useAssembly.getState().addRoofWindow();
   const id = 'feature:roof-window-1';

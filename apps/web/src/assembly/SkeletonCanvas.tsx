@@ -39,8 +39,11 @@ import {
   resolveBattenLayout,
   resolveRoofFeatureCollisions,
   resolveNearestRoofWindowBay,
+  resolveRoofWindowAlignmentSnap,
   resolveRoofPlaneBasis,
+  roofPlaneIntervalsAtV,
   type CounterBattenLayoutResult,
+  type RoofWindowAlignmentGuide,
   type RoofSurfaceGeometryResult,
 } from '@cieslacalc/roof-math';
 import type {
@@ -158,6 +161,7 @@ function SkeletonCanvasComponent({
       selectedId: store.workbench.selectedId,
       selectedPrototypeId: store.workbench.selectedPrototypeId,
       selectedInstanceId: store.workbench.selectedInstanceId,
+      selectedFeatureIds: store.workbench.selectedFeatureIds,
       viewPreset: store.workbench.viewPreset,
       buildUpView: store.workbench.buildUpView,
       isolateSelection: store.workbench.isolateSelection,
@@ -179,6 +183,7 @@ function SkeletonCanvasComponent({
       moveRoofWindow: store.moveRoofWindow,
       setRoofWindowPlacementPlane: store.setRoofWindowPlacementPlane,
       placeRoofWindowAt: store.placeRoofWindowAt,
+      selectRoofWindow: store.selectRoofWindow,
       select: store.select,
       setCanonicalField: store.setCanonicalField,
       activateOperation: store.activateOperation,
@@ -192,6 +197,7 @@ function SkeletonCanvasComponent({
       selectedId: selectedStore.selectedId,
       selectedPrototypeId: selectedStore.selectedPrototypeId,
       selectedInstanceId: selectedStore.selectedInstanceId,
+      selectedFeatureIds: selectedStore.selectedFeatureIds,
       viewPreset: selectedStore.viewPreset,
       buildUpView: selectedStore.buildUpView,
       isolateSelection: selectedStore.isolateSelection,
@@ -222,6 +228,8 @@ function SkeletonCanvasComponent({
     roofPlaneId: string;
     feature: RoofWindowFeature;
   }>();
+  const [alignmentGuide, setAlignmentGuide] =
+    useState<RoofWindowAlignmentGuide>();
   useEffect(() => {
     if (!container.current || typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(([entry]) => {
@@ -232,10 +240,10 @@ function SkeletonCanvasComponent({
   }, []);
   useEffect(() => {
     const keyDown = (event: globalThis.KeyboardEvent) => {
-      const target = event.target as HTMLElement | null;
+      const target = event.target;
       if (
-        target?.matches('input, textarea, select') ||
-        target?.isContentEditable
+        target instanceof HTMLElement &&
+        (target.matches('input, textarea, select') || target.isContentEditable)
       )
         return;
       if (event.code === 'Space') {
@@ -733,7 +741,15 @@ function SkeletonCanvasComponent({
     if (!selectedStore.placementTool) return;
     const position = planePositionFromPointer(event, plane);
     if (!position) return;
-    const seed = createDefaultRoofWindow(template, plane.roofPlaneId);
+    const source = selectedStore.placementTool.sourceFeatureId
+      ? roofWindows.find(
+          (feature) =>
+            feature.id === selectedStore.placementTool?.sourceFeatureId,
+        )
+      : undefined;
+    const seed = source
+      ? { ...source, roofPlaneId: plane.roofPlaneId }
+      : createDefaultRoofWindow(template, plane.roofPlaneId);
     try {
       setPlacementGhost({
         roofPlaneId: plane.roofPlaneId,
@@ -787,10 +803,14 @@ function SkeletonCanvasComponent({
   ) => {
     if (selectedStore.measurement) return;
     if (event.button !== 0 && event.pointerType !== 'touch') return;
+    if (event.shiftKey) {
+      event.stopPropagation();
+      return;
+    }
     event.preventDefault();
     event.stopPropagation();
     state.beginTransaction();
-    state.select(overlay.feature.id);
+    state.selectRoofWindow(overlay.feature.id);
     drag.current = {
       kind: 'roof-window',
       pointerId: event.pointerId,
@@ -811,6 +831,7 @@ function SkeletonCanvasComponent({
     else state.commitTransaction();
     setActiveHandle(null);
     setPreview(null);
+    setAlignmentGuide(undefined);
     if (svg.current?.hasPointerCapture(active.pointerId))
       svg.current.releasePointerCapture(active.pointerId);
   };
@@ -851,16 +872,39 @@ function SkeletonCanvasComponent({
       const vDeltaMm =
         ((active.uAxis.x * deltaY - active.uAxis.y * deltaX) / determinant) *
         100;
-      state.moveRoofWindow(active.featureId, {
-        uMm: active.startPosition.uMm + uDeltaMm,
-        vMm: active.startPosition.vMm + vDeltaMm,
-      });
       const draggedWindow = roofWindows.find(
         (feature) => feature.id === active.featureId,
       );
+      if (!draggedWindow) return;
+      const desired = {
+        uMm: active.startPosition.uMm + uDeltaMm,
+        vMm: active.startPosition.vMm + vDeltaMm,
+      };
+      const pixelsPerMm = Math.hypot(active.vAxis.x, active.vAxis.y) / 100;
+      const snapped = event.altKey
+        ? { feature: { ...draggedWindow, position: desired } }
+        : resolveRoofWindowAlignmentSnap({
+            template,
+            feature: { ...draggedWindow, position: desired },
+            otherWindows: roofWindows,
+            maxDistanceMm: pixelsPerMm > 0 ? 12 / pixelsPerMm : 0,
+          });
+      state.moveRoofWindow(active.featureId, snapped.feature.position);
+      setAlignmentGuide(snapped.guide);
+      const snapMode = snapped.guide
+        ? t(
+            `assembly.${
+              snapped.guide.mode === 'lower-edge'
+                ? 'alignmentModeLower'
+                : snapped.guide.mode === 'centre'
+                  ? 'alignmentModeCentre'
+                  : 'alignmentModeUpper'
+            }`,
+          )
+        : undefined;
       setPreview(
         draggedWindow
-          ? `${draggedWindow.id.replace('feature:roof-window-', 'O')} · ${length(draggedWindow.widthMm)} × ${length(draggedWindow.heightMm)}`
+          ? `${draggedWindow.id.replace('feature:roof-window-', 'O')} · ${length(draggedWindow.widthMm)} × ${length(draggedWindow.heightMm)}${snapped.guide ? ` · ${t('assembly.alignmentSnapLabel', { id: snapped.guide.sourceFeatureId.replace('feature:roof-window-', 'O'), mode: snapMode })}` : ''}`
           : t('assembly.roofWindow'),
       );
       return;
@@ -1108,6 +1152,32 @@ function SkeletonCanvasComponent({
   const measurementFrom = selectedStore.measurement?.firstPoint;
   const measurementTo =
     selectedStore.measurement?.result?.to ?? hoveredMeasurePoint;
+  const alignmentGuideLines = alignmentGuide
+    ? (() => {
+        const basis = resolveRoofPlaneBasis(
+          template,
+          alignmentGuide.roofPlaneId,
+        );
+        return roofPlaneIntervalsAtV(
+          template,
+          alignmentGuide.roofPlaneId,
+          alignmentGuide.referenceVMm,
+        ).map((segment) => ({
+          from: worldPoint(
+            projectPlaneLocalToWorld(basis, {
+              uMm: segment.fromUMm,
+              vMm: alignmentGuide.referenceVMm,
+            }),
+          ),
+          to: worldPoint(
+            projectPlaneLocalToWorld(basis, {
+              uMm: segment.toUMm,
+              vMm: alignmentGuide.referenceVMm,
+            }),
+          ),
+        }));
+      })()
+    : [];
   return (
     <div
       className={`a-canvas a-skeleton preset-${state.workbench.viewPreset} layer-view-${state.workbench.buildUpView} ${state.workbench.isolateSelection ? 'is-isolating' : ''} ${spacePressed ? 'is-space-pan' : ''} ${selectedStore.placementTool ? 'is-placement-tool' : ''}`}
@@ -1145,7 +1215,13 @@ function SkeletonCanvasComponent({
       </div>
       {selectedStore.placementTool && (
         <div className="a-placement-banner" role="status">
-          {t('assembly.placementChoosePlane')}
+          {t(
+            `assembly.${
+              selectedStore.placementTool.mode === 'duplicate'
+                ? 'duplicatePlacementHint'
+                : 'placementChoosePlane'
+            }`,
+          )}
         </div>
       )}
       <svg
@@ -1230,6 +1306,28 @@ function SkeletonCanvasComponent({
                 points={pointString(guide.projected)}
               />
             ))}
+          </g>
+        )}
+        {alignmentGuide && alignmentGuideLines.length > 0 && (
+          <g className="a-window-alignment-guide" pointerEvents="none">
+            {alignmentGuideLines.map((line, index) => (
+              <line
+                key={`${alignmentGuide.sourceFeatureId}:${index}`}
+                x1={line.from.x}
+                y1={line.from.y}
+                x2={line.to.x}
+                y2={line.to.y}
+              />
+            ))}
+            <text
+              x={alignmentGuideLines[0]!.from.x}
+              y={alignmentGuideLines[0]!.from.y - 8}
+            >
+              {alignmentGuide.sourceFeatureId.replace(
+                'feature:roof-window-',
+                'O',
+              )}
+            </text>
           </g>
         )}
         {policy.showMembrane && (
@@ -1597,6 +1695,9 @@ function SkeletonCanvasComponent({
             {windowOverlays.map((overlay) => {
               const selected =
                 state.workbench.selectedId === overlay.feature.id;
+              const groupSelected = state.workbench.selectedFeatureIds.includes(
+                overlay.feature.id,
+              );
               const collides = overlay.collisionIds.size > 0;
               return (
                 <g
@@ -1604,13 +1705,13 @@ function SkeletonCanvasComponent({
                   role="button"
                   tabIndex={0}
                   aria-label={`${t('assembly.roofWindow')} ${overlay.feature.id}`}
-                  aria-pressed={selected}
+                  aria-pressed={groupSelected}
                   data-roof-window={overlay.feature.id}
                   data-collision={collides || undefined}
-                  className={`a-roof-window ${selected ? 'is-selected' : ''} ${collides ? 'is-collision' : ''}`}
+                  className={`a-roof-window ${selected ? 'is-selected' : ''} ${groupSelected && !selected ? 'is-group-selected' : ''} ${collides ? 'is-collision' : ''}`}
                   onClick={(event) => {
                     event.stopPropagation();
-                    state.select(overlay.feature.id);
+                    state.selectRoofWindow(overlay.feature.id, event.shiftKey);
                   }}
                   onDoubleClick={(event) => {
                     event.stopPropagation();
@@ -1620,7 +1721,7 @@ function SkeletonCanvasComponent({
                     if (nudgeWindow(event, overlay.feature)) return;
                     if (event.key === 'Enter' || event.key === ' ') {
                       event.preventDefault();
-                      state.select(overlay.feature.id);
+                      state.selectRoofWindow(overlay.feature.id);
                     }
                   }}
                   onPointerDown={(event) => startWindowDrag(event, overlay)}

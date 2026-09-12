@@ -1,4 +1,8 @@
 import { z } from 'zod';
+import {
+  coveringAssignmentSpecSchema,
+  type CoveringAssignmentSpec,
+} from '@cieslacalc/covering-core';
 import { roofTemplateSchema } from '@cieslacalc/roof-math';
 import type {
   RoofBuildUp,
@@ -63,6 +67,7 @@ export interface RoofProjectDocumentV1 {
     features: RoofFeature[];
     openingFraming: RoofOpeningFramingSpec[];
     buildUp: RoofBuildUp;
+    coverings: CoveringAssignmentSpec[];
   };
 }
 
@@ -74,6 +79,7 @@ export const roofProjectDocumentV1Schema = z
       features: z.array(roofFeatureSchema).optional(),
       openingFraming: z.array(roofOpeningFramingSchema).optional(),
       buildUp: roofBuildUpSchema.optional(),
+      coverings: z.array(coveringAssignmentSpecSchema).optional(),
     }),
   })
   .transform((document): RoofProjectDocumentV1 => ({
@@ -83,6 +89,7 @@ export const roofProjectDocumentV1Schema = z
       features: document.project.features ?? [],
       openingFraming: document.project.openingFraming ?? [],
       buildUp: document.project.buildUp ?? {},
+      coverings: document.project.coverings ?? [],
     },
   }));
 
@@ -91,7 +98,7 @@ export function createRoofProjectDocument(
   composition: Partial<
     Pick<
       RoofProjectDocumentV1['project'],
-      'features' | 'openingFraming' | 'buildUp'
+      'features' | 'openingFraming' | 'buildUp' | 'coverings'
     >
   > = {},
 ): RoofProjectDocumentV1 {
@@ -102,6 +109,7 @@ export function createRoofProjectDocument(
       features: composition.features ?? [],
       openingFraming: composition.openingFraming ?? [],
       buildUp: composition.buildUp ?? {},
+      coverings: composition.coverings ?? [],
     },
   });
 }

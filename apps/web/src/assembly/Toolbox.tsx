@@ -8,6 +8,8 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
+  Square,
+  SquareCheckBig,
   Triangle,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -291,26 +293,46 @@ export function Toolbox({
           {t('assembly.openings')} (
           {state.projectDocument.project.features.length})
         </summary>
-        {state.projectDocument.project.features.map((feature) => (
-          <button
-            key={feature.id}
-            className="a-tool"
-            aria-pressed={state.workbench.selectedId === feature.id}
-            onClick={() => {
-              state.select(feature.id);
-              state.setViewPreset('openings');
-            }}
-          >
-            <Box size={20} />
-            <span>
-              {t('assembly.roofWindow')}{' '}
-              {feature.id.replace('feature:roof-window-', 'O')}
-              {state.projectDocument.project.openingFraming.some(
-                (spec) => spec.featureId === feature.id,
-              ) && <small>✓ {t('assembly.geometricFraming')}</small>}
-            </span>
-          </button>
-        ))}
+        {state.projectDocument.project.features.map((feature) => {
+          const groupSelected = state.workbench.selectedFeatureIds.includes(
+            feature.id,
+          );
+          const featureCode = feature.id.replace('feature:roof-window-', 'O');
+          return (
+            <div className="a-opening-tool-row" key={feature.id}>
+              <button
+                className="a-tool"
+                aria-pressed={state.workbench.selectedId === feature.id}
+                onClick={(event) =>
+                  state.selectRoofWindow(feature.id, event.shiftKey)
+                }
+              >
+                <Box size={20} />
+                <span>
+                  {t('assembly.roofWindow')} {featureCode}
+                  {state.projectDocument.project.openingFraming.some(
+                    (spec) => spec.featureId === feature.id,
+                  ) && <small>✓ {t('assembly.geometricFraming')}</small>}
+                </span>
+              </button>
+              <button
+                className="a-opening-select"
+                aria-label={t(
+                  `assembly.${groupSelected ? 'removeFromWindowSelection' : 'addToWindowSelection'}`,
+                  { id: featureCode },
+                )}
+                aria-pressed={groupSelected}
+                onClick={() => state.selectRoofWindow(feature.id, true)}
+              >
+                {groupSelected ? (
+                  <SquareCheckBig size={18} />
+                ) : (
+                  <Square size={18} />
+                )}
+              </button>
+            </div>
+          );
+        })}
         <button
           className={`a-tool a-add ${state.workbench.placementTool ? 'is-active' : ''}`}
           aria-pressed={!!state.workbench.placementTool}

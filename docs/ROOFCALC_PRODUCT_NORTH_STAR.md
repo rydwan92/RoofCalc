@@ -145,6 +145,7 @@ A dormer should be a **subassembly** with its own roof planes/members and an ope
 RoofCalc must distinguish:
 
 ### Trasowanie
+
 Marking/layout before machining:
 
 - choose datum/reference,
@@ -155,6 +156,7 @@ Marking/layout before machining:
 - verify control dimensions.
 
 ### Cięcie
+
 Actual material-removal operation.
 
 Recommended umbrella concept:
@@ -308,7 +310,7 @@ Examples:
 
 ---
 
-## 13. Covering module — future
+## 13. Covering module
 
 Roof tiles and sheet roofing belong to a separate module.
 
@@ -329,6 +331,10 @@ price engine
 ```
 
 Product/pricing data may later come from manual user input, company price lists, supplier feeds or producer data.
+
+A saved project owns a versioned technical product snapshot and may retain an optional catalogue product/revision reference. The snapshot, not a live catalogue lookup, is the deterministic calculation input. Catalogue updates require explicit user review; manual products use the same snapshot contract without a catalogue reference.
+
+Family-specific layout engines consume neutral roof-plane/opening geometry and the technical snapshot, then expose resolved quantities through the generic quantity boundary. Catalogue browsing, technical revisions, variants and commercial offers remain separate concerns.
 
 Never couple product prices to `roof-math`.
 

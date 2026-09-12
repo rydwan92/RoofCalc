@@ -1297,6 +1297,56 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+> Iteration 018 started on 2026-09-12 from clean commit `5d3442baf3968ffcb6b03c504c70a8e27658124f` (`V17`). The user-approved attached V18 contract supersedes the V17 browser-only `NEXT ACTION`.
+
+**Iteration:** `018 — Opening Productivity and Covering Platform`
+
+**Status:** `COMPLETE IN SOURCE — AUTOMATED VALIDATION PASS; REQUIRED LIVE BROWSER/DEVICE QA UNAVAILABLE`
+
+**V17 audit and baseline:** clean `main`; typecheck PASS; **354 tests across 39 files** PASS; lint PASS; production build PASS; `git diff --check` PASS. Baseline web main **530.03 kB / 150.05 kB gzip**, lazy Skeleton Canvas **35.36 / 10.94 kB**, lazy Material Schedule **8.28 / 2.26 kB**, CSS **92.96 / 18.22 kB**. V17 canonical units, spacing, Measure, Focus, camera, ridge, opening/framing, layer and quantity boundaries were retained. The explicitly requested in-app Browser returned `Browser is not available: iab` before implementation, so live visual/device QA is not claimed.
+
+**Completed roof-window productivity:**
+
+- Added source-based duplicate placement from the Inspector and `Ctrl/Cmd+D`. Starting/cancelling is transient with zero history; the same roof plane is initially active; width, height and clearance copy into a ghost; one click creates one stable new opening ID and one Undo item. Accepted framing, collision/bay results, derived batten splits, quantities and view state do not copy.
+- Added transient primary-plus-set roof-window selection. Shift-click works on the drawing, and each Toolbox row has an explicit keyboard/mobile group-selection control. The selection set, feedback, placement and guides remain outside `ProjectDocument` and history.
+- Added pure lower-edge, centre and upper-edge alignment in plane-local `v`, with the primary opening fixed and exact same-plane/fit rejection. Added pure equal-clear-gap distribution for 3+ differently sized openings, preserving the outer anchors. Store Apply is one canonical history item and Undo restores the exact document; distribution has a zero-history preview.
+- Added same-plane lower/centre/upper drag snapping. The threshold is derived from screen ergonomics, but the written target is exact canonical millimetres. The guide is transient and restrained; Alt disables snapping. Opening context now shows compact counts for openings, collisions, accepted framing and review-required framing.
+
+**Completed covering platform:**
+
+- Researched current official technical data for interlocking/plain tiles, fixed modular sheets, cut-to-length sheet tile and standing-seam panels; recorded sources and modelling conclusions in `docs/domain/COVERING_PRODUCT_MODEL.md`.
+- Added pure `@cieslacalc/covering-core` with explicit Zod/TypeScript unions for `roof-tile`, `modular-sheet` and `standing-seam`, stable language-neutral installation modes, physical/effective dimensions, gauge/panel ranges, pitch constraints, versioned technical snapshots, optional catalogue revision references, assignments, structured compatibility results and future layout/quantity interfaces. It has only Zod as a dependency and contains no React, Zustand, DOM, server, database, HTTP, translation, manufacturer records or prices.
+- Added optional `project.coverings`, normalized to `[]` for old V17/V1 documents. Canonical mutations preserve the assignments; covering intent participates in Undo/Redo; manual and catalogue-referenced products serialize through the same technical snapshot contract. Transient selection and hypothetical catalogue filters are stripped/not serialized.
+- Documented immutable technical revision snapshots, explicit future refresh, conceptual Manufacturer/Product Family/Technical Revision/Commercial Variant/Price List entities, the `Covering Engine → Quantity Source → quantity-core → Cost Engine` boundary and why no database/API/UI/quantity algorithm belongs in V18. Updated only the clarified covering section of the Product North Star.
+
+**Files changed:**
+
+- Opening math/tests: `packages/roof-math/src/roof-features.{ts,test.ts}`.
+- Covering domain: new `packages/covering-core/{package.json,src/index.ts,src/index.test.ts}`, workspace manifests and lockfile.
+- Project boundary/tests: `packages/calculator-core/src/project-document.{ts,test.ts}`.
+- Web workbench/tests: `apps/web/src/assembly/{Inspector,Page,SkeletonCanvas,Toolbox,WorkbenchContextBar,store,workbench}` plus translations and responsive styles.
+- Documentation: V18 prompt, V18 architecture, covering catalogue/pricing boundary, covering product research, Product North Star and this checkpoint.
+
+**Validation, performance and QA:**
+
+- Final repository-pinned typecheck PASS; ESLint PASS; **386 tests across 40 files PASS**; changed-file Prettier PASS; `git diff --check` PASS; production web/API build PASS.
+- Production HTTP smoke: `/api/health` returned 200 with the expected service payload and `/` returned 200 with the app root.
+- Final web output: main **548.10 kB / 154.37 kB gzip**, lazy Skeleton Canvas **36.95 / 11.38 kB**, Material Schedule **8.28 / 2.27 kB**, CSS **94.80 / 18.50 kB**, React **51.29 / 18.04 kB**, localization **49.54 / 16.09 kB**, icons **15.79 / 3.42 kB**; API ESM **1.11 kB**. The main grew **18.07 kB / 4.32 kB gzip** and still triggers the known Vite >500 kB advisory.
+- jsdom covers duplicate keyboard discovery, explicit non-hover multi-selection, group alignment and compact context facts in addition to pure/store regressions. The requested in-app Browser was unavailable, so no live 1440/1024/768/360, native pointer/touch, clipping or horizontal-overflow claim is made.
+
+**Known limitations / assumptions:**
+
+- V18 intentionally exposes no `Pokrycie` task, catalogue/API/database, price/cost state or tile/sheet/seam quantity/layout implementation. Manufacturer facts are a dated research baseline and must be reverified for each future technical revision.
+- Alignment/snap candidates are roof windows on one roof plane. Distribution needs at least three and preserves the first/last geometric `u` anchors; rejected operations never clamp into an approximate answer.
+- Covering compatibility checks compare declared pitch/gauge constraints only and are not structural, installation or waterproofing approval.
+- Live device acceptance remains outstanding only because the required in-app Browser surface was unavailable.
+
+**NEXT ACTION:**
+
+> Prepare Iteration 019 — Tile Engine on top of the proven `covering-core` contracts. Reverify the chosen tile technical revisions, design pure plane/opening-aware tile layout intent/results and quantity-source output, then expose a real-value `Pokrycie` task. Do not begin V19 automatically. Do not add pricing or sheet/seam layout in V19.
+
+---
+
 > Iteration 017 completed in source on 2026-09-11 from clean commit `162613584d7f1d0f09f226bf4d691fd0ee223c74`. The user-approved attached V17 contract superseded the V16 browser-only `NEXT ACTION`.
 
 **Iteration:** `017 — Professional Workbench Polish, Units 2.0, smart dimensioning, measurement and ridge completion`

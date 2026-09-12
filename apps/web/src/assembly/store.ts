@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { CoveringAssignmentSpec } from '@cieslacalc/covering-core';
 import {
   createRoofProjectDocument,
   type RoofProjectDocumentV1,
@@ -9,6 +10,7 @@ import {
 } from '@cieslacalc/drawing-engine';
 import {
   addPurlin,
+  alignRoofWindows,
   assemblyDefaults,
   assemblyFromRoofTemplate,
   calculateBirdsmouth,
@@ -17,6 +19,7 @@ import {
   createDefaultRoofWindow,
   createOpeningFramingDraft,
   createRoofSkeleton,
+  distributeRoofWindowsAlongEave,
   distributePurlins,
   gableTemplateFromAssembly,
   HIP_RAFTER_PROTOTYPE_ID,
@@ -28,6 +31,9 @@ import {
   seatLength,
   toMillimetres,
   type LengthUnit,
+  type RoofWindowAlignmentMode,
+  type RoofWindowAlignmentResult,
+  type RoofWindowDistributionResult,
 } from '@cieslacalc/roof-math';
 import type {
   AssemblySpec,
@@ -175,6 +181,16 @@ function editedSpec(
   return next;
 }
 const templateDefaults = gableTemplateFromAssembly(assemblyDefaults);
+function nextRoofWindowId(features: readonly { id: string }[]) {
+  const nextNumber =
+    Math.max(
+      0,
+      ...features.map((feature) =>
+        Number(/roof-window-(\d+)$/.exec(feature.id)?.[1] ?? 0),
+      ),
+    ) + 1;
+  return `feature:roof-window-${nextNumber}`;
+}
 function valueForTemplate(
   template: RoofTemplateSpec,
   spec: AssemblySpec,
@@ -223,6 +239,7 @@ function committedTemplate(
       features: currentDocument?.project.features ?? [],
       openingFraming: currentDocument?.project.openingFraming ?? [],
       buildUp: currentDocument?.project.buildUp ?? {},
+      coverings: currentDocument?.project.coverings ?? [],
     }),
     template,
     spec,
@@ -309,12 +326,19 @@ export interface AssemblyState {
   }) => void;
   stepBackContext: () => void;
   beginRoofWindowPlacement: () => void;
+  beginRoofWindowDuplicatePlacement: (sourceFeatureId: string) => boolean;
   setRoofWindowPlacementPlane: (roofPlaneId?: string) => void;
   cancelRoofWindowPlacement: () => void;
   placeRoofWindowAt: (
     roofPlaneId: string,
     position: RoofWindowFeature['position'],
   ) => string | undefined;
+  selectRoofWindow: (id: string, additive?: boolean) => void;
+  clearRoofWindowSelection: () => void;
+  alignSelectedRoofWindows: (
+    mode: RoofWindowAlignmentMode,
+  ) => RoofWindowAlignmentResult;
+  distributeSelectedRoofWindows: () => RoofWindowDistributionResult;
   setUnit: (unit: LengthUnit) => void;
   setField: (field: EditField, raw: string) => void;
   setCanonicalField: (field: EditField, value: number) => void;
@@ -343,6 +367,7 @@ export interface AssemblyState {
   setBattenLayout: (layout?: BattenLayoutSpec) => void;
   setMembraneLayer: (layer?: MembraneLayerSpec) => void;
   setCounterBattenLayout: (layout?: CounterBattenLayoutSpec) => void;
+  setCoveringAssignments: (assignments: CoveringAssignmentSpec[]) => void;
   add: () => void;
   remove: (id: string) => void;
   select: (id: string, prototypeId?: string) => void;
@@ -419,6 +444,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         workbench: {
           ...state.workbench,
           selectedId: 'roof',
+          selectedFeatureIds: [],
           selectedPrototypeId: undefined,
           selectedInstanceId: undefined,
           selectedScheduleRowId: undefined,
@@ -442,6 +468,8 @@ export const useAssembly = create<AssemblyState>((set) => ({
           viewPreset === 'cuts' ? state.workbench.returnViewPreset : undefined,
         placementTool:
           viewPreset === 'openings' ? state.workbench.placementTool : undefined,
+        selectedFeatureIds:
+          viewPreset === 'openings' ? state.workbench.selectedFeatureIds : [],
         placementFeedback:
           viewPreset === 'openings'
             ? state.workbench.placementFeedback
@@ -739,6 +767,18 @@ export const useAssembly = create<AssemblyState>((set) => ({
             placementFeedback: undefined,
           },
         };
+      if (state.workbench.selectedFeatureIds.length > 1)
+        return {
+          workbench: {
+            ...state.workbench,
+            selectedFeatureIds: state.workbench.selectedId.startsWith(
+              'feature:roof-window-',
+            )
+              ? [state.workbench.selectedId]
+              : [],
+            windowLayoutFeedback: undefined,
+          },
+        };
       if (state.workbench.selectedScheduleRowId)
         return {
           workbench: {
@@ -805,6 +845,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
           workbench: {
             ...state.workbench,
             selectedId: 'roof',
+            selectedFeatureIds: [],
             selectedPrototypeId: undefined,
             selectedInstanceId: undefined,
             activeOperationId: undefined,
@@ -821,12 +862,50 @@ export const useAssembly = create<AssemblyState>((set) => ({
         viewPreset: 'openings',
         canvasView: 'skeleton',
         measurement: undefined,
-        placementTool: { kind: 'roof-window', step: 'choose-plane' },
+        placementTool: {
+          kind: 'roof-window',
+          mode: 'new',
+          step: 'choose-plane',
+        },
         placementFeedback: undefined,
+        windowLayoutFeedback: undefined,
         activeOperationId: undefined,
         focusId: undefined,
       },
     })),
+  beginRoofWindowDuplicatePlacement: (sourceFeatureId) => {
+    let started = false;
+    set((state) => {
+      const source = state.projectDocument.project.features.find(
+        (feature): feature is RoofWindowFeature =>
+          feature.kind === 'roof-window' && feature.id === sourceFeatureId,
+      );
+      if (!source) return state;
+      started = true;
+      return {
+        workbench: {
+          ...state.workbench,
+          selectedId: source.id,
+          selectedFeatureIds: [source.id],
+          viewPreset: 'openings',
+          canvasView: 'skeleton',
+          measurement: undefined,
+          placementTool: {
+            kind: 'roof-window',
+            mode: 'duplicate',
+            step: 'position',
+            roofPlaneId: source.roofPlaneId,
+            sourceFeatureId: source.id,
+          },
+          placementFeedback: undefined,
+          windowLayoutFeedback: undefined,
+          activeOperationId: undefined,
+          focusId: undefined,
+        },
+      };
+    });
+    return started;
+  },
   setRoofWindowPlacementPlane: (roofPlaneId) =>
     set((state) => {
       if (!state.workbench.placementTool) return state;
@@ -835,8 +914,10 @@ export const useAssembly = create<AssemblyState>((set) => ({
           ...state.workbench,
           placementTool: {
             kind: 'roof-window',
+            mode: state.workbench.placementTool.mode,
             step: roofPlaneId ? 'position' : 'choose-plane',
             roofPlaneId,
+            sourceFeatureId: state.workbench.placementTool.sourceFeatureId,
           },
         },
       };
@@ -852,20 +933,23 @@ export const useAssembly = create<AssemblyState>((set) => ({
   placeRoofWindowAt: (roofPlaneId, position) => {
     let createdId: string | undefined;
     set((state) => {
-      if (!state.workbench.placementTool) return state;
-      const nextNumber =
-        Math.max(
-          0,
-          ...state.projectDocument.project.features.map((feature) =>
-            Number(/roof-window-(\d+)$/.exec(feature.id)?.[1] ?? 0),
-          ),
-        ) + 1;
+      const placementTool = state.workbench.placementTool;
+      if (!placementTool) return state;
       let feature: RoofWindowFeature;
       try {
-        const seed = createDefaultRoofWindow(state.template, roofPlaneId);
+        const source = placementTool.sourceFeatureId
+          ? state.projectDocument.project.features.find(
+              (candidate): candidate is RoofWindowFeature =>
+                candidate.kind === 'roof-window' &&
+                candidate.id === placementTool.sourceFeatureId,
+            )
+          : undefined;
+        const seed = source
+          ? { ...source, roofPlaneId }
+          : createDefaultRoofWindow(state.template, roofPlaneId);
         feature = clampRoofWindow(state.template, {
           ...seed,
-          id: `feature:roof-window-${nextNumber}`,
+          id: nextRoofWindowId(state.projectDocument.project.features),
           position: {
             uMm: position.uMm - seed.widthMm / 2,
             vMm: position.vMm - seed.heightMm / 2,
@@ -887,6 +971,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         features: [...state.projectDocument.project.features, feature],
         openingFraming: state.projectDocument.project.openingFraming,
         buildUp: state.projectDocument.project.buildUp,
+        coverings: state.projectDocument.project.coverings,
       });
       return {
         ...withHistory(
@@ -896,12 +981,14 @@ export const useAssembly = create<AssemblyState>((set) => ({
         workbench: {
           ...state.workbench,
           selectedId: feature.id,
+          selectedFeatureIds: [feature.id],
           selectedPrototypeId: undefined,
           selectedInstanceId: undefined,
           viewPreset: 'openings',
           inspectorOpen: true,
           placementTool: undefined,
           placementFeedback: { featureId: feature.id, status: 'placed' },
+          windowLayoutFeedback: undefined,
         },
       };
     });
@@ -1097,21 +1184,15 @@ export const useAssembly = create<AssemblyState>((set) => ({
     }),
   addRoofWindow: () =>
     set((state) => {
-      const nextNumber =
-        Math.max(
-          0,
-          ...state.projectDocument.project.features.map((feature) =>
-            Number(/roof-window-(\d+)$/.exec(feature.id)?.[1] ?? 0),
-          ),
-        ) + 1;
       const feature = {
         ...createDefaultRoofWindow(state.template),
-        id: `feature:roof-window-${nextNumber}`,
+        id: nextRoofWindowId(state.projectDocument.project.features),
       };
       const document = createRoofProjectDocument(state.template, {
         features: [...state.projectDocument.project.features, feature],
         openingFraming: state.projectDocument.project.openingFraming,
         buildUp: state.projectDocument.project.buildUp,
+        coverings: state.projectDocument.project.coverings,
       });
       return {
         ...withHistory(
@@ -1121,11 +1202,13 @@ export const useAssembly = create<AssemblyState>((set) => ({
         workbench: {
           ...state.workbench,
           selectedId: feature.id,
+          selectedFeatureIds: [feature.id],
           selectedPrototypeId: undefined,
           selectedInstanceId: undefined,
           viewPreset: 'openings',
           inspectorOpen: true,
           placementFeedback: { featureId: feature.id, status: 'placed' },
+          windowLayoutFeedback: undefined,
         },
       };
     }),
@@ -1136,12 +1219,16 @@ export const useAssembly = create<AssemblyState>((set) => ({
       );
       if (features.length === state.projectDocument.project.features.length)
         return state;
+      const selectedFeatureIds = state.workbench.selectedFeatureIds.filter(
+        (featureId) => featureId !== id,
+      );
       const document = createRoofProjectDocument(state.template, {
         features,
         openingFraming: state.projectDocument.project.openingFraming.filter(
           (spec) => spec.featureId !== id,
         ),
         buildUp: state.projectDocument.project.buildUp,
+        coverings: state.projectDocument.project.coverings,
       });
       return {
         ...withHistory(
@@ -1150,12 +1237,185 @@ export const useAssembly = create<AssemblyState>((set) => ({
         ),
         workbench: {
           ...state.workbench,
-          selectedId: 'roof',
+          selectedId: selectedFeatureIds[0] ?? 'roof',
+          selectedFeatureIds,
           placementFeedback: undefined,
+          windowLayoutFeedback: undefined,
           openingFramingProposalFeatureId: undefined,
         },
       };
     }),
+  selectRoofWindow: (id, additive = false) =>
+    set((state) => {
+      const exists = state.projectDocument.project.features.some(
+        (feature) => feature.kind === 'roof-window' && feature.id === id,
+      );
+      if (!exists) return state;
+      if (!additive)
+        return {
+          workbench: {
+            ...state.workbench,
+            selectedId: id,
+            selectedFeatureIds: [id],
+            selectedPrototypeId: undefined,
+            selectedInstanceId: undefined,
+            viewPreset: 'openings',
+            inspectorOpen: true,
+            placementTool: undefined,
+            placementFeedback: undefined,
+            windowLayoutFeedback: undefined,
+          },
+        };
+      const selected = new Set(state.workbench.selectedFeatureIds);
+      if (selected.has(id)) selected.delete(id);
+      else selected.add(id);
+      const selectedFeatureIds = [...selected];
+      const selectedId = selectedFeatureIds.includes(state.workbench.selectedId)
+        ? state.workbench.selectedId
+        : (selectedFeatureIds[0] ?? 'roof');
+      return {
+        workbench: {
+          ...state.workbench,
+          selectedId,
+          selectedFeatureIds,
+          selectedPrototypeId: undefined,
+          selectedInstanceId: undefined,
+          viewPreset: 'openings',
+          inspectorOpen: true,
+          placementTool: undefined,
+          placementFeedback: undefined,
+          windowLayoutFeedback: undefined,
+        },
+      };
+    }),
+  clearRoofWindowSelection: () =>
+    set((state) => ({
+      workbench: {
+        ...state.workbench,
+        selectedId: 'roof',
+        selectedFeatureIds: [],
+        windowLayoutFeedback: undefined,
+      },
+    })),
+  alignSelectedRoofWindows: (mode) => {
+    let result: RoofWindowAlignmentResult = {
+      status: 'rejected',
+      reason: 'not-enough-windows',
+    };
+    set((state) => {
+      const windows = state.projectDocument.project.features.filter(
+        (feature): feature is RoofWindowFeature =>
+          feature.kind === 'roof-window' &&
+          state.workbench.selectedFeatureIds.includes(feature.id),
+      );
+      result = alignRoofWindows({
+        template: state.template,
+        windows,
+        anchorFeatureId: state.workbench.selectedId,
+        mode,
+      });
+      if (result.status === 'rejected')
+        return {
+          workbench: {
+            ...state.workbench,
+            windowLayoutFeedback: {
+              status: 'rejected',
+              operation: 'align',
+              reason: result.reason,
+            },
+          },
+        };
+      const positions = new Map(
+        result.changes.map((change) => [
+          change.featureId,
+          change.proposedPosition,
+        ]),
+      );
+      const document = createRoofProjectDocument(state.template, {
+        features: state.projectDocument.project.features.map((feature) =>
+          feature.kind === 'roof-window' && positions.has(feature.id)
+            ? { ...feature, position: positions.get(feature.id)! }
+            : feature,
+        ),
+        openingFraming: state.projectDocument.project.openingFraming,
+        buildUp: state.projectDocument.project.buildUp,
+        coverings: state.projectDocument.project.coverings,
+      });
+      return {
+        ...withHistory(
+          state,
+          committedDocument(document, state.drafts, state.invalidFields),
+        ),
+        workbench: {
+          ...state.workbench,
+          windowLayoutFeedback: {
+            status: 'applied',
+            operation: 'align',
+          },
+        },
+      };
+    });
+    return result;
+  },
+  distributeSelectedRoofWindows: () => {
+    let result: RoofWindowDistributionResult = {
+      status: 'rejected',
+      reason: 'not-enough-windows',
+    };
+    set((state) => {
+      const windows = state.projectDocument.project.features.filter(
+        (feature): feature is RoofWindowFeature =>
+          feature.kind === 'roof-window' &&
+          state.workbench.selectedFeatureIds.includes(feature.id),
+      );
+      result = distributeRoofWindowsAlongEave({
+        template: state.template,
+        windows,
+      });
+      if (result.status === 'rejected')
+        return {
+          workbench: {
+            ...state.workbench,
+            windowLayoutFeedback: {
+              status: 'rejected',
+              operation: 'distribute',
+              reason: result.reason,
+            },
+          },
+        };
+      const positions = new Map(
+        result.changes.map((change) => [
+          change.featureId,
+          change.proposedPosition,
+        ]),
+      );
+      const document = createRoofProjectDocument(state.template, {
+        features: state.projectDocument.project.features.map((feature) =>
+          feature.kind === 'roof-window' && positions.has(feature.id)
+            ? { ...feature, position: positions.get(feature.id)! }
+            : feature,
+        ),
+        openingFraming: state.projectDocument.project.openingFraming,
+        buildUp: state.projectDocument.project.buildUp,
+        coverings: state.projectDocument.project.coverings,
+      });
+      return {
+        ...withHistory(
+          state,
+          committedDocument(document, state.drafts, state.invalidFields),
+        ),
+        workbench: {
+          ...state.workbench,
+          windowLayoutFeedback: {
+            status: 'applied',
+            operation: 'distribute',
+            clearGapMm: result.clearGapMm,
+          },
+        },
+      };
+    });
+    return result;
+  },
   updateRoofWindow: (id, patch) =>
     set((state) => {
       let features;
@@ -1176,13 +1436,18 @@ export const useAssembly = create<AssemblyState>((set) => ({
         features,
         openingFraming: state.projectDocument.project.openingFraming,
         buildUp: state.projectDocument.project.buildUp,
+        coverings: state.projectDocument.project.coverings,
       });
       return {
         ...withHistory(
           state,
           committedDocument(document, state.drafts, state.invalidFields),
         ),
-        workbench: { ...state.workbench, placementFeedback: undefined },
+        workbench: {
+          ...state.workbench,
+          placementFeedback: undefined,
+          windowLayoutFeedback: undefined,
+        },
       };
     }),
   moveRoofWindow: (id, position) =>
@@ -1204,13 +1469,18 @@ export const useAssembly = create<AssemblyState>((set) => ({
         ),
         openingFraming: state.projectDocument.project.openingFraming,
         buildUp: state.projectDocument.project.buildUp,
+        coverings: state.projectDocument.project.coverings,
       });
       return {
         ...withHistory(
           state,
           committedDocument(document, state.drafts, state.invalidFields),
         ),
-        workbench: { ...state.workbench, placementFeedback: undefined },
+        workbench: {
+          ...state.workbench,
+          placementFeedback: undefined,
+          windowLayoutFeedback: undefined,
+        },
       };
     }),
   placeRoofWindowBetweenRafters: (id) => {
@@ -1247,6 +1517,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         ),
         openingFraming: state.projectDocument.project.openingFraming,
         buildUp: state.projectDocument.project.buildUp,
+        coverings: state.projectDocument.project.coverings,
       });
       return {
         ...withHistory(
@@ -1339,6 +1610,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
           spec.featureId === featureId ? accepted : spec,
         ),
         buildUp: state.projectDocument.project.buildUp,
+        coverings: state.projectDocument.project.coverings,
       });
       applied = true;
       return {
@@ -1371,6 +1643,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         features: state.projectDocument.project.features,
         openingFraming,
         buildUp: state.projectDocument.project.buildUp,
+        coverings: state.projectDocument.project.coverings,
       });
       return {
         ...withHistory(
@@ -1389,6 +1662,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         features: state.projectDocument.project.features,
         openingFraming: state.projectDocument.project.openingFraming,
         buildUp: { ...state.projectDocument.project.buildUp, battenLayout },
+        coverings: state.projectDocument.project.coverings,
       });
       return withHistory(
         state,
@@ -1401,6 +1675,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         features: state.projectDocument.project.features,
         openingFraming: state.projectDocument.project.openingFraming,
         buildUp: { ...state.projectDocument.project.buildUp, membrane },
+        coverings: state.projectDocument.project.coverings,
       });
       return withHistory(
         state,
@@ -1413,6 +1688,20 @@ export const useAssembly = create<AssemblyState>((set) => ({
         features: state.projectDocument.project.features,
         openingFraming: state.projectDocument.project.openingFraming,
         buildUp: { ...state.projectDocument.project.buildUp, counterBattens },
+        coverings: state.projectDocument.project.coverings,
+      });
+      return withHistory(
+        state,
+        committedDocument(document, state.drafts, state.invalidFields),
+      );
+    }),
+  setCoveringAssignments: (coverings) =>
+    set((state) => {
+      const document = createRoofProjectDocument(state.template, {
+        features: state.projectDocument.project.features,
+        openingFraming: state.projectDocument.project.openingFraming,
+        buildUp: state.projectDocument.project.buildUp,
+        coverings,
       });
       return withHistory(
         state,
@@ -1476,6 +1765,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         workbench: {
           ...state.workbench,
           selectedId: 'roof',
+          selectedFeatureIds: [],
           selectedPrototypeId: undefined,
           selectedInstanceId: undefined,
           isolateSelection: false,
@@ -1520,6 +1810,12 @@ export const useAssembly = create<AssemblyState>((set) => ({
           : selectedId === 'roof'
             ? 'construction'
             : state.workbench.viewPreset;
+      const isRoofWindowSelection =
+        selectedId.startsWith('feature:') &&
+        state.projectDocument.project.features.some(
+          (feature) =>
+            feature.kind === 'roof-window' && feature.id === selectedId,
+        );
       return {
         workbench: {
           ...state.workbench,
@@ -1549,6 +1845,8 @@ export const useAssembly = create<AssemblyState>((set) => ({
           placementFeedback: selectedId.startsWith('feature:')
             ? state.workbench.placementFeedback
             : undefined,
+          selectedFeatureIds: isRoofWindowSelection ? [selectedId] : [],
+          windowLayoutFeedback: undefined,
         },
       };
     }),
