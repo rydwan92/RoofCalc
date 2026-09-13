@@ -1481,8 +1481,22 @@ describe('dual-mode parametric workbench', () => {
       screen.getAllByText(/nie uwzględnia długości handlowych/i),
     ).not.toHaveLength(0);
 
-    const battenRow = screen.getAllByTestId('material-build-up-row')[0]!;
+    const battenSummary = screen.getAllByTestId(
+      'material-build-up-summary',
+    )[0]!;
+    expect(screen.queryByTestId('schedule-inspector')).toBeNull();
+    expect(
+      container.querySelector('.a-builder-layout.material-inspector-empty'),
+    ).toBeTruthy();
+    fireEvent.click(within(battenSummary).getByText(/Pokaż długości/));
+    const battenRow = within(battenSummary).getAllByTestId(
+      'material-build-up-exact-row',
+    )[0]!;
     fireEvent.click(battenRow);
+    expect(await screen.findByTestId('schedule-inspector')).toBeTruthy();
+    expect(
+      container.querySelector('.a-builder-layout.material-inspector-empty'),
+    ).toBeNull();
     expect(
       container.querySelectorAll('[data-batten-row][aria-pressed="true"]')
         .length,
@@ -1513,6 +1527,61 @@ describe('dual-mode parametric workbench', () => {
     expect(
       new Set(jackRows.map((row) => row.textContent)).size,
     ).toBeGreaterThan(1);
+  });
+
+  it('keeps 40+ exact hip batten lengths behind one compact presentation summary without history', async () => {
+    const { container } = render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Krokiew narożna' }));
+    builder();
+    act(() => {
+      useAssembly.getState().setBattenLayout({
+        enabled: true,
+        battenHeightMm: 40,
+        battenWidthMm: 60,
+        gaugeMm: 100,
+        eaveOffsetMm: 50,
+      });
+      useAssembly.setState({ historyPast: [], historyFuture: [] });
+    });
+    const projectBeforeExpansion = structuredClone(
+      useAssembly.getState().projectDocument,
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Zestawienie' }));
+    await screen.findByTestId('material-schedule');
+    const summaries = screen.getAllByTestId('material-build-up-summary');
+    expect(summaries).toHaveLength(1);
+    expect(summaries[0]!.getAttribute('data-member-kind')).toBe('batten');
+    const details = summaries[0]!.querySelector('details')!;
+    const exactRows = within(summaries[0]!).getAllByTestId(
+      'material-build-up-exact-row',
+    );
+    expect(exactRows.length).toBeGreaterThan(40);
+    expect(details.open).toBe(false);
+    expect(
+      container.querySelectorAll(
+        '.a-build-up-lengths[open] [data-testid="material-build-up-exact-row"]',
+      ),
+    ).toHaveLength(0);
+
+    const exactTotal = exactRows.reduce(
+      (total, row) => total + Number(row.getAttribute('data-total-length-mm')),
+      0,
+    );
+    expect(
+      Number(summaries[0]!.getAttribute('data-total-length-mm')),
+    ).toBeCloseTo(exactTotal, 7);
+    fireEvent.click(within(summaries[0]!).getByText(/Pokaż długości/));
+    expect(details.open).toBe(true);
+    expect(
+      container.querySelectorAll(
+        '.a-build-up-lengths[open] [data-testid="material-build-up-exact-row"]',
+      ).length,
+    ).toBe(exactRows.length);
+    expect(useAssembly.getState().projectDocument).toEqual(
+      projectBeforeExpansion,
+    );
+    expect(useAssembly.getState().historyPast).toHaveLength(0);
   });
 
   it('counts accepted opening headers and segments, then removes them from the schedule on undo', async () => {
@@ -1639,7 +1708,7 @@ describe('dual-mode parametric workbench', () => {
   });
 
   it('opens the Builder-only covering task, creates one canonical manual tile and routes missing battens', async () => {
-    render(<App />);
+    const { container } = render(<App />);
     expect(screen.queryByRole('tab', { name: 'Pokrycie' })).toBeNull();
     builder();
     const coveringTab = screen.getByRole('tab', { name: 'Pokrycie' });
@@ -1652,6 +1721,13 @@ describe('dual-mode parametric workbench', () => {
       screen.getByRole('button', { name: 'Dodaj dachówkę ręcznie' }),
     );
     expect(await screen.findByTestId('covering-workspace')).toBeTruthy();
+    expect(screen.getByRole('button', { name: '+ Dachówka' })).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: '+ Blacha modułowa' }),
+    ).toBeTruthy();
+    expect(container.textContent).not.toContain('assembly.roofTile');
+    expect(container.textContent).not.toContain('roof-plane:left');
+    expect(container.textContent).not.toContain('manual-standard');
     expect(useAssembly.getState().historyPast).toHaveLength(
       historyBeforeTask + 1,
     );
@@ -1688,7 +1764,15 @@ describe('dual-mode parametric workbench', () => {
     fireEvent.click(
       await screen.findByRole('button', { name: 'Dodaj dachówkę ręcznie' }),
     );
-    expect(await screen.findByTestId('tile-layout-drawing')).toBeTruthy();
+    const gableDrawing = await screen.findByTestId('tile-layout-drawing');
+    expect(gableDrawing.style.aspectRatio).not.toBe('');
+    expect(
+      document
+        .querySelector('.a-covering-plane')!
+        .getAttribute('points')!
+        .trim()
+        .split(/\s+/),
+    ).toHaveLength(4);
     expect(
       document.querySelectorAll('.a-tile-fragment').length,
     ).toBeGreaterThan(0);
@@ -1710,7 +1794,8 @@ describe('dual-mode parametric workbench', () => {
 
     act(() => useAssembly.getState().setViewPreset('materials'));
     expect(await screen.findByTestId('covering-quantity')).toBeTruthy();
-    expect(screen.getByText('Dachówki')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Pokrycia' })).toBeTruthy();
+    expect(screen.getByText(/Dachówka —/)).toBeTruthy();
     act(() =>
       useAssembly.getState().setBattenLayout({
         enabled: true,
@@ -1773,6 +1858,85 @@ describe('dual-mode parametric workbench', () => {
     expect(
       screen.getByText(/arkusze\/moduły w układzie geometrycznym/i),
     ).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Pokrycia' })).toBeTruthy();
+    expect(screen.getByText(/Blacha modułowa —/)).toBeTruthy();
+  });
+
+  it('fits hip trapezoid and triangular covering planes to their technical frame', async () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Krokiew narożna' }));
+    builder();
+    act(() =>
+      useAssembly.getState().setBattenLayout({
+        enabled: true,
+        battenHeightMm: 40,
+        battenWidthMm: 60,
+        gaugeMm: 350,
+        eaveOffsetMm: 250,
+      }),
+    );
+    fireEvent.click(screen.getByRole('tab', { name: 'Pokrycie' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Dodaj dachówkę ręcznie' }),
+    );
+    act(() => {
+      const coverings = structuredClone(
+        useAssembly.getState().projectDocument.project.coverings,
+      );
+      coverings[0]!.roofPlaneIds = [
+        'roof-plane:left',
+        'roof-plane:right',
+        'roof-plane:front',
+        'roof-plane:rear',
+      ];
+      useAssembly.getState().setCoveringAssignments(coverings);
+    });
+    const drawing = await screen.findByTestId('tile-layout-drawing');
+    const planePointCount = () =>
+      document
+        .querySelector('.a-covering-plane')!
+        .getAttribute('points')!
+        .trim()
+        .split(/\s+/).length;
+    expect(drawing.style.aspectRatio).not.toBe('');
+    expect(planePointCount()).toBe(4);
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Przednia połać' }));
+    expect(planePointCount()).toBe(3);
+    expect(drawing.style.aspectRatio).not.toBe('');
+  });
+
+  it('labels tile and modular-sheet schedule rows by structured covering kind', async () => {
+    render(<App />);
+    builder();
+    act(() =>
+      useAssembly.getState().setBattenLayout({
+        enabled: true,
+        battenHeightMm: 40,
+        battenWidthMm: 60,
+        gaugeMm: 350,
+        eaveOffsetMm: 250,
+      }),
+    );
+    fireEvent.click(screen.getByRole('tab', { name: 'Pokrycie' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Dodaj dachówkę ręcznie' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: '+ Blacha modułowa' }));
+    act(() => {
+      const coverings = structuredClone(
+        useAssembly.getState().projectDocument.project.coverings,
+      );
+      coverings[0]!.roofPlaneIds = ['roof-plane:left'];
+      coverings[1]!.roofPlaneIds = ['roof-plane:right'];
+      useAssembly.getState().setCoveringAssignments(coverings);
+      useAssembly.getState().setViewPreset('materials');
+    });
+
+    expect(await screen.findByTestId('covering-quantity')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Pokrycia' })).toBeTruthy();
+    expect(screen.getByText(/Dachówka —/)).toBeTruthy();
+    expect(screen.getByText(/Blacha modułowa —/)).toBeTruthy();
   });
 
   it('marks overlapping primary coverings as conflicted and emits no duplicate quantity', async () => {

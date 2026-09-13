@@ -37,6 +37,16 @@ function sectionText(
   return `${formatLength(section.widthMm!, unit, locale)} × ${formatLength(section.depthMm, unit, locale)} ${unit}`;
 }
 
+function sectionPresentationKey(section: QuantitySection) {
+  return `${section.completeness}:${section.widthMm ?? 'unknown'}x${section.depthMm ?? 'unknown'}`;
+}
+
+function buildUpCountKey(memberKind: RoofMemberScheduleRow['memberKind']) {
+  return memberKind === 'batten'
+    ? 'assembly.battenRowsCount'
+    : 'assembly.counterBattenAxesCount';
+}
+
 function rowName(
   row: RoofMemberScheduleRow,
   t: ReturnType<typeof useTranslation>['t'],
@@ -92,6 +102,19 @@ export function MaterialSchedule({
     );
     return [...result.entries()];
   }, [schedule.timberRows]);
+  const buildUpGroups = useMemo(() => {
+    const result = new Map<string, RoofMemberScheduleRow[]>();
+    schedule.buildUpRows.forEach((row) => {
+      const key = `${row.memberKind}:${sectionPresentationKey(row.section)}`;
+      result.set(key, [...(result.get(key) ?? []), row]);
+    });
+    return [...result.entries()].map(([id, rows]) => ({
+      id,
+      rows,
+      quantity: rows.reduce((total, row) => total + row.quantity, 0),
+      totalLengthMm: rows.reduce((total, row) => total + row.totalLengthMm, 0),
+    }));
+  }, [schedule.buildUpRows]);
   const volumeLabel =
     schedule.timberSummary.volumeStatus === 'complete'
       ? t('assembly.geometricVolume')
@@ -267,7 +290,7 @@ export function MaterialSchedule({
           </header>
           <div className="a-build-up-quantity-groups">
             {schedule.surfaceBuildUpRows.map((row) => (
-              <article key={row.id}>
+              <article key={row.id} className="a-build-up-surface-summary">
                 <span>
                   <b>{t('assembly.membrane')}</b>
                   <small>{t('assembly.netGeometric')}</small>
@@ -280,27 +303,74 @@ export function MaterialSchedule({
                 </strong>
               </article>
             ))}
-            {schedule.buildUpRows.map((row) => (
-              <button
-                key={row.id}
-                type="button"
-                aria-pressed={selectedRowId === row.id}
-                data-testid="material-build-up-row"
-                data-row-id={row.id}
-                onClick={() => onSelectRow(row)}
-              >
-                <span>
-                  <b>
-                    {rowName(row, t)} ·{' '}
-                    {sectionText(row.section, state.unit, i18n.language)}
-                  </b>
-                  <small>
-                    {row.quantity} {t('assembly.derivedAxes')}
-                  </small>
-                </span>
-                <strong>{metres(row.totalLengthMm, i18n.language)}</strong>
-              </button>
-            ))}
+            {buildUpGroups.map((group) => {
+              const first = group.rows[0]!;
+              return (
+                <article
+                  key={group.id}
+                  className="a-build-up-quantity-group"
+                  data-testid="material-build-up-summary"
+                  data-member-kind={first.memberKind}
+                  data-total-length-mm={group.totalLengthMm}
+                >
+                  <div className="a-build-up-quantity-summary">
+                    <span>
+                      <b>
+                        {rowName(first, t)} ·{' '}
+                        {sectionText(first.section, state.unit, i18n.language)}
+                      </b>
+                      <small>
+                        {t(buildUpCountKey(first.memberKind), {
+                          count: group.quantity,
+                        })}
+                      </small>
+                    </span>
+                    <strong>
+                      {metres(group.totalLengthMm, i18n.language)}
+                    </strong>
+                  </div>
+                  <details className="a-build-up-lengths">
+                    <summary>
+                      {t('assembly.showExactLengths', {
+                        count: group.rows.length,
+                      })}
+                    </summary>
+                    <div>
+                      {group.rows.map((row) => (
+                        <button
+                          key={row.id}
+                          type="button"
+                          className={
+                            selectedRowId === row.id ? 'is-selected' : ''
+                          }
+                          aria-pressed={selectedRowId === row.id}
+                          data-testid="material-build-up-exact-row"
+                          data-row-id={row.id}
+                          data-total-length-mm={row.totalLengthMm}
+                          onClick={() => onSelectRow(row)}
+                        >
+                          <span>
+                            <b>
+                              {displayLength(
+                                row.lengthMm,
+                                state.unit,
+                                i18n.language,
+                              )}
+                            </b>
+                            <small>
+                              {row.quantity} {t('assembly.piecesShort')}
+                            </small>
+                          </span>
+                          <strong>
+                            {metres(row.totalLengthMm, i18n.language)}
+                          </strong>
+                        </button>
+                      ))}
+                    </div>
+                  </details>
+                </article>
+              );
+            })}
           </div>
           <p>{t('assembly.buildUpQuantityBoundary')}</p>
         </section>
@@ -312,15 +382,25 @@ export function MaterialSchedule({
         >
           <header>
             <small>{t('assembly.covering')}</small>
-            <h3>{t('assembly.roofTiles')}</h3>
+            <h3>{t('assembly.coveringsSchedule')}</h3>
           </header>
           <div>
             {schedule.coveringRows.map((row) => (
               <article key={row.id}>
                 <span>
                   <b>
+                    {t(
+                      row.basis.startsWith('fixed-modular-sheet')
+                        ? 'assembly.modularSheet'
+                        : 'assembly.roofTile',
+                    )}{' '}
+                    —{' '}
                     {row.productDisplay?.familyName ??
-                      t('assembly.manualRoofTile')}
+                      t(
+                        row.basis.startsWith('fixed-modular-sheet')
+                          ? 'assembly.manualModularSheet'
+                          : 'assembly.manualRoofTile',
+                      )}
                   </b>
                   <small>
                     {t(

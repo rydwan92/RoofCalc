@@ -79,6 +79,33 @@ it('keeps selection as a peek and edits it only on request', async () => {
   ).toBeNull();
 });
 
+it('opens the material Inspector sheet only after an exact schedule row is selected', async () => {
+  render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: 'Kreator' }));
+  act(() =>
+    useAssembly.getState().setBattenLayout({
+      enabled: true,
+      battenHeightMm: 40,
+      battenWidthMm: 60,
+      gaugeMm: 350,
+      eaveOffsetMm: 250,
+    }),
+  );
+  const dock = screen.getByRole('tablist', { name: 'Widok zadaniowy' });
+  fireEvent.click(within(dock).getByRole('tab', { name: 'Zestawienie' }));
+  const schedule = await screen.findByTestId('material-schedule');
+  expect(screen.queryByRole('dialog')).toBeNull();
+  const summary = within(schedule).getByTestId('material-build-up-summary');
+  fireEvent.click(within(summary).getByText(/Pokaż długości/));
+  fireEvent.click(
+    within(summary).getAllByTestId('material-build-up-exact-row')[0]!,
+  );
+  expect(
+    screen.getByRole('dialog', { name: 'Właściwości elementu' }),
+  ).toBeTruthy();
+  expect(await screen.findByTestId('schedule-inspector')).toBeTruthy();
+});
+
 it('treats a touch window tap as selection, then commits one activated drag and restores cancellation', async () => {
   class TouchPointerEvent extends MouseEvent {
     pointerId: number;

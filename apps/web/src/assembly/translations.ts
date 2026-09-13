@@ -47,6 +47,11 @@ export const assemblyPl = {
     generic: '{{id}}',
   },
   roofTiles: 'Dachówki',
+  roofTile: 'Dachówka',
+  coveringsSchedule: 'Pokrycia',
+  battenRowsCount: '{{count}} rzędów',
+  counterBattenAxesCount: '{{count}} osi',
+  showExactLengths: 'Pokaż długości ({{count}})',
   coveringEmptyTitle: 'Dodaj pokrycie dachu',
   coveringEmptyDescription:
     'Wybierz rodzaj i wprowadź parametry techniczne, aby utworzyć układ na połaciach.',
@@ -729,6 +734,11 @@ export const assemblyEn: typeof assemblyPl = {
     generic: '{{id}}',
   },
   roofTiles: 'Roof tiles',
+  roofTile: 'Roof tile',
+  coveringsSchedule: 'Coverings',
+  battenRowsCount: '{{count}} rows',
+  counterBattenAxesCount: '{{count}} axes',
+  showExactLengths: 'Show lengths ({{count}})',
   coveringEmptyTitle: 'Add roof covering',
   coveringEmptyDescription:
     'Choose a kind and enter technical parameters to create a roof-plane layout.',

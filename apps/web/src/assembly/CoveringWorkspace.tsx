@@ -235,12 +235,33 @@ export function CoveringWorkspace({
   }, [selectedLayout]);
   const simplified = fragments.length > 1200;
   const bounds = selectedSurface
-    ? {
-        minU: Math.min(...selectedSurface.polygon.map((point) => point.uMm)),
-        maxU: Math.max(...selectedSurface.polygon.map((point) => point.uMm)),
-        minV: Math.min(...selectedSurface.polygon.map((point) => point.vMm)),
-        maxV: Math.max(...selectedSurface.polygon.map((point) => point.vMm)),
-      }
+    ? (() => {
+        const minU = Math.min(
+          ...selectedSurface.polygon.map((point) => point.uMm),
+        );
+        const maxU = Math.max(
+          ...selectedSurface.polygon.map((point) => point.uMm),
+        );
+        const minV = Math.min(
+          ...selectedSurface.polygon.map((point) => point.vMm),
+        );
+        const maxV = Math.max(
+          ...selectedSurface.polygon.map((point) => point.vMm),
+        );
+        const width = Math.max(1, maxU - minU);
+        const height = Math.max(1, maxV - minV);
+        const padding = Math.max(width, height) * 0.025;
+        return {
+          minU,
+          maxU,
+          minV,
+          maxV,
+          viewMinU: minU - padding,
+          viewMinV: minV - padding,
+          viewWidth: width + padding * 2,
+          viewHeight: height + padding * 2,
+        };
+      })()
     : undefined;
 
   const tileMode =
@@ -516,8 +537,11 @@ export function CoveringWorkspace({
           {selectedSurface && bounds && (
             <svg
               data-testid={`${layout?.kind === 'modular-sheet' ? 'sheet' : 'tile'}-layout-drawing`}
-              viewBox={`${bounds.minU} ${bounds.minV} ${Math.max(1, bounds.maxU - bounds.minU)} ${Math.max(1, bounds.maxV - bounds.minV)}`}
+              viewBox={`${bounds.viewMinU} ${bounds.viewMinV} ${bounds.viewWidth} ${bounds.viewHeight}`}
               preserveAspectRatio="xMidYMid meet"
+              style={{
+                aspectRatio: `${bounds.viewWidth} / ${bounds.viewHeight}`,
+              }}
             >
               <polygon
                 className="a-covering-plane"

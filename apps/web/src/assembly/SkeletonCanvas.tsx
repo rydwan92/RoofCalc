@@ -150,6 +150,7 @@ function SkeletonCanvasComponent({
   activeInstance,
   surfaceGeometry,
   counterBattens,
+  compact = false,
 }: {
   template: RoofTemplateSpec;
   skeleton: RoofSkeleton;
@@ -161,6 +162,7 @@ function SkeletonCanvasComponent({
   activeInstance?: MemberInstanceContext;
   surfaceGeometry: RoofSurfaceGeometryResult;
   counterBattens: CounterBattenLayoutResult;
+  compact?: boolean;
 }) {
   const selectedStore = useAssembly(
     useShallow((store) => ({
@@ -231,11 +233,13 @@ function SkeletonCanvasComponent({
   );
   const height = mobile
     ? Math.max(200, Math.min(620, viewportHeight - 250))
-    : width < 550
-      ? 400
-      : width > 1000
-        ? 640
-        : 570;
+    : compact
+      ? Math.max(300, Math.min(420, width * 0.78))
+      : width < 550
+        ? 400
+        : width > 1000
+          ? 640
+          : 570;
   const [viewport, setViewport] = useState<ViewportState>(fittedViewport);
   const [activeHandle, setActiveHandle] = useState<string | null>(null);
   const [hoveredPurlin, setHoveredPurlin] = useState<string | null>(null);

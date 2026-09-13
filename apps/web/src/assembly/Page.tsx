@@ -677,6 +677,7 @@ export function AssemblyPage() {
       });
     else state.select(instanceId, row.prototypeId);
     state.setScheduleSelection(row.id, instanceId);
+    if (mobile) state.setMobilePanel('inspector');
   };
   const drawerPreviews = drawer.pinned
     ? allDetailPreviews
@@ -1056,7 +1057,7 @@ export function AssemblyPage() {
         ) : (
           <>
             <div
-              className={`a-builder-layout ${workbench.toolboxCollapsed ? 'tools-collapsed' : ''} ${workbench.workspaceFocus.active ? 'is-workspace-focus' : ''}`}
+              className={`a-builder-layout ${workbench.toolboxCollapsed ? 'tools-collapsed' : ''} ${workbench.workspaceFocus.active ? 'is-workspace-focus' : ''} ${workbench.viewPreset === 'materials' && !selectedScheduleRow ? 'material-inspector-empty' : ''}`}
             >
               {!mobile && (
                 <Toolbox
@@ -1220,6 +1221,7 @@ export function AssemblyPage() {
                           activeInstance={activeInstance}
                           surfaceGeometry={surfaceProjection}
                           counterBattens={counterBattenProjection}
+                          compact
                         />
                       </Suspense>
                     </div>
@@ -1231,9 +1233,10 @@ export function AssemblyPage() {
                           selectedInstanceId={
                             workbench.selectedScheduleInstanceId
                           }
-                          onSelectRow={(row) =>
-                            state.setScheduleSelection(row.id)
-                          }
+                          onSelectRow={(row) => {
+                            state.setScheduleSelection(row.id);
+                            if (mobile) state.setMobilePanel('inspector');
+                          }}
                           onSelectInstance={selectScheduleInstance}
                         />
                       </Suspense>
@@ -1278,7 +1281,9 @@ export function AssemblyPage() {
                   </Suspense>
                 )}
               </section>
-              {!mobile && inspectorContent}
+              {!mobile &&
+                (workbench.viewPreset !== 'materials' || selectedScheduleRow) &&
+                inspectorContent}
             </div>
             {mobile &&
               workbench.selectedId !== 'roof' &&

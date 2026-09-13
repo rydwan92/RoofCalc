@@ -1297,6 +1297,24 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+> Iteration 021.1 started on 2026-09-13 from clean commit `bcb4aac10d35193cbf45cbd4be553185df78aebd` (`V21`). The attached V21.1 closeout contract supersedes the V21 `NEXT ACTION` for this small presentation-only pass. Canonical quantity exact-length semantics and V21 covering geometry remain unchanged; V22 is not started.
+
+**Iteration:** `021.1 — Professional UX Closeout: Material Schedule Compaction and Covering/Workbench Polish`
+
+**Status:** `COMPLETE IN SOURCE — AUTOMATED VALIDATION PASS; LIVE BROWSER/DEVICE QA UNAVAILABLE`
+
+**Completed work:** Material Schedule now projects canonical build-up rows into one compact default summary per member kind and section. Exact equal-length rows, quantities, useful totals and source drill-down remain reachable in a native collapsed detail without changing `quantity-core`, stock semantics, project history or serialization. Materials uses a 32/68 drawing/schedule split and a compact sticky context drawing. The desktop Inspector column is absent until an exact schedule row is selected; selection opens the existing Inspector, including the mobile sheet path.
+
+Covering add controls now have complete PL/EN keys and tests reject `assembly.roofTile`, plane IDs and `manual-standard` leakage. The generic schedule heading is `Pokrycia / Coverings`; row type is derived from structured quantity basis and shown distinctly as roof tile or modular sheet independently of product display names. The Covering SVG receives a small presentation-only fit margin and geometry-derived aspect ratio with viewport-aware CSS bounds; gable rectangle, hip trapezoid and hip triangle paths are covered. Assignment chips stay on one bounded horizontal strip. Desktop task controls remain sticky on an opaque bordered surface, the context bar no longer floats over the drawing, and Builder top spacing is reduced without changing Quick Calc.
+
+**Files changed:** `PROJECT_BLUEPRINT.md`; web `MaterialSchedule`, `CoveringWorkspace`, `Page`, `SkeletonCanvas`, translations and styles; focused desktop and mobile Page tests. No domain package, canonical geometry, history semantics, dependency, lockfile, commit or push change.
+
+**Validation and bundles:** final repository-pinned typecheck PASS; **454 tests across 46 files PASS**; ESLint PASS; changed-source Prettier check PASS; production web/API build PASS; `git diff --check` PASS. Versus V21: main web **515.37 / 147.35 kB gzip** (+0.52 / +0.12), CSS **108.68 / 20.91 kB** (+1.43 / +0.22), Material Schedule **11.13 / 2.87 kB** (+1.43 / +0.29), Covering Workspace **23.20 / 5.54 kB** (+0.19 / +0.09), Skeleton Canvas **38.98 / 11.99 kB** (+0.06 / +0.04); covering-core **74.11 / 17.32 kB** and API **1.11 kB** unchanged. Vite retains the known >500 kB main-chunk advisory.
+
+**Visual/mobile QA and limitations:** the explicitly requested in-app Browser returned `Browser is not available: iab`, so no live desktop/mobile screenshot, computed-layout, horizontal-overflow, scroll/sticky or physical-touch claim is made. JSDOM covers compact/expanded schedules, unchanged totals, 46 exact hip length groups, zero-history disclosure, conditional desktop Inspector, mobile Inspector sheet, translated add controls, distinct covering rows and the gable/hip plane-shape matrix. Live visual acceptance remains outstanding.
+
+**NEXT ACTION:** perform browser acceptance of V21.1 at normal desktop and 360–430 px when the in-app Browser is available, focusing on schedule density, sticky boundaries, covering canvas fit and assignment overflow. Fix only evidenced closeout defects. Do not begin V22 without a new explicit prompt.
+
 > Iteration 021 completed in source on 2026-09-13 from clean commit `3efa87c3c919b7e17bfc2f1af9eb78171cd68601` (`V20`). The user-approved attached V21 contract superseded the V20 metal-covering `NEXT ACTION` and deliberately narrowed it to fixed-size modular sheets; cut-to-length and standing seam move to V22.
 
 **Iteration:** `021 — Professional Workbench Hardening, Covering Assignment Management, Design Token Correctness and Fixed Modular Sheet Engine`
