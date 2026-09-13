@@ -1,0 +1,11 @@
+{
+  "name": "@cieslacalc/catalog-core",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@cieslacalc/covering-core": "workspace:*",
+    "zod": "^3.25.0"
+  }
+}

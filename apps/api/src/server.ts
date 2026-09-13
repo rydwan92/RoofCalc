@@ -1,11 +1,18 @@
 import { fileURLToPath } from 'node:url';
 import { createApp } from './app';
+import { CatalogService } from './catalog/service';
+import { createCatalogDatabase } from './db/client';
+import { DrizzleCatalogRepository } from './db/catalog-repository';
 
 const port = Number(process.env.PORT ?? 3001);
 if (!Number.isInteger(port) || port < 1 || port > 65535)
   throw new Error('Invalid PORT');
 const webDirectory = fileURLToPath(new URL('../../web/dist/', import.meta.url));
-const server = createApp(webDirectory).listen(
+const catalogDatabase = createCatalogDatabase();
+const catalogService = catalogDatabase
+  ? new CatalogService(new DrizzleCatalogRepository(catalogDatabase.db))
+  : undefined;
+const server = createApp(webDirectory, catalogService).listen(
   port,
   process.env.HOST ?? '127.0.0.1',
   () => {
@@ -13,4 +20,4 @@ const server = createApp(webDirectory).listen(
   },
 );
 for (const signal of ['SIGINT', 'SIGTERM'])
-  process.on(signal, () => server.close());
+  process.on(signal, () => server.close(() => void catalogDatabase?.close()));

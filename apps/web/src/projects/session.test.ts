@@ -101,6 +101,63 @@ it('debounces canonical edits, waits for transaction commit and ignores view/uni
   expect(useAssembly.getState().historyPast).toHaveLength(1);
 });
 
+it('autosaves and reopens a catalogue selection from its local technical snapshot', async () => {
+  await session.initialize();
+  const id = session.snapshot().active!.id;
+  vi.useFakeTimers();
+  useAssembly.getState().setCoveringAssignments([
+    {
+      id: 'covering:catalogue',
+      roofPlaneIds: ['roof-plane:left'],
+      selectedInstallationModeId: 'standard',
+      product: {
+        catalogRef: {
+          productId: 'product:tile',
+          technicalRevisionId: 'revision:tile:r1',
+          variantId: 'variant:tile:red',
+        },
+        displaySnapshot: {
+          manufacturer: 'DEMO Roof',
+          familyName: 'Tile 30 (DEMO)',
+          variantName: 'Red',
+        },
+        technicalSpecSnapshot: {
+          schemaVersion: 1,
+          kind: 'roof-tile',
+          installationModes: [
+            {
+              id: 'standard',
+              coverWidthMm: 300,
+              gaugeRangeMm: { min: 320, max: 360 },
+              minPitchDeg: 20,
+              coursePattern: {
+                layers: [{ id: 'base', horizontalOffsetFraction: 0 }],
+                battenRowOffsetCycle: [0],
+              },
+            },
+          ],
+        },
+      },
+    },
+  ]);
+  expect(useAssembly.getState().historyPast).toHaveLength(1);
+  expect(session.snapshot().saveStatus).toBe('dirty');
+  await vi.advanceTimersByTimeAsync(800);
+  expect(
+    (await repository.get(id))?.document.project.coverings[0]?.product
+      .catalogRef?.technicalRevisionId,
+  ).toBe('revision:tile:r1');
+
+  await session.dispose();
+  useAssembly.getState().reset();
+  useAssembly.getState().setMode('builder');
+  session = new ProjectSession(repository);
+  await session.initialize();
+  const reopened = useAssembly.getState().projectDocument.project.coverings[0];
+  expect(reopened?.product.technicalSpecSnapshot.kind).toBe('roof-tile');
+  expect(reopened?.product.displaySnapshot?.familyName).toBe('Tile 30 (DEMO)');
+});
+
 it('preserves an editable document and shows error when storage fails', async () => {
   await session.initialize();
   storage.failWrites = true;

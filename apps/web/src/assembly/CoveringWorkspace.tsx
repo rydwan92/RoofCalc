@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AlertTriangle, Grid3X3, Trash2 } from 'lucide-react';
 import {
   type CoveringAssignmentSpec,
+  type CoveringKind,
+  type CoveringProductSelection,
   type ModularSheetLayoutResult,
   type PrimaryCoveringPlaneConflict,
   type RoofTileLayoutResult,
@@ -20,6 +22,12 @@ import {
   installationModeLabelKey,
   roofPlaneLabelKey,
 } from './covering-presentation';
+
+const CatalogProductPicker = lazy(() =>
+  import('../catalog/CatalogProductPicker').then((module) => ({
+    default: module.CatalogProductPicker,
+  })),
+);
 
 type TileAssignment = CoveringAssignmentSpec & {
   product: CoveringAssignmentSpec['product'] & {
@@ -256,6 +264,7 @@ export function CoveringWorkspace({
   const state = useAssembly();
   const { t, i18n } = useTranslation();
   const [selectedPlaneId, setSelectedPlaneId] = useState<string>();
+  const [catalogKind, setCatalogKind] = useState<CoveringKind>();
   const planeIds =
     assignment?.roofPlaneIds ??
     surfaceGeometry.planes.map((plane) => plane.roofPlaneId);
@@ -349,6 +358,7 @@ export function CoveringWorkspace({
 
   const addAssignment = (
     kind: 'roof-tile' | 'modular-sheet' | 'standing-seam',
+    product?: CoveringProductSelection,
   ) => {
     const next =
       kind === 'roof-tile'
@@ -365,9 +375,53 @@ export function CoveringWorkspace({
               existing: assignments,
               roofPlaneIds: [surfaceGeometry.planes[0]!.roofPlaneId],
             });
+    if (product) {
+      next.product = product;
+      const spec = product.technicalSpecSnapshot;
+      next.selectedInstallationModeId =
+        spec.kind === 'roof-tile' || spec.kind === 'standing-seam'
+          ? spec.installationModes[0]?.id
+          : undefined;
+    }
     state.setCoveringAssignments([...assignments, next]);
     state.setSelectedCoveringAssignment(next.id);
+    setCatalogKind(undefined);
   };
+
+  const catalogButtons = (
+    <div className="a-covering-catalog-actions">
+      <small>{t('assembly.fromCatalog')}</small>
+      <button
+        className="a-button a-primary"
+        onClick={() => setCatalogKind('roof-tile')}
+      >
+        {t('assembly.roofTile')}
+      </button>
+      <button
+        className="a-button"
+        onClick={() => setCatalogKind('modular-sheet')}
+      >
+        {t('assembly.modularSheet')}
+      </button>
+      <button
+        className="a-button"
+        onClick={() => setCatalogKind('standing-seam')}
+      >
+        {t('assembly.standingSeam')}
+      </button>
+    </div>
+  );
+
+  const picker = catalogKind ? (
+    <Suspense fallback={<div className="a-loading-panel" />}>
+      <CatalogProductPicker
+        kind={catalogKind}
+        onClose={() => setCatalogKind(undefined)}
+        onManual={() => addAssignment(catalogKind)}
+        onApply={(product) => addAssignment(catalogKind, product)}
+      />
+    </Suspense>
+  ) : null;
 
   if (!assignment)
     return (
@@ -375,6 +429,8 @@ export function CoveringWorkspace({
         <Grid3X3 size={38} />
         <h2>{t('assembly.coveringEmptyTitle')}</h2>
         <p>{t('assembly.coveringEmptyDescription')}</p>
+        {catalogButtons}
+        <small>{t('assembly.orManualParameters')}</small>
         <div className="a-covering-add-actions">
           <button
             className="a-button a-primary"
@@ -395,6 +451,7 @@ export function CoveringWorkspace({
             {t('assembly.addManualStandingSeam')}
           </button>
         </div>
+        {picker}
       </section>
     );
 
@@ -420,6 +477,14 @@ export function CoveringWorkspace({
           ))}
           <button
             className="a-button a-add"
+            onClick={() =>
+              setCatalogKind(assignment.product.technicalSpecSnapshot.kind)
+            }
+          >
+            + {t('assembly.fromCatalog')}
+          </button>
+          <button
+            className="a-button a-add"
             onClick={() => addAssignment('roof-tile')}
           >
             + {t('assembly.roofTile')}
@@ -440,7 +505,11 @@ export function CoveringWorkspace({
       </div>
       <header>
         <div>
-          <small>{t('assembly.manualParameters')}</small>
+          <small>
+            {assignment.product.catalogRef
+              ? t('assembly.catalogSource')
+              : t('assembly.manualParameters')}
+          </small>
           <strong>
             {assignment.product.displaySnapshot?.familyName ??
               t(coveringKindLabelKey(assignment))}
@@ -547,6 +616,7 @@ export function CoveringWorkspace({
           </div>
         )}
       </header>
+      {picker}
       {conflicts.length > 0 && (
         <div className="a-covering-warning" role="alert">
           <AlertTriangle size={18} />
@@ -1752,6 +1822,27 @@ export function CoveringInspector({
       </button>
       {state.workbench.inspectorOpen && (
         <div className="a-inspector-content">
+          <div className="a-covering-source-card">
+            <small>
+              {assignment?.product.catalogRef
+                ? t('assembly.catalogSource')
+                : t('assembly.manualParameters')}
+            </small>
+            {assignment?.product.catalogRef && (
+              <>
+                <strong>
+                  {assignment.product.displaySnapshot?.manufacturer}
+                  {assignment.product.displaySnapshot?.familyName
+                    ? ` · ${assignment.product.displaySnapshot.familyName}`
+                    : ''}
+                </strong>
+                <span>
+                  {t('assembly.catalogRevision')}{' '}
+                  {assignment.product.catalogRef.technicalRevisionId}
+                </span>
+              </>
+            )}
+          </div>
           <dl className="a-properties">
             <div>
               <dt>{t('assembly.status')}</dt>

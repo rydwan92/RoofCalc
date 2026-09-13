@@ -1,0 +1,339 @@
+import { z } from 'zod';
+import {
+  coveringProductSelectionSchema,
+  coveringTechnicalSpecSchema,
+  type CoveringKind,
+  type CoveringProductSelection,
+  type CoveringTechnicalSpec,
+} from '@cieslacalc/covering-core';
+
+export const CATALOG_IMPORT_SCHEMA_VERSION = 1 as const;
+
+export const catalogIdSchema = z
+  .string()
+  .min(1)
+  .max(128)
+  .regex(/^[a-zA-Z0-9][a-zA-Z0-9._:-]*$/);
+const slugSchema = z
+  .string()
+  .min(1)
+  .max(160)
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
+const nonBlank = z.string().trim().min(1).max(240);
+const nullableDate = z.string().date().optional();
+
+const jsonValueSchema: z.ZodType<unknown> = z.lazy(() =>
+  z.union([
+    z.string(),
+    z.number().finite(),
+    z.boolean(),
+    z.null(),
+    z.array(jsonValueSchema),
+    z.record(jsonValueSchema),
+  ]),
+);
+
+export const manufacturerSchema = z
+  .object({
+    id: catalogIdSchema,
+    slug: slugSchema,
+    name: nonBlank,
+    countryCode: z
+      .string()
+      .regex(/^[A-Z]{2}$/)
+      .optional(),
+    websiteUrl: z.string().url().optional(),
+    active: z.boolean(),
+  })
+  .strict();
+export type Manufacturer = z.infer<typeof manufacturerSchema>;
+
+export const technicalProductFamilySchema = z
+  .object({
+    id: catalogIdSchema,
+    manufacturerId: catalogIdSchema,
+    slug: slugSchema,
+    name: nonBlank,
+    coveringKind: z.enum(['roof-tile', 'modular-sheet', 'standing-seam']),
+    active: z.boolean(),
+  })
+  .strict();
+export type TechnicalProductFamily = z.infer<
+  typeof technicalProductFamilySchema
+>;
+
+export const technicalRevisionSourceSchema = z
+  .object({
+    label: nonBlank.optional(),
+    url: z.string().url().optional(),
+    revision: z.string().trim().min(1).max(160).optional(),
+    hash: z.string().trim().min(1).max(256).optional(),
+  })
+  .strict();
+
+export const technicalProductRevisionSchema = z
+  .object({
+    id: catalogIdSchema,
+    productId: catalogIdSchema,
+    revisionCode: z.string().trim().min(1).max(128),
+    technicalSpec: coveringTechnicalSpecSchema,
+    validFrom: nullableDate,
+    source: technicalRevisionSourceSchema.optional(),
+  })
+  .strict();
+export type TechnicalProductRevision = z.infer<
+  typeof technicalProductRevisionSchema
+>;
+
+export const commercialVariantSchema = z
+  .object({
+    id: catalogIdSchema,
+    productId: catalogIdSchema,
+    sku: z.string().trim().min(1).max(160).optional(),
+    name: nonBlank,
+    color: z.string().trim().min(1).max(160).optional(),
+    finish: z.string().trim().min(1).max(160).optional(),
+    metadata: z.record(jsonValueSchema).optional(),
+    active: z.boolean(),
+  })
+  .strict();
+export type CommercialVariant = z.infer<typeof commercialVariantSchema>;
+
+export const catalogImportSourceSchema = z
+  .object({
+    id: catalogIdSchema,
+    label: nonBlank,
+    sourceRevision: z.string().trim().min(1).max(160).optional(),
+    sourceUrl: z.string().url().optional(),
+  })
+  .strict();
+
+function duplicateIds<T extends { id: string }>(items: readonly T[]) {
+  const seen = new Set<string>();
+  return items
+    .filter((item) => {
+      if (seen.has(item.id)) return true;
+      seen.add(item.id);
+      return false;
+    })
+    .map((item) => item.id);
+}
+
+export const catalogImportBatchV1Schema = z
+  .object({
+    schemaVersion: z.literal(CATALOG_IMPORT_SCHEMA_VERSION),
+    source: catalogImportSourceSchema,
+    manufacturers: z.array(manufacturerSchema),
+    products: z.array(technicalProductFamilySchema),
+    revisions: z.array(technicalProductRevisionSchema),
+    variants: z.array(commercialVariantSchema),
+  })
+  .strict()
+  .superRefine((batch, context) => {
+    const duplicates = [
+      ...duplicateIds(batch.manufacturers).map(
+        (id) => ['manufacturers', id] as const,
+      ),
+      ...duplicateIds(batch.products).map((id) => ['products', id] as const),
+      ...duplicateIds(batch.revisions).map((id) => ['revisions', id] as const),
+      ...duplicateIds(batch.variants).map((id) => ['variants', id] as const),
+    ];
+    for (const [path, id] of duplicates)
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [path],
+        message: `duplicate-id:${id}`,
+      });
+
+    const manufacturers = new Set(batch.manufacturers.map((item) => item.id));
+    const products = new Map(batch.products.map((item) => [item.id, item]));
+    for (const product of batch.products)
+      if (!manufacturers.has(product.manufacturerId))
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['products'],
+          message: `missing-manufacturer:${product.manufacturerId}`,
+        });
+    for (const revision of batch.revisions) {
+      const product = products.get(revision.productId);
+      if (!product)
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['revisions'],
+          message: `missing-product:${revision.productId}`,
+        });
+      else if (product.coveringKind !== revision.technicalSpec.kind)
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['revisions'],
+          message: `covering-kind-mismatch:${revision.id}`,
+        });
+    }
+    for (const variant of batch.variants)
+      if (!products.has(variant.productId))
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['variants'],
+          message: `missing-product:${variant.productId}`,
+        });
+  });
+export type CatalogImportBatchV1 = z.infer<typeof catalogImportBatchV1Schema>;
+
+function canonicalize(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (value && typeof value === 'object')
+    return Object.fromEntries(
+      Object.entries(value)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, child]) => [key, canonicalize(child)]),
+    );
+  return value;
+}
+
+export function canonicalJson(value: unknown): string {
+  return JSON.stringify(canonicalize(value));
+}
+
+export type ImmutableRevisionComparison = 'new' | 'unchanged' | 'conflict';
+
+/** A revision ID is an immutable technical identity. */
+export function compareTechnicalRevision(
+  existing: TechnicalProductRevision | undefined,
+  incoming: TechnicalProductRevision,
+): ImmutableRevisionComparison {
+  if (!existing) return 'new';
+  return canonicalJson(existing) === canonicalJson(incoming)
+    ? 'unchanged'
+    : 'conflict';
+}
+
+export function createCatalogProductSelection(args: {
+  manufacturer: Manufacturer;
+  product: TechnicalProductFamily;
+  revision: TechnicalProductRevision;
+  variant?: CommercialVariant;
+}): CoveringProductSelection {
+  if (args.revision.productId !== args.product.id)
+    throw new Error('catalog-revision-product-mismatch');
+  if (args.product.manufacturerId !== args.manufacturer.id)
+    throw new Error('catalog-product-manufacturer-mismatch');
+  if (args.product.coveringKind !== args.revision.technicalSpec.kind)
+    throw new Error('catalog-covering-kind-mismatch');
+  if (args.variant && args.variant.productId !== args.product.id)
+    throw new Error('catalog-variant-product-mismatch');
+  return coveringProductSelectionSchema.parse({
+    catalogRef: {
+      productId: args.product.id,
+      technicalRevisionId: args.revision.id,
+      variantId: args.variant?.id,
+    },
+    displaySnapshot: {
+      manufacturer: args.manufacturer.name,
+      familyName: args.product.name,
+      variantName: args.variant?.name,
+    },
+    technicalSpecSnapshot: structuredClone(args.revision.technicalSpec),
+  });
+}
+
+export const catalogTechnicalPreviewSchema = z
+  .object({
+    effectiveWidthMm: z.number().finite().positive().optional(),
+    gaugeMinMm: z.number().finite().positive().optional(),
+    gaugeMaxMm: z.number().finite().positive().optional(),
+    minPitchDeg: z.number().finite().positive().optional(),
+  })
+  .strict();
+
+export const catalogProductSummarySchema = z
+  .object({
+    id: catalogIdSchema,
+    manufacturer: manufacturerSchema.pick({ id: true, name: true }),
+    name: nonBlank,
+    kind: z.enum(['roof-tile', 'modular-sheet', 'standing-seam']),
+    currentRevisionId: catalogIdSchema,
+    variantCount: z.number().int().nonnegative(),
+    technicalPreview: catalogTechnicalPreviewSchema,
+  })
+  .strict();
+export type CatalogProductSummary = z.infer<typeof catalogProductSummarySchema>;
+
+export const catalogProductDetailSchema = z
+  .object({
+    manufacturer: manufacturerSchema,
+    product: technicalProductFamilySchema,
+    currentRevision: technicalProductRevisionSchema,
+    variants: z.array(commercialVariantSchema),
+  })
+  .strict();
+export type CatalogProductDetail = z.infer<typeof catalogProductDetailSchema>;
+
+export const catalogRevisionDetailSchema = z
+  .object({
+    manufacturer: manufacturerSchema,
+    product: technicalProductFamilySchema,
+    revision: technicalProductRevisionSchema,
+  })
+  .strict();
+export type CatalogRevisionDetail = z.infer<typeof catalogRevisionDetailSchema>;
+
+export const catalogSearchQuerySchema = z
+  .object({
+    q: z.string().trim().max(120).optional(),
+    kind: z.enum(['roof-tile', 'modular-sheet', 'standing-seam']).optional(),
+    manufacturerId: catalogIdSchema.optional(),
+    limit: z.coerce.number().int().min(1).max(50).default(20),
+    cursor: z.string().max(200).optional(),
+  })
+  .strict();
+export type CatalogSearchQuery = z.infer<typeof catalogSearchQuerySchema>;
+
+export const catalogManufacturersResponseSchema = z
+  .object({ items: z.array(manufacturerSchema) })
+  .strict();
+export const catalogSearchResponseSchema = z
+  .object({
+    items: z.array(catalogProductSummarySchema),
+    nextCursor: z.string().optional(),
+  })
+  .strict();
+export const catalogProductResponseSchema = z
+  .object({ item: catalogProductDetailSchema })
+  .strict();
+export const catalogRevisionResponseSchema = z
+  .object({ item: catalogRevisionDetailSchema })
+  .strict();
+export const catalogApiErrorSchema = z
+  .object({
+    error: z
+      .object({ code: z.string().min(1), message: z.string().optional() })
+      .strict(),
+  })
+  .strict();
+
+export function technicalPreview(
+  spec: CoveringTechnicalSpec,
+): z.infer<typeof catalogTechnicalPreviewSchema> {
+  if (spec.kind === 'roof-tile') {
+    const mode = spec.installationModes[0];
+    return {
+      effectiveWidthMm: mode?.coverWidthMm,
+      gaugeMinMm: mode?.gaugeRangeMm.min,
+      gaugeMaxMm: mode?.gaugeRangeMm.max,
+      minPitchDeg: mode?.minPitchDeg,
+    };
+  }
+  if (spec.kind === 'modular-sheet')
+    return {
+      effectiveWidthMm: spec.effectiveWidthMm,
+      minPitchDeg: spec.minPitchDeg,
+    };
+  return {
+    effectiveWidthMm: spec.installationModes[0]?.effectiveWidthMm,
+    minPitchDeg: spec.minPitchDeg,
+  };
+}
+
+export function isCoveringKind(value: string): value is CoveringKind {
+  return ['roof-tile', 'modular-sheet', 'standing-seam'].includes(value);
+}

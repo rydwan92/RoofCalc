@@ -1,4 +1,8 @@
 export const assemblyPl = {
+  fromCatalog: 'Z katalogu',
+  orManualParameters: 'lub parametry ręczne',
+  catalogSource: 'Katalog',
+  catalogRevision: 'rewizja',
   coveringPreset: 'Pokrycie',
   mobileConstruction: 'Konstr.',
   mobileOpenings: 'Otwory',
@@ -714,6 +718,10 @@ export const assemblyPl = {
   structural: 'Geometria nie jest weryfikacją nośności konstrukcji.',
 };
 export const assemblyEn: typeof assemblyPl = {
+  fromCatalog: 'From catalogue',
+  orManualParameters: 'or manual parameters',
+  catalogSource: 'Catalogue',
+  catalogRevision: 'revision',
   coveringPreset: 'Covering',
   mobileConstruction: 'Build',
   mobileOpenings: 'Openings',

@@ -170,7 +170,7 @@ export class ProjectSession {
     // First Quick -> Builder handoff retains the exact current technical inputs.
     const record = createProjectRecord(
       useAssembly.getState().projectDocument,
-      nextProjectName(this.state.projects),
+      nextProjectName(this.state.projects, 'Projekt'),
       await this.uniqueId(),
     );
     let saved = false;
@@ -333,7 +333,7 @@ export class ProjectSession {
     const projects = await this.repository.list();
     const record = createProjectRecord(
       createDefaultProjectDocument(),
-      nextProjectName(projects),
+      nextProjectName(projects, 'Projekt'),
       await this.uniqueId(),
     );
     await this.repository.save(record);
@@ -356,7 +356,11 @@ export class ProjectSession {
   async duplicate(): Promise<void> {
     if (!this.record) return;
     await this.flushBeforeChange();
-    const copy = duplicateProject(this.record, await this.uniqueId());
+    const copy = duplicateProject(
+      this.record,
+      `${this.record.name} — kopia`,
+      await this.uniqueId(),
+    );
     await this.repository.save(copy);
     await this.activate(copy);
     this.update({ projects: await this.repository.list() });
@@ -378,7 +382,7 @@ export class ProjectSession {
     }
     const fresh = createProjectRecord(
       createDefaultProjectDocument(),
-      nextProjectName(remaining),
+      nextProjectName(remaining, 'Projekt'),
       await this.uniqueId(),
     );
     try {
@@ -415,7 +419,9 @@ export class ProjectSession {
 
   async import(contents: string): Promise<void> {
     // Parse before touching the current project or its Undo history.
-    const imported = importProject(contents);
+    const imported = importProject(contents, {
+      legacyName: 'Importowany projekt',
+    });
     await this.flushBeforeChange();
     const localRecord = { ...imported, id: await this.uniqueId(imported.id) };
     await this.repository.save(localRecord);

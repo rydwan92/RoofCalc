@@ -86,38 +86,53 @@ export function renameProject(
 
 export function duplicateProject(
   record: ProjectRecordV1,
+  name: string,
   id = newProjectId(),
   now = new Date().toISOString(),
 ): ProjectRecordV1 {
-  return createProjectRecord(
-    record.document,
-    `${record.name} — kopia`,
-    id,
-    now,
-  );
+  return createProjectRecord(record.document, name, id, now);
 }
 
-export function nextProjectName(summaries: ProjectSummary[]): string {
+export function nextProjectName(
+  summaries: ProjectSummary[],
+  prefix: string,
+): string {
   const names = new Set(summaries.map((item) => item.name));
   let number = 1;
-  while (names.has(`Projekt ${number}`)) number++;
-  return `Projekt ${number}`;
+  while (names.has(`${prefix} ${number}`)) number++;
+  return `${prefix} ${number}`;
 }
 
 export function exportProject(record: ProjectRecordV1): string {
   return JSON.stringify(projectRecordV1Schema.parse(record), null, 2);
 }
 
+export type ProjectImportErrorCode =
+  'invalid-json' | 'unsupported-project-format';
+
+export class ProjectImportError extends Error {
+  override readonly name = 'ProjectImportError';
+
+  constructor(readonly code: ProjectImportErrorCode) {
+    super(code);
+  }
+}
+
 export function importProject(
   serialized: string,
-  id = newProjectId(),
-  now = new Date().toISOString(),
+  options: {
+    id?: string;
+    now?: string;
+    legacyName: string;
+  },
 ): ProjectRecordV1 {
+  const id = options.id ?? newProjectId();
+  const now = options.now ?? new Date().toISOString();
   let parsed: unknown;
   try {
     parsed = JSON.parse(serialized);
   } catch {
-    throw new Error('Niepoprawny plik JSON.');
+    throw new ProjectImportError('invalid-json');
   }
   const archive = projectRecordV1Schema.safeParse(parsed);
   if (archive.success)
@@ -129,6 +144,6 @@ export function importProject(
     );
   const document = roofProjectDocumentV1Schema.safeParse(parsed);
   if (document.success)
-    return createProjectRecord(document.data, 'Importowany projekt', id, now);
-  throw new Error('Nieobsługiwany lub uszkodzony format projektu.');
+    return createProjectRecord(document.data, options.legacyName, id, now);
+  throw new ProjectImportError('unsupported-project-format');
 }

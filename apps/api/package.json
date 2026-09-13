@@ -5,17 +5,26 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsup src/server.ts --format esm --platform node --target node20 --clean"
+    "build": "tsup --config tsup.config.ts",
+    "db:generate": "cd ../.. && drizzle-kit generate --config drizzle.config.ts",
+    "db:migrate": "cd ../.. && drizzle-kit migrate --config drizzle.config.ts",
+    "catalog:import": "tsx src/cli/import-catalog.ts"
   },
   "dependencies": {
+    "@cieslacalc/catalog-core": "workspace:*",
+    "@cieslacalc/covering-core": "workspace:*",
+    "@cieslacalc/shared": "workspace:*",
+    "drizzle-orm": "0.44.0",
     "express": "^4.21.2",
-    "@cieslacalc/shared": "workspace:*"
+    "mysql2": "3.14.0",
+    "zod": "^3.25.0"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",
-    "tsx": "^4.20.0",
-    "tsup": "^8.5.0",
+    "@types/supertest": "^6.0.3",
+    "drizzle-kit": "0.31.0",
     "supertest": "^7.1.0",
-    "@types/supertest": "^6.0.3"
+    "tsup": "^8.5.0",
+    "tsx": "^4.20.0"
   }
 }

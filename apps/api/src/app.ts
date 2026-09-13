@@ -1,7 +1,12 @@
 import express from 'express';
 import type { HealthResponse } from '@cieslacalc/shared';
+import type { CatalogService } from './catalog/service';
+import { createCatalogRouter } from './catalog/routes';
 
-export function createApp(webDirectory?: string) {
+export function createApp(
+  webDirectory?: string,
+  catalogService?: CatalogService,
+) {
   const app = express();
   app.disable('x-powered-by');
   app.get('/api/health', (_req, res) => {
@@ -12,8 +17,9 @@ export function createApp(webDirectory?: string) {
     };
     res.json(response);
   });
+  app.use('/api/catalog', createCatalogRouter(catalogService));
   app.use('/api', (_req, res) => {
-    res.status(404).json({ error: 'not_found' });
+    res.status(404).json({ error: { code: 'not-found' } });
   });
   if (webDirectory) {
     app.use(express.static(webDirectory));

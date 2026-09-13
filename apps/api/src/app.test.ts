@@ -13,6 +13,8 @@ describe('API', () => {
     });
   });
   it('does not return the SPA for unknown API endpoints', async () => {
-    expect((await request(createApp()).get('/api/projects')).status).toBe(404);
+    const response = await request(createApp()).get('/api/projects');
+    expect(response.status).toBe(404);
+    expect(response.body).toEqual({ error: { code: 'not-found' } });
   });
 });

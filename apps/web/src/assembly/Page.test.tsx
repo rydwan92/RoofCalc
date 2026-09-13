@@ -1777,7 +1777,7 @@ describe('dual-mode parametric workbench', () => {
     expect(
       document.querySelectorAll('.a-tile-fragment').length,
     ).toBeGreaterThan(0);
-    expect(screen.queryByText(/cena|katalog/i)).toBeNull();
+    expect(screen.queryByText(/cena/i)).toBeNull();
     const tilePositionCount = () =>
       Number(
         [...document.querySelectorAll('.a-covering-counts span')]

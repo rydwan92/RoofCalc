@@ -10,6 +10,7 @@ export default defineConfig({
         manualChunks: {
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
           localization: ['i18next', 'react-i18next'],
+          'query-vendor': ['@tanstack/react-query'],
           icons: ['lucide-react'],
           'covering-core': ['@cieslacalc/covering-core'],
         },

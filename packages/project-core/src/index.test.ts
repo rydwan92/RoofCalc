@@ -59,22 +59,41 @@ describe('project lifecycle contract', () => {
     expect(renamed.id).toBe(record.id);
     expect(renamed.name).toBe('Nowa nazwa');
     expect(renamed.document).toEqual(record.document);
-    const duplicate = duplicateProject(record, 'project-2', now);
+    const duplicate = duplicateProject(
+      record,
+      'Dach domu — copy',
+      'project-2',
+      now,
+    );
     expect(duplicate.id).toBe('project-2');
-    expect(duplicate.name).toBe('Dach domu — kopia');
+    expect(duplicate.name).toBe('Dach domu — copy');
     expect(duplicate.document).toEqual(document);
     expect(duplicate.document).not.toBe(record.document);
   });
 
   it('imports archive or bare legacy document under a new local ID', () => {
-    const archive = importProject(exportProject(record), 'new-id', now);
+    const archive = importProject(exportProject(record), {
+      id: 'new-id',
+      now,
+      legacyName: 'Imported project',
+    });
     expect(archive.id).toBe('new-id');
     expect(archive.document).toEqual(document);
-    const legacy = importProject(JSON.stringify(document), 'legacy-id', now);
+    const legacy = importProject(JSON.stringify(document), {
+      id: 'legacy-id',
+      now,
+      legacyName: 'Imported project',
+    });
     expect(legacy.id).toBe('legacy-id');
     expect(legacy.document).toEqual(document);
-    expect(() => importProject('{broken')).toThrow();
-    expect(() => importProject('{"schemaVersion":99}')).toThrow();
+    expect(() =>
+      importProject('{broken', { legacyName: 'Imported project' }),
+    ).toThrowError('invalid-json');
+    expect(() =>
+      importProject('{"schemaVersion":99}', {
+        legacyName: 'Imported project',
+      }),
+    ).toThrowError('unsupported-project-format');
   });
 
   it('keeps repository contract async and lists metadata without geometry', async () => {
@@ -93,6 +112,8 @@ describe('project lifecycle contract', () => {
     expect(await repository.get(record.id)).toEqual(record);
     await repository.delete(record.id);
     expect(await repository.get(record.id)).toBeUndefined();
-    expect(nextProjectName([projectSummary(record)])).toBe('Projekt 1');
+    expect(nextProjectName([projectSummary(record)], 'Project')).toBe(
+      'Project 1',
+    );
   });
 });
