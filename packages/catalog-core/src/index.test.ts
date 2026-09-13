@@ -176,6 +176,7 @@ describe('catalog contracts', () => {
       manufacturer: 'Demo',
       familyName: 'Demo Tile',
       variantName: 'Red',
+      revisionCode: '2026-01',
     });
     expect(selection.technicalSpecSnapshot).toEqual(specs[0]);
   });

@@ -12,14 +12,17 @@ import {
   withOpeningFramingFabrication,
 } from '@cieslacalc/calculator-core';
 import {
+  createCutToLengthSheetQuantitySource,
   createModularSheetQuantitySource,
   createRoofTileQuantitySource,
   createStandingSeamQuantitySource,
+  resolveCutToLengthSheetLayout,
   resolveModularSheetLayout,
   resolvePrimaryCoveringAssignments,
   resolveRoofTileLayout,
   resolveStandingSeamLayout,
   type CoveringAssignmentSpec,
+  type CutToLengthSheetLayoutResult,
   type ModularSheetLayoutResult,
   type RoofTileLayoutResult,
   type StandingSeamLayoutResult,
@@ -128,7 +131,10 @@ type ModularSheetAssignment = CoveringAssignmentSpec & {
 };
 
 type ResolvedCoveringLayout =
-  RoofTileLayoutResult | ModularSheetLayoutResult | StandingSeamLayoutResult;
+  | RoofTileLayoutResult
+  | ModularSheetLayoutResult
+  | CutToLengthSheetLayoutResult
+  | StandingSeamLayoutResult;
 
 function isTileAssignment(
   assignment: CoveringAssignmentSpec,
@@ -140,6 +146,25 @@ function isModularSheetAssignment(
   assignment: CoveringAssignmentSpec,
 ): assignment is ModularSheetAssignment {
   return assignment.product.technicalSpecSnapshot.kind === 'modular-sheet';
+}
+
+function isCutToLengthSheetAssignment(
+  assignment: CoveringAssignmentSpec,
+): assignment is ModularSheetAssignment & {
+  product: ModularSheetAssignment['product'] & {
+    technicalSpecSnapshot: ModularSheetAssignment['product']['technicalSpecSnapshot'] & {
+      lengthModel: Extract<
+        ModularSheetAssignment['product']['technicalSpecSnapshot']['lengthModel'],
+        { kind: 'cut-to-length' }
+      >;
+    };
+  };
+} {
+  return (
+    isModularSheetAssignment(assignment) &&
+    assignment.product.technicalSpecSnapshot.lengthModel.kind ===
+      'cut-to-length'
+  );
 }
 
 function isStandingSeamAssignment(
@@ -385,6 +410,24 @@ export function AssemblyPage() {
                   : { kind: 'roof-tile', horizontalAlignment: 'centered' },
             }),
           ];
+        if (isCutToLengthSheetAssignment(assignment)) {
+          const previous = assignment.layoutIntent;
+          return [
+            resolveCutToLengthSheetLayout({
+              ...common,
+              productSpec: assignment.product.technicalSpecSnapshot,
+              layoutIntent:
+                previous?.kind === 'modular-sheet-cut-to-length'
+                  ? previous
+                  : previous?.kind === 'modular-sheet'
+                    ? { ...previous, kind: 'modular-sheet-cut-to-length' }
+                    : {
+                        kind: 'modular-sheet-cut-to-length',
+                        horizontalAlignment: 'centered',
+                      },
+            }),
+          ];
+        }
         if (isModularSheetAssignment(assignment))
           return [
             resolveModularSheetLayout({
@@ -456,15 +499,20 @@ export function AssemblyPage() {
                 layout,
                 productDisplay: assignment?.product.displaySnapshot,
               })
-            : layout.kind === 'modular-sheet'
-              ? createModularSheetQuantitySource({
+            : layout.kind === 'modular-sheet-cut-to-length'
+              ? createCutToLengthSheetQuantitySource({
                   layout,
                   productDisplay: assignment?.product.displaySnapshot,
                 })
-              : createStandingSeamQuantitySource({
-                  layout,
-                  productDisplay: assignment?.product.displaySnapshot,
-                });
+              : layout.kind === 'modular-sheet'
+                ? createModularSheetQuantitySource({
+                    layout,
+                    productDisplay: assignment?.product.displaySnapshot,
+                  })
+                : createStandingSeamQuantitySource({
+                    layout,
+                    productDisplay: assignment?.product.displaySnapshot,
+                  });
         return source ? [source] : [];
       }),
     [coveringAssignments, resolvedCoveringLayouts],

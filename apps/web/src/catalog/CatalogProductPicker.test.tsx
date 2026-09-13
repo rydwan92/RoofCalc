@@ -152,6 +152,34 @@ describe('catalogue product picker', () => {
     );
   });
 
+  it('keeps the covering family visible and pages beyond the first results', async () => {
+    const base = client();
+    const api = client({
+      searchProducts: vi.fn(async (query, signal) => {
+        const first = await base.searchProducts(query, signal);
+        return {
+          items: first.items.map((item) =>
+            query.cursor
+              ? { ...item, id: 'p:tile-2', name: 'Tile 31 (DEMO)' }
+              : item,
+          ),
+          nextCursor: query.cursor ? undefined : 'next',
+        };
+      }),
+    });
+    renderPicker(api);
+    expect(screen.getByText('Dachówka')).toBeTruthy();
+    expect(await screen.findByText('Tile 30 (DEMO)')).toBeTruthy();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Pokaż więcej produktów' }),
+    );
+    expect(await screen.findByText('Tile 31 (DEMO)')).toBeTruthy();
+    expect(api.searchProducts).toHaveBeenCalledWith(
+      expect.objectContaining({ cursor: 'next' }),
+      expect.any(AbortSignal),
+    );
+  });
+
   it('debounces search and applies an exact revision plus selected variant', async () => {
     const api = client();
     const { onApply } = renderPicker(api);
@@ -192,6 +220,7 @@ describe('catalogue product picker', () => {
           manufacturer: 'DEMO Roof',
           familyName: 'Tile 30 (DEMO)',
           variantName: 'Red',
+          revisionCode: '2026-01',
         },
         technicalSpecSnapshot: expect.objectContaining({ kind: 'roof-tile' }),
       }),

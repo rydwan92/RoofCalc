@@ -260,3 +260,32 @@ it('opens standing-seam numeric parameters and width modes through the mobile In
   );
   expect(within(editor).getAllByRole('radio')).toHaveLength(2);
 });
+
+it('edits cut-to-length metal in one mobile Inspector sheet and keeps drawing detail transient', async () => {
+  render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: 'Kreator' }));
+  const dock = screen.getByRole('tablist', { name: 'Widok zadaniowy' });
+  fireEvent.click(within(dock).getByRole('tab', { name: 'Pokrycie' }));
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Dodaj blachę modułową' }),
+  );
+  await screen.findByTestId('sheet-layout-drawing');
+  fireEvent.click(
+    screen.getAllByRole('button', { name: 'Parametry / Popraw' })[0]!,
+  );
+  const sheet = screen.getByRole('dialog', { name: 'Właściwości elementu' });
+  fireEvent.change(await within(sheet).findByLabelText('Format arkusza'), {
+    target: { value: 'cut-to-length' },
+  });
+  expect(
+    await within(sheet).findByLabelText(/Maksymalna długość arkusza/),
+  ).toBeTruthy();
+  expect(screen.getAllByRole('dialog')).toHaveLength(1);
+  expect(
+    await screen.findByTestId('cut-to-length-sheet-layout-drawing'),
+  ).toBeTruthy();
+  fireEvent.click(within(sheet).getByRole('button', { name: 'Zamknij' }));
+  const before = useAssembly.getState().historyPast.length;
+  fireEvent.click(screen.getByRole('button', { name: 'Uproszczony' }));
+  expect(useAssembly.getState().historyPast).toHaveLength(before);
+});

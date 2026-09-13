@@ -231,6 +231,7 @@ export function createCatalogProductSelection(args: {
       manufacturer: args.manufacturer.name,
       familyName: args.product.name,
       variantName: args.variant?.name,
+      revisionCode: args.revision.revisionCode,
     },
     technicalSpecSnapshot: structuredClone(args.revision.technicalSpec),
   });
@@ -242,6 +243,9 @@ export const catalogTechnicalPreviewSchema = z
     gaugeMinMm: z.number().finite().positive().optional(),
     gaugeMaxMm: z.number().finite().positive().optional(),
     minPitchDeg: z.number().finite().positive().optional(),
+    sheetLengthModel: z.enum(['fixed-sheet', 'cut-to-length']).optional(),
+    minimumSheetLengthMm: z.number().finite().positive().optional(),
+    maximumSheetLengthMm: z.number().finite().positive().optional(),
   })
   .strict();
 
@@ -327,6 +331,15 @@ export function technicalPreview(
     return {
       effectiveWidthMm: spec.effectiveWidthMm,
       minPitchDeg: spec.minPitchDeg,
+      sheetLengthModel: spec.lengthModel.kind,
+      minimumSheetLengthMm:
+        spec.lengthModel.kind === 'cut-to-length'
+          ? spec.lengthModel.minPanelLengthMm
+          : undefined,
+      maximumSheetLengthMm:
+        spec.lengthModel.kind === 'cut-to-length'
+          ? spec.lengthModel.maxPanelLengthMm
+          : undefined,
     };
   return {
     effectiveWidthMm: spec.installationModes[0]?.effectiveWidthMm,

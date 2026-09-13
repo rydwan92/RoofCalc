@@ -1863,6 +1863,114 @@ describe('dual-mode parametric workbench', () => {
     expect(screen.getByText(/Blacha modułowa —/)).toBeTruthy();
   });
 
+  it('edits a manual metal product to cut-to-length and keeps drawing detail outside project history', async () => {
+    render(<App />);
+    builder();
+    fireEvent.click(screen.getByRole('tab', { name: 'Pokrycie' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Dodaj blachę modułową' }),
+    );
+    await screen.findByTestId('sheet-layout-drawing');
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'Parametry / Popraw' })[0]!,
+    );
+    const inspector = await screen.findByTestId('covering-inspector');
+    fireEvent.change(within(inspector).getByLabelText('Format arkusza'), {
+      target: { value: 'cut-to-length' },
+    });
+    expect(
+      await screen.findByTestId('cut-to-length-sheet-layout-drawing'),
+    ).toBeTruthy();
+    const assignment =
+      useAssembly.getState().projectDocument.project.coverings[0]!;
+    expect(assignment.product.technicalSpecSnapshot).toMatchObject({
+      kind: 'modular-sheet',
+      lengthModel: { kind: 'cut-to-length' },
+    });
+    expect(assignment.layoutIntent?.kind).toBe('modular-sheet-cut-to-length');
+    expect(
+      await within(inspector).findByLabelText(/Minimalna długość arkusza/),
+    ).toBeTruthy();
+    expect(screen.getByText('Całe pokrycie')).toBeTruthy();
+    act(() => {
+      const assignments = structuredClone(
+        useAssembly.getState().projectDocument.project.coverings,
+      );
+      assignments[0]!.roofPlaneIds = ['roof-plane:left', 'roof-plane:right'];
+      useAssembly.getState().setCoveringAssignments(assignments);
+    });
+    fireEvent.click(screen.getByRole('tab', { name: 'Prawa połać' }));
+    const totalRuns = Number(
+      document.querySelector('.a-covering-count-primary b')?.textContent,
+    );
+    const selectedRuns = Number(
+      document.querySelector('.a-covering-plane-result span b')?.textContent,
+    );
+    expect(totalRuns).toBeGreaterThan(selectedRuns);
+    expect(
+      document.querySelector('.a-covering-plane-result')?.textContent,
+    ).toContain('Prawa połać');
+    const documentBefore = useAssembly.getState().projectDocument;
+    const historyBefore = useAssembly.getState().historyPast.length;
+    fireEvent.click(screen.getByRole('button', { name: 'Uproszczony' }));
+    expect(useAssembly.getState().projectDocument).toBe(documentBefore);
+    expect(useAssembly.getState().historyPast).toHaveLength(historyBefore);
+    fireEvent.click(screen.getByRole('button', { name: 'Dokładny' }));
+    expect(
+      document.querySelectorAll('.a-panel-fragment').length,
+    ).toBeGreaterThan(0);
+    expect(useAssembly.getState().historyPast).toHaveLength(historyBefore);
+    act(() => useAssembly.getState().setViewPreset('materials'));
+    const schedule = await screen.findByTestId('covering-quantity');
+    expect(
+      within(schedule).getByText(/Blacha cięta na długość —/),
+    ).toBeTruthy();
+    expect(
+      within(schedule).getByText(/geometryczne odcinki blachy/),
+    ).toBeTruthy();
+  });
+
+  it('shows a readable catalogue source and detaches revision identity after a technical edit', async () => {
+    render(<App />);
+    builder();
+    fireEvent.click(screen.getByRole('tab', { name: 'Pokrycie' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Dodaj blachę modułową' }),
+    );
+    await screen.findByTestId('sheet-layout-drawing');
+    act(() => {
+      const assignments = structuredClone(
+        useAssembly.getState().projectDocument.project.coverings,
+      );
+      assignments[0]!.product.catalogRef = {
+        productId: 'catalog-internal-id',
+        technicalRevisionId: 'revision-internal-id',
+      };
+      assignments[0]!.product.displaySnapshot = {
+        manufacturer: 'DEMO Roof',
+        familyName: 'Metal 350',
+        revisionCode: '2026-01',
+      };
+      useAssembly.getState().setCoveringAssignments(assignments);
+    });
+    expect(screen.getAllByText(/DEMO Roof.*2026-01/).length).toBeGreaterThan(0);
+    expect(document.body.textContent).not.toContain('revision-internal-id');
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'Parametry / Popraw' })[0]!,
+    );
+    const inspector = await screen.findByTestId('covering-inspector');
+    const width = within(inspector).getByLabelText(
+      /Szerokość efektywna/,
+    ) as HTMLInputElement;
+    fireEvent.change(width, { target: { value: '1110' } });
+    fireEvent.blur(width);
+    expect(
+      useAssembly.getState().projectDocument.project.coverings[0]?.product
+        .catalogRef,
+    ).toBeUndefined();
+    expect(within(inspector).getByText('Parametry ręczne')).toBeTruthy();
+  });
+
   it('creates standing seam, edits its width in Inspector and keeps exact run lengths compact', async () => {
     render(<App />);
     builder();

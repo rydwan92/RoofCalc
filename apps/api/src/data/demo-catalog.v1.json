@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "source": {
-    "id": "demo-fixture-v24",
+    "id": "demo-fixture-v25",
     "label": "DEMO / TEST — not an authoritative manufacturer catalogue",
-    "sourceRevision": "v24"
+    "sourceRevision": "v25"
   },
   "manufacturers": [
     {
@@ -28,6 +28,14 @@
       "manufacturerId": "manufacturer:demo-roof",
       "slug": "module-350",
       "name": "Module 350 (DEMO)",
+      "coveringKind": "modular-sheet",
+      "active": true
+    },
+    {
+      "id": "product:demo-roof:cut-350",
+      "manufacturerId": "manufacturer:demo-roof",
+      "slug": "cut-350",
+      "name": "Cut 350 (DEMO)",
       "coveringKind": "modular-sheet",
       "active": true
     },
@@ -94,6 +102,32 @@
       }
     },
     {
+      "id": "revision:demo-roof:cut-350:2026-01",
+      "productId": "product:demo-roof:cut-350",
+      "revisionCode": "2026-01",
+      "validFrom": "2026-01-01",
+      "source": {
+        "label": "DEMO fixture — synthetic values",
+        "revision": "v25"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "modular-sheet",
+        "effectiveWidthMm": 1100,
+        "totalWidthMm": 1180,
+        "lengthModel": {
+          "kind": "cut-to-length",
+          "minPanelLengthMm": 500,
+          "maxPanelLengthMm": 6000
+        },
+        "moduleLengthMm": 350,
+        "minPitchDeg": 9,
+        "physicalThicknessMm": 0.5,
+        "material": "steel",
+        "salesUnit": "piece"
+      }
+    },
+    {
       "id": "revision:demo-roof:seam-500:2026-01",
       "productId": "product:demo-roof:seam-500",
       "revisionCode": "2026-01",
@@ -127,6 +161,15 @@
       "id": "variant:demo-roof:module-350:graphite",
       "productId": "product:demo-roof:module-350",
       "sku": "DEMO-M350-GR",
+      "name": "Graphite (DEMO)",
+      "color": "graphite",
+      "finish": "matt",
+      "active": true
+    },
+    {
+      "id": "variant:demo-roof:cut-350:graphite",
+      "productId": "product:demo-roof:cut-350",
+      "sku": "DEMO-C350-GR",
       "name": "Graphite (DEMO)",
       "color": "graphite",
       "finish": "matt",

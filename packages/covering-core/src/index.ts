@@ -156,6 +156,7 @@ export const coveringProductSelectionSchema = z.object({
       manufacturer: z.string().min(1).optional(),
       familyName: z.string().min(1).optional(),
       variantName: z.string().min(1).optional(),
+      revisionCode: z.string().min(1).optional(),
     })
     .optional(),
   technicalSpecSnapshot: coveringTechnicalSpecSchema,
@@ -206,6 +207,26 @@ export const modularSheetLayoutIntentSchema = z
 export type ModularSheetLayoutIntent = z.infer<
   typeof modularSheetLayoutIntentSchema
 >;
+export const cutToLengthSheetLayoutIntentSchema = z
+  .object({
+    kind: z.literal('modular-sheet-cut-to-length'),
+    horizontalAlignment: z.enum(['centered', 'from-u-min', 'manual']),
+    planeOffsetsMm: z.record(stableId, z.number().finite()).optional(),
+  })
+  .superRefine((intent, context) => {
+    if (
+      intent.horizontalAlignment === 'manual' &&
+      (!intent.planeOffsetsMm || !Object.keys(intent.planeOffsetsMm).length)
+    )
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['planeOffsetsMm'],
+        message: 'manual_sheet_offset_required',
+      });
+  });
+export type CutToLengthSheetLayoutIntent = z.infer<
+  typeof cutToLengthSheetLayoutIntentSchema
+>;
 export const standingSeamLayoutIntentSchema = z
   .object({
     kind: z.literal('standing-seam'),
@@ -229,6 +250,7 @@ export type StandingSeamLayoutIntent = z.infer<
 export const coveringLayoutIntentSchema = z.union([
   roofTileLayoutIntentSchema,
   modularSheetLayoutIntentSchema,
+  cutToLengthSheetLayoutIntentSchema,
   standingSeamLayoutIntentSchema,
 ]);
 export type CoveringLayoutIntent = z.infer<typeof coveringLayoutIntentSchema>;
@@ -250,7 +272,19 @@ export const coveringAssignmentSpecSchema = z
   .superRefine((assignment, context) => {
     const selected = assignment.selectedInstallationModeId;
     const spec = assignment.product.technicalSpecSnapshot;
-    if (assignment.layoutIntent && assignment.layoutIntent.kind !== spec.kind)
+    const expectedIntentKind =
+      spec.kind === 'modular-sheet' && spec.lengthModel.kind === 'cut-to-length'
+        ? 'modular-sheet-cut-to-length'
+        : spec.kind;
+    // Older cut-to-length snapshots may have a V21 modular-sheet intent.
+    if (
+      assignment.layoutIntent &&
+      assignment.layoutIntent.kind !== expectedIntentKind &&
+      !(
+        expectedIntentKind === 'modular-sheet-cut-to-length' &&
+        assignment.layoutIntent.kind === 'modular-sheet'
+      )
+    )
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['layoutIntent', 'kind'],
@@ -511,3 +545,4 @@ export * from './tile-layout';
 export * from './modular-sheet-layout';
 export * from './variable-panel-layout';
 export * from './standing-seam-layout';
+export * from './cut-to-length-sheet-layout';

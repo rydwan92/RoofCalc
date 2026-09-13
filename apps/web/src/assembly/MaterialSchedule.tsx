@@ -392,34 +392,44 @@ export function MaterialSchedule({
                     {t(
                       row.basis.startsWith('standing-seam')
                         ? 'assembly.standingSeam'
-                        : row.basis.startsWith('fixed-modular-sheet')
-                          ? 'assembly.modularSheet'
-                          : 'assembly.roofTile',
+                        : row.basis.startsWith('cut-to-length')
+                          ? 'assembly.cutToLengthSheet'
+                          : row.basis.startsWith('fixed-modular-sheet')
+                            ? 'assembly.modularSheet'
+                            : 'assembly.roofTile',
                     )}{' '}
                     —{' '}
                     {row.productDisplay?.familyName ??
                       t(
                         row.basis.startsWith('standing-seam')
                           ? 'assembly.manualStandingSeam'
-                          : row.basis.startsWith('fixed-modular-sheet')
-                            ? 'assembly.manualModularSheet'
-                            : 'assembly.manualRoofTile',
+                          : row.basis.startsWith('cut-to-length')
+                            ? 'assembly.manualCutToLengthSheet'
+                            : row.basis.startsWith('fixed-modular-sheet')
+                              ? 'assembly.manualModularSheet'
+                              : 'assembly.manualRoofTile',
                       )}
                   </b>
                   <small>
                     {t(
                       row.basis.startsWith('standing-seam')
                         ? 'assembly.geometricPanelRunLayout'
-                        : row.basis.startsWith('fixed-modular-sheet')
-                          ? 'assembly.geometricSheetLayout'
-                          : 'assembly.geometricTileLayout',
+                        : row.basis.startsWith('cut-to-length')
+                          ? 'assembly.geometricCutSheetLayout'
+                          : row.basis.startsWith('fixed-modular-sheet')
+                            ? 'assembly.geometricSheetLayout'
+                            : 'assembly.geometricTileLayout',
                     )}
                   </small>
                 </span>
                 <strong>
                   {row.basis.startsWith('standing-seam')
                     ? t('assembly.panelRunCountShort', { count: row.quantity })
-                    : `${row.quantity} ${t('assembly.piecesShort')}`}
+                    : row.basis.startsWith('cut-to-length')
+                      ? t('assembly.sheetRunCountShort', {
+                          count: row.quantity,
+                        })
+                      : `${row.quantity} ${t('assembly.piecesShort')}`}
                 </strong>
                 {row.totalLengthMm !== undefined && (
                   <small>
@@ -427,6 +437,27 @@ export function MaterialSchedule({
                     {metres(row.totalLengthMm, i18n.language)}
                   </small>
                 )}
+                {row.basis.startsWith('cut-to-length') &&
+                  row.lengthGroups?.length && (
+                    <small>
+                      {t('assembly.runLengthRange')}:{' '}
+                      {displayLength(
+                        Math.min(
+                          ...row.lengthGroups.map((group) => group.lengthMm),
+                        ),
+                        state.unit,
+                        i18n.language,
+                      )}
+                      –
+                      {displayLength(
+                        Math.max(
+                          ...row.lengthGroups.map((group) => group.lengthMm),
+                        ),
+                        state.unit,
+                        i18n.language,
+                      )}
+                    </small>
+                  )}
                 {row.lengthGroups && row.lengthGroups.length > 0 && (
                   <details className="a-panel-lengths">
                     <summary>

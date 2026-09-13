@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  useInfiniteQuery,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { ArrowLeft, Search, X } from 'lucide-react';
 import {
   createCatalogProductSelection,
@@ -38,6 +42,15 @@ const copy = {
     gauge: 'Rozstaw łat',
     pitch: 'Minimalny kąt',
     panelLength: 'Zakres długości',
+    sheetFormat: 'Format',
+    fixedSheet: 'Stały arkusz',
+    cutSheet: 'Cięta na długość',
+    more: 'Pokaż więcej produktów',
+    kind: {
+      'roof-tile': 'Dachówka',
+      'modular-sheet': 'Blacha',
+      'standing-seam': 'Rąbek',
+    },
   },
   en: {
     title: 'Product catalogue',
@@ -61,6 +74,15 @@ const copy = {
     gauge: 'Batten gauge',
     pitch: 'Minimum pitch',
     panelLength: 'Length range',
+    sheetFormat: 'Format',
+    fixedSheet: 'Fixed sheet',
+    cutSheet: 'Cut to length',
+    more: 'Show more products',
+    kind: {
+      'roof-tile': 'Roof tile',
+      'modular-sheet': 'Metal sheet',
+      'standing-seam': 'Standing seam',
+    },
   },
 };
 
@@ -85,6 +107,14 @@ function facts(spec: CoveringTechnicalSpec, m: (typeof copy)['pl']) {
   if (spec.kind === 'modular-sheet')
     return [
       [m.width, `${spec.effectiveWidthMm} mm`],
+      [
+        m.sheetFormat,
+        spec.lengthModel.kind === 'cut-to-length' ? m.cutSheet : m.fixedSheet,
+      ],
+      spec.lengthModel.kind === 'cut-to-length' && [
+        m.panelLength,
+        `${spec.lengthModel.minPanelLengthMm}–${spec.lengthModel.maxPanelLengthMm} mm`,
+      ],
       spec.minPitchDeg && [m.pitch, `${spec.minPitchDeg}°`],
     ].filter(Boolean) as string[][];
   return [
@@ -123,19 +153,22 @@ function PickerBody({
     queryFn: ({ signal }) => client.listManufacturers(signal),
     staleTime: 5 * 60_000,
   });
-  const products = useQuery({
+  const products = useInfiniteQuery({
     queryKey: ['catalog', 'products', kind, q, manufacturerId],
-    queryFn: ({ signal }) =>
+    queryFn: ({ signal, pageParam }) =>
       client.searchProducts(
         {
           q: q || undefined,
           kind,
           manufacturerId: manufacturerId || undefined,
           limit: 30,
+          cursor: pageParam || undefined,
         },
         signal,
       ),
     staleTime: 60_000,
+    initialPageParam: '',
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
   const detail = useQuery({
     queryKey: ['catalog', 'product', productId],
@@ -145,6 +178,7 @@ function PickerBody({
   });
 
   const unavailable = manufacturers.isError || products.isError;
+  const productItems = products.data?.pages.flatMap((page) => page.items);
   const selectedVariant = detail.data?.variants.find(
     (item) => item.id === variantId,
   );
@@ -254,6 +288,7 @@ function PickerBody({
 
   return (
     <div className="a-catalog-picker-body" data-testid="catalog-results">
+      <p className="a-catalog-kind-context">{m.kind[kind]}</p>
       <div className="a-catalog-filters">
         <label>
           <span>{m.search}</span>
@@ -291,9 +326,9 @@ function PickerBody({
         <div className="a-catalog-loading" aria-live="polite">
           {m.loading}
         </div>
-      ) : products.data?.items.length ? (
+      ) : productItems?.length ? (
         <div className="a-catalog-results">
-          {products.data.items.map((product) => (
+          {productItems.map((product) => (
             <article key={product.id} className="a-catalog-card">
               <small>{product.manufacturer.name}</small>
               <strong>{product.name}</strong>
@@ -319,6 +354,28 @@ function PickerBody({
                     <dd>{product.technicalPreview.minPitchDeg}°</dd>
                   </div>
                 )}
+                {product.technicalPreview.sheetLengthModel && (
+                  <div>
+                    <dt>{m.sheetFormat}</dt>
+                    <dd>
+                      {product.technicalPreview.sheetLengthModel ===
+                      'cut-to-length'
+                        ? m.cutSheet
+                        : m.fixedSheet}
+                    </dd>
+                  </div>
+                )}
+                {product.technicalPreview.minimumSheetLengthMm !== undefined &&
+                  product.technicalPreview.maximumSheetLengthMm !==
+                    undefined && (
+                    <div>
+                      <dt>{m.panelLength}</dt>
+                      <dd>
+                        {product.technicalPreview.minimumSheetLengthMm}–
+                        {product.technicalPreview.maximumSheetLengthMm} mm
+                      </dd>
+                    </div>
+                  )}
               </dl>
               <button
                 className="a-button"
@@ -331,6 +388,15 @@ function PickerBody({
               </button>
             </article>
           ))}
+          {products.hasNextPage && (
+            <button
+              className="a-button a-catalog-more"
+              disabled={products.isFetchingNextPage}
+              onClick={() => void products.fetchNextPage()}
+            >
+              {products.isFetchingNextPage ? m.loading : m.more}
+            </button>
+          )}
         </div>
       ) : (
         <div className="a-catalog-empty">{m.empty}</div>

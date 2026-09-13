@@ -12,9 +12,12 @@ export function roofPlaneLabelKey(roofPlaneId: string) {
 }
 
 export function coveringKindLabelKey(assignment: CoveringAssignmentSpec) {
-  return assignment.product.technicalSpecSnapshot.kind === 'modular-sheet'
-    ? 'assembly.manualModularSheet'
-    : assignment.product.technicalSpecSnapshot.kind === 'roof-tile'
+  const spec = assignment.product.technicalSpecSnapshot;
+  return spec.kind === 'modular-sheet'
+    ? spec.lengthModel.kind === 'cut-to-length'
+      ? 'assembly.cutToLengthSheet'
+      : 'assembly.manualModularSheet'
+    : spec.kind === 'roof-tile'
       ? 'assembly.manualRoofTile'
       : 'assembly.manualStandingSeam';
 }
