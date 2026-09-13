@@ -7,12 +7,15 @@ import {
 import {
   createModularSheetQuantitySource,
   createRoofTileQuantitySource,
+  createStandingSeamQuantitySource,
   resolveModularSheetLayout,
   resolvePrimaryCoveringAssignments,
   resolveRoofTileLayout,
+  resolveStandingSeamLayout,
   type CoveringAssignmentSpec,
   type ModularSheetLayoutResult,
   type RoofTileLayoutResult,
+  type StandingSeamLayoutResult,
 } from '@cieslacalc/covering-core';
 import {
   createRoofMemberSchedule,
@@ -115,7 +118,8 @@ type ModularSheetAssignment = CoveringAssignmentSpec & {
   };
 };
 
-type ResolvedCoveringLayout = RoofTileLayoutResult | ModularSheetLayoutResult;
+type ResolvedCoveringLayout =
+  RoofTileLayoutResult | ModularSheetLayoutResult | StandingSeamLayoutResult;
 
 function isTileAssignment(
   assignment: CoveringAssignmentSpec,
@@ -127,6 +131,19 @@ function isModularSheetAssignment(
   assignment: CoveringAssignmentSpec,
 ): assignment is ModularSheetAssignment {
   return assignment.product.technicalSpecSnapshot.kind === 'modular-sheet';
+}
+
+function isStandingSeamAssignment(
+  assignment: CoveringAssignmentSpec,
+): assignment is CoveringAssignmentSpec & {
+  product: CoveringAssignmentSpec['product'] & {
+    technicalSpecSnapshot: Extract<
+      CoveringAssignmentSpec['product']['technicalSpecSnapshot'],
+      { kind: 'standing-seam' }
+    >;
+  };
+} {
+  return assignment.product.technicalSpecSnapshot.kind === 'standing-seam';
 }
 
 export function AssemblyPage() {
@@ -368,6 +385,18 @@ export function AssemblyPage() {
                     },
             }),
           ];
+        if (isStandingSeamAssignment(assignment))
+          return [
+            resolveStandingSeamLayout({
+              ...common,
+              productSpec: assignment.product.technicalSpecSnapshot,
+              selectedInstallationModeId: assignment.selectedInstallationModeId,
+              layoutIntent:
+                assignment.layoutIntent?.kind === 'standing-seam'
+                  ? assignment.layoutIntent
+                  : { kind: 'standing-seam', horizontalAlignment: 'centered' },
+            }),
+          ];
         return [];
       }),
     [
@@ -413,10 +442,15 @@ export function AssemblyPage() {
                 layout,
                 productDisplay: assignment?.product.displaySnapshot,
               })
-            : createModularSheetQuantitySource({
-                layout,
-                productDisplay: assignment?.product.displaySnapshot,
-              });
+            : layout.kind === 'modular-sheet'
+              ? createModularSheetQuantitySource({
+                  layout,
+                  productDisplay: assignment?.product.displaySnapshot,
+                })
+              : createStandingSeamQuantitySource({
+                  layout,
+                  productDisplay: assignment?.product.displaySnapshot,
+                });
         return source ? [source] : [];
       }),
     [coveringAssignments, resolvedCoveringLayouts],

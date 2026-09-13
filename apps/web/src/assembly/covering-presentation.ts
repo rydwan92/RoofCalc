@@ -16,7 +16,7 @@ export function coveringKindLabelKey(assignment: CoveringAssignmentSpec) {
     ? 'assembly.manualModularSheet'
     : assignment.product.technicalSpecSnapshot.kind === 'roof-tile'
       ? 'assembly.manualRoofTile'
-      : 'assembly.standingSeam';
+      : 'assembly.manualStandingSeam';
 }
 
 export function installationModeLabelKey(modeId: string) {

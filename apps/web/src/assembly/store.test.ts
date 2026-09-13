@@ -1064,3 +1064,51 @@ it('keeps covering selection transient and chooses a deterministic neighbour aft
     2,
   );
 });
+
+it('keeps standing-seam mode, alignment and plane edits canonical with exact undo/redo', () => {
+  const assignment = {
+    id: 'covering:standing-seam-1',
+    roofPlaneIds: ['roof-plane:left'],
+    selectedInstallationModeId: 'wide',
+    layoutIntent: {
+      kind: 'standing-seam' as const,
+      horizontalAlignment: 'centered' as const,
+    },
+    product: {
+      technicalSpecSnapshot: {
+        schemaVersion: 1 as const,
+        kind: 'standing-seam' as const,
+        installationModes: [
+          { id: 'wide', effectiveWidthMm: 500 },
+          { id: 'narrow', effectiveWidthMm: 250 },
+        ],
+        minPanelLengthMm: 200,
+        maxPanelLengthMm: 8000,
+        seamHeightMm: 25,
+      },
+    },
+  };
+  useAssembly.getState().setCoveringAssignments([assignment]);
+  useAssembly.setState({ historyPast: [], historyFuture: [] });
+  const before = structuredClone(useAssembly.getState().projectDocument);
+  useAssembly.getState().setSelectedCoveringAssignment(assignment.id);
+  expect(useAssembly.getState().historyPast).toHaveLength(0);
+  useAssembly.getState().setCoveringAssignments([
+    {
+      ...assignment,
+      roofPlaneIds: ['roof-plane:left', 'roof-plane:right'],
+      selectedInstallationModeId: 'narrow',
+      layoutIntent: {
+        kind: 'standing-seam' as const,
+        horizontalAlignment: 'manual' as const,
+        planeOffsetsMm: { 'roof-plane:left': 75, 'roof-plane:right': 0 },
+      },
+    },
+  ]);
+  const after = structuredClone(useAssembly.getState().projectDocument);
+  expect(useAssembly.getState().historyPast).toHaveLength(1);
+  useAssembly.getState().undo();
+  expect(useAssembly.getState().projectDocument).toEqual(before);
+  useAssembly.getState().redo();
+  expect(useAssembly.getState().projectDocument).toEqual(after);
+});

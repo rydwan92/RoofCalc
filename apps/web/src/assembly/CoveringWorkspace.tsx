@@ -6,6 +6,7 @@ import {
   type ModularSheetLayoutResult,
   type PrimaryCoveringPlaneConflict,
   type RoofTileLayoutResult,
+  type StandingSeamLayoutResult,
 } from '@cieslacalc/covering-core';
 import { fromMillimetres, toMillimetres } from '@cieslacalc/roof-math';
 import type {
@@ -38,7 +39,17 @@ type ModularSheetAssignment = CoveringAssignmentSpec & {
   };
 };
 
-type SupportedLayout = RoofTileLayoutResult | ModularSheetLayoutResult;
+type StandingSeamAssignment = CoveringAssignmentSpec & {
+  product: CoveringAssignmentSpec['product'] & {
+    technicalSpecSnapshot: Extract<
+      CoveringAssignmentSpec['product']['technicalSpecSnapshot'],
+      { kind: 'standing-seam' }
+    >;
+  };
+};
+
+type SupportedLayout =
+  RoofTileLayoutResult | ModularSheetLayoutResult | StandingSeamLayoutResult;
 
 function isTileAssignment(
   assignment: CoveringAssignmentSpec,
@@ -50,6 +61,12 @@ function isModularSheetAssignment(
   assignment: CoveringAssignmentSpec,
 ): assignment is ModularSheetAssignment {
   return assignment.product.technicalSpecSnapshot.kind === 'modular-sheet';
+}
+
+function isStandingSeamAssignment(
+  assignment: CoveringAssignmentSpec,
+): assignment is StandingSeamAssignment {
+  return assignment.product.technicalSpecSnapshot.kind === 'standing-seam';
 }
 
 export function createManualTileAssignment(args: {
@@ -131,6 +148,39 @@ export function createManualModularSheetAssignment(args: {
   };
 }
 
+export function createManualStandingSeamAssignment(args: {
+  existing: readonly CoveringAssignmentSpec[];
+  roofPlaneIds: readonly string[];
+}): CoveringAssignmentSpec {
+  const next =
+    Math.max(
+      0,
+      ...args.existing.map((item) =>
+        Number(/covering:standing-seam-(\d+)$/.exec(item.id)?.[1] ?? 0),
+      ),
+    ) + 1;
+  return {
+    id: `covering:standing-seam-${next}`,
+    roofPlaneIds: [...args.roofPlaneIds],
+    selectedInstallationModeId: 'manual-standard',
+    layoutIntent: { kind: 'standing-seam', horizontalAlignment: 'centered' },
+    product: {
+      technicalSpecSnapshot: {
+        schemaVersion: 1,
+        kind: 'standing-seam',
+        installationModes: [{ id: 'manual-standard', effectiveWidthMm: 500 }],
+        minPanelLengthMm: 500,
+        maxPanelLengthMm: 8000,
+        seamHeightMm: 25,
+        minPitchDeg: 8,
+        physicalThicknessMm: 0.5,
+        material: 'steel',
+        salesUnit: 'piece',
+      },
+    },
+  };
+}
+
 function NumericField({
   label,
   value,
@@ -204,7 +254,7 @@ export function CoveringWorkspace({
   battens: BattenLayoutResult;
 }) {
   const state = useAssembly();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [selectedPlaneId, setSelectedPlaneId] = useState<string>();
   const planeIds =
     assignment?.roofPlaneIds ??
@@ -220,10 +270,32 @@ export function CoveringWorkspace({
     (plane) => plane.roofPlaneId === selectedPlaneId,
   );
   const fragments = useMemo(() => {
+    if (
+      layout?.kind === 'standing-seam' &&
+      selectedLayout &&
+      'columns' in selectedLayout
+    )
+      return selectedLayout.columns.flatMap((column) =>
+        column.runs.flatMap((run) =>
+          run.polygons.map((polygon, index) => ({
+            id: `${run.id}:${index}`,
+            classification: run.issues.length
+              ? 'invalid-panel'
+              : run.openingIds.length
+                ? 'opening-interrupted'
+                : column.edgeClassification === 'edge-cut-width'
+                  ? 'edge-cut-width'
+                  : 'full',
+            polygon,
+          })),
+        ),
+      );
     const positions = selectedLayout
       ? 'courses' in selectedLayout
         ? selectedLayout.courses.flatMap((course) => course.positions)
-        : selectedLayout.rows.flatMap((row) => row.positions)
+        : 'rows' in selectedLayout
+          ? selectedLayout.rows.flatMap((row) => row.positions)
+          : []
       : [];
     return positions.flatMap((position) =>
       position.visibleFragments.map((fragment, index) => ({
@@ -232,7 +304,7 @@ export function CoveringWorkspace({
         polygon: fragment.polygon,
       })),
     );
-  }, [selectedLayout]);
+  }, [layout?.kind, selectedLayout]);
   const simplified = fragments.length > 1200;
   const bounds = selectedSurface
     ? (() => {
@@ -275,17 +347,24 @@ export function CoveringWorkspace({
       ? assignment.product.technicalSpecSnapshot
       : undefined;
 
-  const addAssignment = (kind: 'roof-tile' | 'modular-sheet') => {
+  const addAssignment = (
+    kind: 'roof-tile' | 'modular-sheet' | 'standing-seam',
+  ) => {
     const next =
       kind === 'roof-tile'
         ? createManualTileAssignment({
             existing: assignments,
             roofPlaneIds: [surfaceGeometry.planes[0]!.roofPlaneId],
           })
-        : createManualModularSheetAssignment({
-            existing: assignments,
-            roofPlaneIds: [surfaceGeometry.planes[0]!.roofPlaneId],
-          });
+        : kind === 'modular-sheet'
+          ? createManualModularSheetAssignment({
+              existing: assignments,
+              roofPlaneIds: [surfaceGeometry.planes[0]!.roofPlaneId],
+            })
+          : createManualStandingSeamAssignment({
+              existing: assignments,
+              roofPlaneIds: [surfaceGeometry.planes[0]!.roofPlaneId],
+            });
     state.setCoveringAssignments([...assignments, next]);
     state.setSelectedCoveringAssignment(next.id);
   };
@@ -308,6 +387,12 @@ export function CoveringWorkspace({
             onClick={() => addAssignment('modular-sheet')}
           >
             {t('assembly.addManualModularSheet')}
+          </button>
+          <button
+            className="a-button"
+            onClick={() => addAssignment('standing-seam')}
+          >
+            {t('assembly.addManualStandingSeam')}
           </button>
         </div>
       </section>
@@ -345,6 +430,12 @@ export function CoveringWorkspace({
           >
             + {t('assembly.modularSheet')}
           </button>
+          <button
+            className="a-button a-add"
+            onClick={() => addAssignment('standing-seam')}
+          >
+            + {t('assembly.standingSeam')}
+          </button>
         </div>
       </div>
       <header>
@@ -364,67 +455,97 @@ export function CoveringWorkspace({
         >
           {t('assembly.coveringParameters')}
         </button>
-        <div className="a-covering-counts" data-status={layout?.status}>
-          <span>
-            {t('assembly.coveringStatusLabel')}{' '}
-            <b>
-              {layout ? t(`assembly.coveringStatus.${layout.status}`) : '—'}
-            </b>
-          </span>
-          <span>
-            {t(
-              layout?.kind === 'modular-sheet'
-                ? 'assembly.sheetRows'
-                : 'assembly.tileCourses',
-            )}{' '}
-            <b>
-              {layout?.planes.reduce(
-                (total, plane) =>
-                  total +
-                  ('courses' in plane
-                    ? plane.courses.length
-                    : plane.rows.length),
-                0,
-              ) ?? 0}
-            </b>
-          </span>
-          <span>
-            {t(
-              layout?.kind === 'modular-sheet'
-                ? 'assembly.sheetPositions'
-                : 'assembly.tilePositions',
-            )}{' '}
-            <b>{layout?.totalPositions ?? 0}</b>
-          </span>
-          <span>
-            {t(
-              layout?.kind === 'modular-sheet'
-                ? 'assembly.fullSheets'
-                : 'assembly.fullTiles',
-            )}{' '}
-            <b>{layout?.fullPositions ?? 0}</b>
-          </span>
-          <span>
-            {t(
-              layout?.kind === 'modular-sheet'
-                ? 'assembly.cutSheets'
-                : 'assembly.cutTiles',
-            )}{' '}
-            <b>{layout?.cutPositions ?? 0}</b>
-          </span>
-          {(tileMode || sheetSpec) && (
+        {layout?.kind === 'standing-seam' ? (
+          <div className="a-covering-counts" data-status={layout.status}>
+            <small className="a-covering-scope">
+              {t('assembly.wholeCovering')}
+            </small>
             <span>
-              {t('assembly.coverWidth')}{' '}
+              {t('assembly.coveringStatusLabel')}{' '}
+              <b>{t(`assembly.coveringStatus.${layout.status}`)}</b>
+            </span>
+            <span>
+              {t('assembly.panelColumns')} <b>{layout.columnCount}</b>
+            </span>
+            <span>
+              {t('assembly.panelRuns')} <b>{layout.panelRunCount}</b>
+            </span>
+            <span>
+              {t('assembly.totalGeometricLength')}{' '}
               <b>
-                {fromMillimetres(
-                  tileMode?.coverWidthMm ?? sheetSpec!.effectiveWidthMm,
-                  state.unit,
+                {(layout.totalPanelLengthMm / 1000).toLocaleString(
+                  i18n.language,
+                  { maximumFractionDigits: 2 },
                 )}{' '}
-                {state.unit}
+                m
               </b>
             </span>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="a-covering-counts" data-status={layout?.status}>
+            <span>
+              {t('assembly.coveringStatusLabel')}{' '}
+              <b>
+                {layout ? t(`assembly.coveringStatus.${layout.status}`) : '—'}
+              </b>
+            </span>
+            <span>
+              {t(
+                layout?.kind === 'modular-sheet'
+                  ? 'assembly.sheetRows'
+                  : 'assembly.tileCourses',
+              )}{' '}
+              <b>
+                {layout?.planes.reduce(
+                  (total, plane) =>
+                    total +
+                    ('courses' in plane
+                      ? plane.courses.length
+                      : 'rows' in plane
+                        ? plane.rows.length
+                        : 0),
+                  0,
+                ) ?? 0}
+              </b>
+            </span>
+            <span>
+              {t(
+                layout?.kind === 'modular-sheet'
+                  ? 'assembly.sheetPositions'
+                  : 'assembly.tilePositions',
+              )}{' '}
+              <b>{layout?.totalPositions ?? 0}</b>
+            </span>
+            <span>
+              {t(
+                layout?.kind === 'modular-sheet'
+                  ? 'assembly.fullSheets'
+                  : 'assembly.fullTiles',
+              )}{' '}
+              <b>{layout?.fullPositions ?? 0}</b>
+            </span>
+            <span>
+              {t(
+                layout?.kind === 'modular-sheet'
+                  ? 'assembly.cutSheets'
+                  : 'assembly.cutTiles',
+              )}{' '}
+              <b>{layout?.cutPositions ?? 0}</b>
+            </span>
+            {(tileMode || sheetSpec) && (
+              <span>
+                {t('assembly.coverWidth')}{' '}
+                <b>
+                  {fromMillimetres(
+                    tileMode?.coverWidthMm ?? sheetSpec!.effectiveWidthMm,
+                    state.unit,
+                  )}{' '}
+                  {state.unit}
+                </b>
+              </span>
+            )}
+          </div>
+        )}
       </header>
       {conflicts.length > 0 && (
         <div className="a-covering-warning" role="alert">
@@ -439,7 +560,12 @@ export function CoveringWorkspace({
           <AlertTriangle size={18} />
           <div>
             <strong>{t(`assembly.coveringStatus.${layout.status}`)}</strong>
-            {layout.issues.map((issue, index) => (
+            {(layout.kind === 'standing-seam'
+              ? layout.issueCodes.map((code) =>
+                  layout.issues.find((issue) => issue.code === code)!,
+                )
+              : layout.issues
+            ).map((issue, index) => (
               <p key={`${issue.code}:${issue.roofPlaneId ?? ''}:${index}`}>
                 {t(`assembly.coveringIssue.${issue.code}`)}
                 {issue.actual !== undefined && (
@@ -498,45 +624,82 @@ export function CoveringWorkspace({
               <strong>
                 {t(roofPlaneLabelKey(selectedPlaneId), { id: selectedPlaneId })}
               </strong>
-              <span>
-                {t(
-                  layout?.kind === 'modular-sheet'
-                    ? 'assembly.sheetPositions'
-                    : 'assembly.tilePositions',
-                )}{' '}
-                <b>
-                  {'courses' in selectedLayout
-                    ? selectedLayout.courses.reduce(
-                        (total, course) => total + course.positions.length,
-                        0,
-                      )
-                    : selectedLayout.rows.reduce(
-                        (total, row) => total + row.positions.length,
-                        0,
-                      )}
-                </b>
-              </span>
-              <span>
-                {t(
-                  layout?.kind === 'modular-sheet'
-                    ? 'assembly.fullSheets'
-                    : 'assembly.fullTiles',
-                )}{' '}
-                <b>{selectedLayout.fullPositions}</b>
-              </span>
-              <span>
-                {t(
-                  layout?.kind === 'modular-sheet'
-                    ? 'assembly.cutSheets'
-                    : 'assembly.cutTiles',
-                )}{' '}
-                <b>{selectedLayout.cutPositions}</b>
-              </span>
+              {layout?.kind === 'standing-seam' &&
+              'columns' in selectedLayout ? (
+                <>
+                  <span>
+                    {t('assembly.panelColumns')}{' '}
+                    <b>{selectedLayout.columnCount}</b>
+                  </span>
+                  <span>
+                    {t('assembly.panelRuns')}{' '}
+                    <b>{selectedLayout.panelRunCount}</b>
+                  </span>
+                  <span>
+                    {t('assembly.totalGeometricLength')}{' '}
+                    <b>
+                      {(
+                        selectedLayout.totalPanelLengthMm / 1000
+                      ).toLocaleString(i18n.language, {
+                        maximumFractionDigits: 2,
+                      })}{' '}
+                      m
+                    </b>
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span>
+                    {t(
+                      layout?.kind === 'modular-sheet'
+                        ? 'assembly.sheetPositions'
+                        : 'assembly.tilePositions',
+                    )}{' '}
+                    <b>
+                      {'courses' in selectedLayout
+                        ? selectedLayout.courses.reduce(
+                            (total, course) => total + course.positions.length,
+                            0,
+                          )
+                        : 'rows' in selectedLayout
+                          ? selectedLayout.rows.reduce(
+                              (total, row) => total + row.positions.length,
+                              0,
+                            )
+                          : 0}
+                    </b>
+                  </span>
+                  <span>
+                    {t(
+                      layout?.kind === 'modular-sheet'
+                        ? 'assembly.fullSheets'
+                        : 'assembly.fullTiles',
+                    )}{' '}
+                    <b>
+                      {'fullPositions' in selectedLayout
+                        ? selectedLayout.fullPositions
+                        : 0}
+                    </b>
+                  </span>
+                  <span>
+                    {t(
+                      layout?.kind === 'modular-sheet'
+                        ? 'assembly.cutSheets'
+                        : 'assembly.cutTiles',
+                    )}{' '}
+                    <b>
+                      {'cutPositions' in selectedLayout
+                        ? selectedLayout.cutPositions
+                        : 0}
+                    </b>
+                  </span>
+                </>
+              )}
             </p>
           )}
           {selectedSurface && bounds && (
             <svg
-              data-testid={`${layout?.kind === 'modular-sheet' ? 'sheet' : 'tile'}-layout-drawing`}
+              data-testid={`${layout?.kind === 'standing-seam' ? 'standing-seam' : layout?.kind === 'modular-sheet' ? 'sheet' : 'tile'}-layout-drawing`}
               viewBox={`${bounds.viewMinU} ${bounds.viewMinV} ${bounds.viewWidth} ${bounds.viewHeight}`}
               preserveAspectRatio="xMidYMid meet"
               style={{
@@ -547,38 +710,56 @@ export function CoveringWorkspace({
                 className="a-covering-plane"
                 points={polygonPoints(selectedSurface.polygon)}
               />
-              {battens.battens
-                .filter((row) => row.roofPlaneId === selectedPlaneId)
-                .flatMap((row) =>
-                  row.segments.map((segment, index) => (
-                    <line
-                      key={`${row.id}:${index}`}
-                      className="a-covering-batten"
-                      x1={segment.fromUMm}
-                      x2={segment.toUMm}
-                      y1={row.stationMm}
-                      y2={row.stationMm}
-                    />
-                  )),
-                )}
+              {layout?.kind !== 'standing-seam' &&
+                battens.battens
+                  .filter((row) => row.roofPlaneId === selectedPlaneId)
+                  .flatMap((row) =>
+                    row.segments.map((segment, index) => (
+                      <line
+                        key={`${row.id}:${index}`}
+                        className="a-covering-batten"
+                        x1={segment.fromUMm}
+                        x2={segment.toUMm}
+                        y1={row.stationMm}
+                        y2={row.stationMm}
+                      />
+                    )),
+                  )}
               {!simplified &&
                 fragments.map((fragment) => (
                   <polygon
                     key={fragment.id}
-                    className={`a-covering-fragment a-tile-fragment is-${fragment.classification}`}
+                    className={`a-covering-fragment ${layout?.kind === 'standing-seam' ? 'a-panel-fragment' : 'a-tile-fragment'} is-${fragment.classification}`}
                     points={polygonPoints(fragment.polygon)}
                   />
                 ))}
+              {simplified &&
+                selectedLayout &&
+                'columns' in selectedLayout &&
+                selectedLayout.columns.flatMap((column) =>
+                  column.runs.map((run) => (
+                    <line
+                      key={run.id}
+                      className="a-panel-simplified-line"
+                      x1={(column.nominalFromUMm + column.nominalToUMm) / 2}
+                      x2={(column.nominalFromUMm + column.nominalToUMm) / 2}
+                      y1={run.fromVMm}
+                      y2={run.toVMm}
+                    />
+                  )),
+                )}
               {simplified &&
                 (selectedLayout && 'courses' in selectedLayout
                   ? selectedLayout.courses.map((course) => ({
                       id: course.id,
                       stationVMm: course.stationVMm,
                     }))
-                  : selectedLayout?.rows.map((row) => ({
-                      id: row.id,
-                      stationVMm: row.nominalFromVMm,
-                    }))
+                  : selectedLayout && 'rows' in selectedLayout
+                    ? selectedLayout.rows.map((row) => ({
+                        id: row.id,
+                        stationVMm: row.nominalFromVMm,
+                      }))
+                    : []
                 )?.map((course) => (
                   <line
                     key={course.id}
@@ -604,20 +785,59 @@ export function CoveringWorkspace({
           <div className="a-covering-legend">
             <span className="full">
               {t(
-                layout?.kind === 'modular-sheet'
-                  ? 'assembly.fullSheets'
-                  : 'assembly.fullTiles',
+                layout?.kind === 'standing-seam'
+                  ? 'assembly.fullWidthColumns'
+                  : layout?.kind === 'modular-sheet'
+                    ? 'assembly.fullSheets'
+                    : 'assembly.fullTiles',
               )}
             </span>
             <span className="cut">
               {t(
-                layout?.kind === 'modular-sheet'
-                  ? 'assembly.cutSheets'
-                  : 'assembly.cutTiles',
+                layout?.kind === 'standing-seam'
+                  ? 'assembly.edgeCutColumns'
+                  : layout?.kind === 'modular-sheet'
+                    ? 'assembly.cutSheets'
+                    : 'assembly.cutTiles',
               )}
             </span>
             <span className="opening">{t('assembly.openings')}</span>
           </div>
+          {layout?.kind === 'standing-seam' && (
+            <details className="a-panel-secondary-stats">
+              <summary>{t('assembly.layoutDetails')}</summary>
+              <div>
+                <span>
+                  {t('assembly.fullWidthColumns')}{' '}
+                  <b>{layout.fullWidthColumns}</b>
+                </span>
+                <span>
+                  {t('assembly.edgeCutColumns')} <b>{layout.edgeCutColumns}</b>
+                </span>
+                <span>
+                  {t('assembly.openingInterruptedRuns')}{' '}
+                  <b>{layout.openingInterruptedRuns}</b>
+                </span>
+                {layout.minimumRunLengthMm !== undefined && (
+                  <span>
+                    {t('assembly.runLengthRange')}{' '}
+                    <b>
+                      {fromMillimetres(
+                        layout.minimumRunLengthMm,
+                        state.unit,
+                      ).toLocaleString(i18n.language)}
+                      –
+                      {fromMillimetres(
+                        layout.maximumRunLengthMm!,
+                        state.unit,
+                      ).toLocaleString(i18n.language)}{' '}
+                      {state.unit}
+                    </b>
+                  </span>
+                )}
+              </div>
+            </details>
+          )}
           <p className="a-help">{t('assembly.noWasteAccessories')}</p>
         </div>
       </div>
@@ -1191,6 +1411,308 @@ function ModularSheetEditor({
   );
 }
 
+function StandingSeamEditor({
+  assignment,
+  surfaceGeometry,
+  selectedPlaneId,
+}: {
+  assignment: StandingSeamAssignment;
+  surfaceGeometry: RoofSurfaceGeometryResult;
+  selectedPlaneId?: string;
+}) {
+  const state = useAssembly();
+  const { t } = useTranslation();
+  const spec = assignment.product.technicalSpecSnapshot;
+  const mode = spec.installationModes.find(
+    (candidate) => candidate.id === assignment.selectedInstallationModeId,
+  );
+  const intent =
+    assignment.layoutIntent?.kind === 'standing-seam'
+      ? assignment.layoutIntent
+      : {
+          kind: 'standing-seam' as const,
+          horizontalAlignment: 'centered' as const,
+        };
+  const update = (mutate: (draft: StandingSeamAssignment) => void) => {
+    const draft = structuredClone(assignment);
+    mutate(draft);
+    state.setCoveringAssignments(
+      state.projectDocument.project.coverings.map((item) =>
+        item.id === draft.id ? draft : item,
+      ),
+    );
+  };
+  const updateMode = (mutate: (draft: NonNullable<typeof mode>) => void) =>
+    update((draft) => {
+      const selected =
+        draft.product.technicalSpecSnapshot.installationModes.find(
+          (candidate) => candidate.id === draft.selectedInstallationModeId,
+        );
+      if (selected) mutate(selected);
+    });
+  return (
+    <aside className="a-covering-editor" data-testid="standing-seam-editor">
+      <label className="a-field">
+        <span>{t('assembly.productName')}</span>
+        <input
+          key={assignment.product.displaySnapshot?.familyName ?? ''}
+          defaultValue={assignment.product.displaySnapshot?.familyName ?? ''}
+          onBlur={(event) =>
+            update((draft) => {
+              draft.product.displaySnapshot = {
+                ...draft.product.displaySnapshot,
+                familyName: event.currentTarget.value.trim() || undefined,
+              };
+            })
+          }
+        />
+      </label>
+      <fieldset className="a-panel-modes">
+        <legend>{t('assembly.coveringWidthMode')}</legend>
+        {spec.installationModes.map((candidate) => (
+          <label key={candidate.id}>
+            <input
+              type="radio"
+              name={`standing-seam-mode:${assignment.id}`}
+              checked={candidate.id === assignment.selectedInstallationModeId}
+              onChange={() =>
+                update((draft) => {
+                  draft.selectedInstallationModeId = candidate.id;
+                })
+              }
+            />
+            {fromMillimetres(candidate.effectiveWidthMm, state.unit)}{' '}
+            {state.unit}
+          </label>
+        ))}
+        <button
+          type="button"
+          className="a-button"
+          onClick={() =>
+            update((draft) => {
+              const ids = new Set(
+                draft.product.technicalSpecSnapshot.installationModes.map(
+                  (item) => item.id,
+                ),
+              );
+              let number = 2;
+              while (ids.has(`manual-width-${number}`)) number += 1;
+              const id = `manual-width-${number}`;
+              draft.product.technicalSpecSnapshot.installationModes.push({
+                id,
+                effectiveWidthMm: mode?.effectiveWidthMm ?? 500,
+              });
+              draft.selectedInstallationModeId = id;
+            })
+          }
+        >
+          {t('assembly.addCoverWidthMode')}
+        </button>
+      </fieldset>
+      <NumericField
+        label={t('assembly.effectiveWidth')}
+        value={mode?.effectiveWidthMm}
+        unit="length"
+        minimum={1}
+        onCommit={(value) =>
+          value !== undefined &&
+          updateMode((draft) => {
+            draft.effectiveWidthMm = value;
+            if (draft.totalWidthMm !== undefined)
+              draft.totalWidthMm = Math.max(value, draft.totalWidthMm);
+          })
+        }
+      />
+      <div className="a-covering-field-pair">
+        <NumericField
+          label={t('assembly.minimumPanelLength')}
+          value={spec.minPanelLengthMm}
+          unit="length"
+          minimum={1}
+          onCommit={(value) =>
+            value !== undefined &&
+            update((draft) => {
+              draft.product.technicalSpecSnapshot.minPanelLengthMm = value;
+              draft.product.technicalSpecSnapshot.maxPanelLengthMm = Math.max(
+                value,
+                draft.product.technicalSpecSnapshot.maxPanelLengthMm,
+              );
+            })
+          }
+        />
+        <NumericField
+          label={t('assembly.maximumPanelLength')}
+          value={spec.maxPanelLengthMm}
+          unit="length"
+          minimum={1}
+          onCommit={(value) =>
+            value !== undefined &&
+            update((draft) => {
+              draft.product.technicalSpecSnapshot.maxPanelLengthMm = Math.max(
+                value,
+                draft.product.technicalSpecSnapshot.minPanelLengthMm,
+              );
+            })
+          }
+        />
+      </div>
+      <NumericField
+        label={t('assembly.minimumPitch')}
+        value={mode?.minPitchDeg ?? spec.minPitchDeg}
+        minimum={Number.EPSILON}
+        onCommit={(value) =>
+          updateMode((draft) => {
+            draft.minPitchDeg = value;
+          })
+        }
+      />
+      <label className="a-field">
+        <span>{t('assembly.horizontalAlignment')}</span>
+        <select
+          value={intent.horizontalAlignment}
+          onChange={(event) =>
+            update((draft) => {
+              const horizontalAlignment = event.currentTarget.value as
+                'centered' | 'from-u-min' | 'manual';
+              draft.layoutIntent = {
+                kind: 'standing-seam',
+                horizontalAlignment,
+                ...(horizontalAlignment === 'manual'
+                  ? {
+                      planeOffsetsMm: Object.fromEntries(
+                        draft.roofPlaneIds.map((id) => [
+                          id,
+                          draft.layoutIntent?.planeOffsetsMm?.[id] ?? 0,
+                        ]),
+                      ),
+                    }
+                  : {}),
+              };
+            })
+          }
+        >
+          <option value="centered">{t('assembly.alignmentCentered')}</option>
+          <option value="from-u-min">{t('assembly.alignmentFromEdge')}</option>
+          <option value="manual">{t('assembly.alignmentManual')}</option>
+        </select>
+      </label>
+      {intent.horizontalAlignment === 'manual' && selectedPlaneId && (
+        <NumericField
+          label={t('assembly.planeOffset')}
+          value={intent.planeOffsetsMm?.[selectedPlaneId] ?? 0}
+          unit="length"
+          minimum={Number.NEGATIVE_INFINITY}
+          onCommit={(value) =>
+            value !== undefined &&
+            update((draft) => {
+              draft.layoutIntent = {
+                kind: 'standing-seam',
+                horizontalAlignment: 'manual',
+                planeOffsetsMm: {
+                  ...(draft.layoutIntent?.kind === 'standing-seam'
+                    ? draft.layoutIntent.planeOffsetsMm
+                    : {}),
+                  [selectedPlaneId]: value,
+                },
+              };
+            })
+          }
+        />
+      )}
+      <details>
+        <summary>{t('assembly.additionalPanelParameters')}</summary>
+        <NumericField
+          label={t('assembly.totalWidth')}
+          value={mode?.totalWidthMm}
+          unit="length"
+          minimum={mode?.effectiveWidthMm ?? 1}
+          onCommit={(value) =>
+            updateMode((draft) => {
+              draft.totalWidthMm = value;
+            })
+          }
+        />
+        <NumericField
+          label={t('assembly.seamHeight')}
+          value={spec.seamHeightMm}
+          unit="length"
+          minimum={1}
+          onCommit={(value) =>
+            value !== undefined &&
+            update((draft) => {
+              draft.product.technicalSpecSnapshot.seamHeightMm = value;
+            })
+          }
+        />
+        <NumericField
+          label={t('assembly.sheetThickness')}
+          value={spec.physicalThicknessMm}
+          unit="length"
+          minimum={Number.EPSILON}
+          onCommit={(value) =>
+            update((draft) => {
+              draft.product.technicalSpecSnapshot.physicalThicknessMm = value;
+            })
+          }
+        />
+        <label className="a-field">
+          <span>{t('assembly.sheetMaterial')}</span>
+          <select
+            value={spec.material ?? 'other'}
+            onChange={(event) =>
+              update((draft) => {
+                draft.product.technicalSpecSnapshot.material = event
+                  .currentTarget.value as 'steel' | 'aluminium' | 'other';
+              })
+            }
+          >
+            <option value="steel">{t('assembly.materialSteel')}</option>
+            <option value="aluminium">{t('assembly.materialAluminium')}</option>
+            <option value="other">{t('assembly.materialOther')}</option>
+          </select>
+        </label>
+      </details>
+      <fieldset>
+        <legend>{t('assembly.assignedRoofPlanes')}</legend>
+        {surfaceGeometry.planes.map((plane) => (
+          <label key={plane.roofPlaneId}>
+            <input
+              type="checkbox"
+              checked={assignment.roofPlaneIds.includes(plane.roofPlaneId)}
+              disabled={
+                assignment.roofPlaneIds.length === 1 &&
+                assignment.roofPlaneIds.includes(plane.roofPlaneId)
+              }
+              onChange={(event) =>
+                update((draft) => {
+                  draft.roofPlaneIds = event.currentTarget.checked
+                    ? [...draft.roofPlaneIds, plane.roofPlaneId]
+                    : draft.roofPlaneIds.filter(
+                        (id) => id !== plane.roofPlaneId,
+                      );
+                })
+              }
+            />
+            {t(roofPlaneLabelKey(plane.roofPlaneId), { id: plane.roofPlaneId })}
+          </label>
+        ))}
+      </fieldset>
+      <button
+        className="a-button a-danger"
+        onClick={() =>
+          state.setCoveringAssignments(
+            state.projectDocument.project.coverings.filter(
+              (item) => item.id !== assignment.id,
+            ),
+          )
+        }
+      >
+        <Trash2 size={16} /> {t('assembly.removeCovering')}
+      </button>
+    </aside>
+  );
+}
+
 export function CoveringInspector({
   layout,
   assignment,
@@ -1258,7 +1780,12 @@ export function CoveringInspector({
               {t('assembly.coveringPlaneConflict')}
             </p>
           )}
-          {layout?.issues.map((issue, index) => (
+          {(layout?.kind === 'standing-seam'
+            ? layout.issueCodes.map((code) =>
+                layout.issues.find((issue) => issue.code === code)!,
+              )
+            : (layout?.issues ?? [])
+          ).map((issue, index) => (
             <p
               className="a-limit-note"
               key={`${issue.code}:${issue.roofPlaneId ?? ''}:${index}`}
@@ -1276,6 +1803,13 @@ export function CoveringInspector({
           )}
           {assignment && isModularSheetAssignment(assignment) && (
             <ModularSheetEditor
+              assignment={assignment}
+              surfaceGeometry={surfaceGeometry}
+              selectedPlaneId={selectedPlaneId}
+            />
+          )}
+          {assignment && isStandingSeamAssignment(assignment) && (
+            <StandingSeamEditor
               assignment={assignment}
               surfaceGeometry={surfaceGeometry}
               selectedPlaneId={selectedPlaneId}

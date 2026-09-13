@@ -206,9 +206,30 @@ export const modularSheetLayoutIntentSchema = z
 export type ModularSheetLayoutIntent = z.infer<
   typeof modularSheetLayoutIntentSchema
 >;
+export const standingSeamLayoutIntentSchema = z
+  .object({
+    kind: z.literal('standing-seam'),
+    horizontalAlignment: z.enum(['centered', 'from-u-min', 'manual']),
+    planeOffsetsMm: z.record(stableId, z.number().finite()).optional(),
+  })
+  .superRefine((intent, context) => {
+    if (
+      intent.horizontalAlignment === 'manual' &&
+      (!intent.planeOffsetsMm || !Object.keys(intent.planeOffsetsMm).length)
+    )
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['planeOffsetsMm'],
+        message: 'manual_panel_offset_required',
+      });
+  });
+export type StandingSeamLayoutIntent = z.infer<
+  typeof standingSeamLayoutIntentSchema
+>;
 export const coveringLayoutIntentSchema = z.union([
   roofTileLayoutIntentSchema,
   modularSheetLayoutIntentSchema,
+  standingSeamLayoutIntentSchema,
 ]);
 export type CoveringLayoutIntent = z.infer<typeof coveringLayoutIntentSchema>;
 
@@ -481,8 +502,12 @@ export interface CoveringQuantitySource {
   productDisplay?: CoveringProductSelection['displaySnapshot'];
   netAreaMm2?: number;
   declaredQuantityRange?: { minimum: number; maximum: number };
+  totalLengthMm?: number;
+  lengthGroups?: { lengthMm: number; quantity: number }[];
   warningKeys?: string[];
 }
 
 export * from './tile-layout';
 export * from './modular-sheet-layout';
+export * from './variable-panel-layout';
+export * from './standing-seam-layout';

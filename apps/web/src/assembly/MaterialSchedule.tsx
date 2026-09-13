@@ -390,33 +390,72 @@ export function MaterialSchedule({
                 <span>
                   <b>
                     {t(
-                      row.basis.startsWith('fixed-modular-sheet')
-                        ? 'assembly.modularSheet'
-                        : 'assembly.roofTile',
+                      row.basis.startsWith('standing-seam')
+                        ? 'assembly.standingSeam'
+                        : row.basis.startsWith('fixed-modular-sheet')
+                          ? 'assembly.modularSheet'
+                          : 'assembly.roofTile',
                     )}{' '}
                     —{' '}
                     {row.productDisplay?.familyName ??
                       t(
-                        row.basis.startsWith('fixed-modular-sheet')
-                          ? 'assembly.manualModularSheet'
-                          : 'assembly.manualRoofTile',
+                        row.basis.startsWith('standing-seam')
+                          ? 'assembly.manualStandingSeam'
+                          : row.basis.startsWith('fixed-modular-sheet')
+                            ? 'assembly.manualModularSheet'
+                            : 'assembly.manualRoofTile',
                       )}
                   </b>
                   <small>
                     {t(
-                      row.basis.startsWith('fixed-modular-sheet')
-                        ? 'assembly.geometricSheetLayout'
-                        : 'assembly.geometricTileLayout',
+                      row.basis.startsWith('standing-seam')
+                        ? 'assembly.geometricPanelRunLayout'
+                        : row.basis.startsWith('fixed-modular-sheet')
+                          ? 'assembly.geometricSheetLayout'
+                          : 'assembly.geometricTileLayout',
                     )}
                   </small>
                 </span>
                 <strong>
-                  {row.quantity} {t('assembly.piecesShort')}
+                  {row.basis.startsWith('standing-seam')
+                    ? t('assembly.panelRunCountShort', { count: row.quantity })
+                    : `${row.quantity} ${t('assembly.piecesShort')}`}
                 </strong>
-                <small>
-                  {t('assembly.fullTiles')}: {row.fullPositions ?? 0} ·{' '}
-                  {t('assembly.cutTiles')}: {row.cutPositions ?? 0}
-                </small>
+                {row.totalLengthMm !== undefined && (
+                  <small>
+                    {t('assembly.geometricPanelLength')}:{' '}
+                    {metres(row.totalLengthMm, i18n.language)}
+                  </small>
+                )}
+                {row.lengthGroups && row.lengthGroups.length > 0 && (
+                  <details className="a-panel-lengths">
+                    <summary>
+                      {t('assembly.showExactLengths', {
+                        count: row.lengthGroups.length,
+                      })}
+                    </summary>
+                    <div>
+                      {row.lengthGroups.map((group, index) => (
+                        <span key={`${group.lengthMm}:${index}`}>
+                          <b>
+                            {displayLength(
+                              group.lengthMm,
+                              state.unit,
+                              i18n.language,
+                            )}
+                          </b>
+                          <small>× {group.quantity}</small>
+                        </span>
+                      ))}
+                    </div>
+                  </details>
+                )}
+                {row.totalLengthMm === undefined && (
+                  <small>
+                    {t('assembly.fullTiles')}: {row.fullPositions ?? 0} ·{' '}
+                    {t('assembly.cutTiles')}: {row.cutPositions ?? 0}
+                  </small>
+                )}
                 {row.netAreaMm2 !== undefined && (
                   <small>
                     {new Intl.NumberFormat(i18n.language, {

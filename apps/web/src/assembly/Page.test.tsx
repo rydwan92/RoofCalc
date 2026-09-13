@@ -1862,6 +1862,112 @@ describe('dual-mode parametric workbench', () => {
     expect(screen.getByText(/Blacha modułowa —/)).toBeTruthy();
   });
 
+  it('creates standing seam, edits its width in Inspector and keeps exact run lengths compact', async () => {
+    render(<App />);
+    builder();
+    fireEvent.click(screen.getByRole('tab', { name: 'Pokrycie' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Dodaj rąbek stojący' }),
+    );
+    expect(
+      await screen.findByTestId('standing-seam-layout-drawing'),
+    ).toBeTruthy();
+    expect(
+      screen.getAllByText('Geometryczne odcinki paneli').length,
+    ).toBeGreaterThan(0);
+    expect(
+      document.querySelectorAll('.a-panel-fragment').length,
+    ).toBeGreaterThan(0);
+    const columnCount = () =>
+      Number(
+        document.querySelector('.a-covering-counts span:nth-of-type(2) b')
+          ?.textContent,
+      );
+    const initialColumns = columnCount();
+    expect(document.body.textContent).not.toContain('manual-standard');
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'Parametry / Popraw' })[0]!,
+    );
+    const inspector = await screen.findByTestId('standing-seam-editor');
+    expect(
+      within(inspector).getByLabelText(/Minimalna długość panelu/),
+    ).toBeTruthy();
+    fireEvent.click(
+      within(inspector).getByRole('button', { name: 'Dodaj szerokość krycia' }),
+    );
+    expect(
+      useAssembly.getState().projectDocument.project.coverings[0]!.product
+        .technicalSpecSnapshot,
+    ).toMatchObject({ kind: 'standing-seam', installationModes: [{}, {}] });
+    expect(within(inspector).getAllByRole('radio')).toHaveLength(2);
+    const widthInput = within(inspector).getByLabelText(
+      /Szerokość efektywna/,
+    ) as HTMLInputElement;
+    fireEvent.change(widthInput, { target: { value: '250' } });
+    fireEvent.blur(widthInput);
+    expect(columnCount()).toBeGreaterThan(initialColumns);
+    act(() => {
+      const coverings = structuredClone(
+        useAssembly.getState().projectDocument.project.coverings,
+      );
+      coverings[0]!.roofPlaneIds = ['roof-plane:left', 'roof-plane:right'];
+      useAssembly.getState().setCoveringAssignments(coverings);
+    });
+    fireEvent.click(screen.getByRole('tab', { name: 'Prawa połać' }));
+    expect(
+      document.querySelector('.a-covering-plane-result')?.textContent,
+    ).toContain('Prawa połać');
+    act(() => useAssembly.getState().setViewPreset('materials'));
+    const schedule = await screen.findByTestId('covering-quantity');
+    expect(within(schedule).getByText(/Rąbek stojący —/)).toBeTruthy();
+    const lengths = within(schedule)
+      .getByText(/Pokaż długości/)
+      .closest('details')!;
+    expect(lengths.open).toBe(false);
+    fireEvent.click(within(lengths).getByText(/Pokaż długości/));
+    expect(lengths.open).toBe(true);
+    expect(
+      useAssembly.getState().projectDocument.project.coverings,
+    ).toHaveLength(1);
+  });
+
+  it('shows standing-seam opening interruptions and separate short/long run diagnostics', async () => {
+    render(<App />);
+    builder();
+    fireEvent.click(screen.getByRole('tab', { name: 'Pokrycie' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Dodaj rąbek stojący' }),
+    );
+    await screen.findByTestId('standing-seam-layout-drawing');
+    act(() => {
+      useAssembly.getState().addRoofWindow();
+      useAssembly.getState().setViewPreset('covering');
+    });
+    expect(document.querySelector('.a-covering-opening')).toBeTruthy();
+    const setLengths = (minimum: number, maximum: number) =>
+      act(() => {
+        const coverings = structuredClone(
+          useAssembly.getState().projectDocument.project.coverings,
+        );
+        const spec = coverings[0]!.product.technicalSpecSnapshot;
+        if (spec.kind !== 'standing-seam')
+          throw new Error('expected standing seam');
+        spec.minPanelLengthMm = minimum;
+        spec.maxPanelLengthMm = maximum;
+        useAssembly.getState().setCoveringAssignments(coverings);
+      });
+    setLengths(100, 300);
+    expect(
+      screen.getAllByText(/Wymaga osobnego rozwiązania połączenia poprzecznego/)
+        .length,
+    ).toBeGreaterThan(0);
+    setLengths(100_000, 200_000);
+    expect(
+      screen.getAllByText(/krótszy od zadanej minimalnej długości panelu/)
+        .length,
+    ).toBeGreaterThan(0);
+  });
+
   it('fits hip trapezoid and triangular covering planes to their technical frame', async () => {
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: 'Krokiew narożna' }));

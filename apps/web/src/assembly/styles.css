@@ -3987,6 +3987,14 @@
   flex-wrap: wrap;
   gap: 8px;
 }
+.a-covering-counts .a-covering-scope {
+  flex-basis: 100%;
+  padding: 0;
+  color: var(--a-muted);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
 .a-covering-counts span {
   padding: 7px 10px;
   border: 1px solid var(--a-line);
@@ -4041,7 +4049,7 @@
 }
 .a-covering-field-pair {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 .a-covering-editor fieldset {
@@ -4122,6 +4130,69 @@
   fill: color-mix(in srgb, var(--a-covering-cut, #c38320) 34%, #fff);
   stroke: var(--a-covering-cut, #c38320);
 }
+.a-panel-fragment.is-edge-cut-width,
+.a-panel-fragment.is-opening-interrupted,
+.a-panel-fragment.is-invalid-panel {
+  fill: color-mix(in srgb, var(--a-covering-cut, #c38320) 32%, #fff);
+  stroke: var(--a-covering-cut, #c38320);
+}
+.a-panel-fragment.is-opening-interrupted {
+  stroke-dasharray: 4 3;
+}
+.a-panel-fragment.is-invalid-panel {
+  stroke-width: 2;
+}
+.a-panel-simplified-line {
+  stroke: var(--a-covering-full, #5b8f7c);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+.a-panel-modes {
+  display: grid;
+  gap: 8px;
+}
+.a-panel-modes label {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.a-panel-lengths {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+.a-panel-lengths summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+.a-panel-lengths > div {
+  display: grid;
+  gap: 4px;
+  max-height: 320px;
+  overflow: auto;
+}
+.a-panel-lengths > div > span {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.a-panel-secondary-stats summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+.a-panel-secondary-stats > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  font-size: 0.82rem;
+}
+.a-panel-secondary-stats b {
+  color: var(--a-text);
+}
 .a-covering-fragment.is-cut-opening {
   stroke-dasharray: 5 3;
 }
@@ -4184,6 +4255,8 @@
 .a-covering-quantity article span,
 .a-covering-quantity article small {
   display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 @media (max-width: 1100px) {

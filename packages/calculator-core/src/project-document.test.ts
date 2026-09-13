@@ -252,6 +252,42 @@ describe('RoofProjectDocumentV1', () => {
     expect(document.project.coverings[0]!.product.catalogRef).toBeUndefined();
   });
 
+  it('round-trips standing-seam snapshots without serializing derived panel runs', () => {
+    const roof = gableTemplateFromAssembly(assemblyDefaults);
+    const document = createRoofProjectDocument(roof, {
+      coverings: [
+        {
+          id: 'covering:standing-seam-1',
+          roofPlaneIds: ['roof-plane:left'],
+          selectedInstallationModeId: 'narrow',
+          layoutIntent: {
+            kind: 'standing-seam',
+            horizontalAlignment: 'manual',
+            planeOffsetsMm: { 'roof-plane:left': 75 },
+          },
+          product: {
+            technicalSpecSnapshot: {
+              schemaVersion: 1,
+              kind: 'standing-seam',
+              installationModes: [
+                { id: 'wide', effectiveWidthMm: 500 },
+                { id: 'narrow', effectiveWidthMm: 250 },
+              ],
+              minPanelLengthMm: 200,
+              maxPanelLengthMm: 8000,
+              seamHeightMm: 25,
+            },
+          },
+        },
+      ],
+    });
+    const serialized = serializeRoofProjectDocument(document);
+    expect(parseRoofProjectDocument(serialized)).toEqual(document);
+    expect(serialized).not.toMatch(
+      /columns|runs|lengthGroups|totalPanelLengthMm/,
+    );
+  });
+
   it('does not serialize catalogue browsing or transient selection state', () => {
     const roof = gableTemplateFromAssembly(assemblyDefaults);
     const parsed = parseRoofProjectDocument(

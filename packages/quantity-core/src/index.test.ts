@@ -99,6 +99,37 @@ it('keeps geometric covering pieces separate from timber and build-up quantities
   expect(report.buildUpSummary.quantity).toBe(0);
 });
 
+it('keeps standing-seam piece count and exact geometric length as separate covering facts', () => {
+  const report = createRoofMemberSchedule({
+    skeleton: skeleton([]),
+    covering: [
+      {
+        id: 'covering-quantity:seam',
+        coveringAssignmentId: 'covering:seam',
+        sourceRoofPlaneIds: ['roof-plane:left'],
+        unit: 'piece',
+        quantity: 3,
+        totalLengthMm: 18_000,
+        lengthGroups: [
+          { lengthMm: 5000, quantity: 2 },
+          { lengthMm: 8000, quantity: 1 },
+        ],
+        basis: 'standing-seam-geometric-panel-run-v1',
+      },
+    ],
+  });
+  expect(report.coveringRows[0]).toMatchObject({
+    quantity: 3,
+    totalLengthMm: 18_000,
+    lengthGroups: [
+      { lengthMm: 5000, quantity: 2 },
+      { lengthMm: 8000, quantity: 1 },
+    ],
+  });
+  expect(report.coveringSummary.quantity).toBe(3);
+  expect(report.timberSummary.totalLengthMm).toBe(0);
+});
+
 function acceptedSpec(
   roof: ReturnType<typeof template>,
   feature: RoofWindowFeature,

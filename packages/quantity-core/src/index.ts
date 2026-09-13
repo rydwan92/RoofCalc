@@ -57,6 +57,8 @@ export interface CoveringProductQuantitySource {
   };
   netAreaMm2?: number;
   declaredQuantityRange?: { minimum: number; maximum: number };
+  totalLengthMm?: number;
+  lengthGroups?: { lengthMm: number; quantity: number }[];
   warningKeys?: string[];
 }
 
@@ -75,6 +77,8 @@ export interface CoveringQuantityRow {
   productDisplay?: CoveringProductQuantitySource['productDisplay'];
   netAreaMm2?: number;
   declaredQuantityRange?: { minimum: number; maximum: number };
+  totalLengthMm?: number;
+  lengthGroups?: { lengthMm: number; quantity: number }[];
   warningKeys: string[];
 }
 
@@ -483,7 +487,33 @@ function createCoveringRows(
       a.coveringAssignmentId.localeCompare(b.coveringAssignmentId) ||
       a.id.localeCompare(b.id),
   )) {
-    if (!Number.isFinite(source.quantity) || source.quantity < 0) {
+    if (
+      !Number.isFinite(source.quantity) ||
+      source.quantity < 0 ||
+      (source.totalLengthMm !== undefined &&
+        (!Number.isFinite(source.totalLengthMm) || source.totalLengthMm < 0)) ||
+      (source.lengthGroups !== undefined &&
+        (source.lengthGroups.some(
+          (group) =>
+            !Number.isFinite(group.lengthMm) ||
+            group.lengthMm <= 0 ||
+            !Number.isInteger(group.quantity) ||
+            group.quantity <= 0,
+        ) ||
+          source.lengthGroups.reduce(
+            (sum, group) => sum + group.quantity,
+            0,
+          ) !== source.quantity)) ||
+      (source.lengthGroups !== undefined &&
+        source.totalLengthMm !== undefined &&
+        Math.abs(
+          source.lengthGroups.reduce(
+            (sum, group) => sum + group.lengthMm * group.quantity,
+            0,
+          ) - source.totalLengthMm,
+        ) >
+          1e-6 * Math.max(1, source.quantity))
+    ) {
       issues.push({ sourceId: source.id, code: 'invalid-quantity' });
       continue;
     }
@@ -502,6 +532,8 @@ function createCoveringRows(
       productDisplay: source.productDisplay,
       netAreaMm2: source.netAreaMm2,
       declaredQuantityRange: source.declaredQuantityRange,
+      totalLengthMm: source.totalLengthMm,
+      lengthGroups: source.lengthGroups?.map((group) => ({ ...group })),
       warningKeys: [...new Set(source.warningKeys ?? [])].sort(),
     });
   }

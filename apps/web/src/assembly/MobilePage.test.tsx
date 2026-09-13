@@ -233,3 +233,29 @@ it('keeps the covering drawing separate from exact product parameters and routes
   expect(useAssembly.getState().workbench.buildUpView).toBe('battens');
   expect(useAssembly.getState().workbench.mobilePanel).toBe('none');
 });
+
+it('opens standing-seam numeric parameters and width modes through the mobile Inspector sheet', async () => {
+  render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: 'Kreator' }));
+  const dock = screen.getByRole('tablist', { name: 'Widok zadaniowy' });
+  fireEvent.click(within(dock).getByRole('tab', { name: 'Pokrycie' }));
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Dodaj rąbek stojący' }),
+  );
+  expect(
+    await screen.findByTestId('standing-seam-layout-drawing'),
+  ).toBeTruthy();
+  expect(screen.queryByTestId('standing-seam-editor')).toBeNull();
+  fireEvent.click(
+    screen.getAllByRole('button', { name: 'Parametry / Popraw' })[0]!,
+  );
+  const sheet = screen.getByRole('dialog', { name: 'Właściwości elementu' });
+  const editor = await within(sheet).findByTestId('standing-seam-editor');
+  expect(
+    within(editor).getByLabelText(/Maksymalna długość panelu/),
+  ).toBeTruthy();
+  fireEvent.click(
+    within(editor).getByRole('button', { name: 'Dodaj szerokość krycia' }),
+  );
+  expect(within(editor).getAllByRole('radio')).toHaveLength(2);
+});
