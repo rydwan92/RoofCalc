@@ -55,6 +55,7 @@ import {
   type DimensionLevel,
   type ViewPreset,
   type MaterialsView,
+  type MobilePanel,
   type WorkbenchCanvasView,
   type WorkbenchMode,
   type WorkbenchToolCategory,
@@ -288,6 +289,7 @@ export interface AssemblyState {
   setViewPreset: (preset: ViewPreset) => void;
   setBuildUpView: (view: BuildUpView) => void;
   setMaterialsView: (view: MaterialsView) => void;
+  setMobilePanel: (panel: MobilePanel) => void;
   setScheduleSelection: (rowId?: string, instanceId?: string) => void;
   setIsolation: (isolated: boolean) => void;
   setDimensionLevel: (level: DimensionLevel) => void;
@@ -463,6 +465,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
       workbench: {
         ...state.workbench,
         viewPreset,
+        mobilePanel: 'none',
         measurement: undefined,
         returnViewPreset:
           viewPreset === 'cuts' ? state.workbench.returnViewPreset : undefined,
@@ -506,6 +509,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         ...state.workbench,
         viewPreset: 'layers',
         buildUpView,
+        mobilePanel: 'none',
         selectedScheduleRowId: undefined,
         selectedScheduleInstanceId: undefined,
         activeOperationId: undefined,
@@ -521,6 +525,22 @@ export const useAssembly = create<AssemblyState>((set) => ({
   setMaterialsView: (materialsView) =>
     set((state) => ({
       workbench: { ...state.workbench, materialsView },
+    })),
+  setMobilePanel: (mobilePanel) =>
+    set((state) => ({
+      workbench: {
+        ...state.workbench,
+        mobilePanel,
+        ...(mobilePanel === 'inspector' || mobilePanel === 'tools'
+          ? {
+              detailDrawer: {
+                ...state.workbench.detailDrawer,
+                open: false,
+                mode: 'collapsed' as const,
+              },
+            }
+          : {}),
+      },
     })),
   setScheduleSelection: (selectedScheduleRowId, selectedScheduleInstanceId) =>
     set((state) => ({
@@ -657,6 +677,10 @@ export const useAssembly = create<AssemblyState>((set) => ({
     set((state) => ({
       workbench: {
         ...state.workbench,
+        mobilePanel:
+          detail.open || (detail.mode && detail.mode !== 'collapsed')
+            ? 'none'
+            : state.workbench.mobilePanel,
         detailDrawer: {
           ...state.workbench.detailDrawer,
           ...detail,

@@ -195,3 +195,102 @@ export function WorkbenchControls({ skeleton }: { skeleton: RoofSkeleton }) {
     </div>
   );
 }
+
+export function MobileViewSettings({ skeleton }: { skeleton: RoofSkeleton }) {
+  const state = useAssembly();
+  const { t } = useTranslation();
+  const policy = deriveWorkbenchProjectionPolicy(state.workbench, true);
+  const legend = createWorkbenchLegend({
+    skeleton,
+    policy,
+    hasSelection: state.workbench.selectedId !== 'roof',
+  });
+  return (
+    <div className="a-mobile-view-settings">
+      {state.workbench.viewPreset !== 'covering' &&
+        (state.workbench.viewPreset !== 'materials' ||
+          state.workbench.materialsView === 'drawing') && (
+          <button className="a-button" onClick={state.requestFit}>
+            <Maximize size={17} />
+            {t('assembly.fit')}
+          </button>
+        )}
+      <button
+        className="a-button"
+        aria-pressed={state.workbench.workspaceFocus.active}
+        onClick={() =>
+          state.setWorkspaceFocus(!state.workbench.workspaceFocus.active)
+        }
+      >
+        <Maximize2 size={17} />
+        {t(
+          state.workbench.workspaceFocus.active
+            ? 'assembly.restoreWorkspace'
+            : 'assembly.focusWorkspace',
+        )}
+      </button>
+      <button
+        className="a-button"
+        aria-pressed={state.workbench.isolateSelection}
+        disabled={state.workbench.selectedId === 'roof'}
+        onClick={() => state.setIsolation(!state.workbench.isolateSelection)}
+      >
+        <Eye size={17} />
+        {t(
+          state.workbench.isolateSelection
+            ? 'assembly.showWholeRoof'
+            : 'assembly.isolateElement',
+        )}
+      </button>
+      <fieldset>
+        <legend>{t('assembly.dimensionLevel')}</legend>
+        {(['minimal', 'working', 'full'] as DimensionLevel[]).map((level) => (
+          <label key={level}>
+            <input
+              type="radio"
+              name="mobile-dimension-level"
+              checked={state.workbench.dimensionLevel === level}
+              onChange={() => state.setDimensionLevel(level)}
+            />
+            {t(`assembly.${level}Dimensions`)}
+          </label>
+        ))}
+      </fieldset>
+      <fieldset>
+        <legend>{t('assembly.view')}</legend>
+        {(
+          [
+            ['dimensions', 'dimensions'],
+            ['labels', 'labels'],
+            ['structure', 'structureBackground'],
+            ['features', 'openings'],
+            ['membrane', 'membrane'],
+            ['counterBattens', 'counterBattens'],
+            ['battens', 'battens'],
+          ] as const
+        ).map(([layer, label]) => (
+          <label key={layer}>
+            <input
+              type="checkbox"
+              checked={state.workbench.layerVisibility[layer]}
+              onChange={(event) =>
+                state.setLayerVisibility(layer, event.target.checked)
+              }
+            />
+            {t(`assembly.${label}`)}
+          </label>
+        ))}
+      </fieldset>
+      <div className="a-mobile-legend">
+        <strong>{t('assembly.legend')}</strong>
+        {legend.map((entry) => (
+          <span key={entry.id} data-legend-role={entry.role}>
+            <i aria-hidden="true" />
+            {entry.code && <strong>{entry.code}</strong>}
+            {t(`assembly.${entry.labelKey}`)}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}

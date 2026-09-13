@@ -13,7 +13,17 @@ import {
   createRoofMemberSchedule,
   type RoofMemberScheduleRow,
 } from '@cieslacalc/quantity-core';
-import { ArrowLeft, House, RotateCcw, Redo2, Undo2, X } from 'lucide-react';
+import {
+  ArrowLeft,
+  House,
+  RotateCcw,
+  Redo2,
+  Undo2,
+  X,
+  SlidersHorizontal,
+  Wrench,
+  Maximize,
+} from 'lucide-react';
 import {
   HIP_RAFTER_PROTOTYPE_ID,
   JACK_RAFTER_PROTOTYPE_ID,
@@ -35,7 +45,7 @@ import {
   SupportInputs,
   TimberInputs,
 } from './Inputs';
-import { AssemblyCanvas } from './Canvas';
+import { AssemblyCanvas, entityLabel } from './Canvas';
 import { HipFabricationSheet } from './HipFabricationSheet';
 import {
   DetailDrawer,
@@ -44,10 +54,13 @@ import {
 } from './DetailPreview';
 import { ContextualResults, HipResults, Results } from './Summary';
 import { Toolbox } from './Toolbox';
-import { WorkbenchControls } from './WorkbenchControls';
+import { WorkbenchControls, MobileViewSettings } from './WorkbenchControls';
 import { PreparationPlan } from './PreparationPlan';
 import { Inspector } from './Inspector';
 import { WorkbenchContextBar } from './WorkbenchContextBar';
+import { MobileSheet } from './MobileSheet';
+import { MobileTaskDock } from './MobileTaskDock';
+import { useMobileWorkbench } from './mobile-workbench';
 import { BuildUpSummaryBar } from './BuildUpWorkspace';
 import { workbenchProjectResolver } from './workbench-project';
 import { resolveWorkbenchSelectionContext } from './selection';
@@ -101,6 +114,7 @@ export function AssemblyPage() {
     (typeof allDetailPreviews)[number] | undefined
   >();
   const workbench = state.workbench;
+  const mobile = useMobileWorkbench();
   const drawer = workbench.detailDrawer;
   const brand = import.meta.env.VITE_BRAND_NAME || 'CieślaCalc';
   const project = useMemo(
@@ -114,8 +128,12 @@ export function AssemblyPage() {
     memberInstances,
     detailPreviews: allDetailPreviews,
   } = project;
-  const roofWindows = state.projectDocument.project.features.filter(
-    (feature) => feature.kind === 'roof-window',
+  const roofWindows = useMemo(
+    () =>
+      state.projectDocument.project.features.filter(
+        (feature) => feature.kind === 'roof-window',
+      ),
+    [state.projectDocument.project.features],
   );
   const framingProjection = useMemo(
     () =>
@@ -265,8 +283,10 @@ export function AssemblyPage() {
         : { battens: [], totalLengthMm: 0 },
     [battenLayout, state.projectDocument.project.features, state.template],
   );
-  const tileAssignments =
-    state.projectDocument.project.coverings.filter(isTileAssignment);
+  const tileAssignments = useMemo(
+    () => state.projectDocument.project.coverings.filter(isTileAssignment),
+    [state.projectDocument.project.coverings],
+  );
   const tileLayouts = useMemo(
     () =>
       tileAssignments.map((assignment) =>
@@ -591,8 +611,8 @@ export function AssemblyPage() {
     : selectionDetailPreviews;
   const changeMode = (mode: 'quick' | 'builder') => {
     state.setMode(mode);
-    if (mode === 'builder' && window.matchMedia?.('(max-width: 800px)').matches)
-      state.setInspectorOpen(false);
+    if (mode === 'builder' && mobile) state.setInspectorOpen(false);
+    state.setMobilePanel('none');
   };
   useEffect(() => {
     document.documentElement.lang = i18n.language;
@@ -630,8 +650,7 @@ export function AssemblyPage() {
         .getState()
         .setDetailDrawer({ activePreviewId: direct.id, open: true });
       useAssembly.getState().setViewPreset('cuts');
-      if (window.matchMedia?.('(max-width: 800px)').matches)
-        useAssembly.getState().setInspectorOpen(false);
+      if (mobile) useAssembly.getState().setInspectorOpen(false);
       return;
     }
     useAssembly.getState().setDetailDrawer({
@@ -643,10 +662,73 @@ export function AssemblyPage() {
     selectionDetailPreviews,
     workbench.mode,
     workbench.selectedId,
+    mobile,
   ]);
+  const detailDrawerElement = (
+    <DetailDrawer
+      previews={drawerPreviews}
+      activeId={drawer.activePreviewId}
+      open={drawer.open}
+      mode={drawer.mode}
+      pinned={drawer.pinned}
+      cutState={drawer.cutState}
+      onSelect={(id) => {
+        const preview = allDetailPreviews.find(
+          (candidate) => candidate.id === id,
+        );
+        if (!preview) return;
+        state.activateOperation({
+          operationId: preview.sourceSelectionId,
+          prototypeId: preview.subjectMemberId,
+          selectionId: preview.sourceSelectionId,
+          previewId: preview.id,
+        });
+      }}
+      onModeChange={(mode) => state.setDetailDrawer({ mode })}
+      onClose={state.closeDetailDrawer}
+      onPin={() => state.setDetailDrawer({ pinned: !drawer.pinned })}
+      onCutStateChange={(cutState) => state.setDetailDrawer({ cutState })}
+      onZoom={(preview) => {
+        if (preview.subjectCode === 'H1') {
+          state.setView('hip');
+          state.setFocusId(undefined);
+        } else {
+          state.setView('rafter');
+          state.setFocusId(preview.sourceSelectionId);
+        }
+      }}
+    />
+  );
+  const inspectorContent =
+    workbench.viewPreset === 'materials' ? (
+      <Suspense fallback={<aside className="a-inspector" />}>
+        <MaterialScheduleInspector schedule={memberSchedule} />
+      </Suspense>
+    ) : workbench.viewPreset === 'covering' ? (
+      <Suspense fallback={<aside className="a-inspector" />}>
+        <CoveringInspector
+          layout={activeTileLayout}
+          assignment={activeTileAssignment}
+          surfaceGeometry={surfaceProjection}
+        />
+      </Suspense>
+    ) : (
+      <Inspector
+        result={result}
+        hip={hip}
+        skeleton={baseSkeleton}
+        context={selectionContext}
+        spacingEntries={spacingEntries}
+        detailPreviews={selectionDetailPreviews}
+        activeInstance={activeInstance}
+        roofPackage={fabricationPackage}
+        surfaceGeometry={surfaceProjection}
+        counterBattens={counterBattenProjection}
+      />
+    );
   return (
     <div
-      className={`assembly-app mode-${workbench.mode} detail-${drawer.mode}`}
+      className={`assembly-app mode-${workbench.mode} detail-${drawer.mode} ${mobile ? 'is-mobile-workbench' : ''}`}
       onKeyDown={(e) => {
         const target = e.target as HTMLElement;
         if (
@@ -655,7 +737,9 @@ export function AssemblyPage() {
         )
           return;
         if (e.key === 'Escape') {
-          if (state.activeTransaction) state.cancelTransaction();
+          if (mobile && workbench.mobilePanel !== 'none')
+            state.setMobilePanel('none');
+          else if (state.activeTransaction) state.cancelTransaction();
           else if (workbench.measurement) state.cancelMeasurement();
           else if (workbench.workspaceFocus.active)
             state.setWorkspaceFocus(false);
@@ -740,25 +824,78 @@ export function AssemblyPage() {
               </button>
             </div>
           )}
-          <button
-            className="a-icon"
-            aria-label={t('assembly.reset')}
-            onClick={() => {
-              state.reset();
-              state.setFocusId(undefined);
-            }}
-          >
-            <RotateCcw size={18} />
-          </button>
-          <button
-            className="a-icon"
-            aria-label={t('assembly.language')}
-            onClick={() => {
-              void i18n.changeLanguage(i18n.language === 'pl' ? 'en' : 'pl');
-            }}
-          >
-            {i18n.language.toUpperCase()}
-          </button>
+          {mobile && (
+            <details className="a-header-overflow">
+              <summary
+                className="a-icon"
+                aria-label={t('assembly.settings')}
+                title={t('assembly.settings')}
+              >
+                <SlidersHorizontal size={18} />
+              </summary>
+              <div>
+                <div
+                  className="a-overflow-units"
+                  role="group"
+                  aria-label={t('assembly.unit')}
+                >
+                  {lengthUnits.map((unit) => (
+                    <button
+                      key={unit}
+                      className="a-button"
+                      aria-pressed={state.unit === unit}
+                      onClick={() => state.setUnit(unit)}
+                    >
+                      {unit}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  className="a-button"
+                  onClick={() => {
+                    state.reset();
+                    state.setFocusId(undefined);
+                  }}
+                >
+                  <RotateCcw size={18} />
+                  {t('assembly.reset')}
+                </button>
+                <button
+                  className="a-button"
+                  onClick={() => {
+                    void i18n.changeLanguage(
+                      i18n.language === 'pl' ? 'en' : 'pl',
+                    );
+                  }}
+                >
+                  {t('assembly.language')} · {i18n.language.toUpperCase()}
+                </button>
+              </div>
+            </details>
+          )}
+          {!mobile && (
+            <button
+              className="a-icon a-desktop-setting"
+              aria-label={t('assembly.reset')}
+              onClick={() => {
+                state.reset();
+                state.setFocusId(undefined);
+              }}
+            >
+              <RotateCcw size={18} />
+            </button>
+          )}
+          {!mobile && (
+            <button
+              className="a-icon a-desktop-setting"
+              aria-label={t('assembly.language')}
+              onClick={() => {
+                void i18n.changeLanguage(i18n.language === 'pl' ? 'en' : 'pl');
+              }}
+            >
+              {i18n.language.toUpperCase()}
+            </button>
+          )}
         </div>
       </header>
       <main className="a-main">
@@ -848,12 +985,14 @@ export function AssemblyPage() {
             <div
               className={`a-builder-layout ${workbench.toolboxCollapsed ? 'tools-collapsed' : ''} ${workbench.workspaceFocus.active ? 'is-workspace-focus' : ''}`}
             >
-              <Toolbox
-                result={result}
-                detailPreviews={selectionDetailPreviews}
-              />
+              {!mobile && (
+                <Toolbox
+                  result={result}
+                  detailPreviews={selectionDetailPreviews}
+                />
+              )}
               <section className="a-canvas-column">
-                <WorkbenchControls skeleton={skeleton} />
+                {!mobile && <WorkbenchControls skeleton={skeleton} />}
                 <WorkbenchContextBar
                   instances={memberInstances}
                   activeInstance={activeInstance}
@@ -862,6 +1001,87 @@ export function AssemblyPage() {
                   selectedScheduleRow={selectedScheduleRow}
                   openingSummary={openingSummary}
                 />
+                {mobile && workbench.viewPreset === 'layers' && (
+                  <div
+                    className="a-mobile-layer-switch"
+                    role="tablist"
+                    aria-label={t('assembly.roofBuildUp')}
+                  >
+                    {(
+                      [
+                        'overview',
+                        'membrane',
+                        'counterBattens',
+                        'battens',
+                      ] as const
+                    ).map((view) => (
+                      <button
+                        key={view}
+                        role="tab"
+                        aria-selected={workbench.buildUpView === view}
+                        onClick={() => state.setBuildUpView(view)}
+                      >
+                        {t(`assembly.${view}LayerView`)}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {mobile && (
+                  <div className="a-mobile-workspace-actions">
+                    <button
+                      className="a-button"
+                      onClick={() => {
+                        if (workbench.viewPreset === 'covering') {
+                          state.setInspectorOpen(true);
+                          state.setMobilePanel('inspector');
+                        } else state.setMobilePanel('tools');
+                      }}
+                    >
+                      <Wrench size={17} />
+                      {t(
+                        workbench.viewPreset === 'covering'
+                          ? 'assembly.coveringParameters'
+                          : 'assembly.toolbox',
+                      )}
+                    </button>
+                    <button
+                      className="a-button"
+                      onClick={() => state.setMobilePanel('view')}
+                    >
+                      <SlidersHorizontal size={17} />
+                      {t('assembly.view')}
+                    </button>
+                    {workbench.viewPreset === 'layers' && (
+                      <button
+                        className="a-button"
+                        onClick={() => {
+                          state.setInspectorOpen(true);
+                          state.setMobilePanel('inspector');
+                        }}
+                      >
+                        {t('assembly.editSelection')}
+                      </button>
+                    )}
+                    {workbench.viewPreset !== 'covering' &&
+                      (workbench.viewPreset !== 'materials' ||
+                        workbench.materialsView === 'drawing') && (
+                        <button className="a-button" onClick={state.requestFit}>
+                          <Maximize size={17} />
+                          {t('assembly.fit')}
+                        </button>
+                      )}
+                    {workbench.viewPreset !== 'covering' &&
+                      workbench.viewPreset !== 'materials' && (
+                        <button
+                          className="a-button"
+                          aria-pressed={!!workbench.measurement}
+                          onClick={state.toggleMeasurement}
+                        >
+                          {t('assembly.measure')}
+                        </button>
+                      )}
+                  </div>
+                )}
                 {workbench.viewPreset === 'layers' && (
                   <BuildUpSummaryBar
                     membraneEnabled={!!membrane?.enabled}
@@ -983,78 +1203,95 @@ export function AssemblyPage() {
                   </Suspense>
                 )}
               </section>
-              {workbench.viewPreset === 'materials' ? (
-                <Suspense fallback={<aside className="a-inspector" />}>
-                  <MaterialScheduleInspector schedule={memberSchedule} />
-                </Suspense>
-              ) : workbench.viewPreset === 'covering' ? (
-                <Suspense fallback={<aside className="a-inspector" />}>
-                  <CoveringInspector layout={activeTileLayout} />
-                </Suspense>
-              ) : (
-                <Inspector
-                  result={result}
-                  hip={hip}
-                  skeleton={baseSkeleton}
-                  context={selectionContext}
-                  spacingEntries={spacingEntries}
-                  detailPreviews={selectionDetailPreviews}
-                  activeInstance={activeInstance}
-                  roofPackage={fabricationPackage}
-                  surfaceGeometry={surfaceProjection}
-                  counterBattens={counterBattenProjection}
-                />
-              )}
+              {!mobile && inspectorContent}
             </div>
-            <DetailDrawer
-              previews={drawerPreviews}
-              activeId={drawer.activePreviewId}
-              open={drawer.open}
-              mode={drawer.mode}
-              pinned={drawer.pinned}
-              cutState={drawer.cutState}
-              onSelect={(id) => {
-                const preview = allDetailPreviews.find(
-                  (candidate) => candidate.id === id,
-                );
-                if (!preview) return;
-                state.activateOperation({
-                  operationId: preview.sourceSelectionId,
-                  prototypeId: preview.subjectMemberId,
-                  selectionId: preview.sourceSelectionId,
-                  previewId: preview.id,
-                });
-              }}
-              onModeChange={(mode) => state.setDetailDrawer({ mode })}
-              onClose={state.closeDetailDrawer}
-              onPin={() => state.setDetailDrawer({ pinned: !drawer.pinned })}
-              onCutStateChange={(cutState) =>
-                state.setDetailDrawer({ cutState })
-              }
-              onZoom={(preview) => {
-                if (preview.subjectCode === 'H1') {
-                  state.setView('hip');
-                  state.setFocusId(undefined);
-                } else {
-                  state.setView('rafter');
-                  state.setFocusId(preview.sourceSelectionId);
-                }
-              }}
-            />
-            {(workbench.viewPreset === 'construction' ||
-              workbench.viewPreset === 'cuts') && (
-              <>
-                <PreparationPlan
-                  roofPackage={fabricationPackage}
-                  activeInstance={activeInstance}
+            {mobile &&
+              workbench.selectedId !== 'roof' &&
+              workbench.viewPreset !== 'covering' &&
+              !drawer.open &&
+              workbench.mobilePanel === 'none' && (
+                <div className="a-mobile-selection-peek">
+                  <strong>{entityLabel(workbench.selectedId, state, t)}</strong>
+                  <button
+                    className="a-button"
+                    onClick={() => {
+                      state.setInspectorOpen(true);
+                      state.setMobilePanel('inspector');
+                    }}
+                  >
+                    {t('assembly.editSelection')}
+                  </button>
+                </div>
+              )}
+            {mobile && <MobileTaskDock />}
+            {mobile && workbench.mobilePanel === 'tools' && (
+              <MobileSheet
+                title={t('assembly.toolbox')}
+                onClose={() => state.setMobilePanel('none')}
+              >
+                <Toolbox
+                  result={result}
+                  detailPreviews={selectionDetailPreviews}
+                  mobileTask={workbench.viewPreset}
                 />
-                <ContextualResults
-                  context={selectionContext}
-                  resolved={templateResult}
-                  skeleton={skeleton}
-                />
-              </>
+              </MobileSheet>
             )}
+            {mobile && workbench.mobilePanel === 'inspector' && (
+              <MobileSheet
+                title={t('assembly.inspector')}
+                onClose={() => state.setMobilePanel('none')}
+              >
+                {inspectorContent}
+                {(workbench.viewPreset === 'construction' ||
+                  workbench.viewPreset === 'cuts') && (
+                  <>
+                    <PreparationPlan
+                      roofPackage={fabricationPackage}
+                      activeInstance={activeInstance}
+                    />
+                    <ContextualResults
+                      context={selectionContext}
+                      resolved={templateResult}
+                      skeleton={skeleton}
+                    />
+                  </>
+                )}
+              </MobileSheet>
+            )}
+            {mobile && workbench.mobilePanel === 'view' && (
+              <MobileSheet
+                title={t('assembly.view')}
+                onClose={() => state.setMobilePanel('none')}
+              >
+                <MobileViewSettings skeleton={skeleton} />
+              </MobileSheet>
+            )}
+            {mobile
+              ? drawer.open && (
+                  <MobileSheet
+                    title={t('assembly.detailDrawer')}
+                    onClose={state.closeDetailDrawer}
+                    expanded={drawer.mode === 'focus'}
+                  >
+                    {detailDrawerElement}
+                  </MobileSheet>
+                )
+              : detailDrawerElement}
+            {!mobile &&
+              (workbench.viewPreset === 'construction' ||
+                workbench.viewPreset === 'cuts') && (
+                <>
+                  <PreparationPlan
+                    roofPackage={fabricationPackage}
+                    activeInstance={activeInstance}
+                  />
+                  <ContextualResults
+                    context={selectionContext}
+                    resolved={templateResult}
+                    skeleton={skeleton}
+                  />
+                </>
+              )}
           </>
         )}
         <details className="a-assumptions">

@@ -17,6 +17,7 @@ export type ViewPreset =
 export type BuildUpView =
   'overview' | 'membrane' | 'counterBattens' | 'battens';
 export type MaterialsView = 'schedule' | 'drawing';
+export type MobilePanel = 'none' | 'tools' | 'inspector' | 'view';
 export type DimensionLevel = 'minimal' | 'working' | 'full';
 export type DetailDockMode = 'collapsed' | 'working' | 'focus';
 export type WorkbenchToolCategory =
@@ -79,6 +80,8 @@ export interface WorkbenchViewState {
   viewPreset: ViewPreset;
   buildUpView: BuildUpView;
   materialsView: MaterialsView;
+  /** Transient phone presentation; excluded from project documents and history. */
+  mobilePanel: MobilePanel;
   /** View restored when a contextual cut detail is closed. */
   returnViewPreset?: ViewPreset;
   isolateSelection: boolean;
@@ -136,6 +139,7 @@ export const initialWorkbenchViewState: WorkbenchViewState = {
   viewPreset: 'construction',
   buildUpView: 'overview',
   materialsView: 'schedule',
+  mobilePanel: 'none',
   returnViewPreset: undefined,
   isolateSelection: false,
   dimensionLevel: 'working',

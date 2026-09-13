@@ -57,6 +57,12 @@ import type {
 import { formatLength } from '../format';
 import { MemberInstanceOverlay } from './MemberInstanceOverlay';
 import { useAssembly } from './store';
+import { useMobileWorkbench } from './mobile-workbench';
+import {
+  pinchViewport,
+  touchDragActivated,
+  type PinchStart,
+} from './touch-camera';
 import {
   deriveWorkbenchProjectionPolicy,
   initialWorkbenchViewState,
@@ -88,6 +94,8 @@ interface Drag {
   startPosition?: RoofWindowFeature['position'];
   uAxis?: Point;
   vAxis?: Point;
+  activated: boolean;
+  pointerType: string;
 }
 const handleRangeMm = 1000;
 
@@ -210,12 +218,24 @@ function SkeletonCanvasComponent({
     },
   };
   const { t, i18n } = useTranslation();
+  const mobile = useMobileWorkbench();
   const container = useRef<HTMLDivElement>(null),
     svg = useRef<SVGSVGElement>(null),
     drag = useRef<Drag | null>(null);
+  const touchPointers = useRef(new Map<number, Point>());
+  const pinch = useRef<PinchStart | null>(null);
   const finishDragRef = useRef<(cancel: boolean) => void>(() => undefined);
   const [width, setWidth] = useState(820);
-  const height = width < 550 ? 400 : width > 1000 ? 640 : 570;
+  const [viewportHeight, setViewportHeight] = useState(() =>
+    typeof window === 'undefined' ? 800 : window.innerHeight,
+  );
+  const height = mobile
+    ? Math.max(200, Math.min(620, viewportHeight - 250))
+    : width < 550
+      ? 400
+      : width > 1000
+        ? 640
+        : 570;
   const [viewport, setViewport] = useState<ViewportState>(fittedViewport);
   const [activeHandle, setActiveHandle] = useState<string | null>(null);
   const [hoveredPurlin, setHoveredPurlin] = useState<string | null>(null);
@@ -237,6 +257,11 @@ function SkeletonCanvasComponent({
     });
     observer.observe(container.current);
     return () => observer.disconnect();
+  }, []);
+  useEffect(() => {
+    const update = () => setViewportHeight(window.innerHeight);
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
   }, []);
   useEffect(() => {
     const keyDown = (event: globalThis.KeyboardEvent) => {
@@ -772,7 +797,7 @@ function SkeletonCanvasComponent({
     if (!parent) return;
     event.preventDefault();
     event.stopPropagation();
-    state.beginTransaction();
+    if (event.pointerType !== 'touch') state.beginTransaction();
     if (handle.selectionId) state.select(handle.selectionId);
     drag.current = {
       kind: handle.kind,
@@ -793,6 +818,8 @@ function SkeletonCanvasComponent({
       axisStart: handle.axisStart,
       axisEnd: handle.axisEnd,
       axisLengthMm: handle.axisLengthMm,
+      activated: event.pointerType !== 'touch',
+      pointerType: event.pointerType,
     };
     setActiveHandle(handle.id);
     parent.setPointerCapture(event.pointerId);
@@ -809,7 +836,7 @@ function SkeletonCanvasComponent({
     }
     event.preventDefault();
     event.stopPropagation();
-    state.beginTransaction();
+    if (event.pointerType !== 'touch') state.beginTransaction();
     state.selectRoofWindow(overlay.feature.id);
     drag.current = {
       kind: 'roof-window',
@@ -820,6 +847,8 @@ function SkeletonCanvasComponent({
       startPosition: overlay.feature.position,
       uAxis: overlay.uAxis,
       vAxis: overlay.vAxis,
+      activated: event.pointerType !== 'touch',
+      pointerType: event.pointerType,
     };
     svg.current?.setPointerCapture(event.pointerId);
   };
@@ -827,8 +856,10 @@ function SkeletonCanvasComponent({
     const active = drag.current;
     if (!active) return;
     drag.current = null;
-    if (cancel) state.cancelTransaction();
-    else state.commitTransaction();
+    if (active.activated && active.kind !== 'pan') {
+      if (cancel) state.cancelTransaction();
+      else state.commitTransaction();
+    }
     setActiveHandle(null);
     setPreview(null);
     setAlignmentGuide(undefined);
@@ -837,6 +868,23 @@ function SkeletonCanvasComponent({
   };
   finishDragRef.current = finishDrag;
   const moveDrag = (event: PointerEvent<SVGSVGElement>) => {
+    if (
+      event.pointerType === 'touch' &&
+      touchPointers.current.has(event.pointerId)
+    ) {
+      touchPointers.current.set(event.pointerId, currentPointer(event));
+      if (pinch.current && touchPointers.current.size >= 2) {
+        const [first, second] = [...touchPointers.current.values()];
+        if (first && second)
+          setViewport(
+            clampCanvasViewport(
+              pinchViewport(pinch.current, first, second, { width, height }),
+              { width, height },
+            ),
+          );
+        return;
+      }
+    }
     const active = drag.current;
     if (!active || active.pointerId !== event.pointerId) return;
     if (active.kind === 'pan') {
@@ -852,6 +900,12 @@ function SkeletonCanvasComponent({
         ),
       );
       return;
+    }
+    if (!active.activated && active.pointerType === 'touch') {
+      const point = currentPointer(event);
+      if (!touchDragActivated(active.startPointer, point)) return;
+      state.beginTransaction();
+      active.activated = true;
     }
     if (
       active.kind === 'roof-window' &&
@@ -962,15 +1016,49 @@ function SkeletonCanvasComponent({
       return;
     if ((event.target as SVGElement).dataset.skeletonBackground !== 'true')
       return;
-    if (!state.workbench.activeOperationId && !selectedStore.detailDrawerOpen)
-      state.select('roof');
     drag.current = {
       kind: 'pan',
       pointerId: event.pointerId,
       startPointer: currentPointer(event),
       viewport,
+      activated: false,
+      pointerType: event.pointerType,
     };
     event.currentTarget.setPointerCapture(event.pointerId);
+  };
+  const beginTouchCapture = (event: PointerEvent<SVGSVGElement>) => {
+    if (event.pointerType !== 'touch') return;
+    touchPointers.current.set(event.pointerId, currentPointer(event));
+    if (touchPointers.current.size !== 2) return;
+    // A second finger always cancels an unfinished canonical edit before camera motion.
+    if (drag.current) finishDrag(true);
+    const [first, second] = [...touchPointers.current.values()];
+    if (first && second) pinch.current = { first, second, viewport };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    event.preventDefault();
+    event.stopPropagation();
+  };
+  const endTouch = (event: PointerEvent<SVGSVGElement>) => {
+    if (event.pointerType !== 'touch') return;
+    touchPointers.current.delete(event.pointerId);
+    if (!pinch.current) return;
+    pinch.current = null;
+    const remaining = [...touchPointers.current.entries()][0];
+    if (remaining) {
+      drag.current = {
+        kind: 'pan',
+        pointerId: remaining[0],
+        startPointer: remaining[1],
+        viewport,
+        activated: false,
+        pointerType: 'touch',
+      };
+      try {
+        event.currentTarget.setPointerCapture(remaining[0]);
+      } catch {
+        /* pointer ended */
+      }
+    }
   };
   const select = (member: SkeletonMember3D) => {
     if (!selectedStore.measurement)
@@ -1234,12 +1322,15 @@ function SkeletonCanvasComponent({
           `assembly.${template.type === 'hip' ? 'hipSkeletonDrawing' : 'skeletonDrawing'}`,
         )}
         style={{ height }}
+        onPointerDownCapture={beginTouchCapture}
         onPointerDown={beginPan}
         onPointerMove={moveDrag}
         onPointerUp={(event) => {
+          endTouch(event);
           if (event.pointerId === drag.current?.pointerId) finishDrag(false);
         }}
         onPointerCancel={(event) => {
+          endTouch(event);
           if (event.pointerId === drag.current?.pointerId) finishDrag(true);
         }}
         onLostPointerCapture={() => finishDrag(true)}
@@ -1604,12 +1695,8 @@ function SkeletonCanvasComponent({
               const activePurlin =
                 activeHandle === purlinHandle?.id ||
                 hoveredPurlin === member.selectionId;
-              const axisFrom = editablePurlin
-                ? viewPoint(projectAxonometric(member.from))
-                : undefined;
-              const axisTo = editablePurlin
-                ? viewPoint(projectAxonometric(member.to))
-                : undefined;
+              const axisFrom = viewPoint(projectAxonometric(member.from));
+              const axisTo = viewPoint(projectAxonometric(member.to));
               return (
                 <g
                   key={member.id}
@@ -1671,8 +1758,14 @@ function SkeletonCanvasComponent({
                 >
                   {axisFrom && axisTo && (
                     <line
-                      className="a-purlin-body-hit-target"
-                      data-purlin-hit-target={member.selectionId}
+                      className={
+                        editablePurlin
+                          ? 'a-purlin-body-hit-target'
+                          : 'a-member-hit-target'
+                      }
+                      data-purlin-hit-target={
+                        editablePurlin ? member.selectionId : undefined
+                      }
                       x1={axisFrom.x}
                       y1={axisFrom.y}
                       x2={axisTo.x}

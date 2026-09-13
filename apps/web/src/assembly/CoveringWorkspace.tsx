@@ -171,29 +171,9 @@ export function CoveringWorkspace({
       }
     : undefined;
 
-  const replace = (next: CoveringAssignmentSpec) =>
-    state.setCoveringAssignments(
-      state.projectDocument.project.coverings.map((item) =>
-        item.id === next.id ? next : item,
-      ),
-    );
-  const update = (mutate: (draft: TileAssignment) => void) => {
-    if (!assignment) return;
-    const draft = structuredClone(assignment);
-    mutate(draft);
-    replace(draft);
-  };
   const mode = assignment?.product.technicalSpecSnapshot.installationModes.find(
     (candidate) => candidate.id === assignment.selectedInstallationModeId,
   );
-  const updateMode = (mutate: (draft: NonNullable<typeof mode>) => void) =>
-    update((draft) => {
-      const selected =
-        draft.product.technicalSpecSnapshot.installationModes.find(
-          (candidate) => candidate.id === draft.selectedInstallationModeId,
-        );
-      if (selected) mutate(selected);
-    });
 
   if (!assignment)
     return (
@@ -230,6 +210,15 @@ export function CoveringWorkspace({
               t('assembly.manualRoofTile')}
           </strong>
         </div>
+        <button
+          className="a-button a-covering-parameters"
+          onClick={() => {
+            state.setInspectorOpen(true);
+            state.setMobilePanel('inspector');
+          }}
+        >
+          {t('assembly.coveringParameters')}
+        </button>
         <div className="a-covering-counts" data-status={layout?.status}>
           <span>
             {t('assembly.coveringStatusLabel')}{' '}
@@ -298,299 +287,6 @@ export function CoveringWorkspace({
         </div>
       )}
       <div className="a-covering-body">
-        <aside className="a-covering-editor">
-          <label className="a-field">
-            <span>{t('assembly.productName')}</span>
-            <input
-              defaultValue={
-                assignment.product.displaySnapshot?.familyName ?? ''
-              }
-              onBlur={(event) =>
-                update((draft) => {
-                  draft.product.displaySnapshot = {
-                    ...draft.product.displaySnapshot,
-                    familyName: event.currentTarget.value.trim() || undefined,
-                  };
-                })
-              }
-            />
-          </label>
-          <label className="a-field">
-            <span>{t('assembly.installationMode')}</span>
-            <select
-              value={assignment.selectedInstallationModeId ?? ''}
-              onChange={(event) =>
-                update((draft) => {
-                  draft.selectedInstallationModeId =
-                    event.currentTarget.value || undefined;
-                })
-              }
-            >
-              <option value="">{t('assembly.selectInstallationMode')}</option>
-              {assignment.product.technicalSpecSnapshot.installationModes.map(
-                (item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.id}
-                  </option>
-                ),
-              )}
-            </select>
-          </label>
-          <NumericField
-            label={t('assembly.coverWidth')}
-            value={mode?.coverWidthMm}
-            unit="length"
-            minimum={1}
-            onCommit={(value) =>
-              value !== undefined &&
-              updateMode((draft) => {
-                draft.coverWidthMm = value;
-              })
-            }
-          />
-          <div className="a-covering-field-pair">
-            <NumericField
-              label={t('assembly.minimumGauge')}
-              value={mode?.gaugeRangeMm.min}
-              unit="length"
-              minimum={1}
-              onCommit={(value) =>
-                value !== undefined &&
-                updateMode((draft) => {
-                  draft.gaugeRangeMm.min = Math.min(
-                    value,
-                    draft.gaugeRangeMm.max,
-                  );
-                })
-              }
-            />
-            <NumericField
-              label={t('assembly.maximumGauge')}
-              value={mode?.gaugeRangeMm.max}
-              unit="length"
-              minimum={1}
-              onCommit={(value) =>
-                value !== undefined &&
-                updateMode((draft) => {
-                  draft.gaugeRangeMm.max = Math.max(
-                    value,
-                    draft.gaugeRangeMm.min,
-                  );
-                })
-              }
-            />
-          </div>
-          <label className="a-field">
-            <span>{t('assembly.tileCoursePattern')}</span>
-            <select
-              value={patternName(assignment)}
-              onChange={(event) =>
-                updateMode((draft) => {
-                  draft.coursePattern =
-                    event.currentTarget.value === 'crown'
-                      ? {
-                          layers: [
-                            { id: 'lower', horizontalOffsetFraction: 0 },
-                            { id: 'upper', horizontalOffsetFraction: 0.5 },
-                          ],
-                          battenRowOffsetCycle: [0],
-                        }
-                      : {
-                          layers: [{ id: 'base', horizontalOffsetFraction: 0 }],
-                          battenRowOffsetCycle:
-                            event.currentTarget.value === 'staggered'
-                              ? [0, 0.5]
-                              : [0],
-                        };
-                })
-              }
-            >
-              <option value="straight">{t('assembly.patternStraight')}</option>
-              <option value="staggered">
-                {t('assembly.patternStaggered')}
-              </option>
-              <option value="crown">{t('assembly.patternCrown')}</option>
-            </select>
-          </label>
-          <label className="a-field">
-            <span>{t('assembly.horizontalAlignment')}</span>
-            <select
-              value={assignment.layoutIntent?.horizontalAlignment ?? 'centered'}
-              onChange={(event) =>
-                update((draft) => {
-                  const alignment = event.currentTarget.value as
-                    'centered' | 'from-u-min' | 'manual';
-                  draft.layoutIntent = {
-                    kind: 'roof-tile',
-                    horizontalAlignment: alignment,
-                    ...(alignment === 'manual'
-                      ? {
-                          planeOffsetsMm: Object.fromEntries(
-                            draft.roofPlaneIds.map((id) => [
-                              id,
-                              draft.layoutIntent?.planeOffsetsMm?.[id] ?? 0,
-                            ]),
-                          ),
-                        }
-                      : {}),
-                  };
-                })
-              }
-            >
-              <option value="centered">
-                {t('assembly.alignmentCentered')}
-              </option>
-              <option value="from-u-min">
-                {t('assembly.alignmentFromEdge')}
-              </option>
-              <option value="manual">{t('assembly.alignmentManual')}</option>
-            </select>
-          </label>
-          {assignment.layoutIntent?.horizontalAlignment === 'manual' &&
-            selectedPlaneId && (
-              <NumericField
-                label={t('assembly.planeOffset')}
-                value={
-                  assignment.layoutIntent.planeOffsetsMm?.[selectedPlaneId] ?? 0
-                }
-                unit="length"
-                minimum={Number.NEGATIVE_INFINITY}
-                onCommit={(value) =>
-                  value !== undefined &&
-                  update((draft) => {
-                    draft.layoutIntent = {
-                      kind: 'roof-tile',
-                      horizontalAlignment: 'manual',
-                      planeOffsetsMm: {
-                        ...draft.layoutIntent?.planeOffsetsMm,
-                        [selectedPlaneId]: value,
-                      },
-                    };
-                  })
-                }
-              />
-            )}
-          <details>
-            <summary>{t('assembly.additionalTileParameters')}</summary>
-            <NumericField
-              label={t('assembly.physicalWidth')}
-              value={assignment.product.technicalSpecSnapshot.physicalWidthMm}
-              unit="length"
-              minimum={1}
-              onCommit={(value) =>
-                update((draft) => {
-                  draft.product.technicalSpecSnapshot.physicalWidthMm = value;
-                })
-              }
-            />
-            <NumericField
-              label={t('assembly.physicalLength')}
-              value={assignment.product.technicalSpecSnapshot.physicalLengthMm}
-              unit="length"
-              minimum={1}
-              onCommit={(value) =>
-                update((draft) => {
-                  draft.product.technicalSpecSnapshot.physicalLengthMm = value;
-                })
-              }
-            />
-            <NumericField
-              label={t('assembly.minimumPitch')}
-              value={mode?.minPitchDeg}
-              minimum={Number.EPSILON}
-              onCommit={(value) =>
-                updateMode((draft) => {
-                  draft.minPitchDeg = value;
-                })
-              }
-            />
-            <NumericField
-              label={t('assembly.weightPerPiece')}
-              value={assignment.product.technicalSpecSnapshot.weightKgPerPiece}
-              minimum={Number.EPSILON}
-              onCommit={(value) =>
-                update((draft) => {
-                  draft.product.technicalSpecSnapshot.weightKgPerPiece = value;
-                })
-              }
-            />
-            <div className="a-covering-field-pair">
-              <NumericField
-                label={t('assembly.minimumDeclaredUnits')}
-                value={mode?.declaredUnitsPerM2?.min}
-                minimum={Number.EPSILON}
-                onCommit={(value) =>
-                  updateMode((draft) => {
-                    if (value === undefined) {
-                      delete draft.declaredUnitsPerM2;
-                      return;
-                    }
-                    const maximum = draft.declaredUnitsPerM2?.max ?? value;
-                    draft.declaredUnitsPerM2 = {
-                      min: Math.min(value, maximum),
-                      max: maximum,
-                    };
-                  })
-                }
-              />
-              <NumericField
-                label={t('assembly.maximumDeclaredUnits')}
-                value={mode?.declaredUnitsPerM2?.max}
-                minimum={Number.EPSILON}
-                onCommit={(value) =>
-                  updateMode((draft) => {
-                    if (value === undefined) {
-                      delete draft.declaredUnitsPerM2;
-                      return;
-                    }
-                    const minimum = draft.declaredUnitsPerM2?.min ?? value;
-                    draft.declaredUnitsPerM2 = {
-                      min: minimum,
-                      max: Math.max(value, minimum),
-                    };
-                  })
-                }
-              />
-            </div>
-          </details>
-          <fieldset>
-            <legend>{t('assembly.assignedRoofPlanes')}</legend>
-            {surfaceGeometry.planes.map((plane) => (
-              <label key={plane.roofPlaneId}>
-                <input
-                  type="checkbox"
-                  checked={assignment.roofPlaneIds.includes(plane.roofPlaneId)}
-                  disabled={
-                    assignment.roofPlaneIds.length === 1 &&
-                    assignment.roofPlaneIds.includes(plane.roofPlaneId)
-                  }
-                  onChange={(event) =>
-                    update((draft) => {
-                      draft.roofPlaneIds = event.currentTarget.checked
-                        ? [...draft.roofPlaneIds, plane.roofPlaneId]
-                        : draft.roofPlaneIds.filter(
-                            (id) => id !== plane.roofPlaneId,
-                          );
-                    })
-                  }
-                />
-                {plane.roofPlaneId.replace('roof-plane:', '')}
-              </label>
-            ))}
-          </fieldset>
-          <button
-            className="a-button a-danger"
-            onClick={() =>
-              state.setCoveringAssignments(
-                state.projectDocument.project.coverings.filter(
-                  (item) => item.id !== assignment.id,
-                ),
-              )
-            }
-          >
-            <Trash2 size={16} /> {t('assembly.removeCovering')}
-          </button>
-        </aside>
         <div className="a-covering-canvas-panel">
           <div
             className="a-covering-plane-tabs"
@@ -678,14 +374,341 @@ export function CoveringWorkspace({
   );
 }
 
+function CoveringEditor({
+  assignment,
+  surfaceGeometry,
+  selectedPlaneId,
+}: {
+  assignment: TileAssignment;
+  surfaceGeometry: RoofSurfaceGeometryResult;
+  selectedPlaneId?: string;
+}) {
+  const state = useAssembly();
+  const { t } = useTranslation();
+  const replace = (next: CoveringAssignmentSpec) =>
+    state.setCoveringAssignments(
+      state.projectDocument.project.coverings.map((item) =>
+        item.id === next.id ? next : item,
+      ),
+    );
+  const update = (mutate: (draft: TileAssignment) => void) => {
+    if (!assignment) return;
+    const draft = structuredClone(assignment);
+    mutate(draft);
+    replace(draft);
+  };
+  const mode = assignment?.product.technicalSpecSnapshot.installationModes.find(
+    (candidate) => candidate.id === assignment.selectedInstallationModeId,
+  );
+  const updateMode = (mutate: (draft: NonNullable<typeof mode>) => void) =>
+    update((draft) => {
+      const selected =
+        draft.product.technicalSpecSnapshot.installationModes.find(
+          (candidate) => candidate.id === draft.selectedInstallationModeId,
+        );
+      if (selected) mutate(selected);
+    });
+
+  return (
+    <aside className="a-covering-editor">
+      <label className="a-field">
+        <span>{t('assembly.productName')}</span>
+        <input
+          defaultValue={assignment.product.displaySnapshot?.familyName ?? ''}
+          onBlur={(event) =>
+            update((draft) => {
+              draft.product.displaySnapshot = {
+                ...draft.product.displaySnapshot,
+                familyName: event.currentTarget.value.trim() || undefined,
+              };
+            })
+          }
+        />
+      </label>
+      <label className="a-field">
+        <span>{t('assembly.installationMode')}</span>
+        <select
+          value={assignment.selectedInstallationModeId ?? ''}
+          onChange={(event) =>
+            update((draft) => {
+              draft.selectedInstallationModeId =
+                event.currentTarget.value || undefined;
+            })
+          }
+        >
+          <option value="">{t('assembly.selectInstallationMode')}</option>
+          {assignment.product.technicalSpecSnapshot.installationModes.map(
+            (item) => (
+              <option key={item.id} value={item.id}>
+                {item.id}
+              </option>
+            ),
+          )}
+        </select>
+      </label>
+      <NumericField
+        label={t('assembly.coverWidth')}
+        value={mode?.coverWidthMm}
+        unit="length"
+        minimum={1}
+        onCommit={(value) =>
+          value !== undefined &&
+          updateMode((draft) => {
+            draft.coverWidthMm = value;
+          })
+        }
+      />
+      <div className="a-covering-field-pair">
+        <NumericField
+          label={t('assembly.minimumGauge')}
+          value={mode?.gaugeRangeMm.min}
+          unit="length"
+          minimum={1}
+          onCommit={(value) =>
+            value !== undefined &&
+            updateMode((draft) => {
+              draft.gaugeRangeMm.min = Math.min(value, draft.gaugeRangeMm.max);
+            })
+          }
+        />
+        <NumericField
+          label={t('assembly.maximumGauge')}
+          value={mode?.gaugeRangeMm.max}
+          unit="length"
+          minimum={1}
+          onCommit={(value) =>
+            value !== undefined &&
+            updateMode((draft) => {
+              draft.gaugeRangeMm.max = Math.max(value, draft.gaugeRangeMm.min);
+            })
+          }
+        />
+      </div>
+      <label className="a-field">
+        <span>{t('assembly.tileCoursePattern')}</span>
+        <select
+          value={patternName(assignment)}
+          onChange={(event) =>
+            updateMode((draft) => {
+              draft.coursePattern =
+                event.currentTarget.value === 'crown'
+                  ? {
+                      layers: [
+                        { id: 'lower', horizontalOffsetFraction: 0 },
+                        { id: 'upper', horizontalOffsetFraction: 0.5 },
+                      ],
+                      battenRowOffsetCycle: [0],
+                    }
+                  : {
+                      layers: [{ id: 'base', horizontalOffsetFraction: 0 }],
+                      battenRowOffsetCycle:
+                        event.currentTarget.value === 'staggered'
+                          ? [0, 0.5]
+                          : [0],
+                    };
+            })
+          }
+        >
+          <option value="straight">{t('assembly.patternStraight')}</option>
+          <option value="staggered">{t('assembly.patternStaggered')}</option>
+          <option value="crown">{t('assembly.patternCrown')}</option>
+        </select>
+      </label>
+      <label className="a-field">
+        <span>{t('assembly.horizontalAlignment')}</span>
+        <select
+          value={assignment.layoutIntent?.horizontalAlignment ?? 'centered'}
+          onChange={(event) =>
+            update((draft) => {
+              const alignment = event.currentTarget.value as
+                'centered' | 'from-u-min' | 'manual';
+              draft.layoutIntent = {
+                kind: 'roof-tile',
+                horizontalAlignment: alignment,
+                ...(alignment === 'manual'
+                  ? {
+                      planeOffsetsMm: Object.fromEntries(
+                        draft.roofPlaneIds.map((id) => [
+                          id,
+                          draft.layoutIntent?.planeOffsetsMm?.[id] ?? 0,
+                        ]),
+                      ),
+                    }
+                  : {}),
+              };
+            })
+          }
+        >
+          <option value="centered">{t('assembly.alignmentCentered')}</option>
+          <option value="from-u-min">{t('assembly.alignmentFromEdge')}</option>
+          <option value="manual">{t('assembly.alignmentManual')}</option>
+        </select>
+      </label>
+      {assignment.layoutIntent?.horizontalAlignment === 'manual' &&
+        selectedPlaneId && (
+          <NumericField
+            label={t('assembly.planeOffset')}
+            value={
+              assignment.layoutIntent.planeOffsetsMm?.[selectedPlaneId] ?? 0
+            }
+            unit="length"
+            minimum={Number.NEGATIVE_INFINITY}
+            onCommit={(value) =>
+              value !== undefined &&
+              update((draft) => {
+                draft.layoutIntent = {
+                  kind: 'roof-tile',
+                  horizontalAlignment: 'manual',
+                  planeOffsetsMm: {
+                    ...draft.layoutIntent?.planeOffsetsMm,
+                    [selectedPlaneId]: value,
+                  },
+                };
+              })
+            }
+          />
+        )}
+      <details>
+        <summary>{t('assembly.additionalTileParameters')}</summary>
+        <NumericField
+          label={t('assembly.physicalWidth')}
+          value={assignment.product.technicalSpecSnapshot.physicalWidthMm}
+          unit="length"
+          minimum={1}
+          onCommit={(value) =>
+            update((draft) => {
+              draft.product.technicalSpecSnapshot.physicalWidthMm = value;
+            })
+          }
+        />
+        <NumericField
+          label={t('assembly.physicalLength')}
+          value={assignment.product.technicalSpecSnapshot.physicalLengthMm}
+          unit="length"
+          minimum={1}
+          onCommit={(value) =>
+            update((draft) => {
+              draft.product.technicalSpecSnapshot.physicalLengthMm = value;
+            })
+          }
+        />
+        <NumericField
+          label={t('assembly.minimumPitch')}
+          value={mode?.minPitchDeg}
+          minimum={Number.EPSILON}
+          onCommit={(value) =>
+            updateMode((draft) => {
+              draft.minPitchDeg = value;
+            })
+          }
+        />
+        <NumericField
+          label={t('assembly.weightPerPiece')}
+          value={assignment.product.technicalSpecSnapshot.weightKgPerPiece}
+          minimum={Number.EPSILON}
+          onCommit={(value) =>
+            update((draft) => {
+              draft.product.technicalSpecSnapshot.weightKgPerPiece = value;
+            })
+          }
+        />
+        <div className="a-covering-field-pair">
+          <NumericField
+            label={t('assembly.minimumDeclaredUnits')}
+            value={mode?.declaredUnitsPerM2?.min}
+            minimum={Number.EPSILON}
+            onCommit={(value) =>
+              updateMode((draft) => {
+                if (value === undefined) {
+                  delete draft.declaredUnitsPerM2;
+                  return;
+                }
+                const maximum = draft.declaredUnitsPerM2?.max ?? value;
+                draft.declaredUnitsPerM2 = {
+                  min: Math.min(value, maximum),
+                  max: maximum,
+                };
+              })
+            }
+          />
+          <NumericField
+            label={t('assembly.maximumDeclaredUnits')}
+            value={mode?.declaredUnitsPerM2?.max}
+            minimum={Number.EPSILON}
+            onCommit={(value) =>
+              updateMode((draft) => {
+                if (value === undefined) {
+                  delete draft.declaredUnitsPerM2;
+                  return;
+                }
+                const minimum = draft.declaredUnitsPerM2?.min ?? value;
+                draft.declaredUnitsPerM2 = {
+                  min: minimum,
+                  max: Math.max(value, minimum),
+                };
+              })
+            }
+          />
+        </div>
+      </details>
+      <fieldset>
+        <legend>{t('assembly.assignedRoofPlanes')}</legend>
+        {surfaceGeometry.planes.map((plane) => (
+          <label key={plane.roofPlaneId}>
+            <input
+              type="checkbox"
+              checked={assignment.roofPlaneIds.includes(plane.roofPlaneId)}
+              disabled={
+                assignment.roofPlaneIds.length === 1 &&
+                assignment.roofPlaneIds.includes(plane.roofPlaneId)
+              }
+              onChange={(event) =>
+                update((draft) => {
+                  draft.roofPlaneIds = event.currentTarget.checked
+                    ? [...draft.roofPlaneIds, plane.roofPlaneId]
+                    : draft.roofPlaneIds.filter(
+                        (id) => id !== plane.roofPlaneId,
+                      );
+                })
+              }
+            />
+            {plane.roofPlaneId.replace('roof-plane:', '')}
+          </label>
+        ))}
+      </fieldset>
+      <button
+        className="a-button a-danger"
+        onClick={() =>
+          state.setCoveringAssignments(
+            state.projectDocument.project.coverings.filter(
+              (item) => item.id !== assignment.id,
+            ),
+          )
+        }
+      >
+        <Trash2 size={16} /> {t('assembly.removeCovering')}
+      </button>
+    </aside>
+  );
+}
+
 export function CoveringInspector({
   layout,
+  assignment,
+  surfaceGeometry,
 }: {
   layout?: RoofTileLayoutResult;
+  assignment?: TileAssignment;
+  surfaceGeometry: RoofSurfaceGeometryResult;
 }) {
   const state = useAssembly();
   const { t, i18n } = useTranslation();
   const declared = layout?.declaredConsumptionReference;
+  const selectedPlaneId = state.workbench.selectedId.startsWith(
+    'surface:roof-plane:',
+  )
+    ? state.workbench.selectedId.replace('surface:', '')
+    : assignment?.roofPlaneIds[0];
   return (
     <aside
       className={`a-inspector ${state.workbench.inspectorOpen ? 'is-open' : ''}`}
@@ -743,6 +766,13 @@ export function CoveringInspector({
             )}
           </dl>
           <p className="a-help">{t('assembly.coveringQuantityBoundary')}</p>
+          {assignment && (
+            <CoveringEditor
+              assignment={assignment}
+              surfaceGeometry={surfaceGeometry}
+              selectedPlaneId={selectedPlaneId}
+            />
+          )}
         </div>
       )}
     </aside>

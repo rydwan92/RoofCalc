@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { ChevronDown, Maximize2, Minimize2, Pin, PinOff, X } from 'lucide-react';
+import {
+  ChevronDown,
+  Maximize2,
+  Minimize2,
+  Pin,
+  PinOff,
+  X,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
   fitDimensionedDrawing,
@@ -12,6 +19,7 @@ import {
 } from '@cieslacalc/drawing-engine';
 import { formatLength, formatNumber } from '../format';
 import { useAssembly } from './store';
+import { useMobileWorkbench } from './mobile-workbench';
 
 function DimensionValue({ dimension }: { dimension: DetailKeyDimension }) {
   const state = useAssembly();
@@ -268,6 +276,10 @@ export function DetailDrawer({
   onZoom: (preview: DetailPreviewModel) => void;
 }) {
   const { t } = useTranslation();
+  const mobile = useMobileWorkbench();
+  const [mobileSection, setMobileSection] = useState<
+    'drawing' | 'dimensions' | 'steps'
+  >('drawing');
   const active =
     previews.find((preview) => preview.id === activeId) ?? previews[0];
   if (!active) return null;
@@ -329,6 +341,26 @@ export function DetailDrawer({
       </header>
       {open && (
         <div className="a-detail-drawer-body">
+          {mobile && (
+            <div
+              className="a-mobile-detail-sections"
+              role="tablist"
+              aria-label={t('assembly.detailDrawer')}
+            >
+              {(['drawing', 'dimensions', 'steps'] as const).map((section) => (
+                <button
+                  key={section}
+                  role="tab"
+                  aria-selected={mobileSection === section}
+                  onClick={() => setMobileSection(section)}
+                >
+                  {t(
+                    `assembly.mobileDetail${section[0]!.toUpperCase()}${section.slice(1)}`,
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
           {previews.length > 1 && (
             <div
               className="a-detail-tabs"
@@ -347,44 +379,50 @@ export function DetailDrawer({
               ))}
             </div>
           )}
-          <div className="a-detail-drawing-column">
-            {active.cutStates && (
-              <div
-                className="a-cut-state-switch"
-                role="tablist"
-                aria-label={t('assembly.cutState')}
-              >
-                {(['before', 'after'] as const).map((state) => (
-                  <button
-                    key={state}
-                    role="tab"
-                    aria-selected={cutState === state}
-                    onClick={() => onCutStateChange(state)}
-                  >
-                    {t(`assembly.${state}Cut`)}
-                  </button>
-                ))}
-              </div>
-            )}
-            <DetailPreviewDrawing preview={active} cutState={cutState} />
-            <button className="a-button" onClick={() => onZoom(active)}>
-              <Maximize2 size={16} />
-              {t('assembly.zoomToDetail')}
-            </button>
-          </div>
-          <section>
-            <h3>{t('assembly.keyDimensions')}</h3>
-            <PreviewFacts preview={active} />
-          </section>
-          <section>
-            <h3>{t('assembly.markingSteps')}</h3>
-            <PreviewSteps preview={active} />
-            {active.warningKeys.map((warning) => (
-              <p className="a-detail-warning" key={warning}>
-                {t(`assembly.${warning}`)}
-              </p>
-            ))}
-          </section>
+          {(!mobile || mobileSection === 'drawing') && (
+            <div className="a-detail-drawing-column">
+              {active.cutStates && (
+                <div
+                  className="a-cut-state-switch"
+                  role="tablist"
+                  aria-label={t('assembly.cutState')}
+                >
+                  {(['before', 'after'] as const).map((state) => (
+                    <button
+                      key={state}
+                      role="tab"
+                      aria-selected={cutState === state}
+                      onClick={() => onCutStateChange(state)}
+                    >
+                      {t(`assembly.${state}Cut`)}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <DetailPreviewDrawing preview={active} cutState={cutState} />
+              <button className="a-button" onClick={() => onZoom(active)}>
+                <Maximize2 size={16} />
+                {t('assembly.zoomToDetail')}
+              </button>
+            </div>
+          )}
+          {(!mobile || mobileSection === 'dimensions') && (
+            <section>
+              <h3>{t('assembly.keyDimensions')}</h3>
+              <PreviewFacts preview={active} />
+            </section>
+          )}
+          {(!mobile || mobileSection === 'steps') && (
+            <section>
+              <h3>{t('assembly.markingSteps')}</h3>
+              <PreviewSteps preview={active} />
+              {active.warningKeys.map((warning) => (
+                <p className="a-detail-warning" key={warning}>
+                  {t(`assembly.${warning}`)}
+                </p>
+              ))}
+            </section>
+          )}
         </div>
       )}
     </section>
@@ -404,7 +442,9 @@ export function QuickDetailDialog({
   const [cutState, setCutState] = useState<'before' | 'after'>('before');
   const closeButton = useRef<HTMLButtonElement>(null);
   const returnFocus = useRef<HTMLElement | null>(
-    document.activeElement instanceof HTMLElement ? document.activeElement : null,
+    document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null,
   );
   useEffect(() => {
     closeButton.current?.focus();

@@ -1297,6 +1297,37 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+> Iteration 020 completed in source on 2026-09-13 from clean commit `c1b07b48e4465f52feb37df90750947ae1ff62f0` (`V19`). The user-approved attached V20 mobile workbench contract superseded the V19 metal-covering `NEXT ACTION`; metal covering engines move to V21.
+
+**Iteration:** `020 ? Mobile-First Professional Workbench, Unified Context Sheets and Touch Camera`
+
+**Status:** `COMPLETE IN SOURCE ? AUTOMATED VALIDATION PASS; LIVE BROWSER/DEVICE QA UNAVAILABLE`
+
+**V19 audit and baseline:** clean `main`; typecheck PASS; **405 tests across 41 files** PASS; lint PASS; build PASS; `git diff --check` PASS. Main web **500.16 / 143.80 kB gzip**, CSS **98.75 / 19.16 kB**, covering-core **65.60 / 16.06 kB**, lazy Covering Workspace **14.16 / 4.00 kB**, Skeleton Canvas **36.99 / 11.40 kB**. The requested in-app Browser had no available instance (`agent.browsers.list() ? []`).
+
+**Source-level mobile problems:** <=800px CSS stacked the desktop grid; flattened all Toolbox groups with `display: contents`; hid their summaries; made the six-task ribbon scroll horizontally; independently fixed Inspector at up to 55dvh and Detail Drawer to the bottom; and placed Covering's complete editor next to/before its drawing. SkeletonCanvas used a fixed 400px narrow height, one-pointer camera state and immediate touch edit transactions. This produced competing surfaces and poor canvas access on a phone.
+
+**Implemented mobile shell and context:**
+
+- Builder now opens with compact brand/mode/Undo/Redo/settings header, context row, primary workspace and a fixed six-task dock. All six tasks fit at 360px, with full accessible names and bottom safe-area padding; desktop keeps its ribbon and three columns. A coarse-pointer short landscape viewport also uses the mobile shell. Quick Calc retains its separate simple workflow.
+- `MobilePanel` (`none | tools | inspector | view`) and viewport-class detection are transient. Task changes close irrelevant sheets/detail without project history or serialization. One `MobileSheet` handles Tools, Inspector, View and mobile Detail, with bounded scrolling, expand, Escape, focus trapping/restoration and safe areas. Canvas selection initially shows a small Edit peek rather than opening the Inspector.
+- The existing Toolbox registry/actions render task-aware sections in the mobile sheet; All Tools is explicit. Window list/add and non-hover group-selection buttons remain available. Mobile View contains isolation, dimensions, layer visibility and legend; low-frequency view chrome no longer occupies the canvas. Layers retain a visible secondary switch; Materials retains the schedule/drawing switch. Preparation/result panels move out of the long mobile page and into context.
+- Covering's workspace is drawing/status/quantity oriented. The exact technical product, mode, alignment, assignment and removal controls now live only in `CoveringInspector`. Parametry / Popraw opens that Inspector; batten issues navigate to Layers/Battens and close the sheet. V19 Tile Engine, quantities and snapshots were not changed.
+- SkeletonCanvas now sizes its mobile drawing from dynamic viewport height, pans with one background finger, zooms about the midpoint and pans with two fingers. A second finger cancels/restores an active canonical edit. Touch window/handle drags begin only after a six-pixel activation threshold; tap or subthreshold movement makes no geometry/history change, committed drag makes one Undo entry, cancellation restores exactly. Thin members get a transparent non-scaling hit corridor. Camera and gesture state stay local to the canvas.
+- `Page` now memoizes roof-window and tile-assignment lists so panel/task changes do not invalidate opening-framing or Tile Engine memo dependencies. No domain or commercial package changed.
+
+**Files changed / WIP:** `PROJECT_BLUEPRINT.md`; new V20 prompt and architecture docs; web `Page`, `Toolbox`, `WorkbenchControls`, `CoveringWorkspace`, `DetailPreview`, `SkeletonCanvas`, `store`, `workbench`, translations and styles; new `MobileSheet`, `MobileTaskDock`, `mobile-workbench`, `touch-camera`; new mobile and camera tests plus store tests. No unfinished source file, commit or push.
+
+**Validation, bundle and QA:** final typecheck PASS, ESLint PASS, **414 tests across 43 files PASS** (with the four mobile UI tests rerun after the final focus-trap change), web/API build PASS, changed-file Prettier check PASS and `git diff --check` PASS. Added nine tests across two new files and the store suite. Automated coverage includes six mobile tasks, sheet exclusivity, selection peek, Covering parameter routing, exact/history isolation, touch tap/drag/cancel, second-finger edit cancellation, pinch midpoint, two-finger pan and finite camera clamping. Main web **510.40 / 146.06 kB gzip** (+10.24 / +2.26 versus V19); CSS **104.57 / 20.04 kB** (+5.82 / +0.88, responsive CSS grew while old flattening/fixed-sheet rules were removed); lazy Covering Workspace **14.77 / 4.11 kB**; Skeleton Canvas **38.92 / 11.95 kB**; Material Schedule **9.62 / 2.54 kB**; covering-core **65.60 / 16.06 kB**; API **1.11 kB**. Vite still emits the >500 kB main-chunk advisory. Mobile chrome increased initial JS by about 2.26 kB gzip.
+
+**Visual/mobile QA and limitations:** The explicitly requested in-app Browser initialized but returned no available browser instance, so no real 1440/1024/768/430/390/360/844-landscape rendering, horizontal-overflow, safe-area, virtual-keyboard, physical pinch or native touch claim is made. JSDOM Pointer Events and CSS/source inspection are the available checks; the listed browser/device matrix remains for live acceptance. Mobile Detail offers Drawing/Dimensions/Steps tabs; exact layout and actual hit competition still require live visual review. The source uses a 6px touch activation threshold and a 15px member hit corridor, both presentation values rather than canonical millimetres.
+
+**NEXT ACTION:**
+
+> Iteration 021 ? modular/fixed or cut-to-length sheet and standing-seam engines on the existing covering-core contracts and the responsive workbench. Reverify current official technical revisions before domain implementation. Do not begin V21 automatically; pricing, catalogue backend and exports remain outside this action.
+
+---
+
 > Iteration 019 completed in source on 2026-09-12 from clean commit `af635994e9cf3f7b72153319b4c10d733376661e` (`V18`). The user-approved attached V19 contract superseded the V18 `NEXT ACTION`.
 
 **Iteration:** `019 — Roof Tile Engine, Covering Workbench, Batten-Aware Tile Layout and Covering Quantities`

@@ -26,6 +26,34 @@ beforeEach(() => {
   useAssembly.getState().setUnit('mm');
   useAssembly.getState().setMode('quick');
 });
+it('keeps mobile sheets and six task switches transient and exclusive', () => {
+  const initial = useAssembly.getState();
+  const project = initial.projectDocument;
+  const history = initial.historyPast.length;
+  expect(initial.workbench.mobilePanel).toBe('none');
+  useAssembly.getState().setMobilePanel('tools');
+  expect(useAssembly.getState().workbench.mobilePanel).toBe('tools');
+  useAssembly.getState().setMobilePanel('inspector');
+  expect(useAssembly.getState().workbench.mobilePanel).toBe('inspector');
+  useAssembly.getState().setDetailDrawer({ open: true });
+  expect(useAssembly.getState().workbench.mobilePanel).toBe('none');
+  for (const task of [
+    'construction',
+    'openings',
+    'layers',
+    'covering',
+    'cuts',
+    'materials',
+  ] as const) {
+    useAssembly.getState().setMobilePanel('view');
+    useAssembly.getState().setViewPreset(task);
+    expect(useAssembly.getState().workbench.viewPreset).toBe(task);
+    expect(useAssembly.getState().workbench.mobilePanel).toBe('none');
+  }
+  expect(useAssembly.getState().projectDocument).toBe(project);
+  expect(useAssembly.getState().historyPast).toHaveLength(history);
+  expect(JSON.stringify(project)).not.toContain('mobilePanel');
+});
 it('Quick and Builder retain one canonical template and fabrication plan', () => {
   useAssembly.getState().setField('roof.runMm', '4231,123456');
   const { spec, template } = useAssembly.getState(),

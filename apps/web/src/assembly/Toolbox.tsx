@@ -26,6 +26,7 @@ import {
   createWorkbenchToolRegistry,
   type ToolIconKey,
   type WorkbenchToolDescriptor,
+  type ViewPreset,
 } from './workbench';
 
 const icon = (key: ToolIconKey): ReactNode => {
@@ -39,13 +40,25 @@ const icon = (key: ToolIconKey): ReactNode => {
 export function Toolbox({
   result,
   detailPreviews,
+  mobileTask,
 }: {
   result: Calculation | null;
   detailPreviews: DetailPreviewModel[];
+  mobileTask?: ViewPreset;
 }) {
   const state = useAssembly();
   const { t, i18n } = useTranslation();
   const [distributionOpen, setDistributionOpen] = useState(false);
+  const [allTools, setAllTools] = useState(false);
+  const taskSection = (section: string) =>
+    !mobileTask ||
+    allTools ||
+    (mobileTask === 'construction' &&
+      ['active', 'geometry', 'timber', 'support'].includes(section)) ||
+    (mobileTask === 'openings' && section === 'opening') ||
+    (mobileTask === 'layers' && section === 'build-up') ||
+    (mobileTask === 'cuts' && section === 'active') ||
+    (mobileTask === 'materials' && section === 'quantity');
   const buildUp = state.projectDocument.project.buildUp;
   const membrane = buildUp.membrane ?? { enabled: false };
   const counterBattens = buildUp.counterBattens ?? {
@@ -99,6 +112,7 @@ export function Toolbox({
         if (tool.action === 'add-purlin') state.add();
         else if (tool.selectionId)
           state.select(tool.selectionId, tool.prototypeId);
+        if (mobileTask) state.setMobilePanel('none');
       }}
     >
       {icon(tool.icon)}
@@ -110,7 +124,17 @@ export function Toolbox({
       className={`a-toolbox ${state.workbench.toolboxCollapsed ? 'is-collapsed' : ''}`}
       aria-label={t('assembly.toolbox')}
       data-registry-tools={tools.length}
+      data-mobile-task={mobileTask}
     >
+      {mobileTask && (
+        <button
+          className="a-button a-all-tools"
+          aria-expanded={allTools}
+          onClick={() => setAllTools((value) => !value)}
+        >
+          {allTools ? t('assembly.activeTools') : t('assembly.allTools')}
+        </button>
+      )}
       <button
         className="a-collapse a-button"
         aria-label={t(
@@ -127,7 +151,7 @@ export function Toolbox({
         )}
         <span>{t('assembly.toolbox')}</span>
       </button>
-      <section className="a-toolbox-active">
+      <section className="a-toolbox-active" hidden={!taskSection('active')}>
         <h2>{t('assembly.activeSelection')}</h2>
         <strong>{entityLabel(state.workbench.selectedId, state, t)}</strong>
         {detailPreviews.length > 0 && (
@@ -159,7 +183,11 @@ export function Toolbox({
         const collapsed =
           state.workbench.collapsedToolGroups.includes(category);
         return (
-          <details key={category} open={!collapsed}>
+          <details
+            key={category}
+            hidden={!taskSection(category)}
+            open={mobileTask ? !collapsed : !collapsed}
+          >
             <summary
               onClick={(event) => {
                 event.preventDefault();
@@ -280,7 +308,10 @@ export function Toolbox({
           </details>
         );
       })}
-      <details open={!state.workbench.collapsedToolGroups.includes('opening')}>
+      <details
+        hidden={!taskSection('opening')}
+        open={!state.workbench.collapsedToolGroups.includes('opening')}
+      >
         <summary
           onClick={(event) => {
             event.preventDefault();
@@ -346,7 +377,10 @@ export function Toolbox({
           <span>{t('assembly.addRoofWindow')}</span>
         </button>
       </details>
-      <details open={!state.workbench.collapsedToolGroups.includes('build-up')}>
+      <details
+        hidden={!taskSection('build-up')}
+        open={!state.workbench.collapsedToolGroups.includes('build-up')}
+      >
         <summary
           onClick={(event) => {
             event.preventDefault();
@@ -428,7 +462,10 @@ export function Toolbox({
           </div>
         ))}
       </details>
-      <details open={!state.workbench.collapsedToolGroups.includes('quantity')}>
+      <details
+        hidden={!taskSection('quantity')}
+        open={!state.workbench.collapsedToolGroups.includes('quantity')}
+      >
         <summary
           onClick={(event) => {
             event.preventDefault();
