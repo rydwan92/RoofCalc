@@ -185,6 +185,33 @@ export const roofTileLayoutIntentSchema = z
 
 export type RoofTileLayoutIntent = z.infer<typeof roofTileLayoutIntentSchema>;
 
+export const modularSheetLayoutIntentSchema = z
+  .object({
+    kind: z.literal('modular-sheet'),
+    horizontalAlignment: z.enum(['centered', 'from-u-min', 'manual']),
+    planeOffsetsMm: z.record(stableId, z.number().finite()).optional(),
+  })
+  .superRefine((intent, context) => {
+    if (
+      intent.horizontalAlignment === 'manual' &&
+      (!intent.planeOffsetsMm || !Object.keys(intent.planeOffsetsMm).length)
+    )
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['planeOffsetsMm'],
+        message: 'manual_sheet_offset_required',
+      });
+  });
+
+export type ModularSheetLayoutIntent = z.infer<
+  typeof modularSheetLayoutIntentSchema
+>;
+export const coveringLayoutIntentSchema = z.union([
+  roofTileLayoutIntentSchema,
+  modularSheetLayoutIntentSchema,
+]);
+export type CoveringLayoutIntent = z.infer<typeof coveringLayoutIntentSchema>;
+
 export const coveringAssignmentSpecSchema = z
   .object({
     id: stableId,
@@ -197,12 +224,18 @@ export const coveringAssignmentSpecSchema = z
       ),
     product: coveringProductSelectionSchema,
     selectedInstallationModeId: stableId.optional(),
-    layoutIntent: roofTileLayoutIntentSchema.optional(),
+    layoutIntent: coveringLayoutIntentSchema.optional(),
   })
   .superRefine((assignment, context) => {
     const selected = assignment.selectedInstallationModeId;
-    if (!selected) return;
     const spec = assignment.product.technicalSpecSnapshot;
+    if (assignment.layoutIntent && assignment.layoutIntent.kind !== spec.kind)
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['layoutIntent', 'kind'],
+        message: 'layout_intent_kind_mismatch',
+      });
+    if (!selected) return;
     if (
       spec.kind !== 'modular-sheet' &&
       !spec.installationModes.some((mode) => mode.id === selected)
@@ -217,6 +250,51 @@ export const coveringAssignmentSpecSchema = z
 export type CoveringAssignmentSpec = z.infer<
   typeof coveringAssignmentSpecSchema
 >;
+
+export interface PrimaryCoveringPlaneConflict {
+  roofPlaneId: string;
+  assignmentIds: string[];
+}
+
+export interface PrimaryCoveringAssignmentResolution {
+  conflicts: PrimaryCoveringPlaneConflict[];
+  conflictedAssignmentIds: string[];
+  trustedRoofPlaneIdsByAssignment: Record<string, string[]>;
+}
+
+/** One primary covering may own a plane. Existing overlaps are reported, never rewritten. */
+export function resolvePrimaryCoveringAssignments(
+  assignments: readonly CoveringAssignmentSpec[],
+): PrimaryCoveringAssignmentResolution {
+  const owners = new Map<string, string[]>();
+  for (const assignment of [...assignments].sort((a, b) =>
+    a.id.localeCompare(b.id),
+  ))
+    for (const roofPlaneId of [...assignment.roofPlaneIds].sort())
+      owners.set(roofPlaneId, [
+        ...(owners.get(roofPlaneId) ?? []),
+        assignment.id,
+      ]);
+  const conflicts = [...owners.entries()]
+    .filter(([, assignmentIds]) => assignmentIds.length > 1)
+    .map(([roofPlaneId, assignmentIds]) => ({ roofPlaneId, assignmentIds }))
+    .sort((a, b) => a.roofPlaneId.localeCompare(b.roofPlaneId));
+  const conflictPlanes = new Set(conflicts.map((item) => item.roofPlaneId));
+  return {
+    conflicts,
+    conflictedAssignmentIds: [
+      ...new Set(conflicts.flatMap((item) => item.assignmentIds)),
+    ].sort(),
+    trustedRoofPlaneIdsByAssignment: Object.fromEntries(
+      assignments.map((assignment) => [
+        assignment.id,
+        assignment.roofPlaneIds
+          .filter((roofPlaneId) => !conflictPlanes.has(roofPlaneId))
+          .sort(),
+      ]),
+    ),
+  };
+}
 
 export type CoveringCompatibilityCode =
   | 'installation-mode-required'
@@ -407,3 +485,4 @@ export interface CoveringQuantitySource {
 }
 
 export * from './tile-layout';
+export * from './modular-sheet-layout';

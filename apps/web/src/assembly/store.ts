@@ -291,6 +291,7 @@ export interface AssemblyState {
   setMaterialsView: (view: MaterialsView) => void;
   setMobilePanel: (panel: MobilePanel) => void;
   setScheduleSelection: (rowId?: string, instanceId?: string) => void;
+  setSelectedCoveringAssignment: (assignmentId?: string) => void;
   setIsolation: (isolated: boolean) => void;
   setDimensionLevel: (level: DimensionLevel) => void;
   setLayerVisibility: (
@@ -568,6 +569,10 @@ export const useAssembly = create<AssemblyState>((set) => ({
           activePreviewId: undefined,
         },
       },
+    })),
+  setSelectedCoveringAssignment: (selectedCoveringAssignmentId) =>
+    set((state) => ({
+      workbench: { ...state.workbench, selectedCoveringAssignmentId },
     })),
   setIsolation: (isolateSelection) =>
     set((state) => ({ workbench: { ...state.workbench, isolateSelection } })),
@@ -1727,10 +1732,25 @@ export const useAssembly = create<AssemblyState>((set) => ({
         buildUp: state.projectDocument.project.buildUp,
         coverings,
       });
-      return withHistory(
-        state,
-        committedDocument(document, state.drafts, state.invalidFields),
-      );
+      const previousId = state.workbench.selectedCoveringAssignmentId;
+      const previousIndex = previousId
+        ? state.projectDocument.project.coverings.findIndex(
+            (item) => item.id === previousId,
+          )
+        : -1;
+      const selectedCoveringAssignmentId =
+        previousId && coverings.some((item) => item.id === previousId)
+          ? previousId
+          : coverings[
+              Math.min(Math.max(previousIndex, 0), coverings.length - 1)
+            ]?.id;
+      return {
+        ...withHistory(
+          state,
+          committedDocument(document, state.drafts, state.invalidFields),
+        ),
+        workbench: { ...state.workbench, selectedCoveringAssignmentId },
+      };
     }),
   add: () =>
     set((state) => {

@@ -652,7 +652,12 @@ export function createRoofTileQuantitySource(args: {
   layout: RoofTileLayoutResult;
   productDisplay?: CoveringQuantitySource['productDisplay'];
 }): (CoveringQuantitySource & { unit: 'piece' }) | undefined {
-  if (args.layout.status !== 'resolved') return undefined;
+  if (
+    args.layout.status !== 'resolved' ||
+    !args.layout.roofPlaneIds.length ||
+    !args.layout.totalPositions
+  )
+    return undefined;
   return {
     id: `covering-quantity:${args.layout.assignmentId}`,
     coveringAssignmentId: args.layout.assignmentId,

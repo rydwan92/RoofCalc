@@ -76,6 +76,8 @@ export interface WorkbenchViewState {
   /** Derived quantity row/instance selection; never enters project data/history. */
   selectedScheduleRowId?: string;
   selectedScheduleInstanceId?: string;
+  /** Active primary covering editor target; view-only and never serialized. */
+  selectedCoveringAssignmentId?: string;
   canvasView: WorkbenchCanvasView;
   viewPreset: ViewPreset;
   buildUpView: BuildUpView;
@@ -135,6 +137,7 @@ export const initialWorkbenchViewState: WorkbenchViewState = {
   selectedInstanceId: undefined,
   selectedScheduleRowId: undefined,
   selectedScheduleInstanceId: undefined,
+  selectedCoveringAssignmentId: undefined,
   canvasView: 'skeleton',
   viewPreset: 'construction',
   buildUpView: 'overview',

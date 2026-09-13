@@ -1007,3 +1007,60 @@ it('commits roof-tile layout intent as one undoable domain edit while task switc
     useAssembly.getState().projectDocument.project.coverings[0]!.roofPlaneIds,
   ).toEqual(['roof-plane:left', 'roof-plane:right']);
 });
+
+it('keeps covering selection transient and chooses a deterministic neighbour after removal', () => {
+  const makeAssignment = (id: string, roofPlaneId: string) => ({
+    id,
+    roofPlaneIds: [roofPlaneId],
+    selectedInstallationModeId: 'manual-standard',
+    layoutIntent: {
+      kind: 'roof-tile' as const,
+      horizontalAlignment: 'centered' as const,
+    },
+    product: {
+      technicalSpecSnapshot: {
+        schemaVersion: 1 as const,
+        kind: 'roof-tile' as const,
+        installationModes: [
+          {
+            id: 'manual-standard',
+            coverWidthMm: 300,
+            gaugeRangeMm: { min: 300, max: 380 },
+            coursePattern: {
+              layers: [{ id: 'base', horizontalOffsetFraction: 0 }],
+              battenRowOffsetCycle: [0],
+            },
+          },
+        ],
+      },
+    },
+  });
+  const first = makeAssignment('covering:first', 'roof-plane:left');
+  const second = makeAssignment('covering:second', 'roof-plane:right');
+  useAssembly.getState().setCoveringAssignments([first, second]);
+  useAssembly.setState({ historyPast: [], historyFuture: [] });
+  const beforeSelection = structuredClone(
+    useAssembly.getState().projectDocument,
+  );
+
+  useAssembly.getState().setSelectedCoveringAssignment(second.id);
+  expect(useAssembly.getState().historyPast).toHaveLength(0);
+  expect(useAssembly.getState().projectDocument).toEqual(beforeSelection);
+  expect(useAssembly.getState().workbench.selectedCoveringAssignmentId).toBe(
+    second.id,
+  );
+
+  useAssembly.getState().setCoveringAssignments([first]);
+  expect(useAssembly.getState().historyPast).toHaveLength(1);
+  expect(useAssembly.getState().workbench.selectedCoveringAssignmentId).toBe(
+    first.id,
+  );
+  expect(JSON.stringify(useAssembly.getState().projectDocument)).not.toContain(
+    'selectedCoveringAssignmentId',
+  );
+
+  useAssembly.getState().undo();
+  expect(useAssembly.getState().projectDocument.project.coverings).toHaveLength(
+    2,
+  );
+});

@@ -6,6 +6,8 @@ import {
   coveringProductSelectionSchema,
   coveringTechnicalSpecSchema,
   modularSheetTechnicalSpecSchema,
+  modularSheetLayoutIntentSchema,
+  resolvePrimaryCoveringAssignments,
   roofTileLayoutIntentSchema,
   roofTileTechnicalSpecSchema,
   standingSeamTechnicalSpecSchema,
@@ -306,5 +308,50 @@ describe('covering technical product contracts', () => {
         product: { technicalSpecSnapshot: tile() },
       }).layoutIntent,
     ).toBeUndefined();
+  });
+
+  it('parses a kind-specific modular layout intent without reusing the tile schema', () => {
+    expect(
+      modularSheetLayoutIntentSchema.parse({
+        kind: 'modular-sheet',
+        horizontalAlignment: 'manual',
+        planeOffsetsMm: { 'roof-plane:left': 50 },
+      }),
+    ).toMatchObject({ kind: 'modular-sheet', horizontalAlignment: 'manual' });
+  });
+
+  it('reports primary plane conflicts while preserving non-conflicted ownership', () => {
+    const sheet = coveringAssignmentSpecSchema.parse({
+      id: 'covering:sheet',
+      roofPlaneIds: ['roof-plane:right'],
+      layoutIntent: { kind: 'modular-sheet', horizontalAlignment: 'centered' },
+      product: {
+        technicalSpecSnapshot: {
+          schemaVersion: 1,
+          kind: 'modular-sheet',
+          effectiveWidthMm: 1145,
+          lengthModel: { kind: 'fixed-sheet', effectiveLengthMm: 700 },
+          moduleLengthMm: 350,
+        },
+      },
+    });
+    const tileAssignment = coveringAssignmentSpecSchema.parse({
+      id: 'covering:tile',
+      roofPlaneIds: ['roof-plane:left', 'roof-plane:right'],
+      product: { technicalSpecSnapshot: tile() },
+    });
+    expect(resolvePrimaryCoveringAssignments([tileAssignment, sheet])).toEqual({
+      conflicts: [
+        {
+          roofPlaneId: 'roof-plane:right',
+          assignmentIds: ['covering:sheet', 'covering:tile'],
+        },
+      ],
+      conflictedAssignmentIds: ['covering:sheet', 'covering:tile'],
+      trustedRoofPlaneIdsByAssignment: {
+        'covering:tile': ['roof-plane:left'],
+        'covering:sheet': [],
+      },
+    });
   });
 });

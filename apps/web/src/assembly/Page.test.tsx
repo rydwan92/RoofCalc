@@ -1726,4 +1726,68 @@ describe('dual-mode parametric workbench', () => {
     act(() => useAssembly.getState().undo());
     expect(await screen.findByTestId('covering-quantity')).toBeTruthy();
   });
+
+  it('creates and draws a fixed modular-sheet assignment without exposing technical IDs', async () => {
+    render(<App />);
+    builder();
+    act(() =>
+      useAssembly.getState().setBattenLayout({
+        enabled: true,
+        battenHeightMm: 40,
+        battenWidthMm: 60,
+        gaugeMm: 350,
+        eaveOffsetMm: 250,
+      }),
+    );
+    fireEvent.click(screen.getByRole('tab', { name: 'Pokrycie' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Dodaj blachę modułową' }),
+    );
+
+    expect(await screen.findByTestId('sheet-layout-drawing')).toBeTruthy();
+    expect(
+      useAssembly.getState().projectDocument.project.coverings[0],
+    ).toMatchObject({
+      layoutIntent: {
+        kind: 'modular-sheet',
+        horizontalAlignment: 'centered',
+      },
+      product: {
+        technicalSpecSnapshot: {
+          kind: 'modular-sheet',
+          effectiveWidthMm: 1145,
+          totalWidthMm: 1200,
+          lengthModel: { kind: 'fixed-sheet', effectiveLengthMm: 700 },
+          moduleLengthMm: 350,
+        },
+      },
+    });
+    expect(
+      document.querySelectorAll('.a-covering-fragment').length,
+    ).toBeGreaterThan(0);
+    expect(screen.getByRole('tab', { name: 'Lewa połać' })).toBeTruthy();
+    expect(screen.queryByText('manual-standard')).toBeNull();
+
+    act(() => useAssembly.getState().setViewPreset('materials'));
+    expect(await screen.findByTestId('covering-quantity')).toBeTruthy();
+    expect(
+      screen.getByText(/arkusze\/moduły w układzie geometrycznym/i),
+    ).toBeTruthy();
+  });
+
+  it('marks overlapping primary coverings as conflicted and emits no duplicate quantity', async () => {
+    render(<App />);
+    builder();
+    fireEvent.click(screen.getByRole('tab', { name: 'Pokrycie' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Dodaj dachówkę ręcznie' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: '+ Blacha modułowa' }));
+
+    expect(
+      screen.getAllByText(/więcej niż jedno pokrycie/i).length,
+    ).toBeGreaterThan(0);
+    act(() => useAssembly.getState().setViewPreset('materials'));
+    expect(screen.queryByTestId('covering-quantity')).toBeNull();
+  });
 });

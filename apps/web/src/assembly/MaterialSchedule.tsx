@@ -322,7 +322,13 @@ export function MaterialSchedule({
                     {row.productDisplay?.familyName ??
                       t('assembly.manualRoofTile')}
                   </b>
-                  <small>{t('assembly.geometricTileLayout')}</small>
+                  <small>
+                    {t(
+                      row.basis.startsWith('fixed-modular-sheet')
+                        ? 'assembly.geometricSheetLayout'
+                        : 'assembly.geometricTileLayout',
+                    )}
+                  </small>
                 </span>
                 <strong>
                   {row.quantity} {t('assembly.piecesShort')}

@@ -5,9 +5,14 @@ import {
   withOpeningFramingFabrication,
 } from '@cieslacalc/calculator-core';
 import {
+  createModularSheetQuantitySource,
   createRoofTileQuantitySource,
+  resolveModularSheetLayout,
+  resolvePrimaryCoveringAssignments,
   resolveRoofTileLayout,
   type CoveringAssignmentSpec,
+  type ModularSheetLayoutResult,
+  type RoofTileLayoutResult,
 } from '@cieslacalc/covering-core';
 import {
   createRoofMemberSchedule,
@@ -101,10 +106,27 @@ type TileAssignment = CoveringAssignmentSpec & {
   };
 };
 
+type ModularSheetAssignment = CoveringAssignmentSpec & {
+  product: CoveringAssignmentSpec['product'] & {
+    technicalSpecSnapshot: Extract<
+      CoveringAssignmentSpec['product']['technicalSpecSnapshot'],
+      { kind: 'modular-sheet' }
+    >;
+  };
+};
+
+type ResolvedCoveringLayout = RoofTileLayoutResult | ModularSheetLayoutResult;
+
 function isTileAssignment(
   assignment: CoveringAssignmentSpec,
 ): assignment is TileAssignment {
   return assignment.product.technicalSpecSnapshot.kind === 'roof-tile';
+}
+
+function isModularSheetAssignment(
+  assignment: CoveringAssignmentSpec,
+): assignment is ModularSheetAssignment {
+  return assignment.product.technicalSpecSnapshot.kind === 'modular-sheet';
 }
 
 export function AssemblyPage() {
@@ -283,16 +305,22 @@ export function AssemblyPage() {
         : { battens: [], totalLengthMm: 0 },
     [battenLayout, state.projectDocument.project.features, state.template],
   );
-  const tileAssignments = useMemo(
-    () => state.projectDocument.project.coverings.filter(isTileAssignment),
+  const coveringAssignments = useMemo(
+    () => state.projectDocument.project.coverings,
     [state.projectDocument.project.coverings],
   );
-  const tileLayouts = useMemo(
+  const coveringOwnership = useMemo(
+    () => resolvePrimaryCoveringAssignments(coveringAssignments),
+    [coveringAssignments],
+  );
+  const resolvedCoveringLayouts = useMemo(
     () =>
-      tileAssignments.map((assignment) =>
-        resolveRoofTileLayout({
+      coveringAssignments.flatMap<ResolvedCoveringLayout>((assignment) => {
+        const common = {
           assignmentId: assignment.id,
-          roofPlaneIds: assignment.roofPlaneIds,
+          roofPlaneIds:
+            coveringOwnership.trustedRoofPlaneIdsByAssignment[assignment.id] ??
+            [],
           roofSurfaceGeometry: surfaceProjection.planes.map((plane) => ({
             roofPlaneId: plane.roofPlaneId,
             pitchDeg: state.template.pitchDeg,
@@ -313,41 +341,85 @@ export function AssemblyPage() {
             stationVMm: batten.stationMm,
             segments: batten.segments,
           })),
-          productSpec: assignment.product.technicalSpecSnapshot,
-          selectedInstallationModeId: assignment.selectedInstallationModeId,
-          layoutIntent: assignment.layoutIntent ?? {
-            kind: 'roof-tile',
-            horizontalAlignment: 'centered',
-          },
-        }),
-      ),
+        };
+        if (isTileAssignment(assignment))
+          return [
+            resolveRoofTileLayout({
+              ...common,
+              productSpec: assignment.product.technicalSpecSnapshot,
+              selectedInstallationModeId: assignment.selectedInstallationModeId,
+              layoutIntent:
+                assignment.layoutIntent?.kind === 'roof-tile'
+                  ? assignment.layoutIntent
+                  : { kind: 'roof-tile', horizontalAlignment: 'centered' },
+            }),
+          ];
+        if (isModularSheetAssignment(assignment))
+          return [
+            resolveModularSheetLayout({
+              ...common,
+              productSpec: assignment.product.technicalSpecSnapshot,
+              layoutIntent:
+                assignment.layoutIntent?.kind === 'modular-sheet'
+                  ? assignment.layoutIntent
+                  : {
+                      kind: 'modular-sheet',
+                      horizontalAlignment: 'centered',
+                    },
+            }),
+          ];
+        return [];
+      }),
     [
       battenProjection.battens,
+      coveringAssignments,
+      coveringOwnership.trustedRoofPlaneIdsByAssignment,
       roofWindows,
       state.template.pitchDeg,
       surfaceProjection.planes,
-      tileAssignments,
     ],
   );
-  const activeTileAssignment = tileAssignments[0];
-  const activeTileLayout = activeTileAssignment
-    ? tileLayouts.find(
-        (layout) => layout.assignmentId === activeTileAssignment.id,
+  const activeCoveringAssignment =
+    coveringAssignments.find(
+      (assignment) => assignment.id === workbench.selectedCoveringAssignmentId,
+    ) ?? coveringAssignments[0];
+  const activeCoveringLayout = activeCoveringAssignment
+    ? resolvedCoveringLayouts.find(
+        (layout) => layout.assignmentId === activeCoveringAssignment.id,
       )
     : undefined;
+  const activeCoveringConflicts = activeCoveringAssignment
+    ? coveringOwnership.conflicts.filter((conflict) =>
+        conflict.assignmentIds.includes(activeCoveringAssignment.id),
+      )
+    : [];
+  useEffect(() => {
+    if (activeCoveringAssignment?.id !== workbench.selectedCoveringAssignmentId)
+      state.setSelectedCoveringAssignment(activeCoveringAssignment?.id);
+  }, [
+    activeCoveringAssignment?.id,
+    state,
+    workbench.selectedCoveringAssignmentId,
+  ]);
   const coveringQuantitySources = useMemo(
     () =>
-      tileLayouts.flatMap((layout) => {
-        const assignment = tileAssignments.find(
+      resolvedCoveringLayouts.flatMap((layout) => {
+        const assignment = coveringAssignments.find(
           (candidate) => candidate.id === layout.assignmentId,
         );
-        const source = createRoofTileQuantitySource({
-          layout,
-          productDisplay: assignment?.product.displaySnapshot,
-        });
+        const source =
+          layout.kind === 'roof-tile'
+            ? createRoofTileQuantitySource({
+                layout,
+                productDisplay: assignment?.product.displaySnapshot,
+              })
+            : createModularSheetQuantitySource({
+                layout,
+                productDisplay: assignment?.product.displaySnapshot,
+              });
         return source ? [source] : [];
       }),
-    [tileAssignments, tileLayouts],
+    [coveringAssignments, resolvedCoveringLayouts],
   );
   const memberSchedule = useMemo(
     () =>
@@ -707,8 +779,9 @@ export function AssemblyPage() {
     ) : workbench.viewPreset === 'covering' ? (
       <Suspense fallback={<aside className="a-inspector" />}>
         <CoveringInspector
-          layout={activeTileLayout}
-          assignment={activeTileAssignment}
+          layout={activeCoveringLayout}
+          assignment={activeCoveringAssignment}
+          conflicts={activeCoveringConflicts}
           surfaceGeometry={surfaceProjection}
         />
       </Suspense>
@@ -1169,8 +1242,10 @@ export function AssemblyPage() {
                 ) : workbench.viewPreset === 'covering' ? (
                   <Suspense fallback={<div className="a-loading-panel" />}>
                     <CoveringWorkspace
-                      assignment={activeTileAssignment}
-                      layout={activeTileLayout}
+                      assignments={coveringAssignments}
+                      assignment={activeCoveringAssignment}
+                      layout={activeCoveringLayout}
+                      conflicts={activeCoveringConflicts}
                       surfaceGeometry={surfaceProjection}
                       battens={battenProjection}
                     />

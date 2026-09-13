@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   Box,
   Columns3,
@@ -50,15 +50,17 @@ export function Toolbox({
   const { t, i18n } = useTranslation();
   const [distributionOpen, setDistributionOpen] = useState(false);
   const [allTools, setAllTools] = useState(false);
+  const activeTask = mobileTask ?? state.workbench.viewPreset;
+  useEffect(() => setAllTools(false), [activeTask]);
   const taskSection = (section: string) =>
-    !mobileTask ||
     allTools ||
-    (mobileTask === 'construction' &&
+    (activeTask === 'construction' &&
       ['active', 'geometry', 'timber', 'support'].includes(section)) ||
-    (mobileTask === 'openings' && section === 'opening') ||
-    (mobileTask === 'layers' && section === 'build-up') ||
-    (mobileTask === 'cuts' && section === 'active') ||
-    (mobileTask === 'materials' && section === 'quantity');
+    (activeTask === 'openings' && section === 'opening') ||
+    (activeTask === 'layers' && section === 'build-up') ||
+    (activeTask === 'covering' && section === 'build-up') ||
+    (activeTask === 'cuts' && section === 'active') ||
+    (activeTask === 'materials' && section === 'quantity');
   const buildUp = state.projectDocument.project.buildUp;
   const membrane = buildUp.membrane ?? { enabled: false };
   const counterBattens = buildUp.counterBattens ?? {
@@ -126,7 +128,7 @@ export function Toolbox({
       data-registry-tools={tools.length}
       data-mobile-task={mobileTask}
     >
-      {mobileTask && (
+      {!state.workbench.toolboxCollapsed && (
         <button
           className="a-button a-all-tools"
           aria-expanded={allTools}
@@ -151,7 +153,11 @@ export function Toolbox({
         )}
         <span>{t('assembly.toolbox')}</span>
       </button>
-      <section className="a-toolbox-active" hidden={!taskSection('active')}>
+      <section
+        className="a-toolbox-active"
+        data-task-visible={taskSection('active')}
+        hidden={mobileTask !== undefined && !taskSection('active')}
+      >
         <h2>{t('assembly.activeSelection')}</h2>
         <strong>{entityLabel(state.workbench.selectedId, state, t)}</strong>
         {detailPreviews.length > 0 && (
@@ -185,7 +191,8 @@ export function Toolbox({
         return (
           <details
             key={category}
-            hidden={!taskSection(category)}
+            data-task-visible={taskSection(category)}
+            hidden={mobileTask !== undefined && !taskSection(category)}
             open={mobileTask ? !collapsed : !collapsed}
           >
             <summary
@@ -309,7 +316,8 @@ export function Toolbox({
         );
       })}
       <details
-        hidden={!taskSection('opening')}
+        data-task-visible={taskSection('opening')}
+        hidden={mobileTask !== undefined && !taskSection('opening')}
         open={!state.workbench.collapsedToolGroups.includes('opening')}
       >
         <summary
@@ -378,7 +386,8 @@ export function Toolbox({
         </button>
       </details>
       <details
-        hidden={!taskSection('build-up')}
+        data-task-visible={taskSection('build-up')}
+        hidden={mobileTask !== undefined && !taskSection('build-up')}
         open={!state.workbench.collapsedToolGroups.includes('build-up')}
       >
         <summary
@@ -463,7 +472,8 @@ export function Toolbox({
         ))}
       </details>
       <details
-        hidden={!taskSection('quantity')}
+        data-task-visible={taskSection('quantity')}
+        hidden={mobileTask !== undefined && !taskSection('quantity')}
         open={!state.workbench.collapsedToolGroups.includes('quantity')}
       >
         <summary

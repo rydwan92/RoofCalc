@@ -345,6 +345,11 @@ describe('roof tile coverage layout strategy', () => {
     expect(
       createRoofTileQuantitySource({ layout: layoutFixture({ battens: [] }) }),
     ).toBeUndefined();
+    expect(
+      createRoofTileQuantitySource({
+        layout: layoutFixture({ roofPlaneIds: [] }),
+      }),
+    ).toBeUndefined();
   });
 
   it('rejects non-finite geometry without leaking it into results', () => {

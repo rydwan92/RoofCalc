@@ -1,11 +1,29 @@
 :root {
-  --bg: #f7f8f5;
-  --surface: #ffffff;
-  --ink: #24382f;
-  --muted: #768078;
-  --green: #214e40;
+  --ui-background: #f7f8f5;
+  --ui-surface: #ffffff;
+  --ui-canvas: #f4f7f3;
+  --ui-panel: #ffffff;
+  --ui-line: #dce3dc;
+  --ui-line-strong: #80978c;
+  --ui-text: #24382f;
+  --ui-text-muted: #667b71;
+  --ui-accent: #235344;
+  --ui-selection: #007f73;
+  --ui-related: #4f8175;
+  --ui-warning: #b35b2d;
+  --ui-danger: #b42318;
+  --ui-timber: #b8865d;
+  --ui-covering-full: #5b8f7c;
+  --ui-covering-cut: #c38320;
+  --ui-opening: #b42318;
+  /* Compatibility aliases for the small shared shell. */
+  --bg: var(--ui-background);
+  --surface: var(--ui-surface);
+  --ink: var(--ui-text);
+  --muted: var(--ui-text-muted);
+  --green: var(--ui-accent);
   --green-soft: #eaf0e9;
-  --line: #e3e7df;
+  --line: var(--ui-line);
   --accent: #d8eaac;
   --radius: 16px;
   --font: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
