@@ -90,6 +90,9 @@ importers:
       '@cieslacalc/drawing-engine':
         specifier: workspace:*
         version: link:../../packages/drawing-engine
+      '@cieslacalc/project-core':
+        specifier: workspace:*
+        version: link:../../packages/project-core
       '@cieslacalc/quantity-core':
         specifier: workspace:*
         version: link:../../packages/quantity-core
@@ -123,6 +126,9 @@ importers:
       react-router-dom:
         specifier: ^7.6.0
         version: 7.18.3(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      zod:
+        specifier: ^3.25.0
+        version: 3.25.76
       zustand:
         specifier: ^5.0.5
         version: 5.0.15(@types/react@19.3.0)(react@19.3.0)
@@ -162,6 +168,19 @@ importers:
         version: 3.25.76
 
   packages/drawing-engine: {}
+
+  packages/project-core:
+    dependencies:
+      '@cieslacalc/calculator-core':
+        specifier: workspace:*
+        version: link:../calculator-core
+      zod:
+        specifier: ^3.25.0
+        version: 3.25.76
+    devDependencies:
+      '@cieslacalc/roof-math':
+        specifier: workspace:*
+        version: link:../roof-math
 
   packages/quantity-core:
     dependencies:

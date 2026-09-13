@@ -18,6 +18,7 @@ import { formatLength } from '../format';
 import { useAssembly } from './store';
 
 beforeEach(async () => {
+  localStorage.clear();
   useAssembly.getState().reset();
   useAssembly.getState().setUnit('mm');
   useAssembly.getState().setMode('quick');

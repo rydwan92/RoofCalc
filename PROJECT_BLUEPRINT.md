@@ -1297,6 +1297,8 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+> Iteration 023 started on 2026-09-13 from clean `cac4b51` (`V22`), authorized by the attached V23 prompt. Preflight: typecheck PASS, 475-test V22 suite in progress at start, lint PASS, build PASS (main 518.58 kB / 148.17 kB gzip; known Vite >500 kB advisory), `git diff --check` PASS. V22 recovery gate confirmed standing-seam assignment, width modes, panel runs/openings/length limits, quantity rows, compact disclosure and serialization through the existing source/tests. This checkpoint supersedes V22's old NEXT ACTION while V23 is being implemented. Next action: implement pure project envelope/repository contract, atomic store replacement, web local repository/session and manager; then validate and record final status. No commit or push.
+
 > Iteration 022 completed in source on 2026-09-13 from clean `b0a7f10` after the explicit attached V22 contract. Baseline: pinned typecheck PASS, 454 tests in 46 files PASS, lint PASS, web/API build PASS, clean Git status. The V21.1 recovery audit confirmed compact default build-up rows, exact expansion, unchanged quantity-core grouping, conditional Material Inspector, generic Pokrycia title, distinct tile/sheet labels, fitted gable/hip covering drawing tests, responsive assignment strip and mobile-sheet regressions. No evidenced V21.1 source defect required a fix. V21.1 remains complete in source with live visual acceptance unverified because the requested in-app Browser returned `Browser is not available: iab` and browser discovery returned `[]`.
 
 **Iteration:** `022 — Recovery Closeout, Variable-Length Panel Core, Standing Seam Engine and Professional Covering UX`

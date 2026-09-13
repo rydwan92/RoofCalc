@@ -13,6 +13,7 @@
     "@cieslacalc/calculator-core": "workspace:*",
     "@cieslacalc/drawing-engine": "workspace:*",
     "@cieslacalc/quantity-core": "workspace:*",
+    "@cieslacalc/project-core": "workspace:*",
     "@cieslacalc/roof-math": "workspace:*",
     "@cieslacalc/shared": "workspace:*",
     "@cieslacalc/ui": "workspace:*",
@@ -22,6 +23,7 @@
     "i18next": "^25.3.0",
     "react-i18next": "^15.6.0",
     "zustand": "^5.0.5",
+    "zod": "^3.25.0",
     "lucide-react": "^0.468.0"
   },
   "devDependencies": {

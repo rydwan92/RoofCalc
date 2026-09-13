@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { CoveringAssignmentSpec } from '@cieslacalc/covering-core';
 import {
   createRoofProjectDocument,
+  parseRoofProjectDocument,
   type RoofProjectDocumentV1,
 } from '@cieslacalc/calculator-core';
 import {
@@ -182,6 +183,8 @@ function editedSpec(
   return next;
 }
 const templateDefaults = gableTemplateFromAssembly(assemblyDefaults);
+export const createDefaultProjectDocument = () =>
+  createRoofProjectDocument(structuredClone(templateDefaults));
 function nextRoofWindowId(features: readonly { id: string }[]) {
   const nextNumber =
     Math.max(
@@ -384,6 +387,7 @@ export interface AssemblyState {
     control: SupportSpec['joint']['control'],
   ) => void;
   reset: () => void;
+  replaceProjectDocument: (document: RoofProjectDocumentV1) => void;
 }
 function withHistory(
   state: AssemblyState,
@@ -1992,6 +1996,20 @@ export const useAssembly = create<AssemblyState>((set) => ({
       historyFuture: [],
       activeTransaction: undefined,
     })),
+  replaceProjectDocument: (input) =>
+    set((state) => {
+      const document = parseRoofProjectDocument(JSON.stringify(input));
+      return {
+        ...committedDocument(document, {}, {}),
+        workbench: {
+          ...structuredClone(initialWorkbenchViewState),
+          mode: state.workbench.mode,
+        },
+        historyPast: [],
+        historyFuture: [],
+        activeTransaction: undefined,
+      };
+    }),
 }));
 
 export const selectCanonicalProject = (state: AssemblyState) =>

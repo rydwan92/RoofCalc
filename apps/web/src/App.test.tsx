@@ -8,6 +8,7 @@ import { WorkbenchPage as App } from './workbench/WorkbenchPage';
 import { useWorkbench } from './store';
 
 beforeEach(async () => {
+  localStorage.clear();
   useWorkbench.getState().reset();
   useWorkbench.getState().setUnit('mm');
   useWorkbench.setState({

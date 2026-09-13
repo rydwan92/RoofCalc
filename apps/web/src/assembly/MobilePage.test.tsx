@@ -14,6 +14,7 @@ import { useAssembly } from './store';
 import { mobileWorkbenchQuery } from './mobile-workbench';
 
 beforeEach(async () => {
+  localStorage.clear();
   vi.stubGlobal(
     'matchMedia',
     vi.fn().mockImplementation((media: string) => ({

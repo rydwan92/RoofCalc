@@ -116,6 +116,211 @@
   cursor: not-allowed;
   opacity: 0.35;
 }
+.a-project-control {
+  min-width: 0;
+  margin-inline: auto;
+}
+.a-project-trigger {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  max-width: 230px;
+  min-width: 145px;
+  padding: 5px 12px;
+  border: 1px solid var(--a-line);
+  border-radius: 9px;
+  background: var(--a-surface);
+  color: var(--a-text);
+  text-align: left;
+}
+.a-project-trigger span,
+.a-project-trigger small {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.a-project-trigger span {
+  font-weight: 700;
+}
+.a-project-trigger small {
+  color: var(--a-muted);
+  font-size: 11px;
+}
+.a-project-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+}
+.a-project-backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #1d342a55;
+}
+.a-project-dialog {
+  position: absolute;
+  top: 72px;
+  left: 50%;
+  width: min(440px, calc(100vw - 32px));
+  max-height: calc(100vh - 88px);
+  overflow: auto;
+  transform: translateX(-50%);
+  border: 1px solid var(--a-line);
+  border-radius: 14px;
+  background: var(--a-surface);
+  box-shadow: 0 14px 45px #16382d35;
+}
+.a-project-dialog > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--a-line);
+}
+.a-project-manager-body {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  color: var(--a-text);
+}
+.a-project-current {
+  display: grid;
+  gap: 2px;
+  padding: 12px;
+  border-radius: 9px;
+  background: var(--a-canvas);
+}
+.a-project-current span {
+  color: var(--a-muted);
+  font-size: 12px;
+}
+.a-project-manager-body button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 7px 10px;
+  border: 1px solid var(--a-line);
+  border-radius: 7px;
+  background: var(--a-surface);
+  color: var(--a-text);
+  cursor: pointer;
+}
+.a-project-manager-body .a-project-primary {
+  background: var(--a-green);
+  color: white;
+  border-color: var(--a-green);
+}
+.a-project-list {
+  display: grid;
+  max-height: 210px;
+  overflow: auto;
+  border-block: 1px solid var(--a-line);
+}
+.a-project-row {
+  display: flex;
+  min-width: 0;
+  border-bottom: 1px solid var(--a-line);
+}
+.a-project-row > button:first-child {
+  min-width: 0;
+  flex: 1;
+}
+.a-project-list button {
+  justify-content: flex-start;
+  border: 0;
+  border-bottom: 1px solid var(--a-line);
+  border-radius: 0;
+  text-align: left;
+}
+.a-project-list .a-project-row-delete {
+  flex: 0 0 44px;
+  justify-content: center;
+  border-left: 1px solid var(--a-line);
+}
+.a-project-list button.is-active {
+  background: var(--a-canvas);
+  font-weight: 700;
+}
+.a-project-list button span {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.a-project-list small {
+  color: var(--a-muted);
+}
+.a-project-actions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 7px;
+}
+.a-project-rename,
+.a-project-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  padding: 10px;
+  border: 1px solid var(--a-line);
+  border-radius: 8px;
+}
+.a-project-rename label {
+  width: 100%;
+}
+.a-project-rename input {
+  min-width: 0;
+  flex: 1 1 100%;
+  min-height: 42px;
+  padding: 6px 8px;
+  border: 1px solid var(--a-line-strong);
+  border-radius: 6px;
+}
+.a-project-file {
+  display: none;
+}
+.a-project-error {
+  margin: 0;
+  color: var(--a-danger);
+  font-size: 13px;
+}
+@media (min-width: 801px) and (max-width: 1100px) {
+  .a-project-trigger {
+    min-width: 110px;
+    max-width: 145px;
+  }
+  .a-project-trigger small {
+    display: none;
+  }
+}
+@media (max-width: 800px), (max-height: 480px) and (pointer: coarse) {
+  .assembly-app.mode-builder .a-header {
+    flex-wrap: wrap;
+  }
+  .a-project-control {
+    order: 4;
+    flex: 1 0 100%;
+    margin: 0;
+  }
+  .a-project-trigger {
+    width: 100%;
+    max-width: none;
+    min-height: 38px;
+    padding: 3px 9px;
+  }
+  .a-project-trigger span {
+    font-size: 12px;
+  }
+  .a-project-trigger small {
+    font-size: 10px;
+  }
+}
 .a-settings button {
   border: 0;
   background: transparent;

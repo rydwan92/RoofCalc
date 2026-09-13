@@ -1,4 +1,11 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   currentMemberInstance,
@@ -72,6 +79,8 @@ import { useMobileWorkbench } from './mobile-workbench';
 import { BuildUpSummaryBar } from './BuildUpWorkspace';
 import { workbenchProjectResolver } from './workbench-project';
 import { resolveWorkbenchSelectionContext } from './selection';
+import { ProjectManager, projectStatusLabel } from '../projects/ProjectManager';
+import { ProjectSession } from '../projects/session';
 import './styles.css';
 
 const MaterialSchedule = lazy(() =>
@@ -149,6 +158,11 @@ function isStandingSeamAssignment(
 export function AssemblyPage() {
   const state = useAssembly(),
     { t, i18n } = useTranslation();
+  const [projectSession] = useState(() => new ProjectSession());
+  const projectSessionState = useSyncExternalStore(
+    projectSession.subscribe,
+    projectSession.snapshot,
+  );
   const [quickDetail, setQuickDetail] = useState<
     (typeof allDetailPreviews)[number] | undefined
   >();
@@ -722,6 +736,16 @@ export function AssemblyPage() {
     state.setMobilePanel('none');
   };
   useEffect(() => {
+    if (workbench.mode === 'builder')
+      void projectSession.initialize().catch(() => undefined);
+  }, [projectSession, workbench.mode]);
+  useEffect(
+    () => () => {
+      void projectSession.dispose();
+    },
+    [projectSession],
+  );
+  useEffect(() => {
     document.documentElement.lang = i18n.language;
     document.title = `${brand} — ${t('workshop')}`;
   }, [brand, i18n.language, t]);
@@ -894,6 +918,13 @@ export function AssemblyPage() {
             </button>
           ))}
         </nav>
+        {workbench.mode === 'builder' && (
+          <ProjectManager
+            session={projectSession}
+            state={projectSessionState}
+            mobile={mobile}
+          />
+        )}
         <div className="a-settings">
           <div className="a-units" role="group" aria-label={t('assembly.unit')}>
             {lengthUnits.map((unit) => (
@@ -1421,7 +1452,14 @@ export function AssemblyPage() {
           <span>
             {brand} · {t('assembly.local')}
           </span>
-          <span>{t('assembly.noSave')}</span>
+          <span>
+            {workbench.mode === 'builder' && projectSessionState.active
+              ? projectStatusLabel(
+                  projectSessionState.saveStatus,
+                  i18n.language,
+                )
+              : t('assembly.noSave')}
+          </span>
         </footer>
       </main>
       {quickDetail && workbench.mode === 'quick' && (

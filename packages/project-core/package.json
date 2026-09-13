@@ -1,0 +1,14 @@
+{
+  "name": "@cieslacalc/project-core",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@cieslacalc/calculator-core": "workspace:*",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@cieslacalc/roof-math": "workspace:*"
+  }
+}
