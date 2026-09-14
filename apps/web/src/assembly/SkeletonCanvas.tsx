@@ -545,7 +545,7 @@ function SkeletonCanvasComponent({
       if (!unique.has(key)) unique.set(key, candidate);
     }
     return [...unique.values()];
-  }, [roofWindows, skeleton.members, surfaceGeometry.planes, template]);
+  }, [roofWindows, skeleton.members, surfaceGeometry.planes, t, template]);
   const windowCollisionIds = useMemo(
     () =>
       new Map(
