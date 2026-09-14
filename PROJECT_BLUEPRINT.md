@@ -1297,6 +1297,30 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+> V26A started on 2026-09-14 from clean commit `adaef4f8481bbedf8e37fa177b1ad50e81994292` (`025`) on `feature/v26-procurement-core`, under the attached isolated Timber Procurement Core contract. The branch/base matched exactly and the worktree was clean. Initial typecheck exposed an incomplete local dependency installation; `npx pnpm@10.15.1 install --frozen-lockfile` restored the lockfile-defined workspace without source changes. Baseline typecheck PASS; 537 tests across 59 files PASS with `--maxWorkers=2`; web/API build PASS with the known Vite >500 kB main-chunk advisory. Next action: create only the pure `packages/procurement-core` kernel, its tests and `docs/ARCHITECTURE_V26_TIMBER_PROCUREMENT_CORE.md`, then run the full definition-of-done suite. No UI, ProjectDocument, catalogue, price or Cost Engine integration.
+
+**Iteration:** `026A — Timber Procurement Core Foundation`
+
+**Status:** `COMPLETE IN SOURCE — FULL AUTOMATED VALIDATION PASS`
+
+**Completed work:** Added pure `@cieslacalc/procurement-core` with serializable required-piece, opaque stock-class, commercial stock-option, cutting-settings, plan/result, unassigned-reason, remnant, summary and grouped-stock-requirement contracts. Required pieces remain indivisible and always belong to one stock item. Compatibility is exact `stockClassId` equality only; undefined availability is unlimited while an explicit nonnegative integer is enforced. The exact cutting convention removes `endTrimMm` from each end and charges one explicit kerf only between adjacent assigned pieces. Stock usages expose original/usable/used lengths, cut coordinates, kerf, trim loss, remaining length and `none`/`waste`/`reusable-remnant` classification. Summary output separates all requested length from assigned length, physical opened stock, kerf, trims, waste, reusable remnants and utilization. Structured unassigned reasons cover no compatible class, piece longer than every compatible usable option and exhausted availability. `aggregateStockRequirements()` groups by class, option and exact commercial length without prices.
+
+The solver is the deterministic `best-fit-decreasing-v1` heuristic. It processes exact lengths descending, consumes the best compatible open remainder first, uses shortest immediate fit for `minimum-waste`, and uses bounded one-stock greedy look-ahead for `minimum-stock-count`. Stable class/length/ID tie-breaks and deterministic stock-instance IDs make identical inputs repeatable. It is explicitly not presented as a mathematically proven global optimum. Added `docs/ARCHITECTURE_V26_TIMBER_PROCUREMENT_CORE.md` covering quantity/procurement/cost layering, exact semantics, catalogue adapter boundary, multi-structure aggregation compatibility and non-goals.
+
+**Changed files / WIP:** New `packages/procurement-core/package.json`, `packages/procurement-core/src/index.ts` and `packages/procurement-core/src/index.test.ts`; new V26A architecture document; additive empty workspace importer in `pnpm-lock.yaml`; this checkpoint only in `PROJECT_BLUEPRINT.md`. No unfinished source unit. No UI, quantity-core, timber-model, ProjectDocument, catalogue, API, database, pricing, architecture-index, AGENTS, CI/E2E, semantic-ID or Inspector file was modified. No commit or push was requested or performed.
+
+**Assumptions and limitations:** End trim is per end, so usable length is `stock - 2 × endTrimMm`. Kerf exists only between adjacent planned pieces; one isolated piece has no inter-piece kerf. End trims plus short positive remainders form `wasteLengthMm`; kerf remains a separate loss and reusable remnants remain separate. A `1e-9 mm` epsilon only normalizes floating-point boundary subtraction. The V1 heuristic keeps one trailing remainder per stock item and reuses it within the same plan, but performs no exhaustive search, warehouse carry-over, splice/join, 2D nesting, structural decision, supplier choice or commercial valuation.
+
+**Tests and validation:** 22 new pure tests cover one piece/stock, the 5600 + 1300 + 4 mm example, kerf blocking exact fit, two-end trim, 6000/7000/8000/12000 alternatives, determinism/non-mutation, compatible reuse, incompatible classes, reused remnant accounting, short/long remnant classification, overlong and missing-class reasons, no joining two remnants, finite/positive and duplicate-ID validation, explicit availability, aggregate stock requirements, summary/utilization, both objectives and a 24-piece K1/J1 fixture. Final repository-pinned typecheck PASS; **559 tests across 60 files PASS** with `--maxWorkers=2`; ESLint PASS; web/API production build PASS; new-file Prettier check PASS; `git diff --check` PASS with only local LF/CRLF informational warnings. The web build is unchanged at main **538.25 / 154.12 kB gzip** and retains the known Vite >500 kB advisory. Visual/mobile QA is not applicable because V26A adds no UI or renderer.
+
+**Merge-conflict outlook:** The new package and uniquely named V26A document are isolated from the architecture-hardening file list. The additive `pnpm-lock.yaml` workspace importer may require a trivial merge if the other branch also changes the lockfile. This checkpoint is the other likely textual conflict if the other machine updates `PROJECT_BLUEPRINT.md`; retain both factual checkpoint records when merging. No explicitly forbidden overlap file was touched.
+
+**NEXT ACTION:** Review the V26A pure API and heuristic contract, then commit/merge the isolated branch when approved. A future application adapter may map accepted physical quantity rows and external stock-class/catalogue facts into `RequiredPiece[]` and `StockOption[]`, but do not begin Material Schedule integration, ProjectDocument persistence, catalogue timber products, UI or Cost Engine/pricing without a separate explicit iteration.
+
+---
+
+**Previous checkpoint — Iteration 025:**
+
 **Iteration:** `025 — Professional Covering Workbench, cut-to-length metal and future compound-roof scene audit`
 
 **Status:** `COMPLETE IN SOURCE — AUTOMATED VALIDATION PASS; LIVE BROWSER/DEVICE QA UNAVAILABLE`
