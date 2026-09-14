@@ -83,8 +83,8 @@ export function OrientationMiniMap({
         })}
       </svg>
       <span>
-        {instance.roofPlaneId
-          ? t(`assembly.${instance.roofPlaneId}`)
+        {instance.roofPlaneRole
+          ? t(`assembly.${instance.roofPlaneRole}`)
           : t(`assembly.${instance.side}`)}
         {instance.hipCorner ? ` · ${t(`assembly.${instance.hipCorner}`)}` : ''}
       </span>

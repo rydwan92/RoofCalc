@@ -5,6 +5,7 @@ import type {
   SkeletonMemberKind,
   TimberSection,
 } from '@cieslacalc/timber-model';
+import { openingFamilyCode, purlinFamilyCode } from './schedule-family-code';
 
 export type QuantityCategory = 'structural-timber' | 'roof-build-up';
 export type QuantityUnit = 'pcs' | 'm' | 'm2' | 'm3';
@@ -195,20 +196,6 @@ export function physicalAxisLengthMm(from: Point3D, to: Point3D): number {
   return result;
 }
 
-function openingFeatureId(id: string) {
-  return /feature:roof-window-\d+/.exec(id)?.[0];
-}
-
-function openingFamily(id: string) {
-  const number = /feature:roof-window-(\d+)/.exec(id)?.[1];
-  return number ? `O${number}` : 'O';
-}
-
-function purlinFamily(prototypeId: string) {
-  const number = /purlin-(\d+)$/.exec(prototypeId)?.[1];
-  return number ? `P${number}` : 'P';
-}
-
 function familyFor(member: SkeletonMember3D) {
   switch (member.kind) {
     case 'rafter':
@@ -222,19 +209,17 @@ function familyFor(member: SkeletonMember3D) {
     case 'ridge':
       return 'R';
     case 'purlin':
-      return purlinFamily(member.prototypeId);
+      return purlinFamilyCode(member.prototypeId);
     case 'opening-header':
     case 'rafter-segment':
-      return openingFamily(member.id);
+      return openingFamilyCode(member.id);
   }
 }
 
 function roleFor(member: SkeletonMember3D): 'upper' | 'lower' | undefined {
   if (member.kind !== 'opening-header' && member.kind !== 'rafter-segment')
     return undefined;
-  if (member.id.endsWith(':upper')) return 'upper';
-  if (member.id.endsWith(':lower')) return 'lower';
-  return undefined;
+  return member.openingRole;
 }
 
 function defaultSection(member: SkeletonMember3D): QuantitySection {
@@ -574,7 +559,7 @@ export function createRoofMemberSchedule(
           memberKind: member.kind,
           role: roleFor(member),
           prototypeId: member.prototypeId,
-          sourceFeatureId: openingFeatureId(member.id),
+          sourceFeatureId: member.sourceFeatureId,
           section,
           lengthMm,
           sourceInstanceId: member.id,

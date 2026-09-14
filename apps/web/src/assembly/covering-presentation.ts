@@ -7,8 +7,26 @@ const PLANE_KEYS: Record<string, string> = {
   'roof-plane:rear': 'assembly.roofPlaneName.rear',
 };
 
+/** Compact plane words used inside dense context/inline strings. */
+const PLANE_SHORT_KEYS: Record<string, string> = {
+  'roof-plane:left': 'assembly.left',
+  'roof-plane:right': 'assembly.right',
+  'roof-plane:front': 'assembly.front',
+  'roof-plane:rear': 'assembly.rear',
+};
+
 export function roofPlaneLabelKey(roofPlaneId: string) {
   return PLANE_KEYS[roofPlaneId] ?? 'assembly.roofPlaneName.generic';
+}
+
+/**
+ * Single presentation boundary between an opaque roof-plane ID and its short
+ * label. UI must never build a translation key by slicing the ID: an unknown
+ * plane (a future second structure, an imported document) has to fall back to
+ * a translated generic instead of rendering a missing key.
+ */
+export function roofPlaneShortLabelKey(roofPlaneId: string) {
+  return PLANE_SHORT_KEYS[roofPlaneId] ?? 'assembly.roofPlaneName.generic';
 }
 
 export function coveringKindLabelKey(assignment: CoveringAssignmentSpec) {

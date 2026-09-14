@@ -41,7 +41,8 @@ export interface MemberInstanceContext {
   instanceIndex: number;
   instanceCount: number;
   side: SkeletonMemberSide;
-  roofPlaneId?: JackRafterRoofPlane;
+  /** Plane ROLE word ('left' | 'front' | …), not a roof-plane ID. */
+  roofPlaneRole?: JackRafterRoofPlane;
   hipCorner?: HipCorner;
   buildingStationMm?: number;
   lengthMm: number;
@@ -235,7 +236,7 @@ export function createMemberInstanceContexts(args: {
         instanceIndex: index + 1,
         instanceCount: members.length,
         side: member.side,
-        roofPlaneId: jack?.spec.roofPlane,
+        roofPlaneRole: jack?.spec.roofPlane,
         hipCorner:
           jack?.spec.hipCorner ??
           (family.code === 'H1' ? (member.side as HipCorner) : undefined),

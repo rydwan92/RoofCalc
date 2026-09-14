@@ -13,7 +13,7 @@ import {
   projectPlaneWorldToLocal,
   resolveRoofPlaneBasis,
 } from './roof-features';
-import { roofPlaneIds } from './roof-surface';
+import { roofPlaneIds, roofPlaneSide } from './roof-surface';
 
 const EPSILON = 1e-7;
 
@@ -48,13 +48,12 @@ export interface CounterBattenLayoutResult {
   warnings: CounterBattenWarning[];
 }
 
+/**
+ * Groups derived parts back onto the physical member they came from.
+ * Uses structured provenance only; member IDs stay opaque (ADR-007).
+ */
 function originalRafterId(member: SkeletonMember3D) {
-  if (member.kind === 'rafter') return member.id;
-  return (
-    /instance:(?:rafter-pair|hip-common-pair)-\d+:(?:left|right)/.exec(
-      member.id,
-    )?.[0] ?? member.id
-  );
+  return member.sourceMemberId ?? member.id;
 }
 
 function verticalIntervalAtU(
@@ -154,7 +153,11 @@ export function resolveCounterBattenLayout(args: {
   for (const roofPlaneId of requestedPlanes.filter((id) =>
     knownPlanes.includes(id),
   )) {
-    const side = roofPlaneId.endsWith(':left') ? 'left' : 'right';
+    const side = roofPlaneSide(args.template, roofPlaneId);
+    if (!side) {
+      warnings.push('unknown-roof-plane');
+      continue;
+    }
     const basis = resolveRoofPlaneBasis(args.template, roofPlaneId);
     const openings = (args.features ?? []).filter(
       (feature): feature is RoofWindowFeature =>

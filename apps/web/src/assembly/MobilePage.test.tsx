@@ -289,3 +289,25 @@ it('edits cut-to-length metal in one mobile Inspector sheet and keeps drawing de
   fireEvent.click(screen.getByRole('button', { name: 'Uproszczony' }));
   expect(useAssembly.getState().historyPast).toHaveLength(before);
 });
+
+it('reaches exact roof geometry from the mobile Toolbox', async () => {
+  // Regression: the roof is the default selection and therefore has no
+  // selection peek, so choosing it from the Toolbox used to close the sheet and
+  // leave span/pitch/overhang with no exact numeric input on mobile.
+  render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: 'Kreator' }));
+  await screen.findByTestId('skeleton-drawing');
+  fireEvent.click(screen.getByRole('button', { name: 'Narzędzia' }));
+  const tools = screen.getByRole('dialog', { name: 'Narzędzia' });
+  fireEvent.click(within(tools).getAllByRole('button', { name: 'Połać' })[0]!);
+
+  expect(useAssembly.getState().workbench.mobilePanel).toBe('inspector');
+  const inspector = await screen.findByRole('dialog');
+  const pitch = within(inspector).getByLabelText(
+    'Kąt połaci',
+  ) as HTMLInputElement;
+  expect(pitch.value).toBe('35');
+  fireEvent.change(pitch, { target: { value: '42' } });
+  fireEvent.blur(pitch);
+  expect(useAssembly.getState().template.pitchDeg).toBe(42);
+});

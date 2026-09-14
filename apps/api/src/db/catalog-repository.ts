@@ -95,6 +95,11 @@ function revisionValues(item: TechnicalProductRevision) {
   };
 }
 
+/** A search term is literal text: LIKE metacharacters in it must not act as wildcards. */
+export function escapeLikePattern(value: string) {
+  return value.replace(/[\\%_]/g, (character) => `\\${character}`);
+}
+
 export class DrizzleCatalogRepository
   implements CatalogRepository, CatalogImportRepository
 {
@@ -140,7 +145,10 @@ export class DrizzleCatalogRepository
         eq(technicalProductFamilies.manufacturerId, query.manufacturerId),
       );
     if (query.q) {
-      const pattern = `%${query.q}%`;
+      // Drizzle parameterizes the value, but LIKE metacharacters inside it
+      // would still act as wildcards; a search term is literal text, and the
+      // in-memory repository already matches it literally.
+      const pattern = `%${escapeLikePattern(query.q)}%`;
       conditions.push(
         or(
           like(technicalProductFamilies.name, pattern),

@@ -82,9 +82,9 @@ export const assemblyPl = {
   cutToLengthDeferred:
     'Arkusze cięte na długość wymagają osobnej strategii i nie są rozwiązywane w tej wersji.',
   sheetRows: 'Rzędy arkuszy',
-  sheetPositions: 'Arkusze w układzie',
-  fullSheets: 'Pełne arkusze',
-  cutSheets: 'Docinane arkusze',
+  sheetPositions: 'Pozycje krycia',
+  fullSheets: 'Pozycje pełne',
+  cutSheets: 'Pozycje docinane',
   coveringPlaneConflict:
     'Więcej niż jedno pokrycie podstawowe przypisano do tej samej połaci. Konfliktowe połacie nie są liczone.',
   roofPlaneName: {
@@ -823,9 +823,9 @@ export const assemblyEn: typeof assemblyPl = {
   cutToLengthDeferred:
     'Cut-to-length panels require a separate strategy and are not resolved in this version.',
   sheetRows: 'Sheet rows',
-  sheetPositions: 'Geometric sheets',
-  fullSheets: 'Full sheets',
-  cutSheets: 'Cut sheets',
+  sheetPositions: 'Coverage positions',
+  fullSheets: 'Full positions',
+  cutSheets: 'Cut positions',
   coveringPlaneConflict:
     'More than one primary covering is assigned to the same plane. Conflicted planes are excluded from quantities.',
   roofPlaneName: {

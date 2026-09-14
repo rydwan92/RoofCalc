@@ -413,8 +413,18 @@ export type SkeletonMemberSide =
   | 'rear-left'
   | 'rear-right';
 export interface SkeletonMember3D {
-  /** Stable physical placement ID, e.g. instance:rafter-pair-4:left. */
+  /** Stable physical placement ID, e.g. instance:rafter-pair-4:left. Opaque: never parse it. */
   id: EntityId;
+  /**
+   * Physical member this one was derived from, when it is a derived part such
+   * as an opening rafter segment. Absent on original members. Consumers must
+   * use this instead of parsing `id` (ADR-007).
+   */
+  sourceMemberId?: EntityId;
+  /** Opening feature this member was generated for, when it is opening framing. */
+  sourceFeatureId?: EntityId;
+  /** Which side of an opening a generated header or rafter segment sits on. */
+  openingRole?: 'upper' | 'lower';
   /** Shared fabrication/source definition used by this physical member. */
   prototypeId: EntityId;
   /** UI semantic selection. Purlin rails intentionally select one support. */

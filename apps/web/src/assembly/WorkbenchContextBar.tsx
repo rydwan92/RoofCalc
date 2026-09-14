@@ -15,6 +15,7 @@ import {
 } from '@cieslacalc/calculator-core';
 import type { RoofMemberScheduleRow } from '@cieslacalc/quantity-core';
 import { formatLength } from '../format';
+import { roofPlaneShortLabelKey } from './covering-presentation';
 import { useAssembly } from './store';
 import { memberInstanceCode } from './workbench';
 
@@ -87,9 +88,13 @@ export function WorkbenchContextBar({
   const selectedWindow = state.projectDocument.project.features.find(
     (feature) => feature.id === selectedId && feature.kind === 'roof-window',
   );
-  const selectedPlane = /roof-plane:(left|right|front|rear)/.exec(
-    selectedId,
-  )?.[1];
+  // Presentation only: recovers the plane ID embedded in a selection ID so the
+  // label resolves through the single plane-label boundary below.
+  const selectedPlaneId = /roof-plane:[^:\s]+/.exec(selectedId)?.[0];
+  const planeLabel = (roofPlaneId?: string) =>
+    roofPlaneId
+      ? t(roofPlaneShortLabelKey(roofPlaneId), { id: roofPlaneId })
+      : '';
   const scheduleSection = selectedScheduleRow?.section.widthMm
     ? selectedScheduleRow.section.depthMm === undefined
       ? `${length(selectedScheduleRow.section.widthMm)} × ?`
@@ -106,13 +111,13 @@ export function WorkbenchContextBar({
       : undefined) ??
     scheduleSelection ??
     (selectedId.startsWith('surface:roof-plane:')
-      ? t(`assembly.${selectedId.replace('surface:roof-plane:', '')}`)
+      ? planeLabel(selectedPlaneId)
       : selectedId.startsWith('counter-batten:')
-        ? `${t('assembly.counterBattens')} · ${selectedPlane ? t(`assembly.${selectedPlane}`) : ''}`
+        ? `${t('assembly.counterBattens')} · ${planeLabel(selectedPlaneId)}`
         : selectedId.startsWith('batten:')
-          ? `${t('assembly.battens')} · ${selectedPlane ? t(`assembly.${selectedPlane}`) : ''}`
+          ? `${t('assembly.battens')} · ${planeLabel(selectedPlaneId)}`
           : selectedId.startsWith('feature:roof-window-')
-            ? `${t('assembly.roofWindow')} O${selectedId.split('-').at(-1)}${selectedWindow ? ` · ${t(`assembly.${selectedWindow.roofPlaneId.replace('roof-plane:', '')}`)}` : ''}`
+            ? `${t('assembly.roofWindow')} O${selectedId.split('-').at(-1)}${selectedWindow ? ` · ${planeLabel(selectedWindow.roofPlaneId)}` : ''}`
             : selectedId.startsWith('support:purlin-')
               ? `${t('assembly.purlins')} P${selectedId.split('-').at(-1)}`
               : selectedId === 'layer:membrane'
@@ -227,7 +232,7 @@ export function WorkbenchContextBar({
             </strong>
             <span>
               {t(
-                `assembly.${activeInstance.roofPlaneId ?? activeInstance.side}`,
+                `assembly.${activeInstance.roofPlaneRole ?? activeInstance.side}`,
               )}
               {activeInstance.hipCorner
                 ? ` · ${t(`assembly.${activeInstance.hipCorner}`)}`

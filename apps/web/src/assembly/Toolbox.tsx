@@ -114,7 +114,14 @@ export function Toolbox({
         if (tool.action === 'add-purlin') state.add();
         else if (tool.selectionId)
           state.select(tool.selectionId, tool.prototypeId);
-        if (mobileTask) state.setMobilePanel('none');
+        if (!mobileTask) return;
+        // Every other entity gets a selection peek with an Edit action, but the
+        // roof is the default selection and is excluded from that peek. Without
+        // this, roof span/pitch/overhang had no exact numeric route on mobile.
+        if (tool.action === 'select' && tool.selectionId === 'roof') {
+          state.setInspectorOpen(true);
+          state.setMobilePanel('inspector');
+        } else state.setMobilePanel('none');
       }}
     >
       {icon(tool.icon)}

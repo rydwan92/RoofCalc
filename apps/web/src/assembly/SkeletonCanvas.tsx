@@ -42,6 +42,7 @@ import {
   resolveRoofWindowAlignmentSnap,
   resolveRoofPlaneBasis,
   roofPlaneIntervalsAtV,
+  roofPlaneIds as resolveRoofPlaneIds,
   type CounterBattenLayoutResult,
   type RoofWindowAlignmentGuide,
   type RoofSurfaceGeometryResult,
@@ -56,6 +57,7 @@ import type {
 } from '@cieslacalc/timber-model';
 import { formatLength } from '../format';
 import { MemberInstanceOverlay } from './MemberInstanceOverlay';
+import { roofPlaneShortLabelKey } from './covering-presentation';
 import { useAssembly } from './store';
 import { useMobileWorkbench } from './mobile-workbench';
 import {
@@ -507,7 +509,7 @@ function SkeletonCanvasComponent({
       ...surfaceGeometry.planes.flatMap((plane) =>
         plane.worldPolygon.map((point, index) => ({
           id: `measure:${plane.roofPlaneId}:vertex:${index + 1}`,
-          label: `${plane.roofPlaneId.replace('roof-plane:', '')} · V${index + 1}`,
+          label: `${t(roofPlaneShortLabelKey(plane.roofPlaneId), { id: plane.roofPlaneId })} · V${index + 1}`,
           point,
           roofPlaneId: plane.roofPlaneId,
         })),
@@ -646,16 +648,7 @@ function SkeletonCanvasComponent({
     (batten) => batten.id === state.workbench.selectedId,
   );
   const bayMemberIds = new Set(selectedBay?.memberInstanceIds ?? []);
-  const roofPlaneIds =
-    template.type === 'gable'
-      ? ['roof-plane:left', 'roof-plane:right']
-      : [
-          'roof-plane:left',
-          'roof-plane:right',
-          'roof-plane:front',
-          'roof-plane:rear',
-        ];
-  const placementPlanes = roofPlaneIds.map((roofPlaneId) => {
+  const placementPlanes = resolveRoofPlaneIds(template).map((roofPlaneId) => {
     const basis = resolveRoofPlaneBasis(template, roofPlaneId);
     const origin = worldPoint(
       projectPlaneLocalToWorld(basis, { uMm: 0, vMm: 0 }),
@@ -1461,7 +1454,7 @@ function SkeletonCanvasComponent({
                     role="button"
                     tabIndex={0}
                     aria-pressed={selected}
-                    aria-label={`${t('assembly.roofPlane')} ${t(`assembly.${plane.roofPlaneId.replace('roof-plane:', '')}`)} · ${surface ? new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 1 }).format(surface.netAreaMm2 / 1_000_000) : 0} m²`}
+                    aria-label={`${t('assembly.roofPlane')} ${t(roofPlaneShortLabelKey(plane.roofPlaneId), { id: plane.roofPlaneId })} · ${surface ? new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 1 }).format(surface.netAreaMm2 / 1_000_000) : 0} m²`}
                     data-roof-surface={surfaceId}
                     className={`${selected ? 'is-selected' : ''} ${included ? '' : 'is-excluded'}`}
                     onClick={(event) => {

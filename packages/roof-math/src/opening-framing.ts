@@ -152,6 +152,10 @@ function segmentMember(
   return {
     ...source,
     id: `instance:opening-rafter-segment:${featureId}:${source.id}:${role}`,
+    // Structured provenance so consumers never parse the composite segment ID.
+    sourceMemberId: source.sourceMemberId ?? source.id,
+    sourceFeatureId: featureId,
+    openingRole: role,
     selectionId: featureId,
     kind: 'rafter-segment',
     from,
@@ -340,6 +344,8 @@ export function resolveOpeningFraming(args: {
       lengthMm: toUMm - fromUMm,
       member: {
         id: `instance:opening-framing:${feature.id}:${shortRole}`,
+        sourceFeatureId: feature.id,
+        openingRole: shortRole,
         prototypeId: framingPrototypeId,
         selectionId: feature.id,
         kind: 'opening-header',

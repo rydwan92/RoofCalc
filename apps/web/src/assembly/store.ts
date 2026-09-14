@@ -393,9 +393,12 @@ function withHistory(
   state: AssemblyState,
   next: ReturnType<typeof committedTemplate>,
 ) {
+  // An open gesture transaction already owns the single history entry, so the
+  // cheap flag is checked before the deep document comparison. Reversing these
+  // ran two JSON.stringify passes over the whole document on every drag frame.
   if (
-    sameDocument(state.projectDocument, next.projectDocument) ||
-    state.activeTransaction
+    state.activeTransaction ||
+    sameDocument(state.projectDocument, next.projectDocument)
   )
     return next;
   return {

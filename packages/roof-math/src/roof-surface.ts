@@ -4,6 +4,7 @@ import type {
   RoofPlanePosition,
   RoofTemplateSpec,
   RoofWindowFeature,
+  SkeletonMemberSide,
 } from '@cieslacalc/timber-model';
 import {
   projectPlaneLocalToWorld,
@@ -57,6 +58,26 @@ export function roofPlaneIds(template: RoofTemplateSpec): string[] {
         'roof-plane:front',
         'roof-plane:rear',
       ];
+}
+
+/**
+ * Template-owned lookup from a roof-plane ID to the member side facing it.
+ * `roof-math` generates these IDs, so it is the only module allowed to
+ * interpret them. Consumers must call this instead of parsing the ID string,
+ * and must handle `undefined` rather than assuming a default side (ADR-007).
+ */
+export function roofPlaneSide(
+  template: RoofTemplateSpec,
+  roofPlaneId: string,
+): SkeletonMemberSide | undefined {
+  if (!roofPlaneIds(template).includes(roofPlaneId)) return undefined;
+  const sides: Record<string, SkeletonMemberSide> = {
+    'roof-plane:left': 'left',
+    'roof-plane:right': 'right',
+    'roof-plane:front': 'front',
+    'roof-plane:rear': 'rear',
+  };
+  return sides[roofPlaneId];
 }
 
 function polygonArea(polygon: readonly RoofPlanePosition[]) {

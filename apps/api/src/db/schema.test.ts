@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { getTableConfig } from 'drizzle-orm/mysql-core';
+import { escapeLikePattern } from './catalog-repository';
 import {
   catalogImportBatches,
   commercialVariants,
@@ -31,5 +32,17 @@ describe('catalogue database contract', () => {
     expect(revision.indexes.map((index) => index.config.name)).toContain(
       'technical_product_revisions_product_valid_idx',
     );
+  });
+});
+
+describe('catalogue search terms are literal', () => {
+  it('escapes LIKE metacharacters so a term cannot act as a wildcard', () => {
+    // The value is parameterized by Drizzle, so this is not SQL injection — but
+    // an unescaped `%` would silently match everything, while the in-memory
+    // repository does a plain substring match. The two must agree.
+    expect(escapeLikePattern('tile')).toBe('tile');
+    expect(escapeLikePattern('50%')).toBe('50\\%');
+    expect(escapeLikePattern('a_b')).toBe('a\\_b');
+    expect(escapeLikePattern('back\\slash')).toBe('back\\\\slash');
   });
 });

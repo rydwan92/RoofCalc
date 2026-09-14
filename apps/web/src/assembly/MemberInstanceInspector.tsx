@@ -56,7 +56,7 @@ export function MemberInstanceInspector({
         </div>
         <div>
           <dt>{t('assembly.roofPlane')}</dt>
-          <dd>{t(`assembly.${instance.roofPlaneId ?? instance.side}`)}</dd>
+          <dd>{t(`assembly.${instance.roofPlaneRole ?? instance.side}`)}</dd>
         </div>
         {instance.hipCorner && (
           <div>

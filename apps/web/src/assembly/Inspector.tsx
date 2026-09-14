@@ -27,6 +27,7 @@ import type {
   RoofWindowFeature,
 } from '@cieslacalc/timber-model';
 import { entityLabel } from './Canvas';
+import { roofPlaneShortLabelKey } from './covering-presentation';
 import { editableLength, formatLength, parseDecimal } from '../format';
 import {
   GeometryInputs,
@@ -385,7 +386,7 @@ function MembraneInspector({
                 });
               }}
             />
-            {t(`assembly.${planeId.replace('roof-plane:', '')}`)}
+            {t(roofPlaneShortLabelKey(planeId), { id: planeId })}
           </label>
         ))}
       </fieldset>
@@ -451,7 +452,7 @@ function CounterBattenInspector({
                 });
               }}
             />
-            {t(`assembly.${planeId.replace('roof-plane:', '')}`)}
+            {t(roofPlaneShortLabelKey(planeId), { id: planeId })}
           </label>
         ))}
       </fieldset>
@@ -514,8 +515,7 @@ function BattenLayoutInspector() {
   const selectedRow = result.battens.find(
     (batten) => batten.id === state.workbench.selectedId,
   );
-  const planeName = (id: string) =>
-    t(`assembly.${id.replace('roof-plane:', '')}`);
+  const planeName = (id: string) => t(roofPlaneShortLabelKey(id), { id });
   const length = (value: number) =>
     `${formatLength(value, state.unit, i18n.language)} ${state.unit}`;
   return (
@@ -798,17 +798,9 @@ function RoofWindowInspector({
             })
           }
         >
-          {(state.template.type === 'gable'
-            ? ['roof-plane:left', 'roof-plane:right']
-            : [
-                'roof-plane:left',
-                'roof-plane:right',
-                'roof-plane:front',
-                'roof-plane:rear',
-              ]
-          ).map((planeId) => (
+          {roofPlaneIds(state.template).map((planeId) => (
             <option key={planeId} value={planeId}>
-              {t(`assembly.${planeId.replace('roof-plane:', '')}`)}
+              {t(roofPlaneShortLabelKey(planeId), { id: planeId })}
             </option>
           ))}
         </select>
