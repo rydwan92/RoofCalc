@@ -1,6 +1,6 @@
 # RoofCalc / CieślaCalc — Architecture Index
 
-**This is the current-state map, after V27.** Read it after `PROJECT_BLUEPRINT.md`
+**This is the current-state map, after V29.** Read it after `PROJECT_BLUEPRINT.md`
 and before touching code. It describes what exists today, not the history of how
 it got here. Historical `ARCHITECTURE_V*.md` documents stay authoritative for the
 subsystem they introduced and should be opened only when changing that subsystem.
@@ -63,9 +63,10 @@ database; `covering-core` importing React/DOM/Express/Drizzle/mysql2;
 importing Drizzle/Express/React/UI; `project-core` importing i18n, React or
 `localStorage`; `procurement-core` importing **anything**.
 
-`procurement-core` is deliberately **not** wired into `quantity-core`, the
-Material Schedule or `RoofProjectDocumentV1`. The adapter that turns schedule
-rows into `RequiredPiece[]` is a future iteration.
+`procurement-core` is deliberately **not** wired into `quantity-core` or
+`RoofProjectDocumentV1`. A V28 web application adapter connects only proven,
+whole K1 fabrication blanks to `RequiredPiece[]` and the Material Schedule
+opens that K1-only planner. Other member families remain outside this pilot.
 
 ---
 
@@ -190,6 +191,13 @@ instance IDs with the schedule and passes explicit physical blanks to the pure
 `procurement-core`; quantity rows remain `geometric-only` and H1/J1/opening
 members remain unresolved. Commercial cutting inputs and plans are transient.
 See `docs/ARCHITECTURE_V28_K1_CUTTING_PLAN.md`.
+
+V29 adds a pure, derived **project workflow projection** in `apps/web`: six
+non-blocking stage statuses, one next action and a project summary from existing
+roof/surface/schedule/covering/K1 facts. Neither the workflow nor the summary
+is persisted or part of roof history. The Materials task owns the summary,
+schedule and drawing views; its K1 CTA reuses the V28 planner. See
+`docs/ARCHITECTURE_V29_GUIDED_WORKFLOW_UX.md`.
 
 **Known limitation:** `schedule-family-code.ts` still derives the display codes
 `O<n>` and `P<n>` from generated IDs because the single-roof skeleton carries no
@@ -316,6 +324,7 @@ pnpm e2e      # real-browser smoke, desktop 1440x900 and mobile 390x844 (pnpm e2
 | `docs/ARCHITECTURE_V26_TIMBER_PROCUREMENT_CORE.md` | touching procurement |
 | `docs/ARCHITECTURE_V27_RESULT_SEMANTICS.md` | quantity basis, result wording or takeoff UX |
 | `docs/ARCHITECTURE_V28_K1_CUTTING_PLAN.md` | K1 fabrication blank and cutting-plan adapter/UX |
+| `docs/ARCHITECTURE_V29_GUIDED_WORKFLOW_UX.md` | derived project guidance, summary and workbench UX |
 | `docs/FUTURE_EXECUTION_SEMANTICS_AUDIT.md` + `docs/domain/*` | touching coverage, overlap or connection semantics |
 | `docs/ARCHITECTURE_FUTURE_COMPOUND_ROOF_SCENE.md` | touching IDs, planes or document shape |
 | `docs/ARCHITECTURE_COVERING_CATALOG_AND_PRICING_BOUNDARY.md` | covering, catalogue or future pricing |

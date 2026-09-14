@@ -59,6 +59,24 @@ it('opens mobile Builder on drawing with six tasks and one on-demand tools sheet
   ).toBeTruthy();
 });
 
+it('shows mobile project status and reaches summary and K1 planning through the task flow', async () => {
+  render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: 'Kreator' }));
+  expect(
+    screen.getByTestId('project-workflow').querySelectorAll('li'),
+  ).toHaveLength(6);
+  fireEvent.click(screen.getByTestId('project-next-action'));
+  expect(useAssembly.getState().workbench.viewPreset).toBe('covering');
+  const dock = screen.getByRole('tablist', { name: 'Widok zadaniowy' });
+  fireEvent.click(within(dock).getByRole('tab', { name: 'Zestawienie' }));
+  fireEvent.click(screen.getByRole('tab', { name: 'Projekt' }));
+  expect(screen.getByTestId('project-summary')).toBeTruthy();
+  fireEvent.click(screen.getByTestId('summary-k1-cutting-cta'));
+  expect(await screen.findByTestId('k1-cutting-panel')).toBeTruthy();
+  expect(screen.getByRole('dialog')).toBeTruthy();
+  expect(useAssembly.getState().historyPast).toHaveLength(0);
+});
+
 it('keeps selection as a peek and edits it only on request', async () => {
   render(<App />);
   fireEvent.click(screen.getByRole('button', { name: 'Kreator' }));

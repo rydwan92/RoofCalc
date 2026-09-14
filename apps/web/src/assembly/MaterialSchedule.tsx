@@ -1,5 +1,5 @@
-import { ChevronRight, Cuboid, Ruler, Shapes } from 'lucide-react';
-import { lazy, Suspense, useMemo, useState } from 'react';
+import { ChevronRight, Shapes, Layers3, Grid3X3 } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type {
   CoveringQuantityLayoutKind,
@@ -8,18 +8,11 @@ import type {
   RoofMemberScheduleRow,
 } from '@cieslacalc/quantity-core';
 import type { LengthUnit } from '@cieslacalc/roof-math';
-import type { ResolvedRoofProject } from '@cieslacalc/calculator-core';
 import { formatLength } from '../format';
 import { memberInstanceCode } from './workbench';
 import { useAssembly } from './store';
 import { ResultBasis, ResultLayerProgress } from './ResultBasis';
-import { createK1CuttingRequirement } from './k1-cutting-adapter';
-
-const K1CuttingPlan = lazy(() =>
-  import('./K1CuttingPlan').then((module) => ({
-    default: module.K1CuttingPlan,
-  })),
-);
+import type { K1CuttingRequirement } from './k1-cutting-adapter';
 
 function metres(valueMm: number, locale: string) {
   return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(valueMm / 1000)} m`;
@@ -114,28 +107,21 @@ export function MaterialSchedule({
   selectedInstanceId,
   onSelectRow,
   onSelectInstance,
-  resolved,
-  mobile,
-  projectName,
+  k1,
+  onOpenCutting,
 }: {
   schedule: RoofMemberSchedule;
   selectedRowId?: string;
   selectedInstanceId?: string;
   onSelectRow: (row: RoofMemberScheduleRow) => void;
   onSelectInstance: (row: RoofMemberScheduleRow, instanceId: string) => void;
-  resolved: ResolvedRoofProject;
-  mobile: boolean;
-  projectName?: string;
+  k1: K1CuttingRequirement;
+  onOpenCutting: () => void;
 }) {
   const state = useAssembly();
   const { t, i18n } = useTranslation();
   const [perspective, setPerspective] = useState<'families' | 'sections'>(
     'families',
-  );
-  const [cuttingOpen, setCuttingOpen] = useState(false);
-  const k1 = useMemo(
-    () => createK1CuttingRequirement(resolved, schedule),
-    [resolved, schedule],
   );
   const families = useMemo(() => {
     const result = new Map<string, RoofMemberScheduleRow[]>();
@@ -176,24 +162,41 @@ export function MaterialSchedule({
       </header>
       <ResultLayerProgress scope="schedule" />
       <div className="a-schedule-summary">
-        <article>
-          <Shapes size={18} />
-          <span>{t('assembly.elements')}</span>
-          <strong>{schedule.timberSummary.quantity}</strong>
-        </article>
-        <article>
-          <Ruler size={18} />
-          <span>{t('assembly.totalGeometricLength')}</span>
-          <strong>
-            {metres(schedule.timberSummary.totalLengthMm, i18n.language)}
-          </strong>
-        </article>
         <article data-volume-status={schedule.timberSummary.volumeStatus}>
-          <Cuboid size={18} />
-          <span>{volumeLabel}</span>
+          <Shapes size={18} />
+          <span>{t('assembly.workflow.timber')}</span>
           <strong>
-            {cubicMetres(schedule.timberSummary.totalVolumeMm3, i18n.language)}
+            {schedule.timberSummary.quantity} {t('assembly.piecesShort')}
           </strong>
+          <small>
+            {t('assembly.totalGeometricLength')}:{' '}
+            {metres(schedule.timberSummary.totalLengthMm, i18n.language)}
+          </small>
+          <small>
+            {volumeLabel}:{' '}
+            {cubicMetres(schedule.timberSummary.totalVolumeMm3, i18n.language)}
+          </small>
+        </article>
+        <article>
+          <Layers3 size={18} />
+          <span>{t('assembly.workflow.stage.layers')}</span>
+          <strong>
+            {schedule.buildUpRows.length + schedule.surfaceBuildUpRows.length}
+          </strong>
+          <small>{t('assembly.workflow.layerScheduleRows')}</small>
+        </article>
+        <article>
+          <Grid3X3 size={18} />
+          <span>{t('assembly.workflow.stage.covering')}</span>
+          <strong>
+            {schedule.coveringSummary.effectiveCoveragePositions ||
+              schedule.coveringSummary.geometricPanelRuns}
+          </strong>
+          <small>
+            {schedule.coveringSummary.effectiveCoveragePositions > 0
+              ? t('assembly.workflow.coveringPositions')
+              : t('assembly.workflow.coveringRuns')}
+          </small>
         </article>
       </div>
       <p className="a-schedule-boundary-note">
@@ -253,7 +256,7 @@ export function MaterialSchedule({
                         type="button"
                         className="a-button is-primary"
                         data-testid="k1-cutting-cta"
-                        onClick={() => setCuttingOpen(true)}
+                        onClick={onOpenCutting}
                       >
                         {t('assembly.k1Cutting.open')}
                       </button>
@@ -265,8 +268,7 @@ export function MaterialSchedule({
               )}
               <details
                 className="a-schedule-length-disclosure"
-                data-compact={rows.length > 3}
-                open={rows.length <= 3 ? true : undefined}
+                data-compact="true"
               >
                 <summary>
                   {t('assembly.showExactLengths', { count: rows.length })}
@@ -326,17 +328,6 @@ export function MaterialSchedule({
             </section>
           ))}
         </div>
-      )}
-      {cuttingOpen && k1.status === 'resolved' && (
-        <Suspense fallback={<div className="a-loading-panel" />}>
-          <K1CuttingPlan
-            requirement={k1}
-            projectName={projectName}
-            unit={state.unit}
-            mobile={mobile}
-            onClose={() => setCuttingOpen(false)}
-          />
-        </Suspense>
       )}
       {perspective === 'sections' && (
         <section className="a-section-groups">
@@ -603,6 +594,55 @@ export function MaterialSchedule({
             })}
           </div>
           <p>{t('assembly.coveringQuantityBoundary')}</p>
+        </section>
+      )}
+      {schedule.buildUpRows.length === 0 &&
+        schedule.surfaceBuildUpRows.length === 0 && (
+          <section
+            className="a-schedule-empty"
+            data-testid="layers-schedule-empty"
+          >
+            <h3>{t('assembly.workflow.emptyLayersTitle')}</h3>
+            <p>{t('assembly.workflow.emptyLayersDescription')}</p>
+            <button
+              type="button"
+              className="a-button"
+              onClick={() => state.setViewPreset('layers')}
+            >
+              {t('assembly.workflow.openLayers')}
+            </button>
+          </section>
+        )}
+      {schedule.coveringRows.length === 0 && (
+        <section
+          className="a-schedule-empty"
+          data-testid="covering-schedule-empty"
+        >
+          <h3>
+            {t(
+              state.projectDocument.project.coverings.length > 0
+                ? 'assembly.workflow.reviewCoveringTitle'
+                : 'assembly.workflow.emptyCoveringTitle',
+            )}
+          </h3>
+          <p>
+            {t(
+              state.projectDocument.project.coverings.length > 0
+                ? 'assembly.workflow.reviewCoveringDescription'
+                : 'assembly.workflow.emptyCoveringDescription',
+            )}
+          </p>
+          <button
+            type="button"
+            className="a-button"
+            onClick={() => state.setViewPreset('covering')}
+          >
+            {t(
+              state.projectDocument.project.coverings.length > 0
+                ? 'assembly.workflow.action.reviewCovering'
+                : 'assembly.workflow.action.addCovering',
+            )}
+          </button>
         </section>
       )}
     </section>

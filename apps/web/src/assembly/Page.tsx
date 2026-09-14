@@ -82,6 +82,12 @@ import { useMobileWorkbench } from './mobile-workbench';
 import { BuildUpSummaryBar } from './BuildUpWorkspace';
 import { workbenchProjectResolver } from './workbench-project';
 import { resolveWorkbenchSelectionContext } from './selection';
+import { createK1CuttingRequirement } from './k1-cutting-adapter';
+import {
+  deriveProjectWorkflow,
+  type ProjectWorkflowAction,
+} from './project-workflow';
+import { ProjectSummary, ProjectWorkflowStrip } from './ProjectWorkflow';
 import { ProjectManager, projectStatusLabel } from '../projects/ProjectManager';
 import { ProjectSession } from '../projects/session';
 import './styles.css';
@@ -109,6 +115,11 @@ const CoveringWorkspace = lazy(() =>
 const CoveringInspector = lazy(() =>
   import('./CoveringWorkspace').then((module) => ({
     default: module.CoveringInspector,
+  })),
+);
+const K1CuttingPlan = lazy(() =>
+  import('./K1CuttingPlan').then((module) => ({
+    default: module.K1CuttingPlan,
   })),
 );
 
@@ -191,6 +202,7 @@ export function AssemblyPage() {
   const [quickDetail, setQuickDetail] = useState<
     (typeof allDetailPreviews)[number] | undefined
   >();
+  const [cuttingOpen, setCuttingOpen] = useState(false);
   const workbench = state.workbench;
   const mobile = useMobileWorkbench();
   const drawer = workbench.detailDrawer;
@@ -596,6 +608,89 @@ export function AssemblyPage() {
       surfaceProjection.planes,
     ],
   );
+  const k1Requirement = useMemo(
+    () => createK1CuttingRequirement(templateResult, memberSchedule),
+    [templateResult, memberSchedule],
+  );
+  useEffect(() => {
+    if (k1Requirement.status !== 'resolved') setCuttingOpen(false);
+  }, [k1Requirement.status]);
+  const projectWorkflow = useMemo(
+    () =>
+      deriveProjectWorkflow({
+        constructionReady: surfaceProjection.planes.length > 0,
+        openingCount: openingSummary.total,
+        openingWarnings: openingSummary.collisions + openingSummary.needsReview,
+        enabledLayerCount: [
+          membrane?.enabled,
+          counterBattens?.enabled,
+          battenLayout?.enabled,
+        ].filter(Boolean).length,
+        layerWarnings: counterBattenProjection.status === 'limited' ? 1 : 0,
+        coveringCount: coveringAssignments.length,
+        resolvedCoveringCount: resolvedCoveringLayouts.filter(
+          (layout) => layout.status === 'resolved',
+        ).length,
+        coveringWarnings: coveringOwnership.conflicts.length,
+        k1Ready: k1Requirement.status === 'resolved',
+        hasResults: memberSchedule.timberRows.length > 0,
+      }),
+    [
+      surfaceProjection.planes.length,
+      openingSummary,
+      membrane?.enabled,
+      counterBattens?.enabled,
+      battenLayout?.enabled,
+      counterBattenProjection.status,
+      coveringAssignments.length,
+      resolvedCoveringLayouts,
+      coveringOwnership.conflicts.length,
+      k1Requirement.status,
+      memberSchedule.timberRows.length,
+    ],
+  );
+  const projectSummary = useMemo(() => {
+    const timberFamilies = new Map<string, number>();
+    memberSchedule.timberRows.forEach((row) =>
+      timberFamilies.set(
+        row.familyKey,
+        (timberFamilies.get(row.familyKey) ?? 0) + row.quantity,
+      ),
+    );
+    return {
+      roofType: state.template.type,
+      netRoofAreaMm2: surfaceProjection.planes.reduce(
+        (total, plane) => total + plane.netAreaMm2,
+        0,
+      ),
+      timberCount: memberSchedule.timberSummary.quantity,
+      timberFamilies: [...timberFamilies].map(([familyKey, quantity]) => ({
+        familyKey,
+        quantity,
+      })),
+      openingCount: openingSummary.total,
+      enabledLayerCount: [
+        membrane?.enabled,
+        counterBattens?.enabled,
+        battenLayout?.enabled,
+      ].filter(Boolean).length,
+      coveringCount: coveringAssignments.length,
+      coveringPositionCount:
+        memberSchedule.coveringSummary.effectiveCoveragePositions,
+      coveringRunCount: memberSchedule.coveringSummary.geometricPanelRuns,
+      k1Ready: k1Requirement.status === 'resolved',
+    };
+  }, [
+    state.template.type,
+    surfaceProjection.planes,
+    memberSchedule,
+    openingSummary.total,
+    membrane?.enabled,
+    counterBattens?.enabled,
+    battenLayout?.enabled,
+    coveringAssignments.length,
+    k1Requirement.status,
+  ]);
   const selectionContext = useMemo(
     () =>
       resolveWorkbenchSelectionContext({
@@ -775,6 +870,33 @@ export function AssemblyPage() {
     else state.select(instanceId, row.prototypeId);
     state.setScheduleSelection(row.id, instanceId);
     if (mobile) state.setMobilePanel('inspector');
+  };
+  const openCutting = () => {
+    if (k1Requirement.status !== 'resolved') return;
+    state.setViewPreset('materials');
+    setCuttingOpen(true);
+  };
+  const runProjectAction = (action: ProjectWorkflowAction) => {
+    if (action === 'planK1') {
+      openCutting();
+      return;
+    }
+    if (action === 'openSummary') {
+      state.setViewPreset('materials');
+      state.setMaterialsView('summary');
+      return;
+    }
+    state.setViewPreset(
+      action === 'completeGeometry'
+        ? 'construction'
+        : action === 'reviewOpenings'
+          ? 'openings'
+          : 'covering',
+    );
+    if (mobile && action === 'completeGeometry') {
+      state.setInspectorOpen(true);
+      state.setMobilePanel('inspector');
+    }
   };
   const drawerPreviews = drawer.pinned
     ? allDetailPreviews
@@ -1171,6 +1293,10 @@ export function AssemblyPage() {
           </div>
         ) : (
           <>
+            <ProjectWorkflowStrip
+              workflow={projectWorkflow}
+              onAction={runProjectAction}
+            />
             <div
               className={`a-builder-layout ${workbench.toolboxCollapsed ? 'tools-collapsed' : ''} ${workbench.workspaceFocus.active ? 'is-workspace-focus' : ''} ${workbench.viewPreset === 'materials' && !selectedScheduleRow ? 'material-inspector-empty' : ''}`}
             >
@@ -1312,16 +1438,25 @@ export function AssemblyPage() {
                       role="tablist"
                       aria-label={t('assembly.materialWorkspaceView')}
                     >
-                      {(['schedule', 'drawing'] as const).map((view) => (
-                        <button
-                          key={view}
-                          role="tab"
-                          aria-selected={workbench.materialsView === view}
-                          onClick={() => state.setMaterialsView(view)}
-                        >
-                          {t(`assembly.${view}MaterialView`)}
-                        </button>
-                      ))}
+                      {(['summary', 'schedule', 'drawing'] as const).map(
+                        (view) => (
+                          <button
+                            key={view}
+                            role="tab"
+                            aria-selected={workbench.materialsView === view}
+                            onClick={() => state.setMaterialsView(view)}
+                          >
+                            {t(`assembly.${view}MaterialView`)}
+                          </button>
+                        ),
+                      )}
+                    </div>
+                    <div data-material-surface="summary">
+                      <ProjectSummary
+                        facts={projectSummary}
+                        onOpenCutting={openCutting}
+                        onOpenCovering={() => state.setViewPreset('covering')}
+                      />
                     </div>
                     <div
                       className="a-material-canvas"
@@ -1345,9 +1480,8 @@ export function AssemblyPage() {
                       <Suspense fallback={<div className="a-loading-panel" />}>
                         <MaterialSchedule
                           schedule={memberSchedule}
-                          resolved={templateResult}
-                          mobile={mobile}
-                          projectName={projectSessionState.active?.name}
+                          k1={k1Requirement}
+                          onOpenCutting={openCutting}
                           selectedRowId={workbench.selectedScheduleRowId}
                           selectedInstanceId={
                             workbench.selectedScheduleInstanceId
@@ -1404,6 +1538,17 @@ export function AssemblyPage() {
                 (workbench.viewPreset !== 'materials' || selectedScheduleRow) &&
                 inspectorContent}
             </div>
+            {cuttingOpen && k1Requirement.status === 'resolved' && (
+              <Suspense fallback={<div className="a-loading-panel" />}>
+                <K1CuttingPlan
+                  requirement={k1Requirement}
+                  projectName={projectSessionState.active?.name}
+                  unit={state.unit}
+                  mobile={mobile}
+                  onClose={() => setCuttingOpen(false)}
+                />
+              </Suspense>
+            )}
             {mobile &&
               workbench.selectedId !== 'roof' &&
               workbench.viewPreset !== 'covering' &&

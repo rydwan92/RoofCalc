@@ -1297,6 +1297,23 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+> V29 started on 2026-09-14 from clean `main` at
+> `a37e98be7ababd7a10897a7d076173dd4b3f6486` (`028`). The new user-approved
+> V29 product/UX prompt supersedes V28's recommended next action. Baseline
+> `pnpm verify` PASS: typecheck, lint, format, 639 tests in 66 files and
+> web/API build. No uncommitted work was present. Definition of Ready and
+> presentation boundaries are in `docs/ARCHITECTURE_V29_GUIDED_WORKFLOW_UX.md`.
+
+**Iteration:** `029 — Guided project workflow and professional workbench UX`
+
+**Status:** `IN PROGRESS`
+
+**NEXT ACTION:** Implement the pure derived workflow and summary, connect the
+existing task navigation and V28 K1 dialog, improve schedule hierarchy and
+mobile layout, then run focused tests, full verify, E2E and visual QA.
+
+---
+
 > V28 started on 2026-09-14 from clean `main` at
 > `01289fb8e19348c9718ca8778b9ac9777fabf067`, as required by the attached
 > V28 prompt. Baseline `pnpm verify` passed typecheck and lint, then stopped at

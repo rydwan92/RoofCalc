@@ -43,6 +43,44 @@ const canvasButton = (name: string) =>
   within(screen.getByTestId('assembly-drawing')).getByRole('button', { name });
 
 describe('dual-mode parametric workbench', () => {
+  it('derives project guidance and opens the existing K1 planner from the summary without roof history', async () => {
+    render(<App />);
+    builder();
+    const before = structuredClone(useAssembly.getState().projectDocument);
+    const workflow = screen.getByTestId('project-workflow');
+    expect(workflow.querySelectorAll('li')).toHaveLength(6);
+    expect(
+      workflow
+        .querySelector('[data-stage="covering"]')
+        ?.getAttribute('data-status'),
+    ).toBe('incomplete');
+    fireEvent.click(screen.getByTestId('project-next-action'));
+    expect(useAssembly.getState().workbench.viewPreset).toBe('covering');
+    act(() => useAssembly.getState().setViewPreset('materials'));
+    fireEvent.click(screen.getByRole('tab', { name: 'Projekt' }));
+    expect(screen.getByTestId('project-summary')).toBeTruthy();
+    expect(useAssembly.getState().workbench.materialsView).toBe('summary');
+    fireEvent.click(screen.getByTestId('summary-k1-cutting-cta'));
+    expect(
+      await screen.findByTestId('k1-cutting-panel', {}, { timeout: 5000 }),
+    ).toBeTruthy();
+    expect(useAssembly.getState().projectDocument).toEqual(before);
+    expect(useAssembly.getState().historyPast).toHaveLength(0);
+  });
+
+  it('explains missing schedule layers and covering with routes to their tasks', async () => {
+    render(<App />);
+    builder();
+    act(() => useAssembly.getState().setViewPreset('materials'));
+    expect(await screen.findByTestId('layers-schedule-empty')).toBeTruthy();
+    const emptyCovering = screen.getByTestId('covering-schedule-empty');
+    expect(
+      within(emptyCovering).getByText(/Dodaj dachówkę lub blachę/),
+    ).toBeTruthy();
+    fireEvent.click(within(emptyCovering).getByRole('button'));
+    expect(useAssembly.getState().workbench.viewPreset).toBe('covering');
+  });
+
   it('uses centimetres consistently in Quick Calc and Builder when preferred', async () => {
     act(() => useAssembly.getState().setUnit('cm'));
     render(<App />);

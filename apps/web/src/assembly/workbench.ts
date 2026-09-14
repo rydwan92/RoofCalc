@@ -16,7 +16,7 @@ export type ViewPreset =
   'construction' | 'openings' | 'layers' | 'covering' | 'cuts' | 'materials';
 export type BuildUpView =
   'overview' | 'membrane' | 'counterBattens' | 'battens';
-export type MaterialsView = 'schedule' | 'drawing';
+export type MaterialsView = 'summary' | 'schedule' | 'drawing';
 export type MobilePanel = 'none' | 'tools' | 'inspector' | 'view';
 export type DimensionLevel = 'minimal' | 'working' | 'full';
 export type DetailDockMode = 'collapsed' | 'working' | 'focus';

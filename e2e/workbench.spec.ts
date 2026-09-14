@@ -63,10 +63,23 @@ async function expectNoHorizontalOverflow(page: Page) {
       scrollWidth: root.scrollWidth,
       clientWidth: root.clientWidth,
       offenders: [...document.querySelectorAll<HTMLElement>('body *')]
-        .filter(
-          (element) =>
-            element.getBoundingClientRect().right > root.clientWidth + 1,
-        )
+        .filter((element) => {
+          if (element.getBoundingClientRect().right <= root.clientWidth + 1)
+            return false;
+          // A clipped, intentionally scrollable strip can contain children
+          // beyond its own viewport without making the page scroll sideways.
+          let parent = element.parentElement;
+          while (parent) {
+            const overflowX = getComputedStyle(parent).overflowX;
+            if (
+              ['auto', 'scroll', 'hidden'].includes(overflowX) &&
+              parent.getBoundingClientRect().right <= root.clientWidth + 1
+            )
+              return false;
+            parent = parent.parentElement;
+          }
+          return true;
+        })
         .slice(0, 5)
         .map((element) => `${element.tagName}.${element.className}`),
     };
@@ -126,6 +139,41 @@ test.describe('A — Builder loads and fits', () => {
       await expectNoHorizontalOverflow(page);
     }
     expect(errors).toEqual([]);
+  });
+});
+
+test.describe('G — guided project workflow', () => {
+  test('routes from a new roof through covering, summary and the existing K1 planner', async ({
+    page,
+  }, testInfo) => {
+    await openBuilder(page);
+    const workflow = page.getByTestId('project-workflow');
+    await expect(workflow.locator('li')).toHaveCount(6);
+    await expect(workflow.locator('[data-stage="covering"]')).toHaveAttribute(
+      'data-status',
+      'incomplete',
+    );
+    await page.getByTestId('project-next-action').click();
+    await expect(
+      page.locator('[data-task="covering"][aria-selected="true"]:visible'),
+    ).toBeVisible();
+    await openResolvedTileSchedule(page, testInfo.project.name);
+    await expect(workflow.locator('[data-stage="covering"]')).toHaveAttribute(
+      'data-status',
+      'complete',
+    );
+    await page.locator('.a-material-local-switch [role="tab"]').first().click();
+    await expect(page.getByTestId('project-summary')).toBeVisible();
+    await page.getByTestId('summary-k1-cutting-cta').click();
+    await expect(page.getByTestId('k1-cutting-panel')).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+    await page.setViewportSize(
+      testInfo.project.name === 'mobile'
+        ? { width: 360, height: 800 }
+        : { width: 1024, height: 768 },
+    );
+    await expect(page.getByTestId('k1-cutting-panel')).toBeVisible();
+    await expectNoHorizontalOverflow(page);
   });
 });
 
