@@ -1297,20 +1297,62 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
-> V29 started on 2026-09-14 from clean `main` at
-> `a37e98be7ababd7a10897a7d076173dd4b3f6486` (`028`). The new user-approved
-> V29 product/UX prompt supersedes V28's recommended next action. Baseline
-> `pnpm verify` PASS: typecheck, lint, format, 639 tests in 66 files and
-> web/API build. No uncommitted work was present. Definition of Ready and
+> V29 began from clean `main` at `a37e98be7ababd7a10897a7d076173dd4b3f6486`
+> (`028`), then its initial implementation became `6030930` (`029 begin`). The
+> user-approved V29 closeout was audited from that clean HEAD on 2026-09-14.
+> Baseline at the start of V29: `pnpm verify` PASS with 639 tests in 66 files.
+> Closeout preflight: `pnpm verify` PASS with 646 tests in 67 files and
+> `pnpm e2e` PASS with 18 browser scenarios. The Definition of Ready and final
 > presentation boundaries are in `docs/ARCHITECTURE_V29_GUIDED_WORKFLOW_UX.md`.
 
 **Iteration:** `029 — Guided project workflow and professional workbench UX`
 
-**Status:** `IN PROGRESS`
+**Status:** `COMPLETE — FULL VERIFY, 18/18 E2E AND FOUR VIEWPORTS REVIEWED`
 
-**NEXT ACTION:** Implement the pure derived workflow and summary, connect the
-existing task navigation and V28 K1 dialog, improve schedule hierarchy and
-mobile layout, then run focused tests, full verify, E2E and visual QA.
+**Completed:** The initial V29 implementation introduced six derived,
+non-blocking stages, one next action, a compact project strip, a derived summary
+inside Materials, three-level schedule disclosure, contextual K1 access and
+desktop/mobile routes. Closeout corrected status honesty: stage counts retain
+visible status text; opening surface issues and real layer warnings are included;
+the next action routes layer warnings to layer tools; covering assignment alone
+never reads as complete in summary or schedule; invalid opening geometry
+withholds the net area. The opening Toolbox now explains its empty state, Quick
+copy identifies the single-rafter task, and the strip stays one row at 1024 px.
+No solver, quantity, procurement, schema or ProjectDocument changes were made.
+
+**Changed / WIP files:** `apps/web/src/assembly/{project-workflow.ts,ProjectWorkflow.tsx,Page.tsx,MaterialSchedule.tsx,Toolbox.tsx,translations.ts,styles.css}`,
+focused workflow/Page tests, `docs/ARCHITECTURE_V29_GUIDED_WORKFLOW_UX.md`
+and this checkpoint. No unfinished source edit remains.
+
+**Assumptions:** Completion is workflow readiness, not structural approval.
+Absent openings and layers are optional. K1 can be offered only when V28's
+physical blank requirement resolves; stock scenarios and plans stay local to
+the planner session.
+
+**Validation / visual and mobile QA:** Final `pnpm verify` PASS — typecheck,
+lint, format, **647 tests in 67 files**, web/API build. Final `pnpm e2e` PASS —
+**18/18** desktop/mobile scenarios, including Creator → covering → summary →
+K1. Browser review at **1440×900, 1024×768, 390×844 and 360×800** covered the
+gable drawing, summary, grouped schedule, mobile dock and K1 sheet; existing
+E2E also covered hip K1-only access, covering quantities and mobile numeric
+input, while unit/UI tests covered opening workflow. No page-level horizontal
+overflow. Final web main chunk:
+**562.79 / 162.97 kB gzip**; CSS: **130.45 / 24.48 kB gzip**; lazy
+MaterialSchedule: **15.73 / 3.90 kB gzip**; lazy K1CuttingPlan:
+**24.13 / 7.02 kB gzip**. The Vite >500 kB advisory remains. `git diff --check`
+PASS.
+
+**Known limitations:** Workflow availability is not a structural safety claim.
+No cutting plan is persisted; after reopening a project, K1 remains ready for
+planning rather than marked as previously calculated. Covering and layer
+warnings direct users to existing editors; they do not invent missing technical
+choices. The 390/360 px strip scrolls internally to show all six stages.
+
+**NEXT ACTION / recommended V30:** Define an explicit, researched K1 ridge
+connection intent and fabrication allowance contract, with hand-checked vectors
+and schema/history analysis, before any further procurement member family.
+Do not start V30 automatically; do not commit or push this closeout without a
+separate user request.
 
 ---
 

@@ -79,6 +79,40 @@ describe('dual-mode parametric workbench', () => {
     ).toBeTruthy();
     fireEvent.click(within(emptyCovering).getByRole('button'));
     expect(useAssembly.getState().workbench.viewPreset).toBe('covering');
+    act(() => useAssembly.getState().setViewPreset('openings'));
+    expect(screen.getByText(/Nie dodano otworów/)).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Dodaj okno' })).toBeTruthy();
+  });
+
+  it('reports an assigned but unresolved covering as needing attention in the strip and summary', async () => {
+    render(<App />);
+    builder();
+    act(() => useAssembly.getState().setViewPreset('covering'));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Dodaj dachówkę ręcznie' }),
+    );
+    const coveringStage = screen
+      .getByTestId('project-workflow')
+      .querySelector('[data-stage="covering"]')!;
+    expect(coveringStage.getAttribute('data-status')).toBe('warning');
+    expect(coveringStage.textContent).toContain('Wymaga uwagi');
+    expect(screen.getByTestId('project-next-action').textContent).toContain(
+      'Sprawdź pokrycie',
+    );
+    act(() => {
+      useAssembly.getState().setViewPreset('materials');
+    });
+    await screen.findByTestId('material-schedule');
+    expect(
+      document.querySelector('.a-schedule-summary article:nth-child(3) strong')
+        ?.textContent,
+    ).toBe('Wymaga uwagi');
+    act(() => {
+      useAssembly.getState().setMaterialsView('summary');
+    });
+    expect(screen.getByTestId('project-summary').textContent).toContain(
+      'Wymaga uwagi',
+    );
   });
 
   it('uses centimetres consistently in Quick Calc and Builder when preferred', async () => {

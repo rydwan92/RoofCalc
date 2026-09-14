@@ -28,6 +28,14 @@ The workflow projection takes already resolved application facts. Stages are
 with a status and optional action/summary. Completion means workflow readiness,
 not structural safety. No stage blocks another task. The next action chooses a
 meaningful missing or warning state before returning the user to the summary.
+Geometry must have a positive resolved roof area and physical timber rows to
+count as complete. Opening collisions, framing review and surface issues are
+warnings; absent openings and layers stay optional. Layer warnings come from
+the resolved build-up evidence. Covering completes only when each assignment
+has a resolved layout and no ownership conflict. K1 is only available when the
+V28 adapter proves a whole-member blank. The next action prioritizes geometry,
+opening/layer warnings, absent or unresolved covering, then K1 planning or the
+summary.
 
 The strip gives status and recommendation; the existing task ribbon/dock remains
 the navigation control. The summary is a view inside the Materials task. The
@@ -35,6 +43,9 @@ Toolbox exposes objects/actions, the Workspace shows drawings and derived
 results, and the Inspector remains for exact editing/context. Schedule level 1
 shows timber, layers and covering; level 2 groups families; level 3 reveals
 exact lengths on demand. The summary K1 CTA opens the existing V28 planner.
+The summary and schedule show covering warnings instead of treating a mere
+assignment as complete. If opening geometry invalidates net area, the summary
+withholds that figure and points to the opening issue.
 
 Desktop keeps the technical drawing dominant; data tasks may use more width.
 Mobile uses one task at a time, scrollable stage status, a clear next action and

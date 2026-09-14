@@ -618,15 +618,30 @@ export function AssemblyPage() {
   const projectWorkflow = useMemo(
     () =>
       deriveProjectWorkflow({
-        constructionReady: surfaceProjection.planes.length > 0,
+        constructionReady:
+          surfaceProjection.planes.length > 0 &&
+          surfaceProjection.grossAreaMm2 > 0 &&
+          memberSchedule.timberRows.length > 0,
         openingCount: openingSummary.total,
-        openingWarnings: openingSummary.collisions + openingSummary.needsReview,
+        openingWarnings:
+          openingSummary.collisions +
+          openingSummary.needsReview +
+          surfaceProjection.issues.length,
         enabledLayerCount: [
           membrane?.enabled,
           counterBattens?.enabled,
           battenLayout?.enabled,
         ].filter(Boolean).length,
-        layerWarnings: counterBattenProjection.status === 'limited' ? 1 : 0,
+        layerWarnings:
+          counterBattenProjection.status === 'limited' ||
+          memberSchedule.buildUpRows.some(
+            (row) => row.warningKeys.length > 0,
+          ) ||
+          memberSchedule.surfaceBuildUpRows.some(
+            (row) => row.warningKeys.length > 0,
+          )
+            ? 1
+            : 0,
         coveringCount: coveringAssignments.length,
         resolvedCoveringCount: resolvedCoveringLayouts.filter(
           (layout) => layout.status === 'resolved',
@@ -637,6 +652,8 @@ export function AssemblyPage() {
       }),
     [
       surfaceProjection.planes.length,
+      surfaceProjection.grossAreaMm2,
+      surfaceProjection.issues.length,
       openingSummary,
       membrane?.enabled,
       counterBattens?.enabled,
@@ -647,6 +664,8 @@ export function AssemblyPage() {
       coveringOwnership.conflicts.length,
       k1Requirement.status,
       memberSchedule.timberRows.length,
+      memberSchedule.buildUpRows,
+      memberSchedule.surfaceBuildUpRows,
     ],
   );
   const projectSummary = useMemo(() => {
@@ -659,10 +678,10 @@ export function AssemblyPage() {
     );
     return {
       roofType: state.template.type,
-      netRoofAreaMm2: surfaceProjection.planes.reduce(
-        (total, plane) => total + plane.netAreaMm2,
-        0,
-      ),
+      netRoofAreaMm2:
+        surfaceProjection.status === 'resolved'
+          ? surfaceProjection.netAreaMm2
+          : undefined,
       timberCount: memberSchedule.timberSummary.quantity,
       timberFamilies: [...timberFamilies].map(([familyKey, quantity]) => ({
         familyKey,
@@ -675,6 +694,7 @@ export function AssemblyPage() {
         battenLayout?.enabled,
       ].filter(Boolean).length,
       coveringCount: coveringAssignments.length,
+      coveringStatus: projectWorkflow.stages[3]!.status,
       coveringPositionCount:
         memberSchedule.coveringSummary.effectiveCoveragePositions,
       coveringRunCount: memberSchedule.coveringSummary.geometricPanelRuns,
@@ -682,13 +702,15 @@ export function AssemblyPage() {
     };
   }, [
     state.template.type,
-    surfaceProjection.planes,
+    surfaceProjection.status,
+    surfaceProjection.netAreaMm2,
     memberSchedule,
     openingSummary.total,
     membrane?.enabled,
     counterBattens?.enabled,
     battenLayout?.enabled,
     coveringAssignments.length,
+    projectWorkflow.stages,
     k1Requirement.status,
   ]);
   const selectionContext = useMemo(
@@ -891,12 +913,15 @@ export function AssemblyPage() {
         ? 'construction'
         : action === 'reviewOpenings'
           ? 'openings'
-          : 'covering',
+          : action === 'reviewLayers'
+            ? 'layers'
+            : 'covering',
     );
     if (mobile && action === 'completeGeometry') {
       state.setInspectorOpen(true);
       state.setMobilePanel('inspector');
     }
+    if (mobile && action === 'reviewLayers') state.setMobilePanel('tools');
   };
   const drawerPreviews = drawer.pinned
     ? allDetailPreviews
@@ -1481,6 +1506,7 @@ export function AssemblyPage() {
                         <MaterialSchedule
                           schedule={memberSchedule}
                           k1={k1Requirement}
+                          coveringStatus={projectWorkflow.stages[3]!.status}
                           onOpenCutting={openCutting}
                           selectedRowId={workbench.selectedScheduleRowId}
                           selectedInstanceId={

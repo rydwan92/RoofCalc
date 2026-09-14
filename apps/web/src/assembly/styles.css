@@ -5669,7 +5669,7 @@
 }
 .a-project-stages small {
   color: #596b5e;
-  font-size: 9px;
+  font-size: 10px;
 }
 .a-project-stages [data-status='complete'] {
   border-color: #9fc3a8;
@@ -5779,7 +5779,7 @@
   color: var(--a-muted);
   font-size: 12px;
 }
-@media (max-width: 1050px) {
+@media (max-width: 950px) {
   .a-project-workflow {
     grid-template-columns: minmax(0, 1fr) auto;
   }
@@ -5787,6 +5787,12 @@
     grid-column: 1 / -1;
     grid-row: 2;
   }
+}
+.a-toolbox-empty {
+  margin: 8px 10px;
+  color: var(--a-muted);
+  font-size: 11px;
+  line-height: 1.45;
 }
 @media (max-width: 800px) {
   .a-project-workflow {

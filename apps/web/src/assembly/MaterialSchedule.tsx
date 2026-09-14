@@ -13,6 +13,7 @@ import { memberInstanceCode } from './workbench';
 import { useAssembly } from './store';
 import { ResultBasis, ResultLayerProgress } from './ResultBasis';
 import type { K1CuttingRequirement } from './k1-cutting-adapter';
+import type { ProjectWorkflowStatus } from './project-workflow';
 
 function metres(valueMm: number, locale: string) {
   return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(valueMm / 1000)} m`;
@@ -108,6 +109,7 @@ export function MaterialSchedule({
   onSelectRow,
   onSelectInstance,
   k1,
+  coveringStatus,
   onOpenCutting,
 }: {
   schedule: RoofMemberSchedule;
@@ -116,6 +118,7 @@ export function MaterialSchedule({
   onSelectRow: (row: RoofMemberScheduleRow) => void;
   onSelectInstance: (row: RoofMemberScheduleRow, instanceId: string) => void;
   k1: K1CuttingRequirement;
+  coveringStatus: ProjectWorkflowStatus;
   onOpenCutting: () => void;
 }) {
   const state = useAssembly();
@@ -147,6 +150,11 @@ export function MaterialSchedule({
     schedule.timberSummary.volumeStatus === 'complete'
       ? t('assembly.geometricVolume')
       : t('assembly.partialGeometricVolume');
+  const enabledLayerCount = [
+    state.projectDocument.project.buildUp.membrane?.enabled,
+    state.projectDocument.project.buildUp.counterBattens?.enabled,
+    state.projectDocument.project.buildUp.battenLayout?.enabled,
+  ].filter(Boolean).length;
   return (
     <section
       className="a-material-schedule"
@@ -180,22 +188,30 @@ export function MaterialSchedule({
         <article>
           <Layers3 size={18} />
           <span>{t('assembly.workflow.stage.layers')}</span>
-          <strong>
-            {schedule.buildUpRows.length + schedule.surfaceBuildUpRows.length}
-          </strong>
-          <small>{t('assembly.workflow.layerScheduleRows')}</small>
+          <strong>{enabledLayerCount}</strong>
+          <small>{t('assembly.workflow.layersDescription')}</small>
         </article>
         <article>
           <Grid3X3 size={18} />
           <span>{t('assembly.workflow.stage.covering')}</span>
           <strong>
-            {schedule.coveringSummary.effectiveCoveragePositions ||
-              schedule.coveringSummary.geometricPanelRuns}
+            {coveringStatus === 'complete'
+              ? schedule.coveringSummary.effectiveCoveragePositions ||
+                schedule.coveringSummary.geometricPanelRuns
+              : t(`assembly.workflow.status.${coveringStatus}`)}
           </strong>
           <small>
-            {schedule.coveringSummary.effectiveCoveragePositions > 0
-              ? t('assembly.workflow.coveringPositions')
-              : t('assembly.workflow.coveringRuns')}
+            {coveringStatus !== 'complete'
+              ? t(
+                  coveringStatus === 'warning'
+                    ? 'assembly.workflow.reviewCoveringDescription'
+                    : coveringStatus === 'unavailable'
+                      ? 'assembly.workflow.action.completeGeometry'
+                      : 'assembly.workflow.coveringDescription',
+                )
+              : schedule.coveringSummary.effectiveCoveragePositions > 0
+                ? t('assembly.workflow.coveringPositions')
+                : t('assembly.workflow.coveringRuns')}
           </small>
         </article>
       </div>

@@ -32,7 +32,8 @@ export function ProjectWorkflowStrip({
             <span className="a-project-stage-index">{index + 1}</span>
             <span>{t(`assembly.workflow.stage.${stage.id}`)}</span>
             <small>
-              {stage.count ?? t(`assembly.workflow.status.${stage.status}`)}
+              {stage.count !== undefined && `${stage.count} · `}
+              {t(`assembly.workflow.status.${stage.status}`)}
             </small>
           </li>
         ))}
@@ -52,12 +53,13 @@ export function ProjectWorkflowStrip({
 
 export interface ProjectSummaryFacts {
   roofType: 'gable' | 'hip';
-  netRoofAreaMm2: number;
+  netRoofAreaMm2?: number;
   timberCount: number;
   timberFamilies: Array<{ familyKey: string; quantity: number }>;
   openingCount: number;
   enabledLayerCount: number;
   coveringCount: number;
+  coveringStatus: ProjectWorkflow['stages'][number]['status'];
   coveringPositionCount: number;
   coveringRunCount: number;
   k1Ready: boolean;
@@ -73,9 +75,12 @@ export function ProjectSummary({
   onOpenCovering: () => void;
 }) {
   const { t, i18n } = useTranslation();
-  const area = new Intl.NumberFormat(i18n.language, {
-    maximumFractionDigits: 2,
-  }).format(facts.netRoofAreaMm2 / 1_000_000);
+  const area =
+    facts.netRoofAreaMm2 === undefined
+      ? undefined
+      : new Intl.NumberFormat(i18n.language, {
+          maximumFractionDigits: 2,
+        }).format(facts.netRoofAreaMm2 / 1_000_000);
   return (
     <section className="a-project-summary" data-testid="project-summary">
       <header>
@@ -88,7 +93,9 @@ export function ProjectSummary({
           <span>{t('assembly.workflow.roof')}</span>
           <strong>{t(`assembly.${facts.roofType}Roof`)}</strong>
           <p>
-            {area} m² · {t('assembly.netGeometric')}
+            {area === undefined
+              ? t('assembly.workflow.roofAreaUnavailable')
+              : `${area} m² · ${t('assembly.netGeometric')}`}
           </p>
         </article>
         <article>
@@ -115,9 +122,7 @@ export function ProjectSummary({
         <article>
           <span>{t('assembly.workflow.stage.covering')}</span>
           <strong>
-            {facts.coveringCount > 0
-              ? t('assembly.workflow.status.complete')
-              : t('assembly.workflow.status.incomplete')}
+            {t(`assembly.workflow.status.${facts.coveringStatus}`)}
           </strong>
           <p>
             {facts.coveringPositionCount > 0
@@ -126,17 +131,23 @@ export function ProjectSummary({
                 })
               : facts.coveringRunCount > 0
                 ? t('assembly.workflow.runs', { count: facts.coveringRunCount })
-                : t('assembly.workflow.coveringDescription')}
+                : t(
+                    facts.coveringCount > 0
+                      ? 'assembly.workflow.reviewCoveringDescription'
+                      : 'assembly.workflow.coveringDescription',
+                  )}
           </p>
-          {facts.coveringCount > 0 && (
-            <button
-              type="button"
-              className="a-link-button"
-              onClick={onOpenCovering}
-            >
-              {t('assembly.workflow.action.reviewCovering')}
-            </button>
-          )}
+          <button
+            type="button"
+            className="a-link-button"
+            onClick={onOpenCovering}
+          >
+            {t(
+              facts.coveringCount > 0
+                ? 'assembly.workflow.action.reviewCovering'
+                : 'assembly.workflow.action.addCovering',
+            )}
+          </button>
         </article>
         <article className="a-project-cutting-card" data-ready={facts.k1Ready}>
           <span>{t('assembly.workflow.stage.cutting')}</span>
@@ -147,7 +158,13 @@ export function ProjectSummary({
                 : 'assembly.workflow.k1Unavailable',
             )}
           </strong>
-          <p>{t('assembly.workflow.k1Description')}</p>
+          <p>
+            {t(
+              facts.k1Ready
+                ? 'assembly.workflow.k1Description'
+                : 'assembly.workflow.k1UnavailableDescription',
+            )}
+          </p>
           {facts.k1Ready && (
             <button
               type="button"

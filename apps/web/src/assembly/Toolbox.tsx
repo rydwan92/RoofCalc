@@ -339,6 +339,11 @@ export function Toolbox({
           {t('assembly.openings')} (
           {state.projectDocument.project.features.length})
         </summary>
+        {state.projectDocument.project.features.length === 0 && (
+          <p className="a-toolbox-empty">
+            {t('assembly.workflow.emptyOpeningsDescription')}
+          </p>
+        )}
         {state.projectDocument.project.features.map((feature) => {
           const groupSelected = state.workbench.selectedFeatureIds.includes(
             feature.id,

@@ -7,6 +7,7 @@ export type ProjectWorkflowStatus =
 export type ProjectWorkflowAction =
   | 'completeGeometry'
   | 'reviewOpenings'
+  | 'reviewLayers'
   | 'addCovering'
   | 'reviewCovering'
   | 'planK1'
@@ -98,13 +99,15 @@ export function deriveProjectWorkflow(
     ? 'completeGeometry'
     : facts.openingWarnings > 0
       ? 'reviewOpenings'
-      : facts.coveringCount === 0
-        ? 'addCovering'
-        : stages[3]!.status === 'warning'
-          ? 'reviewCovering'
-          : facts.k1Ready
-            ? 'planK1'
-            : 'openSummary';
+      : facts.layerWarnings > 0
+        ? 'reviewLayers'
+        : facts.coveringCount === 0
+          ? 'addCovering'
+          : stages[3]!.status === 'warning'
+            ? 'reviewCovering'
+            : facts.k1Ready
+              ? 'planK1'
+              : 'openSummary';
   return {
     stages,
     completeCount: stages.filter((stage) => stage.status === 'complete').length,

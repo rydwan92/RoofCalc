@@ -64,6 +64,13 @@ describe('derived project workflow', () => {
     });
     expect(workflow.stages[2]?.status).toBe('warning');
     expect(workflow.nextAction).toBe('reviewOpenings');
+    expect(
+      deriveProjectWorkflow({
+        ...ready,
+        enabledLayerCount: 1,
+        layerWarnings: 1,
+      }).nextAction,
+    ).toBe('reviewLayers');
   });
 
   it('distinguishes incomplete covering from a trusted resolved layout', () => {

@@ -195,7 +195,7 @@ export const assemblyPl = {
   commonRafter: 'Krokiew zwykła',
   hipRafter: 'Krokiew narożna',
   jackRafter: 'Kulawek',
-  quickHint: 'Trzy wymiary. Gotowe do trasowania.',
+  quickHint: 'Szybkie obliczenie pojedynczej krokwi z trzech wymiarów.',
   builderHint:
     'Zbuduj dach, dodaj warstwy i pokrycie, a potem sprawdź zestawienie.',
   workflow: {
@@ -219,6 +219,7 @@ export const assemblyPl = {
     action: {
       completeGeometry: 'Uzupełnij geometrię',
       reviewOpenings: 'Sprawdź otwory',
+      reviewLayers: 'Sprawdź warstwy',
       addCovering: 'Dodaj pokrycie',
       reviewCovering: 'Sprawdź pokrycie',
       planK1: 'Zaplanuj rozkrój K1',
@@ -227,6 +228,7 @@ export const assemblyPl = {
     summaryTitle: 'Podsumowanie projektu',
     summaryDescription: 'Aktualny stan geometrii i wyników wykonawczych.',
     roof: 'Dach',
+    roofAreaUnavailable: 'Sprawdź geometrię otworów, aby odczytać pole netto.',
     timber: 'Drewno',
     openingsDescription: 'Otwory w połaciach',
     layersDescription: 'Włączone warstwy',
@@ -236,6 +238,10 @@ export const assemblyPl = {
     k1Ready: 'K1 gotowa do planowania',
     k1Unavailable: 'Brak gotowego blanku K1',
     k1Description: 'Plan rozkroju wymaga podania długości handlowych.',
+    k1UnavailableDescription:
+      'Blank K1 nie został rozwiązany. Sprawdź konstrukcję i przekrój krokwi.',
+    emptyOpeningsDescription:
+      'Nie dodano otworów. Dodaj okno dachowe, aby uwzględnić je w połaci i zestawieniu.',
     layerScheduleRows: 'wierszy warstw',
     coveringPositions: 'pozycji krycia',
     coveringRuns: 'przebiegów geometrycznych',
@@ -1113,7 +1119,7 @@ export const assemblyEn: typeof assemblyPl = {
   commonRafter: 'Common rafter',
   hipRafter: 'Hip rafter',
   jackRafter: 'Jack rafter',
-  quickHint: 'Three dimensions. Ready to mark.',
+  quickHint: 'A fast single-rafter calculation from three dimensions.',
   builderHint:
     'Define the roof, add layers and covering, then inspect the schedule.',
   workflow: {
@@ -1137,6 +1143,7 @@ export const assemblyEn: typeof assemblyPl = {
     action: {
       completeGeometry: 'Complete roof geometry',
       reviewOpenings: 'Review openings',
+      reviewLayers: 'Review layers',
       addCovering: 'Add covering',
       reviewCovering: 'Review covering',
       planK1: 'Plan K1 cutting',
@@ -1145,6 +1152,7 @@ export const assemblyEn: typeof assemblyPl = {
     summaryTitle: 'Project summary',
     summaryDescription: 'Current geometry and fabrication results.',
     roof: 'Roof',
+    roofAreaUnavailable: 'Review opening geometry to read the net area.',
     timber: 'Timber',
     openingsDescription: 'Roof-plane openings',
     layersDescription: 'Enabled layers',
@@ -1154,6 +1162,10 @@ export const assemblyEn: typeof assemblyPl = {
     k1Ready: 'K1 ready for planning',
     k1Unavailable: 'No resolved K1 blank',
     k1Description: 'Enter commercial lengths to create a cutting plan.',
+    k1UnavailableDescription:
+      'The K1 blank is unresolved. Check the roof geometry and rafter section.',
+    emptyOpeningsDescription:
+      'No openings yet. Add a roof window to include it in the roof plane and schedule.',
     layerScheduleRows: 'layer rows',
     coveringPositions: 'coverage positions',
     coveringRuns: 'geometric runs',
