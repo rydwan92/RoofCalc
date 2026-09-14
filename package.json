@@ -8,7 +8,7 @@
     "node": ">=20.16.0"
   },
   "scripts": {
-    "dev": "pnpm --parallel --filter './apps/*' dev",
+    "dev": "pnpm --parallel --filter \"./apps/*\" dev",
     "build": "pnpm --filter @cieslacalc/web build && pnpm --filter @cieslacalc/api build",
     "start": "node apps/api/dist/server.js",
     "typecheck": "tsc --noEmit",
