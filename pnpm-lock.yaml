@@ -14,6 +14,9 @@ importers:
       '@cieslacalc/covering-core':
         specifier: workspace:*
         version: link:packages/covering-core
+      '@cieslacalc/document-core':
+        specifier: workspace:*
+        version: link:packages/document-core
       '@cieslacalc/procurement-core':
         specifier: workspace:*
         version: link:packages/procurement-core
@@ -132,6 +135,9 @@ importers:
       '@cieslacalc/covering-core':
         specifier: workspace:*
         version: link:../../packages/covering-core
+      '@cieslacalc/document-core':
+        specifier: workspace:*
+        version: link:../../packages/document-core
       '@cieslacalc/drawing-engine':
         specifier: workspace:*
         version: link:../../packages/drawing-engine
@@ -226,6 +232,8 @@ importers:
       zod:
         specifier: ^3.25.0
         version: 3.25.76
+
+  packages/document-core: {}
 
   packages/drawing-engine: {}
 

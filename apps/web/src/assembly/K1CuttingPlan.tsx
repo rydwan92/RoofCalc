@@ -15,7 +15,10 @@ import {
 } from '@cieslacalc/roof-math';
 import { formatLength, parseDecimal } from '../format';
 import { MobileSheet } from './MobileSheet';
-import type { K1CuttingRequirement } from './k1-cutting-adapter';
+import {
+  k1RequirementSignature,
+  type K1CuttingRequirement,
+} from './k1-cutting-adapter';
 
 type ResolvedRequirement = Extract<
   K1CuttingRequirement,
@@ -29,6 +32,13 @@ type Scenario = {
   endTrim: string;
   remnant: string;
 };
+export interface K1SessionPlan {
+  signature: string;
+  value: CuttingPlan;
+  settings: CuttingSettings;
+  scenario: Scenario;
+  objective: OptimizationObjective;
+}
 
 function convertDraft(raw: string, from: LengthUnit, to: LengthUnit) {
   const number = parseDecimal(raw);
@@ -333,32 +343,34 @@ export function K1CuttingPlan({
   unit,
   mobile,
   onClose,
+  initialPlan,
+  onPlanChange,
 }: {
   requirement: ResolvedRequirement;
   projectName?: string;
   unit: LengthUnit;
   mobile: boolean;
   onClose: () => void;
+  initialPlan?: K1SessionPlan;
+  onPlanChange?: (plan: K1SessionPlan | undefined) => void;
 }) {
   const { t, i18n } = useTranslation();
-  const [scenario, setScenario] = useState(() => initialScenario(unit));
-  const [nextId, setNextId] = useState(2);
+  const [scenario, setScenario] = useState(
+    () => initialPlan?.scenario ?? initialScenario(unit),
+  );
+  const [nextId, setNextId] = useState(
+    () =>
+      Math.max(
+        1,
+        ...(initialPlan?.scenario.stocks.map((stock) => stock.id) ?? [1]),
+      ) + 1,
+  );
   const [objective, setObjective] = useState<OptimizationObjective>(
-    'minimum-purchased-length',
+    initialPlan?.objective ?? 'minimum-purchased-length',
   );
-  const [plan, setPlan] = useState<{
-    signature: string;
-    value: CuttingPlan;
-    settings: CuttingSettings;
-  }>();
+  const [plan, setPlan] = useState<K1SessionPlan | undefined>(initialPlan);
   const [error, setError] = useState(false);
-  const signature = JSON.stringify(
-    requirement.requiredPieces.map((piece) => [
-      piece.id,
-      piece.requiredBlankLengthMm,
-      piece.stockClassId,
-    ]),
-  );
+  const signature = k1RequirementSignature(requirement);
   const activePlan = plan?.signature === signature ? plan : undefined;
 
   useEffect(() => {
@@ -388,6 +400,7 @@ export function K1CuttingPlan({
       ),
     }));
     setPlan(undefined);
+    onPlanChange?.(undefined);
   };
   const updateSetting = (
     field: 'kerf' | 'endTrim' | 'remnant',
@@ -395,6 +408,7 @@ export function K1CuttingPlan({
   ) => {
     setScenario((current) => ({ ...current, [field]: value }));
     setPlan(undefined);
+    onPlanChange?.(undefined);
   };
   const run = () => {
     const parsed = scenario.stocks.map((stock) => ({
@@ -448,7 +462,9 @@ export function K1CuttingPlan({
         settings,
         objective,
       });
-      setPlan({ signature, value, settings });
+      const next = { signature, value, settings, scenario, objective };
+      setPlan(next);
+      onPlanChange?.(next);
       setError(false);
     } catch {
       setError(true);
@@ -542,6 +558,7 @@ export function K1CuttingPlan({
                   stocks: current.stocks.filter((row) => row.id !== stock.id),
                 }));
                 setPlan(undefined);
+                onPlanChange?.(undefined);
               }}
             >
               ×
@@ -561,6 +578,7 @@ export function K1CuttingPlan({
             }));
             setNextId(nextId + 1);
             setPlan(undefined);
+            onPlanChange?.(undefined);
           }}
         >
           {t('assembly.k1Cutting.addLength')}
@@ -601,6 +619,7 @@ export function K1CuttingPlan({
           onChange={(event) => {
             setObjective(event.target.value as OptimizationObjective);
             setPlan(undefined);
+            onPlanChange?.(undefined);
           }}
         >
           {(

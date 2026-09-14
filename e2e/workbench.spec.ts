@@ -177,6 +177,85 @@ test.describe('G — guided project workflow', () => {
   });
 });
 
+test.describe('H — execution package', () => {
+  test('selects truthful sections, previews pages and sends the preview to print', async ({
+    page,
+  }, testInfo) => {
+    await openBuilder(page);
+    await page.getByTestId('project-execution-export').click();
+    const config = page.getByTestId('execution-config');
+    await expect(config).toBeVisible();
+    await expect(
+      config.getByRole('checkbox', { name: /Rozkrój K1/ }),
+    ).toBeDisabled();
+    await config.getByRole('button', { name: 'Podgląd dokumentu' }).click();
+    const preview = page.getByTestId('execution-preview');
+    await expect(preview).toBeVisible();
+    await expect(
+      preview.locator('[data-section="project-summary"]'),
+    ).toBeVisible();
+    await expect(
+      preview.locator('[data-section="roof-overview"]'),
+    ).toBeVisible();
+    await expect(
+      preview.locator('[data-section="member-fabrication"]'),
+    ).toBeVisible();
+    await expect(preview.locator('[data-section="cutting-plan"]')).toHaveCount(
+      0,
+    );
+    await expectNoHorizontalOverflow(page);
+    await page.evaluate(() => {
+      (window as Window & { printCalled?: boolean }).print = () => {
+        (window as Window & { printCalled?: boolean }).printCalled = true;
+      };
+    });
+    await page.getByTestId('execution-print').click();
+    expect(
+      await page.evaluate(
+        () => (window as Window & { printCalled?: boolean }).printCalled,
+      ),
+    ).toBe(true);
+    await page.setViewportSize(
+      testInfo.project.name === 'mobile'
+        ? { width: 360, height: 800 }
+        : { width: 1024, height: 768 },
+    );
+    await expect(preview).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+  });
+
+  test('includes only the current K1 plan after planning it from export', async ({
+    page,
+  }) => {
+    await openBuilder(page);
+    await page.getByTestId('project-execution-export').click();
+    await page
+      .getByTestId('execution-config')
+      .getByRole('button', { name: /Zaplanuj rozkrój K1/ })
+      .click();
+    const panel = page.getByTestId('k1-cutting-panel');
+    await expect(panel).toBeVisible();
+    await panel.getByTestId('k1-stock-length').fill('700');
+    await panel.getByTestId('k1-run-plan').click();
+    await expect(panel.getByTestId('k1-cutting-result')).toBeVisible();
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Zamknij' })
+      .click();
+    await page.getByTestId('project-execution-export').click();
+    const config = page.getByTestId('execution-config');
+    await expect(
+      config.getByRole('checkbox', { name: /Rozkrój K1/ }),
+    ).toBeEnabled();
+    await config.getByRole('button', { name: 'Podgląd dokumentu' }).click();
+    await expect(
+      page
+        .getByTestId('execution-preview')
+        .locator('[data-section="cutting-plan"]'),
+    ).toBeVisible();
+  });
+});
+
 test.describe('B — Exact roof geometry is reachable on mobile', () => {
   test('the Toolbox routes the roof to an exact numeric field', async ({
     page,

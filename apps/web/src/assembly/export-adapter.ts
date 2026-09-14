@@ -1,0 +1,466 @@
+import {
+  createAssemblyDrawing,
+  type ResolvedRoofProject,
+} from '@cieslacalc/calculator-core';
+import type { CoveringAssignmentSpec } from '@cieslacalc/covering-core';
+import type {
+  DetailPreviewModel,
+  DrawingModel,
+} from '@cieslacalc/drawing-engine';
+import type {
+  DocumentDrawing,
+  DocumentSource,
+  ExecutionSection,
+  SectionCandidate,
+} from '@cieslacalc/document-core';
+import type { RoofMemberSchedule } from '@cieslacalc/quantity-core';
+import {
+  projectPlaneLocalToWorld,
+  resolveRoofPlaneBasis,
+  type RoofSurfaceGeometryResult,
+} from '@cieslacalc/roof-math';
+import type {
+  RoofSkeleton,
+  RoofTemplateSpec,
+  RoofWindowFeature,
+} from '@cieslacalc/timber-model';
+import type { K1CuttingRequirement } from './k1-cutting-adapter';
+import type { K1SessionPlan } from './K1CuttingPlan';
+
+type ResolvedK1 = Extract<K1CuttingRequirement, { status: 'resolved' }>;
+export type ExportFacts = {
+  source: DocumentSource;
+  template: RoofTemplateSpec;
+  resolved: ResolvedRoofProject;
+  skeleton: RoofSkeleton;
+  surface: RoofSurfaceGeometryResult;
+  windows: RoofWindowFeature[];
+  schedule: RoofMemberSchedule;
+  details: DetailPreviewModel[];
+  k1: K1CuttingRequirement;
+  cutting?: K1SessionPlan;
+  membraneEnabled: boolean;
+  counterBattensEnabled: boolean;
+  battensEnabled: boolean;
+  coverings: CoveringAssignmentSpec[];
+  coveringStatuses: {
+    assignmentId: string;
+    status: string;
+    warnings: string[];
+  }[];
+};
+
+function drawing(model: DrawingModel): DocumentDrawing {
+  return {
+    bounds: model.bounds,
+    lines: model.lines.map(({ id, from, to, role }) => ({
+      id,
+      from,
+      to,
+      role,
+    })),
+    polygons: (model.polygons ?? []).map(({ id, points, role }) => ({
+      id,
+      points,
+      role,
+    })),
+    dimensions: model.dimensions.map(({ id, valueMm, from, to }) => ({
+      id,
+      valueMm,
+      from,
+      to,
+    })),
+  };
+}
+
+function k1Section(facts: ExportFacts, k1: ResolvedK1): ExecutionSection {
+  return {
+    kind: 'member-fabrication',
+    code: 'K1',
+    count: k1.requiredPieces.length,
+    section: k1.blank.section,
+    requiredBlankLengthMm: k1.blank.requiredBlankLengthMm,
+    drawing: drawing(
+      createAssemblyDrawing(facts.resolved.calculation.assembly),
+    ),
+    details: facts.details
+      .filter(
+        (detail) =>
+          detail.subjectCode === 'K1' &&
+          (detail.type === 'birdsmouth-detail' ||
+            detail.type === 'ridge-cut-detail'),
+      )
+      .sort((a, b) => a.type.localeCompare(b.type) || a.id.localeCompare(b.id))
+      .map((detail) => ({
+        type: detail.type as 'birdsmouth-detail' | 'ridge-cut-detail',
+        drawing: drawing(detail.cutStates?.after ?? detail.drawing),
+        dimensions: detail.keyDimensions.map(({ labelKey, value, unit }) => ({
+          labelKey,
+          value,
+          unit,
+        })),
+        steps: detail.fabricationSteps.map(
+          ({
+            id,
+            operationId,
+            action,
+            fromLabel,
+            targetLabel,
+            distanceMm,
+            angleDeg,
+            seatLengthMm,
+            normalDepthMm,
+            remainingDepthMm,
+          }) => ({
+            id,
+            operationId,
+            action,
+            fromLabel,
+            targetLabel,
+            distanceMm,
+            angleDeg,
+            seatLengthMm,
+            normalDepthMm,
+            remainingDepthMm,
+          }),
+        ),
+      })),
+  };
+}
+
+/** Copies already resolved facts. No roof, quantity or procurement solver runs here. */
+export function createExportCandidates(facts: ExportFacts): SectionCandidate[] {
+  const timberFamilies = new Map<string, number>();
+  for (const row of facts.schedule.timberRows)
+    timberFamilies.set(
+      row.familyKey,
+      (timberFamilies.get(row.familyKey) ?? 0) + row.quantity,
+    );
+  const summary: ExecutionSection = {
+    kind: 'project-summary',
+    roofType: facts.template.type,
+    buildingLengthMm: facts.template.buildingLengthMm,
+    halfRunMm: facts.template.halfRunMm,
+    pitchDeg: facts.template.pitchDeg,
+    netRoofAreaMm2:
+      facts.surface.status === 'resolved'
+        ? facts.surface.netAreaMm2
+        : undefined,
+    openingCount: facts.windows.length,
+    timberFamilies: [...timberFamilies]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([code, count]) => ({ code, count })),
+    enabledLayerCount: [
+      facts.membraneEnabled,
+      facts.counterBattensEnabled,
+      facts.battensEnabled,
+    ].filter(Boolean).length,
+    coveringCount: facts.coverings.length,
+    resolvedCoveringCount: facts.coveringStatuses.filter(
+      (row) => row.status === 'resolved',
+    ).length,
+  };
+  const overview: ExecutionSection = {
+    kind: 'roof-overview',
+    outlines: facts.surface.planes.map((plane) => ({
+      id: plane.roofPlaneId,
+      points: plane.worldPolygon.map(({ x, y }) => ({ x, y })),
+    })),
+    members: facts.skeleton.members
+      .filter(
+        (member) => member.kind !== 'wall-plate' && member.kind !== 'purlin',
+      )
+      .map((member) => ({
+        id: member.id,
+        code:
+          member.kind === 'rafter'
+            ? 'K1'
+            : member.kind === 'hip-rafter'
+              ? 'H1'
+              : member.kind === 'jack-rafter'
+                ? 'J1'
+                : member.kind === 'ridge'
+                  ? 'KR'
+                  : member.kind === 'opening-header'
+                    ? 'N'
+                    : member.kind === 'rafter-segment'
+                      ? 'K1*'
+                      : member.kind,
+        from: { x: member.from.x, y: member.from.y },
+        to: { x: member.to.x, y: member.to.y },
+        role: member.kind,
+      })),
+    openings: facts.windows.map((window) => {
+      const { uMm, vMm } = window.position;
+      return {
+        id: window.id,
+        points: [
+          { uMm, vMm },
+          { uMm: uMm + window.widthMm, vMm },
+          { uMm: uMm + window.widthMm, vMm: vMm + window.heightMm },
+          { uMm, vMm: vMm + window.heightMm },
+        ].map((local) => {
+          const world = projectPlaneLocalToWorld(
+            resolveRoofPlaneBasis(facts.template, window.roofPlaneId),
+            local,
+          );
+          return { x: world.x, y: world.y };
+        }),
+      };
+    }),
+  };
+  const grouped = new Map<
+    string,
+    Extract<ExecutionSection, { kind: 'member-schedule' }>['rows'][number]
+  >();
+  for (const row of facts.schedule.timberRows) {
+    const key = JSON.stringify([
+      row.familyKey,
+      row.memberKind,
+      row.section.widthMm,
+      row.section.depthMm,
+      row.lengthBasis,
+    ]);
+    const existing = grouped.get(key);
+    if (existing) {
+      existing.count += row.quantity;
+      existing.minLengthMm = Math.min(existing.minLengthMm, row.lengthMm);
+      existing.maxLengthMm = Math.max(existing.maxLengthMm, row.lengthMm);
+    } else
+      grouped.set(key, {
+        code: row.familyKey,
+        memberKind: row.memberKind,
+        count: row.quantity,
+        widthMm:
+          row.section.completeness === 'complete'
+            ? row.section.widthMm
+            : undefined,
+        depthMm:
+          row.section.completeness === 'complete'
+            ? row.section.depthMm
+            : undefined,
+        minLengthMm: row.lengthMm,
+        maxLengthMm: row.lengthMm,
+        basis: row.lengthBasis,
+      });
+  }
+  const schedule: ExecutionSection = {
+    kind: 'member-schedule',
+    rows: [...grouped.values()].sort(
+      (a, b) =>
+        a.code.localeCompare(b.code) ||
+        a.memberKind.localeCompare(b.memberKind),
+    ),
+  };
+  const ungroupedLayers: Extract<ExecutionSection, { kind: 'layers' }>['rows'] =
+    [
+      ...facts.schedule.surfaceBuildUpRows.map((row) => ({
+        code: row.familyKey,
+        areaMm2: row.areaMm2,
+        basis: row.semantic,
+        warnings: row.warningKeys,
+      })),
+      ...facts.schedule.buildUpRows.map((row) => ({
+        code: row.familyKey,
+        count: row.quantity,
+        lengthMm: row.totalLengthMm,
+        basis: row.lengthBasis,
+        warnings: row.warningKeys,
+      })),
+    ];
+  const layerGroups = new Map<string, (typeof ungroupedLayers)[number]>();
+  for (const row of ungroupedLayers) {
+    const key = JSON.stringify([row.code, row.basis]);
+    const existing = layerGroups.get(key);
+    if (existing) {
+      if (row.count !== undefined)
+        existing.count = (existing.count ?? 0) + row.count;
+      if (row.lengthMm !== undefined)
+        existing.lengthMm = (existing.lengthMm ?? 0) + row.lengthMm;
+      if (row.areaMm2 !== undefined)
+        existing.areaMm2 = (existing.areaMm2 ?? 0) + row.areaMm2;
+      existing.warnings = [
+        ...new Set([...existing.warnings, ...row.warnings]),
+      ].sort();
+    } else layerGroups.set(key, { ...row, warnings: [...row.warnings].sort() });
+  }
+  const layerRows = [...layerGroups.values()];
+  const layers: ExecutionSection = {
+    kind: 'layers',
+    rows: layerRows.sort((a, b) => a.code.localeCompare(b.code)),
+  };
+  const coveringRows: Extract<ExecutionSection, { kind: 'covering' }>['rows'] =
+    facts.coverings
+      .map((assignment) => {
+        const row = facts.schedule.coveringRows.find(
+          (candidate) => candidate.assignmentId === assignment.id,
+        );
+        const status = facts.coveringStatuses.find(
+          (candidate) => candidate.assignmentId === assignment.id,
+        );
+        const spec = assignment.product.technicalSpecSnapshot;
+        return {
+          name:
+            [
+              assignment.product.displaySnapshot?.manufacturer,
+              assignment.product.displaySnapshot?.familyName,
+              assignment.product.displaySnapshot?.variantName,
+            ]
+              .filter(Boolean)
+              .join(' ') || assignment.id,
+          family:
+            spec.kind === 'modular-sheet' &&
+            spec.lengthModel.kind === 'cut-to-length'
+              ? ('modular-sheet-cut-to-length' as const)
+              : spec.kind,
+          planeIds: [...assignment.roofPlaneIds].sort(),
+          status:
+            status?.status === 'resolved' && row
+              ? ('resolved' as const)
+              : ('unresolved' as const),
+          measure: row
+            ? row.unit === 'coverage-position'
+              ? {
+                  kind: row.unit,
+                  count: row.quantity,
+                  full: row.fullPositions,
+                  cut: row.cutPositions,
+                }
+              : { kind: row.unit, count: row.quantity }
+            : undefined,
+          warnings: [
+            ...(status?.warnings ?? []),
+            ...(row?.warningKeys ?? []),
+          ].sort(),
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+  const covering: ExecutionSection = { kind: 'covering', rows: coveringRows };
+  const pieceLabels = new Map(
+    facts.k1.status === 'resolved'
+      ? facts.k1.requiredPieces.map(
+          (piece, index) =>
+            [piece.id, `K1-${String(index + 1).padStart(2, '0')}`] as const,
+        )
+      : [],
+  );
+  const cutting: ExecutionSection | undefined =
+    facts.cutting && facts.k1.status === 'resolved'
+      ? {
+          kind: 'cutting-plan',
+          status: facts.cutting.value.status,
+          stock: [
+            ...facts.cutting.value.stockUsages.reduce(
+              (map, usage) =>
+                map.set(
+                  usage.originalLengthMm,
+                  (map.get(usage.originalLengthMm) ?? 0) + 1,
+                ),
+              new Map<number, number>(),
+            ),
+          ]
+            .sort(([a], [b]) => a - b)
+            .map(([lengthMm, count]) => ({ lengthMm, count })),
+          usages: facts.cutting.value.stockUsages.map((usage) => ({
+            id: usage.stockInstanceId,
+            lengthMm: usage.originalLengthMm,
+            cuts: usage.cuts.map((cut) => ({
+              pieceId: cut.requiredPieceId,
+              label: pieceLabels.get(cut.requiredPieceId) ?? 'K1',
+              fromMm: cut.fromMm,
+              toMm: cut.toMm,
+              blankLengthMm: cut.requiredBlankLengthMm,
+            })),
+            remainingLengthMm: usage.remainingLengthMm,
+            remnantClassification: usage.remnantClassification,
+          })),
+          requiredCount: facts.cutting.value.summary.requiredPieceCount,
+          assignedCount: facts.cutting.value.summary.assignedPieceCount,
+          unassignedCount: facts.cutting.value.summary.unassignedPieceCount,
+          kerfMm: facts.cutting.settings.kerfMm,
+          endTrimMm: facts.cutting.settings.endTrimMm,
+          minimumReusableRemnantMm:
+            facts.cutting.settings.minimumReusableRemnantMm,
+          kerfLossMm: facts.cutting.value.summary.kerfLossMm,
+          wasteLengthMm: facts.cutting.value.summary.wasteLengthMm,
+          reusableRemnantLengthMm:
+            facts.cutting.value.summary.reusableRemnantLengthMm,
+        }
+      : undefined;
+  const assumptions: ExecutionSection = {
+    kind: 'assumptions',
+    codes: [
+      ...(facts.k1.status === 'resolved' ? ['ridge-board' as const] : []),
+      ...(coveringRows.length ? ['geometric-covering' as const] : []),
+      ...(facts.membraneEnabled ? ['net-membrane' as const] : []),
+      'no-structural-check',
+      ...(facts.template.type === 'hip' || facts.surface.status !== 'resolved'
+        ? ['unresolved-execution' as const]
+        : []),
+    ],
+  };
+  return [
+    { kind: 'project-summary', readiness: 'available', section: summary },
+    {
+      kind: 'roof-overview',
+      readiness: facts.surface.planes.length
+        ? facts.surface.status === 'resolved'
+          ? 'available'
+          : 'warning'
+        : 'unavailable',
+      reason:
+        facts.surface.status === 'invalid' ? 'invalid-roof-surface' : undefined,
+      section: facts.surface.planes.length ? overview : undefined,
+    },
+    {
+      kind: 'member-schedule',
+      readiness: schedule.rows.length ? 'available' : 'unavailable',
+      reason: schedule.rows.length ? undefined : 'no-members',
+      section: schedule.rows.length ? schedule : undefined,
+    },
+    {
+      kind: 'member-fabrication',
+      readiness: facts.k1.status === 'resolved' ? 'available' : 'unavailable',
+      reason: facts.k1.status === 'resolved' ? undefined : 'k1-unresolved',
+      section:
+        facts.k1.status === 'resolved' ? k1Section(facts, facts.k1) : undefined,
+    },
+    {
+      kind: 'cutting-plan',
+      readiness: cutting
+        ? cutting.status === 'complete'
+          ? 'available'
+          : 'warning'
+        : 'unavailable',
+      reason: cutting
+        ? cutting.status === 'complete'
+          ? undefined
+          : 'cutting-incomplete'
+        : 'plan-k1-first',
+      section: cutting,
+    },
+    {
+      kind: 'layers',
+      readiness: layerRows.length
+        ? layerRows.some((row) => row.warnings.length)
+          ? 'warning'
+          : 'available'
+        : 'unavailable',
+      reason: layerRows.length ? undefined : 'no-layers',
+      section: layerRows.length ? layers : undefined,
+    },
+    {
+      kind: 'covering',
+      readiness: coveringRows.length
+        ? coveringRows.some(
+            (row) => row.status === 'unresolved' || row.warnings.length,
+          )
+          ? 'warning'
+          : 'available'
+        : 'unavailable',
+      reason: coveringRows.length ? undefined : 'no-covering',
+      section: coveringRows.length ? covering : undefined,
+    },
+    { kind: 'assumptions', readiness: 'available', section: assumptions },
+  ];
+}

@@ -9,6 +9,23 @@ corpus. `BROWSER`: additionally covered by `pnpm e2e` in a real browser.
 Reference project archives live in `fixtures/projects/` and are asserted by
 `fixtures/projects/reference-projects.test.ts`.
 
+## EXPORT-001 — Execution package · `AUTOMATED` `BROWSER`
+
+1. Open a local project in Builder and choose **Eksport** in the project header.
+2. Review section readiness; without a current K1 plan, the cutting section is
+   unavailable and offers a direct route to the K1 planner.
+3. Preview selected A4 pages, including project summary, roof diagram, compact
+   member schedule and K1 preparation with the proven blank.
+4. Choose **Drukuj / Zapisz PDF** and use the browser print destination.
+
+**Holds:** source ID/name/updated timestamp and schema are truthful; print
+contains no workbench controls; geometry and quantity values come from existing
+resolved results; H1/J1 execution instructions and purchase amounts are omitted;
+section selection and preview create no roof Undo entry. At 390×844 and 360×800
+the export remains usable without horizontal page overflow.
+
+---
+
 ---
 
 ## QUICK-001 — Quick common rafter · `AUTOMATED`

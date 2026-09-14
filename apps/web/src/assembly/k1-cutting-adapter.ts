@@ -27,6 +27,18 @@ export type K1CuttingRequirement =
           >['reason'];
     };
 
+export function k1RequirementSignature(
+  requirement: Extract<K1CuttingRequirement, { status: 'resolved' }>,
+) {
+  return JSON.stringify(
+    requirement.requiredPieces.map((piece) => [
+      piece.id,
+      piece.requiredBlankLengthMm,
+      piece.stockClassId,
+    ]),
+  );
+}
+
 /** Application-only bridge. Schedule axes are used as an ID whitelist, never as lengths. */
 export function createK1CuttingRequirement(
   resolved: ResolvedRoofProject,

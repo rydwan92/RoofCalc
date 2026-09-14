@@ -43,6 +43,38 @@ const canvasButton = (name: string) =>
   within(screen.getByTestId('assembly-drawing')).getByRole('button', { name });
 
 describe('dual-mode parametric workbench', () => {
+  it('opens project export, omits an absent cutting plan and previews printable pages without roof history', async () => {
+    render(<App />);
+    builder();
+    const before = structuredClone(useAssembly.getState().projectDocument);
+    const trigger = await screen.findByTestId('project-execution-export');
+    await waitFor(() =>
+      expect((trigger as HTMLButtonElement).disabled).toBe(false),
+    );
+    fireEvent.click(trigger);
+    const config = await screen.findByTestId('execution-config', {}, { timeout: 5000 });
+    expect(within(config).getByText('Pakiet wykonawczy')).toBeTruthy();
+    expect(
+      within(config).getByText('Najpierw zaplanuj rozkrój K1.'),
+    ).toBeTruthy();
+    fireEvent.click(
+      within(config).getByRole('button', { name: 'Podgląd dokumentu' }),
+    );
+    const preview = await screen.findByTestId('execution-preview');
+    expect(
+      preview.querySelector('[data-section="project-summary"]'),
+    ).toBeTruthy();
+    expect(
+      preview.querySelector('[data-section="member-fabrication"]'),
+    ).toBeTruthy();
+    expect(preview.querySelector('[data-section="cutting-plan"]')).toBeFalsy();
+    const print = vi.spyOn(window, 'print').mockImplementation(() => undefined);
+    fireEvent.click(screen.getByTestId('execution-print'));
+    expect(print).toHaveBeenCalledOnce();
+    expect(useAssembly.getState().projectDocument).toEqual(before);
+    expect(useAssembly.getState().historyPast).toHaveLength(0);
+  });
+
   it('derives project guidance and opens the existing K1 planner from the summary without roof history', async () => {
     render(<App />);
     builder();

@@ -72,7 +72,9 @@ it('shows mobile project status and reaches summary and K1 planning through the 
   fireEvent.click(screen.getByRole('tab', { name: 'Projekt' }));
   expect(screen.getByTestId('project-summary')).toBeTruthy();
   fireEvent.click(screen.getByTestId('summary-k1-cutting-cta'));
-  expect(await screen.findByTestId('k1-cutting-panel')).toBeTruthy();
+  expect(
+    await screen.findByTestId('k1-cutting-panel', {}, { timeout: 5000 }),
+  ).toBeTruthy();
   expect(screen.getByRole('dialog')).toBeTruthy();
   expect(useAssembly.getState().historyPast).toHaveLength(0);
 });

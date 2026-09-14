@@ -83,6 +83,10 @@ import { BuildUpSummaryBar } from './BuildUpWorkspace';
 import { workbenchProjectResolver } from './workbench-project';
 import { resolveWorkbenchSelectionContext } from './selection';
 import { createK1CuttingRequirement } from './k1-cutting-adapter';
+import { k1RequirementSignature } from './k1-cutting-adapter';
+import type { ExportFacts } from './export-adapter';
+import type { DocumentSource } from '@cieslacalc/document-core';
+import type { K1SessionPlan } from './K1CuttingPlan';
 import {
   deriveProjectWorkflow,
   type ProjectWorkflowAction,
@@ -120,6 +124,11 @@ const CoveringInspector = lazy(() =>
 const K1CuttingPlan = lazy(() =>
   import('./K1CuttingPlan').then((module) => ({
     default: module.K1CuttingPlan,
+  })),
+);
+const ExecutionExport = lazy(() =>
+  import('./ExecutionExport').then((module) => ({
+    default: module.ExecutionExport,
   })),
 );
 
@@ -203,6 +212,12 @@ export function AssemblyPage() {
     (typeof allDetailPreviews)[number] | undefined
   >();
   const [cuttingOpen, setCuttingOpen] = useState(false);
+  const [currentCuttingPlan, setCurrentCuttingPlan] = useState<{
+    projectId: string;
+    plan: K1SessionPlan;
+  }>();
+  const [exportSource, setExportSource] = useState<DocumentSource>();
+  const [exportError, setExportError] = useState('');
   const workbench = state.workbench;
   const mobile = useMobileWorkbench();
   const drawer = workbench.detailDrawer;
@@ -612,6 +627,12 @@ export function AssemblyPage() {
     () => createK1CuttingRequirement(templateResult, memberSchedule),
     [templateResult, memberSchedule],
   );
+  const activeCuttingPlan =
+    k1Requirement.status === 'resolved' &&
+    currentCuttingPlan?.projectId === projectSessionState.active?.id &&
+    currentCuttingPlan?.plan.signature === k1RequirementSignature(k1Requirement)
+      ? currentCuttingPlan.plan
+      : undefined;
   useEffect(() => {
     if (k1Requirement.status !== 'resolved') setCuttingOpen(false);
   }, [k1Requirement.status]);
@@ -1122,6 +1143,40 @@ export function AssemblyPage() {
             mobile={mobile}
           />
         )}
+        {workbench.mode === 'builder' && (
+          <button
+            type="button"
+            className="a-export-trigger"
+            data-testid="project-execution-export"
+            disabled={!projectSessionState.active}
+            onClick={() => {
+              setExportError('');
+              void projectSession
+                .persistNow()
+                .then(() => {
+                  const active = projectSession.snapshot().active;
+                  if (!active) return;
+                  setExportSource({
+                    projectId: active.id,
+                    projectName: active.name,
+                    projectCreatedAt: active.createdAt,
+                    projectUpdatedAt: active.updatedAt,
+                    projectSchemaVersion: state.projectDocument.schemaVersion,
+                  });
+                })
+                .catch(() =>
+                  setExportError(
+                    i18n.language.startsWith('pl')
+                      ? 'Nie można zapisać aktualnego stanu projektu do eksportu.'
+                      : 'Could not save the current project state for export.',
+                  ),
+                );
+            }}
+          >
+            {i18n.language.startsWith('pl') ? 'Eksport' : 'Export'}
+          </button>
+        )}
+        {exportError && <span role="alert">{exportError}</span>}
         <div className="a-settings">
           <div className="a-units" role="group" aria-label={t('assembly.unit')}>
             {lengthUnits.map((unit) => (
@@ -1572,6 +1627,53 @@ export function AssemblyPage() {
                   unit={state.unit}
                   mobile={mobile}
                   onClose={() => setCuttingOpen(false)}
+                  initialPlan={activeCuttingPlan}
+                  onPlanChange={(plan) =>
+                    setCurrentCuttingPlan(
+                      plan && projectSessionState.active
+                        ? { projectId: projectSessionState.active.id, plan }
+                        : undefined,
+                    )
+                  }
+                />
+              </Suspense>
+            )}
+            {exportSource && (
+              <Suspense fallback={<div className="a-loading-panel" />}>
+                <ExecutionExport
+                  source={exportSource}
+                  facts={
+                    {
+                      source: exportSource,
+                      template: state.template,
+                      resolved: templateResult,
+                      skeleton: framingProjection.composedSkeleton,
+                      surface: surfaceProjection,
+                      windows: roofWindows,
+                      schedule: memberSchedule,
+                      details: allDetailPreviews,
+                      k1: k1Requirement,
+                      cutting: activeCuttingPlan,
+                      membraneEnabled: !!membrane?.enabled,
+                      counterBattensEnabled: !!counterBattens?.enabled,
+                      battensEnabled: !!battenLayout?.enabled,
+                      coverings: coveringAssignments,
+                      coveringStatuses: resolvedCoveringLayouts.map(
+                        (layout) => ({
+                          assignmentId: layout.assignmentId,
+                          status: layout.status,
+                          warnings: [...layout.issueCodes],
+                        }),
+                      ),
+                    } satisfies ExportFacts
+                  }
+                  unit={state.unit}
+                  mobile={mobile}
+                  onClose={() => setExportSource(undefined)}
+                  onPlanK1={() => {
+                    setExportSource(undefined);
+                    setCuttingOpen(true);
+                  }}
                 />
               </Suspense>
             )}

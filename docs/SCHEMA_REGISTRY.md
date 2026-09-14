@@ -199,7 +199,21 @@ result. Nothing procurement produces is written into `RoofProjectDocumentV1`,
 
 ---
 
-## 7. Browser storage keys
+## 7. `ExecutionDocumentV1` — transient output contract
+
+`ExecutionDocument` V1 (`packages/document-core/src/index.ts`) is a **transient,
+versioned output contract**, not a saved-project schema. It carries source
+project ID/name/created/updated timestamps, ProjectDocument schema version,
+generation time and discriminated execution sections. The browser print renderer
+consumes it in memory; no document JSON, PDF or configuration is written to
+ProjectRecord, localStorage or the database. The `version: 1` tag reserves an
+explicit reader boundary if these output bytes are ever persisted or exchanged.
+That future persistence requires its own compatibility policy and `ExportArtifact`
+design, without changing `RoofProjectDocumentV1` by implication.
+
+---
+
+## 8. Browser storage keys
 
 | Key | Owner | Contents |
 | --- | --- | --- |
@@ -213,7 +227,7 @@ that can still load the old one.
 
 ---
 
-## 8. Checklist for any schema change
+## 9. Checklist for any schema change
 
 1. Which registry entry does this touch?
 2. Does an existing valid document still parse? If no → new version + explicit reader.

@@ -1297,6 +1297,26 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+> V30 started 2026-09-14 from clean `main` at `5ac5186` (`029 complete`). The
+> user-approved V30 Document / Export Engine prompt supersedes V29's suggested
+> connection-research next action. Baseline `pnpm verify` PASS: 647 tests in 67
+> files, typecheck/lint/format/build PASS. Baseline `pnpm e2e` is running.
+> Definition of Ready: `docs/ARCHITECTURE_V30_DOCUMENT_EXPORT_ENGINE.md`.
+
+**Iteration:** `030 - Document / Export Engine`
+
+**Status:** `IN PROGRESS`
+
+**Current work:** Implement the pure document contract, web composition adapter,
+project-level export configuration, print preview and offline A4 delivery. No
+canonical/schema/geometry change; preserve truthful V27/V28 bases.
+
+**NEXT ACTION:** Finish baseline E2E, implement and test V30, inspect desktop,
+mobile and print output, then record final validation here. Do not commit/push
+or begin V31.
+
+---
+
 > V29 began from clean `main` at `a37e98be7ababd7a10897a7d076173dd4b3f6486`
 > (`028`), then its initial implementation became `6030930` (`029 begin`). The
 > user-approved V29 closeout was audited from that clean HEAD on 2026-09-14.

@@ -1,0 +1,620 @@
+.a-export-trigger {
+  flex: none;
+  border: 1px solid #bdd0c5;
+  background: #f4f8f5;
+  border-radius: 9px;
+  padding: 0 15px;
+  min-height: 44px;
+  color: #164b3a;
+  font-weight: 750;
+  cursor: pointer;
+}
+.a-export-trigger:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.doc-config-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+.doc-config-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: #132a2299;
+}
+.doc-config-dialog {
+  position: relative;
+  width: min(560px, 100%);
+  max-height: min(90vh, 800px);
+  overflow: auto;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 24px 80px #10271a44;
+}
+.doc-config-dialog > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 22px;
+  border-bottom: 1px solid #dce5de;
+}
+.doc-config-dialog > header h2 {
+  margin: 0;
+  font-size: 17px;
+}
+.doc-config-dialog button,
+.doc-config button {
+  min-height: 42px;
+  cursor: pointer;
+}
+.doc-config-dialog > header button {
+  border: 0;
+  background: transparent;
+  color: #315645;
+}
+.doc-config {
+  padding: 22px;
+  color: #19372d;
+}
+.doc-config > p {
+  margin: 0 0 4px;
+  font-size: 24px;
+  font-weight: 750;
+}
+.doc-config > h3 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #638174;
+  margin: 20px 0 10px;
+}
+.doc-section-list {
+  display: grid;
+  gap: 5px;
+}
+.doc-section-list label {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 9px 11px;
+  border: 1px solid #e0e8e2;
+  border-radius: 9px;
+  cursor: pointer;
+}
+.doc-section-list label[data-readiness='unavailable'] {
+  opacity: 0.62;
+  cursor: default;
+}
+.doc-section-list label[data-readiness='warning'] {
+  border-color: #d2bd82;
+}
+.doc-section-list input {
+  width: 18px;
+  height: 18px;
+  accent-color: #276a51;
+  flex: none;
+}
+.doc-section-list label > span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.doc-section-list strong {
+  font-size: 14px;
+}
+.doc-section-list small {
+  color: #697b70;
+  font-size: 12px;
+}
+.doc-plan-link {
+  display: inline-block;
+  margin: 12px 0;
+  border: 0;
+  background: transparent;
+  color: #176b51;
+  font-weight: 700;
+}
+.doc-preview-button {
+  display: block;
+  width: 100%;
+  margin-top: 20px;
+  padding: 11px;
+  background: #176447;
+  border: 0;
+  border-radius: 9px;
+  color: white;
+  font-weight: 750;
+}
+.doc-preview-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.doc-preview {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  overflow: auto;
+  background: #dce5de;
+  color: #1a2823;
+  font-family: Arial, sans-serif;
+}
+.doc-preview-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding: 13px max(20px, calc((100vw - 900px) / 2));
+  background: #143e31;
+  color: white;
+  box-shadow: 0 4px 16px #14281c33;
+}
+.doc-preview-toolbar > div:first-child {
+  display: grid;
+  gap: 2px;
+}
+.doc-preview-toolbar > div:first-child span {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.65;
+}
+.doc-preview-toolbar > div:first-child strong {
+  font-size: 18px;
+}
+.doc-preview-toolbar > div:first-child small {
+  opacity: 0.8;
+}
+.doc-preview-toolbar > div:last-child {
+  display: flex;
+  gap: 7px;
+}
+.doc-preview-toolbar button {
+  border: 1px solid #ffffff5c;
+  border-radius: 7px;
+  background: transparent;
+  color: white;
+  padding: 9px 13px;
+  cursor: pointer;
+  min-height: 42px;
+}
+.doc-preview-toolbar .doc-print-button {
+  color: #183d2b;
+  background: #fff;
+  border-color: white;
+  font-weight: 750;
+}
+.doc-preview-pages {
+  display: grid;
+  gap: 24px;
+  justify-items: center;
+  padding: 28px 12px 50px;
+}
+.doc-page {
+  box-sizing: border-box;
+  width: 210mm;
+  min-height: 297mm;
+  background: white;
+  box-shadow: 0 8px 28px #18382525;
+  padding: 18mm 17mm 14mm;
+  display: flex;
+  flex-direction: column;
+  gap: 9mm;
+  font-size: 10pt;
+  line-height: 1.4;
+}
+.doc-page-header {
+  border-bottom: 2px solid #275b45;
+  padding-bottom: 7mm;
+}
+.doc-page-header > span {
+  font-size: 9pt;
+  color: #567466;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+}
+.doc-page-header h1 {
+  font-size: 23pt;
+  line-height: 1.08;
+  margin: 4mm 0 2mm;
+  color: #173e2e;
+}
+.doc-page-header p {
+  margin: 0;
+  color: #65796d;
+}
+.doc-page-content {
+  flex: 1;
+  min-height: 0;
+}
+.doc-page-content h3 {
+  font-size: 12pt;
+  margin: 6mm 0 3mm;
+}
+.doc-page-content h4 {
+  font-size: 9pt;
+  margin: 3mm 0 1mm;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.doc-page-footer {
+  border-top: 1px solid #b7c8bc;
+  padding-top: 3mm;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: #60736a;
+  font-size: 8pt;
+}
+.doc-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 3mm;
+}
+.doc-summary-grid > div {
+  display: grid;
+  gap: 1mm;
+  padding: 4mm;
+  background: #f3f6f2;
+  border-left: 2px solid #4e7d61;
+  break-inside: avoid;
+}
+.doc-summary-grid span {
+  font-size: 8pt;
+  color: #5a6e60;
+}
+.doc-summary-grid strong {
+  font-size: 13pt;
+}
+.doc-family-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2mm;
+}
+.doc-family-chips span {
+  padding: 2mm 3mm;
+  border: 1px solid #b9c8be;
+  border-radius: 3px;
+}
+.doc-note {
+  color: #54645a;
+  font-size: 9pt;
+  margin: 3mm 0;
+}
+.doc-warning {
+  border-left: 3px solid #a36f2e;
+  padding: 2mm 3mm;
+  background: #faf7ef;
+  margin: 4mm 0;
+}
+.doc-page table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 9pt;
+}
+.doc-page th,
+.doc-page td {
+  padding: 2.5mm 2mm;
+  text-align: left;
+  border-bottom: 1px solid #ccd8ce;
+  vertical-align: top;
+}
+.doc-page thead th {
+  background: #eaf0e9;
+  font-weight: 700;
+}
+.doc-page tr {
+  break-inside: avoid;
+}
+.doc-page thead {
+  display: table-header-group;
+}
+.doc-roof-diagram,
+.doc-diagram {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid #dae2da;
+  background: #fff;
+}
+.doc-roof-outline {
+  fill: #f3f5f1;
+  stroke: #345b43;
+  stroke-width: 1.7;
+}
+.doc-roof-member {
+  stroke: #667f6b;
+  stroke-width: 1;
+}
+.doc-roof-member.doc-ridge {
+  stroke: #123f30;
+  stroke-width: 3;
+}
+.doc-roof-member.doc-hip-rafter {
+  stroke: #173f38;
+  stroke-width: 2.2;
+}
+.doc-roof-member.doc-rafter {
+  stroke: #718d78;
+}
+.doc-roof-opening {
+  fill: #fff;
+  stroke: #a04332;
+  stroke-width: 2;
+}
+.doc-roof-diagram text {
+  font-size: 10px;
+  font-weight: 700;
+  fill: #173b2d;
+}
+.doc-shape {
+  fill: #e2eae3;
+  stroke: #3f624f;
+  stroke-width: 1;
+}
+.doc-shape.doc-removed {
+  fill: #fff;
+  stroke-dasharray: 3 2;
+}
+.doc-line {
+  stroke: #274a37;
+  stroke-width: 2;
+}
+.doc-line.doc-reference,
+.doc-line.doc-axis {
+  stroke: #8d9b8f;
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+}
+.doc-line.doc-cut {
+  stroke: #a24f34;
+  stroke-width: 2;
+}
+.doc-k1-hero {
+  padding: 4mm;
+  background: #eaf1e9;
+  border: 1px solid #b9d1bb;
+  display: grid;
+  gap: 2mm;
+}
+.doc-k1-hero > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 4mm;
+}
+.doc-k1-hero strong {
+  font-size: 14pt;
+}
+.doc-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4mm;
+}
+.doc-detail-grid article {
+  border: 1px solid #ccd8ce;
+  padding: 3mm;
+  break-inside: avoid;
+}
+.doc-detail-grid article h3 {
+  margin: 0 0 2mm;
+  font-size: 11pt;
+}
+.doc-detail-grid dl {
+  margin: 0;
+}
+.doc-detail-grid dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 2mm;
+  border-bottom: 1px solid #e5ece6;
+}
+.doc-detail-grid dt {
+  color: #5c6d61;
+}
+.doc-detail-grid dd {
+  margin: 0;
+  font-weight: 700;
+}
+.doc-detail-grid ol {
+  margin: 0;
+  padding-left: 5mm;
+  font-size: 8.4pt;
+}
+.doc-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2mm;
+}
+.doc-metrics span {
+  padding: 2mm;
+  border: 1px solid #d7dfd5;
+  display: grid;
+}
+.doc-stock-list {
+  display: grid;
+  gap: 3mm;
+}
+.doc-stock {
+  break-inside: avoid;
+}
+.doc-stock-bar {
+  position: relative;
+  height: 14px;
+  background: #e2e7e0;
+  border: 1px solid #8fa396;
+  margin: 1mm 0;
+}
+.doc-stock-bar span {
+  position: absolute;
+  height: 100%;
+  background: #72977e;
+  color: white;
+  overflow: hidden;
+  text-align: center;
+  font-size: 8px;
+}
+.doc-stock small {
+  color: #65776b;
+}
+.doc-covering-row {
+  border: 1px solid #d4dfd5;
+  padding: 4mm;
+  margin-bottom: 4mm;
+  break-inside: avoid;
+}
+.doc-covering-row h3 {
+  margin-top: 0;
+}
+.doc-assumptions {
+  padding-left: 6mm;
+}
+.doc-assumptions li {
+  margin-bottom: 4mm;
+  break-inside: avoid;
+}
+@media (max-width: 800px) {
+  .a-export-trigger {
+    padding: 0 9px;
+    font-size: 12px;
+  }
+  .doc-preview-toolbar {
+    padding: 8px 12px;
+    flex-wrap: wrap;
+  }
+  .doc-preview-toolbar > div:last-child {
+    width: 100%;
+  }
+  .doc-preview-toolbar button {
+    padding: 7px;
+    font-size: 12px;
+    flex: 1;
+  }
+  .doc-preview-pages {
+    padding: 12px 8px 30px;
+    gap: 12px;
+  }
+  .doc-page {
+    width: 100%;
+    min-height: 0;
+    padding: 7vw 6vw;
+    font-size: 10pt;
+    gap: 5mm;
+  }
+  .doc-page-header h1 {
+    font-size: 18pt;
+  }
+  .doc-detail-grid {
+    grid-template-columns: 1fr;
+  }
+  .doc-k1-hero > div {
+    display: grid;
+  }
+  .doc-page table {
+    font-size: 8pt;
+  }
+  .doc-page th,
+  .doc-page td {
+    padding: 1.5mm 1mm;
+  }
+  .doc-metrics {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .doc-page-footer {
+    flex-wrap: wrap;
+  }
+}
+@page {
+  size: A4 portrait;
+  margin: 12mm;
+  @bottom-right {
+    content: counter(page);
+    font:
+      8pt Arial,
+      sans-serif;
+    color: #4f5e52;
+  }
+}
+@media print {
+  html,
+  body {
+    width: auto;
+    height: auto;
+    margin: 0;
+    background: #fff;
+  }
+  body:has(.doc-preview) #root {
+    display: none !important;
+  }
+  .doc-preview {
+    position: static;
+    overflow: visible;
+    background: #fff;
+    color: #111;
+  }
+  .doc-preview-toolbar {
+    display: none !important;
+  }
+  .doc-preview-pages {
+    display: block;
+    padding: 0;
+  }
+  .doc-page {
+    width: 100%;
+    min-height: 270mm;
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+    break-after: page;
+    page-break-after: always;
+    font-size: 10pt;
+    gap: 6mm;
+  }
+  .doc-page:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+  .doc-page-header {
+    border-color: #333;
+  }
+  .doc-page-header h1,
+  .doc-page-header span,
+  .doc-page-footer {
+    color: #222;
+  }
+  .doc-summary-grid > div,
+  .doc-k1-hero,
+  .doc-warning,
+  .doc-page thead th {
+    background: #f3f3f3 !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  .doc-roof-outline {
+    fill: #f5f5f5;
+    stroke: #222;
+  }
+  .doc-roof-member,
+  .doc-roof-member.doc-ridge,
+  .doc-roof-member.doc-hip-rafter {
+    stroke: #333;
+  }
+  .doc-roof-opening {
+    stroke: #111;
+  }
+  .doc-line,
+  .doc-line.doc-cut {
+    stroke: #111;
+  }
+  .doc-stock-bar span {
+    background: #777 !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}

@@ -1,6 +1,6 @@
 # RoofCalc / CieślaCalc — Architecture Index
 
-**This is the current-state map, after V29.** Read it after `PROJECT_BLUEPRINT.md`
+**This is the current-state map, after V30.** Read it after `PROJECT_BLUEPRINT.md`
 and before touching code. It describes what exists today, not the history of how
 it got here. Historical `ARCHITECTURE_V*.md` documents stay authoritative for the
 subsystem they introduced and should be opened only when changing that subsystem.
@@ -21,6 +21,8 @@ exact physical requirement one indivisible fabrication blank per physical member
 quantity                   schedule rows: counts, lengths, areas, coverage positions
         ↓
 procurement                stock selection, cut placement, kerf, trims, remnants
+        ↓
+documentation              typed evidence → selected print pages / offline PDF
         ↓
 future cost                NOT IMPLEMENTED — commercial valuation
 ```
@@ -51,6 +53,7 @@ Dependency direction is **downward only**.
 | `quantity-core` | Aggregates neutral quantity sources into the member/material schedule. Knows nothing about products, procurement or prices. | `timber-model` |
 | `catalog-core` | Pure catalogue contracts: manufacturers, product families, immutable technical revisions, commercial variants, import batch, read-API payloads. Reuses `covering-core` technical schemas rather than redefining them. | `covering-core`, `zod` |
 | `procurement-core` | **V26.** Pure timber cutting/stock planning over explicit required blanks. Indivisible blanks, kerf, stock end trims, reusable remnants, finite availability, three objectives, bounded search with deterministic fallback and honest optimality status. | **nothing — zero dependencies** |
+| `document-core` | **V30.** Pure typed execution-document sections, source identity, deterministic order and readiness filtering. No solver or renderer. | **nothing — zero dependencies** |
 | `project-core` | `ProjectRecordV1` envelope, lifecycle helpers, JSON import/export and the `ProjectRepository` interface. No browser, no React, no i18n. | `calculator-core`, `zod` |
 | `shared` | Cross-cutting DTOs shared by web and API. | — |
 | `ui` | Semantic design tokens (`--ui-*`) and a few primitives. | `react` (peer) |
@@ -67,6 +70,8 @@ importing Drizzle/Express/React/UI; `project-core` importing i18n, React or
 `RoofProjectDocumentV1`. A V28 web application adapter connects only proven,
 whole K1 fabrication blanks to `RequiredPiece[]` and the Material Schedule
 opens that K1-only planner. Other member families remain outside this pilot.
+V30's lazy web export adapter reads that existing K1 result and current plan;
+`document-core` never imports procurement or geometry.
 
 ---
 
@@ -325,6 +330,7 @@ pnpm e2e      # real-browser smoke, desktop 1440x900 and mobile 390x844 (pnpm e2
 | `docs/ARCHITECTURE_V27_RESULT_SEMANTICS.md` | quantity basis, result wording or takeoff UX |
 | `docs/ARCHITECTURE_V28_K1_CUTTING_PLAN.md` | K1 fabrication blank and cutting-plan adapter/UX |
 | `docs/ARCHITECTURE_V29_GUIDED_WORKFLOW_UX.md` | derived project guidance, summary and workbench UX |
+| `docs/ARCHITECTURE_V30_DOCUMENT_EXPORT_ENGINE.md` | execution document, export readiness, preview and browser print |
 | `docs/FUTURE_EXECUTION_SEMANTICS_AUDIT.md` + `docs/domain/*` | touching coverage, overlap or connection semantics |
 | `docs/ARCHITECTURE_FUTURE_COMPOUND_ROOF_SCENE.md` | touching IDs, planes or document shape |
 | `docs/ARCHITECTURE_COVERING_CATALOG_AND_PRICING_BOUNDARY.md` | covering, catalogue or future pricing |

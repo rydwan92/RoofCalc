@@ -13,6 +13,7 @@
     "@cieslacalc/catalog-core": "workspace:*",
     "@cieslacalc/covering-core": "workspace:*",
     "@cieslacalc/drawing-engine": "workspace:*",
+    "@cieslacalc/document-core": "workspace:*",
     "@cieslacalc/project-core": "workspace:*",
     "@cieslacalc/procurement-core": "workspace:*",
     "@cieslacalc/quantity-core": "workspace:*",
