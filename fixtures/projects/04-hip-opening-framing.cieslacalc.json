@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "id": "fixture-04",
+  "name": "Reference — hip with framed opening",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "document": {
+    "schemaVersion": 1,
+    "project": {
+      "roof": {
+        "id": "template:hip-1",
+        "type": "hip",
+        "buildingLengthMm": 12000,
+        "halfRunMm": 4000,
+        "pitchDeg": 35,
+        "eaveOverhangMm": 500,
+        "rafterSpacing": {
+          "mode": "max-even-spacing",
+          "spacingMm": 800
+        },
+        "rafterSection": {
+          "widthMm": 80,
+          "depthMm": 200
+        },
+        "hipRafterSection": {
+          "widthMm": 80,
+          "depthMm": 240
+        },
+        "wallPlate": {
+          "id": "support:wall-plate-1",
+          "kind": "wall-plate",
+          "section": {
+            "widthMm": 140,
+            "heightMm": 140
+          },
+          "placement": {
+            "mode": "horizontal-from-wall",
+            "xMm": 0
+          },
+          "joint": {
+            "kind": "seat-notch",
+            "control": "seat",
+            "valueMm": 100
+          }
+        },
+        "ridge": {
+          "id": "terminal:ridge-1",
+          "thicknessMm": 40
+        },
+        "intermediateSupports": []
+      },
+      "features": [
+        {
+          "id": "feature:roof-window-1",
+          "kind": "roof-window",
+          "roofPlaneId": "roof-plane:left",
+          "widthMm": 1400,
+          "heightMm": 1180,
+          "position": {
+            "uMm": 6000,
+            "vMm": 1200
+          },
+          "clearanceMm": 0
+        }
+      ],
+      "openingFraming": [
+        {
+          "id": "opening-framing:feature:roof-window-1",
+          "kind": "roof-opening-framing",
+          "featureId": "feature:roof-window-1",
+          "headerSection": {
+            "widthMm": 80,
+            "depthMm": 200
+          },
+          "edgeOffsetMm": 80,
+          "acceptedGeometrySignature": "{\"roofType\":\"hip\",\"halfRunMm\":4000,\"buildingLengthMm\":12000,\"pitchDeg\":35,\"eaveOverhangMm\":500,\"rafterSpacing\":{\"mode\":\"max-even-spacing\",\"spacingMm\":800},\"roofPlaneId\":\"roof-plane:left\",\"opening\":{\"fromUMm\":6000,\"toUMm\":7400,\"fromVMm\":1200,\"toVMm\":2380},\"affectedIds\":[\"instance:hip-common-pair-3:left\",\"instance:hip-common-pair-4:left\"],\"boundingIds\":[\"instance:hip-common-pair-2:left\",\"instance:hip-common-pair-5:left\"]}"
+        }
+      ],
+      "buildUp": {},
+      "coverings": []
+    }
+  }
+}

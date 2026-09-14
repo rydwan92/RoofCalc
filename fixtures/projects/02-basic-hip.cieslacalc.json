@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "id": "fixture-02",
+  "name": "Reference — basic hip",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "document": {
+    "schemaVersion": 1,
+    "project": {
+      "roof": {
+        "id": "template:hip-1",
+        "type": "hip",
+        "buildingLengthMm": 12000,
+        "halfRunMm": 4000,
+        "pitchDeg": 35,
+        "eaveOverhangMm": 500,
+        "rafterSpacing": {
+          "mode": "max-even-spacing",
+          "spacingMm": 800
+        },
+        "rafterSection": {
+          "widthMm": 80,
+          "depthMm": 200
+        },
+        "hipRafterSection": {
+          "widthMm": 80,
+          "depthMm": 240
+        },
+        "wallPlate": {
+          "id": "support:wall-plate-1",
+          "kind": "wall-plate",
+          "section": {
+            "widthMm": 140,
+            "heightMm": 140
+          },
+          "placement": {
+            "mode": "horizontal-from-wall",
+            "xMm": 0
+          },
+          "joint": {
+            "kind": "seat-notch",
+            "control": "seat",
+            "valueMm": 100
+          }
+        },
+        "ridge": {
+          "id": "terminal:ridge-1",
+          "thicknessMm": 40
+        },
+        "intermediateSupports": []
+      },
+      "features": [],
+      "openingFraming": [],
+      "buildUp": {},
+      "coverings": []
+    }
+  }
+}

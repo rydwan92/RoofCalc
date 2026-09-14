@@ -1,0 +1,137 @@
+{
+  "schemaVersion": 1,
+  "id": "fixture-08",
+  "name": "Reference — gable with cut-to-length metal",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "document": {
+    "schemaVersion": 1,
+    "project": {
+      "roof": {
+        "id": "template:gable-1",
+        "type": "gable",
+        "buildingLengthMm": 8000,
+        "halfRunMm": 4000,
+        "pitchDeg": 35,
+        "eaveOverhangMm": 500,
+        "rafterSpacing": {
+          "mode": "max-even-spacing",
+          "spacingMm": 800
+        },
+        "rafterSection": {
+          "widthMm": 80,
+          "depthMm": 200
+        },
+        "wallPlate": {
+          "id": "support:wall-plate-1",
+          "kind": "wall-plate",
+          "section": {
+            "widthMm": 140,
+            "heightMm": 140
+          },
+          "placement": {
+            "mode": "horizontal-from-wall",
+            "xMm": 0
+          },
+          "joint": {
+            "kind": "seat-notch",
+            "control": "seat",
+            "valueMm": 100
+          }
+        },
+        "ridge": {
+          "id": "terminal:ridge-1",
+          "thicknessMm": 40
+        },
+        "intermediateSupports": []
+      },
+      "features": [
+        {
+          "id": "feature:roof-window-1",
+          "kind": "roof-window",
+          "roofPlaneId": "roof-plane:left",
+          "widthMm": 780,
+          "heightMm": 1180,
+          "position": {
+            "uMm": 1000,
+            "vMm": 1200
+          },
+          "clearanceMm": 0
+        },
+        {
+          "id": "feature:roof-window-2",
+          "kind": "roof-window",
+          "roofPlaneId": "roof-plane:left",
+          "widthMm": 780,
+          "heightMm": 1180,
+          "position": {
+            "uMm": 3000,
+            "vMm": 1200
+          },
+          "clearanceMm": 0
+        },
+        {
+          "id": "feature:roof-window-3",
+          "kind": "roof-window",
+          "roofPlaneId": "roof-plane:left",
+          "widthMm": 780,
+          "heightMm": 1180,
+          "position": {
+            "uMm": 5000,
+            "vMm": 1200
+          },
+          "clearanceMm": 0
+        }
+      ],
+      "openingFraming": [],
+      "buildUp": {
+        "membrane": {
+          "enabled": true
+        },
+        "counterBattens": {
+          "enabled": true,
+          "widthMm": 40,
+          "heightMm": 40
+        },
+        "battenLayout": {
+          "enabled": true,
+          "battenHeightMm": 40,
+          "battenWidthMm": 60,
+          "gaugeMm": 340,
+          "eaveOffsetMm": 50
+        }
+      },
+      "coverings": [
+        {
+          "id": "covering:cut-1",
+          "roofPlaneIds": [
+            "roof-plane:left",
+            "roof-plane:right"
+          ],
+          "product": {
+            "technicalSpecSnapshot": {
+              "schemaVersion": 1,
+              "kind": "modular-sheet",
+              "effectiveWidthMm": 1100,
+              "totalWidthMm": 1180,
+              "lengthModel": {
+                "kind": "cut-to-length",
+                "minPanelLengthMm": 500,
+                "maxPanelLengthMm": 6000
+              },
+              "moduleLengthMm": 350,
+              "minPitchDeg": 9,
+              "physicalThicknessMm": 0.5,
+              "material": "steel",
+              "salesUnit": "piece"
+            }
+          },
+          "layoutIntent": {
+            "kind": "modular-sheet-cut-to-length",
+            "horizontalAlignment": "centered"
+          }
+        }
+      ]
+    }
+  }
+}

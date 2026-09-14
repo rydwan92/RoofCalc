@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "id": "fixture-03",
+  "name": "Reference — gable with three aligned roof windows",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "document": {
+    "schemaVersion": 1,
+    "project": {
+      "roof": {
+        "id": "template:gable-1",
+        "type": "gable",
+        "buildingLengthMm": 8000,
+        "halfRunMm": 4000,
+        "pitchDeg": 35,
+        "eaveOverhangMm": 500,
+        "rafterSpacing": {
+          "mode": "max-even-spacing",
+          "spacingMm": 800
+        },
+        "rafterSection": {
+          "widthMm": 80,
+          "depthMm": 200
+        },
+        "wallPlate": {
+          "id": "support:wall-plate-1",
+          "kind": "wall-plate",
+          "section": {
+            "widthMm": 140,
+            "heightMm": 140
+          },
+          "placement": {
+            "mode": "horizontal-from-wall",
+            "xMm": 0
+          },
+          "joint": {
+            "kind": "seat-notch",
+            "control": "seat",
+            "valueMm": 100
+          }
+        },
+        "ridge": {
+          "id": "terminal:ridge-1",
+          "thicknessMm": 40
+        },
+        "intermediateSupports": []
+      },
+      "features": [
+        {
+          "id": "feature:roof-window-1",
+          "kind": "roof-window",
+          "roofPlaneId": "roof-plane:left",
+          "widthMm": 780,
+          "heightMm": 1180,
+          "position": {
+            "uMm": 1000,
+            "vMm": 1200
+          },
+          "clearanceMm": 0
+        },
+        {
+          "id": "feature:roof-window-2",
+          "kind": "roof-window",
+          "roofPlaneId": "roof-plane:left",
+          "widthMm": 780,
+          "heightMm": 1180,
+          "position": {
+            "uMm": 3000,
+            "vMm": 1200
+          },
+          "clearanceMm": 0
+        },
+        {
+          "id": "feature:roof-window-3",
+          "kind": "roof-window",
+          "roofPlaneId": "roof-plane:left",
+          "widthMm": 780,
+          "heightMm": 1180,
+          "position": {
+            "uMm": 5000,
+            "vMm": 1200
+          },
+          "clearanceMm": 0
+        }
+      ],
+      "openingFraming": [],
+      "buildUp": {},
+      "coverings": []
+    }
+  }
+}

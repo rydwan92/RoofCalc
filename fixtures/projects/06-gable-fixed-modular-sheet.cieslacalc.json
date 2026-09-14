@@ -1,0 +1,101 @@
+{
+  "schemaVersion": 1,
+  "id": "fixture-06",
+  "name": "Reference — gable with fixed modular sheets",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "document": {
+    "schemaVersion": 1,
+    "project": {
+      "roof": {
+        "id": "template:gable-1",
+        "type": "gable",
+        "buildingLengthMm": 8000,
+        "halfRunMm": 4000,
+        "pitchDeg": 35,
+        "eaveOverhangMm": 500,
+        "rafterSpacing": {
+          "mode": "max-even-spacing",
+          "spacingMm": 800
+        },
+        "rafterSection": {
+          "widthMm": 80,
+          "depthMm": 200
+        },
+        "wallPlate": {
+          "id": "support:wall-plate-1",
+          "kind": "wall-plate",
+          "section": {
+            "widthMm": 140,
+            "heightMm": 140
+          },
+          "placement": {
+            "mode": "horizontal-from-wall",
+            "xMm": 0
+          },
+          "joint": {
+            "kind": "seat-notch",
+            "control": "seat",
+            "valueMm": 100
+          }
+        },
+        "ridge": {
+          "id": "terminal:ridge-1",
+          "thicknessMm": 40
+        },
+        "intermediateSupports": []
+      },
+      "features": [],
+      "openingFraming": [],
+      "buildUp": {
+        "membrane": {
+          "enabled": true
+        },
+        "counterBattens": {
+          "enabled": true,
+          "widthMm": 40,
+          "heightMm": 40
+        },
+        "battenLayout": {
+          "enabled": true,
+          "battenHeightMm": 40,
+          "battenWidthMm": 60,
+          "gaugeMm": 350,
+          "eaveOffsetMm": 50
+        }
+      },
+      "coverings": [
+        {
+          "id": "covering:modular-1",
+          "roofPlaneIds": [
+            "roof-plane:left",
+            "roof-plane:right"
+          ],
+          "product": {
+            "technicalSpecSnapshot": {
+              "schemaVersion": 1,
+              "kind": "modular-sheet",
+              "effectiveWidthMm": 1145,
+              "totalWidthMm": 1200,
+              "lengthModel": {
+                "kind": "fixed-sheet",
+                "effectiveLengthMm": 700,
+                "totalLengthMm": 725
+              },
+              "moduleLengthMm": 350,
+              "profileHeightMm": 47.5,
+              "minPitchDeg": 9,
+              "physicalThicknessMm": 0.5,
+              "material": "steel",
+              "salesUnit": "piece"
+            }
+          },
+          "layoutIntent": {
+            "kind": "modular-sheet",
+            "horizontalAlignment": "centered"
+          }
+        }
+      ]
+    }
+  }
+}

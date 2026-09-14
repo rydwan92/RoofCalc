@@ -959,6 +959,7 @@ export function AssemblyPage() {
           {(['quick', 'builder'] as const).map((mode) => (
             <button
               key={mode}
+              data-mode={mode}
               aria-pressed={workbench.mode === mode}
               onClick={() => changeMode(mode)}
             >
@@ -1217,6 +1218,7 @@ export function AssemblyPage() {
                   <div className="a-mobile-workspace-actions">
                     <button
                       className="a-button"
+                      data-testid="mobile-open-tools"
                       onClick={() => {
                         if (workbench.viewPreset === 'covering') {
                           state.setInspectorOpen(true);

@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "id": "fixture-05",
+  "name": "Reference — gable with roof tiles",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "document": {
+    "schemaVersion": 1,
+    "project": {
+      "roof": {
+        "id": "template:gable-1",
+        "type": "gable",
+        "buildingLengthMm": 8000,
+        "halfRunMm": 4000,
+        "pitchDeg": 35,
+        "eaveOverhangMm": 500,
+        "rafterSpacing": {
+          "mode": "max-even-spacing",
+          "spacingMm": 800
+        },
+        "rafterSection": {
+          "widthMm": 80,
+          "depthMm": 200
+        },
+        "wallPlate": {
+          "id": "support:wall-plate-1",
+          "kind": "wall-plate",
+          "section": {
+            "widthMm": 140,
+            "heightMm": 140
+          },
+          "placement": {
+            "mode": "horizontal-from-wall",
+            "xMm": 0
+          },
+          "joint": {
+            "kind": "seat-notch",
+            "control": "seat",
+            "valueMm": 100
+          }
+        },
+        "ridge": {
+          "id": "terminal:ridge-1",
+          "thicknessMm": 40
+        },
+        "intermediateSupports": []
+      },
+      "features": [],
+      "openingFraming": [],
+      "buildUp": {
+        "membrane": {
+          "enabled": true
+        },
+        "counterBattens": {
+          "enabled": true,
+          "widthMm": 40,
+          "heightMm": 40
+        },
+        "battenLayout": {
+          "enabled": true,
+          "battenHeightMm": 40,
+          "battenWidthMm": 60,
+          "gaugeMm": 340,
+          "eaveOffsetMm": 50
+        }
+      },
+      "coverings": [
+        {
+          "id": "covering:tile-1",
+          "roofPlaneIds": [
+            "roof-plane:left",
+            "roof-plane:right"
+          ],
+          "product": {
+            "technicalSpecSnapshot": {
+              "schemaVersion": 1,
+              "kind": "roof-tile",
+              "physicalWidthMm": 330,
+              "physicalLengthMm": 420,
+              "material": "ceramic",
+              "salesUnit": "piece",
+              "installationModes": [
+                {
+                  "id": "standard",
+                  "coverWidthMm": 300,
+                  "gaugeRangeMm": {
+                    "min": 320,
+                    "max": 360
+                  },
+                  "coursePattern": {
+                    "layers": [
+                      {
+                        "id": "base",
+                        "horizontalOffsetFraction": 0
+                      }
+                    ],
+                    "battenRowOffsetCycle": [
+                      0
+                    ]
+                  },
+                  "declaredUnitsPerM2": {
+                    "min": 9.8,
+                    "max": 10.7
+                  },
+                  "minPitchDeg": 20
+                }
+              ]
+            }
+          },
+          "selectedInstallationModeId": "standard",
+          "layoutIntent": {
+            "kind": "roof-tile",
+            "horizontalAlignment": "centered"
+          }
+        }
+      ]
+    }
+  }
+}

@@ -19,6 +19,9 @@
     "apps/**/*.tsx",
     "packages/**/*.ts",
     "packages/**/*.tsx",
+    "tools/**/*.ts",
+    "fixtures/**/*.ts",
+    "e2e/**/*.ts",
     "vitest.config.ts"
   ],
   "exclude": ["**/node_modules", "**/dist"]

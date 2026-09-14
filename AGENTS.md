@@ -4,24 +4,84 @@ This file defines the mandatory working protocol for Copilot/Codex-style coding 
 
 ## Read before every iteration
 
-Before editing code, read in this order:
+Normal reading order. Stop when you have what the task needs; do not read the
+historical set by default.
 
-1. `PROJECT_BLUEPRINT.md` — current implementation/checkpoint source of truth.
-2. `docs/ROOFCALC_PRODUCT_NORTH_STAR.md` — long-term product direction and future architectural constraints.
-3. `docs/ARCHITECTURE_V3_WORKBENCH.md` — dual-mode parametric workbench direction.
-4. `docs/ARCHITECTURE_V4_ROOF_SKELETON.md` — reactive gable-roof skeleton foundation.
-5. `docs/ARCHITECTURE_V5_INTERACTIVE_SKELETON.md` — interactive solid-skeleton/direct-manipulation foundation.
-6. `docs/ARCHITECTURE_V6_HIP_ROOF_AND_RAFTER.md` — multi-template/hip-roof/hip-rafter direction.
-7. `docs/ARCHITECTURE_V7_JACK_RAFTERS_AND_FABRICATION.md` — jack-rafter/contextual fabrication direction.
-8. `docs/ARCHITECTURE_V8_CUT_PREVIEWS_AND_DETAIL_DRAWER.md` — cut-detail preview and smart-detail foundation.
-9. `docs/ARCHITECTURE_V9_PROJECT_WORKBENCH_AND_VIEW_SYSTEM.md` — current project/workbench/view/fabrication-package direction.
-10. `docs/HIP_RAFTER_GEOMETRY.md` and `docs/JACK_RAFTER_GEOMETRY.md` — compound-member geometry/regression contracts.
-11. `docs/DOMAIN_RESEARCH_ROADMAP.md` — domain-research rules.
-12. the currently requested iteration prompt in `docs/`.
+1. `PROJECT_BLUEPRINT.md` — product blueprint and the current `WORK CHECKPOINT`.
+2. `docs/ARCHITECTURE_INDEX.md` — the current architecture in a few minutes:
+   the design → fabrication → requirement → quantity → procurement pipeline,
+   package responsibilities, dependency direction, state classification, schema
+   boundaries, and which document covers which subsystem.
+3. `docs/ROOFCALC_PRODUCT_NORTH_STAR.md` — long-term direction and the
+   constraints current work must not block.
+4. The currently requested iteration prompt.
+5. The architecture documents for the subsystem you are actually changing.
+   `docs/ARCHITECTURE_INDEX.md` §14 maps subsystem → document. Also read
+   `docs/adr/` for any decision your change would alter, and
+   `docs/SCHEMA_REGISTRY.md` if you touch anything persisted or versioned.
+6. Relevant domain research in `docs/domain/` and
+   `docs/DOMAIN_RESEARCH_ROADMAP.md` before implementing new geometry. Anything
+   touching coverage, overlap or connection semantics must start from
+   `docs/FUTURE_EXECUTION_SEMANTICS_AUDIT.md`.
 
-If a newer explicit user-approved iteration prompt conflicts with an old `WORK CHECKPOINT`, the newer prompt controls the next iteration, but the agent must update the checkpoint at the start/end so the repository becomes consistent again.
+Also worth reading when they apply: `docs/UX_DESIGN_CONTRACT.md` for workbench
+layout or UI primitives; `docs/ACCEPTANCE_SCENARIOS.md` before changing a
+user-visible flow; `docs/ARCHITECTURE_FUTURE_COMPOUND_ROOF_SCENE.md` for
+anything touching IDs, plane references or document shape.
 
-The Product North Star is not permission to implement every future feature immediately. It constrains architecture so current work does not block future saved projects, revisions, PDF worker instructions, openings, roof layers, quantity/costing and covering modules.
+Historical architecture documents (`ARCHITECTURE_V3`–`V26`) and the
+`PROMPT_ITERATION_*` contracts remain in `docs/` and remain authoritative for the
+subsystem they introduced. They are **not** required reading every iteration.
+Nothing is deleted.
+
+If a newer explicit user-approved iteration prompt conflicts with an old
+`WORK CHECKPOINT`, the newer prompt controls the next iteration, but the agent
+must update the checkpoint at the start/end so the repository becomes consistent
+again.
+
+The Product North Star is not permission to implement every future feature
+immediately. It constrains architecture so current work does not block future
+saved projects, revisions, PDF worker instructions, openings, roof layers,
+quantity/procurement/costing and covering modules.
+
+## Definition of Ready
+
+Before a **major** feature implementation, write a short answer to each point
+below — a line or two each, in the iteration's architecture document or in the
+checkpoint. The purpose is to force architectural thinking before coding, not to
+produce paperwork. "Not applicable, because …" is a valid answer; a blank is not.
+
+For a small fix or a local change, skip this and go straight to the preflight.
+
+1. **User problem** — whose job gets easier, and what they do today instead.
+2. **Domain owner** — which package owns the new logic, and why it is not a
+   layer above or below (`docs/ARCHITECTURE_INDEX.md` §1–§2).
+3. **Canonical persistence impact** — does any new state belong in the project
+   document, or is it derived/transient (ADR-002)?
+4. **Schema / migration impact** — which entry in `docs/SCHEMA_REGISTRY.md`
+   changes, is it additive-optional, and can an existing saved project still
+   open? If not, name the version bump and the reader for both versions.
+5. **Undo / Redo / history** — which edits are one history entry; which
+   interactions must create none; is a gesture transaction needed?
+6. **Quantity impact** — does it produce a quantity source, and is that source
+   trusted only when the result is complete?
+7. **Procurement impact** — does it change what a required fabrication blank
+   means, or add an allowance? Allowances are resolved upstream of procurement
+   (ADR-009); procurement infers nothing (ADR-010).
+8. **Catalogue impact** — does it need a technical field? Does it stay
+   reproducible from a stored snapshot (ADR-003)?
+9. **Future cost layer** — confirm no price, currency, waste or margin concept
+   enters geometry, quantity or procurement (ADR-005).
+10. **Offline behaviour** — what still works with no database and no network
+    (ADR-006)?
+11. **Mobile UX** — the route to the same capability at 390×844, including the
+    exact numeric input. Not "later".
+12. **Domain research requirement** — is a `docs/domain/<module>.md` with
+    independent references and hand-checked vectors needed first?
+13. **Regression strategy** — which unit tests, which reference fixture in
+    `fixtures/projects/`, and whether an architecture or E2E test is warranted.
+14. **Future multi-structure compatibility** — does anything infer meaning from
+    an ID string, or assume a single roof (ADR-007, ADR-008)?
 
 ## Mandatory preflight
 
@@ -31,10 +91,35 @@ Run before changing code:
 git status
 git diff --stat
 git diff
+pnpm verify
+```
+
+`pnpm verify` runs, in order: `typecheck` → `lint` → `format:check` → `test`
+(unit, UI, API, architecture boundaries and reference fixtures) → `build`.
+Record the actual baseline, including any pre-existing failure.
+
+When a gate fails, run the individual command to debug it:
+
+```bash
 pnpm typecheck
+pnpm lint
+pnpm format:check      # `pnpm format` writes the fixes
 pnpm test
+pnpm test:architecture # dependency direction and opaque-ID rules only
+pnpm test:fixtures     # reference project corpus only
 pnpm build
 ```
+
+Real-browser QA (not part of `pnpm verify`, because it needs a downloaded
+browser):
+
+```bash
+pnpm e2e:install   # once per machine
+pnpm e2e           # desktop 1440x900 and mobile 390x844
+```
+
+If direct `pnpm` is unavailable in the shell, use the pinned
+`npx pnpm@10.15.1 ...`.
 
 Do not discard uncommitted user work.
 
@@ -62,6 +147,11 @@ Do not discard uncommitted user work.
 - Mobile UX is part of every iteration, not later cleanup.
 - Do not add billing/database/auth/Three.js/full-3D unless the active iteration explicitly asks for it.
 - Future quantities/costing/covering/product prices must stay outside `roof-math`; geometry cannot depend on commercial data.
+- Geometry IDs are opaque. Domain code must never recover a decision by parsing an ID string; carry a structured field instead (ADR-007). Presentation maps an ID to a label through one lookup table with a translated generic fallback.
+- Fabrication allowances are resolved upstream of procurement. `procurement-core` receives explicit required blank lengths, infers no installation or fabrication rule, and depends on no other package (ADR-009, ADR-010).
+- Effective coverage dimensions may already encode installation overlap. Never add an overlap allowance on top of an effective dimension (V26C research).
+- Quantity and procurement output is physical evidence, not a purchase quantity or a quotation. User-facing wording must not imply otherwise until a commerce layer exists.
+- The architecture rules in `docs/adr/` are executable. `tools/architecture/*.test.ts` fails `pnpm verify` when code stops matching them. Change the ADR first, then the test, then the code — never the test alone.
 
 ## UX rules
 
@@ -126,14 +216,14 @@ A future agent must inspect Git + checkpoint and continue, never assume unfinish
 Before finishing an iteration:
 
 ```bash
-pnpm typecheck
-pnpm test
-pnpm lint
-pnpm build
+pnpm verify
 git diff --check
 git status
 git diff --stat
 ```
+
+Run `pnpm e2e` as well when the change affects layout, the mobile shell, the
+covering drawing or project persistence.
 
 Update `WORK CHECKPOINT` with:
 

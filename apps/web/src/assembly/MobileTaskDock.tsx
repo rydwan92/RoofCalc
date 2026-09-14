@@ -32,6 +32,7 @@ export function MobileTaskDock() {
         <button
           key={task}
           role="tab"
+          data-task={task}
           aria-selected={preset === task}
           aria-label={t(`assembly.${task}Preset`)}
           title={t(`assembly.${task}Preset`)}

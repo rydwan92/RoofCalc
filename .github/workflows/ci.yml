@@ -1,0 +1,108 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+# A superseded run has nothing to prove.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify (typecheck, lint, format, tests, build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      # The package manager version is pinned by `packageManager` in package.json.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Above the `engines.node` floor in package.json.
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Geometry, covering, quantity and procurement calculations are local and
+      # pure, so the normal gate needs no database and no manufacturer API.
+      # Catalogue integration against MySQL is the separate manual job below.
+      - name: Verify
+        run: pnpm verify
+
+      - name: Check for stray whitespace errors
+        run: git diff --check
+
+      - name: Fail if the build produced tracked changes
+        run: git diff --exit-code
+
+  browser:
+    name: Browser QA (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: verify
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Only Chromium: the suite is behavioural smoke coverage, not a
+      # cross-browser matrix.
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm --filter @cieslacalc/web build
+      - run: pnpm e2e
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+  catalog-database:
+    name: Catalogue integration (MySQL, optional)
+    # Opt-in only: run it from the Actions tab when the catalogue schema,
+    # migrations or Drizzle repository changed. Normal CI never needs a database.
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      mysql:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: ci-root
+          MARIADB_DATABASE: cieslacalc
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      DATABASE_URL: mysql://root:ci-root@127.0.0.1:3306/cieslacalc
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply committed migrations
+        run: pnpm --filter @cieslacalc/api db:migrate
+      # Dry run only: never mutate catalogue data from CI.
+      - name: Import the DEMO catalogue (dry run)
+        run: pnpm --filter @cieslacalc/api catalog:import src/data/demo-catalog.v1.json

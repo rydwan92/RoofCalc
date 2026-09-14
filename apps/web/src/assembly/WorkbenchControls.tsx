@@ -49,6 +49,7 @@ export function WorkbenchControls({ skeleton }: { skeleton: RoofSkeleton }) {
           <button
             key={preset}
             role="tab"
+            data-task={preset}
             aria-selected={state.workbench.viewPreset === preset}
             onClick={() => state.setViewPreset(preset)}
           >
