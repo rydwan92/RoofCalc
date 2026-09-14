@@ -83,6 +83,12 @@ Waste, offcuts, accessories and packaging are absent and must be said to be
 absent. `assembly.coveringQuantityBoundary` carries that sentence in the
 Material Schedule; do not remove it.
 
+V27 basis indicators use text plus disclosure, never colour alone. The compact
+result progression is `Geometry → Execution → Cutting → Purchase`; an absent
+downstream layer is labelled pending/unavailable rather than rendered as a fake
+zero result. Coverage positions and geometric runs use different typed units,
+and their totals are never added together.
+
 ## 5. Fields, controls, disclosure
 
 - **Number field**: label, exact value in the active display unit, unit shown,

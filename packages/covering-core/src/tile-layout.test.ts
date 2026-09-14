@@ -334,12 +334,14 @@ describe('roof tile coverage layout strategy', () => {
     });
   });
 
-  it('emits a trusted piece source only for a fully resolved layout', () => {
+  it('emits a typed effective-coverage position without changing the count', () => {
     const source = createRoofTileQuantitySource({ layout: layoutFixture() });
     expect(source).toMatchObject({
-      unit: 'piece',
+      layoutKind: 'roof-tile',
+      semantic: 'effective-coverage-position',
+      unit: 'coverage-position',
       quantity: 12,
-      basis: 'roof-tile-geometric-coverage-position-v1',
+      requirementReadiness: 'geometric-only',
     });
     expect(source).not.toHaveProperty('price');
     expect(

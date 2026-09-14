@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, expectTypeOf, it } from 'vitest';
 import {
   COVERING_TECHNICAL_SCHEMA_VERSION,
   checkCoveringCompatibility,
@@ -12,6 +12,7 @@ import {
   roofTileTechnicalSpecSchema,
   standingSeamTechnicalSpecSchema,
   type RoofTileTechnicalSpec,
+  type CoveringQuantitySemantic,
 } from './index';
 
 const tile = (): RoofTileTechnicalSpec => ({
@@ -39,6 +40,10 @@ const tile = (): RoofTileTechnicalSpec => ({
 });
 
 describe('covering technical product contracts', () => {
+  it('keeps purchase-piece outside the covering quantity vocabulary', () => {
+    expectTypeOf<CoveringQuantitySemantic>().not.toEqualTypeOf<'purchase-piece'>();
+  });
+
   it('keeps old V18 roof-tile snapshots parseable without guessing a course pattern', () => {
     const parsed = roofTileTechnicalSpecSchema.parse(tile());
     expect(parsed.installationModes[0]!.coursePattern).toBeUndefined();

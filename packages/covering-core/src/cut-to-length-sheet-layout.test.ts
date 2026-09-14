@@ -107,9 +107,12 @@ describe('cut-to-length modular sheet layout', () => {
     expect(
       createCutToLengthSheetQuantitySource({ layout: result }),
     ).toMatchObject({
+      layoutKind: 'modular-sheet-cut-to-length',
+      semantic: 'geometric-panel-run',
+      unit: 'geometric-run',
       quantity: 4,
       totalLengthMm: 4000,
-      basis: 'cut-to-length-geometric-sheet-run-v1',
+      requirementReadiness: 'geometric-only',
     });
   });
 

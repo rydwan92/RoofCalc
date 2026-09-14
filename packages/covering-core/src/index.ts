@@ -522,24 +522,47 @@ export interface CoveringLayoutStrategy<
   resolve(input: CoveringLayoutInput<TSpec, TIntent>): TResult;
 }
 
-/** Future quantity-core bridge. V18 deliberately produces no quantity rows. */
-export interface CoveringQuantitySource {
+export type CoveringQuantitySemantic =
+  'effective-coverage-position' | 'geometric-panel-run';
+export type CoveringRequirementReadiness = 'geometric-only';
+export type CoveringQuantityLayoutKind =
+  | 'roof-tile'
+  | 'modular-sheet'
+  | 'standing-seam'
+  | 'modular-sheet-cut-to-length';
+
+interface CoveringQuantitySourceBase {
   id: string;
   coveringAssignmentId: string;
   sourceRoofPlaneIds: string[];
-  unit: 'piece' | 'metre' | 'square-metre';
   quantity: number;
-  fullPositions?: number;
-  cutPositions?: number;
-  splitPositions?: number;
-  basis: string;
+  requirementReadiness: CoveringRequirementReadiness;
   productDisplay?: CoveringProductSelection['displaySnapshot'];
-  netAreaMm2?: number;
-  declaredQuantityRange?: { minimum: number; maximum: number };
-  totalLengthMm?: number;
-  lengthGroups?: { lengthMm: number; quantity: number }[];
   warningKeys?: string[];
 }
+
+/** Neutral, typed bridge into quantity-core. No purchase unit is represented. */
+export type CoveringQuantitySource =
+  | (CoveringQuantitySourceBase & {
+      layoutKind: 'roof-tile' | 'modular-sheet';
+      semantic: 'effective-coverage-position';
+      unit: 'coverage-position';
+      fullPositions: number;
+      cutPositions: number;
+      splitPositions?: number;
+      netAreaMm2?: number;
+      declaredConsumptionReferenceRange?: {
+        minimum: number;
+        maximum: number;
+      };
+    })
+  | (CoveringQuantitySourceBase & {
+      layoutKind: 'standing-seam' | 'modular-sheet-cut-to-length';
+      semantic: 'geometric-panel-run';
+      unit: 'geometric-run';
+      totalLengthMm: number;
+      lengthGroups: { lengthMm: number; quantity: number }[];
+    });
 
 export * from './tile-layout';
 export * from './modular-sheet-layout';

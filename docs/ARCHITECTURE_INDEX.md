@@ -1,6 +1,6 @@
 # RoofCalc / CieślaCalc — Architecture Index
 
-**This is the current-state map, after V26D.** Read it after `PROJECT_BLUEPRINT.md`
+**This is the current-state map, after V27.** Read it after `PROJECT_BLUEPRINT.md`
 and before touching code. It describes what exists today, not the history of how
 it got here. Historical `ARCHITECTURE_V*.md` documents stay authoritative for the
 subsystem they introduced and should be opened only when changing that subsystem.
@@ -151,7 +151,10 @@ canonical assignments
 | `modular-sheet` + `cut-to-length` | `resolveCutToLengthSheetLayout` (same kernel) | V25 |
 
 Covering results are **coverage positions and geometric runs** — geometric
-evidence, not a purchase list. Waste, offcut reuse, accessories, packaging and
+evidence, not a purchase list. Their quantity bridge is discriminated: tile and
+fixed-sheet layouts use `effective-coverage-position` / `coverage-position`,
+while standing-seam and cut-to-length layouts use `geometric-panel-run` /
+`geometric-run`. Waste, offcut reuse, accessories, packaging and
 `orderLengthMm` are deliberately absent.
 
 **Overlap invariant (V26C):** effective coverage width/length may already encode
@@ -171,6 +174,15 @@ CoveringProductQuantitySource[]  → covering rows (positions, optional length g
 
 It never selects a product, fetches a catalogue, plans procurement, or applies a
 price. Untrusted covering results produce no trusted row.
+
+V27 makes result provenance machine-readable. The current semantic vocabulary
+is `axis-geometric`, `resolved-visible`, `net-geometric`,
+`effective-coverage-position` and `geometric-panel-run`. `limited` remains a
+result status rather than a length basis. Every current schedule row is
+`requirementReadiness: geometric-only`; future `fabrication-resolved` and
+`procurement-ready` states may be emitted only when an upstream fabrication
+resolver provides a real physical blank. Covering summaries keep effective
+positions and geometric runs separate instead of adding them as generic pieces.
 
 **Known limitation:** `schedule-family-code.ts` still derives the display codes
 `O<n>` and `P<n>` from generated IDs because the single-roof skeleton carries no
@@ -295,6 +307,7 @@ pnpm e2e      # real-browser smoke, desktop 1440x900 and mobile 390x844 (pnpm e2
 | `docs/UX_DESIGN_CONTRACT.md` | touching workbench layout or UI primitives |
 | `docs/ACCEPTANCE_SCENARIOS.md` | changing a user-visible flow |
 | `docs/ARCHITECTURE_V26_TIMBER_PROCUREMENT_CORE.md` | touching procurement |
+| `docs/ARCHITECTURE_V27_RESULT_SEMANTICS.md` | quantity basis, result wording or takeoff UX |
 | `docs/FUTURE_EXECUTION_SEMANTICS_AUDIT.md` + `docs/domain/*` | touching coverage, overlap or connection semantics |
 | `docs/ARCHITECTURE_FUTURE_COMPOUND_ROOF_SCENE.md` | touching IDs, planes or document shape |
 | `docs/ARCHITECTURE_COVERING_CATALOG_AND_PRICING_BOUNDARY.md` | covering, catalogue or future pricing |

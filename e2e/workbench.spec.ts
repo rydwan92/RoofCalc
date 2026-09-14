@@ -24,10 +24,35 @@ async function openBuilder(page: Page) {
 }
 
 async function openTask(page: Page, task: string) {
-  await page.locator(`[data-task="${task}"]`).first().click();
+  // Desktop controls and the mobile dock coexist in the DOM. Target the
+  // currently rendered control so the click also proves that route is
+  // physically reachable at the active viewport.
+  const taskControl = page.locator(`[data-task="${task}"]:visible`).first();
+  await taskControl.click();
   await expect(
-    page.locator(`[data-task="${task}"][aria-selected="true"]`).first(),
+    page.locator(`[data-task="${task}"][aria-selected="true"]:visible`).first(),
   ).toBeVisible();
+}
+
+async function openResolvedTileSchedule(page: Page, project: string) {
+  await openTask(page, 'layers');
+  const toolbox =
+    project === 'mobile'
+      ? await (async () => {
+          await page.getByTestId('mobile-open-tools').click();
+          return page.getByRole('dialog');
+        })()
+      : page;
+  const battens = toolbox.getByRole('switch', { name: /Łaty/ }).first();
+  if ((await battens.getAttribute('aria-checked')) !== 'true')
+    await battens.click();
+  if (project === 'mobile') await page.keyboard.press('Escape');
+
+  await openTask(page, 'covering');
+  await page.getByRole('button', { name: 'Dodaj dachówkę ręcznie' }).click();
+  await expect(page.getByTestId('tile-layout-drawing')).toBeVisible();
+  await openTask(page, 'materials');
+  return page.getByTestId('covering-quantity');
 }
 
 /** Horizontal overflow is the failure mode that keeps reappearing on mobile. */
@@ -188,5 +213,39 @@ test.describe('D — A saved project survives a reload', () => {
     await expect(await pitchField(page, testInfo.project.name)).toHaveValue(
       '42',
     );
+  });
+});
+
+test.describe('E — Result semantics remain truthful and reachable', () => {
+  test('covering schedule exposes coverage positions, basis and unresolved purchase', async ({
+    page,
+  }, testInfo) => {
+    await openBuilder(page);
+    const schedule = await openResolvedTileSchedule(
+      page,
+      testInfo.project.name,
+    );
+    await expect(schedule).toBeVisible();
+
+    const row = schedule.locator(
+      'article[data-semantic="effective-coverage-position"]',
+    );
+    await expect(row).toContainText('pozycji krycia');
+    await expect(row.getByTestId('result-basis')).toContainText(
+      'Krycie efektywne',
+    );
+
+    const progression = page.getByTestId('result-layer-progress-schedule');
+    await progression.locator('summary').click();
+    await expect(
+      progression.locator('[data-layer="purchase"][data-state="pending"]'),
+    ).toContainText('jeszcze nie wyliczony');
+    await expect(
+      progression.locator('[data-layer="cutting"][data-state="pending"]'),
+    ).toContainText('jeszcze nie wyliczony');
+    await expect(
+      progression.locator('[data-layer="purchase"][data-state="resolved"]'),
+    ).toHaveCount(0);
+    await expectNoHorizontalOverflow(page);
   });
 });

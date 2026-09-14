@@ -242,7 +242,7 @@ export function resolveStandingSeamLayout(
 export function createStandingSeamQuantitySource(args: {
   layout: StandingSeamLayoutResult;
   productDisplay?: CoveringQuantitySource['productDisplay'];
-}): (CoveringQuantitySource & { unit: 'piece' }) | undefined {
+}): CoveringQuantitySource | undefined {
   const { layout } = args;
   if (
     (layout.status !== 'resolved' && layout.status !== 'limited') ||
@@ -254,11 +254,13 @@ export function createStandingSeamQuantitySource(args: {
     id: `covering-quantity:${layout.assignmentId}`,
     coveringAssignmentId: layout.assignmentId,
     sourceRoofPlaneIds: [...layout.roofPlaneIds],
-    unit: 'piece',
+    layoutKind: 'standing-seam',
+    semantic: 'geometric-panel-run',
+    unit: 'geometric-run',
     quantity: layout.panelRunCount,
     totalLengthMm: layout.totalPanelLengthMm,
     lengthGroups: layout.lengthGroups,
-    basis: 'standing-seam-geometric-panel-run-v1',
+    requirementReadiness: 'geometric-only',
     productDisplay: args.productDisplay,
     warningKeys: [
       'geometric-panel-runs-not-purchase-quantity',

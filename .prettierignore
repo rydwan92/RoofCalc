@@ -7,3 +7,4 @@ ChatPromptsHistoryIgnore
 test-results
 playwright-report
 fixtures/projects/*.json
+.claude

@@ -8,9 +8,16 @@ import type {
 import { openingFamilyCode, purlinFamilyCode } from './schedule-family-code';
 
 export type QuantityCategory = 'structural-timber' | 'roof-build-up';
-export type QuantityUnit = 'pcs' | 'm' | 'm2' | 'm3';
-export type QuantityLengthBasis =
-  'axis-geometric' | 'resolved-visible' | 'limited';
+export type QuantityUnit =
+  'pcs' | 'm' | 'm2' | 'm3' | 'coverage-position' | 'geometric-run';
+export type QuantityLengthBasis = 'axis-geometric' | 'resolved-visible';
+export type QuantitySemanticKind =
+  | QuantityLengthBasis
+  | 'net-geometric'
+  | 'effective-coverage-position'
+  | 'geometric-panel-run';
+export type RequirementReadiness =
+  'geometric-only' | 'fabrication-resolved' | 'procurement-ready';
 export type QuantityVolumeStatus = 'complete' | 'partial' | 'unavailable';
 
 export interface QuantitySection {
@@ -36,52 +43,88 @@ export interface SurfaceBuildUpSource {
   id: string;
   familyKey: string;
   memberKind: 'membrane';
+  semantic: 'net-geometric';
   areaMm2: number;
   roofPlaneId?: string;
   warningKeys?: string[];
 }
 
-export interface CoveringProductQuantitySource {
+export type CoveringQuantityLayoutKind =
+  | 'roof-tile'
+  | 'modular-sheet'
+  | 'standing-seam'
+  | 'modular-sheet-cut-to-length';
+
+interface CoveringProductQuantitySourceBase {
   id: string;
   coveringAssignmentId: string;
   sourceRoofPlaneIds: string[];
-  unit: 'piece';
   quantity: number;
-  fullPositions?: number;
-  cutPositions?: number;
-  splitPositions?: number;
-  basis: string;
+  requirementReadiness: 'geometric-only';
   productDisplay?: {
     manufacturer?: string;
     familyName?: string;
     variantName?: string;
+    revisionCode?: string;
   };
-  netAreaMm2?: number;
-  declaredQuantityRange?: { minimum: number; maximum: number };
-  totalLengthMm?: number;
-  lengthGroups?: { lengthMm: number; quantity: number }[];
   warningKeys?: string[];
 }
 
-export interface CoveringQuantityRow {
+export type CoveringProductQuantitySource =
+  | (CoveringProductQuantitySourceBase & {
+      layoutKind: 'roof-tile' | 'modular-sheet';
+      semantic: 'effective-coverage-position';
+      unit: 'coverage-position';
+      fullPositions: number;
+      cutPositions: number;
+      splitPositions?: number;
+      netAreaMm2?: number;
+      declaredConsumptionReferenceRange?: {
+        minimum: number;
+        maximum: number;
+      };
+    })
+  | (CoveringProductQuantitySourceBase & {
+      layoutKind: 'standing-seam' | 'modular-sheet-cut-to-length';
+      semantic: 'geometric-panel-run';
+      unit: 'geometric-run';
+      totalLengthMm: number;
+      lengthGroups: { lengthMm: number; quantity: number }[];
+    });
+
+interface CoveringQuantityRowBase {
   id: string;
   category: 'covering-product';
   assignmentId: string;
   sourceIds: string[];
   roofPlaneIds: string[];
-  unit: 'pcs';
   quantity: number;
-  fullPositions?: number;
-  cutPositions?: number;
-  splitPositions?: number;
-  basis: string;
+  requirementReadiness: 'geometric-only';
   productDisplay?: CoveringProductQuantitySource['productDisplay'];
-  netAreaMm2?: number;
-  declaredQuantityRange?: { minimum: number; maximum: number };
-  totalLengthMm?: number;
-  lengthGroups?: { lengthMm: number; quantity: number }[];
   warningKeys: string[];
 }
+
+export type CoveringQuantityRow =
+  | (CoveringQuantityRowBase & {
+      layoutKind: 'roof-tile' | 'modular-sheet';
+      semantic: 'effective-coverage-position';
+      unit: 'coverage-position';
+      fullPositions: number;
+      cutPositions: number;
+      splitPositions?: number;
+      netAreaMm2?: number;
+      declaredConsumptionReferenceRange?: {
+        minimum: number;
+        maximum: number;
+      };
+    })
+  | (CoveringQuantityRowBase & {
+      layoutKind: 'standing-seam' | 'modular-sheet-cut-to-length';
+      semantic: 'geometric-panel-run';
+      unit: 'geometric-run';
+      totalLengthMm: number;
+      lengthGroups: { lengthMm: number; quantity: number }[];
+    });
 
 export interface RoofSurfaceQuantityRow {
   id: string;
@@ -92,7 +135,8 @@ export interface RoofSurfaceQuantityRow {
   roofPlaneIds: string[];
   areaMm2: number;
   unit: 'm2';
-  basis: 'net-geometric';
+  semantic: 'net-geometric';
+  requirementReadiness: 'geometric-only';
   warningKeys: string[];
 }
 
@@ -111,6 +155,7 @@ export interface RoofMemberScheduleRow {
   totalLengthMm: number;
   volumeMm3?: number;
   lengthBasis: QuantityLengthBasis;
+  requirementReadiness: 'geometric-only';
   segmentCount?: number;
   warningKeys: string[];
 }
@@ -154,7 +199,10 @@ export interface RoofMemberSchedule {
   timberSummary: QuantitySummary;
   buildUpSummary: QuantitySummary;
   surfaceBuildUpSummary: { areaMm2: number };
-  coveringSummary: { quantity: number };
+  coveringSummary: {
+    effectiveCoveragePositions: number;
+    geometricPanelRuns: number;
+  };
   issues: QuantityIssue[];
 }
 
@@ -324,6 +372,7 @@ function groupSources(
         totalLengthMm,
         volumeMm3,
         lengthBasis: first.lengthBasis,
+        requirementReadiness: 'geometric-only',
         segmentCount:
           group.reduce(
             (total, source) => total + (source.segmentCount ?? 0),
@@ -453,7 +502,8 @@ function createSurfaceBuildUpRows(
           .sort(),
         areaMm2: items.reduce((sum, item) => sum + item.areaMm2, 0),
         unit: 'm2' as const,
-        basis: 'net-geometric' as const,
+        semantic: 'net-geometric' as const,
+        requirementReadiness: 'geometric-only' as const,
         warningKeys: [
           ...new Set(items.flatMap((item) => item.warningKeys ?? [])),
         ].sort(),
@@ -472,55 +522,68 @@ function createCoveringRows(
       a.coveringAssignmentId.localeCompare(b.coveringAssignmentId) ||
       a.id.localeCompare(b.id),
   )) {
-    if (
-      !Number.isFinite(source.quantity) ||
-      source.quantity < 0 ||
-      (source.totalLengthMm !== undefined &&
-        (!Number.isFinite(source.totalLengthMm) || source.totalLengthMm < 0)) ||
-      (source.lengthGroups !== undefined &&
-        (source.lengthGroups.some(
-          (group) =>
-            !Number.isFinite(group.lengthMm) ||
-            group.lengthMm <= 0 ||
-            !Number.isInteger(group.quantity) ||
-            group.quantity <= 0,
-        ) ||
-          source.lengthGroups.reduce(
-            (sum, group) => sum + group.quantity,
-            0,
-          ) !== source.quantity)) ||
-      (source.lengthGroups !== undefined &&
-        source.totalLengthMm !== undefined &&
+    const invalidRunLengths =
+      source.semantic === 'geometric-panel-run' &&
+      (source.lengthGroups.some(
+        (group) =>
+          !Number.isFinite(group.lengthMm) ||
+          group.lengthMm <= 0 ||
+          !Number.isInteger(group.quantity) ||
+          group.quantity <= 0,
+      ) ||
+        source.lengthGroups.reduce((sum, group) => sum + group.quantity, 0) !==
+          source.quantity ||
+        !Number.isFinite(source.totalLengthMm) ||
+        source.totalLengthMm < 0 ||
         Math.abs(
           source.lengthGroups.reduce(
             (sum, group) => sum + group.lengthMm * group.quantity,
             0,
           ) - source.totalLengthMm,
         ) >
-          1e-6 * Math.max(1, source.quantity))
+          1e-6 * Math.max(1, source.quantity));
+    if (
+      !Number.isFinite(source.quantity) ||
+      source.quantity < 0 ||
+      invalidRunLengths
     ) {
       issues.push({ sourceId: source.id, code: 'invalid-quantity' });
       continue;
     }
-    rows.push({
+    const common = {
       id: `quantity:covering:${source.coveringAssignmentId}`,
-      category: 'covering-product',
+      category: 'covering-product' as const,
       assignmentId: source.coveringAssignmentId,
       sourceIds: [source.id],
       roofPlaneIds: [...new Set(source.sourceRoofPlaneIds)].sort(),
-      unit: 'pcs',
       quantity: source.quantity,
-      fullPositions: source.fullPositions,
-      cutPositions: source.cutPositions,
-      splitPositions: source.splitPositions,
-      basis: source.basis,
+      requirementReadiness: source.requirementReadiness,
       productDisplay: source.productDisplay,
-      netAreaMm2: source.netAreaMm2,
-      declaredQuantityRange: source.declaredQuantityRange,
-      totalLengthMm: source.totalLengthMm,
-      lengthGroups: source.lengthGroups?.map((group) => ({ ...group })),
       warningKeys: [...new Set(source.warningKeys ?? [])].sort(),
-    });
+    };
+    rows.push(
+      source.semantic === 'effective-coverage-position'
+        ? {
+            ...common,
+            layoutKind: source.layoutKind,
+            semantic: source.semantic,
+            unit: source.unit,
+            fullPositions: source.fullPositions,
+            cutPositions: source.cutPositions,
+            splitPositions: source.splitPositions,
+            netAreaMm2: source.netAreaMm2,
+            declaredConsumptionReferenceRange:
+              source.declaredConsumptionReferenceRange,
+          }
+        : {
+            ...common,
+            layoutKind: source.layoutKind,
+            semantic: source.semantic,
+            unit: source.unit,
+            totalLengthMm: source.totalLengthMm,
+            lengthGroups: source.lengthGroups.map((group) => ({ ...group })),
+          },
+    );
   }
   return rows;
 }
@@ -619,7 +682,12 @@ export function createRoofMemberSchedule(
       areaMm2: surfaceBuildUpRows.reduce((sum, row) => sum + row.areaMm2, 0),
     },
     coveringSummary: {
-      quantity: coveringRows.reduce((sum, row) => sum + row.quantity, 0),
+      effectiveCoveragePositions: coveringRows
+        .filter((row) => row.semantic === 'effective-coverage-position')
+        .reduce((sum, row) => sum + row.quantity, 0),
+      geometricPanelRuns: coveringRows
+        .filter((row) => row.semantic === 'geometric-panel-run')
+        .reduce((sum, row) => sum + row.quantity, 0),
     },
     issues: issues.sort(
       (a, b) =>

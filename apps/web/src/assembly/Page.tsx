@@ -574,6 +574,7 @@ export function AssemblyPage() {
                 id: `surface:${plane.roofPlaneId}`,
                 familyKey: 'MEM',
                 memberKind: 'membrane' as const,
+                semantic: 'net-geometric' as const,
                 roofPlaneId: plane.roofPlaneId,
                 areaMm2: plane.netAreaMm2,
                 warningKeys: plane.issues.map((issue) => issue.code),

@@ -1297,6 +1297,77 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+> V27 started on 2026-09-14 from `18ae1281b00c24f6fe797ba1051ab9f73c4a5eb8`
+> (`main`, matching the requested baseline). The tracked tree was clean; the only
+> pre-existing item was untracked `.claude/launch.json`, which is preserved
+> untouched. Baseline typecheck and lint passed; `pnpm verify` stopped only
+> because Prettier discovered that local untracked JSON. Chromium was absent,
+> then installed with the repository command. The first 10-test E2E attempt with
+> the default 10 local workers timed out during `page.goto`; this is recorded as
+> the actual baseline and will be rechecked with the final harness. V27 is
+> authorized by the attached prompt and supersedes the old V26 next action.
+
+**Iteration:** `027 — Result Semantics, Professional Takeoff UX, Quantity-Basis Hardening and Procurement Readiness`
+
+**Status:** `COMPLETE — FULL AUTOMATED GATE AND REQUIRED BROWSER MATRIX PASS`
+
+**Completed:** `covering-core` and `quantity-core` now use discriminated,
+renderer-independent quantity semantics instead of covering `piece` plus a
+free-form basis. Roof tile/fixed sheet resolve to
+`effective-coverage-position` / `coverage-position`; standing seam and
+cut-to-length resolve to `geometric-panel-run` / `geometric-run`. Layout kind
+and `geometric-only` readiness are explicit, declared consumption is a named
+reference, and heterogeneous positions/runs are never added into one total.
+Timber retains `axis-geometric` or `resolved-visible`, membrane is explicitly
+`net-geometric`, and `limited` remains a result status rather than a basis.
+All pre-V27 numerical geometry is unchanged and pinned by exact regression
+expectations for the four covering strategies, membrane and timber.
+
+**UX:** Pokrycia and Zestawienie use one reusable native-details basis pattern
+and a contextual `Geometria → Wykonanie → Rozkrój → Zakup` disclosure. Copy in
+Polish and English now says coverage positions or geometric runs, explains what
+is absent, labels manufacturer consumption as a reference rather than an
+order, and changes Quick's commercial-sounding “minimal material” to “minimum
+geometric length”. Schedule cutting is pending; covering cutting is unavailable
+without physical elements; purchase is pending everywhere. The 1024 px
+progression uses two columns, and the mobile dock remains above workspace
+surfaces. No result relies on colour alone and disclosure is keyboard/touch
+operable.
+
+**Boundaries and persistence:** no project schema or canonical state changed;
+existing saved projects open unchanged. `procurement-core` remains isolated and
+unwired. No overlap, allowance, fabricated blank, stock, order, price, cost,
+waste optimizer, connection geometry, ProjectDocument V2 or compound-roof work
+was added. The pre-existing untracked `.claude/launch.json` is untouched;
+`.prettierignore` merely prevents the repository gate from formatting that
+local tool state.
+
+**Validation:** `pnpm verify` PASS — typecheck, ESLint, Prettier, **631 tests in
+64 files**, web/API production build. `pnpm e2e` PASS — **12/12** tests on
+desktop 1440×900 and responsive touch 390×844, including the new semantic
+schedule flow and horizontal-overflow check. Chrome browser QA PASS on gable
+and hip roofs; tile, fixed modular sheet, standing seam and cut-to-length; and
+Material Schedule at **1440×900, 1024×768, 390×844 and 360×800**, each with zero
+horizontal overflow. Final web output: main **542.66 / 155.48 kB gzip**, CSS
+**121.47 / 23.00 kB gzip**, ResultBasis **2.05 / 0.66 kB gzip**, Material
+Schedule **12.93 / 3.29 kB gzip**, Covering Workspace **40.99 / 8.09 kB gzip**.
+The existing Vite >500 kB main-chunk advisory remains.
+
+**Known truthful limitations:** timber rows still describe axes or resolved
+visible lengths, not required fabrication blanks; membrane remains net roof
+area without laps/upstands/rolls; covering positions/runs remain geometry,
+without installation segmentation, accessories, waste or purchase units.
+
+**NEXT ACTION / recommended V28:** one narrow `K1 Fabrication Blank → Cutting
+Plan` vertical slice. Add an upstream K1 execution resolver that can prove a
+physical required blank (including only explicitly modelled end treatments),
+adapt those resolved blanks to `procurement-core` at the application boundary,
+accept explicit stock lengths/kerf/end trim, and expose Wykonanie/Rozkrój. Keep
+other timber families, covering, membrane, suppliers, prices and cost out until
+their own researched execution resolvers exist.
+
+---
+
 > V26-INTEGRATION started on 2026-09-14 from clean commit `d59ee17710e52e008b4fd9ffa17ff714f810c7b9` (`V26D`) on the new branch `integration/v26-hardening`, created at that commit because the branch did not previously exist on either the local machine or the remote. The working tree was verified clean before any edit: the git index matched the V26D tree exactly (278 entries, zero staged differences) and 273 tracked files were compared by size against the index with zero mismatches, no untracked files and no mtime newer than the last git write. No user work was discarded and no reset, rebase or merge was performed.
 
 **Iteration:** `026-INTEGRATION — Final integration and hardening pass: reconstructed engineering hardening on top of V26A–V26D`

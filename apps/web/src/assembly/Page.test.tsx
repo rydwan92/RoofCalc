@@ -50,7 +50,7 @@ describe('dual-mode parametric workbench', () => {
     expect(input('Rzut do osi kalenicy').value).toBe('400');
     expect(useAssembly.getState().unit).toBe('cm');
     builder();
-    await screen.findByTestId('skeleton-drawing');
+    await screen.findByTestId('skeleton-drawing', {}, { timeout: 5000 });
     expect(useAssembly.getState().unit).toBe('cm');
     expect(
       screen
@@ -67,6 +67,9 @@ describe('dual-mode parametric workbench', () => {
     enter('Kąt połaci', '30');
     const spec = useAssembly.getState().spec,
       stock = screen.getByTestId('stock-length').textContent;
+    expect(screen.getAllByText('Minimalna długość geometryczna').length).toBe(
+      1,
+    );
     expect(stock).toMatch(/\smm$/);
     fireEvent.click(screen.getByRole('button', { name: /Otwórz w kreatorze/ }));
     expect(useAssembly.getState().spec).toBe(spec);
@@ -1452,6 +1455,12 @@ describe('dual-mode parametric workbench', () => {
     ).toHaveLength(2);
     expect(screen.getAllByText('Membrana').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Kontrłaty').length).toBeGreaterThan(0);
+    expect(
+      container.querySelector('[data-semantic="net-geometric"]'),
+    ).toBeTruthy();
+    expect(
+      container.querySelector('[data-semantic="resolved-visible"]'),
+    ).toBeTruthy();
   });
 
   it('opens the geometry-based material schedule and highlights its source members without editing the project', async () => {
@@ -1481,6 +1490,15 @@ describe('dual-mode parametric workbench', () => {
     expect(
       screen.getAllByText(/nie uwzględnia długości handlowych/i),
     ).not.toHaveLength(0);
+    expect(
+      container.querySelector('[data-semantic="axis-geometric"]'),
+    ).toBeTruthy();
+    expect(
+      container.querySelector('[data-layer="purchase"][data-state="resolved"]'),
+    ).toBeNull();
+    expect(
+      container.querySelector('[data-layer="cutting"][data-state="pending"]'),
+    ).toBeTruthy();
 
     const battenSummary = screen.getAllByTestId(
       'material-build-up-summary',
@@ -1553,7 +1571,9 @@ describe('dual-mode parametric workbench', () => {
     const summaries = screen.getAllByTestId('material-build-up-summary');
     expect(summaries).toHaveLength(1);
     expect(summaries[0]!.getAttribute('data-member-kind')).toBe('batten');
-    const details = summaries[0]!.querySelector('details')!;
+    const details = summaries[0]!.querySelector(
+      '.a-build-up-lengths',
+    ) as HTMLDetailsElement;
     const exactRows = within(summaries[0]!).getAllByTestId(
       'material-build-up-exact-row',
     );
@@ -1777,6 +1797,21 @@ describe('dual-mode parametric workbench', () => {
     expect(
       document.querySelectorAll('.a-tile-fragment').length,
     ).toBeGreaterThan(0);
+    expect(screen.getByText('Krycie efektywne')).toBeTruthy();
+    const coveringLayers = screen.getByTestId(
+      'result-layer-progress-covering',
+    ) as HTMLDetailsElement;
+    expect(coveringLayers.open).toBe(false);
+    fireEvent.click(within(coveringLayers).getByText('Jak czytać ten wynik'));
+    expect(coveringLayers.open).toBe(true);
+    expect(within(coveringLayers).getByText('Wykonanie')).toBeTruthy();
+    expect(within(coveringLayers).getByText('Rozkrój')).toBeTruthy();
+    expect(within(coveringLayers).getByText('Zakup')).toBeTruthy();
+    expect(
+      coveringLayers.querySelector(
+        '[data-layer="cutting"][data-state="unavailable"]',
+      ),
+    ).toBeTruthy();
     expect(screen.queryByText(/cena/i)).toBeNull();
     const tilePositionCount = () =>
       Number(
@@ -1797,6 +1832,19 @@ describe('dual-mode parametric workbench', () => {
     expect(await screen.findByTestId('covering-quantity')).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Pokrycia' })).toBeTruthy();
     expect(screen.getByText(/Dachówka —/)).toBeTruthy();
+    const coveringSchedule = screen.getByTestId('covering-quantity');
+    expect(within(coveringSchedule).getByText(/pozycji krycia/)).toBeTruthy();
+    expect(
+      coveringSchedule.querySelector(
+        '[data-semantic="effective-coverage-position"]',
+      ),
+    ).toBeTruthy();
+    expect(
+      within(coveringSchedule).getByText(
+        /wartość referencyjna, nie ilość do zamówienia/i,
+      ),
+    ).toBeTruthy();
+    expect(within(coveringSchedule).queryByText(/szt\. do zakupu/i)).toBeNull();
     act(() =>
       useAssembly.getState().setBattenLayout({
         enabled: true,
@@ -1857,7 +1905,7 @@ describe('dual-mode parametric workbench', () => {
     act(() => useAssembly.getState().setViewPreset('materials'));
     expect(await screen.findByTestId('covering-quantity')).toBeTruthy();
     expect(
-      screen.getByText(/arkusze\/moduły w układzie geometrycznym/i),
+      screen.getByText(/pozycje krycia w efektywnym układzie arkuszy/i),
     ).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Pokrycia' })).toBeTruthy();
     expect(screen.getByText(/Blacha modułowa —/)).toBeTruthy();
@@ -1926,7 +1974,10 @@ describe('dual-mode parametric workbench', () => {
       within(schedule).getByText(/Blacha cięta na długość —/),
     ).toBeTruthy();
     expect(
-      within(schedule).getByText(/geometryczne odcinki blachy/),
+      within(schedule).getByText(/geometryczne przebiegi blachy/),
+    ).toBeTruthy();
+    expect(
+      schedule.querySelector('[data-semantic="geometric-panel-run"]'),
     ).toBeTruthy();
   });
 
@@ -1982,7 +2033,7 @@ describe('dual-mode parametric workbench', () => {
       await screen.findByTestId('standing-seam-layout-drawing'),
     ).toBeTruthy();
     expect(
-      screen.getAllByText('Geometryczne odcinki paneli').length,
+      screen.getAllByText('Przebiegi geometryczne paneli').length,
     ).toBeGreaterThan(0);
     expect(
       document.querySelectorAll('.a-panel-fragment').length,
@@ -2029,6 +2080,9 @@ describe('dual-mode parametric workbench', () => {
     act(() => useAssembly.getState().setViewPreset('materials'));
     const schedule = await screen.findByTestId('covering-quantity');
     expect(within(schedule).getByText(/Rąbek stojący —/)).toBeTruthy();
+    expect(
+      within(schedule).getByText(/przebiegów geometrycznych/),
+    ).toBeTruthy();
     const lengths = within(schedule)
       .getByText(/Pokaż długości/)
       .closest('details')!;

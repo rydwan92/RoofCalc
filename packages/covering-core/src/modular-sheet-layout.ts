@@ -569,7 +569,7 @@ export function resolveModularSheetLayout(
 export function createModularSheetQuantitySource(args: {
   layout: ModularSheetLayoutResult;
   productDisplay?: CoveringQuantitySource['productDisplay'];
-}): (CoveringQuantitySource & { unit: 'piece' }) | undefined {
+}): CoveringQuantitySource | undefined {
   if (
     args.layout.status !== 'resolved' ||
     !args.layout.roofPlaneIds.length ||
@@ -580,12 +580,14 @@ export function createModularSheetQuantitySource(args: {
     id: `covering-quantity:${args.layout.assignmentId}`,
     coveringAssignmentId: args.layout.assignmentId,
     sourceRoofPlaneIds: [...args.layout.roofPlaneIds],
-    unit: 'piece',
+    layoutKind: 'modular-sheet',
+    semantic: 'effective-coverage-position',
+    unit: 'coverage-position',
     quantity: args.layout.totalPositions,
     fullPositions: args.layout.fullPositions,
     cutPositions: args.layout.cutPositions,
     splitPositions: args.layout.splitPositions,
-    basis: 'fixed-modular-sheet-geometric-coverage-position-v1',
+    requirementReadiness: 'geometric-only',
     productDisplay: args.productDisplay,
     warningKeys: [
       'no-waste-accessories-or-offcut-reuse',

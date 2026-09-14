@@ -651,7 +651,7 @@ export function resolveRoofTileLayout(
 export function createRoofTileQuantitySource(args: {
   layout: RoofTileLayoutResult;
   productDisplay?: CoveringQuantitySource['productDisplay'];
-}): (CoveringQuantitySource & { unit: 'piece' }) | undefined {
+}): CoveringQuantitySource | undefined {
   if (
     args.layout.status !== 'resolved' ||
     !args.layout.roofPlaneIds.length ||
@@ -662,15 +662,17 @@ export function createRoofTileQuantitySource(args: {
     id: `covering-quantity:${args.layout.assignmentId}`,
     coveringAssignmentId: args.layout.assignmentId,
     sourceRoofPlaneIds: [...args.layout.roofPlaneIds],
-    unit: 'piece',
+    layoutKind: 'roof-tile',
+    semantic: 'effective-coverage-position',
+    unit: 'coverage-position',
     quantity: args.layout.totalPositions,
     fullPositions: args.layout.fullPositions,
     cutPositions: args.layout.cutPositions,
     splitPositions: args.layout.splitPositions,
-    basis: 'roof-tile-geometric-coverage-position-v1',
+    requirementReadiness: 'geometric-only',
     productDisplay: args.productDisplay,
     netAreaMm2: args.layout.declaredConsumptionReference?.netAssignedAreaMm2,
-    declaredQuantityRange: args.layout.declaredConsumptionReference
+    declaredConsumptionReferenceRange: args.layout.declaredConsumptionReference
       ? {
           minimum: args.layout.declaredConsumptionReference.minimumPieces,
           maximum: args.layout.declaredConsumptionReference.maximumPieces,

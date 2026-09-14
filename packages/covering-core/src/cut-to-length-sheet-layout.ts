@@ -290,7 +290,7 @@ export function resolveCutToLengthSheetLayout(
 export function createCutToLengthSheetQuantitySource(args: {
   layout: CutToLengthSheetLayoutResult;
   productDisplay?: CoveringQuantitySource['productDisplay'];
-}): (CoveringQuantitySource & { unit: 'piece' }) | undefined {
+}): CoveringQuantitySource | undefined {
   const { layout } = args;
   if (
     (layout.status !== 'resolved' && layout.status !== 'limited') ||
@@ -302,11 +302,13 @@ export function createCutToLengthSheetQuantitySource(args: {
     id: `covering-quantity:${layout.assignmentId}`,
     coveringAssignmentId: layout.assignmentId,
     sourceRoofPlaneIds: [...layout.roofPlaneIds],
-    unit: 'piece',
+    layoutKind: 'modular-sheet-cut-to-length',
+    semantic: 'geometric-panel-run',
+    unit: 'geometric-run',
     quantity: layout.physicalRunCount,
     totalLengthMm: layout.totalGeometricLengthMm,
     lengthGroups: layout.lengthGroups,
-    basis: 'cut-to-length-geometric-sheet-run-v1',
+    requirementReadiness: 'geometric-only',
     productDisplay: args.productDisplay,
     warningKeys: [
       'geometric-sheet-runs-not-purchase-quantity',

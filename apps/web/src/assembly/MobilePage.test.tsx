@@ -96,6 +96,13 @@ it('opens the material Inspector sheet only after an exact schedule row is selec
   fireEvent.click(within(dock).getByRole('tab', { name: 'Zestawienie' }));
   const schedule = await screen.findByTestId('material-schedule');
   expect(screen.queryByRole('dialog')).toBeNull();
+  const layers = within(schedule).getByTestId(
+    'result-layer-progress-schedule',
+  ) as HTMLDetailsElement;
+  expect(layers.open).toBe(false);
+  fireEvent.click(within(layers).getByText('Jak czytać ten wynik'));
+  expect(layers.open).toBe(true);
+  expect(within(layers).getByText('Wykonanie')).toBeTruthy();
   const summary = within(schedule).getByTestId('material-build-up-summary');
   fireEvent.click(within(summary).getByText(/Pokaż długości/));
   fireEvent.click(

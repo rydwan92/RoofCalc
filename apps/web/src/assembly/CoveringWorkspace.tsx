@@ -23,6 +23,7 @@ import {
   installationModeLabelKey,
   roofPlaneLabelKey,
 } from './covering-presentation';
+import { ResultBasis, ResultLayerProgress } from './ResultBasis';
 
 const CatalogProductPicker = lazy(() =>
   import('../catalog/CatalogProductPicker').then((module) => ({
@@ -705,8 +706,23 @@ export function CoveringWorkspace({
                 maximumFractionDigits: 1,
               }).format(layout.declaredConsumptionReference.maximumPieces)}{' '}
               {t('assembly.piecesShort')}
+              {' · '}
+              {t('assembly.declaredConsumptionBoundary')}
             </small>
           )}
+        {layout && (
+          <div className="a-covering-result-semantics">
+            <ResultBasis
+              semantic={
+                layout.kind === 'roof-tile' || layout.kind === 'modular-sheet'
+                  ? 'effective-coverage-position'
+                  : 'geometric-panel-run'
+              }
+              compact
+            />
+            <ResultLayerProgress scope="covering" />
+          </div>
+        )}
       </header>
       {picker}
       {conflicts.length > 0 && (

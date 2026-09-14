@@ -324,7 +324,12 @@ describe('covering invariants', () => {
     const project = resolveProject('05-gable-roof-tile.cieslacalc.json');
     const { layout, source } = resolveCovering(project, project.coverings[0]!);
     expect(layout.status).toBe('resolved');
-    expect(source!.unit).toBe('piece');
+    expect(source).toMatchObject({
+      layoutKind: 'roof-tile',
+      semantic: 'effective-coverage-position',
+      unit: 'coverage-position',
+      requirementReadiness: 'geometric-only',
+    });
     expect(source!.quantity).toBeGreaterThan(0);
     expect(source!.sourceRoofPlaneIds).toEqual([
       'roof-plane:left',
@@ -338,7 +343,12 @@ describe('covering invariants', () => {
     );
     const { layout, source } = resolveCovering(project, project.coverings[0]!);
     expect(layout.status).toBe('resolved');
-    expect(source!.unit).toBe('piece');
+    expect(source).toMatchObject({
+      layoutKind: 'modular-sheet',
+      semantic: 'effective-coverage-position',
+      unit: 'coverage-position',
+      requirementReadiness: 'geometric-only',
+    });
     expect(source!.quantity).toBeGreaterThan(0);
   });
 
@@ -346,6 +356,8 @@ describe('covering invariants', () => {
     const project = resolveProject('07-gable-standing-seam.cieslacalc.json');
     const { layout, source } = resolveCovering(project, project.coverings[0]!);
     expect(['resolved', 'limited']).toContain(layout.status);
+    if (source?.semantic !== 'geometric-panel-run')
+      throw new Error('expected geometric panel-run quantity');
     expect(source!.totalLengthMm).toBeGreaterThan(0);
     expect(source!.quantity).toBe(
       source!.lengthGroups!.reduce((sum, group) => sum + group.quantity, 0),

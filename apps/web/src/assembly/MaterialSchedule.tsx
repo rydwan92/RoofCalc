@@ -2,6 +2,7 @@ import { ChevronRight, Cuboid, Ruler, Shapes } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type {
+  CoveringQuantityLayoutKind,
   QuantitySection,
   RoofMemberSchedule,
   RoofMemberScheduleRow,
@@ -10,6 +11,7 @@ import type { LengthUnit } from '@cieslacalc/roof-math';
 import { formatLength } from '../format';
 import { memberInstanceCode } from './workbench';
 import { useAssembly } from './store';
+import { ResultBasis, ResultLayerProgress } from './ResultBasis';
 
 function metres(valueMm: number, locale: string) {
   return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(valueMm / 1000)} m`;
@@ -77,6 +79,27 @@ function instanceName(
   return memberInstanceCode(id);
 }
 
+const coveringKindKeys: Record<CoveringQuantityLayoutKind, string> = {
+  'roof-tile': 'assembly.roofTile',
+  'modular-sheet': 'assembly.modularSheet',
+  'standing-seam': 'assembly.standingSeam',
+  'modular-sheet-cut-to-length': 'assembly.cutToLengthSheet',
+};
+
+const manualCoveringKeys: Record<CoveringQuantityLayoutKind, string> = {
+  'roof-tile': 'assembly.manualRoofTile',
+  'modular-sheet': 'assembly.manualModularSheet',
+  'standing-seam': 'assembly.manualStandingSeam',
+  'modular-sheet-cut-to-length': 'assembly.manualCutToLengthSheet',
+};
+
+const coveringLayoutKeys: Record<CoveringQuantityLayoutKind, string> = {
+  'roof-tile': 'assembly.geometricTileLayout',
+  'modular-sheet': 'assembly.geometricSheetLayout',
+  'standing-seam': 'assembly.geometricPanelRunLayout',
+  'modular-sheet-cut-to-length': 'assembly.geometricCutSheetLayout',
+};
+
 export function MaterialSchedule({
   schedule,
   selectedRowId,
@@ -132,6 +155,7 @@ export function MaterialSchedule({
         </div>
         <span>{t('assembly.scheduleCurrentAssembly')}</span>
       </header>
+      <ResultLayerProgress scope="schedule" />
       <div className="a-schedule-summary">
         <article>
           <Shapes size={18} />
@@ -192,6 +216,7 @@ export function MaterialSchedule({
                   {t('assembly.piecesShort')}
                 </small>
               </header>
+              <ResultBasis semantic={rows[0]!.lengthBasis} compact />
               {rows.map((row) => (
                 <article
                   key={row.id}
@@ -301,6 +326,7 @@ export function MaterialSchedule({
                   }).format(row.areaMm2 / 1_000_000)}{' '}
                   m²
                 </strong>
+                <ResultBasis semantic={row.semantic} compact />
               </article>
             ))}
             {buildUpGroups.map((group) => {
@@ -329,6 +355,7 @@ export function MaterialSchedule({
                       {metres(group.totalLengthMm, i18n.language)}
                     </strong>
                   </div>
+                  <ResultBasis semantic={first.lengthBasis} compact />
                   <details className="a-build-up-lengths">
                     <summary>
                       {t('assembly.showExactLengths', {
@@ -385,131 +412,127 @@ export function MaterialSchedule({
             <h3>{t('assembly.coveringsSchedule')}</h3>
           </header>
           <div>
-            {schedule.coveringRows.map((row) => (
-              <article key={row.id}>
-                <span>
-                  <b>
-                    {t(
-                      row.basis.startsWith('standing-seam')
-                        ? 'assembly.standingSeam'
-                        : row.basis.startsWith('cut-to-length')
-                          ? 'assembly.cutToLengthSheet'
-                          : row.basis.startsWith('fixed-modular-sheet')
-                            ? 'assembly.modularSheet'
-                            : 'assembly.roofTile',
-                    )}{' '}
-                    —{' '}
-                    {row.productDisplay?.familyName ??
-                      t(
-                        row.basis.startsWith('standing-seam')
-                          ? 'assembly.manualStandingSeam'
-                          : row.basis.startsWith('cut-to-length')
-                            ? 'assembly.manualCutToLengthSheet'
-                            : row.basis.startsWith('fixed-modular-sheet')
-                              ? 'assembly.manualModularSheet'
-                              : 'assembly.manualRoofTile',
-                      )}
-                  </b>
-                  <small>
-                    {t(
-                      row.basis.startsWith('standing-seam')
-                        ? 'assembly.geometricPanelRunLayout'
-                        : row.basis.startsWith('cut-to-length')
-                          ? 'assembly.geometricCutSheetLayout'
-                          : row.basis.startsWith('fixed-modular-sheet')
-                            ? 'assembly.geometricSheetLayout'
-                            : 'assembly.geometricTileLayout',
-                    )}
-                  </small>
-                </span>
-                <strong>
-                  {row.basis.startsWith('standing-seam')
-                    ? t('assembly.panelRunCountShort', { count: row.quantity })
-                    : row.basis.startsWith('cut-to-length')
-                      ? t('assembly.sheetRunCountShort', {
+            {schedule.coveringRows.map((row) => {
+              const isRun = row.semantic === 'geometric-panel-run';
+              return (
+                <article
+                  key={row.id}
+                  data-semantic={row.semantic}
+                  data-requirement-readiness={row.requirementReadiness}
+                >
+                  <span>
+                    <b>
+                      {t(coveringKindKeys[row.layoutKind])} —{' '}
+                      {row.productDisplay?.familyName ??
+                        t(manualCoveringKeys[row.layoutKind])}
+                    </b>
+                    <small>{t(coveringLayoutKeys[row.layoutKind])}</small>
+                  </span>
+                  <strong>
+                    {isRun
+                      ? t(
+                          row.layoutKind === 'standing-seam'
+                            ? 'assembly.panelRunCountShort'
+                            : 'assembly.sheetRunCountShort',
+                          { count: row.quantity },
+                        )
+                      : t('assembly.coveragePositionCountShort', {
                           count: row.quantity,
-                        })
-                      : `${row.quantity} ${t('assembly.piecesShort')}`}
-                </strong>
-                {row.totalLengthMm !== undefined && (
-                  <small>
-                    {t('assembly.geometricPanelLength')}:{' '}
-                    {metres(row.totalLengthMm, i18n.language)}
-                  </small>
-                )}
-                {row.basis.startsWith('cut-to-length') &&
-                  row.lengthGroups?.length && (
-                    <small>
-                      {t('assembly.runLengthRange')}:{' '}
-                      {displayLength(
-                        Math.min(
-                          ...row.lengthGroups.map((group) => group.lengthMm),
-                        ),
-                        state.unit,
-                        i18n.language,
-                      )}
-                      –
-                      {displayLength(
-                        Math.max(
-                          ...row.lengthGroups.map((group) => group.lengthMm),
-                        ),
-                        state.unit,
-                        i18n.language,
-                      )}
-                    </small>
-                  )}
-                {row.lengthGroups && row.lengthGroups.length > 0 && (
-                  <details className="a-panel-lengths">
-                    <summary>
-                      {t('assembly.showExactLengths', {
-                        count: row.lengthGroups.length,
-                      })}
-                    </summary>
-                    <div>
-                      {row.lengthGroups.map((group, index) => (
-                        <span key={`${group.lengthMm}:${index}`}>
-                          <b>
+                        })}
+                  </strong>
+                  <ResultBasis semantic={row.semantic} compact />
+                  {isRun ? (
+                    <>
+                      <small>
+                        {t('assembly.geometricPanelLength')}:{' '}
+                        {metres(row.totalLengthMm, i18n.language)}
+                      </small>
+                      {row.layoutKind === 'modular-sheet-cut-to-length' &&
+                        row.lengthGroups.length > 0 && (
+                          <small>
+                            {t('assembly.runLengthRange')}:{' '}
                             {displayLength(
-                              group.lengthMm,
+                              Math.min(
+                                ...row.lengthGroups.map(
+                                  (group) => group.lengthMm,
+                                ),
+                              ),
                               state.unit,
                               i18n.language,
                             )}
-                          </b>
-                          <small>× {group.quantity}</small>
-                        </span>
-                      ))}
-                    </div>
-                  </details>
-                )}
-                {row.totalLengthMm === undefined && (
-                  <small>
-                    {t('assembly.fullTiles')}: {row.fullPositions ?? 0} ·{' '}
-                    {t('assembly.cutTiles')}: {row.cutPositions ?? 0}
-                  </small>
-                )}
-                {row.netAreaMm2 !== undefined && (
-                  <small>
-                    {new Intl.NumberFormat(i18n.language, {
-                      maximumFractionDigits: 2,
-                    }).format(row.netAreaMm2 / 1_000_000)}{' '}
-                    m² {t('assembly.netGeometric')}
-                  </small>
-                )}
-                {row.declaredQuantityRange && (
-                  <small>
-                    {t('assembly.declaredConsumption')}:{' '}
-                    {new Intl.NumberFormat(i18n.language, {
-                      maximumFractionDigits: 1,
-                    }).format(row.declaredQuantityRange.minimum)}
-                    –
-                    {new Intl.NumberFormat(i18n.language, {
-                      maximumFractionDigits: 1,
-                    }).format(row.declaredQuantityRange.maximum)}{' '}
-                    {t('assembly.piecesShort')}
-                  </small>
-                )}
-              </article>
-            ))}
+                            –
+                            {displayLength(
+                              Math.max(
+                                ...row.lengthGroups.map(
+                                  (group) => group.lengthMm,
+                                ),
+                              ),
+                              state.unit,
+                              i18n.language,
+                            )}
+                          </small>
+                        )}
+                      {row.lengthGroups.length > 0 && (
+                        <details className="a-panel-lengths">
+                          <summary>
+                            {t('assembly.showExactLengths', {
+                              count: row.lengthGroups.length,
+                            })}
+                          </summary>
+                          <div>
+                            {row.lengthGroups.map((group, index) => (
+                              <span key={`${group.lengthMm}:${index}`}>
+                                <b>
+                                  {displayLength(
+                                    group.lengthMm,
+                                    state.unit,
+                                    i18n.language,
+                                  )}
+                                </b>
+                                <small>× {group.quantity}</small>
+                              </span>
+                            ))}
+                          </div>
+                        </details>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <small>
+                        {t('assembly.fullTiles')}: {row.fullPositions} ·{' '}
+                        {t('assembly.cutTiles')}: {row.cutPositions}
+                      </small>
+                      {row.netAreaMm2 !== undefined && (
+                        <small>
+                          {new Intl.NumberFormat(i18n.language, {
+                            maximumFractionDigits: 2,
+                          }).format(row.netAreaMm2 / 1_000_000)}{' '}
+                          m² {t('assembly.netGeometric')}
+                        </small>
+                      )}
+                      {row.declaredConsumptionReferenceRange && (
+                        <small>
+                          {t('assembly.declaredConsumption')}:{' '}
+                          {new Intl.NumberFormat(i18n.language, {
+                            maximumFractionDigits: 1,
+                          }).format(
+                            row.declaredConsumptionReferenceRange.minimum,
+                          )}
+                          –
+                          {new Intl.NumberFormat(i18n.language, {
+                            maximumFractionDigits: 1,
+                          }).format(
+                            row.declaredConsumptionReferenceRange.maximum,
+                          )}{' '}
+                          {t('assembly.piecesShort')} ·{' '}
+                          {t('assembly.declaredConsumptionBoundary')}
+                        </small>
+                      )}
+                    </>
+                  )}
+                </article>
+              );
+            })}
           </div>
           <p>{t('assembly.coveringQuantityBoundary')}</p>
         </section>

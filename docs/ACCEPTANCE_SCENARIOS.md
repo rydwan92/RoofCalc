@@ -201,6 +201,20 @@ Material Schedule to `RequiredPiece[]`, any UI, any persisted plan, any price.
 
 ---
 
+## RESULT-001 — Truthful takeoff semantics · `AUTOMATED` `BROWSER`
+
+1. Open a resolved covering and then its Material Schedule row.
+2. Read the primary count and expand its basis/result-layer explanation.
+
+**Holds:** tile and fixed-sheet results say **coverage positions**; standing seam
+and cut-to-length say **geometric runs**; membrane says net geometric area;
+timber distinguishes member-axis from resolved-visible length. Execution,
+cutting and purchase remain pending/unavailable unless their real upstream
+results exist. No geometric count is called an order quantity, and the same
+disclosure is reachable without horizontal overflow on desktop and mobile.
+
+---
+
 ## PERF-001 — Large layouts stay usable · `MANUAL`
 
 1. Build a long roof with a fine covering grid so fragment count exceeds 1200.

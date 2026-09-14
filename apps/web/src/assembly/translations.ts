@@ -19,12 +19,12 @@ export const assemblyPl = {
   mobileDetailDimensions: 'Wymiary',
   mobileDetailSteps: 'Kroki',
   covering: 'Pokrycie',
-  geometricSheetLayout: 'arkusze/moduły w układzie geometrycznym',
-  geometricCutSheetLayout: 'geometryczne odcinki blachy ciętej na długość',
+  geometricSheetLayout: 'pozycje krycia w efektywnym układzie arkuszy',
+  geometricCutSheetLayout: 'geometryczne przebiegi blachy ciętej na długość',
   cutToLengthSheet: 'Blacha cięta na długość',
   manualCutToLengthSheet: 'parametry ręczne',
-  sheetRuns: 'Geometryczne odcinki arkuszy',
-  sheetRunCountShort: '{{count}} odcinków',
+  sheetRuns: 'Przebiegi geometryczne arkuszy',
+  sheetRunCountShort: '{{count}} przebiegów geometrycznych',
   drawingDetail: 'Szczegółowość rysunku',
   drawingDetailLevel: {
     auto: 'Auto',
@@ -55,8 +55,8 @@ export const assemblyPl = {
   materialAluminium: 'Aluminium',
   materialOther: 'Inny',
   panelColumns: 'Pasy',
-  panelRuns: 'Geometryczne odcinki paneli',
-  panelRunCountShort: '{{count}} odcinków',
+  panelRuns: 'Przebiegi geometryczne paneli',
+  panelRunCountShort: '{{count}} przebiegów geometrycznych',
   fullWidthColumns: 'Pełna szerokość',
   edgeCutColumns: 'Docinane krawędzie',
   openingInterruptedRuns: 'Przerwane otworami',
@@ -128,24 +128,26 @@ export const assemblyPl = {
   weightPerPiece: 'Masa sztuki (kg)',
   assignedRoofPlanes: 'Przypisane połacie',
   removeCovering: 'Usuń pokrycie',
-  tilePositions: 'Pozycje',
+  tilePositions: 'Pozycje krycia',
   tileCourses: 'Rzędy',
   coveringStatusLabel: 'Zgodność',
   requiredValue: 'Wymagane',
-  fullTiles: 'Pełne',
-  cutTiles: 'Docinane',
+  fullTiles: 'Pozycje pełne',
+  cutTiles: 'Pozycje docinane',
   splitTiles: 'Rozdzielone przez otwór',
   declaredConsumption: 'Referencja z deklarowanego zużycia',
+  declaredConsumptionBoundary: 'wartość referencyjna, nie ilość do zamówienia',
   minimumDeclaredUnits: 'Min. deklarowane szt./m²',
   maximumDeclaredUnits: 'Maks. deklarowane szt./m²',
   allowedRange: 'dopuszczalne',
   noWasteAccessories: 'Bez zapasu, odpadu i akcesoriów.',
-  geometricTileLayout: 'wynik geometrycznego układu dachówek',
+  geometricTileLayout: 'pozycje krycia w efektywnym układzie dachówek',
   openBattenSettings: 'Przejdź do Warstwy → Łaty',
   simplifiedTilePreview:
     'Podgląd uproszczony dla dużego układu; dokładne liczby pozostają bez zmian.',
   coveringQuantityBoundary:
     'Pozycje i odcinki geometryczne bez zapasu, akcesoriów i ponownego użycia odcięć. To nie jest oferta ani liczba do zamówienia.',
+  coveragePositionCountShort: '{{count}} pozycji krycia',
   coveringStatus: {
     limited: 'Układ z ograniczeniami',
     resolved: 'Układ rozwiązany',
@@ -215,6 +217,45 @@ export const assemblyPl = {
   partialGeometricVolume: 'Objętość geometryczna · częściowa',
   scheduleBoundaryNote:
     'Zestawienie opiera się na geometrii projektu. Nie uwzględnia długości handlowych, zapasu na cięcie ani optymalizacji rozkroju.',
+  resultBasis: {
+    layer: {
+      geometry: 'Geometria',
+      effectiveCoverage: 'Krycie efektywne',
+    },
+    title: {
+      axisGeometric: 'Oś elementu',
+      resolvedVisible: 'Widoczna długość',
+      netGeometric: 'Powierzchnia netto połaci',
+      effectiveCoveragePosition: 'Pozycje krycia',
+      geometricPanelRun: 'Przebiegi geometryczne',
+    },
+    detail: {
+      axisGeometric:
+        'Długość osi fizycznego elementu w modelu. Nie jest blankiem wykonawczym ani długością handlową.',
+      resolvedVisible:
+        'Długość widoczna po przycięciu do połaci i otworów. Nie zawiera zapasu, łączeń ani długości handlowych.',
+      netGeometric:
+        'Pole połaci po odjęciu otworów. Nie zawiera zakładów, wywinięć, rozkładu rolek ani zapasu.',
+      effectiveCoveragePosition:
+        'Pozycje siatki opartej na efektywnych wymiarach krycia. Nie są potwierdzonymi sztukami fizycznymi ani ilością do zamówienia.',
+      geometricPanelRun:
+        'Połączone widoczne przebiegi na połaci. Nie zawierają zaprojektowanych łączeń, naddatków produkcyjnych ani długości zamówieniowych.',
+    },
+  },
+  resultLayers: {
+    summary: 'Jak czytać ten wynik',
+    label: 'Etapy wyniku',
+    geometry: 'Geometria',
+    scheduleGeometry: 'wyliczona w zestawieniu',
+    coveringGeometry: 'wyliczona dla układu pokrycia',
+    execution: 'Wykonanie',
+    executionPending: 'jeszcze nie wyliczone',
+    cutting: 'Rozkrój',
+    scheduleCutting: 'jeszcze nie wyliczony',
+    coveringCutting: 'niedostępny bez fizycznych elementów',
+    purchase: 'Zakup',
+    purchasePending: 'jeszcze nie wyliczony',
+  },
   partialVolumeNote:
     'Objętość jest częściowa: {{count}} element(y) bez pełnego kanonicznego przekroju pominięto w sumie objętości.',
   piecesShort: 'szt.',
@@ -566,7 +607,7 @@ export const assemblyPl = {
   controlDepth: 'Głębokość',
   range:
     'Zakres: {{min}}–{{max}} {{unit}}. Pomiar w poziomie do lewego lica podpory.',
-  stock: 'Minimalny materiał',
+  stock: 'Minimalna długość geometryczna',
   reference: 'Górna krawędź',
   toNotch: 'Od okapu do zaciosu',
   ridgeAngle: 'Cięcie kalenicy',
@@ -760,12 +801,12 @@ export const assemblyEn: typeof assemblyPl = {
   mobileDetailDimensions: 'Dimensions',
   mobileDetailSteps: 'Steps',
   covering: 'Covering',
-  geometricSheetLayout: 'sheets/modules in the geometric layout',
+  geometricSheetLayout: 'coverage positions in the effective sheet layout',
   geometricCutSheetLayout: 'geometric cut-to-length sheet runs',
   cutToLengthSheet: 'Cut-to-length metal sheet',
   manualCutToLengthSheet: 'manual parameters',
   sheetRuns: 'Geometric sheet runs',
-  sheetRunCountShort: '{{count}} runs',
+  sheetRunCountShort: '{{count}} geometric runs',
   drawingDetail: 'Drawing detail',
   drawingDetailLevel: {
     auto: 'Auto',
@@ -797,7 +838,7 @@ export const assemblyEn: typeof assemblyPl = {
   materialOther: 'Other',
   panelColumns: 'Panel strips',
   panelRuns: 'Geometric panel runs',
-  panelRunCountShort: '{{count}} runs',
+  panelRunCountShort: '{{count}} geometric runs',
   fullWidthColumns: 'Full width',
   edgeCutColumns: 'Edge width cuts',
   openingInterruptedRuns: 'Interrupted by openings',
@@ -869,24 +910,26 @@ export const assemblyEn: typeof assemblyPl = {
   weightPerPiece: 'Weight per piece (kg)',
   assignedRoofPlanes: 'Assigned roof planes',
   removeCovering: 'Remove covering',
-  tilePositions: 'Positions',
+  tilePositions: 'Coverage positions',
   tileCourses: 'Courses',
   coveringStatusLabel: 'Compatibility',
   requiredValue: 'Required',
-  fullTiles: 'Full',
-  cutTiles: 'Cut',
+  fullTiles: 'Full positions',
+  cutTiles: 'Cut positions',
   splitTiles: 'Split by opening',
   declaredConsumption: 'Declared-consumption reference',
+  declaredConsumptionBoundary: 'reference value, not an order quantity',
   minimumDeclaredUnits: 'Min declared pcs/m²',
   maximumDeclaredUnits: 'Max declared pcs/m²',
   allowedRange: 'allowed',
   noWasteAccessories: 'No waste, breakage, or accessories included.',
-  geometricTileLayout: 'geometric roof-tile layout result',
+  geometricTileLayout: 'coverage positions in the effective roof-tile layout',
   openBattenSettings: 'Go to Layers → Battens',
   simplifiedTilePreview:
     'Preview simplified for a large layout; exact counts remain unchanged.',
   coveringQuantityBoundary:
     'Geometric positions and runs only: no waste, accessories, or offcut reuse. This is not a quote or order quantity.',
+  coveragePositionCountShort: '{{count}} coverage positions',
   coveringStatus: {
     limited: 'Layout limited',
     resolved: 'Layout resolved',
@@ -957,6 +1000,45 @@ export const assemblyEn: typeof assemblyPl = {
   partialGeometricVolume: 'Geometric volume · partial',
   scheduleBoundaryNote:
     'The schedule is based on project geometry. It does not include stock lengths, cutting allowance or cutting optimization.',
+  resultBasis: {
+    layer: {
+      geometry: 'Geometry',
+      effectiveCoverage: 'Effective coverage',
+    },
+    title: {
+      axisGeometric: 'Member axis',
+      resolvedVisible: 'Visible length',
+      netGeometric: 'Net roof-plane area',
+      effectiveCoveragePosition: 'Coverage positions',
+      geometricPanelRun: 'Geometric runs',
+    },
+    detail: {
+      axisGeometric:
+        'Physical member-axis length in the model. It is not a fabrication blank or a commercial stock length.',
+      resolvedVisible:
+        'Visible length clipped to roof planes and openings. It includes no allowance, joint or commercial stock length.',
+      netGeometric:
+        'Roof-plane area after opening deduction. It includes no laps, upstands, roll layout or allowance.',
+      effectiveCoveragePosition:
+        'Grid positions based on effective covering dimensions. They are not confirmed physical pieces or an order quantity.',
+      geometricPanelRun:
+        'Connected visible runs on the roof plane. They include no designed joints, production allowances or order lengths.',
+    },
+  },
+  resultLayers: {
+    summary: 'How to read this result',
+    label: 'Result stages',
+    geometry: 'Geometry',
+    scheduleGeometry: 'calculated in the schedule',
+    coveringGeometry: 'calculated for the covering layout',
+    execution: 'Execution',
+    executionPending: 'not calculated yet',
+    cutting: 'Cutting',
+    scheduleCutting: 'not calculated yet',
+    coveringCutting: 'unavailable without physical pieces',
+    purchase: 'Purchase',
+    purchasePending: 'not calculated yet',
+  },
   partialVolumeNote:
     'Volume is partial: {{count}} member(s) without a complete canonical section are excluded from the volume total.',
   piecesShort: 'pcs',
@@ -1306,7 +1388,7 @@ export const assemblyEn: typeof assemblyPl = {
   controlDepth: 'Depth',
   range:
     'Range: {{min}}–{{max}} {{unit}}. Horizontal measurement to the left support face.',
-  stock: 'Minimum stock',
+  stock: 'Minimum geometric length',
   reference: 'Top edge',
   toNotch: 'Eave to notch',
   ridgeAngle: 'Ridge cut',

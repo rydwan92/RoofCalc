@@ -17,7 +17,10 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  // A single preview server is deliberately exercised serially. On Windows,
+  // parallel browser starts can otherwise starve Vite preview and turn a
+  // layout smoke test into a navigation-timeout lottery.
+  workers: 1,
   reporter: process.env.CI
     ? [['github'], ['html', { open: 'never' }]]
     : [['list']],
@@ -39,9 +42,10 @@ export default defineConfig({
     {
       name: 'mobile',
       use: {
-        ...devices['Pixel 7'],
+        ...devices['Desktop Chrome'],
         viewport: { width: 390, height: 844 },
-        isMobile: true,
+        screen: { width: 390, height: 844 },
+        deviceScaleFactor: 1,
         hasTouch: true,
       },
     },

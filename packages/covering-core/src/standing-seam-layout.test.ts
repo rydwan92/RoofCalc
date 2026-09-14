@@ -79,9 +79,12 @@ describe('standing seam strategy', () => {
     expect(resolveStandingSeamLayout(base)).toEqual(wide);
     const quantity = createStandingSeamQuantitySource({ layout: wide });
     expect(quantity).toMatchObject({
+      layoutKind: 'standing-seam',
+      semantic: 'geometric-panel-run',
+      unit: 'geometric-run',
       quantity: 2,
       totalLengthMm: 6000,
-      basis: 'standing-seam-geometric-panel-run-v1',
+      requirementReadiness: 'geometric-only',
     });
     expect(quantity).not.toHaveProperty('purchaseQuantity');
     expect(quantity).not.toHaveProperty('waste');

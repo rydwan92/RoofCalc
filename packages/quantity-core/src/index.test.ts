@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, expectTypeOf, it } from 'vitest';
 import type {
   GableRoofSkeleton,
   RoofOpeningFramingSpec,
@@ -16,7 +16,12 @@ import {
   resolveOpeningFraming,
   resolveOpeningFramingSet,
 } from '@cieslacalc/roof-math';
-import { createRoofMemberSchedule, physicalAxisLengthMm } from './index';
+import {
+  createRoofMemberSchedule,
+  physicalAxisLengthMm,
+  type CoveringProductQuantitySource,
+  type QuantityLengthBasis,
+} from './index';
 
 const section = { widthMm: 80, depthMm: 200 };
 
@@ -61,6 +66,13 @@ const opening = (
   position,
 });
 
+it('keeps statuses and purchase units outside typed quantity bases', () => {
+  expectTypeOf<QuantityLengthBasis>().not.toEqualTypeOf<'limited'>();
+  expectTypeOf<
+    CoveringProductQuantitySource['unit']
+  >().not.toEqualTypeOf<'piece'>();
+});
+
 it('keeps geometric covering pieces separate from timber and build-up quantities', () => {
   const report = createRoofMemberSchedule({
     skeleton: skeleton([physicalMember('instance:rafter-pair-1:left', 5000)]),
@@ -69,14 +81,16 @@ it('keeps geometric covering pieces separate from timber and build-up quantities
         id: 'covering-quantity:main',
         coveringAssignmentId: 'covering:main',
         sourceRoofPlaneIds: ['roof-plane:right', 'roof-plane:left'],
-        unit: 'piece',
+        layoutKind: 'roof-tile',
+        semantic: 'effective-coverage-position',
+        unit: 'coverage-position',
         quantity: 286,
         fullPositions: 248,
         cutPositions: 38,
-        basis: 'roof-tile-geometric-coverage-position-v1',
+        requirementReadiness: 'geometric-only',
         productDisplay: { familyName: 'Manual tile' },
         netAreaMm2: 25_000_000,
-        declaredQuantityRange: { minimum: 245, maximum: 268 },
+        declaredConsumptionReferenceRange: { minimum: 245, maximum: 268 },
         warningKeys: ['no-waste-breakage-accessories-or-offcut-reuse'],
       },
     ],
@@ -87,14 +101,21 @@ it('keeps geometric covering pieces separate from timber and build-up quantities
       category: 'covering-product',
       assignmentId: 'covering:main',
       quantity: 286,
+      layoutKind: 'roof-tile',
+      semantic: 'effective-coverage-position',
+      unit: 'coverage-position',
+      requirementReadiness: 'geometric-only',
       fullPositions: 248,
       cutPositions: 38,
       roofPlaneIds: ['roof-plane:left', 'roof-plane:right'],
       netAreaMm2: 25_000_000,
-      declaredQuantityRange: { minimum: 245, maximum: 268 },
+      declaredConsumptionReferenceRange: { minimum: 245, maximum: 268 },
     }),
   ]);
-  expect(report.coveringSummary.quantity).toBe(286);
+  expect(report.coveringSummary).toEqual({
+    effectiveCoveragePositions: 286,
+    geometricPanelRuns: 0,
+  });
   expect(report.timberSummary.quantity).toBe(1);
   expect(report.buildUpSummary.quantity).toBe(0);
 });
@@ -107,26 +128,35 @@ it('keeps standing-seam piece count and exact geometric length as separate cover
         id: 'covering-quantity:seam',
         coveringAssignmentId: 'covering:seam',
         sourceRoofPlaneIds: ['roof-plane:left'],
-        unit: 'piece',
+        layoutKind: 'standing-seam',
+        semantic: 'geometric-panel-run',
+        unit: 'geometric-run',
         quantity: 3,
         totalLengthMm: 18_000,
         lengthGroups: [
           { lengthMm: 5000, quantity: 2 },
           { lengthMm: 8000, quantity: 1 },
         ],
-        basis: 'standing-seam-geometric-panel-run-v1',
+        requirementReadiness: 'geometric-only',
       },
     ],
   });
   expect(report.coveringRows[0]).toMatchObject({
     quantity: 3,
+    layoutKind: 'standing-seam',
+    semantic: 'geometric-panel-run',
+    unit: 'geometric-run',
+    requirementReadiness: 'geometric-only',
     totalLengthMm: 18_000,
     lengthGroups: [
       { lengthMm: 5000, quantity: 2 },
       { lengthMm: 8000, quantity: 1 },
     ],
   });
-  expect(report.coveringSummary.quantity).toBe(3);
+  expect(report.coveringSummary).toEqual({
+    effectiveCoveragePositions: 0,
+    geometricPanelRuns: 3,
+  });
   expect(report.timberSummary.totalLengthMm).toBe(0);
 });
 
@@ -176,6 +206,7 @@ describe('quantity-core geometric member schedule', () => {
       lengthMm: 5000,
       totalLengthMm: 10000,
       lengthBasis: 'axis-geometric',
+      requirementReadiness: 'geometric-only',
     });
     expect(report.timberRows[0]!.sourceInstanceIds).toEqual([
       'K1-left',
@@ -478,6 +509,7 @@ describe('quantity-core geometric member schedule', () => {
           id: 'surface:roof-plane:left',
           familyKey: 'MEM',
           memberKind: 'membrane',
+          semantic: 'net-geometric',
           roofPlaneId: 'roof-plane:left',
           areaMm2: 81_200_000,
         },
@@ -485,6 +517,7 @@ describe('quantity-core geometric member schedule', () => {
           id: 'surface:roof-plane:right',
           familyKey: 'MEM',
           memberKind: 'membrane',
+          semantic: 'net-geometric',
           roofPlaneId: 'roof-plane:right',
           areaMm2: 79_500_000,
         },
@@ -498,7 +531,8 @@ describe('quantity-core geometric member schedule', () => {
       expect.objectContaining({
         memberKind: 'membrane',
         areaMm2: 160_700_000,
-        basis: 'net-geometric',
+        semantic: 'net-geometric',
+        requirementReadiness: 'geometric-only',
       }),
     ]);
     expect(report.surfaceBuildUpSummary.areaMm2).toBe(160_700_000);

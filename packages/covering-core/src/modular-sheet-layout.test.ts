@@ -243,12 +243,14 @@ describe('fixed modular sheet layout strategy', () => {
     expect(JSON.stringify(result)).not.toMatch(/NaN|Infinity/);
   });
 
-  it('emits geometric piece quantities only for resolved fixed layouts', () => {
+  it('emits typed coverage positions only for resolved fixed layouts', () => {
     const source = createModularSheetQuantitySource({ layout: fixture() });
     expect(source).toMatchObject({
-      unit: 'piece',
+      layoutKind: 'modular-sheet',
+      semantic: 'effective-coverage-position',
+      unit: 'coverage-position',
       quantity: 4,
-      basis: 'fixed-modular-sheet-geometric-coverage-position-v1',
+      requirementReadiness: 'geometric-only',
     });
     expect(source?.warningKeys).toContain(
       'geometric-sheet-positions-not-purchase-quantity',
