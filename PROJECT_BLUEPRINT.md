@@ -1297,6 +1297,70 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+> V28 started on 2026-09-14 from clean `main` at
+> `01289fb8e19348c9718ca8778b9ac9777fabf067`, as required by the attached
+> V28 prompt. Baseline `pnpm verify` passed typecheck and lint, then stopped at
+> Prettier on 18 existing files. Baseline `pnpm e2e` could not start any of its
+> 12 tests because the Playwright Chromium executable was absent; browser
+> installation later succeeded. An initial run against the stale pre-build
+> preview timed out; the rebuilt app passed the final browser suite. No user
+> changes were present to discard.
+
+**Iteration:** `028 — K1 fabrication blank → cutting plan`
+
+**Status:** `COMPLETE — FULL VERIFY AND 16/16 REAL-BROWSER TESTS PASS`
+
+**Completed:** `roof-math` now proves a physical rectangular K1 blank by
+containing all currently modeled eave/ridge cuts, notches, finished-profile
+vertices and datums, cross-checking the old stock envelope without renaming its
+length. The pure application adapter intersects whole K1 schedule instances
+with the resolved prototype and passes one traceable `RequiredPiece` per
+physical rafter to unchanged `procurement-core`. The stock class comes from the
+actual width/depth pair and stays opaque to procurement. H1, J1 and interrupted
+opening rafters cannot enter this pilot.
+
+**UX:** Zestawienie → Drewno → K1 now exposes one cutting CTA only when the
+blank resolves. A focused desktop dialog / mobile sheet takes user commercial
+lengths, optional finite availability, separate advanced kerf/end trim/remnant
+settings and the three existing objectives. It shows a grouped material list,
+copyable plain text, complete/partial stage states, assignment and loss figures,
+actionable unassigned reasons and expandable proportional stock layouts. Long
+timber-family length rows collapse by default with exact details retained.
+
+**Files changed / WIP:** `packages/roof-math/src/k1-fabrication-blank*`,
+`apps/web/src/assembly/k1-cutting-adapter*`, `K1CuttingPlan.tsx`,
+`MaterialSchedule.tsx`, `Page.tsx`, translations/styles, package/lock,
+focused UI/domain/E2E tests, architecture/acceptance docs and this checkpoint.
+No incomplete source file remains. Baseline Prettier normalization leaves 18
+unrelated files marked modified in `git status` on this Windows checkout but
+with **no content diff** in `git diff`.
+
+**Assumptions:** Commercial stock, cutting settings and the derived plan are
+session-local. No ProjectDocument migration or structural verification.
+
+**Validation / visual and mobile QA:** `pnpm verify` PASS — typecheck, lint,
+Prettier, **639 tests in 66 files**, web/API build. `pnpm e2e` PASS — **16/16**
+desktop/mobile cases. Browser screenshots visually reviewed at **1440×900,
+1024×768, 390×844 and 360×800**; gable cutting and hip K1-only entry passed,
+with no horizontal overflow. Final web output: main **547.89 / 159.25 kB
+gzip** (V27 542.66 / 155.48), CSS **126.62 / 23.90 kB gzip** (V27
+121.47 / 23.00), MaterialSchedule **17.13 / 4.71 kB gzip** (V27
+12.93 / 3.29), lazy K1CuttingPlan **24.13 / 7.01 kB gzip**. The existing
+Vite >500 kB main-chunk advisory remains. `git diff --check` PASS.
+
+**Known limitations:** Only the modeled centered vertical ridge-board butt K1
+cut is resolved; no structural approval or machining allowance. H1, J1,
+opening-framing members, covering and membrane have no proven blank. Stock
+options are user-entered, session-local and have no supplier, price or order
+confirmation. Non-reusable waste and kerf follow V26 procurement semantics.
+
+**NEXT ACTION / recommended V29:** Review the V28 pilot with carpenters, then
+design an explicit ridge-connection intent and fabrication allowance contract
+before extending procurement to any further connection/member family. Do not
+start V29 from this checkpoint without a new approved iteration.
+
+---
+
 > V27 started on 2026-09-14 from `18ae1281b00c24f6fe797ba1051ab9f73c4a5eb8`
 > (`main`, matching the requested baseline). The tracked tree was clean; the only
 > pre-existing item was untracked `.claude/launch.json`, which is preserved

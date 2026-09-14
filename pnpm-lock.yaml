@@ -135,6 +135,9 @@ importers:
       '@cieslacalc/drawing-engine':
         specifier: workspace:*
         version: link:../../packages/drawing-engine
+      '@cieslacalc/procurement-core':
+        specifier: workspace:*
+        version: link:../../packages/procurement-core
       '@cieslacalc/project-core':
         specifier: workspace:*
         version: link:../../packages/project-core

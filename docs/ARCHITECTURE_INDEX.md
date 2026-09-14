@@ -184,6 +184,13 @@ result status rather than a length basis. Every current schedule row is
 resolver provides a real physical blank. Covering summaries keep effective
 positions and geometric runs separate instead of adding them as generic pieces.
 
+V28 adds a **K1-only** fabrication blank proof in `roof-math` and an
+application-boundary adapter in `apps/web`. The adapter intersects whole K1
+instance IDs with the schedule and passes explicit physical blanks to the pure
+`procurement-core`; quantity rows remain `geometric-only` and H1/J1/opening
+members remain unresolved. Commercial cutting inputs and plans are transient.
+See `docs/ARCHITECTURE_V28_K1_CUTTING_PLAN.md`.
+
 **Known limitation:** `schedule-family-code.ts` still derives the display codes
 `O<n>` and `P<n>` from generated IDs because the single-roof skeleton carries no
 ordinal. Isolated in one module, allowlisted in the architecture test, and a
@@ -308,6 +315,7 @@ pnpm e2e      # real-browser smoke, desktop 1440x900 and mobile 390x844 (pnpm e2
 | `docs/ACCEPTANCE_SCENARIOS.md` | changing a user-visible flow |
 | `docs/ARCHITECTURE_V26_TIMBER_PROCUREMENT_CORE.md` | touching procurement |
 | `docs/ARCHITECTURE_V27_RESULT_SEMANTICS.md` | quantity basis, result wording or takeoff UX |
+| `docs/ARCHITECTURE_V28_K1_CUTTING_PLAN.md` | K1 fabrication blank and cutting-plan adapter/UX |
 | `docs/FUTURE_EXECUTION_SEMANTICS_AUDIT.md` + `docs/domain/*` | touching coverage, overlap or connection semantics |
 | `docs/ARCHITECTURE_FUTURE_COMPOUND_ROOF_SCENE.md` | touching IDs, planes or document shape |
 | `docs/ARCHITECTURE_COVERING_CATALOG_AND_PRICING_BOUNDARY.md` | covering, catalogue or future pricing |

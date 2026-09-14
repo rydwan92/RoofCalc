@@ -1345,6 +1345,9 @@ export function AssemblyPage() {
                       <Suspense fallback={<div className="a-loading-panel" />}>
                         <MaterialSchedule
                           schedule={memberSchedule}
+                          resolved={templateResult}
+                          mobile={mobile}
+                          projectName={projectSessionState.active?.name}
                           selectedRowId={workbench.selectedScheduleRowId}
                           selectedInstanceId={
                             workbench.selectedScheduleInstanceId

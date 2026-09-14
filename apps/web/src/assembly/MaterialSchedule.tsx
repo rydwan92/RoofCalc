@@ -1,5 +1,5 @@
 import { ChevronRight, Cuboid, Ruler, Shapes } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { lazy, Suspense, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type {
   CoveringQuantityLayoutKind,
@@ -8,10 +8,18 @@ import type {
   RoofMemberScheduleRow,
 } from '@cieslacalc/quantity-core';
 import type { LengthUnit } from '@cieslacalc/roof-math';
+import type { ResolvedRoofProject } from '@cieslacalc/calculator-core';
 import { formatLength } from '../format';
 import { memberInstanceCode } from './workbench';
 import { useAssembly } from './store';
 import { ResultBasis, ResultLayerProgress } from './ResultBasis';
+import { createK1CuttingRequirement } from './k1-cutting-adapter';
+
+const K1CuttingPlan = lazy(() =>
+  import('./K1CuttingPlan').then((module) => ({
+    default: module.K1CuttingPlan,
+  })),
+);
 
 function metres(valueMm: number, locale: string) {
   return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(valueMm / 1000)} m`;
@@ -106,17 +114,28 @@ export function MaterialSchedule({
   selectedInstanceId,
   onSelectRow,
   onSelectInstance,
+  resolved,
+  mobile,
+  projectName,
 }: {
   schedule: RoofMemberSchedule;
   selectedRowId?: string;
   selectedInstanceId?: string;
   onSelectRow: (row: RoofMemberScheduleRow) => void;
   onSelectInstance: (row: RoofMemberScheduleRow, instanceId: string) => void;
+  resolved: ResolvedRoofProject;
+  mobile: boolean;
+  projectName?: string;
 }) {
   const state = useAssembly();
   const { t, i18n } = useTranslation();
   const [perspective, setPerspective] = useState<'families' | 'sections'>(
     'families',
+  );
+  const [cuttingOpen, setCuttingOpen] = useState(false);
+  const k1 = useMemo(
+    () => createK1CuttingRequirement(resolved, schedule),
+    [resolved, schedule],
   );
   const families = useMemo(() => {
     const result = new Map<string, RoofMemberScheduleRow[]>();
@@ -217,58 +236,107 @@ export function MaterialSchedule({
                 </small>
               </header>
               <ResultBasis semantic={rows[0]!.lengthBasis} compact />
-              {rows.map((row) => (
-                <article
-                  key={row.id}
-                  className={selectedRowId === row.id ? 'is-selected' : ''}
-                  data-testid="material-schedule-row"
-                  data-row-id={row.id}
-                  data-family={row.familyKey}
-                  data-member-kind={row.memberKind}
-                >
-                  <button
-                    type="button"
-                    aria-pressed={selectedRowId === row.id}
-                    onClick={() => onSelectRow(row)}
+              {familyKey === 'K1' && (
+                <div className="a-k1-family-action">
+                  {k1.status === 'resolved' ? (
+                    <>
+                      <span>
+                        {t('assembly.k1Cutting.blank')}:{' '}
+                        {displayLength(
+                          k1.blank.requiredBlankLengthMm,
+                          state.unit,
+                          i18n.language,
+                        )}{' '}
+                        · {k1.requiredPieces.length} {t('assembly.piecesShort')}
+                      </span>
+                      <button
+                        type="button"
+                        className="a-button is-primary"
+                        data-testid="k1-cutting-cta"
+                        onClick={() => setCuttingOpen(true)}
+                      >
+                        {t('assembly.k1Cutting.open')}
+                      </button>
+                    </>
+                  ) : (
+                    <p>{t(`assembly.k1Cutting.unresolved.${k1.reason}`)}</p>
+                  )}
+                </div>
+              )}
+              <details
+                className="a-schedule-length-disclosure"
+                data-compact={rows.length > 3}
+                open={rows.length <= 3 ? true : undefined}
+              >
+                <summary>
+                  {t('assembly.showExactLengths', { count: rows.length })}
+                </summary>
+                {rows.map((row) => (
+                  <article
+                    key={row.id}
+                    className={selectedRowId === row.id ? 'is-selected' : ''}
+                    data-testid="material-schedule-row"
+                    data-row-id={row.id}
+                    data-family={row.familyKey}
+                    data-member-kind={row.memberKind}
                   >
-                    <span>
-                      <b>{rowName(row, t)}</b>
-                      <small>
-                        {sectionText(row.section, state.unit, i18n.language)}
-                      </small>
-                    </span>
-                    <strong>
-                      {displayLength(row.lengthMm, state.unit, i18n.language)}
-                    </strong>
-                    <span>
-                      {row.quantity} {t('assembly.piecesShort')}
-                      <small>{metres(row.totalLengthMm, i18n.language)}</small>
-                    </span>
-                    <ChevronRight size={16} />
-                  </button>
-                  <details className="a-schedule-instances">
-                    <summary>
-                      {t('assembly.sourceMembers')} (
-                      {row.sourceInstanceIds.length})
-                    </summary>
-                    <div>
-                      {row.sourceInstanceIds.map((id) => (
-                        <button
-                          key={id}
-                          type="button"
-                          aria-pressed={selectedInstanceId === id}
-                          onClick={() => onSelectInstance(row, id)}
-                        >
-                          {instanceName(id, row, t)}
-                        </button>
-                      ))}
-                    </div>
-                  </details>
-                </article>
-              ))}
+                    <button
+                      type="button"
+                      aria-pressed={selectedRowId === row.id}
+                      onClick={() => onSelectRow(row)}
+                    >
+                      <span>
+                        <b>{rowName(row, t)}</b>
+                        <small>
+                          {sectionText(row.section, state.unit, i18n.language)}
+                        </small>
+                      </span>
+                      <strong>
+                        {displayLength(row.lengthMm, state.unit, i18n.language)}
+                      </strong>
+                      <span>
+                        {row.quantity} {t('assembly.piecesShort')}
+                        <small>
+                          {metres(row.totalLengthMm, i18n.language)}
+                        </small>
+                      </span>
+                      <ChevronRight size={16} />
+                    </button>
+                    <details className="a-schedule-instances">
+                      <summary>
+                        {t('assembly.sourceMembers')} (
+                        {row.sourceInstanceIds.length})
+                      </summary>
+                      <div>
+                        {row.sourceInstanceIds.map((id) => (
+                          <button
+                            key={id}
+                            type="button"
+                            aria-pressed={selectedInstanceId === id}
+                            onClick={() => onSelectInstance(row, id)}
+                          >
+                            {instanceName(id, row, t)}
+                          </button>
+                        ))}
+                      </div>
+                    </details>
+                  </article>
+                ))}
+              </details>
             </section>
           ))}
         </div>
+      )}
+      {cuttingOpen && k1.status === 'resolved' && (
+        <Suspense fallback={<div className="a-loading-panel" />}>
+          <K1CuttingPlan
+            requirement={k1}
+            projectName={projectName}
+            unit={state.unit}
+            mobile={mobile}
+            onClose={() => setCuttingOpen(false)}
+          />
+        </Suspense>
       )}
       {perspective === 'sections' && (
         <section className="a-section-groups">

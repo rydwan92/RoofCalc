@@ -249,3 +249,69 @@ test.describe('E — Result semantics remain truthful and reachable', () => {
     await expectNoHorizontalOverflow(page);
   });
 });
+
+test.describe('F — K1 physical blank to cutting plan', () => {
+  test('plans two entered lengths and exposes a readable material list', async ({
+    page,
+    context,
+  }, testInfo) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await openBuilder(page);
+    await openTask(page, 'materials');
+    const cta = page.getByTestId('k1-cutting-cta');
+    await expect(cta).toBeVisible();
+    await cta.click();
+    const panel = page.getByTestId('k1-cutting-panel');
+    await expect(panel).toBeVisible();
+    await expect(panel.locator('.a-k1-advanced')).not.toHaveAttribute('open');
+    await panel.getByTestId('k1-stock-length').first().fill('700');
+    await panel.getByRole('button', { name: /Dodaj długość/ }).click();
+    await panel.getByTestId('k1-stock-length').nth(1).fill('800');
+    await panel.getByTestId('k1-objective').selectOption('minimum-stock-count');
+    await panel.getByTestId('k1-run-plan').click();
+    await expect(panel.getByTestId('k1-purchase-list')).toBeVisible();
+    await expect(panel.getByTestId('k1-purchase-list')).toContainText('K1');
+    await panel.getByRole('button', { name: 'Kopiuj listę' }).click();
+    await expect(
+      panel.getByRole('button', { name: 'Skopiowano' }),
+    ).toBeVisible();
+    const copied = await page.evaluate(() => navigator.clipboard.readText());
+    expect(copied).toContain('K1');
+    await panel.getByText('Układ cięć').scrollIntoViewIfNeeded();
+    await panel.locator('.a-k1-layouts summary').first().click();
+    await expect(panel.getByTestId('k1-stock-layout').first()).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+    await page.setViewportSize(
+      testInfo.project.name === 'mobile'
+        ? { width: 360, height: 800 }
+        : { width: 1024, height: 768 },
+    );
+    await expect(panel.getByTestId('k1-purchase-list')).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+    await panel.getByTestId('k1-stock-length').first().fill('100');
+    await panel.getByTestId('k1-stock-length').nth(1).fill('200');
+    await panel.getByTestId('k1-run-plan').click();
+    await expect(panel.getByTestId('k1-unassigned-warning')).toBeVisible();
+  });
+
+  test('hip schedule offers cutting only for whole K1 rafters', async ({
+    page,
+  }) => {
+    await page.goto('/#/calculators/common-rafter');
+    await page.getByRole('button', { name: 'Krokiew narożna' }).click();
+    await page.locator(BUILDER).click();
+    await openTask(page, 'materials');
+    await expect(page.getByTestId('k1-cutting-cta')).toHaveCount(1);
+    await expect(
+      page
+        .locator('.a-schedule-family > header strong')
+        .filter({ hasText: 'H1' }),
+    ).toBeVisible();
+    await expect(
+      page
+        .locator('.a-schedule-family > header strong')
+        .filter({ hasText: 'J1' }),
+    ).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+  });
+});

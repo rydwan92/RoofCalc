@@ -215,6 +215,23 @@ disclosure is reachable without horizontal overflow on desktop and mobile.
 
 ---
 
+## CUT-001 — K1 fabrication blank to commercial cutting · `AUTOMATED` `BROWSER`
+
+1. Open a gable or hip Builder and choose Zestawienie → Drewno → K1.
+2. Open the K1 cutting task, enter at least two commercial lengths and run it.
+3. Read grouped commercial stock lengths/quantities, copy the list and inspect
+   an individual proportional cut layout.
+
+**Holds:** only whole K1 instances with the currently modeled centered
+ridge-board butt cut become indivisible required blanks; no axis row is
+silently promoted. Kerf, stock-end trims and reusable-remnant threshold are
+separate user inputs. Too-short or exhausted stock leaves explicit unassigned
+blanks. H1, J1 and opening-framing members do not enter the cutting plan. The
+scenario is transient, works offline and creates no roof Undo entry. The same
+task is reachable at 1440×900, 1024×768, 390×844 and 360×800.
+
+---
+
 ## PERF-001 — Large layouts stay usable · `MANUAL`
 
 1. Build a long roof with a fine covering grid so fragment count exceeds 1200.

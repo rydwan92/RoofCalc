@@ -1533,6 +1533,58 @@ describe('dual-mode parametric workbench', () => {
     expect(useAssembly.getState().historyPast).toHaveLength(historyLength);
   });
 
+  it('plans only proven K1 blanks from entered commercial lengths without roof history', async () => {
+    render(<App />);
+    builder();
+    const before = structuredClone(useAssembly.getState().projectDocument);
+    const history = useAssembly.getState().historyPast.length;
+    fireEvent.click(screen.getByRole('tab', { name: 'Zestawienie' }));
+    await screen.findByTestId('material-schedule');
+    expect(screen.getByTestId('k1-cutting-cta')).toBeTruthy();
+    fireEvent.click(screen.getByTestId('k1-cutting-cta'));
+    const panel = await screen.findByTestId('k1-cutting-panel');
+    expect(panel.querySelector('.a-k1-advanced[open]')).toBeNull();
+    fireEvent.change(within(panel).getByTestId('k1-stock-length'), {
+      target: { value: '7000' },
+    });
+    fireEvent.click(within(panel).getByText('+ Dodaj długość'));
+    fireEvent.change(within(panel).getAllByTestId('k1-stock-length')[1]!, {
+      target: { value: '8000' },
+    });
+    fireEvent.change(within(panel).getByTestId('k1-objective'), {
+      target: { value: 'minimum-stock-count' },
+    });
+    fireEvent.click(within(panel).getByTestId('k1-run-plan'));
+    expect(await within(panel).findByTestId('k1-purchase-list')).toBeTruthy();
+    expect(
+      within(panel).getByTestId('k1-cutting-result').textContent,
+    ).toContain('Przypisane');
+    fireEvent.click(within(panel).getByText('Ustawienia zaawansowane'));
+    expect(panel.querySelector('.a-k1-advanced[open]')).toBeTruthy();
+    fireEvent.change(within(panel).getAllByTestId('k1-stock-length')[0]!, {
+      target: { value: '1000' },
+    });
+    fireEvent.change(within(panel).getAllByTestId('k1-stock-length')[1]!, {
+      target: { value: '2000' },
+    });
+    fireEvent.click(within(panel).getByTestId('k1-run-plan'));
+    expect(
+      await within(panel).findByTestId('k1-unassigned-warning'),
+    ).toBeTruthy();
+    expect(useAssembly.getState().projectDocument).toEqual(before);
+    expect(useAssembly.getState().historyPast).toHaveLength(history);
+  });
+
+  it('explains why K1 cutting is unavailable without a physical ridge board', async () => {
+    render(<App />);
+    builder();
+    act(() => useAssembly.getState().setCanonicalField('ridge.thicknessMm', 0));
+    fireEvent.click(screen.getByRole('tab', { name: 'Zestawienie' }));
+    await screen.findByTestId('material-schedule');
+    expect(screen.queryByTestId('k1-cutting-cta')).toBeNull();
+    expect(screen.getByText(/Brak fizycznej deski kalenicowej/)).toBeTruthy();
+  });
+
   it('preserves separate geometric length groups for hip-roof J1 members', async () => {
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: 'Krokiew narożna' }));
