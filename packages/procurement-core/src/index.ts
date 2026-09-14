@@ -35,13 +35,22 @@ export interface CuttingSettings {
   minimumReusableRemnantMm: number;
 }
 
-export type OptimizationObjective = 'minimum-waste' | 'minimum-stock-count';
+export type OptimizationObjective =
+  'minimum-waste' | 'minimum-purchased-length' | 'minimum-stock-count';
+
+export interface SolverLimits {
+  /** Groups above this size use the deterministic heuristic fallback. */
+  exactPieceLimit?: number;
+  /** Hard branch-and-bound state budget applied independently per stock class. */
+  searchStateBudgetPerStockClass?: number;
+}
 
 export interface CuttingPlanInput {
   requiredPieces: readonly RequiredPiece[];
   stockOptions: readonly StockOption[];
   settings: CuttingSettings;
   objective?: OptimizationObjective;
+  solverLimits?: SolverLimits;
 }
 
 export interface CutAssignment {
@@ -97,11 +106,54 @@ export interface CuttingPlanSummary {
   utilizationRatio: number;
 }
 
+/** Pure physical plan evaluation. The signature is the final stable tie-break. */
+export interface PlanScore {
+  stockItemCount: number;
+  purchasedStockLengthMm: number;
+  /** Kerf + end trims + positive non-reusable remainders. */
+  irreversibleLossMm: number;
+  reusableRemnantLengthMm: number;
+  /** All opened stock not assigned to required pieces in this project. */
+  unusedPurchasedLengthMm: number;
+  deterministicSignature: string;
+}
+
+export type SolverStrategy = 'hybrid-bounded-branch-and-bound-v2';
+export type OptimalityStatus =
+  'heuristic' | 'proven-within-search-space' | 'search-budget-exhausted';
+
+export type StockClassFallbackReason =
+  'group-too-large' | 'stock-option-count-limit' | 'unfulfilled-requirements';
+
+export interface StockClassSolverDiagnostic {
+  stockClassId: StockClassId;
+  pieceCount: number;
+  stockOptionCount: number;
+  strategy: 'bounded-branch-and-bound' | 'heuristic-fallback';
+  optimality: OptimalityStatus;
+  searchStatesVisited: number;
+  searchStateBudget: number;
+  searchBudgetReached: boolean;
+  fallbackReason?: StockClassFallbackReason;
+}
+
+export interface SolverDiagnostics {
+  objective: OptimizationObjective;
+  strategy: SolverStrategy;
+  optimality: OptimalityStatus;
+  searchStatesVisited: number;
+  searchStateBudgetPerStockClass: number;
+  searchBudgetReached: boolean;
+  stockClasses: StockClassSolverDiagnostic[];
+}
+
 export interface CuttingPlan {
   status: 'complete' | 'partial' | 'unfulfilled';
   objective: OptimizationObjective;
-  /** Identifies the deterministic heuristic, not a global optimum claim. */
-  solver: 'deterministic-best-fit-decreasing-v1';
+  solver: SolverStrategy;
+  optimality: OptimalityStatus;
+  score: PlanScore;
+  diagnostics: SolverDiagnostics;
   stockUsages: StockUsage[];
   unassignedPieces: UnassignedPiece[];
   summary: CuttingPlanSummary;
@@ -122,7 +174,8 @@ export type ProcurementValidationIssueCode =
   | 'invalid-stock-length'
   | 'invalid-availability'
   | 'invalid-cutting-setting'
-  | 'invalid-objective';
+  | 'invalid-objective'
+  | 'invalid-solver-limit';
 
 export interface ProcurementValidationIssue {
   path: string;
@@ -142,7 +195,6 @@ export class ProcurementValidationError extends Error {
 interface MutableStockUsage {
   stockClassId: StockClassId;
   stockOptionId: string;
-  stockInstanceId: string;
   originalLengthMm: number;
   usableLengthMm: number;
   cuts: CutAssignment[];
@@ -155,7 +207,32 @@ interface ProjectedFill {
   remainingLengthMm: number;
 }
 
+interface HeuristicClassPlan {
+  usages: MutableStockUsage[];
+  unassignedPieces: UnassignedPiece[];
+}
+
+interface SearchResult {
+  usages: MutableStockUsage[];
+  statesVisited: number;
+  budgetReached: boolean;
+  foundCompletePlan: boolean;
+}
+
+interface ResolvedSolverLimits {
+  exactPieceLimit: number;
+  searchStateBudgetPerStockClass: number;
+}
+
 const LENGTH_EPSILON_MM = 1e-9;
+const MAX_EXACT_STOCK_OPTIONS = 8;
+const MAX_CONFIGURABLE_EXACT_PIECES = 20;
+const MAX_CONFIGURABLE_SEARCH_STATES = 100_000;
+
+export const DEFAULT_SOLVER_LIMITS: Readonly<ResolvedSolverLimits> = {
+  exactPieceLimit: 16,
+  searchStateBudgetPerStockClass: 50_000,
+};
 
 function validId(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
@@ -167,6 +244,12 @@ function positiveFinite(value: unknown): value is number {
 
 function nonnegativeFinite(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0;
+}
+
+function validBoundedInteger(value: unknown, maximum: number) {
+  return (
+    Number.isInteger(value) && Number(value) > 0 && Number(value) <= maximum
+  );
 }
 
 /** Returns all boundary problems without mutating or partially solving input. */
@@ -234,12 +317,48 @@ export function validateCuttingPlanInput(
   if (
     input.objective !== undefined &&
     input.objective !== 'minimum-waste' &&
+    input.objective !== 'minimum-purchased-length' &&
     input.objective !== 'minimum-stock-count'
   ) {
     issues.push({ path: 'objective', code: 'invalid-objective' });
   }
 
+  if (
+    input.solverLimits?.exactPieceLimit !== undefined &&
+    !validBoundedInteger(
+      input.solverLimits.exactPieceLimit,
+      MAX_CONFIGURABLE_EXACT_PIECES,
+    )
+  ) {
+    issues.push({
+      path: 'solverLimits.exactPieceLimit',
+      code: 'invalid-solver-limit',
+    });
+  }
+  if (
+    input.solverLimits?.searchStateBudgetPerStockClass !== undefined &&
+    !validBoundedInteger(
+      input.solverLimits.searchStateBudgetPerStockClass,
+      MAX_CONFIGURABLE_SEARCH_STATES,
+    )
+  ) {
+    issues.push({
+      path: 'solverLimits.searchStateBudgetPerStockClass',
+      code: 'invalid-solver-limit',
+    });
+  }
+
   return issues;
+}
+
+function resolveSolverLimits(limits?: SolverLimits): ResolvedSolverLimits {
+  return {
+    exactPieceLimit:
+      limits?.exactPieceLimit ?? DEFAULT_SOLVER_LIMITS.exactPieceLimit,
+    searchStateBudgetPerStockClass:
+      limits?.searchStateBudgetPerStockClass ??
+      DEFAULT_SOLVER_LIMITS.searchStateBudgetPerStockClass,
+  };
 }
 
 function usableLength(option: StockOption, settings: CuttingSettings) {
@@ -252,6 +371,11 @@ function fits(requiredMm: number, availableMm: number) {
 
 function normalizedLength(value: number) {
   return Math.abs(value) <= LENGTH_EPSILON_MM ? 0 : value;
+}
+
+function compareNumber(a: number, b: number) {
+  if (Math.abs(a - b) <= LENGTH_EPSILON_MM) return 0;
+  return a < b ? -1 : 1;
 }
 
 function pieceOrder(a: RequiredPiece, b: RequiredPiece) {
@@ -319,30 +443,18 @@ function chooseOpenUsage(
         aRemaining - bRemaining ||
         a.originalLengthMm - b.originalLengthMm ||
         a.stockOptionId.localeCompare(b.stockOptionId) ||
-        a.stockInstanceId.localeCompare(b.stockInstanceId)
+        mutableUsageSignature(a).localeCompare(mutableUsageSignature(b))
       );
     })[0];
 }
 
-function chooseStockOption(
-  options: readonly StockOption[],
-  openedByOption: ReadonlyMap<string, number>,
+function stockOptionComparator(
   piece: RequiredPiece,
   futurePieces: readonly RequiredPiece[],
   settings: CuttingSettings,
   objective: OptimizationObjective,
 ) {
-  const candidates = options.filter((option) => {
-    const available = option.availability;
-    const opened = openedByOption.get(option.id) ?? 0;
-    return (
-      option.stockClassId === piece.stockClassId &&
-      (available === undefined || opened < available) &&
-      fits(piece.lengthMm, usableLength(option, settings))
-    );
-  });
-
-  return candidates.sort((a, b) => {
+  return (a: StockOption, b: StockOption) => {
     if (objective === 'minimum-stock-count') {
       const aProjection = projectCandidateFill(
         a,
@@ -371,7 +483,28 @@ function chooseStockOption(
       a.lengthMm - b.lengthMm ||
       a.id.localeCompare(b.id)
     );
-  })[0];
+  };
+}
+
+function chooseStockOption(
+  options: readonly StockOption[],
+  openedByOption: ReadonlyMap<string, number>,
+  piece: RequiredPiece,
+  futurePieces: readonly RequiredPiece[],
+  settings: CuttingSettings,
+  objective: OptimizationObjective,
+) {
+  return options
+    .filter((option) => {
+      const available = option.availability;
+      const opened = openedByOption.get(option.id) ?? 0;
+      return (
+        option.stockClassId === piece.stockClassId &&
+        (available === undefined || opened < available) &&
+        fits(piece.lengthMm, usableLength(option, settings))
+      );
+    })
+    .sort(stockOptionComparator(piece, futurePieces, settings, objective))[0];
 }
 
 function appendPiece(
@@ -407,8 +540,34 @@ function classifyRemnant(
     : 'waste';
 }
 
+function mutableUsageSignature(usage: MutableStockUsage) {
+  return `${usage.stockOptionId}[${usage.cuts
+    .map((cut) => `${cut.requiredPieceId}:${cut.lengthMm}`)
+    .join(',')}]`;
+}
+
+function cloneMutableUsage(usage: MutableStockUsage): MutableStockUsage {
+  return {
+    ...usage,
+    cuts: usage.cuts.map((cut) => ({ ...cut })),
+  };
+}
+
+function canonicalMutableUsageOrder(
+  a: MutableStockUsage,
+  b: MutableStockUsage,
+) {
+  return (
+    a.stockClassId.localeCompare(b.stockClassId) ||
+    a.originalLengthMm - b.originalLengthMm ||
+    a.stockOptionId.localeCompare(b.stockOptionId) ||
+    mutableUsageSignature(a).localeCompare(mutableUsageSignature(b))
+  );
+}
+
 function finalizeUsage(
   usage: MutableStockUsage,
+  stockInstanceId: string,
   settings: CuttingSettings,
 ): StockUsage {
   const usedLengthMm = usage.cuts.reduce(
@@ -418,7 +577,7 @@ function finalizeUsage(
   return {
     stockClassId: usage.stockClassId,
     stockOptionId: usage.stockOptionId,
-    stockInstanceId: usage.stockInstanceId,
+    stockInstanceId,
     originalLengthMm: usage.originalLengthMm,
     usableLengthMm: usage.usableLengthMm,
     cuts: usage.cuts.map((cut) => ({ ...cut })),
@@ -431,6 +590,25 @@ function finalizeUsage(
       settings.minimumReusableRemnantMm,
     ),
   };
+}
+
+function canonicalizeAndFinalizeUsages(
+  usages: readonly MutableStockUsage[],
+  settings: CuttingSettings,
+): StockUsage[] {
+  const ordinals = new Map<string, number>();
+  return usages
+    .map(cloneMutableUsage)
+    .sort(canonicalMutableUsageOrder)
+    .map((usage) => {
+      const ordinal = (ordinals.get(usage.stockOptionId) ?? 0) + 1;
+      ordinals.set(usage.stockOptionId, ordinal);
+      return finalizeUsage(
+        usage,
+        `stock:${usage.stockOptionId}:${ordinal}`,
+        settings,
+      );
+    });
 }
 
 function unassignedReason(
@@ -502,14 +680,333 @@ function createSummary(
   };
 }
 
+function planSignature(stockUsages: readonly StockUsage[]) {
+  return stockUsages
+    .map(
+      (usage) =>
+        `${usage.stockClassId}|${usage.stockOptionId}|${usage.originalLengthMm}` +
+        `[${usage.cuts
+          .map((cut) => `${cut.requiredPieceId}:${cut.lengthMm}`)
+          .join(',')}]`,
+    )
+    .join(';');
+}
+
+/** Evaluates a canonical physical plan without prices or weighted scores. */
+export function evaluatePlanScore(
+  plan: Pick<CuttingPlan, 'stockUsages' | 'summary'>,
+): PlanScore {
+  return {
+    stockItemCount: plan.summary.stockItemCount,
+    purchasedStockLengthMm: plan.summary.purchasedStockLengthMm,
+    irreversibleLossMm: plan.summary.kerfLossMm + plan.summary.wasteLengthMm,
+    reusableRemnantLengthMm: plan.summary.reusableRemnantLengthMm,
+    unusedPurchasedLengthMm:
+      plan.summary.purchasedStockLengthMm - plan.summary.assignedLengthMm,
+    deterministicSignature: planSignature(plan.stockUsages),
+  };
+}
+
 /**
- * Deterministic best-fit-decreasing heuristic.
+ * Lexicographic objective comparison. Negative means `a` is preferred.
+ * No weighted or monetary approximation is used.
+ */
+export function comparePlanScores(
+  a: PlanScore,
+  b: PlanScore,
+  objective: OptimizationObjective,
+): number {
+  const keys: (keyof Omit<PlanScore, 'deterministicSignature'>)[] =
+    objective === 'minimum-stock-count'
+      ? [
+          'stockItemCount',
+          'purchasedStockLengthMm',
+          'irreversibleLossMm',
+          'reusableRemnantLengthMm',
+          'unusedPurchasedLengthMm',
+        ]
+      : objective === 'minimum-purchased-length'
+        ? [
+            'purchasedStockLengthMm',
+            'irreversibleLossMm',
+            'stockItemCount',
+            'reusableRemnantLengthMm',
+            'unusedPurchasedLengthMm',
+          ]
+        : [
+            'unusedPurchasedLengthMm',
+            'irreversibleLossMm',
+            'reusableRemnantLengthMm',
+            'stockItemCount',
+            'purchasedStockLengthMm',
+          ];
+  for (const key of keys) {
+    const result = compareNumber(a[key], b[key]);
+    if (result !== 0) return result;
+  }
+  return a.deterministicSignature.localeCompare(b.deterministicSignature);
+}
+
+function createHeuristicClassPlan(
+  pieces: readonly RequiredPiece[],
+  options: readonly StockOption[],
+  settings: CuttingSettings,
+  objective: OptimizationObjective,
+): HeuristicClassPlan {
+  const usages: MutableStockUsage[] = [];
+  const openedByOption = new Map<string, number>();
+  const unassignedPieces: UnassignedPiece[] = [];
+
+  pieces.forEach((piece, index) => {
+    let usage = chooseOpenUsage(usages, piece, settings);
+    if (!usage) {
+      const option = chooseStockOption(
+        options,
+        openedByOption,
+        piece,
+        pieces.slice(index + 1),
+        settings,
+        objective,
+      );
+      if (!option) {
+        unassignedPieces.push({
+          requiredPieceId: piece.id,
+          stockClassId: piece.stockClassId,
+          lengthMm: piece.lengthMm,
+          reason: unassignedReason(piece, options, settings),
+        });
+        return;
+      }
+      openedByOption.set(option.id, (openedByOption.get(option.id) ?? 0) + 1);
+      usage = {
+        stockClassId: option.stockClassId,
+        stockOptionId: option.id,
+        originalLengthMm: option.lengthMm,
+        usableLengthMm: usableLength(option, settings),
+        cuts: [],
+        remainingLengthMm: usableLength(option, settings),
+      };
+      usages.push(usage);
+    }
+    appendPiece(usage, piece, settings);
+  });
+
+  return { usages, unassignedPieces };
+}
+
+function completedScore(
+  pieces: readonly RequiredPiece[],
+  usages: readonly MutableStockUsage[],
+  settings: CuttingSettings,
+) {
+  const stockUsages = canonicalizeAndFinalizeUsages(usages, settings);
+  const summary = createSummary(pieces, stockUsages, []);
+  return evaluatePlanScore({ stockUsages, summary });
+}
+
+function lowerBoundIrreversibleLoss(
+  usages: readonly MutableStockUsage[],
+  settings: CuttingSettings,
+) {
+  return usages.reduce(
+    (total, usage) =>
+      total +
+      2 * settings.endTrimMm +
+      Math.max(0, usage.cuts.length - 1) * settings.kerfMm,
+    0,
+  );
+}
+
+function shouldPruneSearchState(
+  usages: readonly MutableStockUsage[],
+  settings: CuttingSettings,
+  objective: OptimizationObjective,
+  bestScore: PlanScore,
+) {
+  const stockItemCount = usages.length;
+  const purchasedStockLengthMm = usages.reduce(
+    (total, usage) => total + usage.originalLengthMm,
+    0,
+  );
+  const irreversibleLowerBound = lowerBoundIrreversibleLoss(usages, settings);
+
+  if (objective === 'minimum-stock-count') {
+    if (stockItemCount > bestScore.stockItemCount) return true;
+    if (
+      stockItemCount === bestScore.stockItemCount &&
+      compareNumber(purchasedStockLengthMm, bestScore.purchasedStockLengthMm) >
+        0
+    ) {
+      return true;
+    }
+    return (
+      stockItemCount === bestScore.stockItemCount &&
+      compareNumber(
+        purchasedStockLengthMm,
+        bestScore.purchasedStockLengthMm,
+      ) === 0 &&
+      compareNumber(irreversibleLowerBound, bestScore.irreversibleLossMm) > 0
+    );
+  }
+
+  if (
+    compareNumber(purchasedStockLengthMm, bestScore.purchasedStockLengthMm) > 0
+  ) {
+    return true;
+  }
+  return (
+    compareNumber(purchasedStockLengthMm, bestScore.purchasedStockLengthMm) ===
+      0 &&
+    compareNumber(irreversibleLowerBound, bestScore.irreversibleLossMm) > 0
+  );
+}
+
+function searchStateKey(
+  pieceIndex: number,
+  usages: readonly MutableStockUsage[],
+) {
+  return `${pieceIndex}|${usages
+    .map(
+      (usage) =>
+        `${usage.stockOptionId}:${usage.remainingLengthMm}:${usage.cuts
+          .map((cut) => cut.requiredPieceId)
+          .join(',')}`,
+    )
+    .sort()
+    .join(';')}`;
+}
+
+function countOpenedOption(
+  usages: readonly MutableStockUsage[],
+  stockOptionId: string,
+) {
+  return usages.filter((usage) => usage.stockOptionId === stockOptionId).length;
+}
+
+function boundedSearchClassPlan(
+  pieces: readonly RequiredPiece[],
+  options: readonly StockOption[],
+  settings: CuttingSettings,
+  objective: OptimizationObjective,
+  initialCompleteUsages: readonly MutableStockUsage[] | undefined,
+  stateBudget: number,
+): SearchResult {
+  let bestUsages = initialCompleteUsages?.map(cloneMutableUsage);
+  let bestScore = bestUsages
+    ? completedScore(pieces, bestUsages, settings)
+    : undefined;
+  let statesVisited = 0;
+  let budgetReached = false;
+  const seenStates = new Set<string>();
+
+  const visit = (pieceIndex: number, usages: MutableStockUsage[]) => {
+    const stateKey = searchStateKey(pieceIndex, usages);
+    if (seenStates.has(stateKey)) return;
+    if (statesVisited >= stateBudget) {
+      budgetReached = true;
+      return;
+    }
+    seenStates.add(stateKey);
+    statesVisited += 1;
+
+    if (
+      bestScore &&
+      shouldPruneSearchState(usages, settings, objective, bestScore)
+    ) {
+      return;
+    }
+    if (pieceIndex === pieces.length) {
+      const score = completedScore(pieces, usages, settings);
+      if (!bestScore || comparePlanScores(score, bestScore, objective) < 0) {
+        bestScore = score;
+        bestUsages = usages.map(cloneMutableUsage);
+      }
+      return;
+    }
+
+    const piece = pieces[pieceIndex]!;
+    const existingCandidates = usages
+      .map((usage, index) => ({ usage, index }))
+      .filter(({ usage }) =>
+        fits(requiredSpaceFor(usage, piece, settings), usage.remainingLengthMm),
+      )
+      .sort(
+        (a, b) =>
+          a.usage.remainingLengthMm -
+            requiredSpaceFor(a.usage, piece, settings) -
+            (b.usage.remainingLengthMm -
+              requiredSpaceFor(b.usage, piece, settings)) ||
+          canonicalMutableUsageOrder(a.usage, b.usage),
+      );
+    const equivalentOpenUsages = new Set<string>();
+    for (const { usage, index } of existingCandidates) {
+      const equivalenceKey = `${usage.stockOptionId}|${usage.remainingLengthMm}`;
+      if (equivalentOpenUsages.has(equivalenceKey)) continue;
+      equivalentOpenUsages.add(equivalenceKey);
+      const nextUsages = usages.map(cloneMutableUsage);
+      appendPiece(nextUsages[index]!, piece, settings);
+      visit(pieceIndex + 1, nextUsages);
+      if (budgetReached) return;
+    }
+
+    const newOptions = options
+      .filter(
+        (option) =>
+          (option.availability === undefined ||
+            countOpenedOption(usages, option.id) < option.availability) &&
+          fits(piece.lengthMm, usableLength(option, settings)),
+      )
+      .sort(
+        stockOptionComparator(
+          piece,
+          pieces.slice(pieceIndex + 1),
+          settings,
+          objective,
+        ),
+      );
+    for (const option of newOptions) {
+      const newUsage: MutableStockUsage = {
+        stockClassId: option.stockClassId,
+        stockOptionId: option.id,
+        originalLengthMm: option.lengthMm,
+        usableLengthMm: usableLength(option, settings),
+        cuts: [],
+        remainingLengthMm: usableLength(option, settings),
+      };
+      appendPiece(newUsage, piece, settings);
+      visit(pieceIndex + 1, [...usages.map(cloneMutableUsage), newUsage]);
+      if (budgetReached) return;
+    }
+  };
+
+  visit(0, []);
+  return {
+    usages: bestUsages ?? [],
+    statesVisited,
+    budgetReached,
+    foundCompletePlan: bestUsages !== undefined,
+  };
+}
+
+function overallOptimality(
+  diagnostics: readonly StockClassSolverDiagnostic[],
+): OptimalityStatus {
+  if (diagnostics.some((item) => item.searchBudgetReached)) {
+    return 'search-budget-exhausted';
+  }
+  if (diagnostics.some((item) => item.optimality === 'heuristic')) {
+    return 'heuristic';
+  }
+  return 'proven-within-search-space';
+}
+
+/**
+ * Hybrid deterministic optimizer.
  *
- * Existing compatible remainders are always considered before opening stock.
- * `minimum-waste` opens the shortest immediately fitting option. The
- * `minimum-stock-count` variant uses a bounded one-stock greedy look-ahead to
- * prefer the option that can hold more remaining pieces. Neither objective
- * claims a mathematically global optimum.
+ * Stock classes are independent. Each class starts with a best-fit-decreasing
+ * heuristic plan. Small complete groups are then improved by bounded
+ * branch-and-bound; large, incomplete or budget-exhausted groups safely return
+ * the best deterministic plan found.
  */
 export function createCuttingPlan(input: CuttingPlanInput): CuttingPlan {
   const validationIssues = validateCuttingPlanInput(input);
@@ -518,63 +1015,133 @@ export function createCuttingPlan(input: CuttingPlanInput): CuttingPlan {
   }
 
   const objective = input.objective ?? 'minimum-waste';
+  const limits = resolveSolverLimits(input.solverLimits);
   const pieces = input.requiredPieces
-    .map((piece) => ({
-      ...piece,
-      source: piece.source ? { ...piece.source } : undefined,
+    .map((item) => ({
+      ...item,
+      source: item.source ? { ...item.source } : undefined,
     }))
     .sort(pieceOrder);
   const options = input.stockOptions
     .map((option) => ({ ...option }))
     .sort(optionOrder);
-  const mutableUsages: MutableStockUsage[] = [];
-  const openedByOption = new Map<string, number>();
+  const stockClassIds = [
+    ...new Set(pieces.map((item) => item.stockClassId)),
+  ].sort();
+  const selectedUsages: MutableStockUsage[] = [];
   const unassignedPieces: UnassignedPiece[] = [];
+  const stockClassDiagnostics: StockClassSolverDiagnostic[] = [];
 
-  pieces.forEach((piece, index) => {
-    let usage = chooseOpenUsage(mutableUsages, piece, input.settings);
-    if (!usage) {
-      const option = chooseStockOption(
-        options,
-        openedByOption,
-        piece,
-        pieces.slice(index + 1),
+  for (const stockClassId of stockClassIds) {
+    const classPieces = pieces.filter(
+      (item) => item.stockClassId === stockClassId,
+    );
+    const classOptions = options.filter(
+      (option) => option.stockClassId === stockClassId,
+    );
+    const heuristic = createHeuristicClassPlan(
+      classPieces,
+      classOptions,
+      input.settings,
+      objective,
+    );
+    let usages = heuristic.usages;
+    let classUnassignedPieces = heuristic.unassignedPieces;
+    let strategy: StockClassSolverDiagnostic['strategy'] =
+      'bounded-branch-and-bound';
+    let optimality: OptimalityStatus = 'proven-within-search-space';
+    let statesVisited = 0;
+    let budgetReached = false;
+    let fallbackReason: StockClassFallbackReason | undefined;
+
+    const everyPieceHasAvailableFit = classPieces.every((piece) =>
+      classOptions.some(
+        (option) =>
+          (option.availability === undefined || option.availability > 0) &&
+          fits(piece.lengthMm, usableLength(option, input.settings)),
+      ),
+    );
+
+    if (!everyPieceHasAvailableFit) {
+      strategy = 'heuristic-fallback';
+      optimality = 'heuristic';
+      fallbackReason = 'unfulfilled-requirements';
+    } else if (classPieces.length > limits.exactPieceLimit) {
+      strategy = 'heuristic-fallback';
+      optimality = 'heuristic';
+      fallbackReason = 'group-too-large';
+    } else if (classOptions.length > MAX_EXACT_STOCK_OPTIONS) {
+      strategy = 'heuristic-fallback';
+      optimality = 'heuristic';
+      fallbackReason = 'stock-option-count-limit';
+    } else {
+      const search = boundedSearchClassPlan(
+        classPieces,
+        classOptions,
         input.settings,
         objective,
+        heuristic.unassignedPieces.length === 0 ? heuristic.usages : undefined,
+        limits.searchStateBudgetPerStockClass,
       );
-      if (!option) {
-        unassignedPieces.push({
-          requiredPieceId: piece.id,
-          stockClassId: piece.stockClassId,
-          lengthMm: piece.lengthMm,
-          reason: unassignedReason(piece, options, input.settings),
-        });
-        return;
+      statesVisited = search.statesVisited;
+      budgetReached = search.budgetReached;
+      if (search.foundCompletePlan) {
+        usages = search.usages;
+        classUnassignedPieces = [];
+        optimality = search.budgetReached
+          ? 'search-budget-exhausted'
+          : 'proven-within-search-space';
+      } else {
+        strategy = 'heuristic-fallback';
+        optimality = search.budgetReached
+          ? 'search-budget-exhausted'
+          : 'heuristic';
+        fallbackReason = 'unfulfilled-requirements';
       }
-      const ordinal = (openedByOption.get(option.id) ?? 0) + 1;
-      openedByOption.set(option.id, ordinal);
-      usage = {
-        stockClassId: option.stockClassId,
-        stockOptionId: option.id,
-        stockInstanceId: `stock:${option.id}:${ordinal}`,
-        originalLengthMm: option.lengthMm,
-        usableLengthMm: usableLength(option, input.settings),
-        cuts: [],
-        remainingLengthMm: usableLength(option, input.settings),
-      };
-      mutableUsages.push(usage);
     }
-    appendPiece(usage, piece, input.settings);
-  });
 
-  const stockUsages = mutableUsages.map((usage) =>
-    finalizeUsage(usage, input.settings),
+    selectedUsages.push(...usages);
+    unassignedPieces.push(...classUnassignedPieces);
+    stockClassDiagnostics.push({
+      stockClassId,
+      pieceCount: classPieces.length,
+      stockOptionCount: classOptions.length,
+      strategy,
+      optimality,
+      searchStatesVisited: statesVisited,
+      searchStateBudget: limits.searchStateBudgetPerStockClass,
+      searchBudgetReached: budgetReached,
+      ...(fallbackReason ? { fallbackReason } : {}),
+    });
+  }
+
+  unassignedPieces.sort(
+    (a, b) =>
+      a.stockClassId.localeCompare(b.stockClassId) ||
+      b.lengthMm - a.lengthMm ||
+      a.requiredPieceId.localeCompare(b.requiredPieceId),
   );
-  const summary = createSummary(
-    input.requiredPieces,
-    stockUsages,
-    unassignedPieces,
+  const stockUsages = canonicalizeAndFinalizeUsages(
+    selectedUsages,
+    input.settings,
   );
+  const summary = createSummary(pieces, stockUsages, unassignedPieces);
+  const solver: SolverStrategy = 'hybrid-bounded-branch-and-bound-v2';
+  const optimality = overallOptimality(stockClassDiagnostics);
+  const diagnostics: SolverDiagnostics = {
+    objective,
+    strategy: solver,
+    optimality,
+    searchStatesVisited: stockClassDiagnostics.reduce(
+      (total, item) => total + item.searchStatesVisited,
+      0,
+    ),
+    searchStateBudgetPerStockClass: limits.searchStateBudgetPerStockClass,
+    searchBudgetReached: stockClassDiagnostics.some(
+      (item) => item.searchBudgetReached,
+    ),
+    stockClasses: stockClassDiagnostics,
+  };
   return {
     status:
       unassignedPieces.length === 0
@@ -583,7 +1150,10 @@ export function createCuttingPlan(input: CuttingPlanInput): CuttingPlan {
           ? 'unfulfilled'
           : 'partial',
     objective,
-    solver: 'deterministic-best-fit-decreasing-v1',
+    solver,
+    optimality,
+    score: evaluatePlanScore({ stockUsages, summary }),
+    diagnostics,
     stockUsages,
     unassignedPieces,
     summary,

@@ -1,211 +1,214 @@
-# RoofCalc — Architecture V26A: Timber Procurement Core Foundation
+# RoofCalc - Architecture V26B: Timber Procurement Core
 
-## 1. Purpose
+## 1. Purpose and boundary
 
 `@cieslacalc/procurement-core` answers one technical question:
 
-> How should exact required timber pieces be cut from the available commercial stock lengths?
+> How should exact, indivisible timber requirements be cut from available commercial stock lengths?
 
-It is a pure, renderer-independent TypeScript package. It does not decide roof geometry, which structural members exist, whether a section is structurally adequate, or what stock costs.
-
-The intended layering is:
+It is a pure, deterministic TypeScript package. It does not decide roof geometry, structural adequacy, product compatibility, prices, or supplier policy. Its intended position is:
 
 ```text
-geometry / accepted physical assembly
-                ↓
-          quantity-core
- exact indivisible member requirements
-                ↓
-        procurement-core
- stock selection, cutting and remnant plan
-                ↓
-        future cost-core
- commercial valuation of physical requirements
+accepted roof geometry
+        -> quantity-core: exact physical member requirements
+        -> procurement-core: stock selection, cuts, losses and remnants
+        -> future cost-core: commercial valuation
 ```
 
-Quantity and procurement are deliberately separate. A quantity row can say that twelve exact K1 members of a given length exist. Procurement must additionally know which commercial lengths are available, how kerf and end preparation consume stock, whether finite availability is exhausted, and which remnants can be reused. Those are not geometric quantity facts.
+The package imports no UI, renderer, browser, server, persistence, catalogue, translation, or price code. V26B does not integrate the plan with Material Schedule or `RoofProjectDocumentV1`.
 
-## 2. Package boundary
+## 2. Physical inputs
 
-The package contains only TypeScript types, validation and deterministic pure algorithms. It imports no React, Zustand, DOM, Express, Drizzle, MySQL, HTTP, local storage, translations, catalogue data or prices.
+`RequiredPiece` represents one exact physical member. It is indivisible: one piece must be cut from one stock item. Two remnants are never joined to manufacture one rafter, and an overlong piece is never truncated.
 
-V26A does not integrate with Material Schedule or `RoofProjectDocumentV1`. A future application adapter may expand accepted `quantity-core` timber rows into one `RequiredPiece` per physical instance, preserving the upstream member ID and family as optional source metadata. Derived procurement plans remain outside canonical project persistence until a separately versioned persistence contract is approved.
+`stockClassId` is an opaque compatibility identity supplied by an upstream adapter. Only exact equality is meaningful to procurement. A future class definition may account for species, strength class, section, moisture condition, and treatment, but none of those meanings is parsed here.
 
-## 3. Required pieces
+`StockOption` represents one commercial length for one stock class. `availability: undefined` means unlimited for this planning run; a number is an exact finite nonnegative item count. Lengths are canonical millimetres.
 
-`RequiredPiece` is one exact, indivisible physical requirement:
+## 3. Canonical cutting convention
+
+Every solver path uses the same fit and placement primitives:
+
+```text
+usable length = original stock length - 2 * endTrimMm
+kerf total    = max(0, cut count - 1) * kerfMm
+```
+
+The first piece begins at the leading `endTrimMm`. Each later piece begins one `kerfMm` after the previous cut. A one-piece usage has no inter-piece kerf. The trailing trim is reserved by reducing usable capacity before placement.
+
+A `1e-9 mm` epsilon only normalizes floating-point boundary calculations. It is not a fabrication tolerance and does not permit an oversize piece to fit.
+
+Each stock usage contains a single open tail remainder. A later compatible requirement may consume it in the same plan. Remainders are never merged and never counted twice.
+
+## 4. Material accounting
+
+The result deliberately separates:
+
+- required member material: the sum of assigned physical piece lengths;
+- kerf loss: material consumed between adjacent cuts;
+- end-trim loss: the two configured trims for each opened stock item;
+- non-reusable remainder: a positive tail below the configured reuse threshold;
+- reusable remnant: a tail at or above the threshold;
+- purchased stock: the full original length of every opened stock item.
+
+For each `StockUsage`:
+
+```text
+original stock
+  = assigned piece lengths
+  + kerfs
+  + both end trims
+  + remaining tail
+```
+
+At plan level:
+
+```text
+purchased stock
+  = assigned member material
+  + kerf loss
+  + wasteLengthMm
+  + reusableRemnantLengthMm
+```
+
+`wasteLengthMm` is end trims plus non-reusable remainders. Kerf is reported separately. A reusable remnant is not irreversible waste, but it is still unused purchased material for the current project.
+
+## 5. Explicit plan score
+
+`PlanScore` evaluates a completed physical plan without prices:
 
 ```ts
-interface RequiredPiece {
-  id: string;
-  stockClassId: string;
-  lengthMm: number;
-  source?: {
-    memberId?: string;
-    family?: string;
-  };
+interface PlanScore {
+  stockItemCount: number;
+  purchasedStockLengthMm: number;
+  irreversibleLossMm: number;
+  reusableRemnantLengthMm: number;
+  unusedPurchasedLengthMm: number;
+  deterministicSignature: string;
 }
 ```
 
-One required piece must come from one stock item. The optimizer never assembles a required piece from multiple remnants and never truncates an overlong piece.
+Definitions:
 
-Canonical dimensions are millimetres. Required pieces are compared and placed using their numeric millimetre values, never formatted `cm` or `m` strings.
+- `irreversibleLossMm = kerfLossMm + wasteLengthMm`;
+- `unusedPurchasedLengthMm = purchasedStockLengthMm - assignedLengthMm`;
+- `deterministicSignature` is derived from canonical stock usages and cuts and is only the final stable tie-break.
 
-## 4. Opaque stock classes
+The comparator is lexicographic. It uses no weighted score, floating-point multiplier, currency, or hidden preference.
 
-`stockClassId` is an opaque compatibility identity supplied by an upstream adapter. Procurement only tests exact equality. It does not parse a section from the ID, compare display labels, or infer C24/species/drying/treatment compatibility.
+## 6. Objective semantics
 
-A future stock-class definition may combine:
+V26B supports three technical objectives.
 
-- material and species,
-- strength class,
-- exact section,
-- drying/moisture condition,
-- treatment or other purchasing constraints.
+### `minimum-waste` (default)
 
-That definition belongs outside the optimizer. Equal IDs are compatible; unequal IDs never share stock or remnants.
+Comparison order:
 
-## 5. Commercial stock options and availability
+1. least total unused purchased length;
+2. least irreversible loss;
+3. least reusable-remnant length;
+4. least stock-item count;
+5. least purchased length;
+6. deterministic signature.
 
-`StockOption` identifies one commercial length for one stock class:
+Here "waste" first means all purchased material not assigned to this project's required members, irrespective of whether the tail is reusable. This prevents a very long stock item from winning merely because its large remainder crosses the reusable threshold. Only after total unused material ties does the objective prefer less irreversible loss.
 
-```ts
-interface StockOption {
-  id: string;
-  stockClassId: string;
-  lengthMm: number;
-  availability?: number;
-}
-```
+For complete plans over the same fixed requirements, minimizing unused purchased length and minimizing purchased length have the same primary mathematical result. The separate objective names remain useful because they express different intent and define explicit secondary ordering; neither is a cost objective.
 
-`availability: undefined` means unlimited for this planning run. An explicit availability is a finite nonnegative integer and is never treated as unlimited. Different options may expose lengths such as 6000, 7000, 8000 and 12000 mm without any price preference.
+### `minimum-purchased-length`
 
-## 6. Kerf, end trims and usable length
+Comparison order:
 
-V26A uses an explicit cutting convention:
+1. least opened commercial stock length;
+2. least irreversible loss;
+3. least stock-item count;
+4. least reusable-remnant length;
+5. least unused purchased length;
+6. deterministic signature.
 
-```text
-usableLength = originalLength - 2 × endTrimMm
-```
+No price or monetary proxy is involved. This objective must never be labelled `minimum-cost`.
 
-`endTrimMm` is removed from each end of every opened stock item. Cut coordinates are measured along the original stock item, so the first required piece starts at `endTrimMm`.
+### `minimum-stock-count`
 
-One kerf is consumed between each adjacent pair of required pieces assigned to the same stock item:
+Comparison order:
 
-```text
-kerfTotal = max(0, assignedPieceCount - 1) × kerfMm
-```
+1. least opened stock-item count;
+2. least purchased length;
+3. least irreversible loss;
+4. least reusable-remnant length;
+5. least unused purchased length;
+6. deterministic signature.
 
-There is no hidden tolerance or implicit saw allowance. A single piece that occupies a stock item has no inter-piece kerf. End preparation is represented only by the explicit two trims. With zero trim, the 5600 mm + 1300 mm example consumes 6900 mm of pieces plus one 4 mm kerf from a 7000 mm stock item, leaving 96 mm.
+This objective can intentionally choose one longer commercial item over two shorter items. Its secondary purchased-length criterion still rejects gratuitously oversized alternatives when item counts tie.
 
-A `1e-9 mm` internal epsilon is used only to normalize floating-point subtraction at exact boundaries. It is not a grouping, display-rounding or hidden fit tolerance.
+## 7. Hybrid bounded solver
 
-## 7. Cutting plan and remnants
+The reported solver is `hybrid-bounded-branch-and-bound-v2`.
 
-Each `StockUsage` records:
+The optimizer first partitions requirements by exact `stockClassId`; incompatible classes can never share stock and therefore form independent search problems. For each class it:
 
-- exact stock class, option and deterministic physical instance ID,
-- original and usable stock length,
-- ordered `CutAssignment` coordinates,
-- required-piece length used,
-- kerf and two-end trim loss,
-- one remaining unallocated segment,
-- remnant classification.
+1. sorts requirements by descending length with stable identity tie-breaks;
+2. builds a deterministic best-fit-decreasing heuristic plan as an initial incumbent;
+3. for a supported small/medium group, explores a deterministic branch-and-bound search;
+4. prunes states already worse than the incumbent and symmetric open-stock placements;
+5. respects finite availability while opening every candidate stock item;
+6. returns the best complete incumbent found, or the safe heuristic fallback.
 
-The sequential one-dimensional layout keeps at most one open tail remainder per stock item. Later compatible pieces may consume it during the same plan. Every placement updates that single remainder, so no remnant is counted twice.
+The exact-search defaults are:
 
-Classification is:
+- at most 16 required pieces per stock class;
+- at most 8 stock options per stock class;
+- at most 50,000 visited states per stock class.
 
-```text
-remaining = 0                         → none
-0 < remaining < reusable threshold   → waste
-remaining ≥ reusable threshold       → reusable-remnant
-```
+Callers may lower the piece/state limits. Validated hard ceilings are 20 pieces and 100,000 states per class, so the public configuration cannot turn this into an unbounded exponential solver. Groups beyond a limit use the deterministic heuristic. Search uses the same trim, kerf, capacity, and append primitives as the heuristic.
 
-End trims are counted in summary waste. Kerf is reported separately. `wasteLengthMm` therefore means end-trim loss plus positive non-reusable remainders; it excludes the separately reported kerf loss.
+The search may recover a complete plan when a greedy ordering exhausts finite availability prematurely. Availability is enforced in both solver paths.
 
-## 8. Optimization objectives and algorithm honesty
+## 8. Optimality honesty and diagnostics
 
-V26A supports:
+Every result includes the chosen objective, solver strategy, plan score, overall optimality, and bounded diagnostics. Diagnostics repeat the objective, strategy, and optimality and report visited states, configured per-class budget, budget exhaustion, and compact per-stock-class facts. Internal search trees are not exposed.
 
-- `minimum-waste` (default),
-- `minimum-stock-count`.
+Optimality values mean:
 
-The solver is `deterministic-best-fit-decreasing-v1`, a practical heuristic rather than a proof of mathematical global optimality.
+- `heuristic`: exact improvement was intentionally skipped or no complete exact incumbent was established;
+- `proven-within-search-space`: the bounded search completed for every class and proved the best result under the implemented input model and lexicographic objective;
+- `search-budget-exhausted`: at least one class stopped at its state budget, so the returned incumbent is valid and deterministic but is not claimed optimal.
 
-Common behavior:
+Large schedules, excessive option sets, impossible requirements, and exhausted budgets do not make a valid request throw. The best safe plan is returned with honest metadata and structured unassigned pieces where necessary.
 
-1. validate all boundaries before solving,
-2. sort pieces by descending exact length with stable class/ID tie-breaks,
-3. prefer a compatible already-open stock remainder,
-4. choose the best-fitting open remainder deterministically,
-5. open another available option only when no existing remainder fits.
+## 9. Canonical result ordering
 
-For `minimum-waste`, a new stock item is the shortest immediately fitting usable option. For `minimum-stock-count`, a bounded one-stock greedy look-ahead prefers the option that can hold more remaining compatible pieces, then more required length, then less projected remainder. Stable stock length and ID tie-breaks make repeated runs identical.
+Equivalent results serialize deterministically:
 
-This heuristic is bounded and suitable for larger project schedules. It intentionally avoids unbounded exhaustive search over an NP-hard cutting-stock problem. A later solver may replace the strategy behind the same input/result contract, but callers must not present V26A as a proven optimum.
+- stock classes are solved and reported by stable class ID;
+- stock options use stable length and ID tie-breaks;
+- stock usages are ordered by class, original length, option ID, and cut signature;
+- cuts retain deterministic placement order from the sorted requirements;
+- physical stock instance IDs are regenerated from canonical option ordinals;
+- unassigned pieces are ordered by class, descending length, and ID.
 
-## 9. Unassigned pieces
+Repeated calls with identical values produce deep-equal results, including diagnostics and instance IDs. Physical `stockInstanceId` remains distinct from a shared stock-option identity.
 
-An impossible piece remains whole under `unassignedPieces` with a structured reason:
+## 10. Unassigned requirements
 
-- `no-compatible-stock` — no stock option has the required opaque class,
-- `piece-longer-than-stock` — compatible options exist, but the piece exceeds every usable length after trims,
-- `availability-exhausted` — a fitting compatible option exists in principle, but the explicit stock limit is exhausted and no open remainder fits.
+An unassigned piece remains whole and has one structured reason:
 
-The optimizer never joins remnants, clips a piece, silently omits it or hides it in an invalid plan status.
+- `no-compatible-stock`;
+- `piece-longer-than-stock` after trims;
+- `availability-exhausted`.
 
-## 10. Summary and grouping
+The optimizer never clips, joins, duplicates, or silently omits a requirement.
 
-The plan summary reports exact physical facts:
+## 11. Catalogue, persistence, and future cost boundary
 
-- required, assigned and unassigned piece counts,
-- opened stock item count,
-- total required and assigned piece length,
-- total opened/purchased stock length,
-- kerf and end-trim loss,
-- non-reusable waste and reusable remnant length,
-- utilization as assigned required length divided by opened stock length.
+Future catalogue or supplier adapters may produce `StockOption[]`, but procurement-core must not import catalogue data or supplier rules. Catalogue revisions and availability are external inputs.
 
-`requiredLengthMm` includes unassigned requirements; `assignedLengthMm` does not. For an empty/no-stock plan, utilization is `0`, never `NaN`.
+A future Cost Engine may value `aggregateStockRequirements()` or the physical plan. It must not treat exact required-member length as already purchased commercial stock. Currency, VAT, discounts, supplier offers, inventory orders, and monetary objectives remain outside V26B.
 
-`aggregateStockRequirements()` groups opened items by exact `stockClassId`, `stockOptionId` and millimetre length. It produces physical requirements such as `7000 mm × 8`; it does not attach a monetary meaning.
+Derived procurement plans remain outside canonical project persistence until a separately versioned persistence contract is approved.
 
-## 11. Catalogue and supplier boundary
+## 12. Verification focus and non-goals
 
-Future catalogue/supplier integrations adapt their data into `StockOption[]`:
+Tests cover greedy counterexamples, exact finite availability, kerf/trim boundaries, multiple stock classes, canonical ordering, realistic repeated K1/J1/H1-style fixtures, a larger fallback case, and seeded property-style accounting invariants.
 
-```text
-catalogue timber product
-        ↓ application adapter
-opaque stock class + available lengths
-        ↓
-StockOption[]
-```
-
-`procurement-core` must not import `catalog-core`, call a catalogue API, or know supplier/manufacturer rules. Catalogue revisions and supplier availability remain external inputs.
-
-## 12. Future Cost Engine boundary
-
-A future Cost Engine consumes the procurement plan or its grouped stock requirements. It must not value raw `quantity-core.totalLengthMm` as though exact geometric length were already a commercial purchase plan.
-
-V26A contains no price, currency, VAT, discount, supplier-offer or monetary objective fields. A future optional objective adapter may supply external weights without moving commercial data into the technical core, but that is not implemented here.
-
-## 13. Multi-structure compatibility
-
-The optimizer accepts only `RequiredPiece[]`; it does not assume one roof, building or project hierarchy. A future application can aggregate compatible requirements from a house, garage and other structures before calling procurement. Optional source metadata remains traceability information and never changes compatibility or packing behavior.
-
-## 14. Explicit non-goals
-
-V26A does not implement:
-
-- UI or Material Schedule integration,
-- ProjectDocument persistence,
-- catalogue timber products or supplier databases,
-- prices, Cost Engine, VAT, orders or warehouse state,
-- automatic multi-roof/project aggregation,
-- structural splicing, finger joints, scarf joints or glued composition,
-- two-dimensional sheet nesting,
-- roof-covering offcut optimization,
-- structural sizing or safety verification,
-- a globally optimal cutting-stock proof.
+V26B does not implement UI, Material Schedule integration, ProjectDocument persistence, prices, warehouse state, structural splicing, sheet nesting, covering offcut optimization, structural verification, or any execution-semantics change to roof coverings and rafter connections.

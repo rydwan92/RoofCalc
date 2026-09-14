@@ -373,9 +373,13 @@ describe('timber procurement core', () => {
       input(pieces, options, { objective: 'minimum-stock-count' }),
     );
 
-    expect(wastePlan.summary.stockItemCount).toBe(3);
+    expect(wastePlan.summary.stockItemCount).toBe(2);
     expect(countPlan.summary.stockItemCount).toBe(2);
-    expect(countPlan.stockUsages[0]!.stockOptionId).toBe('S12');
+    expect(countPlan.stockUsages.map((usage) => usage.stockOptionId)).toEqual([
+      'S8',
+      'S12',
+    ]);
+    expect(countPlan.optimality).toBe('proven-within-search-space');
   });
 
   it('handles a larger deterministic K1/J1-style fixture', () => {
