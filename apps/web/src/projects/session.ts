@@ -27,6 +27,8 @@ export interface ProjectSessionState {
   active?: ProjectSummary;
   projects: ProjectSummary[];
   saveStatus: SaveStatus;
+  initialized: boolean;
+  freshProject: boolean;
   error?: string;
 }
 
@@ -37,7 +39,12 @@ interface ActiveIdStorage {
 
 /** Browser session state is deliberately separate from roof Undo/Redo. */
 export class ProjectSession {
-  private state: ProjectSessionState = { projects: [], saveStatus: 'saved' };
+  private state: ProjectSessionState = {
+    projects: [],
+    saveStatus: 'saved',
+    initialized: false,
+    freshProject: false,
+  };
   private listeners = new Set<() => void>();
   private record?: ProjectRecordV1;
   private workingDocument?: RoofProjectDocumentV1;
@@ -158,12 +165,14 @@ export class ProjectSession {
     const stored = activeId ? await this.repository.get(activeId) : undefined;
     if (stored) {
       await this.restore(stored);
+      this.update({ initialized: true, freshProject: false });
       return;
     }
     for (const summary of this.state.projects) {
       const record = await this.repository.get(summary.id);
       if (record) {
         await this.restore(record);
+        this.update({ initialized: true, freshProject: false });
         return;
       }
     }
@@ -187,6 +196,11 @@ export class ProjectSession {
         saveStatus: 'error',
         error: 'Lokalny zapis jest niedostępny.',
       });
+    this.update({ initialized: true, freshProject: true });
+  }
+
+  acknowledgeFreshProject(): void {
+    this.update({ freshProject: false });
   }
 
   private async activate(
@@ -326,6 +340,7 @@ export class ProjectSession {
     const record = await this.repository.get(id);
     if (!record) throw new Error('Nie można otworzyć tego projektu.');
     await this.activate(record);
+    this.update({ freshProject: false });
   }
 
   async create(): Promise<void> {
@@ -338,7 +353,11 @@ export class ProjectSession {
     );
     await this.repository.save(record);
     await this.activate(record);
-    this.update({ projects: await this.repository.list() });
+    this.update({
+      projects: await this.repository.list(),
+      initialized: true,
+      freshProject: true,
+    });
   }
 
   async rename(name: string): Promise<void> {
@@ -363,7 +382,10 @@ export class ProjectSession {
     );
     await this.repository.save(copy);
     await this.activate(copy);
-    this.update({ projects: await this.repository.list() });
+    this.update({
+      projects: await this.repository.list(),
+      freshProject: false,
+    });
   }
 
   async delete(id: string): Promise<void> {
@@ -426,7 +448,10 @@ export class ProjectSession {
     const localRecord = { ...imported, id: await this.uniqueId(imported.id) };
     await this.repository.save(localRecord);
     await this.activate(localRecord);
-    this.update({ projects: await this.repository.list() });
+    this.update({
+      projects: await this.repository.list(),
+      freshProject: false,
+    });
   }
 
   async dispose(): Promise<void> {

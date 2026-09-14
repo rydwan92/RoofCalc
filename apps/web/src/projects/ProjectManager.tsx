@@ -12,6 +12,7 @@ const messages = {
   pl: {
     projects: 'Projekty',
     new: 'Nowy projekt',
+    editBasics: 'Edytuj podstawowe wymiary',
     rename: 'Zmień nazwę',
     duplicate: 'Duplikuj',
     export: 'Eksportuj',
@@ -35,6 +36,7 @@ const messages = {
   en: {
     projects: 'Projects',
     new: 'New project',
+    editBasics: 'Edit basic dimensions',
     rename: 'Rename',
     duplicate: 'Duplicate',
     export: 'Export',
@@ -64,10 +66,14 @@ export function ProjectManager({
   session,
   state,
   mobile,
+  onStartNew,
+  onEditBasics,
 }: {
   session: ProjectSession;
   state: ProjectSessionState;
   mobile: boolean;
+  onStartNew?: () => void;
+  onEditBasics?: () => void;
 }) {
   const { i18n } = useTranslation();
   const m = messages[i18n.language.startsWith('pl') ? 'pl' : 'en'];
@@ -128,7 +134,12 @@ export function ProjectManager({
       )}
       <button
         className="a-project-primary"
-        onClick={() => void action(() => session.create())}
+        onClick={() => {
+          if (onStartNew) {
+            setOpen(false);
+            onStartNew();
+          } else void action(() => session.create());
+        }}
       >
         <Plus size={17} /> {m.new}
       </button>
@@ -160,6 +171,16 @@ export function ProjectManager({
       </div>
       {state.active && (
         <div className="a-project-actions">
+          {onEditBasics && (
+            <button
+              onClick={() => {
+                setOpen(false);
+                onEditBasics();
+              }}
+            >
+              {m.editBasics}
+            </button>
+          )}
           <button
             onClick={() => {
               setName(state.active?.name ?? '');

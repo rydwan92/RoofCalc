@@ -1297,6 +1297,32 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+> V30 source at `d4e4dea` was recovered and closed before V31. Its only failed
+> gate was Prettier formatting in `apps/web/src/assembly/Page.test.tsx`; the
+> focused mechanical fix is retained. Final recovered V30 validation:
+> `pnpm verify` PASS with 653 tests in 69 files and web/API builds; `pnpm e2e`
+> PASS with 22/22 desktop/mobile scenarios. No V30 solver, schema or output
+> semantics changed during recovery.
+
+**Iteration:** `031 — Creator Experience & Covering Studio`
+
+**Status:** `IN PROGRESS`
+
+**Current work:** Implement the user-approved guided project start, Quick →
+Creator bridge, derived contextual guidance, safe covering family/source/manual
+draft flow and truthful family-specific covering presentation. Definition of
+Ready: `docs/ARCHITECTURE_V31_CREATOR_AND_COVERING_EXPERIENCE.md`.
+
+**Changed / WIP files:** V30 formatting recovery in
+`apps/web/src/assembly/Page.test.tsx`; V31 architecture document and this
+checkpoint. Source implementation has not started.
+
+**NEXT ACTION:** Implement the pure project-start mapping and guidance model,
+then wire the start assistant and safe covering add flow before presentation
+polish. Do not commit/push or begin V32.
+
+---
+
 > V30 started 2026-09-14 from clean `main` at `5ac5186` (`029 complete`). The
 > user-approved V30 Document / Export Engine prompt supersedes V29's suggested
 > connection-research next action. Baseline `pnpm verify` PASS: 647 tests in 67

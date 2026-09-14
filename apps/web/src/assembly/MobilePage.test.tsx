@@ -5,10 +5,12 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
   within,
 } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { App } from '../App';
+import { fromMillimetres } from '@cieslacalc/roof-math';
 import i18n from '../i18n';
 import { useAssembly } from './store';
 import { mobileWorkbenchQuery } from './mobile-workbench';
@@ -26,12 +28,75 @@ beforeEach(async () => {
   );
   useAssembly.getState().reset();
   useAssembly.getState().setMode('quick');
+  localStorage.setItem('cieslacalc.creatorStartSeen.v1', '1');
   await i18n.changeLanguage('pl');
 });
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
 });
+
+const mobileCoveringValues = {
+  'roof-tile': {
+    physicalWidth: 330,
+    physicalLength: 420,
+    coverWidth: 300,
+    gaugeMin: 300,
+    gaugeMax: 380,
+    minimumPitch: 19,
+  },
+  'modular-sheet': {
+    effectiveWidth: 1145,
+    totalWidth: 1200,
+    effectiveLength: 700,
+    totalLength: 725,
+    moduleLength: 350,
+    minimumPitch: 9,
+  },
+  'standing-seam': {
+    effectiveWidth: 500,
+    minimumLength: 500,
+    maximumLength: 8000,
+    minimumPitch: 8,
+    seamHeight: 25,
+  },
+} as const;
+
+async function addMobileManualCovering(
+  kind: keyof typeof mobileCoveringValues,
+) {
+  const assistant = await screen.findByTestId('covering-add-assistant');
+  const family = assistant.querySelector<HTMLButtonElement>(
+    `[data-covering-family="${kind}"]`,
+  );
+  expect(family).toBeTruthy();
+  fireEvent.click(family!);
+  await waitFor(() =>
+    expect(
+      assistant.querySelector('[data-covering-source="manual"]'),
+    ).toBeTruthy(),
+  );
+  fireEvent.click(
+    assistant.querySelector<HTMLButtonElement>(
+      '[data-covering-source="manual"]',
+    )!,
+  );
+  const draft = await screen.findByTestId('manual-covering-draft');
+  fireEvent.change(
+    draft.querySelector<HTMLInputElement>('[data-manual-field="name"]')!,
+    { target: { value: 'Produkt testowy' } },
+  );
+  const unit = useAssembly.getState().unit;
+  for (const [key, valueMm] of Object.entries(mobileCoveringValues[kind])) {
+    const value =
+      key === 'minimumPitch' ? valueMm : fromMillimetres(valueMm, unit);
+    fireEvent.change(
+      draft.querySelector<HTMLInputElement>(`[data-manual-field="${key}"]`)!,
+      { target: { value: String(value) } },
+    );
+  }
+  fireEvent.click(within(draft).getByTestId('confirm-manual-covering'));
+}
 
 it('opens mobile Builder on drawing with six tasks and one on-demand tools sheet', async () => {
   render(<App />);
@@ -240,9 +305,7 @@ it('keeps the covering drawing separate from exact product parameters and routes
   fireEvent.click(screen.getByRole('button', { name: 'Kreator' }));
   const dock = screen.getByRole('tablist', { name: 'Widok zadaniowy' });
   fireEvent.click(within(dock).getByRole('tab', { name: 'Pokrycie' }));
-  fireEvent.click(
-    await screen.findByRole('button', { name: 'Dodaj dachówkę ręcznie' }),
-  );
+  await addMobileManualCovering('roof-tile');
   await screen.findByTestId('covering-workspace');
   expect(screen.getByTestId('tile-layout-drawing')).toBeTruthy();
   expect(
@@ -267,9 +330,7 @@ it('opens standing-seam numeric parameters and width modes through the mobile In
   fireEvent.click(screen.getByRole('button', { name: 'Kreator' }));
   const dock = screen.getByRole('tablist', { name: 'Widok zadaniowy' });
   fireEvent.click(within(dock).getByRole('tab', { name: 'Pokrycie' }));
-  fireEvent.click(
-    await screen.findByRole('button', { name: 'Dodaj rąbek stojący' }),
-  );
+  await addMobileManualCovering('standing-seam');
   expect(
     await screen.findByTestId('standing-seam-layout-drawing'),
   ).toBeTruthy();
@@ -293,9 +354,7 @@ it('edits cut-to-length metal in one mobile Inspector sheet and keeps drawing de
   fireEvent.click(screen.getByRole('button', { name: 'Kreator' }));
   const dock = screen.getByRole('tablist', { name: 'Widok zadaniowy' });
   fireEvent.click(within(dock).getByRole('tab', { name: 'Pokrycie' }));
-  fireEvent.click(
-    await screen.findByRole('button', { name: 'Dodaj blachę modułową' }),
-  );
+  await addMobileManualCovering('modular-sheet');
   await screen.findByTestId('sheet-layout-drawing');
   fireEvent.click(
     screen.getAllByRole('button', { name: 'Parametry / Popraw' })[0]!,

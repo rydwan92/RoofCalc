@@ -288,6 +288,7 @@ export interface AssemblyState {
   activeTransaction?: DomainSnapshot;
   setMode: (mode: WorkbenchMode) => void;
   setRoofType: (type: RoofTemplateSpec['type']) => void;
+  setProjectRoof: (template: RoofTemplateSpec) => void;
   setView: (view: WorkbenchCanvasView) => void;
   setViewPreset: (preset: ViewPreset) => void;
   setBuildUpView: (view: BuildUpView) => void;
@@ -466,6 +467,24 @@ export const useAssembly = create<AssemblyState>((set) => ({
         },
       };
     }),
+  setProjectRoof: (template) =>
+    set((state) => ({
+      ...withHistory(
+        state,
+        committedTemplate(template, {}, {}, state.projectDocument),
+      ),
+      workbench: {
+        ...state.workbench,
+        selectedId: 'roof',
+        selectedFeatureIds: [],
+        selectedPrototypeId: undefined,
+        selectedInstanceId: undefined,
+        selectedScheduleRowId: undefined,
+        selectedScheduleInstanceId: undefined,
+        selectedCoveringAssignmentId: undefined,
+        canvasView: 'skeleton',
+      },
+    })),
   setView: (canvasView) =>
     set((state) => ({ workbench: { ...state.workbench, canvasView } })),
   setViewPreset: (viewPreset) =>

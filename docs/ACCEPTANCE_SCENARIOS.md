@@ -249,6 +249,37 @@ task is reachable at 1440×900, 1024×768, 390×844 and 360×800.
 
 ---
 
+## START-001 — Guided Creator start and Quick handoff · `AUTOMATED` `BROWSER`
+
+1. With no saved project, open Creator at 1440×900 and 390×844.
+2. Enter building length, full width, pitch, horizontal eave and rafter spacing,
+   then create the project.
+3. Separately, enter exact Quick Calc geometry and choose **Utwórz z tego
+   projekt**.
+
+**Holds:** the assistant is one coherent form with an immediate roof preview;
+full width maps to `halfRunMm = width / 2`; Quick preserves its known width,
+pitch and eave and asks only for missing project values; first creation starts
+with empty history; a deliberate later creation produces a separate project
+record; no supported viewport scrolls horizontally.
+
+---
+
+## COVER-UX-001 — Explicit covering family and source · `AUTOMATED` `BROWSER`
+
+1. Open an uncovered roof and choose Pokrycie.
+2. Choose a family, then catalogue or manual source.
+3. Leave a manual form incomplete, then complete and confirm it.
+4. Inspect the scheme, contextual legend and plane-assignment cards.
+
+**Holds:** family/source navigation creates no canonical covering and no Undo
+entry; only a valid confirmation commits one assignment; the scheme uses
+family-specific visual rhythm without claiming physical purchase pieces; plane
+cards expose translated name, area and assigned state; full, cut, opening,
+problem and selection states use semantic styling plus non-colour cues.
+
+---
+
 ## PERF-001 — Large layouts stay usable · `MANUAL`
 
 1. Build a long roof with a fine covering grid so fragment count exceeds 1200.

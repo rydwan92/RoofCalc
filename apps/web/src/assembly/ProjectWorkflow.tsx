@@ -3,13 +3,16 @@ import type {
   ProjectWorkflow,
   ProjectWorkflowAction,
 } from './project-workflow';
+import type { ProjectGuidanceItem } from './project-guidance';
 
 export function ProjectWorkflowStrip({
   workflow,
+  guidance,
   onAction,
 }: {
   workflow: ProjectWorkflow;
-  onAction: (action: ProjectWorkflowAction) => void;
+  guidance: readonly ProjectGuidanceItem[];
+  onAction: (action: ProjectWorkflowAction | 'openExport') => void;
 }) {
   const { t } = useTranslation();
   return (
@@ -47,6 +50,63 @@ export function ProjectWorkflowStrip({
         {t(`assembly.workflow.action.${workflow.nextAction}`)}
         <span aria-hidden="true">→</span>
       </button>
+      <div className="a-project-guidance" data-testid="project-guidance">
+        <div className="a-project-guidance-heading">
+          <strong>{t('assembly.guidance.title')}</strong>
+          {guidance.length > 2 && (
+            <small>
+              {t('assembly.guidance.more', { count: guidance.length - 2 })}
+            </small>
+          )}
+        </div>
+        {guidance.slice(0, 2).map((item) => (
+          <article
+            key={item.kind}
+            data-severity={item.severity}
+            data-guidance={item.kind}
+          >
+            <div>
+              <strong>{t(`assembly.guidance.item.${item.kind}.title`)}</strong>
+              <p>{t(`assembly.guidance.item.${item.kind}.description`)}</p>
+            </div>
+            {item.action && (
+              <button
+                className="a-link-button"
+                onClick={() => onAction(item.action!)}
+              >
+                {t(`assembly.guidance.item.${item.kind}.action`)}
+              </button>
+            )}
+          </article>
+        ))}
+        {guidance.length > 2 && (
+          <details>
+            <summary>{t('assembly.guidance.showAll')}</summary>
+            {guidance.slice(2).map((item) => (
+              <article
+                key={item.kind}
+                data-severity={item.severity}
+                data-guidance={item.kind}
+              >
+                <div>
+                  <strong>
+                    {t(`assembly.guidance.item.${item.kind}.title`)}
+                  </strong>
+                  <p>{t(`assembly.guidance.item.${item.kind}.description`)}</p>
+                </div>
+                {item.action && (
+                  <button
+                    className="a-link-button"
+                    onClick={() => onAction(item.action!)}
+                  >
+                    {t(`assembly.guidance.item.${item.kind}.action`)}
+                  </button>
+                )}
+              </article>
+            ))}
+          </details>
+        )}
+      </div>
     </section>
   );
 }

@@ -11,7 +11,11 @@ import {
 } from '@testing-library/react';
 import { App } from '../App';
 import i18n from '../i18n';
-import { calculateAssembly, purlinRange } from '@cieslacalc/roof-math';
+import {
+  calculateAssembly,
+  fromMillimetres,
+  purlinRange,
+} from '@cieslacalc/roof-math';
 import { createAssemblyDrawing } from '@cieslacalc/calculator-core';
 import { fitDimensionedDrawing } from '@cieslacalc/drawing-engine';
 import { formatLength } from '../format';
@@ -23,6 +27,8 @@ beforeEach(async () => {
   useAssembly.getState().setUnit('mm');
   useAssembly.getState().setMode('quick');
   useAssembly.getState().setToolboxCollapsed(false);
+  useAssembly.getState().setMaterialsView('schedule');
+  localStorage.setItem('cieslacalc.creatorStartSeen.v1', '1');
   await i18n.changeLanguage('pl');
 });
 afterEach(() => {
@@ -42,7 +48,99 @@ const purlin = () =>
 const canvasButton = (name: string) =>
   within(screen.getByTestId('assembly-drawing')).getByRole('button', { name });
 
+const coveringValues = {
+  'roof-tile': {
+    physicalWidth: 330,
+    physicalLength: 420,
+    coverWidth: 300,
+    gaugeMin: 300,
+    gaugeMax: 380,
+    minimumPitch: 19,
+  },
+  'modular-sheet': {
+    effectiveWidth: 1145,
+    totalWidth: 1200,
+    effectiveLength: 700,
+    totalLength: 725,
+    moduleLength: 350,
+    minimumPitch: 9,
+  },
+  'standing-seam': {
+    effectiveWidth: 500,
+    minimumLength: 500,
+    maximumLength: 8000,
+    minimumPitch: 8,
+    seamHeight: 25,
+  },
+} as const;
+
+async function addManualCovering(kind: keyof typeof coveringValues) {
+  const assistant = await screen.findByTestId('covering-add-assistant');
+  const family = assistant.querySelector<HTMLButtonElement>(
+    `[data-covering-family="${kind}"]`,
+  );
+  expect(family).toBeTruthy();
+  fireEvent.click(family!);
+  await waitFor(() =>
+    expect(
+      assistant.querySelector('[data-covering-source="manual"]'),
+    ).toBeTruthy(),
+  );
+  fireEvent.click(
+    assistant.querySelector<HTMLButtonElement>(
+      '[data-covering-source="manual"]',
+    )!,
+  );
+  const draft = await screen.findByTestId('manual-covering-draft');
+  fireEvent.change(
+    draft.querySelector<HTMLInputElement>('[data-manual-field="name"]')!,
+    { target: { value: 'Produkt testowy' } },
+  );
+  const unit = useAssembly.getState().unit;
+  for (const [key, valueMm] of Object.entries(coveringValues[kind])) {
+    const value =
+      key === 'minimumPitch' ? valueMm : fromMillimetres(valueMm, unit);
+    fireEvent.change(
+      draft.querySelector<HTMLInputElement>(`[data-manual-field="${key}"]`)!,
+      { target: { value: String(value) } },
+    );
+  }
+  fireEvent.click(within(draft).getByTestId('confirm-manual-covering'));
+}
+
 describe('dual-mode parametric workbench', () => {
+  it('guides the first Creator entry and maps the full building width to halfRun', async () => {
+    localStorage.removeItem('cieslacalc.creatorStartSeen.v1');
+    render(<App />);
+    builder();
+    const assistant = await screen.findByTestId('project-start-assistant');
+    const setStartField = (name: string, value: string) =>
+      fireEvent.change(
+        assistant.querySelector<HTMLInputElement>(
+          `[data-project-start-field="${name}"]`,
+        )!,
+        { target: { value } },
+      );
+    setStartField('buildingLength', '12000');
+    setStartField('buildingWidth', '9000');
+    setStartField('pitch', '35');
+    setStartField('eave', '500');
+    setStartField('spacing', '800');
+    fireEvent.click(within(assistant).getByTestId('project-start-submit'));
+    await waitFor(() =>
+      expect(screen.queryByTestId('project-start-assistant')).toBeNull(),
+    );
+    expect(useAssembly.getState().template).toMatchObject({
+      type: 'gable',
+      buildingLengthMm: 12_000,
+      halfRunMm: 4_500,
+      pitchDeg: 35,
+      eaveOverhangMm: 500,
+      rafterSpacing: { spacingMm: 800 },
+    });
+    expect(useAssembly.getState().historyPast).toHaveLength(0);
+  });
+
   it('opens project export, omits an absent cutting plan and previews printable pages without roof history', async () => {
     render(<App />);
     builder();
@@ -52,7 +150,11 @@ describe('dual-mode parametric workbench', () => {
       expect((trigger as HTMLButtonElement).disabled).toBe(false),
     );
     fireEvent.click(trigger);
-    const config = await screen.findByTestId('execution-config', {}, { timeout: 5000 });
+    const config = await screen.findByTestId(
+      'execution-config',
+      {},
+      { timeout: 5000 },
+    );
     expect(within(config).getByText('Pakiet wykonawczy')).toBeTruthy();
     expect(
       within(config).getByText('Najpierw zaplanuj rozkrój K1.'),
@@ -120,9 +222,7 @@ describe('dual-mode parametric workbench', () => {
     render(<App />);
     builder();
     act(() => useAssembly.getState().setViewPreset('covering'));
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Dodaj dachówkę ręcznie' }),
-    );
+    await addManualCovering('roof-tile');
     const coveringStage = screen
       .getByTestId('project-workflow')
       .querySelector('[data-stage="covering"]')!;
@@ -163,7 +263,7 @@ describe('dual-mode parametric workbench', () => {
     ).toBe(true);
   });
 
-  it('starts with three basic inputs and transfers exact geometry and results to Builder', () => {
+  it('starts with three basic inputs and transfers exact geometry and results to Builder', async () => {
     render(<App />);
     expect(document.querySelectorAll('.a-basic-fields input')).toHaveLength(3);
     expect(document.querySelector('.a-more')?.hasAttribute('open')).toBe(false);
@@ -175,8 +275,16 @@ describe('dual-mode parametric workbench', () => {
       1,
     );
     expect(stock).toMatch(/\smm$/);
-    fireEvent.click(screen.getByRole('button', { name: /Otwórz w kreatorze/ }));
-    expect(useAssembly.getState().spec).toBe(spec);
+    fireEvent.click(screen.getByTestId('quick-create-project'));
+    expect(await screen.findByTestId('project-start-assistant')).toBeTruthy();
+    expect(
+      document.querySelector('[data-project-start-field="buildingWidth"]'),
+    ).toBeNull();
+    fireEvent.click(screen.getByTestId('project-start-submit'));
+    await waitFor(() =>
+      expect(screen.queryByTestId('project-start-assistant')).toBeNull(),
+    );
+    expect(useAssembly.getState().spec).toEqual(spec);
     expect(screen.getByTestId('stock-length').textContent).toBe(stock);
     expect(screen.getByTestId('skeleton-drawing')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Detal' })).toBeNull();
@@ -1330,7 +1438,7 @@ describe('dual-mode parametric workbench', () => {
       before,
     );
   });
-  it('offers a fast H1 path with shared reactive math and coordinated drawings', () => {
+  it('offers a fast H1 path with shared reactive math and coordinated drawings', async () => {
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: 'Krokiew narożna' }));
     expect(useAssembly.getState().template.type).toBe('hip');
@@ -1345,7 +1453,12 @@ describe('dual-mode parametric workbench', () => {
     expect(screen.getByTestId('hip-theoretical-length').textContent).not.toBe(
       before,
     );
-    fireEvent.click(screen.getByRole('button', { name: /Otwórz w kreatorze/ }));
+    fireEvent.click(screen.getByTestId('quick-create-project'));
+    expect(await screen.findByTestId('project-start-assistant')).toBeTruthy();
+    fireEvent.click(screen.getByTestId('project-start-submit'));
+    await waitFor(() =>
+      expect(screen.queryByTestId('project-start-assistant')).toBeNull(),
+    );
     expect(useAssembly.getState().template.type).toBe('hip');
     expect(screen.getByTestId('skeleton-drawing')).toBeTruthy();
   });
@@ -1894,13 +2007,10 @@ describe('dual-mode parametric workbench', () => {
     expect(useAssembly.getState().historyPast).toHaveLength(historyBeforeTask);
     expect(await screen.findByTestId('covering-empty')).toBeTruthy();
 
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Dodaj dachówkę ręcznie' }),
-    );
+    await addManualCovering('roof-tile');
     expect(await screen.findByTestId('covering-workspace')).toBeTruthy();
-    expect(screen.getByRole('button', { name: '+ Dachówka' })).toBeTruthy();
     expect(
-      screen.getByRole('button', { name: '+ Blacha modułowa' }),
+      screen.getByRole('button', { name: '+ Dodaj pokrycie' }),
     ).toBeTruthy();
     expect(container.textContent).not.toContain('assembly.roofTile');
     expect(container.textContent).not.toContain('roof-plane:left');
@@ -1925,6 +2035,37 @@ describe('dual-mode parametric workbench', () => {
     });
   });
 
+  it('keeps an incomplete manual covering form outside canonical state and history', async () => {
+    render(<App />);
+    builder();
+    fireEvent.click(screen.getByRole('tab', { name: 'Pokrycie' }));
+    const assistant = await screen.findByTestId('covering-add-assistant');
+    fireEvent.click(
+      assistant.querySelector<HTMLButtonElement>(
+        '[data-covering-family="roof-tile"]',
+      )!,
+    );
+    await waitFor(() =>
+      expect(
+        assistant.querySelector('[data-covering-source="manual"]'),
+      ).toBeTruthy(),
+    );
+    fireEvent.click(
+      assistant.querySelector<HTMLButtonElement>(
+        '[data-covering-source="manual"]',
+      )!,
+    );
+    const draft = await screen.findByTestId('manual-covering-draft');
+    fireEvent.change(
+      draft.querySelector<HTMLInputElement>('[data-manual-field="name"]')!,
+      { target: { value: 'Niedokończony produkt' } },
+    );
+    expect(useAssembly.getState().projectDocument.project.coverings).toEqual(
+      [],
+    );
+    expect(useAssembly.getState().historyPast).toHaveLength(0);
+  });
+
   it('shows a batten-aware tile grid, opening cut-outs and a separate covering schedule section', async () => {
     render(<App />);
     builder();
@@ -1938,9 +2079,7 @@ describe('dual-mode parametric workbench', () => {
       }),
     );
     fireEvent.click(screen.getByRole('tab', { name: 'Pokrycie' }));
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Dodaj dachówkę ręcznie' }),
-    );
+    await addManualCovering('roof-tile');
     const gableDrawing = await screen.findByTestId('tile-layout-drawing');
     expect(gableDrawing.style.aspectRatio).not.toBe('');
     expect(
@@ -1997,7 +2136,7 @@ describe('dual-mode parametric workbench', () => {
     ).toBeTruthy();
     expect(
       within(coveringSchedule).getByText(
-        /wartość referencyjna, nie ilość do zamówienia/i,
+        /nie są potwierdzonymi sztukami fizycznymi ani ilością do zamówienia/i,
       ),
     ).toBeTruthy();
     expect(within(coveringSchedule).queryByText(/szt\. do zakupu/i)).toBeNull();
@@ -2030,9 +2169,7 @@ describe('dual-mode parametric workbench', () => {
       }),
     );
     fireEvent.click(screen.getByRole('tab', { name: 'Pokrycie' }));
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Dodaj blachę modułową' }),
-    );
+    await addManualCovering('modular-sheet');
 
     expect(await screen.findByTestId('sheet-layout-drawing')).toBeTruthy();
     expect(
@@ -2055,7 +2192,7 @@ describe('dual-mode parametric workbench', () => {
     expect(
       document.querySelectorAll('.a-covering-fragment').length,
     ).toBeGreaterThan(0);
-    expect(screen.getByRole('tab', { name: 'Lewa połać' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: /^Lewa połać/ })).toBeTruthy();
     expect(screen.queryByText('manual-standard')).toBeNull();
 
     act(() => useAssembly.getState().setViewPreset('materials'));
@@ -2071,9 +2208,7 @@ describe('dual-mode parametric workbench', () => {
     render(<App />);
     builder();
     fireEvent.click(screen.getByRole('tab', { name: 'Pokrycie' }));
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Dodaj blachę modułową' }),
-    );
+    await addManualCovering('modular-sheet');
     await screen.findByTestId('sheet-layout-drawing');
     fireEvent.click(
       screen.getAllByRole('button', { name: 'Parametry / Popraw' })[0]!,
@@ -2103,7 +2238,7 @@ describe('dual-mode parametric workbench', () => {
       assignments[0]!.roofPlaneIds = ['roof-plane:left', 'roof-plane:right'];
       useAssembly.getState().setCoveringAssignments(assignments);
     });
-    fireEvent.click(screen.getByRole('tab', { name: 'Prawa połać' }));
+    fireEvent.click(screen.getByRole('tab', { name: /^Prawa połać/ }));
     const totalRuns = Number(
       document.querySelector('.a-covering-count-primary b')?.textContent,
     );
@@ -2141,9 +2276,7 @@ describe('dual-mode parametric workbench', () => {
     render(<App />);
     builder();
     fireEvent.click(screen.getByRole('tab', { name: 'Pokrycie' }));
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Dodaj blachę modułową' }),
-    );
+    await addManualCovering('modular-sheet');
     await screen.findByTestId('sheet-layout-drawing');
     act(() => {
       const assignments = structuredClone(
@@ -2182,9 +2315,7 @@ describe('dual-mode parametric workbench', () => {
     render(<App />);
     builder();
     fireEvent.click(screen.getByRole('tab', { name: 'Pokrycie' }));
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Dodaj rąbek stojący' }),
-    );
+    await addManualCovering('standing-seam');
     expect(
       await screen.findByTestId('standing-seam-layout-drawing'),
     ).toBeTruthy();
@@ -2229,7 +2360,7 @@ describe('dual-mode parametric workbench', () => {
       coverings[0]!.roofPlaneIds = ['roof-plane:left', 'roof-plane:right'];
       useAssembly.getState().setCoveringAssignments(coverings);
     });
-    fireEvent.click(screen.getByRole('tab', { name: 'Prawa połać' }));
+    fireEvent.click(screen.getByRole('tab', { name: /^Prawa połać/ }));
     expect(
       document.querySelector('.a-covering-plane-result')?.textContent,
     ).toContain('Prawa połać');
@@ -2254,9 +2385,7 @@ describe('dual-mode parametric workbench', () => {
     render(<App />);
     builder();
     fireEvent.click(screen.getByRole('tab', { name: 'Pokrycie' }));
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Dodaj rąbek stojący' }),
-    );
+    await addManualCovering('standing-seam');
     await screen.findByTestId('standing-seam-layout-drawing');
     act(() => {
       useAssembly.getState().addRoofWindow();
@@ -2301,9 +2430,7 @@ describe('dual-mode parametric workbench', () => {
       }),
     );
     fireEvent.click(screen.getByRole('tab', { name: 'Pokrycie' }));
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Dodaj dachówkę ręcznie' }),
-    );
+    await addManualCovering('roof-tile');
     act(() => {
       const coverings = structuredClone(
         useAssembly.getState().projectDocument.project.coverings,
@@ -2326,7 +2453,7 @@ describe('dual-mode parametric workbench', () => {
     expect(drawing.style.aspectRatio).not.toBe('');
     expect(planePointCount()).toBe(4);
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Przednia połać' }));
+    fireEvent.click(screen.getByRole('tab', { name: /^Przednia połać/ }));
     expect(planePointCount()).toBe(3);
     expect(drawing.style.aspectRatio).not.toBe('');
   });
@@ -2344,10 +2471,9 @@ describe('dual-mode parametric workbench', () => {
       }),
     );
     fireEvent.click(screen.getByRole('tab', { name: 'Pokrycie' }));
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Dodaj dachówkę ręcznie' }),
-    );
-    fireEvent.click(screen.getByRole('button', { name: '+ Blacha modułowa' }));
+    await addManualCovering('roof-tile');
+    fireEvent.click(screen.getByRole('button', { name: '+ Dodaj pokrycie' }));
+    await addManualCovering('modular-sheet');
     act(() => {
       const coverings = structuredClone(
         useAssembly.getState().projectDocument.project.coverings,
@@ -2368,10 +2494,9 @@ describe('dual-mode parametric workbench', () => {
     render(<App />);
     builder();
     fireEvent.click(screen.getByRole('tab', { name: 'Pokrycie' }));
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Dodaj dachówkę ręcznie' }),
-    );
-    fireEvent.click(screen.getByRole('button', { name: '+ Blacha modułowa' }));
+    await addManualCovering('roof-tile');
+    fireEvent.click(screen.getByRole('button', { name: '+ Dodaj pokrycie' }));
+    await addManualCovering('modular-sheet');
 
     expect(
       screen.getAllByText(/więcej niż jedno pokrycie/i).length,

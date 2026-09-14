@@ -19,6 +19,7 @@ beforeEach(async () => {
   localStorage.clear();
   useAssembly.getState().reset();
   useAssembly.getState().setMode('quick');
+  localStorage.setItem('cieslacalc.creatorStartSeen.v1', '1');
   await i18n.changeLanguage('pl');
 });
 afterEach(() => {
@@ -42,8 +43,15 @@ it('manages named local projects without recording roof history', async () => {
   expect(screen.queryByText('Sesja robocza · bez zapisu')).toBeNull();
   expect(screen.getAllByText('Zapisano lokalnie').length).toBeGreaterThan(0);
   fireEvent.click(screen.getByRole('button', { name: 'Projekty' }));
-  const dialog = screen.getByRole('dialog', { name: 'Projekty' });
+  let dialog = screen.getByRole('dialog', { name: 'Projekty' });
   fireEvent.click(within(dialog).getByRole('button', { name: 'Nowy projekt' }));
+  const start = await screen.findByTestId('project-start-assistant');
+  fireEvent.click(within(start).getByTestId('project-start-submit'));
+  await waitFor(() =>
+    expect(screen.queryByTestId('project-start-assistant')).toBeNull(),
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Projekty' }));
+  dialog = screen.getByRole('dialog', { name: 'Projekty' });
   await waitFor(() =>
     expect(within(dialog).getAllByText('Projekt 2').length).toBeGreaterThan(0),
   );

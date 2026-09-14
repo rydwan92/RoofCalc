@@ -1,6 +1,6 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, Grid3X3, Trash2 } from 'lucide-react';
+import { AlertTriangle, Trash2 } from 'lucide-react';
 import {
   type CoveringAssignmentSpec,
   type CoveringKind,
@@ -24,6 +24,7 @@ import {
   roofPlaneLabelKey,
 } from './covering-presentation';
 import { ResultBasis, ResultLayerProgress } from './ResultBasis';
+import { CoveringAddAssistant } from './CoveringAddAssistant';
 
 const CatalogProductPicker = lazy(() =>
   import('../catalog/CatalogProductPicker').then((module) => ({
@@ -288,12 +289,14 @@ export function CoveringWorkspace({
   const { t, i18n } = useTranslation();
   const [selectedPlaneId, setSelectedPlaneId] = useState<string>();
   const [catalogKind, setCatalogKind] = useState<CoveringKind>();
+  const [adding, setAdding] = useState(!assignment);
+  const [manualFallbackKind, setManualFallbackKind] = useState<CoveringKind>();
+  const [catalogDetached, setCatalogDetached] = useState(false);
+  const previousCatalogRef = useRef(assignment?.product.catalogRef);
   const [drawingDetail, setDrawingDetail] = useState<
     'auto' | 'detailed' | 'simplified'
   >('auto');
-  const planeIds =
-    assignment?.roofPlaneIds ??
-    surfaceGeometry.planes.map((plane) => plane.roofPlaneId);
+  const planeIds = surfaceGeometry.planes.map((plane) => plane.roofPlaneId);
   useEffect(() => {
     if (!selectedPlaneId || !planeIds.includes(selectedPlaneId))
       setSelectedPlaneId(planeIds[0]);
@@ -344,6 +347,16 @@ export function CoveringWorkspace({
   const simplified =
     drawingDetail === 'simplified' ||
     (drawingDetail === 'auto' && fragments.length > 1200);
+  const hasFullFragments = fragments.some(
+    (fragment) => fragment.classification === 'full',
+  );
+  const hasCutFragments = fragments.some(
+    (fragment) => fragment.classification !== 'full',
+  );
+  const hasVisualProblem =
+    conflicts.length > 0 ||
+    layout?.status === 'invalid' ||
+    layout?.status === 'incompatible';
   const bounds = selectedSurface
     ? (() => {
         const minU = Math.min(
@@ -385,8 +398,16 @@ export function CoveringWorkspace({
       ? assignment.product.technicalSpecSnapshot
       : undefined;
 
+  useEffect(() => {
+    if (previousCatalogRef.current && !assignment?.product.catalogRef)
+      setCatalogDetached(true);
+    if (assignment?.product.catalogRef) setCatalogDetached(false);
+    previousCatalogRef.current = assignment?.product.catalogRef;
+  }, [assignment?.product.catalogRef]);
+
   const openCatalog = (kind: CoveringKind) => {
     state.setMobilePanel('none');
+    setAdding(false);
     setCatalogKind(kind);
   };
 
@@ -428,65 +449,36 @@ export function CoveringWorkspace({
     state.setCoveringAssignments([...assignments, next]);
     state.setSelectedCoveringAssignment(next.id);
     setCatalogKind(undefined);
+    setAdding(false);
+    setManualFallbackKind(undefined);
   };
-
-  const catalogButtons = (
-    <div className="a-covering-catalog-actions">
-      <small>{t('assembly.fromCatalog')}</small>
-      <button
-        className="a-button a-primary"
-        onClick={() => openCatalog('roof-tile')}
-      >
-        {t('assembly.roofTile')}
-      </button>
-      <button className="a-button" onClick={() => openCatalog('modular-sheet')}>
-        {t('assembly.modularSheet')}
-      </button>
-      <button className="a-button" onClick={() => openCatalog('standing-seam')}>
-        {t('assembly.standingSeam')}
-      </button>
-    </div>
-  );
 
   const picker = catalogKind ? (
     <Suspense fallback={<div className="a-loading-panel" />}>
       <CatalogProductPicker
         kind={catalogKind}
         onClose={() => setCatalogKind(undefined)}
-        onManual={() => addAssignment(catalogKind)}
+        onManual={() => {
+          setCatalogKind(undefined);
+          setManualFallbackKind(catalogKind);
+          setAdding(true);
+        }}
         onApply={(product) => addAssignment(catalogKind, product)}
       />
     </Suspense>
   ) : null;
 
-  if (!assignment)
+  if (!assignment || adding)
     return (
       <section className="a-covering-empty" data-testid="covering-empty">
-        <Grid3X3 size={38} />
-        <h2>{t('assembly.coveringEmptyTitle')}</h2>
-        <p>{t('assembly.coveringEmptyDescription')}</p>
-        {catalogButtons}
-        <small>{t('assembly.orManualParameters')}</small>
-        <div className="a-covering-add-actions">
-          <button
-            className="a-button a-primary"
-            onClick={() => addAssignment('roof-tile')}
-          >
-            {t('assembly.addManualRoofTile')}
-          </button>
-          <button
-            className="a-button"
-            onClick={() => addAssignment('modular-sheet')}
-          >
-            {t('assembly.addManualModularSheet')}
-          </button>
-          <button
-            className="a-button"
-            onClick={() => addAssignment('standing-seam')}
-          >
-            {t('assembly.addManualStandingSeam')}
-          </button>
-        </div>
+        <CoveringAddAssistant
+          key={manualFallbackKind ?? 'new'}
+          unit={state.unit}
+          initialKind={manualFallbackKind}
+          onCatalog={openCatalog}
+          onConfirm={(kind, product) => addAssignment(kind, product)}
+          onClose={assignment ? () => setAdding(false) : undefined}
+        />
         {picker}
       </section>
     );
@@ -511,31 +503,8 @@ export function CoveringWorkspace({
               <small> · {item.roofPlaneIds.length}</small>
             </button>
           ))}
-          <button
-            className="a-button a-add"
-            onClick={() =>
-              openCatalog(assignment.product.technicalSpecSnapshot.kind)
-            }
-          >
-            + {t('assembly.fromCatalog')}
-          </button>
-          <button
-            className="a-button a-add"
-            onClick={() => addAssignment('roof-tile')}
-          >
-            + {t('assembly.roofTile')}
-          </button>
-          <button
-            className="a-button a-add"
-            onClick={() => addAssignment('modular-sheet')}
-          >
-            + {t('assembly.modularSheet')}
-          </button>
-          <button
-            className="a-button a-add"
-            onClick={() => addAssignment('standing-seam')}
-          >
-            + {t('assembly.standingSeam')}
+          <button className="a-button a-add" onClick={() => setAdding(true)}>
+            + {t('assembly.coveringAdd.addAnother')}
           </button>
         </div>
       </div>
@@ -561,6 +530,11 @@ export function CoveringWorkspace({
                 : ''}
             </small>
           )}
+          {catalogDetached && (
+            <small className="a-catalog-detached" role="status">
+              {t('assembly.coveringAdd.catalogDetached')}
+            </small>
+          )}
         </div>
         <button
           className="a-button a-covering-parameters"
@@ -570,6 +544,14 @@ export function CoveringWorkspace({
           }}
         >
           {t('assembly.coveringParameters')}
+        </button>
+        <button
+          className="a-button"
+          onClick={() =>
+            openCatalog(assignment.product.technicalSpecSnapshot.kind)
+          }
+        >
+          {t('assembly.coveringAdd.changeProduct')}
         </button>
         {layout?.kind === 'modular-sheet-cut-to-length' ? (
           <div className="a-covering-counts" data-status={layout.status}>
@@ -779,6 +761,35 @@ export function CoveringWorkspace({
       )}
       <div className="a-covering-body">
         <div className="a-covering-canvas-panel">
+          <div className="a-covering-scheme-heading">
+            <div>
+              <small>{t('assembly.coveringAdd.scheme')}</small>
+              <strong>{t(coveringKindLabelKey(assignment))}</strong>
+            </div>
+            {assignment.roofPlaneIds.length < planeIds.length &&
+              !planeIds.some((id) =>
+                assignments.some(
+                  (candidate) =>
+                    candidate.id !== assignment.id &&
+                    candidate.roofPlaneIds.includes(id),
+                ),
+              ) && (
+                <button
+                  className="a-button"
+                  onClick={() => {
+                    const next = structuredClone(assignment);
+                    next.roofPlaneIds = [...planeIds];
+                    state.setCoveringAssignments(
+                      assignments.map((item) =>
+                        item.id === next.id ? next : item,
+                      ),
+                    );
+                  }}
+                >
+                  {t('assembly.coveringAdd.assignAll')}
+                </button>
+              )}
+          </div>
           <div
             className="a-covering-detail-controls"
             aria-label={t('assembly.drawingDetail')}
@@ -809,7 +820,22 @@ export function CoveringWorkspace({
                   state.select(`surface:${id}`);
                 }}
               >
-                {t(roofPlaneLabelKey(id), { id })}
+                <strong>{t(roofPlaneLabelKey(id), { id })}</strong>
+                <small>
+                  {(
+                    (surfaceGeometry.planes.find(
+                      (plane) => plane.roofPlaneId === id,
+                    )?.netAreaMm2 ?? 0) / 1_000_000
+                  ).toLocaleString(i18n.language, {
+                    maximumFractionDigits: 1,
+                  })}{' '}
+                  mÂ˛ Â·{' '}
+                  {t(
+                    assignment.roofPlaneIds.includes(id)
+                      ? 'assembly.coveringAdd.assigned'
+                      : 'assembly.coveringAdd.notAssigned',
+                  )}
+                </small>
               </button>
             ))}
           </div>
@@ -920,6 +946,10 @@ export function CoveringWorkspace({
           )}
           {selectedSurface && bounds && (
             <svg
+              className={`a-covering-scheme is-${layout?.kind ?? assignment.product.technicalSpecSnapshot.kind}`}
+              data-covering-visual={
+                layout?.kind ?? assignment.product.technicalSpecSnapshot.kind
+              }
               data-testid={`${layout?.kind === 'standing-seam' ? 'standing-seam' : layout?.kind === 'modular-sheet-cut-to-length' ? 'cut-to-length-sheet' : layout?.kind === 'modular-sheet' ? 'sheet' : 'tile'}-layout-drawing`}
               viewBox={`${bounds.viewMinU} ${bounds.viewMinV} ${bounds.viewWidth} ${bounds.viewHeight}`}
               preserveAspectRatio="xMidYMid meet"
@@ -1012,27 +1042,39 @@ export function CoveringWorkspace({
             <p className="a-help">{t('assembly.simplifiedTilePreview')}</p>
           )}
           <div className="a-covering-legend">
-            <span className="full">
-              {t(
-                layout?.kind === 'standing-seam' ||
-                  layout?.kind === 'modular-sheet-cut-to-length'
-                  ? 'assembly.fullWidthColumns'
-                  : layout?.kind === 'modular-sheet'
-                    ? 'assembly.fullSheets'
-                    : 'assembly.fullTiles',
-              )}
-            </span>
-            <span className="cut">
-              {t(
-                layout?.kind === 'standing-seam' ||
-                  layout?.kind === 'modular-sheet-cut-to-length'
-                  ? 'assembly.edgeCutColumns'
-                  : layout?.kind === 'modular-sheet'
-                    ? 'assembly.cutSheets'
-                    : 'assembly.cutTiles',
-              )}
-            </span>
-            <span className="opening">{t('assembly.openings')}</span>
+            {hasFullFragments && (
+              <span className="full">
+                {t(
+                  layout?.kind === 'standing-seam' ||
+                    layout?.kind === 'modular-sheet-cut-to-length'
+                    ? 'assembly.fullWidthColumns'
+                    : layout?.kind === 'modular-sheet'
+                      ? 'assembly.fullSheets'
+                      : 'assembly.fullTiles',
+                )}
+              </span>
+            )}
+            {hasCutFragments && (
+              <span className="cut">
+                {t(
+                  layout?.kind === 'standing-seam' ||
+                    layout?.kind === 'modular-sheet-cut-to-length'
+                    ? 'assembly.edgeCutColumns'
+                    : layout?.kind === 'modular-sheet'
+                      ? 'assembly.cutSheets'
+                      : 'assembly.cutTiles',
+                )}
+              </span>
+            )}
+            {(selectedSurface?.openingPolygons.length ?? 0) > 0 && (
+              <span className="opening">{t('assembly.openings')}</span>
+            )}
+            {hasVisualProblem && (
+              <span className="problem">
+                {t('assembly.coveringAdd.problem')}
+              </span>
+            )}
+            <span className="selected">{t('assembly.selectedPlane')}</span>
           </div>
           {(layout?.kind === 'standing-seam' ||
             layout?.kind === 'modular-sheet-cut-to-length') && (
@@ -1087,6 +1129,68 @@ export function CoveringWorkspace({
           )}
           <p className="a-help">{t('assembly.noWasteAccessories')}</p>
         </div>
+      </div>
+    </section>
+  );
+}
+
+function PlaneAssignmentCards({
+  assignment,
+  surfaceGeometry,
+  onChange,
+}: {
+  assignment: CoveringAssignmentSpec;
+  surfaceGeometry: RoofSurfaceGeometryResult;
+  onChange: (roofPlaneIds: string[]) => void;
+}) {
+  const { t, i18n } = useTranslation();
+  return (
+    <section className="a-plane-assignment-editor">
+      <strong>{t('assembly.assignedRoofPlanes')}</strong>
+      <div>
+        {surfaceGeometry.planes.map((plane) => {
+          const assigned = assignment.roofPlaneIds.includes(plane.roofPlaneId);
+          return (
+            <button
+              key={plane.roofPlaneId}
+              type="button"
+              role="checkbox"
+              aria-checked={assigned}
+              disabled={assigned && assignment.roofPlaneIds.length === 1}
+              onClick={() =>
+                onChange(
+                  assigned
+                    ? assignment.roofPlaneIds.filter(
+                        (id) => id !== plane.roofPlaneId,
+                      )
+                    : [...assignment.roofPlaneIds, plane.roofPlaneId],
+                )
+              }
+            >
+              <span>
+                <strong>
+                  {t(roofPlaneLabelKey(plane.roofPlaneId), {
+                    id: plane.roofPlaneId,
+                  })}
+                </strong>
+                <small>
+                  {(plane.netAreaMm2 / 1_000_000).toLocaleString(
+                    i18n.language,
+                    { maximumFractionDigits: 1 },
+                  )}{' '}
+                  mÂ˛
+                </small>
+              </span>
+              <b>
+                {t(
+                  assigned
+                    ? 'assembly.coveringAdd.assigned'
+                    : 'assembly.coveringAdd.notAssigned',
+                )}
+              </b>
+            </button>
+          );
+        })}
       </div>
     </section>
   );
@@ -1374,33 +1478,15 @@ function TileCoveringEditor({
           />
         </div>
       </details>
-      <fieldset>
-        <legend>{t('assembly.assignedRoofPlanes')}</legend>
-        {surfaceGeometry.planes.map((plane) => (
-          <label key={plane.roofPlaneId}>
-            <input
-              type="checkbox"
-              checked={assignment.roofPlaneIds.includes(plane.roofPlaneId)}
-              disabled={
-                assignment.roofPlaneIds.length === 1 &&
-                assignment.roofPlaneIds.includes(plane.roofPlaneId)
-              }
-              onChange={(event) =>
-                update((draft) => {
-                  draft.roofPlaneIds = event.currentTarget.checked
-                    ? [...draft.roofPlaneIds, plane.roofPlaneId]
-                    : draft.roofPlaneIds.filter(
-                        (id) => id !== plane.roofPlaneId,
-                      );
-                })
-              }
-            />
-            {t(roofPlaneLabelKey(plane.roofPlaneId), {
-              id: plane.roofPlaneId,
-            })}
-          </label>
-        ))}
-      </fieldset>
+      <PlaneAssignmentCards
+        assignment={assignment}
+        surfaceGeometry={surfaceGeometry}
+        onChange={(roofPlaneIds) =>
+          update((draft) => {
+            draft.roofPlaneIds = roofPlaneIds;
+          })
+        }
+      />
       <button
         className="a-button a-danger"
         onClick={() =>
@@ -1721,31 +1807,15 @@ function ModularSheetEditor({
           }
         />
       </details>
-      <fieldset>
-        <legend>{t('assembly.assignedRoofPlanes')}</legend>
-        {surfaceGeometry.planes.map((plane) => (
-          <label key={plane.roofPlaneId}>
-            <input
-              type="checkbox"
-              checked={assignment.roofPlaneIds.includes(plane.roofPlaneId)}
-              disabled={
-                assignment.roofPlaneIds.length === 1 &&
-                assignment.roofPlaneIds.includes(plane.roofPlaneId)
-              }
-              onChange={(event) =>
-                update((draft) => {
-                  draft.roofPlaneIds = event.currentTarget.checked
-                    ? [...draft.roofPlaneIds, plane.roofPlaneId]
-                    : draft.roofPlaneIds.filter(
-                        (id) => id !== plane.roofPlaneId,
-                      );
-                })
-              }
-            />
-            {t(roofPlaneLabelKey(plane.roofPlaneId), { id: plane.roofPlaneId })}
-          </label>
-        ))}
-      </fieldset>
+      <PlaneAssignmentCards
+        assignment={assignment}
+        surfaceGeometry={surfaceGeometry}
+        onChange={(roofPlaneIds) =>
+          update((draft) => {
+            draft.roofPlaneIds = roofPlaneIds;
+          })
+        }
+      />
       <button
         className="a-button a-danger"
         onClick={() =>
@@ -2028,31 +2098,15 @@ function StandingSeamEditor({
           </select>
         </label>
       </details>
-      <fieldset>
-        <legend>{t('assembly.assignedRoofPlanes')}</legend>
-        {surfaceGeometry.planes.map((plane) => (
-          <label key={plane.roofPlaneId}>
-            <input
-              type="checkbox"
-              checked={assignment.roofPlaneIds.includes(plane.roofPlaneId)}
-              disabled={
-                assignment.roofPlaneIds.length === 1 &&
-                assignment.roofPlaneIds.includes(plane.roofPlaneId)
-              }
-              onChange={(event) =>
-                update((draft) => {
-                  draft.roofPlaneIds = event.currentTarget.checked
-                    ? [...draft.roofPlaneIds, plane.roofPlaneId]
-                    : draft.roofPlaneIds.filter(
-                        (id) => id !== plane.roofPlaneId,
-                      );
-                })
-              }
-            />
-            {t(roofPlaneLabelKey(plane.roofPlaneId), { id: plane.roofPlaneId })}
-          </label>
-        ))}
-      </fieldset>
+      <PlaneAssignmentCards
+        assignment={assignment}
+        surfaceGeometry={surfaceGeometry}
+        onChange={(roofPlaneIds) =>
+          update((draft) => {
+            draft.roofPlaneIds = roofPlaneIds;
+          })
+        }
+      />
       <button
         className="a-button a-danger"
         onClick={() =>

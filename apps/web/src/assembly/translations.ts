@@ -101,6 +101,55 @@ export const assemblyPl = {
   counterBattenAxesCount: '{{count}} osi',
   showExactLengths: 'Pokaż długości ({{count}})',
   coveringEmptyTitle: 'Dodaj pokrycie dachu',
+  coveringAdd: {
+    eyebrow: 'Pokrycie dachu',
+    title: 'Dodaj pokrycie',
+    close: 'Wróć do schematu',
+    back: 'Wstecz',
+    addAnother: 'Dodaj pokrycie',
+    changeProduct: 'Zmień produkt',
+    stepDescription: {
+      family:
+        'Najpierw wybierz rodzinę. Żaden produkt nie zostanie jeszcze zapisany.',
+      source:
+        'Wybierz zweryfikowaną rewizję katalogową albo świadomie podaj własne dane.',
+      manual:
+        'Uzupełnij minimalny zestaw techniczny. Projekt zmieni się dopiero po potwierdzeniu.',
+    },
+    family: {
+      'roof-tile': {
+        title: 'Dachówka',
+        description: 'Układ rzędów i pozycji krycia',
+      },
+      'modular-sheet': {
+        title: 'Blacha modułowa',
+        description: 'Efektywny układ arkuszy i modułów',
+      },
+      'standing-seam': {
+        title: 'Blacha na rąbek',
+        description: 'Panele prowadzone od okapu do kalenicy',
+      },
+    },
+    catalogBadge: 'Katalog',
+    manualBadge: 'Ręcznie',
+    catalog: 'Wybierz z katalogu',
+    catalogHint: 'Produkt z identyfikatorem źródła i rewizją techniczną.',
+    manual: 'Wprowadź produkt ręcznie',
+    manualHint: 'Własne parametry, potwierdzone przed zapisaniem.',
+    advanced: 'Parametry zaawansowane',
+    advancedHint:
+      'Pozostałe opcjonalne dane będzie można uzupełnić później w edytorze produktu.',
+    validation:
+      'Uzupełnij wszystkie wymagane pola poprawnymi dodatnimi wartościami i sprawdź zakresy.',
+    confirm: 'Potwierdź produkt i dodaj',
+    scheme: 'Schemat krycia',
+    assignAll: 'Przypisz wszystkie połacie',
+    assigned: 'przypisana',
+    notAssigned: 'nieprzypisana',
+    problem: 'Problem',
+    catalogDetached:
+      'Parametry zmienione ręcznie — produkt nie jest już powiązany z rewizją katalogową.',
+  },
   coveringEmptyDescription:
     'Wybierz rodzaj i wprowadź parametry techniczne, aby utworzyć układ na połaciach.',
   addManualRoofTile: 'Dodaj dachówkę ręcznie',
@@ -198,6 +247,92 @@ export const assemblyPl = {
   quickHint: 'Szybkie obliczenie pojedynczej krokwi z trzech wymiarów.',
   builderHint:
     'Zbuduj dach, dodaj warstwy i pokrycie, a potem sprawdź zestawienie.',
+  projectStart: {
+    title: 'Nowy projekt',
+    close: 'Pomiń na razie',
+    createFromQuick: 'Utwórz z tego projekt',
+    mode: {
+      new: 'Szybki start',
+      quick: 'Na podstawie szybkiego obliczenia',
+      edit: 'Podstawowe wymiary projektu',
+    },
+    description: {
+      new: 'Podaj wymiary budynku i dachu. Resztę dopracujesz później w warsztacie.',
+      quick:
+        'Geometrię krokwi już mamy. Uzupełnij tylko dane potrzebne dla całego dachu.',
+      edit: 'Zmień podstawowe wymiary bez tworzenia projektu od nowa.',
+    },
+    roofType: 'Jaki dach?',
+    roofHint: {
+      gable: 'Dwie główne połacie i kalenica',
+      hip: 'Cztery połacie i naroża',
+    },
+    building: 'Wymiary budynku',
+    roof: 'Dach',
+    length: 'Długość',
+    width: 'Szerokość',
+    pitch: 'Kąt połaci',
+    eave: 'Okap poziomy',
+    spacing: 'Rozstaw krokwi',
+    preview: 'Podgląd bryły',
+    previewHint:
+      'Schemat pomaga rozpoznać typ dachu; obliczenia użyją istniejącego modelu geometrycznego.',
+    invalid: 'Sprawdź wszystkie wymiary i wpisz dodatnie wartości.',
+    hipLengthError:
+      'Dla dachu kopertowego długość budynku nie może być mniejsza od szerokości.',
+    saveError: 'Nie udało się utworzyć projektu. Spróbuj ponownie.',
+    submit: {
+      new: 'Utwórz projekt',
+      quick: 'Utwórz z tego projekt',
+      edit: 'Zapisz podstawowe wymiary',
+    },
+  },
+  guidance: {
+    title: 'Co dalej',
+    showAll: 'Pokaż wszystkie',
+    more: '+{{count}} więcej',
+    item: {
+      'geometry-incomplete': {
+        title: 'Uzupełnij wymiary dachu',
+        description:
+          'Konstrukcja wymaga poprawnej geometrii, zanim pojawią się wiarygodne wyniki.',
+        action: 'Przejdź do wymiarów',
+      },
+      'opening-warning': {
+        title: 'Sprawdź otwory',
+        description:
+          'Co najmniej jeden otwór koliduje z konstrukcją lub wymaga ponownego przeglądu.',
+        action: 'Otwórz otwory',
+      },
+      'layer-warning': {
+        title: 'Sprawdź warstwy',
+        description: 'Jedna z warstw ma niekompletne lub ograniczone dane.',
+        action: 'Otwórz warstwy',
+      },
+      'covering-missing': {
+        title: 'Nie dodano pokrycia',
+        description:
+          'Wybierz dachówkę lub blachę, aby przygotować schemat krycia.',
+        action: 'Dodaj pokrycie',
+      },
+      'covering-warning': {
+        title: 'Pokrycie wymaga uwagi',
+        description: 'Sprawdź parametry produktu, kąt i przypisanie połaci.',
+        action: 'Sprawdź pokrycie',
+      },
+      'k1-ready': {
+        title: 'K1 jest gotowa do rozkroju',
+        description:
+          'Znamy wymagany blank. Podaj długości handlowe, aby ułożyć cięcia.',
+        action: 'Zaplanuj rozkrój',
+      },
+      'export-ready': {
+        title: 'Pakiet wykonawczy jest dostępny',
+        description: 'Przejrzyj gotowe sekcje i przygotuj wydruk lub PDF.',
+        action: 'Otwórz eksport',
+      },
+    },
+  },
   workflow: {
     title: 'Projekt',
     progress: 'Gotowe etapy: {{count}} z {{total}}',
@@ -1024,6 +1159,54 @@ export const assemblyEn: typeof assemblyPl = {
   counterBattenAxesCount: '{{count}} axes',
   showExactLengths: 'Show lengths ({{count}})',
   coveringEmptyTitle: 'Add roof covering',
+  coveringAdd: {
+    eyebrow: 'Roof covering',
+    title: 'Add covering',
+    close: 'Back to scheme',
+    back: 'Back',
+    addAnother: 'Add covering',
+    changeProduct: 'Change product',
+    stepDescription: {
+      family: 'Choose a family first. No product is saved at this point.',
+      source:
+        'Choose a verified catalogue revision or knowingly enter your own data.',
+      manual:
+        'Complete the minimum technical data. The project changes only after confirmation.',
+    },
+    family: {
+      'roof-tile': {
+        title: 'Roof tile',
+        description: 'Course and coverage-position layout',
+      },
+      'modular-sheet': {
+        title: 'Modular sheet',
+        description: 'Effective sheet and module layout',
+      },
+      'standing-seam': {
+        title: 'Standing seam',
+        description: 'Panels running from eave to ridge',
+      },
+    },
+    catalogBadge: 'Catalogue',
+    manualBadge: 'Manual',
+    catalog: 'Choose from catalogue',
+    catalogHint: 'A product with technical source and revision identity.',
+    manual: 'Enter product manually',
+    manualHint: 'Your own parameters, confirmed before saving.',
+    advanced: 'Advanced parameters',
+    advancedHint:
+      'Other optional data can be completed later in the product editor.',
+    validation:
+      'Complete every required field with valid positive values and check the ranges.',
+    confirm: 'Confirm and add product',
+    scheme: 'Covering scheme',
+    assignAll: 'Assign all roof planes',
+    assigned: 'assigned',
+    notAssigned: 'not assigned',
+    problem: 'Problem',
+    catalogDetached:
+      'Parameters changed manually — this product is no longer linked to the catalogue revision.',
+  },
   coveringEmptyDescription:
     'Choose a kind and enter technical parameters to create a roof-plane layout.',
   addManualRoofTile: 'Add manual roof tile',
@@ -1122,6 +1305,93 @@ export const assemblyEn: typeof assemblyPl = {
   quickHint: 'A fast single-rafter calculation from three dimensions.',
   builderHint:
     'Define the roof, add layers and covering, then inspect the schedule.',
+  projectStart: {
+    title: 'New project',
+    close: 'Skip for now',
+    createFromQuick: 'Create a project from this',
+    mode: {
+      new: 'Quick start',
+      quick: 'From the quick calculation',
+      edit: 'Basic project dimensions',
+    },
+    description: {
+      new: 'Enter the building and roof dimensions. Refine the rest later in the workbench.',
+      quick:
+        'The rafter geometry is already known. Add only the data needed for the whole roof.',
+      edit: 'Change the basic dimensions without recreating the project.',
+    },
+    roofType: 'Which roof?',
+    roofHint: {
+      gable: 'Two main planes and a ridge',
+      hip: 'Four planes and hip edges',
+    },
+    building: 'Building dimensions',
+    roof: 'Roof',
+    length: 'Length',
+    width: 'Width',
+    pitch: 'Roof pitch',
+    eave: 'Horizontal eave',
+    spacing: 'Rafter spacing',
+    preview: 'Building preview',
+    previewHint:
+      'The sketch identifies the roof type; calculations use the existing geometry model.',
+    invalid: 'Check every dimension and enter positive values.',
+    hipLengthError:
+      'For a hip roof, building length cannot be smaller than building width.',
+    saveError: 'Could not create the project. Try again.',
+    submit: {
+      new: 'Create project',
+      quick: 'Create project from this',
+      edit: 'Save basic dimensions',
+    },
+  },
+  guidance: {
+    title: 'What next',
+    showAll: 'Show all',
+    more: '+{{count}} more',
+    item: {
+      'geometry-incomplete': {
+        title: 'Complete the roof dimensions',
+        description:
+          'The construction needs valid geometry before results can be trusted.',
+        action: 'Open dimensions',
+      },
+      'opening-warning': {
+        title: 'Review openings',
+        description:
+          'At least one opening collides with the structure or needs another review.',
+        action: 'Open openings',
+      },
+      'layer-warning': {
+        title: 'Review roof layers',
+        description: 'One of the layers has incomplete or limited data.',
+        action: 'Open layers',
+      },
+      'covering-missing': {
+        title: 'No covering added',
+        description:
+          'Choose roof tile or metal covering to prepare a covering scheme.',
+        action: 'Add covering',
+      },
+      'covering-warning': {
+        title: 'Covering needs attention',
+        description:
+          'Review the product data, roof pitch and plane assignment.',
+        action: 'Review covering',
+      },
+      'k1-ready': {
+        title: 'K1 is ready for cutting',
+        description:
+          'The required blank is known. Enter commercial lengths to arrange cuts.',
+        action: 'Plan cutting',
+      },
+      'export-ready': {
+        title: 'Execution package is available',
+        description: 'Review ready sections and prepare a printout or PDF.',
+        action: 'Open export',
+      },
+    },
+  },
   workflow: {
     title: 'Project',
     progress: 'Stages ready: {{count}} of {{total}}',

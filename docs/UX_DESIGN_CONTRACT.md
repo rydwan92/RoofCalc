@@ -161,3 +161,23 @@ and their totals are never added together.
    on copy.
 6. If it shows a computed value, give it a status (§4), name it for its layer,
    and make sure it is not a duplicate of an existing result block.
+
+## 10. Creator start and covering studio
+
+- A first Creator entry starts with one friendly building form and a small roof
+  preview. Full building width maps to the existing symmetric `halfRunMm`; the
+  preview is not a second geometry engine.
+- Quick Calc hands its known width, pitch and eave into the project assistant and
+  asks only for missing project data. A deliberate new-project action creates a
+  separate project record rather than silently replacing the active project.
+- Project guidance is derived, prioritised and quiet: at most two primary items
+  are visible, while the rest stays behind disclosure. It never enters project
+  history or persistence.
+- Adding covering is always family → source → product. A family click is not a
+  canonical edit; incomplete manual data remains a transient draft.
+- The covering centre surface is titled **Schemat krycia**. Family-specific
+  rhythm may aid recognition, but quantities still mean effective coverage
+  positions or geometric runs, never purchase pieces.
+- Roof-plane assignment uses cards with name, area and assigned state. Colour is
+  reinforced by text and outline, and the legend contains only states present in
+  the current drawing.

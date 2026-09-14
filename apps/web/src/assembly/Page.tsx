@@ -8,6 +8,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  createRoofProjectDocument,
   currentMemberInstance,
   withOpeningFramingFabrication,
 } from '@cieslacalc/calculator-core';
@@ -94,7 +95,30 @@ import {
 import { ProjectSummary, ProjectWorkflowStrip } from './ProjectWorkflow';
 import { ProjectManager, projectStatusLabel } from '../projects/ProjectManager';
 import { ProjectSession } from '../projects/session';
+import {
+  ProjectStartAssistant,
+  type ProjectStartMode,
+} from './ProjectStartAssistant';
+import { deriveProjectGuidance } from './project-guidance';
 import './styles.css';
+
+const creatorStartSeenKey = 'cieslacalc.creatorStartSeen.v1';
+
+function creatorStartWasSeen() {
+  try {
+    return globalThis.localStorage.getItem(creatorStartSeenKey) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function rememberCreatorStart() {
+  try {
+    globalThis.localStorage.setItem(creatorStartSeenKey, '1');
+  } catch {
+    // The assistant remains usable when browser preference storage is blocked.
+  }
+}
 
 const MaterialSchedule = lazy(() =>
   import('./MaterialSchedule').then((module) => ({
@@ -218,6 +242,8 @@ export function AssemblyPage() {
   }>();
   const [exportSource, setExportSource] = useState<DocumentSource>();
   const [exportError, setExportError] = useState('');
+  const [projectStartMode, setProjectStartMode] = useState<ProjectStartMode>();
+  const [reuseFreshProject, setReuseFreshProject] = useState(false);
   const workbench = state.workbench;
   const mobile = useMobileWorkbench();
   const drawer = workbench.detailDrawer;
@@ -636,41 +662,38 @@ export function AssemblyPage() {
   useEffect(() => {
     if (k1Requirement.status !== 'resolved') setCuttingOpen(false);
   }, [k1Requirement.status]);
-  const projectWorkflow = useMemo(
-    () =>
-      deriveProjectWorkflow({
-        constructionReady:
-          surfaceProjection.planes.length > 0 &&
-          surfaceProjection.grossAreaMm2 > 0 &&
-          memberSchedule.timberRows.length > 0,
-        openingCount: openingSummary.total,
-        openingWarnings:
-          openingSummary.collisions +
-          openingSummary.needsReview +
-          surfaceProjection.issues.length,
-        enabledLayerCount: [
-          membrane?.enabled,
-          counterBattens?.enabled,
-          battenLayout?.enabled,
-        ].filter(Boolean).length,
-        layerWarnings:
-          counterBattenProjection.status === 'limited' ||
-          memberSchedule.buildUpRows.some(
-            (row) => row.warningKeys.length > 0,
-          ) ||
-          memberSchedule.surfaceBuildUpRows.some(
-            (row) => row.warningKeys.length > 0,
-          )
-            ? 1
-            : 0,
-        coveringCount: coveringAssignments.length,
-        resolvedCoveringCount: resolvedCoveringLayouts.filter(
-          (layout) => layout.status === 'resolved',
-        ).length,
-        coveringWarnings: coveringOwnership.conflicts.length,
-        k1Ready: k1Requirement.status === 'resolved',
-        hasResults: memberSchedule.timberRows.length > 0,
-      }),
+  const projectWorkflowFacts = useMemo(
+    () => ({
+      constructionReady:
+        surfaceProjection.planes.length > 0 &&
+        surfaceProjection.grossAreaMm2 > 0 &&
+        memberSchedule.timberRows.length > 0,
+      openingCount: openingSummary.total,
+      openingWarnings:
+        openingSummary.collisions +
+        openingSummary.needsReview +
+        surfaceProjection.issues.length,
+      enabledLayerCount: [
+        membrane?.enabled,
+        counterBattens?.enabled,
+        battenLayout?.enabled,
+      ].filter(Boolean).length,
+      layerWarnings:
+        counterBattenProjection.status === 'limited' ||
+        memberSchedule.buildUpRows.some((row) => row.warningKeys.length > 0) ||
+        memberSchedule.surfaceBuildUpRows.some(
+          (row) => row.warningKeys.length > 0,
+        )
+          ? 1
+          : 0,
+      coveringCount: coveringAssignments.length,
+      resolvedCoveringCount: resolvedCoveringLayouts.filter(
+        (layout) => layout.status === 'resolved',
+      ).length,
+      coveringWarnings: coveringOwnership.conflicts.length,
+      k1Ready: k1Requirement.status === 'resolved',
+      hasResults: memberSchedule.timberRows.length > 0,
+    }),
     [
       surfaceProjection.planes.length,
       surfaceProjection.grossAreaMm2,
@@ -688,6 +711,18 @@ export function AssemblyPage() {
       memberSchedule.buildUpRows,
       memberSchedule.surfaceBuildUpRows,
     ],
+  );
+  const projectWorkflow = useMemo(
+    () => deriveProjectWorkflow(projectWorkflowFacts),
+    [projectWorkflowFacts],
+  );
+  const projectGuidance = useMemo(
+    () =>
+      deriveProjectGuidance(
+        projectWorkflowFacts,
+        projectWorkflowFacts.hasResults,
+      ),
+    [projectWorkflowFacts],
   );
   const projectSummary = useMemo(() => {
     const timberFamilies = new Map<string, number>();
@@ -919,7 +954,34 @@ export function AssemblyPage() {
     state.setViewPreset('materials');
     setCuttingOpen(true);
   };
-  const runProjectAction = (action: ProjectWorkflowAction) => {
+  const openExecutionExport = () => {
+    setExportError('');
+    void projectSession
+      .persistNow()
+      .then(() => {
+        const active = projectSession.snapshot().active;
+        if (!active) return;
+        setExportSource({
+          projectId: active.id,
+          projectName: active.name,
+          projectCreatedAt: active.createdAt,
+          projectUpdatedAt: active.updatedAt,
+          projectSchemaVersion: state.projectDocument.schemaVersion,
+        });
+      })
+      .catch(() =>
+        setExportError(
+          i18n.language.startsWith('pl')
+            ? 'Nie moĹĽna zapisaÄ‡ aktualnego stanu projektu do eksportu.'
+            : 'Could not save the current project state for export.',
+        ),
+      );
+  };
+  const runProjectAction = (action: ProjectWorkflowAction | 'openExport') => {
+    if (action === 'openExport') {
+      openExecutionExport();
+      return;
+    }
     if (action === 'planK1') {
       openCutting();
       return;
@@ -956,6 +1018,24 @@ export function AssemblyPage() {
     if (workbench.mode === 'builder')
       void projectSession.initialize().catch(() => undefined);
   }, [projectSession, workbench.mode]);
+  useEffect(() => {
+    if (
+      workbench.mode === 'builder' &&
+      projectSessionState.initialized &&
+      projectSessionState.freshProject
+    ) {
+      if (creatorStartWasSeen()) {
+        projectSession.acknowledgeFreshProject();
+        return;
+      }
+      setReuseFreshProject(true);
+      setProjectStartMode((current) => current ?? 'new');
+    }
+  }, [
+    projectSessionState.freshProject,
+    projectSessionState.initialized,
+    workbench.mode,
+  ]);
   useEffect(
     () => () => {
       void projectSession.dispose();
@@ -1141,6 +1221,15 @@ export function AssemblyPage() {
             session={projectSession}
             state={projectSessionState}
             mobile={mobile}
+            onStartNew={() => {
+              projectSession.acknowledgeFreshProject();
+              setReuseFreshProject(false);
+              setProjectStartMode('new');
+            }}
+            onEditBasics={() => {
+              setReuseFreshProject(false);
+              setProjectStartMode('edit');
+            }}
           />
         )}
         {workbench.mode === 'builder' && (
@@ -1149,29 +1238,7 @@ export function AssemblyPage() {
             className="a-export-trigger"
             data-testid="project-execution-export"
             disabled={!projectSessionState.active}
-            onClick={() => {
-              setExportError('');
-              void projectSession
-                .persistNow()
-                .then(() => {
-                  const active = projectSession.snapshot().active;
-                  if (!active) return;
-                  setExportSource({
-                    projectId: active.id,
-                    projectName: active.name,
-                    projectCreatedAt: active.createdAt,
-                    projectUpdatedAt: active.updatedAt,
-                    projectSchemaVersion: state.projectDocument.schemaVersion,
-                  });
-                })
-                .catch(() =>
-                  setExportError(
-                    i18n.language.startsWith('pl')
-                      ? 'Nie można zapisać aktualnego stanu projektu do eksportu.'
-                      : 'Could not save the current project state for export.',
-                  ),
-                );
-            }}
+            onClick={openExecutionExport}
           >
             {i18n.language.startsWith('pl') ? 'Eksport' : 'Export'}
           </button>
@@ -1353,9 +1420,14 @@ export function AssemblyPage() {
               )}
               <button
                 className="a-button a-primary"
-                onClick={() => changeMode('builder')}
+                data-testid="quick-create-project"
+                onClick={() => {
+                  setReuseFreshProject(false);
+                  setProjectStartMode('quick');
+                  changeMode('builder');
+                }}
               >
-                {t('assembly.openBuilder')} →
+                {t('assembly.projectStart.createFromQuick')} →
               </button>
             </section>
             <section className="a-quick-output">
@@ -1375,6 +1447,7 @@ export function AssemblyPage() {
           <>
             <ProjectWorkflowStrip
               workflow={projectWorkflow}
+              guidance={projectGuidance}
               onAction={runProjectAction}
             />
             <div
@@ -1789,11 +1862,39 @@ export function AssemblyPage() {
           </span>
         </footer>
       </main>
+      {projectStartMode && workbench.mode === 'builder' && (
+        <ProjectStartAssistant
+          mode={projectStartMode}
+          template={state.template}
+          onClose={() => {
+            rememberCreatorStart();
+            projectSession.acknowledgeFreshProject();
+            setReuseFreshProject(false);
+            setProjectStartMode(undefined);
+          }}
+          onSubmit={async (template) => {
+            if (projectStartMode === 'new' || projectStartMode === 'quick') {
+              if (!reuseFreshProject) await projectSession.create();
+              useAssembly
+                .getState()
+                .replaceProjectDocument(createRoofProjectDocument(template));
+            } else if (projectStartMode === 'edit') {
+              useAssembly.getState().setProjectRoof(template);
+            }
+            rememberCreatorStart();
+            projectSession.acknowledgeFreshProject();
+            setReuseFreshProject(false);
+            setProjectStartMode(undefined);
+          }}
+        />
+      )}
       {quickDetail && workbench.mode === 'quick' && (
         <QuickDetailDialog
           preview={quickDetail}
           onClose={() => setQuickDetail(undefined)}
           onOpenBuilder={(preview) => {
+            setReuseFreshProject(false);
+            setProjectStartMode('quick');
             state.setMode('builder');
             state.activateOperation({
               operationId: preview.sourceSelectionId,

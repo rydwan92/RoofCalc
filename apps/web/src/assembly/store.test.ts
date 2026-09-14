@@ -1008,6 +1008,55 @@ it('commits roof-tile layout intent as one undoable domain edit while task switc
   ).toEqual(['roof-plane:left', 'roof-plane:right']);
 });
 
+it('edits project basics as one history entry while preserving features and coverings', () => {
+  useAssembly.getState().addRoofWindow();
+  useAssembly.getState().setCoveringAssignments([
+    {
+      id: 'covering:preserved',
+      roofPlaneIds: ['roof-plane:left'],
+      selectedInstallationModeId: 'manual-standard',
+      layoutIntent: {
+        kind: 'roof-tile',
+        horizontalAlignment: 'centered',
+      },
+      product: {
+        technicalSpecSnapshot: {
+          schemaVersion: 1,
+          kind: 'roof-tile',
+          installationModes: [
+            {
+              id: 'manual-standard',
+              coverWidthMm: 300,
+              gaugeRangeMm: { min: 300, max: 380 },
+              coursePattern: {
+                layers: [{ id: 'base', horizontalOffsetFraction: 0 }],
+                battenRowOffsetCycle: [0],
+              },
+            },
+          ],
+        },
+      },
+    },
+  ]);
+  const before = structuredClone(useAssembly.getState().projectDocument);
+  useAssembly.setState({ historyPast: [], historyFuture: [] });
+
+  useAssembly.getState().setProjectRoof({
+    ...useAssembly.getState().template,
+    halfRunMm: useAssembly.getState().template.halfRunMm + 500,
+  });
+
+  expect(useAssembly.getState().historyPast).toHaveLength(1);
+  expect(useAssembly.getState().projectDocument.project.features).toEqual(
+    before.project.features,
+  );
+  expect(useAssembly.getState().projectDocument.project.coverings).toEqual(
+    before.project.coverings,
+  );
+  useAssembly.getState().undo();
+  expect(useAssembly.getState().projectDocument).toEqual(before);
+});
+
 it('keeps covering selection transient and chooses a deterministic neighbour after removal', () => {
   const makeAssignment = (id: string, roofPlaneId: string) => ({
     id,

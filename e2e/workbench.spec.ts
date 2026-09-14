@@ -20,6 +20,10 @@ const TASKS = [
 async function openBuilder(page: Page) {
   await page.goto('/#/calculators/common-rafter');
   await page.locator(BUILDER).click();
+  const assistant = page.getByTestId('project-start-assistant');
+  await expect(assistant).toBeVisible();
+  await assistant.getByTestId('project-start-submit').click();
+  await expect(assistant).toBeHidden();
   await expect(page.getByTestId('skeleton-drawing')).toBeVisible();
 }
 
@@ -49,7 +53,21 @@ async function openResolvedTileSchedule(page: Page, project: string) {
   if (project === 'mobile') await page.keyboard.press('Escape');
 
   await openTask(page, 'covering');
-  await page.getByRole('button', { name: 'Dodaj dachówkę ręcznie' }).click();
+  const assistant = page.getByTestId('covering-add-assistant');
+  await assistant.locator('[data-covering-family="roof-tile"]').click();
+  await assistant.locator('[data-covering-source="manual"]').click();
+  const values = {
+    name: 'Dachówka testowa',
+    physicalWidth: '33',
+    physicalLength: '42',
+    coverWidth: '30',
+    gaugeMin: '30',
+    gaugeMax: '38',
+    minimumPitch: '19',
+  };
+  for (const [field, value] of Object.entries(values))
+    await assistant.locator(`[data-manual-field="${field}"]`).fill(value);
+  await assistant.getByTestId('confirm-manual-covering').click();
   await expect(page.getByTestId('tile-layout-drawing')).toBeVisible();
   await openTask(page, 'materials');
   return page.getByTestId('covering-quantity');
@@ -110,6 +128,44 @@ async function pitchField(page: Page, project: string) {
   // numeric field: every editable geometric value must also have one.
   return page.getByLabel('Kąt połaci', { exact: true }).first();
 }
+
+test.describe('V31 — guided Creator start', () => {
+  test('creates one project from friendly building dimensions on desktop and mobile', async ({
+    page,
+  }) => {
+    await page.goto('/#/calculators/common-rafter');
+    await page.locator(BUILDER).click();
+    const assistant = page.getByTestId('project-start-assistant');
+    await expect(assistant).toBeVisible();
+    const values = {
+      buildingLength: '1200',
+      buildingWidth: '900',
+      pitch: '35',
+      eave: '50',
+      spacing: '80',
+    };
+    for (const [field, value] of Object.entries(values))
+      await assistant
+        .locator(`[data-project-start-field="${field}"]`)
+        .fill(value);
+    await assistant.getByTestId('project-start-submit').click();
+    await expect(assistant).toBeHidden();
+    await expect(page.getByTestId('skeleton-drawing')).toBeVisible();
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const key = Object.keys(localStorage).find((candidate) =>
+            candidate.startsWith('cieslacalc.projects.v1.record.'),
+          );
+          if (!key) return undefined;
+          return JSON.parse(localStorage.getItem(key)!).document.project.roof
+            .halfRunMm;
+        }),
+      )
+      .toBe(4500);
+    await expectNoHorizontalOverflow(page);
+  });
+});
 
 test.describe('A — Builder loads and fits', () => {
   test('the workbench renders and does not scroll sideways', async ({

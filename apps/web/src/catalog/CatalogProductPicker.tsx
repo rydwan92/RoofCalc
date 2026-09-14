@@ -31,8 +31,9 @@ const copy = {
     empty: 'Brak produktów spełniających kryteria.',
     unavailable: 'Katalog jest obecnie niedostępny.',
     manual: 'Użyj parametrów ręcznych',
-    choose: 'Wybierz',
-    apply: 'Zastosuj produkt',
+    choose: 'Szczegóły',
+    apply: 'Użyj produktu',
+    currentRevision: 'Aktualna rewizja techniczna',
     applying: 'Pobieranie rewizji…',
     revision: 'Rewizja techniczna',
     source: 'Źródło techniczne',
@@ -63,8 +64,9 @@ const copy = {
     empty: 'No products match these filters.',
     unavailable: 'The catalogue is currently unavailable.',
     manual: 'Use manual parameters',
-    choose: 'Choose',
-    apply: 'Apply product',
+    choose: 'Details',
+    apply: 'Use product',
+    currentRevision: 'Current technical revision',
     applying: 'Fetching revision…',
     revision: 'Technical revision',
     source: 'Technical source',
@@ -332,6 +334,9 @@ function PickerBody({
             <article key={product.id} className="a-catalog-card">
               <small>{product.manufacturer.name}</small>
               <strong>{product.name}</strong>
+              <span className="a-catalog-revision-badge">
+                {m.currentRevision}
+              </span>
               <dl>
                 {product.technicalPreview.effectiveWidthMm && (
                   <div>
