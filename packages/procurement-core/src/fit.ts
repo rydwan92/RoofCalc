@@ -18,10 +18,7 @@ export interface MutableStockUsage {
   remainingLengthMm: number;
 }
 
-export function usableLength(
-  option: StockOption,
-  settings: CuttingSettings,
-) {
+export function usableLength(option: StockOption, settings: CuttingSettings) {
   return Math.max(0, option.lengthMm - 2 * settings.endTrimMm);
 }
 
@@ -60,8 +57,7 @@ export function requiredSpaceFor(
   settings: CuttingSettings,
 ) {
   return (
-    piece.requiredBlankLengthMm +
-    (usage.cuts.length > 0 ? settings.kerfMm : 0)
+    piece.requiredBlankLengthMm + (usage.cuts.length > 0 ? settings.kerfMm : 0)
   );
 }
 
@@ -110,9 +106,7 @@ export function mutableUsageSignature(usage: MutableStockUsage) {
     .join(',')}]`;
 }
 
-export function cloneMutableUsage(
-  usage: MutableStockUsage,
-): MutableStockUsage {
+export function cloneMutableUsage(usage: MutableStockUsage): MutableStockUsage {
   return {
     ...usage,
     cuts: usage.cuts.map((cut) => ({ ...cut })),

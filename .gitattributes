@@ -1,0 +1,16 @@
+# One line-ending convention everywhere.
+#
+# The repository already stores LF in every blob, but a Windows checkout with
+# core.autocrlf=true writes CRLF into the working tree, which produced a mixed
+# tree (files written by tooling stayed LF, files written by git became CRLF).
+# Prettier is configured for LF, so that mix makes `pnpm format:check` fail on
+# files nobody edited. `eol=lf` makes the working tree match the object store on
+# every platform. No blob changes, so this adds no commit churn.
+* text=auto eol=lf
+
+# Data fixtures and docs are text and must stay diffable.
+*.json text eol=lf
+*.md   text eol=lf
+*.sql  text eol=lf
+*.yaml text eol=lf
+*.yml  text eol=lf

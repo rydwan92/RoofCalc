@@ -95,17 +95,14 @@ export function stockOptionComparator(
       );
       return (
         bProjection.pieceCount - aProjection.pieceCount ||
-        bProjection.assignedBlankLengthMm -
-          aProjection.assignedBlankLengthMm ||
+        bProjection.assignedBlankLengthMm - aProjection.assignedBlankLengthMm ||
         aProjection.remainingLengthMm - bProjection.remainingLengthMm ||
         a.lengthMm - b.lengthMm ||
         a.id.localeCompare(b.id)
       );
     }
-    const aRemaining =
-      usableLength(a, settings) - piece.requiredBlankLengthMm;
-    const bRemaining =
-      usableLength(b, settings) - piece.requiredBlankLengthMm;
+    const aRemaining = usableLength(a, settings) - piece.requiredBlankLengthMm;
+    const bRemaining = usableLength(b, settings) - piece.requiredBlankLengthMm;
     return (
       aRemaining - bRemaining ||
       a.lengthMm - b.lengthMm ||

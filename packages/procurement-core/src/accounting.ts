@@ -127,10 +127,7 @@ function planSignature(stockUsages: readonly StockUsage[]) {
       (usage) =>
         `${usage.stockClassId}|${usage.stockOptionId}|${usage.originalLengthMm}` +
         `[${usage.cuts
-          .map(
-            (cut) =>
-              `${cut.requiredPieceId}:${cut.requiredBlankLengthMm}`,
-          )
+          .map((cut) => `${cut.requiredPieceId}:${cut.requiredBlankLengthMm}`)
           .join(',')}]`,
     )
     .join(';');
@@ -146,8 +143,7 @@ export function evaluatePlanScore(
     irreversibleLossMm: plan.summary.kerfLossMm + plan.summary.wasteLengthMm,
     reusableRemnantLengthMm: plan.summary.reusableRemnantLengthMm,
     unusedPurchasedLengthMm:
-      plan.summary.purchasedStockLengthMm -
-      plan.summary.assignedBlankLengthMm,
+      plan.summary.purchasedStockLengthMm - plan.summary.assignedBlankLengthMm,
     deterministicSignature: planSignature(plan.stockUsages),
   };
 }

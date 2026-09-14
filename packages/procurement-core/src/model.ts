@@ -41,9 +41,7 @@ export interface CuttingSettings {
 }
 
 export type OptimizationObjective =
-  | 'minimum-waste'
-  | 'minimum-purchased-length'
-  | 'minimum-stock-count';
+  'minimum-waste' | 'minimum-purchased-length' | 'minimum-stock-count';
 
 export interface SolverLimits {
   /** Groups above this size use the deterministic heuristic fallback. */
@@ -86,9 +84,7 @@ export interface StockUsage {
 }
 
 export type UnassignedPieceReason =
-  | 'no-compatible-stock'
-  | 'piece-longer-than-stock'
-  | 'availability-exhausted';
+  'no-compatible-stock' | 'piece-longer-than-stock' | 'availability-exhausted';
 
 export interface UnassignedPiece {
   requiredPieceId: string;
@@ -129,14 +125,10 @@ export interface PlanScore {
 
 export type SolverStrategy = 'hybrid-bounded-branch-and-bound-v2';
 export type OptimalityStatus =
-  | 'heuristic'
-  | 'proven-within-search-space'
-  | 'search-budget-exhausted';
+  'heuristic' | 'proven-within-search-space' | 'search-budget-exhausted';
 
 export type StockClassFallbackReason =
-  | 'group-too-large'
-  | 'stock-option-count-limit'
-  | 'unfulfilled-requirements';
+  'group-too-large' | 'stock-option-count-limit' | 'unfulfilled-requirements';
 
 export interface StockClassSolverDiagnostic {
   stockClassId: StockClassId;

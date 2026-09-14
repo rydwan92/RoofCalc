@@ -83,14 +83,8 @@ function verifyPlanInvariants(plan: CuttingPlan, input: CuttingPlanInput) {
       const source = pieceById.get(cut.requiredPieceId);
       expect(source).toBeDefined();
       expect(source!.stockClassId).toBe(usage.stockClassId);
-      expectClose(
-        cut.requiredBlankLengthMm,
-        source!.requiredBlankLengthMm,
-      );
-      expectClose(
-        cut.toMm - cut.fromMm,
-        cut.requiredBlankLengthMm,
-      );
+      expectClose(cut.requiredBlankLengthMm, source!.requiredBlankLengthMm);
+      expectClose(cut.toMm - cut.fromMm, cut.requiredBlankLengthMm);
       expect(cut.fromMm + toleranceMm).toBeGreaterThanOrEqual(
         input.settings.endTrimMm,
       );

@@ -60,7 +60,8 @@ export function resolveWorkbenchSelectionContext(args: {
 
   const feature = features.find((candidate) => candidate.id === selected);
   if (feature) return { kind: 'roof-window', feature };
-  if (selected.startsWith('batten:')) return { kind: 'batten-row', id: selected };
+  if (selected.startsWith('batten:'))
+    return { kind: 'batten-row', id: selected };
 
   const prototype = resolved.memberPrototypes.find(
     (candidate) => candidate.id === selected,

@@ -1,7 +1,4 @@
-import {
-  completedScore,
-  lowerBoundIrreversibleLoss,
-} from './accounting';
+import { completedScore, lowerBoundIrreversibleLoss } from './accounting';
 import {
   appendRequiredBlank,
   canonicalMutableUsageOrder,
@@ -174,10 +171,7 @@ export function boundedSearchClassPlan(
         (option) =>
           (option.availability === undefined ||
             countOpenedOption(usages, option.id) < option.availability) &&
-          fits(
-            piece.requiredBlankLengthMm,
-            usableLength(option, settings),
-          ),
+          fits(piece.requiredBlankLengthMm, usableLength(option, settings)),
       )
       .sort(
         stockOptionComparator(

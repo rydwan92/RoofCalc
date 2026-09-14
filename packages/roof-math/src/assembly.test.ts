@@ -205,25 +205,27 @@ describe('shared assembly solver', () => {
     const one = addPurlin(assemblyDefaults);
     const two = addPurlin(one);
     const three = addPurlin(two);
-    expect(assemblyDefaults.supports.filter((support) => support.kind === 'purlin')).toHaveLength(
-      0,
-    );
-    expect(one.supports.filter((support) => support.kind === 'purlin')).toHaveLength(
-      1,
-    );
-    expect(two.supports.filter((support) => support.kind === 'purlin')).toHaveLength(
-      2,
-    );
-    expect(three.supports.filter((support) => support.kind === 'purlin')).toHaveLength(
-      3,
-    );
+    expect(
+      assemblyDefaults.supports.filter((support) => support.kind === 'purlin'),
+    ).toHaveLength(0);
+    expect(
+      one.supports.filter((support) => support.kind === 'purlin'),
+    ).toHaveLength(1);
+    expect(
+      two.supports.filter((support) => support.kind === 'purlin'),
+    ).toHaveLength(2);
+    expect(
+      three.supports.filter((support) => support.kind === 'purlin'),
+    ).toHaveLength(3);
     expect(three.supports.map((support) => support.id)).toEqual([
       'support:wall-plate-1',
       'support:purlin-1',
       'support:purlin-2',
       'support:purlin-3',
     ]);
-    const purlins = three.supports.filter((support) => support.kind === 'purlin');
+    const purlins = three.supports.filter(
+      (support) => support.kind === 'purlin',
+    );
     expect(
       purlinPlacementSegments(three, 140).every((segment) =>
         purlins.every(
@@ -272,15 +274,18 @@ describe('shared assembly solver', () => {
         purlins.map((support) => support.id),
       );
       expect(positions[0]).toBeGreaterThan(proposal.rangeStartMm);
-      expect(
-        positions.at(-1)! + purlins.at(-1)!.section.widthMm,
-      ).toBeLessThan(proposal.rangeEndMm);
+      expect(positions.at(-1)! + purlins.at(-1)!.section.widthMm).toBeLessThan(
+        proposal.rangeEndMm,
+      );
       const gaps = [
         positions[0]! - proposal.rangeStartMm,
-        ...purlins.slice(1).map(
-          (support, index) =>
-            positions[index + 1]! - (positions[index]! + support.section.widthMm),
-        ),
+        ...purlins
+          .slice(1)
+          .map(
+            (support, index) =>
+              positions[index + 1]! -
+              (positions[index]! + support.section.widthMm),
+          ),
         proposal.rangeEndMm -
           (positions.at(-1)! + purlins.at(-1)!.section.widthMm),
       ];
