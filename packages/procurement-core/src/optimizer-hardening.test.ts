@@ -21,10 +21,10 @@ const defaultSettings: CuttingSettings = {
 
 function requiredPiece(
   id: string,
-  lengthMm: number,
+  requiredBlankLengthMm: number,
   stockClassId = 'class:K',
 ): RequiredPiece {
-  return { id, stockClassId, lengthMm };
+  return { id, stockClassId, requiredBlankLengthMm };
 }
 
 function stockOption(
@@ -70,7 +70,7 @@ function verifyPlanInvariants(plan: CuttingPlan, input: CuttingPlanInput) {
     expectClose(
       usage.originalLengthMm,
       usage.endTrimLossMm +
-        usage.usedLengthMm +
+        usage.assignedBlankLengthMm +
         usage.kerfTotalMm +
         usage.remainingLengthMm,
     );
@@ -83,8 +83,14 @@ function verifyPlanInvariants(plan: CuttingPlan, input: CuttingPlanInput) {
       const source = pieceById.get(cut.requiredPieceId);
       expect(source).toBeDefined();
       expect(source!.stockClassId).toBe(usage.stockClassId);
-      expectClose(cut.lengthMm, source!.lengthMm);
-      expectClose(cut.toMm - cut.fromMm, cut.lengthMm);
+      expectClose(
+        cut.requiredBlankLengthMm,
+        source!.requiredBlankLengthMm,
+      );
+      expectClose(
+        cut.toMm - cut.fromMm,
+        cut.requiredBlankLengthMm,
+      );
       expect(cut.fromMm + toleranceMm).toBeGreaterThanOrEqual(
         input.settings.endTrimMm,
       );
@@ -119,7 +125,7 @@ function verifyPlanInvariants(plan: CuttingPlan, input: CuttingPlanInput) {
 
   expectClose(
     plan.summary.purchasedStockLengthMm,
-    plan.summary.assignedLengthMm +
+    plan.summary.assignedBlankLengthMm +
       plan.summary.kerfLossMm +
       plan.summary.wasteLengthMm +
       plan.summary.reusableRemnantLengthMm,

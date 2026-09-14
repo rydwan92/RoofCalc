@@ -18,9 +18,9 @@ const settings: CuttingSettings = {
 
 const piece = (
   id: string,
-  lengthMm: number,
+  requiredBlankLengthMm: number,
   stockClassId = 'timber:80x200',
-): RequiredPiece => ({ id, stockClassId, lengthMm });
+): RequiredPiece => ({ id, stockClassId, requiredBlankLengthMm });
 
 const stock = (
   id: string,
@@ -53,7 +53,12 @@ describe('timber procurement core', () => {
     expect(plan.status).toBe('complete');
     expect(plan.stockUsages).toHaveLength(1);
     expect(plan.stockUsages[0]!.cuts).toEqual([
-      { requiredPieceId: 'K1-1', fromMm: 0, toMm: 5600, lengthMm: 5600 },
+      {
+        requiredPieceId: 'K1-1',
+        fromMm: 0,
+        toMm: 5600,
+        requiredBlankLengthMm: 5600,
+      },
     ]);
     expect(plan.stockUsages[0]!.remainingLengthMm).toBe(400);
   });
@@ -67,13 +72,23 @@ describe('timber procurement core', () => {
 
     expect(plan.stockUsages).toHaveLength(1);
     expect(plan.stockUsages[0]).toMatchObject({
-      usedLengthMm: 6900,
+      assignedBlankLengthMm: 6900,
       kerfTotalMm: 4,
       remainingLengthMm: 96,
     });
     expect(plan.stockUsages[0]!.cuts).toEqual([
-      { requiredPieceId: 'K1-1', fromMm: 0, toMm: 5600, lengthMm: 5600 },
-      { requiredPieceId: 'J1-1', fromMm: 5604, toMm: 6904, lengthMm: 1300 },
+      {
+        requiredPieceId: 'K1-1',
+        fromMm: 0,
+        toMm: 5600,
+        requiredBlankLengthMm: 5600,
+      },
+      {
+        requiredPieceId: 'J1-1',
+        fromMm: 5604,
+        toMm: 6904,
+        requiredBlankLengthMm: 1300,
+      },
     ]);
   });
 
@@ -94,7 +109,7 @@ describe('timber procurement core', () => {
       {
         requiredPieceId: 'B',
         stockClassId: 'timber:80x200',
-        lengthMm: 400,
+        requiredBlankLengthMm: 400,
         reason: 'availability-exhausted',
       },
     ]);
@@ -238,7 +253,7 @@ describe('timber procurement core', () => {
       {
         requiredPieceId: 'C',
         stockClassId: 'timber:80x200',
-        lengthMm: 500,
+        requiredBlankLengthMm: 500,
         reason: 'availability-exhausted',
       },
     ]);
@@ -339,8 +354,8 @@ describe('timber procurement core', () => {
     expect(plan.summary).toMatchObject({
       requiredPieceCount: 1,
       assignedPieceCount: 1,
-      requiredLengthMm: 600,
-      assignedLengthMm: 600,
+      requiredBlankLengthMm: 600,
+      assignedBlankLengthMm: 600,
       purchasedStockLengthMm: 1000,
       kerfLossMm: 0,
       endTrimLossMm: 20,
@@ -402,7 +417,7 @@ describe('timber procurement core', () => {
       requiredPieceCount: 24,
       assignedPieceCount: 24,
       stockItemCount: 12,
-      requiredLengthMm: 82_800,
+      requiredBlankLengthMm: 82_800,
       purchasedStockLengthMm: 84_000,
       kerfLossMm: 48,
       wasteLengthMm: 1152,
