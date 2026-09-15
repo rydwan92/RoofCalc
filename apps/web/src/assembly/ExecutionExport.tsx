@@ -714,6 +714,52 @@ function SectionBody({
                       {row.layoutFacts.status === 'partial'
                         ? ` · ${m.partial}`
                         : ''}
+                      {row.layoutFacts.decisionStatus && (
+                        <span>
+                          {' · '}
+                          {t(
+                            `assembly.installationStatus.${row.layoutFacts.decisionStatus}`,
+                          )}
+                        </span>
+                      )}
+                      {row.layoutFacts.gaugeSource && (
+                        <span>
+                          {' · '}
+                          {t(
+                            `assembly.decisionSource.${row.layoutFacts.gaugeSource}`,
+                          )}
+                        </span>
+                      )}
+                      {row.layoutFacts.decisionIssueCodes?.map((code) => (
+                        <span key={code}>
+                          {' · '}
+                          {t(`assembly.installationIssue.${code}`)}
+                        </span>
+                      ))}
+                      {row.layoutFacts.eaveOffsetMm !== undefined && (
+                        <span>
+                          {' · '}
+                          {t('assembly.battenEaveOffset')}:{' '}
+                          {length(row.layoutFacts.eaveOffsetMm)} ({m.manual})
+                        </span>
+                      )}
+                      {row.layoutFacts.ridgeOffsetMm !== undefined && (
+                        <span>
+                          {' · '}
+                          {t('assembly.battenRidgeOffset')}:{' '}
+                          {length(row.layoutFacts.ridgeOffsetMm)} ({m.manual})
+                        </span>
+                      )}
+                      {row.layoutFacts.autoPlans?.map((plan) => (
+                        <span key={plan.planeId}>
+                          {' · '}
+                          {t(roofPlaneShortLabelKey(plan.planeId))}:{' '}
+                          {plan.intervalCount} / {plan.courseCount} {m.courses},{' '}
+                          {length(plan.actualGaugeMm)},{' '}
+                          {t('assembly.regularBattenSpan')}:{' '}
+                          {length(plan.regularSpanMm)}
+                        </span>
+                      ))}
                     </small>
                   )}
                 </td>

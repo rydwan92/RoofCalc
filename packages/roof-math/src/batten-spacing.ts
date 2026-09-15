@@ -4,7 +4,8 @@ export type AutoBattenSpacingIssueCode =
   | 'invalid-regular-span'
   | 'invalid-gauge-range'
   | 'invalid-preferred-gauge'
-  | 'no-valid-interval-count';
+  | 'no-valid-interval-count'
+  | 'layout-capacity-exceeded';
 
 export interface AutoBattenSpacingInput {
   firstStationMm: number;
@@ -23,6 +24,13 @@ export type AutoBattenSpacingResult =
       intervalCount: number;
       courseCount: number;
       actualGaugeMm: number;
+      minimumGaugeMm: number;
+      maximumGaugeMm: number;
+      targetGaugeMm: number;
+      targetSource: 'range-midpoint' | 'provided-preference';
+      selectionRule: 'nearest-target-gauge';
+      minimumIntervalCount: number;
+      maximumIntervalCount: number;
       stations: number[];
       issues: [];
     }
@@ -65,7 +73,9 @@ export function resolveAutoBattenSpacing(
     return { status: 'unresolved', ...base, issues: ['invalid-gauge-range'] };
   if (
     input.preferredGaugeMm !== undefined &&
-    (!Number.isFinite(input.preferredGaugeMm) || input.preferredGaugeMm <= 0)
+    (!Number.isFinite(input.preferredGaugeMm) ||
+      input.preferredGaugeMm < input.minimumGaugeMm ||
+      input.preferredGaugeMm > input.maximumGaugeMm)
   )
     return {
       status: 'unresolved',
@@ -79,6 +89,13 @@ export function resolveAutoBattenSpacing(
   const maximumIntervals = Math.floor(
     regularSpanMm / input.minimumGaugeMm + EPSILON,
   );
+  // Resource bound, not a physical roofing rule. Never allocate unbounded rows.
+  if (!Number.isSafeInteger(maximumIntervals) || maximumIntervals > 100_000)
+    return {
+      status: 'unresolved',
+      ...base,
+      issues: ['layout-capacity-exceeded'],
+    };
   if (minimumIntervals > maximumIntervals || maximumIntervals < 1)
     return {
       status: 'unresolved',
@@ -113,6 +130,16 @@ export function resolveAutoBattenSpacing(
     intervalCount,
     courseCount: stations.length,
     actualGaugeMm,
+    minimumGaugeMm: input.minimumGaugeMm,
+    maximumGaugeMm: input.maximumGaugeMm,
+    targetGaugeMm: target,
+    targetSource:
+      input.preferredGaugeMm === undefined
+        ? 'range-midpoint'
+        : 'provided-preference',
+    selectionRule: 'nearest-target-gauge',
+    minimumIntervalCount: Math.max(1, minimumIntervals),
+    maximumIntervalCount: maximumIntervals,
     stations,
     issues: [],
   };

@@ -179,6 +179,104 @@ export const assemblyPl = {
   physicalWidth: 'Szerokość fizyczna',
   physicalLength: 'Długość fizyczna',
   minimumPitch: 'Minimalny kąt połaci (°)',
+  installationStatus: {
+    ready: 'Gotowe',
+    'partially-automatic': 'Częściowo automatyczne',
+    'decision-required': 'Wymaga decyzji',
+    incompatible: 'Niezgodne',
+    'no-data': 'Brak danych',
+  },
+  decisionSource: {
+    'manufacturer-product-data': 'Dane producenta — zapisany snapshot',
+    'project-user-input': 'Dane ustawione ręcznie w projekcie',
+    'universal-domain-rule': 'Warunek matematyczny',
+    'derived-geometry': 'Na podstawie geometrii konstrukcji',
+    unavailable: 'Źródło danych niedostępne',
+  },
+  installationQuality: {
+    complete: 'Dane techniczne kompletne',
+    partial: 'Dane techniczne częściowe — detale brzegowe ręczne',
+    'manual-unverified': 'Dane ręczne / niezweryfikowane przez producenta',
+  },
+  installationReadiness: 'Co można policzyć automatycznie?',
+  counterBattenIssue: {
+    'invalid-counter-batten-section':
+      'Przekrój kontrłat musi mieć skończone dodatnie wymiary.',
+    'invalid-layout-geometry': 'Geometria dachu jest nieprawidłowa.',
+    'unknown-roof-plane': 'Nie znaleziono docelowej połaci kontrłat.',
+    'invalid-source-axis':
+      'Nie można określić osi części elementów konstrukcji.',
+    'unsupported-member-reference':
+      'Część elementów nie ma obsługiwanej referencji osi.',
+  },
+  regularBattenAutomation: 'Regularne rozmierzenie',
+  automationAvailable: 'Dostępne',
+  automationUnavailable: 'Brak danych',
+  manualOwnership: 'RĘCZNIE · wartość projektu',
+  autoOwnership: 'AUTO',
+  manualEdgeReferences:
+    'Okap i kalenica korzystają z wartości projektu. Dane produktu nie określają tych detali; sprawdź je według instrukcji montażu.',
+  howRoofCalcCalculated: 'Jak RoofCalc to policzył?',
+  regularBattenSpan: 'Długość do rozmierzenia',
+  battenTargetGauge: 'Cel rozstawu',
+  battenPreferredReason:
+    'Wybrano rozstaw najbliższy jawnie podanej wartości docelowej, w granicach dopuszczalnego zakresu.',
+  battenPossibleIntervals: 'Możliwe odstępy',
+  battenChosenIntervals: 'Wybrane odstępy / rzędy',
+  firstLastBattenReference: 'Pierwsza / ostatnia oś od brzegu okapu',
+  battenMidpointReason:
+    'Wybrano rozstaw najbliższy środkowi dopuszczalnego zakresu. Środek jest deterministycznym celem obliczenia, a nie zaleceniem producenta.',
+  installationIssue: {
+    'installation-condition-unverified':
+      'Wybrany sposób montażu ma dodatkowy warunek techniczny. Sprawdź jego spełnienie według instrukcji produktu.',
+    'layout-capacity-exceeded':
+      'Układ przekracza limit obliczenia — sprawdź jednostki i dane rozstawu.',
+    'batten-course-spacing-required':
+      'Potrzebne są co najmniej dwa regularne rzędy łat.',
+    'installation-mode-required':
+      'Wybierz sposób montażu — produkt ma kilka wariantów.',
+    'installation-mode-not-found':
+      'Wybrany sposób montażu nie istnieje w danych produktu.',
+    'installation-mode-missing': 'Wybierz sposób montażu produktu.',
+    'gauge-data-missing': 'Brak danych do automatycznego rozmieszczenia łat.',
+    'invalid-product-data':
+      'Niezgodne dane produktu — sprawdź wymiary i zakres łatowania.',
+    'invalid-roof-pitch':
+      'Kąt połaci musi być skończony i większy od 0°, a mniejszy od 90°.',
+    'below-minimum-pitch':
+      'Kąt dachu jest poniżej minimum wybranego sposobu montażu. Dopasowanie łat nie zmieni kąta.',
+    'pitch-data-missing':
+      'Brak minimalnego kąta w danych produktu — zgodność kąta nie jest potwierdzona.',
+    'product-dimensions-review':
+      'Sprawdź dane produktu — wymiary krycia przekraczają wymiary fizyczne.',
+    'manual-gauge-outside-range':
+      'Rozstaw ręczny jest poza dopuszczalnym zakresem produktu.',
+    'invalid-batten-gauge': 'Rozstaw musi być skończony i dodatni.',
+    'invalid-batten-section':
+      'Przekrój łat musi mieć skończone dodatnie wymiary.',
+    'invalid-batten-offset':
+      'Odległości okapu i kalenicy muszą być skończone i nieujemne.',
+    'invalid-layout-geometry': 'Geometria dachu lub otworu jest nieprawidłowa.',
+    'invalid-regular-span':
+      'Odległości brzegowe nie pozostawiają dodatniej długości do rozmierzenia.',
+    'invalid-gauge-range':
+      'Zakres łatowania jest nieprawidłowy — minimum musi być dodatnie i nie większe niż maksimum.',
+    'invalid-preferred-gauge':
+      'Docelowy rozstaw jest poza dopuszczalnym zakresem.',
+    'no-valid-interval-count':
+      'Nie ma całkowitej liczby odstępów pasującej do zakresu i obecnych odległości brzegowych.',
+    'roof-plane-not-found': 'Wybierz istniejące połacie do rozmieszczenia łat.',
+    'tile-covering-missing':
+      'Przypisz dachówkę i uzupełnij jej parametry montażowe.',
+    'target-planes-not-covered':
+      'Przypisz jeden zgodny produkt dachówkowy do wszystkich docelowych połaci.',
+    'covering-source-conflict':
+      'Usuń konflikt pokryć — połać ma więcej niż jednego właściciela.',
+    'auto-source-missing':
+      'Brak jednoznacznych danych do automatycznego rozmierzenia.',
+    'auto-source-conflict':
+      'Dane pokryć są sprzeczne — wybierz jedno pokrycie na połać.',
+  },
   weightPerPiece: 'Masa sztuki (kg)',
   assignedRoofPlanes: 'Przypisane połacie',
   removeCovering: 'Usuń pokrycie',
@@ -210,6 +308,8 @@ export const assemblyPl = {
     invalid: 'Nieprawidłowa geometria',
   },
   coveringIssue: {
+    'invalid-product-data':
+      'Nieprawidłowe dane produktu — sprawdź parametry montażowe.',
     'module-batten-spacing-mismatch':
       'Rzeczywisty regularny rozstaw łat nie odpowiada długości modułu arkusza.',
     'cut-to-length-not-supported':
@@ -711,7 +811,7 @@ export const assemblyPl = {
   axisSegmentCount: 'Liczba osi / odcinków',
   segments: 'Odcinki',
   counterBattenLimited:
-    'Osie kontrłat K1 i J1 są rozliczone. Detal styku kontrłaty przy osi H1 pozostaje częściowy i nie jest zgadywany.',
+    'Ci\u0105gi kontr\u0142at na K1/J1 zosta\u0142y policzone. Detal wzd\u0142u\u017c grzbietu H1 nie jest jeszcze modelowany.',
   geometryHelp: 'Wyjaśnienie geometrii',
   battenGeometricNote:
     'Układ geometryczny. Moduł i przekrój podaje użytkownik; nie jest to dobór pokrycia ani weryfikacja konstrukcyjna.',
@@ -1274,6 +1374,100 @@ export const assemblyEn: typeof assemblyPl = {
   physicalWidth: 'Physical width',
   physicalLength: 'Physical length',
   minimumPitch: 'Minimum roof pitch (°)',
+  installationStatus: {
+    ready: 'Ready',
+    'partially-automatic': 'Partially automated',
+    'decision-required': 'Decision required',
+    incompatible: 'Incompatible',
+    'no-data': 'Missing data',
+  },
+  decisionSource: {
+    'manufacturer-product-data': 'Manufacturer data — stored snapshot',
+    'project-user-input': 'Data entered manually in the project',
+    'universal-domain-rule': 'Mathematical constraint',
+    'derived-geometry': 'Based on structural geometry',
+    unavailable: 'Data source unavailable',
+  },
+  installationQuality: {
+    complete: 'Complete technical data',
+    partial: 'Partial technical data — manual edge details',
+    'manual-unverified': 'Manual data / unverified by the manufacturer',
+  },
+  installationReadiness: 'What can be calculated automatically?',
+  counterBattenIssue: {
+    'invalid-counter-batten-section':
+      'Counter-batten section dimensions must be finite and positive.',
+    'invalid-layout-geometry': 'Roof geometry is invalid.',
+    'unknown-roof-plane': 'Target counter-batten plane not found.',
+    'invalid-source-axis': 'Some structural member axes cannot be determined.',
+    'unsupported-member-reference':
+      'Some members have no supported axis reference.',
+  },
+  regularBattenAutomation: 'Regular course layout',
+  automationAvailable: 'Available',
+  automationUnavailable: 'Missing data',
+  manualOwnership: 'MANUAL · project value',
+  autoOwnership: 'AUTO',
+  manualEdgeReferences:
+    'Eave and ridge use project values. Product data does not define these details; check them against installation instructions.',
+  howRoofCalcCalculated: 'How did RoofCalc calculate this?',
+  regularBattenSpan: 'Regular span',
+  battenTargetGauge: 'Target gauge',
+  battenPreferredReason:
+    'The gauge nearest the explicitly supplied target was selected within the permitted range.',
+  battenPossibleIntervals: 'Possible intervals',
+  battenChosenIntervals: 'Selected intervals / courses',
+  firstLastBattenReference: 'First / last axis from the eave boundary',
+  battenMidpointReason:
+    'The gauge nearest the permitted range midpoint was selected. The midpoint is a deterministic calculation target, not a manufacturer recommendation.',
+  installationIssue: {
+    'installation-condition-unverified':
+      'The selected mode has an additional technical condition. Check it against the product instructions.',
+    'layout-capacity-exceeded':
+      'Layout exceeds calculation capacity — check gauge units and data.',
+    'batten-course-spacing-required':
+      'At least two regular batten courses are required.',
+    'installation-mode-required':
+      'Choose an installation mode — the product has several options.',
+    'installation-mode-not-found':
+      'The selected installation mode is absent from the product data.',
+    'installation-mode-missing': 'Choose a product installation mode.',
+    'gauge-data-missing': 'Missing data for automatic batten placement.',
+    'invalid-product-data':
+      'Invalid product data — check dimensions and the gauge range.',
+    'invalid-roof-pitch':
+      'Roof pitch must be finite, greater than 0° and less than 90°.',
+    'below-minimum-pitch':
+      'Roof pitch is below the selected installation minimum. Batten repair will not change the pitch.',
+    'pitch-data-missing':
+      'Product minimum pitch is missing — pitch compatibility is unconfirmed.',
+    'product-dimensions-review':
+      'Check product data — coverage dimensions exceed physical dimensions.',
+    'manual-gauge-outside-range':
+      'Manual gauge is outside the permitted product range.',
+    'invalid-batten-gauge': 'Gauge must be finite and positive.',
+    'invalid-batten-section':
+      'Batten section dimensions must be finite and positive.',
+    'invalid-batten-offset':
+      'Eave and ridge offsets must be finite and nonnegative.',
+    'invalid-layout-geometry': 'Roof or opening geometry is invalid.',
+    'invalid-regular-span': 'Edge references leave no positive regular span.',
+    'invalid-gauge-range':
+      'Invalid gauge range — minimum must be positive and no greater than maximum.',
+    'invalid-preferred-gauge': 'Target gauge is outside the permitted range.',
+    'no-valid-interval-count':
+      'No whole interval count fits the range and current edge references.',
+    'roof-plane-not-found': 'Select existing target roof planes.',
+    'tile-covering-missing':
+      'Assign a roof tile and complete its installation data.',
+    'target-planes-not-covered':
+      'Assign one compatible tile product to all target planes.',
+    'covering-source-conflict':
+      'Resolve covering conflicts — a plane has several owners.',
+    'auto-source-missing': 'Unambiguous automatic layout data is missing.',
+    'auto-source-conflict':
+      'Conflicting covering data — choose one covering per plane.',
+  },
   weightPerPiece: 'Weight per piece (kg)',
   assignedRoofPlanes: 'Assigned roof planes',
   removeCovering: 'Remove covering',
@@ -1305,6 +1499,8 @@ export const assemblyEn: typeof assemblyPl = {
     invalid: 'Invalid geometry',
   },
   coveringIssue: {
+    'invalid-product-data':
+      'Invalid product data — check installation parameters.',
     'module-batten-spacing-mismatch':
       'The resolved regular batten spacing does not match the sheet module length.',
     'cut-to-length-not-supported':
@@ -1805,7 +2001,7 @@ export const assemblyEn: typeof assemblyPl = {
   axisSegmentCount: 'Axis / segment count',
   segments: 'Segments',
   counterBattenLimited:
-    'K1 and J1 counter-batten axes are resolved. The H1 boundary connection remains partial and is not guessed.',
+    'K1/J1 counter-batten runs have been calculated. The detail along the H1 hip boundary is not modeled yet.',
   geometryHelp: 'Geometry explanation',
   battenGeometricNote:
     'Geometric layout. The user supplies the gauge and section; this is not a covering selection or structural check.',

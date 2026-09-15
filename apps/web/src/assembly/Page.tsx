@@ -99,6 +99,7 @@ import {
   ProjectStartAssistant,
   type ProjectStartMode,
 } from './ProjectStartAssistant';
+import { evaluateBattenInstallation } from './batten-installation';
 import { deriveProjectGuidance } from './project-guidance';
 import { resolveBattenAutoComposition } from './batten-composition';
 import './styles.css';
@@ -427,6 +428,7 @@ export function AssemblyPage() {
         layout: effectiveBattenLayout,
         assignments: coveringAssignments,
         ownership: coveringOwnership,
+        roofPitchDeg: state.template.pitchDeg,
         roofPlaneIds: surfaceProjection.planes.map(
           (plane) => plane.roofPlaneId,
         ),
@@ -436,6 +438,7 @@ export function AssemblyPage() {
       coveringOwnership,
       effectiveBattenLayout,
       surfaceProjection.planes,
+      state.template.pitchDeg,
     ],
   );
   const battenProjection = useMemo(
@@ -452,6 +455,15 @@ export function AssemblyPage() {
       state.projectDocument.project.features,
       state.template,
     ],
+  );
+  const battenInstallationDecision = useMemo(
+    () =>
+      evaluateBattenInstallation({
+        layout: effectiveBattenLayout,
+        result: battenProjection,
+        composition: battenAutoComposition,
+      }),
+    [effectiveBattenLayout, battenProjection, battenAutoComposition],
   );
   const resolvedCoveringLayouts = useMemo(
     () =>
@@ -710,6 +722,10 @@ export function AssemblyPage() {
         battenLayout?.enabled,
       ].filter(Boolean).length,
       layerWarnings:
+        (battenLayout?.enabled &&
+          ['incompatible', 'no-data', 'decision-required'].includes(
+            battenInstallationDecision.status,
+          )) ||
         counterBattenProjection.status === 'partial' ||
         memberSchedule.buildUpRows.some((row) => row.warningKeys.length > 0) ||
         memberSchedule.surfaceBuildUpRows.some(
@@ -721,7 +737,14 @@ export function AssemblyPage() {
       resolvedCoveringCount: resolvedCoveringLayouts.filter(
         (layout) => layout.status === 'resolved',
       ).length,
-      coveringWarnings: coveringOwnership.conflicts.length,
+      coveringWarnings:
+        coveringOwnership.conflicts.length +
+        (battenLayout?.enabled &&
+        ['incompatible', 'no-data', 'decision-required'].includes(
+          battenInstallationDecision.status,
+        )
+          ? 1
+          : 0),
       k1Ready: k1Requirement.status === 'resolved',
       hasResults: memberSchedule.timberRows.length > 0,
     }),
@@ -737,6 +760,7 @@ export function AssemblyPage() {
       coveringAssignments.length,
       resolvedCoveringLayouts,
       coveringOwnership.conflicts.length,
+      battenInstallationDecision.status,
       k1Requirement.status,
       memberSchedule.timberRows.length,
       memberSchedule.buildUpRows,
@@ -752,12 +776,18 @@ export function AssemblyPage() {
       deriveProjectGuidance(
         projectWorkflowFacts,
         projectWorkflowFacts.hasResults,
+        battenLayout?.enabled ? battenInstallationDecision : undefined,
       ).filter(
         (item) =>
           item.targetTask !== workbench.viewPreset ||
           item.severity === 'blocker',
       ),
-    [projectWorkflowFacts, workbench.viewPreset],
+    [
+      projectWorkflowFacts,
+      workbench.viewPreset,
+      battenLayout?.enabled,
+      battenInstallationDecision,
+    ],
   );
   const projectSummary = useMemo(() => {
     const timberFamilies = new Map<string, number>();
@@ -1758,6 +1788,7 @@ export function AssemblyPage() {
                       battensEnabled: !!battenLayout?.enabled,
                       battens: battenProjection,
                       battenAutoSource: battenAutoComposition.source,
+                      battenInstallationDecision,
                       counterBattens: counterBattenProjection,
                       coverings: coveringAssignments,
                       coveringStatuses: resolvedCoveringLayouts.map(

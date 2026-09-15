@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { resolveInstallationMode } from './roof-tile-installation';
+export * from './roof-tile-installation';
 
 export const COVERING_TECHNICAL_SCHEMA_VERSION = 1 as const;
 
@@ -357,7 +359,10 @@ export type CoveringCompatibilityCode =
   | 'below-minimum-pitch'
   | 'batten-gauge-required'
   | 'batten-gauge-below-minimum'
-  | 'batten-gauge-above-maximum';
+  | 'batten-gauge-above-maximum'
+  | 'invalid-roof-pitch'
+  | 'invalid-product-data'
+  | 'invalid-batten-gauge';
 
 export interface CoveringCompatibilityIssue {
   code: CoveringCompatibilityCode;
@@ -381,19 +386,36 @@ export function checkCoveringCompatibility(args: {
 }): CoveringCompatibilityResult {
   const issues: CoveringCompatibilityIssue[] = [];
   const { productSpec, roofPitchDeg, selectedInstallationModeId } = args;
-  if (!Number.isFinite(roofPitchDeg) || roofPitchDeg <= 0)
-    throw new RangeError('invalid_roof_pitch');
+  if (!Number.isFinite(roofPitchDeg) || roofPitchDeg <= 0 || roofPitchDeg >= 90)
+    return {
+      status: 'incompatible',
+      issues: [{ code: 'invalid-roof-pitch', severity: 'error' }],
+    };
+  if (!coveringTechnicalSpecSchema.safeParse(productSpec).success)
+    return {
+      status: 'incompatible',
+      issues: [{ code: 'invalid-product-data', severity: 'error' }],
+    };
+  if (
+    args.battenGaugeMm !== undefined &&
+    (!Number.isFinite(args.battenGaugeMm) || args.battenGaugeMm <= 0)
+  )
+    return {
+      status: 'incompatible',
+      issues: [{ code: 'invalid-batten-gauge', severity: 'error' }],
+    };
 
   if (productSpec.kind === 'roof-tile') {
-    if (!selectedInstallationModeId) {
+    const mode = resolveInstallationMode(
+      productSpec.installationModes,
+      selectedInstallationModeId,
+    );
+    if (!mode && !selectedInstallationModeId) {
       issues.push({
         code: 'installation-mode-required',
         severity: 'incomplete',
       });
     } else {
-      const mode = productSpec.installationModes.find(
-        (candidate) => candidate.id === selectedInstallationModeId,
-      );
       if (!mode)
         issues.push({
           code: 'installation-mode-not-found',

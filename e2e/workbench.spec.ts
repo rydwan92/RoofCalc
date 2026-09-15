@@ -672,7 +672,7 @@ test.describe('V33 — build-up closeout', () => {
       .getByRole('button', { name: 'Automatycznie z pokrycia' })
       .click();
     await expect(inspector.getByTestId('batten-layout-status')).toHaveText(
-      'Gotowe',
+      'Cz\u0119\u015bciowo automatyczne',
     );
     await expect(inspector.getByTestId('batten-auto-source')).toContainText(
       '33',
@@ -742,7 +742,7 @@ test.describe('V33 — build-up closeout', () => {
     await gauge.fill('40');
     await gauge.blur();
     await expect(inspector.getByTestId('batten-layout-status')).toHaveText(
-      'Wymaga uwagi',
+      'Niezgodne',
     );
     if (mobile) await closeMobileSheet(page);
     await openTask(page, 'covering');
@@ -775,5 +775,202 @@ test.describe('V33 — build-up closeout', () => {
       .check();
     await expect(page.locator('.a-covering-counter-batten')).not.toHaveCount(0);
     await captureV33(page, testInfo, 'gable-overlays');
+  });
+});
+
+test.describe('V34A — installation decisions', () => {
+  test('Auto explains its result and recomputes after geometry change; mobile smoke', async ({
+    page,
+  }, testInfo) => {
+    const mobile = testInfo.project.name === 'mobile';
+    await openBuilder(page);
+    await addTile(page, '33', '36');
+    await page
+      .getByRole('button', { name: /Przypisz wszystkie połacie/ })
+      .click();
+    let inspector = await layerInspector(page, 'Łaty', mobile);
+    await inspector
+      .getByRole('button', { name: 'Automatycznie z pokrycia' })
+      .click();
+    await expect(inspector.getByTestId('batten-layout-status')).toHaveAttribute(
+      'data-status',
+      'partially-automatic',
+    );
+    await expect(inspector.getByTestId('batten-auto-source')).toContainText(
+      '33',
+    );
+    const explanation = inspector.getByTestId('batten-auto-explanation');
+    await explanation.locator('summary').click();
+    await expect(explanation).toContainText('Możliwe odstępy');
+    await expect(explanation).toContainText(
+      'Środek jest deterministycznym celem',
+    );
+    const before = await explanation.textContent();
+    for (const size of mobile
+      ? [{ width: 390, height: 844 }]
+      : [
+          { width: 1920, height: 1080 },
+          { width: 1440, height: 900 },
+        ]) {
+      await page.setViewportSize(size);
+      await page.evaluate(() => window.scrollTo(0, 0));
+      if (
+        !(await explanation.evaluate(
+          (element) => (element as HTMLDetailsElement).open,
+        ))
+      )
+        await explanation.locator('summary').click();
+      await expect(explanation.locator('dl').first()).toBeVisible();
+      await expectNoHorizontalOverflow(page);
+      await page.screenshot({
+        path: testInfo.outputPath(`v34a-explanation-${size.width}.png`),
+        fullPage: true,
+      });
+    }
+    if (mobile) {
+      await closeMobileSheet(page);
+      return;
+    }
+    await openTask(page, 'construction');
+    await page
+      .locator('.a-toolbox')
+      .getByRole('button', { name: 'Połać', exact: true })
+      .first()
+      .click();
+    const pitch = await pitchField(page, 'desktop');
+    await pitch.fill('42');
+    await pitch.blur();
+    inspector = await layerInspector(page, 'Łaty', false);
+    await expect(inspector.getByTestId('batten-layout-status')).toHaveAttribute(
+      'data-status',
+      'partially-automatic',
+    );
+    await inspector
+      .getByTestId('batten-auto-explanation')
+      .locator('summary')
+      .click();
+    await expect(
+      inspector.getByTestId('batten-auto-explanation'),
+    ).not.toHaveText(before!);
+    await expect(inspector.getByTestId('batten-decision-issues')).toHaveCount(
+      0,
+    );
+  });
+
+  test('Manual incompatibility previews a safe Auto repair before applying it', async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== 'desktop',
+      'V34A uses one mobile smoke only.',
+    );
+    await openBuilder(page);
+    await addTile(page, '33', '36');
+    await page
+      .getByRole('button', { name: /Przypisz wszystkie połacie/ })
+      .click();
+    const inspector = await layerInspector(page, 'Łaty', false);
+    await inspector
+      .getByRole('button', { name: 'Ręcznie', exact: true })
+      .click();
+    const gauge = inspector.getByLabel('Moduł łat', { exact: true });
+    await gauge.fill('39');
+    await gauge.blur();
+    await expect(inspector.getByTestId('batten-layout-status')).toHaveAttribute(
+      'data-status',
+      'incompatible',
+    );
+    await expect(inspector.getByTestId('batten-decision-issues')).toContainText(
+      'poza dopuszczalnym zakresem',
+    );
+    await expect(
+      page.getByTestId('project-workflow').locator('[data-stage="layers"]'),
+    ).toHaveAttribute('data-status', 'warning');
+    await expect(inspector.getByTestId('batten-repair-preview')).toContainText(
+      '39 cm →',
+    );
+    await expect(gauge).toHaveValue('39');
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({
+      path: testInfo.outputPath('v34a-repair-preview.png'),
+      fullPage: true,
+    });
+    await inspector
+      .getByRole('button', { name: 'Dopasuj łaty automatycznie' })
+      .click();
+    await expect(inspector.getByTestId('batten-repair-preview')).toHaveCount(0);
+    await expect(inspector.getByTestId('batten-layout-status')).toHaveAttribute(
+      'data-status',
+      'partially-automatic',
+    );
+    await expect(inspector.getByTestId('batten-decision-issues')).toHaveCount(
+      0,
+    );
+  });
+
+  test('Changing product in Manual preserves spacing and updates compatibility', async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== 'desktop',
+      'V34A uses one mobile smoke only.',
+    );
+    // Catalogue access is explicitly unavailable; product replacement still works offline.
+    await page.route('**/api/catalog/**', (route) =>
+      route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: '{"error":{"code":"catalog_unavailable"}}',
+      }),
+    );
+    await openBuilder(page);
+    await addTile(page, '33', '36');
+    await page
+      .getByRole('button', { name: /Przypisz wszystkie połacie/ })
+      .click();
+    let inspector = await layerInspector(page, 'Łaty', false);
+    await inspector
+      .getByRole('button', { name: 'Ręcznie', exact: true })
+      .click();
+    const gauge = inspector.getByLabel('Moduł łat', { exact: true });
+    await gauge.fill('34.5');
+    await gauge.blur();
+    await expect(inspector.getByTestId('batten-layout-status')).toHaveAttribute(
+      'data-status',
+      'ready',
+    );
+    await openTask(page, 'covering');
+    await page
+      .getByRole('button', { name: 'Zmień produkt', exact: true })
+      .click();
+    await page
+      .getByRole('button', { name: 'Użyj parametrów ręcznych', exact: true })
+      .click();
+    const assistant = page.getByTestId('covering-add-assistant');
+    for (const [field, value] of Object.entries({
+      name: 'Nowa dachówka',
+      physicalWidth: '33',
+      physicalLength: '42',
+      coverWidth: '30',
+      gaugeMin: '30',
+      gaugeMax: '32',
+      minimumPitch: '19',
+    }))
+      await assistant.locator(`[data-manual-field="${field}"]`).fill(value);
+    await assistant.getByTestId('confirm-manual-covering').click();
+    await expect(
+      page.locator('.a-covering-assignments button[aria-pressed]'),
+    ).toHaveCount(1);
+    inspector = await layerInspector(page, 'Łaty', false);
+    await expect(
+      inspector.getByLabel('Moduł łat', { exact: true }),
+    ).toHaveValue('34.5');
+    await expect(inspector.getByTestId('batten-layout-status')).toHaveAttribute(
+      'data-status',
+      'incompatible',
+    );
+    await expect(inspector.getByTestId('batten-auto-source')).toContainText(
+      'Nowa dachówka',
+    );
   });
 });

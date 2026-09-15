@@ -209,13 +209,17 @@ describe('counter-batten geometry', () => {
 
   it('rejects non-finite sections and never emits non-finite geometry', () => {
     const roof = template();
-    expect(() =>
+    expect(
       resolveCounterBattenLayout({
         template: roof,
         skeleton: createRoofSkeleton(roof),
         layout: { ...layout, widthMm: Number.NaN },
       }),
-    ).toThrow('invalid_counter_batten_section');
+    ).toMatchObject({
+      status: 'partial',
+      rows: [],
+      warnings: ['invalid-counter-batten-section'],
+    });
     expect(
       JSON.stringify(
         resolveCounterBattenLayout({

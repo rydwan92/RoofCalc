@@ -67,7 +67,13 @@ export function ProjectWorkflowStrip({
           >
             <div>
               <strong>{t(`assembly.guidance.item.${item.kind}.title`)}</strong>
-              <p>{t(`assembly.guidance.item.${item.kind}.description`)}</p>
+              <p>
+                {t(
+                  item.detailIssue
+                    ? `assembly.installationIssue.${item.detailIssue}`
+                    : `assembly.guidance.item.${item.kind}.description`,
+                )}
+              </p>
             </div>
             {item.action && (
               <button
@@ -92,7 +98,13 @@ export function ProjectWorkflowStrip({
                   <strong>
                     {t(`assembly.guidance.item.${item.kind}.title`)}
                   </strong>
-                  <p>{t(`assembly.guidance.item.${item.kind}.description`)}</p>
+                  <p>
+                    {t(
+                      item.detailIssue
+                        ? `assembly.installationIssue.${item.detailIssue}`
+                        : `assembly.guidance.item.${item.kind}.description`,
+                    )}
+                  </p>
                 </div>
                 {item.action && (
                   <button

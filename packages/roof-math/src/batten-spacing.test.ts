@@ -3,6 +3,54 @@ import { resolveAutoBattenSpacing } from './batten-spacing';
 
 describe('automatic batten spacing', () => {
   it.each([
+    { minimumGaugeMm: Number.NaN },
+    { maximumGaugeMm: Number.POSITIVE_INFINITY },
+    { minimumGaugeMm: -1 },
+    { minimumGaugeMm: 0 },
+    { firstStationMm: Number.NaN },
+    { lastStationMm: Number.POSITIVE_INFINITY },
+    { preferredGaugeMm: 329 },
+    { preferredGaugeMm: 361 },
+    { minimumGaugeMm: 1e-20, maximumGaugeMm: 2e-20 },
+  ])('fails safe for invalid or unbounded input %o', (change) => {
+    expect(
+      resolveAutoBattenSpacing({
+        firstStationMm: 250,
+        lastStationMm: 7380,
+        minimumGaugeMm: 330,
+        maximumGaugeMm: 360,
+        ...change,
+      }).status,
+    ).toBe('unresolved');
+  });
+
+  it('exposes the hand-checked 713 cm explanation without UI recomputation', () => {
+    const result = resolveAutoBattenSpacing({
+      firstStationMm: 250,
+      lastStationMm: 7380,
+      minimumGaugeMm: 330,
+      maximumGaugeMm: 360,
+    });
+    expect(result).toMatchObject({
+      status: 'resolved',
+      regularSpanMm: 7130,
+      minimumGaugeMm: 330,
+      maximumGaugeMm: 360,
+      targetGaugeMm: 345,
+      minimumIntervalCount: 20,
+      maximumIntervalCount: 21,
+      intervalCount: 21,
+      courseCount: 22,
+    });
+    if (result.status !== 'resolved') throw new Error('resolved');
+    expect(result.actualGaugeMm).toBeCloseTo(339.5238095, 7);
+    expect(
+      result.stations
+        .slice(1)
+        .every((station, index) => station > result.stations[index]!),
+    ).toBe(true);
+  });
+  it.each([
     {
       name: 'exact fit',
       span: 4000,

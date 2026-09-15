@@ -2,6 +2,10 @@ import type {
   ProjectWorkflowAction,
   ProjectWorkflowFacts,
 } from './project-workflow';
+import type {
+  BattenInstallationDecision,
+  BattenInstallationIssue,
+} from './batten-installation';
 
 export type ProjectGuidanceSeverity =
   'blocker' | 'warning' | 'info' | 'success';
@@ -15,6 +19,7 @@ export type ProjectGuidanceKind =
   | 'export-ready';
 
 export interface ProjectGuidanceItem {
+  detailIssue?: BattenInstallationIssue['code'];
   kind: ProjectGuidanceKind;
   severity: ProjectGuidanceSeverity;
   action?: ProjectWorkflowAction | 'openExport';
@@ -34,6 +39,7 @@ const priority: Record<ProjectGuidanceSeverity, number> = {
 export function deriveProjectGuidance(
   facts: ProjectWorkflowFacts,
   exportReady: boolean,
+  installation?: BattenInstallationDecision,
 ): ProjectGuidanceItem[] {
   const items: ProjectGuidanceItem[] = [];
   if (!facts.constructionReady)
@@ -67,6 +73,10 @@ export function deriveProjectGuidance(
       action: 'addCovering',
       targetTask: 'covering',
       source: 'covering',
+      detailIssue:
+        installation?.issues.find(
+          (issue) => issue.category === 'hard-constraint',
+        )?.code ?? installation?.issues[0]?.code,
     });
   else if (
     facts.coveringWarnings > 0 ||
@@ -78,6 +88,10 @@ export function deriveProjectGuidance(
       action: 'reviewCovering',
       targetTask: 'covering',
       source: 'covering',
+      detailIssue:
+        installation?.issues.find(
+          (issue) => issue.category === 'hard-constraint',
+        )?.code ?? installation?.issues[0]?.code,
     });
   if (facts.k1Ready)
     items.push({

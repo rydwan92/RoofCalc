@@ -205,6 +205,21 @@ and their totals are never added together.
 - The left build-up tool group is the primary layer navigation. The centre
   summary is status-first and may open a layer, but the workbench must not add a
   second strip of equally prominent membrane/counter-batten/batten tabs.
+
+- V34A keeps the shared segmented Auto/Manual pattern with mandatory text.
+  Actual gauge leads; range is secondary, authority/explanation tertiary.
+  Automatic regular spacing and manually retained edge references are named
+  independently. Manual values remain validated; hard incompatibility cannot
+  become ready because a field is manual. Missing technical data and a required
+  mode selection have separate states from incompatibility.
+- The compact calculation disclosure consumes per-plane solver evidence directly.
+  It shows exact span, permitted range, midpoint target, possible/selected whole
+  intervals, actual gauge, course count and first/last axis references.
+- Repair previews show gauge, affected named planes and row count before one
+  canonical action. Unrelated dimensions/offsets are retained. Separate hard
+  pitch/geometry/data failures suppress gauge repair. Counter-battens describe
+  placement from structural axes without a fictitious manual spacing mode; H1
+  is a partial information limit, not a red layer failure.
 - Batten spacing exposes two explicit intents: **Automatic from covering** and
   **Manual**. Automatic mode names the source product/range and shows the actual
   solved gauge and course count. Manual mode always retains an exact numeric

@@ -160,6 +160,28 @@ export interface LayersSection {
       courseCount?: number;
       axisCount?: number;
       segmentCount?: number;
+      decisionStatus?:
+        | 'ready'
+        | 'partially-automatic'
+        | 'decision-required'
+        | 'incompatible'
+        | 'no-data';
+      decisionIssueCodes?: string[];
+      gaugeSource?:
+        'manufacturer-product-data' | 'project-user-input' | 'unavailable';
+      eaveOffsetMm?: number;
+      ridgeOffsetMm?: number;
+      // Per-plane solver evidence: never infer one gauge for unequal planes.
+      autoPlans?: {
+        planeId: string;
+        regularSpanMm: number;
+        targetGaugeMm: number;
+        intervalCount: number;
+        courseCount: number;
+        actualGaugeMm: number;
+        firstStationMm: number;
+        lastStationMm: number;
+      }[];
     };
   }[];
 }

@@ -1,3 +1,5 @@
+import { resolveInstallationMode } from './roof-tile-installation';
+import { roofTileTechnicalSpecSchema } from './index';
 import type {
   CoveringBattenRow,
   CoveringOpeningGeometry,
@@ -19,7 +21,8 @@ export type RoofTileLayoutIssueCode =
   | 'batten-gauge-above-maximum'
   | 'below-minimum-pitch'
   | 'roof-plane-not-found'
-  | 'invalid-layout-geometry';
+  | 'invalid-layout-geometry'
+  | 'invalid-product-data';
 
 export interface RoofTileLayoutIssue {
   code: RoofTileLayoutIssueCode;
@@ -376,23 +379,29 @@ function createPosition(args: {
 }
 
 function finiteInput(input: RoofTileLayoutInput) {
-  return [
-    ...input.roofSurfaceGeometry.flatMap((plane) => [
-      plane.pitchDeg,
-      plane.netAreaMm2,
-      ...plane.localPolygon.flatMap((point) => [point.uMm, point.vMm]),
-    ]),
-    ...input.battens.flatMap((row) => [
-      row.stationVMm,
-      ...row.segments.flatMap((segment) => [segment.fromUMm, segment.toUMm]),
-    ]),
-    ...input.openings.flatMap((opening) => [
-      opening.fromUMm,
-      opening.toUMm,
-      opening.fromVMm,
-      opening.toVMm,
-    ]),
-  ].every(Number.isFinite);
+  return (
+    [
+      ...input.roofSurfaceGeometry.flatMap((plane) => [
+        plane.pitchDeg,
+        plane.netAreaMm2,
+        ...plane.localPolygon.flatMap((point) => [point.uMm, point.vMm]),
+      ]),
+      ...input.battens.flatMap((row) => [
+        row.stationVMm,
+        ...row.segments.flatMap((segment) => [segment.fromUMm, segment.toUMm]),
+      ]),
+      ...input.openings.flatMap((opening) => [
+        opening.fromUMm,
+        opening.toUMm,
+        opening.fromVMm,
+        opening.toVMm,
+      ]),
+    ].every(Number.isFinite) &&
+    input.roofSurfaceGeometry.every(
+      (plane) =>
+        plane.pitchDeg > 0 && plane.pitchDeg < 90 && plane.netAreaMm2 > 0,
+    )
+  );
 }
 
 function uniqueSorted<T extends string>(values: readonly T[]): T[] {
@@ -409,14 +418,25 @@ export const roofTileLayoutStrategy = {
         code: 'invalid-layout-geometry',
         severity: 'error',
       });
-    if (!input.selectedInstallationModeId)
+    if (
+      !input.selectedInstallationModeId &&
+      input.productSpec.installationModes.length !== 1
+    )
       sharedIssues.push({
         code: 'installation-mode-required',
         severity: 'incomplete',
       });
-    const mode = input.productSpec.installationModes.find(
-      (candidate) => candidate.id === input.selectedInstallationModeId,
-    );
+    const validProduct = roofTileTechnicalSpecSchema.safeParse(
+      input.productSpec,
+    ).success;
+    if (!validProduct)
+      sharedIssues.push({ code: 'invalid-product-data', severity: 'error' });
+    const mode = validProduct
+      ? resolveInstallationMode(
+          input.productSpec.installationModes,
+          input.selectedInstallationModeId,
+        )
+      : undefined;
     if (input.selectedInstallationModeId && !mode)
       sharedIssues.push({
         code: 'installation-mode-not-found',

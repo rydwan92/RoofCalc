@@ -48,6 +48,14 @@ import type { WorkbenchSelectionContext } from './selection';
 import { useAssembly } from './store';
 import { SpacingSummary } from './Summary';
 import { memberInstanceCode } from './workbench';
+import {
+  BattenAutoRepair,
+  BattenInstallationDetails,
+} from './BattenInstallation';
+import {
+  evaluateBattenInstallation,
+  uniformBattenGauge,
+} from './batten-installation';
 import type { BattenAutoComposition } from './batten-composition';
 
 export function Inspector({
@@ -449,6 +457,17 @@ function CounterBattenInspector({
   const activePlaneIds = layout.roofPlaneIds ?? planeIds;
   const update = (field: 'widthMm' | 'heightMm', value: number) =>
     state.setCounterBattenLayout({ ...layout, [field]: value });
+  const decisionStatus = result.warnings.some(
+    (code) =>
+      code === 'invalid-counter-batten-section' ||
+      code === 'invalid-layout-geometry',
+  )
+    ? 'incompatible'
+    : !result.rows.length
+      ? 'no-data'
+      : result.status === 'partial'
+        ? 'partially-automatic'
+        : 'ready';
   return (
     <section
       className="a-layer-inspector"
@@ -456,6 +475,9 @@ function CounterBattenInspector({
     >
       <h3>{t('assembly.counterBattens')}</h3>
       <p>{t('assembly.counterBattenPlacement')}</p>
+      <p className="a-installation-authority">
+        {t('assembly.decisionSource.derived-geometry')}
+      </p>
       <h4>{t('assembly.section')}</h4>
       <DraftLengthField
         label={t('assembly.width')}
@@ -517,15 +539,13 @@ function CounterBattenInspector({
         </div>
       </dl>
       <p
-        className={`a-layer-status ${result.status === 'partial' ? 'is-warning' : 'is-ready'}`}
+        className={`a-installation-status is-${decisionStatus}`}
         data-testid="counter-batten-layout-status"
       >
         {t(
           result.status === 'disabled'
             ? 'assembly.disabled'
-            : result.status === 'partial'
-              ? 'assembly.buildUpPartial'
-              : 'assembly.buildUpReady',
+            : `assembly.installationStatus.${decisionStatus}`,
         )}
       </p>
       {selected && (
@@ -535,9 +555,16 @@ function CounterBattenInspector({
           {t('assembly.segments').toLowerCase()}
         </p>
       )}
-      {result.status === 'partial' && (
+      {result.warnings.includes('hip-boundary-detail-unresolved') && (
         <p className="a-limit-note">{t('assembly.counterBattenLimited')}</p>
       )}
+      {result.warnings
+        .filter((code) => code !== 'hip-boundary-detail-unresolved')
+        .map((code) => (
+          <p className="a-limit-note" key={code}>
+            {t(`assembly.counterBattenIssue.${code}`)}
+          </p>
+        ))}
     </section>
   );
 }
@@ -563,7 +590,7 @@ function BattenLayoutInspector({
     state.setBattenLayout({ ...layout, [field]: value, enabled: true });
   };
   const mode = layout.mode ?? 'manual';
-  const actualGaugeMm = result.planes[0]?.actualGaugeMm;
+  const actualGaugeMm = uniformBattenGauge(result);
   const setMode = (next: 'manual' | 'auto-from-covering') =>
     state.setBattenLayout({
       ...layout,
@@ -577,16 +604,7 @@ function BattenLayoutInspector({
           : layout.gaugeMm,
       enabled: true,
     });
-  const source = composition.source;
-  const ready =
-    result.status === 'resolved' &&
-    (source.status !== 'resolved' ||
-      result.planes.every(
-        (plane) =>
-          plane.actualGaugeMm !== undefined &&
-          plane.actualGaugeMm >= source.minimumGaugeMm &&
-          plane.actualGaugeMm <= source.maximumGaugeMm,
-      ));
+  const decision = evaluateBattenInstallation({ layout, result, composition });
   const selectedRow = result.battens.find(
     (batten) => batten.id === state.workbench.selectedId,
   );
@@ -594,7 +612,11 @@ function BattenLayoutInspector({
   const length = (value: number) =>
     `${formatLength(value, state.unit, i18n.language)} ${state.unit}`;
   return (
-    <section className="a-batten-inspector" data-testid="batten-inspector">
+    <section
+      className="a-batten-inspector"
+      data-testid="batten-inspector"
+      data-decision-status={decision.status}
+    >
       <h3>{t('assembly.battens')}</h3>
       <div
         className="a-segmented"
@@ -617,7 +639,7 @@ function BattenLayoutInspector({
         </button>
       </div>
       {composition.source.status === 'resolved' ? (
-        <p className="a-layer-status is-ready" data-testid="batten-auto-source">
+        <p className="a-installation-range" data-testid="batten-auto-source">
           {t('assembly.battenAutoSourceReady', {
             product: composition.productLabel ?? t('assembly.roofTile'),
             min: length(composition.source.minimumGaugeMm),
@@ -642,19 +664,25 @@ function BattenLayoutInspector({
           onCommit={(value) => update('gaugeMm', value)}
         />
       )}
-      {mode === 'manual' && composition.source.status === 'resolved' && (
-        <button
-          className="a-button a-primary"
-          onClick={() => setMode('auto-from-covering')}
-        >
-          {t('assembly.fitBattensAutomatically')}
-        </button>
-      )}
+      <BattenAutoRepair layout={layout} />
       <h4>{t('assembly.battenResult')}</h4>
       <dl className="a-batten-results">
         <div className="a-batten-primary-gauge">
-          <dt>{t('assembly.actualBattenGauge')}</dt>
-          <dd>{actualGaugeMm ? length(actualGaugeMm) : '—'}</dd>
+          <dt>
+            {t('assembly.actualBattenGauge')} ·{' '}
+            {t(
+              mode === 'auto-from-covering'
+                ? 'assembly.autoOwnership'
+                : 'assembly.manualOwnership',
+            )}
+          </dt>
+          <dd>
+            {actualGaugeMm
+              ? length(actualGaugeMm)
+              : result.planes.some((plane) => plane.actualGaugeMm !== undefined)
+                ? t('assembly.perPlaneResults')
+                : '—'}
+          </dd>
         </div>
         <div>
           <dt>{t('assembly.battenRows')}</dt>
@@ -670,18 +698,11 @@ function BattenLayoutInspector({
           </dd>
         </div>
       </dl>
-      <p
-        className={`a-layer-status ${ready ? 'is-ready' : 'is-warning'}`}
-        data-testid="batten-layout-status"
-      >
-        {t(
-          result.status === 'disabled'
-            ? 'assembly.disabled'
-            : ready
-              ? 'assembly.buildUpReady'
-              : 'assembly.buildUpAttention',
-        )}
-      </p>
+      <BattenInstallationDetails
+        decision={decision}
+        composition={composition}
+        result={result}
+      />
       <details className="a-layer-help">
         <summary>{t('assembly.geometryHelp')}</summary>
         <p>{t('assembly.battenGeometricNote')}</p>
@@ -711,13 +732,17 @@ function BattenLayoutInspector({
               ['ridgeOffsetMm', 'battenRidgeOffset'],
             ] as const
           ).map(([field, label]) => (
-            <DraftLengthField
-              key={field}
-              label={t(`assembly.${label}`)}
-              value={layout[field] ?? 0}
-              min={0}
-              onCommit={(value) => update(field, value)}
-            />
+            <div key={field}>
+              <small className="a-input-ownership">
+                {t('assembly.manualOwnership')}
+              </small>
+              <DraftLengthField
+                label={t(`assembly.${label}`)}
+                value={layout[field] ?? 0}
+                min={0}
+                onCommit={(value) => update(field, value)}
+              />
+            </div>
           ))}
         </div>
       </details>

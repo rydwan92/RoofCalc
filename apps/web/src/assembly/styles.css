@@ -2799,6 +2799,68 @@
   color: var(--a-muted);
   font-size: 8px;
 }
+.a-installation-status {
+  padding: 7px 9px;
+  border: 1px solid var(--a-line);
+  border-left: 3px solid var(--a-muted);
+  border-radius: 6px;
+  font-weight: 700;
+}
+.a-installation-status.is-ready {
+  border-left-color: var(--a-selection);
+}
+.a-installation-status.is-partially-automatic {
+  border-left-color: var(--a-selection);
+  background: var(--a-selection-soft);
+}
+.a-installation-status.is-incompatible {
+  border-left-color: #b44429;
+  background: #fff2ed;
+}
+.a-batten-inspector[data-decision-status='incompatible']
+  .a-batten-primary-gauge {
+  background: #fff2ed;
+  color: #a13e25;
+}
+.a-batten-inspector[data-decision-status='no-data'] .a-batten-primary-gauge,
+.a-batten-inspector[data-decision-status='decision-required']
+  .a-batten-primary-gauge {
+  background: var(--a-background);
+}
+.a-installation-status.is-decision-required {
+  border-left-color: #c48725;
+}
+.a-installation-authority,
+.a-installation-range,
+.a-input-ownership {
+  color: var(--a-muted);
+  font-size: 11px;
+}
+.a-installation-issues {
+  padding-left: 16px;
+  font-size: 11px;
+}
+.a-installation-issues [data-category='hard-constraint'] {
+  color: #a13e25;
+}
+.a-installation-facts {
+  display: grid;
+  gap: 5px;
+  font-size: 11px;
+}
+.a-installation-facts div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 6px;
+}
+.a-installation-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.a-batten-repair {
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
 .a-batten-results dd {
   margin-top: 3px;
   color: #70401e;

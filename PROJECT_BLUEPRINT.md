@@ -1297,6 +1297,62 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+**Iteration:** `034A - Roofing installation intelligence`
+
+**Status:** `COMPLETE - required V34A flows pass; final full gates pending`
+
+**Completed:** Snapshot-only tile authority, independent automation capabilities,
+explicit multi-mode selection, hard compatibility versus recommendation/limits,
+validated manual ownership, per-plane factual Auto explanations and execution
+provenance. Safe repair previews show gauge, named plane scope and rows, then
+apply one history action retaining section/gauge/edge intent. Product replacement
+preserves assignment identity/planes/layout rather than adding a conflict. Auto
+recomputes on product/geometry changes; Manual retains and revalidates values.
+Invalid tile/batten/counter-batten numeric inputs return structured evidence.
+
+**Changed / WIP files:** `packages/covering-core/src/{index.ts,tile-layout.ts,
+roof-tile-installation.ts (new),roof-tile-installation.test.ts (new)}`;
+`packages/roof-math/src/{batten-spacing.ts,batten-spacing.test.ts,roof-features.ts,
+roof-features.test.ts,counter-battens.ts,counter-battens.test.ts}`;
+`packages/document-core/src/index.ts`; `apps/web/src/assembly/{batten-composition.ts,
+batten-composition.test.ts,batten-installation.ts (new),batten-installation.test.ts
+(new),BattenInstallation.tsx (new),BattenInstallation.test.tsx (new),Inspector.tsx,
+CoveringWorkspace.tsx,MaterialSchedule.tsx,Page.tsx,Page.test.tsx,ProjectWorkflow.tsx,
+project-guidance.ts,export-adapter.ts,export-adapter.test.ts,ExecutionExport.tsx,
+translations.ts,styles.css}`; `e2e/workbench.spec.ts`; this checkpoint,
+architecture V34A (new), architecture index, UX contract and targeted tile rule
+research (new). No WIP, schema change, database work, cost work, commit or push.
+
+**Assumptions:** Stored snapshots are the calculation input. Manual snapshots
+never claim manufacturer authority. A sole mode is unambiguous; several require
+selection. Existing project eave/ridge references are retained and explicitly
+manual, never invented from tile dimensions. Midpoint is a deterministic target,
+not a manufacturer recommendation. Declared technical conditions remain
+unverified. A 100,000-interval resource limit is not a physical roofing rule.
+
+**Validation:** Clean baseline `b41bcca` (V33 skonczone), actual verify 705/705
+and both builds. Focused rule/UI/architecture/fixture checks pass. Fresh-build
+V34A Playwright: 4 passed; 2 deliberately desktop-only cases excluded on mobile
+(one mobile smoke, as requested). Final full verify/E2E pending. Existing
+Page.tsx projectSession dependency lint warning remains, zero lint errors.
+Early E2E failures were incorrect new-test navigation/labels, repaired without
+raising timeouts or suppressing source errors.
+
+**Visual / mobile QA:** Real Chromium / Playwright, screenshots at 1920x1080,
+1440x900 and 390x844 for explanation/ownership and repair. Browser tool inventory
+returned no browsers and `iab` unavailable; no native Browser session is claimed.
+Required desktop flows and mobile smoke pass with no horizontal overflow.
+
+**Known limitations:** Eave/ridge manufacturer details, verified preferred gauge
+technical fields and optional persisted manual-reason notes are deferred. H1
+counter-batten detail remains explicitly partial; no H1 fabrication or structural
+certification. Existing snapshots still parse without a migration.
+
+**NEXT ACTION:** Await the user's separately scoped V34B prompt; do not start it
+or implement cost/database work automatically.
+
+---
+
 **Iteration:** `033B - Finish existing Roof Build-up Intelligence`
 
 **Status:** `COMPLETE - required A/B desktop and mobile flows pass`

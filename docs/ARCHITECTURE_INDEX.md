@@ -1,6 +1,6 @@
 # RoofCalc / CieślaCalc — Architecture Index
 
-**This is the current-state map, after V33.** Read it after `PROJECT_BLUEPRINT.md`
+**This is the current-state map, after V34A.** Read it after `PROJECT_BLUEPRINT.md`
 and before touching code. It describes what exists today, not the history of how
 it got here. Historical `ARCHITECTURE_V*.md` documents stay authoritative for the
 subsystem they introduced and should be opened only when changing that subsystem.
@@ -94,6 +94,13 @@ the pre-V33 manual behaviour. Hip counter-battens now resolve physical K1/J1
 axes and opening interruptions while H1 boundary connection detail remains an
 explicit structured partial result. See
 `docs/ARCHITECTURE_V33_ROOF_BUILDUP_INTELLIGENCE.md`.
+
+V34A adds snapshot-only tile installation authority/capability in `covering-core`
+and derived batten decision status in the web composition. A single mode is
+unambiguous; multiple modes require selection. Eave/ridge references stay manual
+project inputs. Per-plane explanations are carried by the V33 solver result and
+copied to typed execution evidence. No persisted schema or dependency changes.
+See `docs/ARCHITECTURE_V34A_ROOFING_INSTALLATION_INTELLIGENCE.md`.
 
 ---
 
@@ -356,6 +363,8 @@ pnpm e2e      # real-browser smoke, desktop 1440x900 and mobile 390x844 (pnpm e2
 | `docs/ARCHITECTURE_V31_CREATOR_AND_COVERING_EXPERIENCE.md` | guided project start, derived guidance and covering-studio UX |
 | `docs/ARCHITECTURE_V32_STRUCTURAL_SYSTEMS_AND_EXECUTION.md` | roof structural system, collar tie, K1 ridge-connection variants |
 | `docs/ARCHITECTURE_V33_ROOF_BUILDUP_INTELLIGENCE.md` | automatic batten spacing, covering composition boundary, hip K1/J1 counter-battens |
+| `docs/ARCHITECTURE_V34A_ROOFING_INSTALLATION_INTELLIGENCE.md` | decision authority, tile capabilities, hard compatibility, manual ownership and explainable repair |
+| `docs/domain/ROOF_TILE_INSTALLATION_RULES.md` | manufacturer evidence for regular gauge, pitch and manual boundary references |
 | `docs/FUTURE_EXECUTION_SEMANTICS_AUDIT.md` + `docs/domain/*` | touching coverage, overlap or connection semantics |
 | `docs/ARCHITECTURE_FUTURE_COMPOUND_ROOF_SCENE.md` | touching IDs, planes or document shape |
 | `docs/ARCHITECTURE_COVERING_CATALOG_AND_PRICING_BOUNDARY.md` | covering, catalogue or future pricing |

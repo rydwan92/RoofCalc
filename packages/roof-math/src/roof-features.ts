@@ -10,7 +10,9 @@ import type {
 import {
   resolveAutoBattenSpacing,
   type AutoBattenSpacingIssueCode,
+  type AutoBattenSpacingResult,
 } from './batten-spacing';
+import { roofTemplateSchema } from './roof-template';
 
 export interface RoofPlaneBasis {
   id: string;
@@ -51,7 +53,15 @@ export interface BattenLayoutResult {
 }
 
 export type BattenLayoutIssueCode =
-  AutoBattenSpacingIssueCode | 'auto-source-missing' | 'auto-source-conflict';
+  | AutoBattenSpacingIssueCode
+  | 'auto-source-missing'
+  | 'auto-source-conflict'
+  | 'invalid-batten-gauge'
+  | 'invalid-batten-section'
+  | 'invalid-batten-offset'
+  | 'invalid-layout-geometry'
+  | 'roof-plane-not-found'
+  | 'batten-course-spacing-required';
 
 export interface BattenPlaneLayoutResult {
   roofPlaneId: string;
@@ -64,6 +74,7 @@ export interface BattenPlaneLayoutResult {
   actualGaugeMm?: number;
   stations: number[];
   issues: BattenLayoutIssueCode[];
+  autoPlan?: Extract<AutoBattenSpacingResult, { status: 'resolved' }>;
 }
 
 export type BattenAutoSource =
@@ -806,6 +817,14 @@ export function resolveBattenLayout(args: {
   autoSource?: BattenAutoSource;
 }): BattenLayoutResult {
   const mode = battenLayoutMode(args.layout);
+  const invalid = (issue: BattenLayoutIssueCode): BattenLayoutResult => ({
+    status: 'incomplete',
+    mode,
+    battens: [],
+    totalLengthMm: 0,
+    planes: [],
+    issues: [issue],
+  });
   if (!args.layout.enabled)
     return {
       status: 'disabled',
@@ -819,21 +838,37 @@ export function resolveBattenLayout(args: {
     mode === 'manual' &&
     (!Number.isFinite(args.layout.gaugeMm) || !(args.layout.gaugeMm > 0))
   )
-    throw new RangeError('invalid_batten_gauge');
+    return invalid('invalid-batten-gauge');
   if (
     !Number.isFinite(args.layout.battenWidthMm) ||
     !Number.isFinite(args.layout.battenHeightMm) ||
     !(args.layout.battenWidthMm > 0) ||
     !(args.layout.battenHeightMm > 0)
   )
-    throw new RangeError('invalid_batten_section');
+    return invalid('invalid-batten-section');
   if (
     !Number.isFinite(args.layout.eaveOffsetMm) ||
     args.layout.eaveOffsetMm < 0 ||
     !Number.isFinite(args.layout.ridgeOffsetMm ?? 0) ||
     (args.layout.ridgeOffsetMm ?? 0) < 0
   )
-    throw new RangeError('invalid_batten_offset');
+    return invalid('invalid-batten-offset');
+  if (
+    !roofTemplateSchema.safeParse(args.template).success ||
+    (args.features ?? []).some(
+      (feature) =>
+        feature.kind === 'roof-window' &&
+        (![
+          feature.position.uMm,
+          feature.position.vMm,
+          feature.widthMm,
+          feature.heightMm,
+        ].every(Number.isFinite) ||
+          feature.widthMm <= 0 ||
+          feature.heightMm <= 0),
+    )
+  )
+    return invalid('invalid-layout-geometry');
   const planeIds =
     args.layout.roofPlaneIds ??
     (args.template.type === 'gable'
@@ -844,6 +879,17 @@ export function resolveBattenLayout(args: {
           'roof-plane:front',
           'roof-plane:rear',
         ]);
+  const knownPlanes =
+    args.template.type === 'gable'
+      ? ['roof-plane:left', 'roof-plane:right']
+      : [
+          'roof-plane:left',
+          'roof-plane:right',
+          'roof-plane:front',
+          'roof-plane:rear',
+        ];
+  if (!planeIds.length || planeIds.some((id) => !knownPlanes.includes(id)))
+    return invalid('roof-plane-not-found');
   if (mode === 'auto-from-covering' && args.autoSource?.status !== 'resolved') {
     const issue: BattenLayoutIssueCode =
       args.autoSource?.status === 'conflict'
@@ -867,6 +913,25 @@ export function resolveBattenLayout(args: {
     const maxV = Math.max(...basis.polygon.map((item) => item.vMm));
     const firstStationMm = minV + args.layout.eaveOffsetMm;
     const lastStationMm = maxV - (args.layout.ridgeOffsetMm ?? 0);
+    if (
+      firstStationMm < minV ||
+      firstStationMm >= maxV ||
+      lastStationMm > maxV ||
+      lastStationMm <= minV ||
+      lastStationMm <= firstStationMm
+    ) {
+      planes.push({
+        roofPlaneId,
+        status: 'unresolved',
+        firstStationMm,
+        lastStationMm,
+        regularSpanMm: lastStationMm - firstStationMm,
+        courseCount: 0,
+        stations: [],
+        issues: ['invalid-regular-span'],
+      });
+      return [];
+    }
     const spacing =
       mode === 'auto-from-covering'
         ? resolveAutoBattenSpacing({
@@ -877,6 +942,22 @@ export function resolveBattenLayout(args: {
             preferredGaugeMm: autoConstraint!.preferredGaugeMm,
           })
         : undefined;
+    if (
+      mode === 'manual' &&
+      (lastStationMm - firstStationMm) / args.layout.gaugeMm > 100_000
+    ) {
+      planes.push({
+        roofPlaneId,
+        status: 'unresolved',
+        firstStationMm,
+        lastStationMm,
+        regularSpanMm: lastStationMm - firstStationMm,
+        courseCount: 0,
+        stations: [],
+        issues: ['layout-capacity-exceeded'],
+      });
+      return [];
+    }
     const stations = spacing
       ? spacing.status === 'resolved'
         ? spacing.stations
@@ -891,10 +972,13 @@ export function resolveBattenLayout(args: {
             result.push(stationMm);
           return result;
         })();
-    const planeIssues = spacing?.issues ?? [];
+    const planeIssues: BattenLayoutIssueCode[] =
+      spacing?.issues ??
+      (stations.length < 2 ? ['batten-course-spacing-required'] : []);
     planes.push({
       roofPlaneId,
-      status: spacing?.status ?? 'resolved',
+      status:
+        spacing?.status ?? (planeIssues.length ? 'unresolved' : 'resolved'),
       firstStationMm,
       lastStationMm,
       regularSpanMm: lastStationMm - firstStationMm,
@@ -906,11 +990,12 @@ export function resolveBattenLayout(args: {
       actualGaugeMm:
         spacing?.status === 'resolved'
           ? spacing.actualGaugeMm
-          : stations.length
+          : mode === 'manual' && stations.length > 1
             ? args.layout.gaugeMm
             : undefined,
       stations,
       issues: planeIssues,
+      ...(spacing?.status === 'resolved' ? { autoPlan: spacing } : {}),
     });
     const windows = (args.features ?? []).filter(
       (feature): feature is RoofWindowFeature =>

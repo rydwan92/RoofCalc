@@ -30,6 +30,8 @@ import type {
 } from '@cieslacalc/timber-model';
 import type { K1CuttingRequirement } from './k1-cutting-adapter';
 import type { K1SessionPlan } from './K1CuttingPlan';
+import type { BattenInstallationDecision } from './batten-installation';
+import { uniformBattenGauge } from './batten-installation';
 
 type ResolvedK1 = Extract<K1CuttingRequirement, { status: 'resolved' }>;
 export type ExportFacts = {
@@ -48,6 +50,7 @@ export type ExportFacts = {
   battensEnabled: boolean;
   battens: BattenLayoutResult;
   battenAutoSource: BattenAutoSource;
+  battenInstallationDecision?: BattenInstallationDecision;
   coverings: CoveringAssignmentSpec[];
   counterBattens: CounterBattenLayoutResult;
   coveringStatuses: {
@@ -285,7 +288,44 @@ export function createExportCandidates(facts: ExportFacts): SectionCandidate[] {
               layoutFacts: {
                 mode: facts.battens.mode,
                 status: facts.battens.status,
-                actualGaugeMm: facts.battens.planes[0]?.actualGaugeMm,
+                actualGaugeMm: uniformBattenGauge(facts.battens),
+                ...(facts.battenInstallationDecision
+                  ? {
+                      decisionStatus: facts.battenInstallationDecision.status,
+                      decisionIssueCodes:
+                        facts.battenInstallationDecision.issues.map(
+                          (issue) => issue.code,
+                        ),
+                      gaugeSource:
+                        facts.battenInstallationDecision.gaugeSource ===
+                        'manufacturer-product-data'
+                          ? ('manufacturer-product-data' as const)
+                          : facts.battenInstallationDecision.gaugeSource ===
+                              'project-user-input'
+                            ? ('project-user-input' as const)
+                            : ('unavailable' as const),
+                      eaveOffsetMm:
+                        facts.battenInstallationDecision.eaveReference.valueMm,
+                      ridgeOffsetMm:
+                        facts.battenInstallationDecision.ridgeReference.valueMm,
+                    }
+                  : {}),
+                autoPlans: facts.battens.planes.flatMap((plane) =>
+                  plane.autoPlan
+                    ? [
+                        {
+                          planeId: plane.roofPlaneId,
+                          regularSpanMm: plane.autoPlan.regularSpanMm,
+                          targetGaugeMm: plane.autoPlan.targetGaugeMm,
+                          intervalCount: plane.autoPlan.intervalCount,
+                          courseCount: plane.autoPlan.courseCount,
+                          actualGaugeMm: plane.autoPlan.actualGaugeMm,
+                          firstStationMm: plane.autoPlan.firstStationMm,
+                          lastStationMm: plane.autoPlan.lastStationMm,
+                        },
+                      ]
+                    : [],
+                ),
                 ...(facts.battenAutoSource.status === 'resolved'
                   ? {
                       minimumGaugeMm: facts.battenAutoSource.minimumGaugeMm,
@@ -498,7 +538,14 @@ export function createExportCandidates(facts: ExportFacts): SectionCandidate[] {
     {
       kind: 'layers',
       readiness: layerRows.length
-        ? layerRows.some((row) => row.warnings.length)
+        ? layerRows.some(
+            (row) =>
+              row.warnings.length ||
+              (row.layoutFacts?.decisionStatus &&
+                ['incompatible', 'no-data', 'decision-required'].includes(
+                  row.layoutFacts.decisionStatus,
+                )),
+          )
           ? 'warning'
           : 'available'
         : 'unavailable',

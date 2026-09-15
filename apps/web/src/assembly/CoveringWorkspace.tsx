@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AlertTriangle, Trash2 } from 'lucide-react';
 import {
+  resolveInstallationMode,
   type CoveringAssignmentSpec,
   type CoveringKind,
   type CoveringProductSelection,
@@ -25,6 +26,7 @@ import {
   roofPlaneLabelKey,
 } from './covering-presentation';
 import { ResultBasis, ResultLayerProgress } from './ResultBasis';
+import { BattenAutoRepair } from './BattenInstallation';
 import { CoveringAddAssistant } from './CoveringAddAssistant';
 
 const CatalogProductPicker = lazy(() =>
@@ -336,6 +338,7 @@ export function CoveringWorkspace({
   const { t, i18n } = useTranslation();
   const [selectedPlaneId, setSelectedPlaneId] = useState<string>();
   const [catalogKind, setCatalogKind] = useState<CoveringKind>();
+  const [catalogReplacementId, setCatalogReplacementId] = useState<string>();
   const [adding, setAdding] = useState(!assignment);
   const [manualFallbackKind, setManualFallbackKind] = useState<CoveringKind>();
   const [catalogDetached, setCatalogDetached] = useState(false);
@@ -456,28 +459,11 @@ export function CoveringWorkspace({
     previousCatalogRef.current = assignment?.product.catalogRef;
   }, [assignment?.product.catalogRef]);
 
-  const openCatalog = (kind: CoveringKind) => {
+  const openCatalog = (kind: CoveringKind, replacementId?: string) => {
     state.setMobilePanel('none');
     setAdding(false);
     setCatalogKind(kind);
-  };
-
-  const fitBattensAutomatically = () => {
-    if (!assignment || !isTileAssignment(assignment)) return;
-    const current = state.projectDocument.project.buildUp.battenLayout ?? {
-      enabled: true,
-      battenHeightMm: 40,
-      battenWidthMm: 60,
-      gaugeMm: 350,
-      eaveOffsetMm: 250,
-      ridgeOffsetMm: 0,
-    };
-    state.setBattenLayout({
-      ...current,
-      enabled: true,
-      mode: 'auto-from-covering',
-      roofPlaneIds: [...assignment.roofPlaneIds],
-    });
+    setCatalogReplacementId(replacementId);
   };
 
   const addAssignment = (
@@ -512,21 +498,40 @@ export function CoveringWorkspace({
         };
       next.selectedInstallationModeId =
         spec.kind === 'roof-tile' || spec.kind === 'standing-seam'
-          ? spec.installationModes[0]?.id
+          ? spec.installationModes.length === 1
+            ? spec.installationModes[0]?.id
+            : undefined
           : undefined;
     }
-    state.setCoveringAssignments([...assignments, next]);
+    const replacement = assignments.find(
+      (item) => item.id === catalogReplacementId,
+    );
+    if (replacement) {
+      next.id = replacement.id;
+      next.roofPlaneIds = [...replacement.roofPlaneIds];
+      if (replacement.layoutIntent?.kind === next.layoutIntent?.kind)
+        next.layoutIntent = structuredClone(replacement.layoutIntent);
+    }
+    state.setCoveringAssignments(
+      replacement
+        ? assignments.map((item) => (item.id === replacement.id ? next : item))
+        : [...assignments, next],
+    );
     state.setSelectedCoveringAssignment(next.id);
     setCatalogKind(undefined);
     setAdding(false);
     setManualFallbackKind(undefined);
+    setCatalogReplacementId(undefined);
   };
 
   const picker = catalogKind ? (
     <Suspense fallback={<div className="a-loading-panel" />}>
       <CatalogProductPicker
         kind={catalogKind}
-        onClose={() => setCatalogKind(undefined)}
+        onClose={() => {
+          setCatalogKind(undefined);
+          setCatalogReplacementId(undefined);
+        }}
         onManual={() => {
           setCatalogKind(undefined);
           setManualFallbackKind(catalogKind);
@@ -617,7 +622,10 @@ export function CoveringWorkspace({
         <button
           className="a-button"
           onClick={() =>
-            openCatalog(assignment.product.technicalSpecSnapshot.kind)
+            openCatalog(
+              assignment.product.technicalSpecSnapshot.kind,
+              assignment.id,
+            )
           }
         >
           {t('assembly.coveringAdd.changeProduct')}
@@ -820,9 +828,19 @@ export function CoveringWorkspace({
           </div>
           {layout.issueCodes.some((code) => code.startsWith('batten-')) &&
             isTileAssignment(assignment) && (
-              <button onClick={fitBattensAutomatically}>
-                {t('assembly.fitBattensAutomatically')}
-              </button>
+              <BattenAutoRepair
+                targetPlaneIds={assignment.roofPlaneIds}
+                layout={
+                  state.projectDocument.project.buildUp.battenLayout ?? {
+                    enabled: true,
+                    gaugeMm: 350,
+                    eaveOffsetMm: 250,
+                    ridgeOffsetMm: 0,
+                    battenWidthMm: 60,
+                    battenHeightMm: 40,
+                  }
+                }
+              />
             )}
         </div>
       )}
@@ -1332,15 +1350,16 @@ function TileCoveringEditor({
     detachCatalogRevisionAfterTechnicalEdit(assignment, draft);
     replace(draft);
   };
-  const mode = assignment?.product.technicalSpecSnapshot.installationModes.find(
-    (candidate) => candidate.id === assignment.selectedInstallationModeId,
+  const mode = resolveInstallationMode(
+    assignment.product.technicalSpecSnapshot.installationModes,
+    assignment.selectedInstallationModeId,
   );
   const updateMode = (mutate: (draft: NonNullable<typeof mode>) => void) =>
     update((draft) => {
-      const selected =
-        draft.product.technicalSpecSnapshot.installationModes.find(
-          (candidate) => candidate.id === draft.selectedInstallationModeId,
-        );
+      const selected = resolveInstallationMode(
+        draft.product.technicalSpecSnapshot.installationModes,
+        draft.selectedInstallationModeId,
+      );
       if (selected) mutate(selected);
     });
 
@@ -1365,7 +1384,7 @@ function TileCoveringEditor({
       <label className="a-field">
         <span>{t('assembly.installationMode')}</span>
         <select
-          value={assignment.selectedInstallationModeId ?? ''}
+          value={mode?.id ?? ''}
           onChange={(event) =>
             update((draft) => {
               draft.selectedInstallationModeId =

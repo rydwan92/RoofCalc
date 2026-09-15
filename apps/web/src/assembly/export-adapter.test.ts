@@ -6,7 +6,15 @@ import {
   convertRoofTemplate,
   gableTemplateFromAssembly,
   resolveRoofSurfaceGeometry,
+  resolveBattenLayout,
+  roofPlaneIds,
 } from '@cieslacalc/roof-math';
+import {
+  resolvePrimaryCoveringAssignments,
+  type CoveringAssignmentSpec,
+} from '@cieslacalc/covering-core';
+import { resolveBattenAutoComposition } from './batten-composition';
+import { evaluateBattenInstallation } from './batten-installation';
 import { createExportCandidates } from './export-adapter';
 import {
   createK1CuttingRequirement,
@@ -70,6 +78,90 @@ function facts(hip = false) {
 }
 
 describe('execution export adapter', () => {
+  it('exports the same per-plane explanation, authority and manual references as the workbench', () => {
+    const input = facts();
+    const layout = {
+      enabled: true,
+      mode: 'auto-from-covering' as const,
+      gaugeMm: 390,
+      battenHeightMm: 40,
+      battenWidthMm: 60,
+      eaveOffsetMm: 250,
+      ridgeOffsetMm: 40,
+    };
+    const assignment: CoveringAssignmentSpec = {
+      id: 'tile',
+      roofPlaneIds: roofPlaneIds(input.template),
+      product: {
+        technicalSpecSnapshot: {
+          schemaVersion: 1,
+          kind: 'roof-tile',
+          installationModes: [
+            {
+              id: 'standard',
+              coverWidthMm: 300,
+              gaugeRangeMm: { min: 330, max: 360 },
+              minPitchDeg: 19,
+            },
+          ],
+        },
+      },
+    };
+    const composition = resolveBattenAutoComposition({
+      layout,
+      assignments: [assignment],
+      ownership: resolvePrimaryCoveringAssignments([assignment]),
+      roofPlaneIds: roofPlaneIds(input.template),
+      roofPitchDeg: input.template.pitchDeg,
+    });
+    const battens = resolveBattenLayout({
+      template: input.template,
+      layout,
+      autoSource: composition.source,
+    });
+    const decision = evaluateBattenInstallation({
+      layout,
+      result: battens,
+      composition,
+    });
+    const schedule = createRoofMemberSchedule({
+      skeleton: input.skeleton,
+      buildUp: battens.battens.map((row) => ({
+        id: row.id,
+        familyKey: 'L',
+        memberKind: 'batten' as const,
+        lengthMm: row.usableLengthMm,
+        section: { widthMm: 60, depthMm: 40 },
+      })),
+    });
+    const candidate = createExportCandidates({
+      ...input,
+      schedule,
+      battensEnabled: true,
+      battens,
+      battenAutoSource: composition.source,
+      battenInstallationDecision: decision,
+    }).find((row) => row.kind === 'layers');
+    expect(candidate?.section?.kind).toBe('layers');
+    if (candidate?.section?.kind !== 'layers') throw new Error('layers');
+    const exported = candidate.section.rows[0]!.layoutFacts!;
+    expect(exported).toMatchObject({
+      decisionStatus: 'partially-automatic',
+      gaugeSource: 'project-user-input',
+      eaveOffsetMm: 250,
+      ridgeOffsetMm: 40,
+      decisionIssueCodes: [],
+    });
+    expect(exported.autoPlans![0]).toMatchObject({
+      planeId: battens.planes[0]!.roofPlaneId,
+      intervalCount: battens.planes[0]!.autoPlan!.intervalCount,
+      courseCount: battens.planes[0]!.autoPlan!.courseCount,
+      actualGaugeMm: battens.planes[0]!.autoPlan!.actualGaugeMm,
+      targetGaugeMm: battens.planes[0]!.autoPlan!.targetGaugeMm,
+      firstStationMm: battens.planes[0]!.autoPlan!.firstStationMm,
+      lastStationMm: battens.planes[0]!.autoPlan!.lastStationMm,
+    });
+  });
   it.each([false, true])(
     'uses resolved gable/hip facts without inventing H1/J1 fabrication (hip=%s)',
     (hip) => {
@@ -338,6 +430,7 @@ describe('execution export adapter', () => {
       maximumGaugeMm: 380,
       planeCount: 1,
       courseCount: 11,
+      autoPlans: [],
     });
     expect(layers.rows.find((row) => row.code === 'KL')?.layoutFacts).toEqual({
       status: 'partial',

@@ -92,11 +92,16 @@ describe('batten auto composition', () => {
     });
   });
 
-  it('keeps a missing installation mode explicit', () => {
+  it('requires explicit selection among multiple installation modes', () => {
     const assignment = {
       ...tileAssignment('covering:tile'),
       selectedInstallationModeId: undefined,
     };
+    if (assignment.product.technicalSpecSnapshot.kind === 'roof-tile')
+      assignment.product.technicalSpecSnapshot.installationModes.push({
+        ...assignment.product.technicalSpecSnapshot.installationModes[0]!,
+        id: 'alternative',
+      });
     expect(
       resolveBattenAutoComposition({
         layout,

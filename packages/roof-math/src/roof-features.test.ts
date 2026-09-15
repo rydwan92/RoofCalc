@@ -258,7 +258,7 @@ describe('roof feature geometry', () => {
 
   it('rejects non-finite or non-positive batten geometry before row iteration', () => {
     const roof = template();
-    expect(() =>
+    expect(
       resolveBattenLayout({
         template: roof,
         layout: {
@@ -269,7 +269,11 @@ describe('roof feature geometry', () => {
           eaveOffsetMm: 0,
         },
       }),
-    ).toThrow('invalid_batten_gauge');
+    ).toMatchObject({
+      status: 'incomplete',
+      battens: [],
+      issues: ['invalid-batten-gauge'],
+    });
   });
 
   it.each([

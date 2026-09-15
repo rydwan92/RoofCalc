@@ -14,6 +14,7 @@ import {
   resolveRoofPlaneBasis,
 } from './roof-features';
 import { roofPlaneIds, roofPlaneSide } from './roof-surface';
+import { roofTemplateSchema } from './roof-template';
 
 const EPSILON = 1e-7;
 
@@ -21,7 +22,9 @@ export type CounterBattenWarning =
   | 'hip-boundary-detail-unresolved'
   | 'unknown-roof-plane'
   | 'invalid-source-axis'
-  | 'unsupported-member-reference';
+  | 'unsupported-member-reference'
+  | 'invalid-counter-batten-section'
+  | 'invalid-layout-geometry';
 
 export interface CounterBattenIssue {
   code: CounterBattenWarning;
@@ -166,7 +169,41 @@ export function resolveCounterBattenLayout(args: {
     args.layout.widthMm <= 0 ||
     args.layout.heightMm <= 0
   )
-    throw new RangeError('invalid_counter_batten_section');
+    return {
+      status: 'partial',
+      rows: [],
+      totalVisibleLengthMm: 0,
+      warnings: ['invalid-counter-batten-section'],
+      issues: [{ code: 'invalid-counter-batten-section' }],
+      resolvedAxisCount: 0,
+      visibleSegmentCount: 0,
+      roofPlaneIds: args.layout.roofPlaneIds ?? [],
+    };
+  if (
+    !roofTemplateSchema.safeParse(args.template).success ||
+    (args.features ?? []).some(
+      (feature) =>
+        feature.kind === 'roof-window' &&
+        (![
+          feature.position.uMm,
+          feature.position.vMm,
+          feature.widthMm,
+          feature.heightMm,
+        ].every(Number.isFinite) ||
+          feature.widthMm <= 0 ||
+          feature.heightMm <= 0),
+    )
+  )
+    return {
+      status: 'partial',
+      rows: [],
+      totalVisibleLengthMm: 0,
+      warnings: ['invalid-layout-geometry'],
+      issues: [{ code: 'invalid-layout-geometry' }],
+      resolvedAxisCount: 0,
+      visibleSegmentCount: 0,
+      roofPlaneIds: args.layout.roofPlaneIds ?? [],
+    };
   const knownPlanes = roofPlaneIds(args.template);
   const requestedPlanes = args.layout.roofPlaneIds ?? knownPlanes;
   const unknown = requestedPlanes.filter((id) => !knownPlanes.includes(id));

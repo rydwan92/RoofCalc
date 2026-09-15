@@ -2119,13 +2119,13 @@ describe('dual-mode parametric workbench', () => {
         .gaugeMm,
     ).toBe(automaticGauge);
     expect(screen.getByTestId('batten-layout-status').textContent).toBe(
-      'Wymaga uwagi',
+      'Niezgodne',
     );
     fireEvent.click(
       screen.getByRole('button', { name: 'Automatycznie z pokrycia' }),
     );
     expect(screen.getByTestId('batten-layout-status').textContent).toBe(
-      'Gotowe',
+      'Cz\u0119\u015bciowo automatyczne',
     );
     expect(
       useAssembly.getState().projectDocument.project.buildUp.battenLayout!

@@ -1,3 +1,7 @@
+import {
+  evaluateBattenInstallation,
+  uniformBattenGauge,
+} from './batten-installation';
 import { ChevronRight, Shapes, Layers3, Grid3X3 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -411,9 +415,19 @@ export function MaterialSchedule({
                   )}
                 </strong>
                 <small>
-                  {battens.planes[0]?.actualGaugeMm
-                    ? `${t('assembly.actualBattenGauge')}: ${displayLength(battens.planes[0].actualGaugeMm, state.unit, i18n.language)}`
-                    : t('assembly.battenAutoIncomplete')}
+                  {t(
+                    `assembly.installationStatus.${evaluateBattenInstallation({ layout: state.projectDocument.project.buildUp.battenLayout!, result: battens, composition: battenAutoComposition }).status}`,
+                  )}{' '}
+                  ?{' '}
+                  {uniformBattenGauge(battens)
+                    ? `${t('assembly.actualBattenGauge')}: ${displayLength(uniformBattenGauge(battens)!, state.unit, i18n.language)}`
+                    : t(
+                        battens.planes.some(
+                          (plane) => plane.actualGaugeMm !== undefined,
+                        )
+                          ? 'assembly.perPlaneResults'
+                          : 'assembly.battenAutoIncomplete',
+                      )}
                   {battenAutoComposition.source.status === 'resolved'
                     ? ` · ${displayLength(battenAutoComposition.source.minimumGaugeMm, state.unit, i18n.language)}–${displayLength(battenAutoComposition.source.maximumGaugeMm, state.unit, i18n.language)}`
                     : ''}

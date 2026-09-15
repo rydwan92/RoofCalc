@@ -2,7 +2,9 @@ import type {
   CoveringAssignmentSpec,
   PrimaryCoveringAssignmentResolution,
   RoofTileInstallationMode,
+  RoofTileInstallationEvaluation,
 } from '@cieslacalc/covering-core';
+import { evaluateRoofTileInstallation } from '@cieslacalc/covering-core';
 import type { BattenAutoSource } from '@cieslacalc/roof-math';
 import type { BattenLayoutSpec } from '@cieslacalc/timber-model';
 
@@ -18,6 +20,7 @@ export interface BattenAutoComposition {
   assignmentId?: string;
   installationMode?: RoofTileInstallationMode;
   productLabel?: string;
+  installation?: RoofTileInstallationEvaluation;
 }
 
 function isRoofTile(assignment: CoveringAssignmentSpec) {
@@ -33,6 +36,7 @@ export function resolveBattenAutoComposition(args: {
   assignments: readonly CoveringAssignmentSpec[];
   ownership: PrimaryCoveringAssignmentResolution;
   roofPlaneIds: readonly string[];
+  roofPitchDeg?: number;
 }): BattenAutoComposition {
   const targets = args.layout.roofPlaneIds ?? [...args.roofPlaneIds];
   if (
@@ -71,14 +75,21 @@ export function resolveBattenAutoComposition(args: {
       source: { status: 'missing' },
       reason: 'tile-covering-missing',
     };
-  const installationMode = spec.installationModes.find(
-    (mode) => mode.id === assignment.selectedInstallationModeId,
-  );
+  const installation = evaluateRoofTileInstallation({
+    productSpec: spec,
+    selectedInstallationModeId: assignment.selectedInstallationModeId,
+    roofPitchDeg: args.roofPitchDeg ?? Number.NaN,
+    source: assignment.product.catalogRef
+      ? 'manufacturer-product-data'
+      : 'project-user-input',
+  });
+  const installationMode = installation.mode;
   if (!installationMode)
     return {
       source: { status: 'missing' },
       reason: 'installation-mode-missing',
       assignmentId: assignment.id,
+      installation,
     };
   return {
     source: {
@@ -88,6 +99,7 @@ export function resolveBattenAutoComposition(args: {
     },
     assignmentId: assignment.id,
     installationMode,
+    installation,
     productLabel:
       assignment.product.displaySnapshot?.familyName ??
       assignment.product.displaySnapshot?.manufacturer,
