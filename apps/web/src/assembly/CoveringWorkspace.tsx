@@ -343,6 +343,7 @@ export function CoveringWorkspace({
   const [drawingDetail, setDrawingDetail] = useState<
     'auto' | 'detailed' | 'simplified'
   >('auto');
+  const [showCovering, setShowCovering] = useState(true);
   const [showBattens, setShowBattens] = useState(true);
   const [showCounterBattens, setShowCounterBattens] = useState(false);
   const issueSummaries = useMemo(() => groupedCoveringIssues(layout), [layout]);
@@ -873,6 +874,14 @@ export function CoveringWorkspace({
             <label>
               <input
                 type="checkbox"
+                checked={showCovering}
+                onChange={(event) => setShowCovering(event.target.checked)}
+              />
+              {t('assembly.covering')}
+            </label>
+            <label>
+              <input
+                type="checkbox"
                 checked={showBattens}
                 onChange={(event) => setShowBattens(event.target.checked)}
               />
@@ -913,7 +922,7 @@ export function CoveringWorkspace({
                   ).toLocaleString(i18n.language, {
                     maximumFractionDigits: 1,
                   })}{' '}
-                  mÂ˛ Â·{' '}
+                  m² ·{' '}
                   {t(
                     assignment.roofPlaneIds.includes(id)
                       ? 'assembly.coveringAdd.assigned'
@@ -1050,6 +1059,56 @@ export function CoveringWorkspace({
                 className="a-covering-plane"
                 points={polygonPoints(selectedSurface.polygon)}
               />
+              {showCovering &&
+                !simplified &&
+                fragments.map((fragment) => (
+                  <polygon
+                    key={fragment.id}
+                    className={`a-covering-fragment ${layout?.kind === 'standing-seam' || layout?.kind === 'modular-sheet-cut-to-length' ? 'a-panel-fragment' : 'a-tile-fragment'} is-${fragment.classification}`}
+                    points={polygonPoints(fragment.polygon)}
+                  />
+                ))}
+              {showCovering &&
+                simplified &&
+                selectedLayout &&
+                'columns' in selectedLayout &&
+                selectedLayout.columns.flatMap((column) =>
+                  column.runs.map((run) => (
+                    <line
+                      key={run.id}
+                      className="a-panel-simplified-line"
+                      clipPath="url(#covering-plane-detail-clip)"
+                      x1={(column.nominalFromUMm + column.nominalToUMm) / 2}
+                      x2={(column.nominalFromUMm + column.nominalToUMm) / 2}
+                      y1={run.fromVMm}
+                      y2={run.toVMm}
+                    />
+                  )),
+                )}
+              {showCovering &&
+                simplified &&
+                (selectedLayout && 'courses' in selectedLayout
+                  ? selectedLayout.courses.map((course) => ({
+                      id: course.id,
+                      stationVMm: course.stationVMm,
+                    }))
+                  : selectedLayout && 'rows' in selectedLayout
+                    ? selectedLayout.rows.map((row) => ({
+                        id: row.id,
+                        stationVMm: row.nominalFromVMm,
+                      }))
+                    : []
+                )?.map((course) => (
+                  <line
+                    key={course.id}
+                    className="a-tile-course-line"
+                    clipPath="url(#covering-plane-detail-clip)"
+                    x1={bounds.minU}
+                    x2={bounds.maxU}
+                    y1={course.stationVMm}
+                    y2={course.stationVMm}
+                  />
+                ))}
               {layout?.kind !== 'standing-seam' &&
                 layout?.kind !== 'modular-sheet-cut-to-length' &&
                 showBattens &&
@@ -1082,53 +1141,6 @@ export function CoveringWorkspace({
                       />
                     )),
                   )}
-              {!simplified &&
-                fragments.map((fragment) => (
-                  <polygon
-                    key={fragment.id}
-                    className={`a-covering-fragment ${layout?.kind === 'standing-seam' || layout?.kind === 'modular-sheet-cut-to-length' ? 'a-panel-fragment' : 'a-tile-fragment'} is-${fragment.classification}`}
-                    points={polygonPoints(fragment.polygon)}
-                  />
-                ))}
-              {simplified &&
-                selectedLayout &&
-                'columns' in selectedLayout &&
-                selectedLayout.columns.flatMap((column) =>
-                  column.runs.map((run) => (
-                    <line
-                      key={run.id}
-                      className="a-panel-simplified-line"
-                      clipPath="url(#covering-plane-detail-clip)"
-                      x1={(column.nominalFromUMm + column.nominalToUMm) / 2}
-                      x2={(column.nominalFromUMm + column.nominalToUMm) / 2}
-                      y1={run.fromVMm}
-                      y2={run.toVMm}
-                    />
-                  )),
-                )}
-              {simplified &&
-                (selectedLayout && 'courses' in selectedLayout
-                  ? selectedLayout.courses.map((course) => ({
-                      id: course.id,
-                      stationVMm: course.stationVMm,
-                    }))
-                  : selectedLayout && 'rows' in selectedLayout
-                    ? selectedLayout.rows.map((row) => ({
-                        id: row.id,
-                        stationVMm: row.nominalFromVMm,
-                      }))
-                    : []
-                )?.map((course) => (
-                  <line
-                    key={course.id}
-                    className="a-tile-course-line"
-                    clipPath="url(#covering-plane-detail-clip)"
-                    x1={bounds.minU}
-                    x2={bounds.maxU}
-                    y1={course.stationVMm}
-                    y2={course.stationVMm}
-                  />
-                ))}
               {selectedSurface.openingPolygons.map((opening) => (
                 <polygon
                   key={opening.featureId}
@@ -1278,7 +1290,7 @@ function PlaneAssignmentCards({
                     i18n.language,
                     { maximumFractionDigits: 1 },
                   )}{' '}
-                  mÂ˛
+                  m²
                 </small>
               </span>
               <b>

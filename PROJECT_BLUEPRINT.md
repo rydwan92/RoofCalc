@@ -1297,28 +1297,51 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
-> V33 started 2026-09-15 from clean `main` at `bf7cdd7` under the attached
-> Roof Build-up Intelligence contract. Baseline source was clean and matched the
-> requested commit. `pnpm verify` reached 684/688 tests: three known stale
-> catalogue-picker expectations (`Wybierz` versus the current `Szczegóły`) and
-> one ProjectManager timeout; typecheck/lint/format were clean apart from the
-> recorded `Page.tsx` exhaustive-deps warning. Baseline E2E reused a stale
-> pre-V31 `dist` because verification stopped before build, so all 26 scenarios
-> failed at the absent start assistant; rebuild and rerun are required before
-> treating this as source evidence. Definition of Ready:
-> `docs/ARCHITECTURE_V33_ROOF_BUILDUP_INTELLIGENCE.md`.
+**Iteration:** `033B - Finish existing Roof Build-up Intelligence`
 
-**Iteration:** `033 — Roof Build-up Intelligence + Professional Workbench UX`
+**Status:** `COMPLETE - required A/B desktop and mobile flows pass`
 
-**Status:** `IN PROGRESS`
+**Completed:** Preserved the existing V33 solver, composition, research and
+schedule/export implementation. Finished Auto-to-Manual seeding from the
+resolved gauge, live product-range compatibility, compact batten/counter-batten
+inspectors, explicit ready/attention/partial states and independent covering /
+batten / counter-batten overlays. Local covering guidance is shown once in the
+active task. Fixed the mobile covering header overflow and the counter-batten
+section-height label. Hip plane ownership uses the existing structured side
+lookup without extending the opaque-ID architecture allowlist.
 
-**Current work:** Implement additive Auto/Manual batten intent, a pure exact
-whole-course solver, snapshot composition, grouped/actionable covering issues,
-hip K1/J1 counter-battens with partial H1 boundaries, compact layer/workflow UX,
-overlays, material/export facts and regression/E2E coverage.
+**Changed / WIP files:** `packages/roof-math/src/counter-battens.ts`;
+`apps/web/src/assembly/{Inspector.tsx,CoveringWorkspace.tsx,Page.tsx,styles.css,
+translations.ts,Page.test.tsx,MobilePage.test.tsx}`; `e2e/workbench.spec.ts`;
+`docs/ARCHITECTURE_V33_ROOF_BUILDUP_INTELLIGENCE.md`; this checkpoint. No WIP.
 
-**NEXT ACTION:** implement and test the pure auto-batten and hip counter-batten
-domain slices, then connect them once in `Page.tsx` before changing presentation.
+**Assumptions / sample evidence:** Existing snapshot gauge range is the neutral
+solver constraint. An 8 x 8 m hip roof, 35 degrees, 0.5 m eave and 33-36 cm tile
+range resolves to 34.96 cm, 64 batten rows and 274.9 m. Counter-battens expose
+36 K1/J1 axes, 119.64 m, with an explicit partial H1 boundary result. Invalid
+40 cm manual spacing is repaired by one Auto action; warnings disappear.
+Canonical data retains intent only; overlay visibility remains transient.
+
+**Validation:** Baseline verify failed 703/705: opaque-ID plane vocabulary and
+stale mobile routing assertion; both repaired. Catalogue and ProjectManager
+passed at baseline. Final serial `pnpm verify` passes all gates, 74 test files / 705 tests and both
+builds. Final `pnpm e2e` passes 32/32 (44.8 s), including required V33 A/B in
+both desktop and mobile projects. `git diff --check` passes.
+The existing Page.tsx exhaustive-deps lint warning remains (zero lint errors).
+
+**Visual / mobile QA:** Playwright screenshots inspected at 1920x1080,
+1440x900, 1024x768 and 390x844 for Auto, grouped manual warning and gable/hip
+batten/counter-batten overlays. Both required flows pass at desktop/mobile;
+390 px has no horizontal overflow. Native Firefox control was unavailable
+under the tool's Windows browser policy; QA evidence is Playwright and rendered
+screenshots, not a claimed native manual session.
+
+**Known limitations:** H1 boundary counter-batten face geometry is intentionally
+not modeled. Useful K1/J1 output stays partial; it is not a fabrication blank,
+purchase quantity or structural verification. No V34 work, commit or push.
+
+**NEXT ACTION:** Await the user's first short, targeted V34 block. V33 requires
+no further implementation; do not restart it.
 
 ---
 

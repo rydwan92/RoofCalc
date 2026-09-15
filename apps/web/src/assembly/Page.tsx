@@ -752,8 +752,12 @@ export function AssemblyPage() {
       deriveProjectGuidance(
         projectWorkflowFacts,
         projectWorkflowFacts.hasResults,
+      ).filter(
+        (item) =>
+          item.targetTask !== workbench.viewPreset ||
+          item.severity === 'blocker',
       ),
-    [projectWorkflowFacts],
+    [projectWorkflowFacts, workbench.viewPreset],
   );
   const projectSummary = useMemo(() => {
     const timberFamilies = new Map<string, number>();

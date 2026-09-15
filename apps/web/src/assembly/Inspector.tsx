@@ -455,6 +455,7 @@ function CounterBattenInspector({
       data-testid="counter-batten-inspector"
     >
       <h3>{t('assembly.counterBattens')}</h3>
+      <p>{t('assembly.counterBattenPlacement')}</p>
       <h4>{t('assembly.section')}</h4>
       <DraftLengthField
         label={t('assembly.width')}
@@ -463,32 +464,35 @@ function CounterBattenInspector({
         onCommit={(value) => update('widthMm', value)}
       />
       <DraftLengthField
-        label={t('assembly.height')}
+        label={t('assembly.counterBattenDepth')}
         value={layout.heightMm}
         min={1}
         onCommit={(value) => update('heightMm', value)}
       />
-      <fieldset className="a-plane-choice">
-        <legend>{t('assembly.roofPlanes')}</legend>
-        {planeIds.map((planeId) => (
-          <label key={planeId}>
-            <input
-              type="checkbox"
-              checked={activePlaneIds.includes(planeId)}
-              onChange={(event) => {
-                const next = event.target.checked
-                  ? [...new Set([...activePlaneIds, planeId])]
-                  : activePlaneIds.filter((id) => id !== planeId);
-                state.setCounterBattenLayout({
-                  ...layout,
-                  roofPlaneIds: next,
-                });
-              }}
-            />
-            {t(roofPlaneShortLabelKey(planeId), { id: planeId })}
-          </label>
-        ))}
-      </fieldset>
+      <details className="a-inspector-advanced">
+        <summary>{t('assembly.perPlaneResults')}</summary>
+        <fieldset className="a-plane-choice">
+          <legend>{t('assembly.roofPlanes')}</legend>
+          {planeIds.map((planeId) => (
+            <label key={planeId}>
+              <input
+                type="checkbox"
+                checked={activePlaneIds.includes(planeId)}
+                onChange={(event) => {
+                  const next = event.target.checked
+                    ? [...new Set([...activePlaneIds, planeId])]
+                    : activePlaneIds.filter((id) => id !== planeId);
+                  state.setCounterBattenLayout({
+                    ...layout,
+                    roofPlaneIds: next,
+                  });
+                }}
+              />
+              {t(roofPlaneShortLabelKey(planeId), { id: planeId })}
+            </label>
+          ))}
+        </fieldset>
+      </details>
       <h4>{t('assembly.result')}</h4>
       <dl className="a-facts">
         <div>
@@ -512,6 +516,18 @@ function CounterBattenInspector({
           <dd>{new Set(result.rows.map((row) => row.roofPlaneId)).size}</dd>
         </div>
       </dl>
+      <p
+        className={`a-layer-status ${result.status === 'partial' ? 'is-warning' : 'is-ready'}`}
+        data-testid="counter-batten-layout-status"
+      >
+        {t(
+          result.status === 'disabled'
+            ? 'assembly.disabled'
+            : result.status === 'partial'
+              ? 'assembly.buildUpPartial'
+              : 'assembly.buildUpReady',
+        )}
+      </p>
       {selected && (
         <p className="a-layer-selection-detail">
           {memberInstanceCode(selected.sourceMemberId)} ·{' '}
@@ -552,9 +568,25 @@ function BattenLayoutInspector({
     state.setBattenLayout({
       ...layout,
       mode: next,
-      gaugeMm: layout.gaugeMm,
+      gaugeMm:
+        next === 'manual' &&
+        mode === 'auto-from-covering' &&
+        actualGaugeMm &&
+        result.planes.every((plane) => plane.actualGaugeMm === actualGaugeMm)
+          ? actualGaugeMm
+          : layout.gaugeMm,
       enabled: true,
     });
+  const source = composition.source;
+  const ready =
+    result.status === 'resolved' &&
+    (source.status !== 'resolved' ||
+      result.planes.every(
+        (plane) =>
+          plane.actualGaugeMm !== undefined &&
+          plane.actualGaugeMm >= source.minimumGaugeMm &&
+          plane.actualGaugeMm <= source.maximumGaugeMm,
+      ));
   const selectedRow = result.battens.find(
     (batten) => batten.id === state.workbench.selectedId,
   );
@@ -584,29 +616,25 @@ function BattenLayoutInspector({
           {t('assembly.battenModeManual')}
         </button>
       </div>
-      {mode === 'auto-from-covering' ? (
-        composition.source.status === 'resolved' ? (
-          <p
-            className="a-layer-status is-ready"
-            data-testid="batten-auto-source"
-          >
-            {t('assembly.battenAutoSourceReady', {
-              product: composition.productLabel ?? t('assembly.roofTile'),
-              min: length(composition.source.minimumGaugeMm),
-              max: length(composition.source.maximumGaugeMm),
-            })}
-          </p>
-        ) : (
-          <p
-            className="a-layer-status is-warning"
-            data-testid="batten-auto-source"
-          >
-            {t(
-              `assembly.battenAutoSource.${composition.reason ?? 'tile-covering-missing'}`,
-            )}
-          </p>
-        )
-      ) : (
+      {composition.source.status === 'resolved' ? (
+        <p className="a-layer-status is-ready" data-testid="batten-auto-source">
+          {t('assembly.battenAutoSourceReady', {
+            product: composition.productLabel ?? t('assembly.roofTile'),
+            min: length(composition.source.minimumGaugeMm),
+            max: length(composition.source.maximumGaugeMm),
+          })}
+        </p>
+      ) : mode === 'auto-from-covering' ? (
+        <p
+          className="a-layer-status is-warning"
+          data-testid="batten-auto-source"
+        >
+          {t(
+            `assembly.battenAutoSource.${composition.reason ?? 'tile-covering-missing'}`,
+          )}
+        </p>
+      ) : null}
+      {mode === 'manual' && (
         <DraftLengthField
           label={t('assembly.battenGauge')}
           value={layout.gaugeMm}
@@ -622,6 +650,38 @@ function BattenLayoutInspector({
           {t('assembly.fitBattensAutomatically')}
         </button>
       )}
+      <h4>{t('assembly.battenResult')}</h4>
+      <dl className="a-batten-results">
+        <div className="a-batten-primary-gauge">
+          <dt>{t('assembly.actualBattenGauge')}</dt>
+          <dd>{actualGaugeMm ? length(actualGaugeMm) : '—'}</dd>
+        </div>
+        <div>
+          <dt>{t('assembly.battenRows')}</dt>
+          <dd>{result.battens.length}</dd>
+        </div>
+        <div>
+          <dt>{t('assembly.battenTotalLength')}</dt>
+          <dd>
+            {new Intl.NumberFormat(i18n.language, {
+              maximumFractionDigits: 1,
+            }).format(result.totalLengthMm / 1000)}{' '}
+            m
+          </dd>
+        </div>
+      </dl>
+      <p
+        className={`a-layer-status ${ready ? 'is-ready' : 'is-warning'}`}
+        data-testid="batten-layout-status"
+      >
+        {t(
+          result.status === 'disabled'
+            ? 'assembly.disabled'
+            : ready
+              ? 'assembly.buildUpReady'
+              : 'assembly.buildUpAttention',
+        )}
+      </p>
       <details className="a-layer-help">
         <summary>{t('assembly.geometryHelp')}</summary>
         <p>{t('assembly.battenGeometricNote')}</p>
@@ -661,26 +721,6 @@ function BattenLayoutInspector({
           ))}
         </div>
       </details>
-      <h4>{t('assembly.battenResult')}</h4>
-      <dl className="a-batten-results">
-        <div>
-          <dt>{t('assembly.battenRows')}</dt>
-          <dd>{result.battens.length}</dd>
-        </div>
-        <div>
-          <dt>{t('assembly.battenTotalLength')}</dt>
-          <dd>
-            {new Intl.NumberFormat(i18n.language, {
-              maximumFractionDigits: 1,
-            }).format(result.totalLengthMm / 1000)}{' '}
-            m
-          </dd>
-        </div>
-        <div>
-          <dt>{t('assembly.actualBattenGauge')}</dt>
-          <dd>{actualGaugeMm ? length(actualGaugeMm) : '—'}</dd>
-        </div>
-      </dl>
       {result.status === 'incomplete' && (
         <p className="a-limit-note">{t('assembly.battenAutoIncomplete')}</p>
       )}

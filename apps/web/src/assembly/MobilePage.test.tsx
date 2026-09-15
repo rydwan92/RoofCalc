@@ -300,7 +300,7 @@ it('treats a touch window tap as selection, then commits one activated drag and 
   expect(useAssembly.getState().historyPast).toHaveLength(0);
 });
 
-it('keeps the covering drawing separate from exact product parameters and routes batten issues', async () => {
+it('keeps the covering drawing separate from exact product parameters and repairs batten issues', async () => {
   render(<App />);
   fireEvent.click(screen.getByRole('button', { name: 'Kreator' }));
   const dock = screen.getByRole('tablist', { name: 'Widok zadaniowy' });
@@ -319,10 +319,18 @@ it('keeps the covering drawing separate from exact product parameters and routes
   const sheet = screen.getByRole('dialog', { name: 'Właściwości elementu' });
   expect(await within(sheet).findByLabelText('Nazwa produktu')).toBeTruthy();
   expect(useAssembly.getState().historyPast).toHaveLength(1);
-  fireEvent.click(screen.getByRole('button', { name: /Przejdź do Warstwy/ }));
-  expect(useAssembly.getState().workbench.viewPreset).toBe('layers');
-  expect(useAssembly.getState().workbench.buildUpView).toBe('battens');
-  expect(useAssembly.getState().workbench.mobilePanel).toBe('none');
+  fireEvent.click(within(sheet).getByRole('button', { name: 'Zamknij' }));
+  fireEvent.click(
+    screen.getByRole('button', { name: /Dopasuj łaty automatycznie/ }),
+  );
+  expect(
+    useAssembly.getState().projectDocument.project.buildUp.battenLayout?.mode,
+  ).toBe('auto-from-covering');
+  expect(useAssembly.getState().workbench.viewPreset).toBe('covering');
+  expect(useAssembly.getState().historyPast).toHaveLength(2);
+  expect(
+    screen.queryByRole('button', { name: /Dopasuj łaty automatycznie/ }),
+  ).toBeNull();
 });
 
 it('opens standing-seam numeric parameters and width modes through the mobile Inspector sheet', async () => {

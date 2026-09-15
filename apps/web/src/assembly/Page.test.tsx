@@ -15,6 +15,7 @@ import {
   calculateAssembly,
   fromMillimetres,
   purlinRange,
+  resolveBattenLayout,
 } from '@cieslacalc/roof-math';
 import { createAssemblyDrawing } from '@cieslacalc/calculator-core';
 import { fitDimensionedDrawing } from '@cieslacalc/drawing-engine';
@@ -2086,13 +2087,46 @@ describe('dual-mode parametric workbench', () => {
         .getByRole('button', { name: 'Automatycznie z pokrycia' })
         .getAttribute('aria-pressed'),
     ).toBe('true');
-    const automaticGauge =
-      useAssembly.getState().projectDocument.project.buildUp.battenLayout!
-        .gaugeMm;
+    const autoState = useAssembly.getState();
+    const automaticGauge = resolveBattenLayout({
+      template: autoState.template,
+      layout: autoState.projectDocument.project.buildUp.battenLayout!,
+      autoSource: {
+        status: 'resolved',
+        minimumGaugeMm: 300,
+        maximumGaugeMm: 380,
+      },
+    }).planes[0]!.actualGaugeMm;
     fireEvent.click(screen.getByRole('button', { name: 'Ręcznie' }));
     expect(
       useAssembly.getState().projectDocument.project.buildUp.battenLayout,
     ).toMatchObject({ mode: 'manual' });
+    expect(
+      useAssembly.getState().projectDocument.project.buildUp.battenLayout!
+        .gaugeMm,
+    ).toBe(automaticGauge);
+    act(() => {
+      const coverings = structuredClone(
+        useAssembly.getState().projectDocument.project.coverings,
+      );
+      const spec = coverings[0]!.product.technicalSpecSnapshot;
+      if (spec.kind !== 'roof-tile') throw Error('expected tile');
+      spec.installationModes[0]!.gaugeRangeMm = { min: 200, max: 250 };
+      useAssembly.getState().setCoveringAssignments(coverings);
+    });
+    expect(
+      useAssembly.getState().projectDocument.project.buildUp.battenLayout!
+        .gaugeMm,
+    ).toBe(automaticGauge);
+    expect(screen.getByTestId('batten-layout-status').textContent).toBe(
+      'Wymaga uwagi',
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Automatycznie z pokrycia' }),
+    );
+    expect(screen.getByTestId('batten-layout-status').textContent).toBe(
+      'Gotowe',
+    );
     expect(
       useAssembly.getState().projectDocument.project.buildUp.battenLayout!
         .gaugeMm,

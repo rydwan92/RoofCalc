@@ -1,6 +1,6 @@
 # V33 — Roof Build-up Intelligence
 
-Status: implementation in progress, 2026-09-15. This iteration composes the
+Status: COMPLETE after V33B closeout, 2026-09-15. This iteration composes the
 existing roof structure, counter-battens, battens and roof-tile snapshots into
 one derived workflow. It does not add structural sizing, purchase quantities,
 pricing or a second geometry engine.
@@ -72,3 +72,32 @@ pricing or a second geometry engine.
   split around openings. H1 boundary counter-batten face geometry remains
   unresolved, so a useful hip result is `partial`, never a fake complete result.
 
+## V33B closeout
+
+The existing solver and roof build-up composition were retained. The closeout
+completed Auto-to-Manual seeding from the resolved gauge, compatibility feedback
+in both modes, compact result-first inspectors and independent drawing overlays.
+Covering overlays render below batten/counter-batten axes. Local covering warnings
+are grouped once with a repair action; cross-task guidance remains available.
+Counter-batten plane selection stays in an advanced disclosure, with visible
+ready/partial status and an explicit section-height label. Mobile header flex
+wrapping was corrected so the required flows fit 390 px without overflow.
+
+Hip boundary ownership now uses `roofPlaneIds` / `roofPlaneSide` and structured
+member sides, preserving the existing opaque-ID boundary without a test allowlist
+exception. H1 face geometry remains deliberately unresolved. No schema, solver,
+procurement, catalogue-field or commercial-layer change was needed in V33B.
+
+The required A flow covers a tile snapshot, automatic compatible battens and
+useful partial hip counter-battens. The B flow covers invalid manual spacing,
+one grouped warning and automatic repair, followed by gable batten/counter-batten
+overlays. Both run in desktop and mobile Playwright projects. UI tests also
+verify one repair history entry, derived gauge seeding and product-range changes.
+Screenshots are inspected at 1920x1080, 1440x900, 1024x768 and 390x844. Native
+Firefox control was unavailable under the Windows browser tool policy; browser
+QA uses Playwright and its rendered screenshots.
+
+Final `pnpm verify` passed all gates (74 test files / 705 tests and both builds);
+`pnpm e2e` passed 32/32, including both V33 flows on desktop and mobile. The
+existing Page.tsx exhaustive-deps lint warning remains, with zero lint errors.
+The complete checkpoint is recorded in `PROJECT_BLUEPRINT.md`.

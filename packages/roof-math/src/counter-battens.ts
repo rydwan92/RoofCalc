@@ -68,14 +68,21 @@ function originalRafterId(member: SkeletonMember3D) {
   return member.sourceMemberId ?? member.id;
 }
 
-function hipBoundaryPlanes(member: SkeletonMember3D): string[] {
-  const roles: Partial<Record<SkeletonMember3D['side'], string[]>> = {
-    'front-left': ['roof-plane:front', 'roof-plane:left'],
-    'front-right': ['roof-plane:front', 'roof-plane:right'],
-    'rear-left': ['roof-plane:rear', 'roof-plane:left'],
-    'rear-right': ['roof-plane:rear', 'roof-plane:right'],
+function hipBoundaryPlanes(
+  template: RoofTemplateSpec,
+  member: SkeletonMember3D,
+): string[] {
+  const roles: Partial<
+    Record<SkeletonMember3D['side'], SkeletonMember3D['side'][]>
+  > = {
+    'front-left': ['front', 'left'],
+    'front-right': ['front', 'right'],
+    'rear-left': ['rear', 'left'],
+    'rear-right': ['rear', 'right'],
   };
-  return roles[member.side] ?? [];
+  return roofPlaneIds(template).filter((id) =>
+    roles[member.side]?.includes(roofPlaneSide(template, id)!),
+  );
 }
 
 function verticalIntervalAtU(
@@ -256,8 +263,8 @@ export function resolveCounterBattenLayout(args: {
     for (const member of args.skeleton.members
       .filter((candidate) => candidate.kind === 'hip-rafter')
       .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }))) {
-      const affectedPlanes = hipBoundaryPlanes(member).filter((id) =>
-        requestedPlanes.includes(id),
+      const affectedPlanes = hipBoundaryPlanes(args.template, member).filter(
+        (id) => requestedPlanes.includes(id),
       );
       if (affectedPlanes.length)
         issues.push({

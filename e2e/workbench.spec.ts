@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page, type TestInfo } from '@playwright/test';
 
 /**
  * Real-browser smoke coverage. These tests exist because unit tests in JSDOM
@@ -38,7 +38,7 @@ async function openTask(page: Page, task: string) {
   ).toBeVisible();
 }
 
-async function openResolvedTileSchedule(page: Page) {
+async function addTile(page: Page, gaugeMin = '30', gaugeMax = '38') {
   await openTask(page, 'covering');
   const assistant = page.getByTestId('covering-add-assistant');
   await assistant.locator('[data-covering-family="roof-tile"]').click();
@@ -48,14 +48,18 @@ async function openResolvedTileSchedule(page: Page) {
     physicalWidth: '33',
     physicalLength: '42',
     coverWidth: '30',
-    gaugeMin: '30',
-    gaugeMax: '38',
+    gaugeMin,
+    gaugeMax,
     minimumPitch: '19',
   };
   for (const [field, value] of Object.entries(values))
     await assistant.locator(`[data-manual-field="${field}"]`).fill(value);
   await assistant.getByTestId('confirm-manual-covering').click();
   await expect(page.getByTestId('tile-layout-drawing')).toBeVisible();
+}
+
+async function openResolvedTileSchedule(page: Page) {
+  await addTile(page);
   const automaticFit = page
     .locator('button:visible')
     .filter({ hasText: /Dopasuj łaty automatycznie/ })
@@ -594,5 +598,182 @@ test.describe('F — K1 physical blank to cutting plan', () => {
       page.locator('.a-build-up-intelligence [data-status="partial"]'),
     ).toContainText('Częściowo');
     await expectNoHorizontalOverflow(page);
+  });
+});
+
+async function closeMobileSheet(page: Page) {
+  const dialog = page.getByRole('dialog');
+  if (await dialog.count())
+    await dialog.getByRole('button', { name: 'Zamknij', exact: true }).click();
+}
+
+async function layerInspector(page: Page, layer: string, mobile: boolean) {
+  await openTask(page, 'layers');
+  if (mobile) await page.getByTestId('mobile-open-tools').click();
+  const tools = mobile ? page.getByRole('dialog') : page.locator('.a-toolbox');
+  await tools
+    .locator('.a-layer-tool-row')
+    .getByRole('button', { name: layer, exact: true })
+    .click();
+  if (mobile) {
+    await closeMobileSheet(page);
+    await page
+      .getByRole('button', { name: 'Edytuj', exact: true })
+      .first()
+      .click();
+  }
+  return page.getByTestId(
+    layer === 'Łaty' ? 'batten-inspector' : 'counter-batten-inspector',
+  );
+}
+
+async function captureV33(page: Page, testInfo: TestInfo, name: string) {
+  const sizes =
+    testInfo.project.name === 'mobile'
+      ? [{ width: 390, height: 844 }]
+      : [
+          { width: 1920, height: 1080 },
+          { width: 1440, height: 900 },
+          { width: 1024, height: 768 },
+        ];
+  for (const size of sizes) {
+    await page.setViewportSize(size);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await expectNoHorizontalOverflow(page);
+    await page.screenshot({
+      path: testInfo.outputPath(`${name}-${size.width}.png`),
+      fullPage: true,
+    });
+  }
+  await page.setViewportSize(
+    testInfo.project.name === 'mobile'
+      ? { width: 390, height: 844 }
+      : { width: 1440, height: 900 },
+  );
+}
+
+test.describe('V33 — build-up closeout', () => {
+  test('A: hip tile to automatic battens, compatible covering and useful counter-battens', async ({
+    page,
+  }, testInfo) => {
+    const mobile = testInfo.project.name === 'mobile';
+    await page.goto('/#/calculators/common-rafter');
+    await page.getByRole('button', { name: 'Krokiew narożna' }).click();
+    await page.locator(BUILDER).click();
+    await page.getByTestId('project-start-submit').click();
+    await addTile(page, '33', '36');
+    // The project starts with one selected plane. Explicitly apply the tile to the roof.
+    const assignAll = page.getByRole('button', {
+      name: /Przypisz wszystkie połacie/,
+    });
+    if (await assignAll.count()) await assignAll.click();
+    const inspector = await layerInspector(page, 'Łaty', mobile);
+    await inspector
+      .getByRole('button', { name: 'Automatycznie z pokrycia' })
+      .click();
+    await expect(inspector.getByTestId('batten-layout-status')).toHaveText(
+      'Gotowe',
+    );
+    await expect(inspector.getByTestId('batten-auto-source')).toContainText(
+      '33',
+    );
+    await captureV33(page, testInfo, 'auto-battens');
+    if (mobile) await closeMobileSheet(page);
+    await openTask(page, 'covering');
+    await expect(page.locator('.a-covering-warning')).toHaveCount(0);
+    await expect(page.locator('.a-covering-batten')).not.toHaveCount(0);
+    const counter = await layerInspector(page, 'Kontrłaty', mobile);
+    if (mobile) await closeMobileSheet(page);
+    // The summary selects a layer; its Toolbox switch enables canonical intent.
+    if (mobile) await page.getByTestId('mobile-open-tools').click();
+    await (mobile ? page.getByRole('dialog') : page.locator('.a-toolbox'))
+      .getByRole('switch', { name: /Kontrłaty/ })
+      .click();
+    if (mobile) {
+      await closeMobileSheet(page);
+      await page
+        .getByRole('button', { name: 'Edytuj', exact: true })
+        .first()
+        .click();
+    }
+    await expect(
+      counter.getByTestId('counter-batten-layout-status'),
+    ).toContainText('Częściowo');
+    await captureV33(page, testInfo, 'counter-battens');
+    if (mobile) await closeMobileSheet(page);
+    await openTask(page, 'covering');
+    await page
+      .locator('.a-covering-detail-controls')
+      .getByLabel('Kontrłaty', { exact: true })
+      .check();
+    await expect(page.locator('.a-covering-counter-batten')).not.toHaveCount(0);
+    await captureV33(page, testInfo, 'hip-overlays');
+    await page.getByRole('tab', { name: /^Przednia połać/ }).click();
+    await expect(page.locator('.a-covering-counter-batten')).not.toHaveCount(0);
+    const view = page.locator('.a-covering-detail-controls');
+    await view.getByLabel('Pokrycie', { exact: true }).uncheck();
+    await expect(page.locator('.a-covering-fragment')).toHaveCount(0);
+    await expect(page.locator('.a-covering-batten')).not.toHaveCount(0);
+    await view.getByLabel('Pokrycie', { exact: true }).check();
+    await openTask(page, 'materials');
+    await expect(
+      page.locator('.a-build-up-intelligence [data-status="partial"]'),
+    ).toContainText('Częściowo');
+    await expect(page.locator('.a-build-up-intelligence')).toContainText(
+      'Automatycznie',
+    );
+  });
+
+  test('B: invalid manual gauge has one grouped warning and automatic repair clears it', async ({
+    page,
+  }, testInfo) => {
+    const mobile = testInfo.project.name === 'mobile';
+    await openBuilder(page);
+    await addTile(page, '33', '36');
+    const assignAll = page.getByRole('button', {
+      name: /Przypisz wszystkie połacie/,
+    });
+    if (await assignAll.count()) await assignAll.click();
+    const inspector = await layerInspector(page, 'Łaty', mobile);
+    await inspector
+      .getByRole('button', { name: 'Ręcznie', exact: true })
+      .click();
+    const gauge = inspector.getByLabel('Moduł łat', { exact: true });
+    await gauge.fill('40');
+    await gauge.blur();
+    await expect(inspector.getByTestId('batten-layout-status')).toHaveText(
+      'Wymaga uwagi',
+    );
+    if (mobile) await closeMobileSheet(page);
+    await openTask(page, 'covering');
+    const warning = page.locator('.a-covering-warning');
+    await expect(warning).toHaveCount(1);
+    await expect(warning.locator('p')).toHaveCount(1);
+    await expect(warning).toContainText('dotyczy 2 połaci');
+    await expect(
+      page.locator('[data-guidance="covering-warning"]'),
+    ).toHaveCount(0);
+    await captureV33(page, testInfo, 'manual-warning');
+    await warning
+      .getByRole('button', { name: 'Dopasuj łaty automatycznie' })
+      .click();
+    await expect(warning).toHaveCount(0);
+    await expect(page.locator('.a-covering-batten')).not.toHaveCount(0);
+    await layerInspector(page, 'Kontrłaty', mobile);
+    if (mobile) {
+      await closeMobileSheet(page);
+      await page.getByTestId('mobile-open-tools').click();
+    }
+    await (mobile ? page.getByRole('dialog') : page.locator('.a-toolbox'))
+      .getByRole('switch', { name: /Kontrłaty/ })
+      .click();
+    if (mobile) await closeMobileSheet(page);
+    await openTask(page, 'covering');
+    await page
+      .locator('.a-covering-detail-controls')
+      .getByLabel('Kontrłaty', { exact: true })
+      .check();
+    await expect(page.locator('.a-covering-counter-batten')).not.toHaveCount(0);
+    await captureV33(page, testInfo, 'gable-overlays');
   });
 });

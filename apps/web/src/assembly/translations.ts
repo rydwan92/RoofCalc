@@ -99,6 +99,11 @@ export const assemblyPl = {
   coveringsSchedule: 'Pokrycia',
   battenRowsCount: '{{count}} rzędów',
   counterBattenAxesCount: '{{count}} osi',
+  counterBattenPlacement: 'Rozmieszczenie: na konstrukcji',
+  counterBattenDepth: 'Wysokość przekroju',
+  buildUpReady: 'Gotowe',
+  buildUpAttention: 'Wymaga uwagi',
+  buildUpPartial: 'Częściowo policzone',
   showExactLengths: 'Pokaż długości ({{count}})',
   coveringEmptyTitle: 'Dodaj pokrycie dachu',
   coveringAdd: {
@@ -1190,6 +1195,11 @@ export const assemblyEn: typeof assemblyPl = {
   coveringsSchedule: 'Coverings',
   battenRowsCount: '{{count}} rows',
   counterBattenAxesCount: '{{count}} axes',
+  counterBattenPlacement: 'Placement: on the roof structure',
+  counterBattenDepth: 'Section depth',
+  buildUpReady: 'Ready',
+  buildUpAttention: 'Needs attention',
+  buildUpPartial: 'Partially calculated',
   showExactLengths: 'Show lengths ({{count}})',
   coveringEmptyTitle: 'Add roof covering',
   coveringAdd: {
