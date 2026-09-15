@@ -88,6 +88,38 @@ describe('schema validation', () => {
     ).toThrow();
   });
 
+  it('parses an old-shaped entry with no source-basis provenance (V34C backward compatibility)', () => {
+    const parsed = priceListEntrySchema.parse(entry());
+    expect(parsed.sourceAmountBasis).toBeUndefined();
+    expect(parsed.sourceVatRateBps).toBeUndefined();
+  });
+
+  it('accepts a V35 entry carrying gross-with-stated-VAT provenance', () => {
+    expect(() =>
+      priceListEntrySchema.parse(
+        entry({ sourceAmountBasis: 'gross', sourceVatRateBps: 2300 }),
+      ),
+    ).not.toThrow();
+    expect(() =>
+      priceListEntrySchema.parse(entry({ sourceAmountBasis: 'net' })),
+    ).not.toThrow();
+  });
+
+  it('rejects an invalid source-basis value or an out-of-range VAT rate', () => {
+    expect(() =>
+      priceListEntrySchema.parse({
+        ...entry(),
+        sourceAmountBasis: 'wholesale',
+      }),
+    ).toThrow();
+    expect(() =>
+      priceListEntrySchema.parse({ ...entry(), sourceVatRateBps: -1 }),
+    ).toThrow();
+    expect(() =>
+      priceListEntrySchema.parse({ ...entry(), sourceVatRateBps: 10_001 }),
+    ).toThrow();
+  });
+
   it('rejects an import batch whose entry references an unknown price list', () => {
     expect(() =>
       priceImportBatchV1Schema.parse({
@@ -148,6 +180,15 @@ describe('write-once entry comparison', () => {
   it('is a conflict for a changed amount under the same ID — never a silent overwrite', () => {
     expect(
       comparePriceListEntry(entry(), entry({ netAmountMinor: 1000 })),
+    ).toBe('conflict');
+  });
+
+  it('is a conflict when only the source-basis provenance changes', () => {
+    expect(
+      comparePriceListEntry(
+        entry(),
+        entry({ sourceAmountBasis: 'gross', sourceVatRateBps: 2300 }),
+      ),
     ).toBe('conflict');
   });
 

@@ -404,9 +404,10 @@ function AssemblyPageContent() {
             template: state.template,
             layout: membrane,
             product: {
-              rollWidthMm: membraneProduct.rollWidthMm,
-              rollLengthMm: membraneProduct.rollLengthMm,
-              minimumOverlapMm: membraneProduct.minimumOverlapMm,
+              rollWidthMm: membraneProduct.technicalSpecSnapshot.rollWidthMm,
+              rollLengthMm: membraneProduct.technicalSpecSnapshot.rollLengthMm,
+              minimumOverlapMm:
+                membraneProduct.technicalSpecSnapshot.minimumOverlapMm,
             },
             features: state.projectDocument.project.features,
           })

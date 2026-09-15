@@ -2,12 +2,49 @@ import { z } from 'zod';
 import {
   coveringProductSelectionSchema,
   coveringTechnicalSpecSchema,
+  membraneProductSelectionSchema,
+  membraneTechnicalSpecSchema,
   type CoveringKind,
   type CoveringProductSelection,
   type CoveringTechnicalSpec,
+  type MembraneProductSelection,
 } from '@cieslacalc/covering-core';
+import { timberStockTechnicalSpecSchema } from './timber-stock-spec';
+export * from './timber-stock-spec';
 
 export const CATALOG_IMPORT_SCHEMA_VERSION = 1 as const;
+
+/**
+ * Every technical product kind the catalog can store a revision for (V35).
+ * A strict superset of `CoveringKind` (roof-tile/modular-sheet/standing-seam,
+ * the primary-covering kinds that compete for roof-plane ownership) plus
+ * `membrane` and `timber-stock`, which are build-up/procurement inputs, not
+ * primary coverings — `isCoveringKind` below stays narrow on purpose. The
+ * `covering_kind` DB column and `coveringKind` field name are kept
+ * unchanged for API/schema compatibility even though the field is now a
+ * general catalog-product-kind discriminant, not only a covering one.
+ */
+export const CATALOG_PRODUCT_KINDS = [
+  'roof-tile',
+  'modular-sheet',
+  'standing-seam',
+  'membrane',
+  'timber-stock',
+] as const;
+export type CatalogProductKind = (typeof CATALOG_PRODUCT_KINDS)[number];
+
+/**
+ * Every technical spec shape a catalog revision may hold. Wider than
+ * `covering-core`'s own `coveringTechnicalSpecSchema` (which stays scoped to
+ * primary coverings) — this union exists only at the catalog/revision
+ * boundary, never inside `covering-core`'s own primary-covering contracts.
+ */
+export const catalogTechnicalSpecSchema = z.union([
+  coveringTechnicalSpecSchema,
+  membraneTechnicalSpecSchema,
+  timberStockTechnicalSpecSchema,
+]);
+export type CatalogTechnicalSpec = z.infer<typeof catalogTechnicalSpecSchema>;
 
 export const catalogIdSchema = z
   .string()
@@ -54,7 +91,7 @@ export const technicalProductFamilySchema = z
     manufacturerId: catalogIdSchema,
     slug: slugSchema,
     name: nonBlank,
-    coveringKind: z.enum(['roof-tile', 'modular-sheet', 'standing-seam']),
+    coveringKind: z.enum(CATALOG_PRODUCT_KINDS),
     active: z.boolean(),
   })
   .strict();
@@ -76,7 +113,7 @@ export const technicalProductRevisionSchema = z
     id: catalogIdSchema,
     productId: catalogIdSchema,
     revisionCode: z.string().trim().min(1).max(128),
-    technicalSpec: coveringTechnicalSpecSchema,
+    technicalSpec: catalogTechnicalSpecSchema,
     validFrom: nullableDate,
     source: technicalRevisionSourceSchema.optional(),
   })
@@ -237,6 +274,44 @@ export function createCatalogProductSelection(args: {
   });
 }
 
+/**
+ * `createCatalogProductSelection`'s membrane-kind counterpart: builds a
+ * `MembraneProductSelection` (`@cieslacalc/covering-core`) from catalogue
+ * identity, validating the revision's spec is really a membrane spec rather
+ * than blending kinds.
+ */
+export function createMembraneProductSelection(args: {
+  manufacturer: Manufacturer;
+  product: TechnicalProductFamily;
+  revision: TechnicalProductRevision;
+  variant?: CommercialVariant;
+}): MembraneProductSelection {
+  if (args.revision.productId !== args.product.id)
+    throw new Error('catalog-revision-product-mismatch');
+  if (args.product.manufacturerId !== args.manufacturer.id)
+    throw new Error('catalog-product-manufacturer-mismatch');
+  if (args.product.coveringKind !== args.revision.technicalSpec.kind)
+    throw new Error('catalog-covering-kind-mismatch');
+  if (args.revision.technicalSpec.kind !== 'membrane')
+    throw new Error('catalog-not-a-membrane-spec');
+  if (args.variant && args.variant.productId !== args.product.id)
+    throw new Error('catalog-variant-product-mismatch');
+  return membraneProductSelectionSchema.parse({
+    catalogRef: {
+      productId: args.product.id,
+      technicalRevisionId: args.revision.id,
+      variantId: args.variant?.id,
+    },
+    displaySnapshot: {
+      manufacturer: args.manufacturer.name,
+      familyName: args.product.name,
+      variantName: args.variant?.name,
+      revisionCode: args.revision.revisionCode,
+    },
+    technicalSpecSnapshot: structuredClone(args.revision.technicalSpec),
+  });
+}
+
 export const catalogTechnicalPreviewSchema = z
   .object({
     effectiveWidthMm: z.number().finite().positive().optional(),
@@ -246,6 +321,13 @@ export const catalogTechnicalPreviewSchema = z
     sheetLengthModel: z.enum(['fixed-sheet', 'cut-to-length']).optional(),
     minimumSheetLengthMm: z.number().finite().positive().optional(),
     maximumSheetLengthMm: z.number().finite().positive().optional(),
+    rollWidthMm: z.number().finite().positive().optional(),
+    rollLengthMm: z.number().finite().positive().optional(),
+    minimumOverlapMm: z.number().finite().nonnegative().optional(),
+    sectionWidthMm: z.number().finite().positive().optional(),
+    sectionDepthMm: z.number().finite().positive().optional(),
+    lengthMm: z.number().finite().positive().optional(),
+    strengthClass: z.string().optional(),
   })
   .strict();
 
@@ -254,7 +336,7 @@ export const catalogProductSummarySchema = z
     id: catalogIdSchema,
     manufacturer: manufacturerSchema.pick({ id: true, name: true }),
     name: nonBlank,
-    kind: z.enum(['roof-tile', 'modular-sheet', 'standing-seam']),
+    kind: z.enum(CATALOG_PRODUCT_KINDS),
     currentRevisionId: catalogIdSchema,
     variantCount: z.number().int().nonnegative(),
     technicalPreview: catalogTechnicalPreviewSchema,
@@ -284,7 +366,7 @@ export type CatalogRevisionDetail = z.infer<typeof catalogRevisionDetailSchema>;
 export const catalogSearchQuerySchema = z
   .object({
     q: z.string().trim().max(120).optional(),
-    kind: z.enum(['roof-tile', 'modular-sheet', 'standing-seam']).optional(),
+    kind: z.enum(CATALOG_PRODUCT_KINDS).optional(),
     manufacturerId: catalogIdSchema.optional(),
     limit: z.coerce.number().int().min(1).max(50).default(20),
     cursor: z.string().max(200).optional(),
@@ -316,7 +398,7 @@ export const catalogApiErrorSchema = z
   .strict();
 
 export function technicalPreview(
-  spec: CoveringTechnicalSpec,
+  spec: CatalogTechnicalSpec,
 ): z.infer<typeof catalogTechnicalPreviewSchema> {
   if (spec.kind === 'roof-tile') {
     const mode = spec.installationModes[0];
@@ -341,6 +423,20 @@ export function technicalPreview(
           ? spec.lengthModel.maxPanelLengthMm
           : undefined,
     };
+  if (spec.kind === 'membrane')
+    return {
+      rollWidthMm: spec.rollWidthMm,
+      rollLengthMm: spec.rollLengthMm,
+      minimumOverlapMm: spec.minimumOverlapMm,
+      minPitchDeg: spec.minPitchDeg,
+    };
+  if (spec.kind === 'timber-stock')
+    return {
+      sectionWidthMm: spec.widthMm,
+      sectionDepthMm: spec.depthMm,
+      lengthMm: spec.lengthMm,
+      strengthClass: spec.strengthClass,
+    };
   return {
     effectiveWidthMm: spec.installationModes[0]?.effectiveWidthMm,
     minPitchDeg: spec.minPitchDeg,
@@ -349,4 +445,18 @@ export function technicalPreview(
 
 export function isCoveringKind(value: string): value is CoveringKind {
   return ['roof-tile', 'modular-sheet', 'standing-seam'].includes(value);
+}
+
+/**
+ * Narrows a catalog revision's technical spec back down to the
+ * primary-covering union — for consumers like `CatalogProductPicker.tsx`
+ * that only ever query `kind: CoveringKind` and so are guaranteed by
+ * construction to get a covering spec back, even though
+ * `TechnicalProductRevision.technicalSpec`'s static type is now the wider
+ * `CatalogTechnicalSpec` union (V35).
+ */
+export function isCoveringTechnicalSpec(
+  spec: CatalogTechnicalSpec,
+): spec is CoveringTechnicalSpec {
+  return spec.kind !== 'membrane' && spec.kind !== 'timber-stock';
 }

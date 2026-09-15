@@ -37,6 +37,9 @@ function entryFromRow(
     commercialVariantId: row.commercialVariantId,
     saleUnit: row.saleUnit,
     netAmountMinor: row.netAmountMinor,
+    sourceAmountBasis:
+      (row.sourceAmountBasis as 'net' | 'gross' | null) ?? undefined,
+    sourceVatRateBps: row.sourceVatRateBps ?? undefined,
     validFrom: row.validFrom,
     validTo: row.validTo ?? undefined,
   });

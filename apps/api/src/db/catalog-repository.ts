@@ -29,6 +29,18 @@ function jsonColumn(value: unknown): unknown {
   return typeof value === 'string' ? JSON.parse(value) : value;
 }
 
+/**
+ * Drizzle's MySQL `set` clause drops an `undefined`-valued key from the
+ * generated `ON DUPLICATE KEY UPDATE` SQL instead of clearing the column, so
+ * a mutable optional field (ADR-004) that goes from a value to omitted on
+ * re-import would otherwise silently keep its stale value forever. Every
+ * nullable optional field written through `applyImport`'s `set` clauses
+ * must go through this so clearing a field is a real write, not a no-op.
+ */
+function orNull<T>(value: T | undefined): T | null {
+  return value ?? null;
+}
+
 function manufacturerFromRow(row: typeof manufacturers.$inferSelect) {
   return manufacturerSchema.parse({
     id: row.id,
@@ -342,8 +354,8 @@ export class DrizzleCatalogRepository
             set: {
               slug: item.slug,
               name: item.name,
-              countryCode: item.countryCode,
-              websiteUrl: item.websiteUrl,
+              countryCode: orNull(item.countryCode),
+              websiteUrl: orNull(item.websiteUrl),
               active: item.active,
             },
           });
@@ -364,11 +376,11 @@ export class DrizzleCatalogRepository
           .values(item)
           .onDuplicateKeyUpdate({
             set: {
-              sku: item.sku,
+              sku: orNull(item.sku),
               name: item.name,
-              color: item.color,
-              finish: item.finish,
-              metadata: item.metadata,
+              color: orNull(item.color),
+              finish: orNull(item.finish),
+              metadata: orNull(item.metadata),
               active: item.active,
             },
           });

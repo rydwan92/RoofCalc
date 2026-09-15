@@ -1,16 +1,16 @@
 import type {
   CatalogProductDetail,
+  CatalogProductKind,
   CatalogRevisionDetail,
   CommercialVariant,
   Manufacturer,
   TechnicalProductFamily,
   TechnicalProductRevision,
 } from '@cieslacalc/catalog-core';
-import type { CoveringKind } from '@cieslacalc/covering-core';
 
 export interface CatalogRepositorySearch {
   q?: string;
-  kind?: CoveringKind;
+  kind?: CatalogProductKind;
   manufacturerId?: string;
   limit: number;
   offset: number;

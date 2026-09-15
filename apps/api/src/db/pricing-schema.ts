@@ -51,6 +51,8 @@ export const priceListEntries = mysqlTable(
     }).notNull(),
     saleUnit: varchar('sale_unit', { length: 16 }).notNull(),
     netAmountMinor: int('net_amount_minor').notNull(),
+    sourceAmountBasis: varchar('source_amount_basis', { length: 8 }),
+    sourceVatRateBps: int('source_vat_rate_bps'),
     validFrom: date('valid_from', { mode: 'string' }).notNull(),
     validTo: date('valid_to', { mode: 'string' }),
     createdAt: createdAt(),

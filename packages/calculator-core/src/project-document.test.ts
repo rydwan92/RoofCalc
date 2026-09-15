@@ -295,6 +295,69 @@ describe('RoofProjectDocumentV1', () => {
     );
   });
 
+  it('normalizes a V34C raw membrane spec into a V35 selection wrapper on parse', () => {
+    const roof = gableTemplateFromAssembly(assemblyDefaults);
+    const v34c = parseRoofProjectDocument(
+      JSON.stringify({
+        schemaVersion: 1,
+        project: {
+          roof,
+          buildUp: { membrane: { enabled: true } },
+          membraneProduct: {
+            schemaVersion: 1,
+            kind: 'membrane',
+            rollWidthMm: 1500,
+            rollLengthMm: 50_000,
+            minimumOverlapMm: 100,
+          },
+        },
+      }),
+    );
+    expect(v34c.project.membraneProduct).toEqual({
+      technicalSpecSnapshot: {
+        schemaVersion: 1,
+        kind: 'membrane',
+        rollWidthMm: 1500,
+        rollLengthMm: 50_000,
+        minimumOverlapMm: 100,
+      },
+    });
+  });
+
+  it('round-trips a V35 catalogue-backed membrane selection unchanged', () => {
+    const roof = gableTemplateFromAssembly(assemblyDefaults);
+    const document = createRoofProjectDocument(roof, {
+      buildUp: {
+        membrane: { enabled: true, roofPlaneIds: ['roof-plane:left'] },
+      },
+      membraneProduct: {
+        catalogRef: {
+          productId: 'product:dorken:delta-maxx-plus',
+          technicalRevisionId: 'revision:dorken:delta-maxx-plus:2026-09',
+        },
+        displaySnapshot: {
+          manufacturer: 'DÖRKEN',
+          familyName: 'DELTA-MAXX PLUS',
+        },
+        technicalSpecSnapshot: {
+          schemaVersion: 1,
+          kind: 'membrane',
+          rollWidthMm: 1500,
+          rollLengthMm: 50_000,
+          minimumOverlapMm: 100,
+          material: 'synthetic',
+          salesUnit: 'roll',
+        },
+      },
+    });
+    expect(
+      parseRoofProjectDocument(serializeRoofProjectDocument(document)),
+    ).toEqual(document);
+    expect(document.project.membraneProduct?.catalogRef?.productId).toBe(
+      'product:dorken:delta-maxx-plus',
+    );
+  });
+
   it('does not serialize catalogue browsing or transient selection state', () => {
     const roof = gableTemplateFromAssembly(assemblyDefaults);
     const parsed = parseRoofProjectDocument(

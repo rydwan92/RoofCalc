@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "id": "timber-price-research-2026-09",
+    "label": "V35: OBI/BAT retail prices, 2026-09, both source-stated gross with 23% VAT — net = round(gross/1.23). Castorama's two observations are excluded: unstated tax basis, not imported.",
+    "sourceRevision": "2026-09"
+  },
+  "priceLists": [
+    {
+      "id": "price-list:obi-retail-2026-09",
+      "ownerLabel": "OBI.pl (retail, observed 2026-09)",
+      "currencyCode": "PLN",
+      "regionCode": "PL",
+      "taxContext": "gross price as listed, 23% VAT included (source-stated)",
+      "validFrom": "2026-09-15"
+    },
+    {
+      "id": "price-list:bat-retail-2026-09",
+      "ownerLabel": "BAT.pl (retail, observed 2026-09)",
+      "currencyCode": "PLN",
+      "regionCode": "PL",
+      "taxContext": "gross price as listed, 23% VAT included (source-stated)",
+      "validFrom": "2026-09-15"
+    }
+  ],
+  "entries": [
+    {
+      "id": "price:obi:2026-09:c24-45x145x4000-treated",
+      "priceListId": "price-list:obi-retail-2026-09",
+      "commercialVariantId": "variant:timber:c24-45x145x4000-treated:standard",
+      "saleUnit": "piece",
+      "netAmountMinor": 11301,
+      "sourceAmountBasis": "gross",
+      "sourceVatRateBps": 2300,
+      "validFrom": "2026-09-15"
+    },
+    {
+      "id": "price:bat:2026-09:c24-45x145x4000",
+      "priceListId": "price-list:bat-retail-2026-09",
+      "commercialVariantId": "variant:timber:c24-45x145x4000:standard",
+      "saleUnit": "piece",
+      "netAmountMinor": 5683,
+      "sourceAmountBasis": "gross",
+      "sourceVatRateBps": 2300,
+      "validFrom": "2026-09-15"
+    }
+  ]
+}

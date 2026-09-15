@@ -6,30 +6,31 @@ import {
 } from '@tanstack/react-query';
 import { ArrowLeft, Search, X } from 'lucide-react';
 import {
-  createCatalogProductSelection,
-  isCoveringTechnicalSpec,
+  createMembraneProductSelection,
   type CatalogProductDetail,
 } from '@cieslacalc/catalog-core';
-import type {
-  CoveringKind,
-  CoveringProductSelection,
-  CoveringTechnicalSpec,
-} from '@cieslacalc/covering-core';
+import type { MembraneProductSelection } from '@cieslacalc/covering-core';
 import { useTranslation } from 'react-i18next';
 import { MobileSheet } from '../assembly/MobileSheet';
 import { useMobileWorkbench } from '../assembly/mobile-workbench';
 import { catalogClient, type CatalogClient } from './client';
 
+/**
+ * Mirrors `CatalogProductPicker.tsx`'s structure and hand-rolled `copy`
+ * pattern deliberately (not the `translations.ts`/`t()` convention used
+ * elsewhere) — a same-file convention match, not a fix, to keep this V35
+ * addition a narrow, reviewable diff against its own template.
+ */
 const copy = {
   pl: {
-    title: 'Katalog produktów',
+    title: 'Katalog membran',
     close: 'Zamknij katalog',
     back: 'Wróć do wyników',
     search: 'Szukaj producenta lub produktu',
     manufacturer: 'Producent',
     all: 'Wszyscy producenci',
     loading: 'Ładowanie katalogu…',
-    empty: 'Brak produktów spełniających kryteria.',
+    empty: 'Brak membran spełniających kryteria.',
     unavailable: 'Katalog jest obecnie niedostępny.',
     manual: 'Użyj parametrów ręcznych',
     choose: 'Szczegóły',
@@ -40,29 +41,21 @@ const copy = {
     source: 'Źródło techniczne',
     variants: 'Wariant',
     noVariant: 'Bez wariantu',
-    width: 'Szerokość krycia',
-    gauge: 'Rozstaw łat',
+    rollWidth: 'Szerokość rolki',
+    rollLength: 'Długość rolki',
+    overlap: 'Minimalny zakład',
     pitch: 'Minimalny kąt',
-    panelLength: 'Zakres długości',
-    sheetFormat: 'Format',
-    fixedSheet: 'Stały arkusz',
-    cutSheet: 'Cięta na długość',
     more: 'Pokaż więcej produktów',
-    kind: {
-      'roof-tile': 'Dachówka',
-      'modular-sheet': 'Blacha',
-      'standing-seam': 'Rąbek',
-    },
   },
   en: {
-    title: 'Product catalogue',
+    title: 'Membrane catalogue',
     close: 'Close catalogue',
     back: 'Back to results',
     search: 'Search manufacturer or product',
     manufacturer: 'Manufacturer',
     all: 'All manufacturers',
     loading: 'Loading catalogue…',
-    empty: 'No products match these filters.',
+    empty: 'No membranes match these filters.',
     unavailable: 'The catalogue is currently unavailable.',
     manual: 'Use manual parameters',
     choose: 'Details',
@@ -73,19 +66,11 @@ const copy = {
     source: 'Technical source',
     variants: 'Variant',
     noVariant: 'No variant',
-    width: 'Cover width',
-    gauge: 'Batten gauge',
+    rollWidth: 'Roll width',
+    rollLength: 'Roll length',
+    overlap: 'Minimum overlap',
     pitch: 'Minimum pitch',
-    panelLength: 'Length range',
-    sheetFormat: 'Format',
-    fixedSheet: 'Fixed sheet',
-    cutSheet: 'Cut to length',
     more: 'Show more products',
-    kind: {
-      'roof-tile': 'Roof tile',
-      'modular-sheet': 'Metal sheet',
-      'standing-seam': 'Standing seam',
-    },
   },
 };
 
@@ -98,47 +83,28 @@ function useDebounced<T>(value: T, delay = 300) {
   return debounced;
 }
 
-function facts(spec: CoveringTechnicalSpec, m: (typeof copy)['pl']) {
-  if (spec.kind === 'roof-tile') {
-    const mode = spec.installationModes[0];
-    return [
-      mode && [m.width, `${mode.coverWidthMm} mm`],
-      mode && [m.gauge, `${mode.gaugeRangeMm.min}–${mode.gaugeRangeMm.max} mm`],
-      mode?.minPitchDeg && [m.pitch, `${mode.minPitchDeg}°`],
-    ].filter(Boolean) as string[][];
-  }
-  if (spec.kind === 'modular-sheet')
-    return [
-      [m.width, `${spec.effectiveWidthMm} mm`],
-      [
-        m.sheetFormat,
-        spec.lengthModel.kind === 'cut-to-length' ? m.cutSheet : m.fixedSheet,
-      ],
-      spec.lengthModel.kind === 'cut-to-length' && [
-        m.panelLength,
-        `${spec.lengthModel.minPanelLengthMm}–${spec.lengthModel.maxPanelLengthMm} mm`,
-      ],
-      spec.minPitchDeg && [m.pitch, `${spec.minPitchDeg}°`],
-    ].filter(Boolean) as string[][];
+function facts(
+  spec: Extract<
+    CatalogProductDetail['currentRevision']['technicalSpec'],
+    { kind: 'membrane' }
+  >,
+  m: (typeof copy)['pl'],
+) {
   return [
-    spec.installationModes[0] && [
-      m.width,
-      `${spec.installationModes[0].effectiveWidthMm} mm`,
-    ],
-    [m.panelLength, `${spec.minPanelLengthMm}–${spec.maxPanelLengthMm} mm`],
+    [m.rollWidth, `${spec.rollWidthMm} mm`],
+    [m.rollLength, `${spec.rollLengthMm} mm`],
+    [m.overlap, `${spec.minimumOverlapMm} mm`],
     spec.minPitchDeg && [m.pitch, `${spec.minPitchDeg}°`],
   ].filter(Boolean) as string[][];
 }
 
 function PickerBody({
-  kind,
   client,
   onApply,
   onManual,
 }: {
-  kind: CoveringKind;
   client: CatalogClient;
-  onApply: (selection: CoveringProductSelection) => void;
+  onApply: (selection: MembraneProductSelection) => void;
   onManual: () => void;
 }) {
   const { i18n } = useTranslation();
@@ -157,12 +123,12 @@ function PickerBody({
     staleTime: 5 * 60_000,
   });
   const products = useInfiniteQuery({
-    queryKey: ['catalog', 'products', kind, q, manufacturerId],
+    queryKey: ['catalog', 'products', 'membrane', q, manufacturerId],
     queryFn: ({ signal, pageParam }) =>
       client.searchProducts(
         {
           q: q || undefined,
-          kind,
+          kind: 'membrane',
           manufacturerId: manufacturerId || undefined,
           limit: 30,
           cursor: pageParam || undefined,
@@ -187,7 +153,7 @@ function PickerBody({
   );
   const detailFacts = useMemo(() => {
     const spec = detail.data?.currentRevision.technicalSpec;
-    return spec && isCoveringTechnicalSpec(spec) ? facts(spec, m) : [];
+    return spec && spec.kind === 'membrane' ? facts(spec, m) : [];
   }, [detail.data, m]);
 
   async function apply(item: CatalogProductDetail) {
@@ -206,7 +172,7 @@ function PickerBody({
         staleTime: Infinity,
       });
       onApply(
-        createCatalogProductSelection({
+        createMembraneProductSelection({
           manufacturer: exact.manufacturer,
           product: exact.product,
           revision: exact.revision,
@@ -222,7 +188,10 @@ function PickerBody({
 
   if (productId)
     return (
-      <div className="a-catalog-picker-body" data-testid="catalog-detail">
+      <div
+        className="a-catalog-picker-body"
+        data-testid="membrane-catalog-detail"
+      >
         <button
           className="a-catalog-back"
           onClick={() => setProductId(undefined)}
@@ -289,8 +258,10 @@ function PickerBody({
     );
 
   return (
-    <div className="a-catalog-picker-body" data-testid="catalog-results">
-      <p className="a-catalog-kind-context">{m.kind[kind]}</p>
+    <div
+      className="a-catalog-picker-body"
+      data-testid="membrane-catalog-results"
+    >
       <div className="a-catalog-filters">
         <label>
           <span>{m.search}</span>
@@ -338,19 +309,22 @@ function PickerBody({
                 {m.currentRevision}
               </span>
               <dl>
-                {product.technicalPreview.effectiveWidthMm && (
+                {product.technicalPreview.rollWidthMm && (
                   <div>
-                    <dt>{m.width}</dt>
-                    <dd>{product.technicalPreview.effectiveWidthMm} mm</dd>
+                    <dt>{m.rollWidth}</dt>
+                    <dd>{product.technicalPreview.rollWidthMm} mm</dd>
                   </div>
                 )}
-                {product.technicalPreview.gaugeMinMm && (
+                {product.technicalPreview.rollLengthMm && (
                   <div>
-                    <dt>{m.gauge}</dt>
-                    <dd>
-                      {product.technicalPreview.gaugeMinMm}–
-                      {product.technicalPreview.gaugeMaxMm} mm
-                    </dd>
+                    <dt>{m.rollLength}</dt>
+                    <dd>{product.technicalPreview.rollLengthMm} mm</dd>
+                  </div>
+                )}
+                {product.technicalPreview.minimumOverlapMm !== undefined && (
+                  <div>
+                    <dt>{m.overlap}</dt>
+                    <dd>{product.technicalPreview.minimumOverlapMm} mm</dd>
                   </div>
                 )}
                 {product.technicalPreview.minPitchDeg && (
@@ -359,28 +333,6 @@ function PickerBody({
                     <dd>{product.technicalPreview.minPitchDeg}°</dd>
                   </div>
                 )}
-                {product.technicalPreview.sheetLengthModel && (
-                  <div>
-                    <dt>{m.sheetFormat}</dt>
-                    <dd>
-                      {product.technicalPreview.sheetLengthModel ===
-                      'cut-to-length'
-                        ? m.cutSheet
-                        : m.fixedSheet}
-                    </dd>
-                  </div>
-                )}
-                {product.technicalPreview.minimumSheetLengthMm !== undefined &&
-                  product.technicalPreview.maximumSheetLengthMm !==
-                    undefined && (
-                    <div>
-                      <dt>{m.panelLength}</dt>
-                      <dd>
-                        {product.technicalPreview.minimumSheetLengthMm}–
-                        {product.technicalPreview.maximumSheetLengthMm} mm
-                      </dd>
-                    </div>
-                  )}
               </dl>
               <button
                 className="a-button"
@@ -429,15 +381,13 @@ function CatalogUnavailable({
   );
 }
 
-export function CatalogProductPicker({
-  kind,
+export function MembraneProductPicker({
   onApply,
   onManual,
   onClose,
   client = catalogClient,
 }: {
-  kind: CoveringKind;
-  onApply: (selection: CoveringProductSelection) => void;
+  onApply: (selection: MembraneProductSelection) => void;
   onManual: () => void;
   onClose: () => void;
   client?: CatalogClient;
@@ -446,12 +396,7 @@ export function CatalogProductPicker({
   const m = copy[i18n.language.startsWith('pl') ? 'pl' : 'en'];
   const mobile = useMobileWorkbench();
   const body = (
-    <PickerBody
-      kind={kind}
-      client={client}
-      onApply={onApply}
-      onManual={onManual}
-    />
+    <PickerBody client={client} onApply={onApply} onManual={onManual} />
   );
   if (mobile)
     return (

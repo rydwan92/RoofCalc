@@ -15,6 +15,42 @@ npx pnpm@10.15.1 dev
 
 Frontend: http://127.0.0.1:5173. API: http://127.0.0.1:3001/api/health. Przy globalnym pnpm można używać bezpośrednio `pnpm`.
 
+## Baza danych i katalog materiałów (opcjonalnie)
+
+Geometria, tryby Szybkie/Kreator i lokalne projekty działają w pełni bez
+bazy danych. Katalog materiałów (dachówki, membrany, tarcica) i moduł cen
+wymagają osiągalnego `DATABASE_URL` — bez niego `/api/catalog` i
+`/api/pricing` zwracają kontrolowany błąd 503, a UI po prostu nie pokazuje
+wyboru z katalogu ani cen.
+
+Skopiuj `.env.example` do `.env` i wybierz jeden z dwóch wariantów:
+
+**Wariant A — kontener Docker (MariaDB, port 3307, nie koliduje z XAMPP):**
+
+```bash
+pnpm db:up
+pnpm db:bootstrap
+pnpm dev
+```
+
+`pnpm dev:full` łączy oba ostatnie kroki. `pnpm db:down` zatrzymuje kontener
+(dane zostają w nazwanym wolumenie).
+
+**Wariant B — istniejąca lokalna baza (np. XAMPP MariaDB na porcie 3306):**
+
+Utwórz bazę `cieslacalc`, ustaw `DATABASE_URL` w `.env`, po czym:
+
+```bash
+pnpm db:bootstrap
+pnpm dev
+```
+
+`db:bootstrap` czeka na gotowość bazy, nakłada zatwierdzone migracje,
+zasila katalog i cennik realnymi, cytowanymi danymi (dachówki, membrana,
+tarcica konstrukcyjna z realnych obserwacji rynkowych) i na końcu
+weryfikuje wynik (`apps/api/src/cli/smoke-check.ts`). Działa identycznie w
+obu wariantach — różni je tylko `DATABASE_URL`.
+
 ## Szybkie i Kreator — model 8.0.0
 
 **Szybkie:** wybierz krokiew zwykłą K1 albo narożną H1, wpisz rzut do osi kalenicy, kąt połaci i okap. Wyniki, rysunek i mini-podglądy najważniejszych cięć aktualizują się z tego samego wyniku obliczeń. „Więcej ustawień” otwiera odpowiedni przekrój i kalenicę. Przejście do Kreatora zachowuje dokładnie ten sam szablon i wynik.

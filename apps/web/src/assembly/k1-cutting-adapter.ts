@@ -5,6 +5,7 @@ import {
   resolveK1FabricationBlank,
   type K1FabricationBlankResolution,
 } from '@cieslacalc/roof-math';
+import { timberSectionStockClassId } from './timber-stock-class';
 
 export type K1CuttingRequirement =
   | {
@@ -88,7 +89,7 @@ export function createK1CuttingRequirement(
   if (blank.section.widthMm !== widthMm || blank.section.depthMm !== depthMm)
     return { status: 'unresolved', reason: 'incomplete-k1-section' };
 
-  const stockClassId = JSON.stringify(['timber-section', widthMm, depthMm]);
+  const stockClassId = timberSectionStockClassId(widthMm, depthMm);
   return {
     status: 'resolved',
     blank,

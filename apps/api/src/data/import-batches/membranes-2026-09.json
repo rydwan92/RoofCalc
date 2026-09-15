@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "id": "membrane-research-2026-09",
+    "label": "V35: first real membrane catalog product (DÖRKEN DELTA-MAXX PLUS), from the official product page and installation guide, retrieved 2026-09.",
+    "sourceRevision": "2026-09"
+  },
+  "manufacturers": [
+    {
+      "id": "manufacturer:dorken",
+      "slug": "dorken",
+      "name": "DÖRKEN",
+      "countryCode": "PL",
+      "websiteUrl": "https://www.doerken.com/pl/pl",
+      "active": true
+    }
+  ],
+  "products": [
+    {
+      "id": "product:dorken:delta-maxx-plus",
+      "manufacturerId": "manufacturer:dorken",
+      "slug": "delta-maxx-plus",
+      "name": "DELTA-MAXX PLUS",
+      "coveringKind": "membrane",
+      "active": true
+    }
+  ],
+  "revisions": [
+    {
+      "id": "revision:dorken:delta-maxx-plus:2026-09",
+      "productId": "product:dorken:delta-maxx-plus",
+      "revisionCode": "2026-09",
+      "validFrom": "2026-09-15",
+      "source": {
+        "label": "doerken.com/pl, retrieved 2026-09. Grammage/Sd/W1-class/adhesive-edges are descriptive only here, not structured fields. Minimum longitudinal overlap per the manufacturer's own installation guide.",
+        "url": "https://www.doerken.com/pl/pl/produkty/membrany-dachowe2/odkryj-nowa-generacje-membran-dachowych/delta-maxx-plus",
+        "revision": "2026-09"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "membrane",
+        "rollWidthMm": 1500,
+        "rollLengthMm": 50000,
+        "minimumOverlapMm": 100,
+        "material": "synthetic",
+        "salesUnit": "roll"
+      }
+    }
+  ],
+  "variants": []
+}

@@ -5,87 +5,105 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 import { ArrowLeft, Search, X } from 'lucide-react';
-import {
-  createCatalogProductSelection,
-  isCoveringTechnicalSpec,
-  type CatalogProductDetail,
-} from '@cieslacalc/catalog-core';
-import type {
-  CoveringKind,
-  CoveringProductSelection,
-  CoveringTechnicalSpec,
-} from '@cieslacalc/covering-core';
+import type { CatalogProductDetail } from '@cieslacalc/catalog-core';
 import { useTranslation } from 'react-i18next';
 import { MobileSheet } from '../assembly/MobileSheet';
 import { useMobileWorkbench } from '../assembly/mobile-workbench';
 import { catalogClient, type CatalogClient } from './client';
 
+/**
+ * One length picked from the timber-stock catalogue, ready to pre-fill a
+ * `StockDraft` row in `K1CuttingPlan.tsx`. Deliberately not a persisted
+ * `*ProductSelection` type (unlike covering/membrane picks) — a K1 commercial
+ * length is plain typed text today, so a catalogue pick only ever donates a
+ * length value and a display label, never a stored `catalogRef`.
+ */
+export interface TimberStockCatalogPick {
+  lengthMm: number;
+  widthMm: number;
+  depthMm: number;
+  sourceLabel: string;
+  /**
+   * Set only when the product has exactly one commercial variant — timber
+   * items are seeded with either zero or one, never a color/finish choice
+   * to disambiguate, so there is no variant picker UI here (unlike
+   * `CatalogProductPicker`/`MembraneProductPicker`). Left undefined when a
+   * product has no variant or (should it ever happen) more than one, so a
+   * price lookup never guesses which commercial item was meant.
+   */
+  commercialVariantId?: string;
+}
+
+/**
+ * Mirrors `MembraneProductPicker.tsx`'s structure and hand-rolled `copy`
+ * pattern deliberately, matching that same-template convention.
+ */
 const copy = {
   pl: {
-    title: 'Katalog produktów',
+    title: 'Katalog tarcicy konstrukcyjnej',
     close: 'Zamknij katalog',
     back: 'Wróć do wyników',
     search: 'Szukaj producenta lub produktu',
     manufacturer: 'Producent',
     all: 'Wszyscy producenci',
     loading: 'Ładowanie katalogu…',
-    empty: 'Brak produktów spełniających kryteria.',
+    empty: 'Brak elementów spełniających kryteria.',
+    emptySection:
+      'Brak elementów w katalogu o przekroju zgodnym z wymaganym blankiem K1.',
     unavailable: 'Katalog jest obecnie niedostępny.',
-    manual: 'Użyj parametrów ręcznych',
+    manual: 'Zamknij i wprowadź ręcznie',
     choose: 'Szczegóły',
-    apply: 'Użyj produktu',
+    apply: 'Użyj tej długości',
     currentRevision: 'Aktualna rewizja techniczna',
     applying: 'Pobieranie rewizji…',
     revision: 'Rewizja techniczna',
     source: 'Źródło techniczne',
     variants: 'Wariant',
     noVariant: 'Bez wariantu',
-    width: 'Szerokość krycia',
-    gauge: 'Rozstaw łat',
-    pitch: 'Minimalny kąt',
-    panelLength: 'Zakres długości',
-    sheetFormat: 'Format',
-    fixedSheet: 'Stały arkusz',
-    cutSheet: 'Cięta na długość',
+    width: 'Szerokość przekroju',
+    depth: 'Wysokość przekroju',
+    length: 'Długość',
+    strengthClass: 'Klasa wytrzymałości',
+    kilnDried: 'Suszone komorowo',
+    planed: 'Strugane',
+    treated: 'Impregnowane',
+    moisture: 'Wilgotność',
     more: 'Pokaż więcej produktów',
-    kind: {
-      'roof-tile': 'Dachówka',
-      'modular-sheet': 'Blacha',
-      'standing-seam': 'Rąbek',
-    },
+    sectionFilter:
+      'Pokazano tylko elementy o przekroju {{width}} × {{depth}} mm, zgodnym z wymaganym blankiem K1.',
   },
   en: {
-    title: 'Product catalogue',
+    title: 'Timber stock catalogue',
     close: 'Close catalogue',
     back: 'Back to results',
     search: 'Search manufacturer or product',
     manufacturer: 'Manufacturer',
     all: 'All manufacturers',
     loading: 'Loading catalogue…',
-    empty: 'No products match these filters.',
+    empty: 'No items match these filters.',
+    emptySection:
+      'No catalogue item has a section matching the required K1 blank.',
     unavailable: 'The catalogue is currently unavailable.',
-    manual: 'Use manual parameters',
+    manual: 'Close and enter manually',
     choose: 'Details',
-    apply: 'Use product',
+    apply: 'Use this length',
     currentRevision: 'Current technical revision',
     applying: 'Fetching revision…',
     revision: 'Technical revision',
     source: 'Technical source',
     variants: 'Variant',
     noVariant: 'No variant',
-    width: 'Cover width',
-    gauge: 'Batten gauge',
-    pitch: 'Minimum pitch',
-    panelLength: 'Length range',
-    sheetFormat: 'Format',
-    fixedSheet: 'Fixed sheet',
-    cutSheet: 'Cut to length',
+    width: 'Section width',
+    depth: 'Section depth',
+    length: 'Length',
+    strengthClass: 'Strength class',
+    kilnDried: 'Kiln-dried',
+    planed: 'Planed',
+    treated: 'Treated',
+    moisture: 'Moisture',
     more: 'Show more products',
-    kind: {
-      'roof-tile': 'Roof tile',
-      'modular-sheet': 'Metal sheet',
-      'standing-seam': 'Standing seam',
-    },
+    sectionFilter:
+      'Showing only items with a {{width}} × {{depth}} mm section, matching the required K1 blank.',
   },
 };
 
@@ -98,47 +116,50 @@ function useDebounced<T>(value: T, delay = 300) {
   return debounced;
 }
 
-function facts(spec: CoveringTechnicalSpec, m: (typeof copy)['pl']) {
-  if (spec.kind === 'roof-tile') {
-    const mode = spec.installationModes[0];
-    return [
-      mode && [m.width, `${mode.coverWidthMm} mm`],
-      mode && [m.gauge, `${mode.gaugeRangeMm.min}–${mode.gaugeRangeMm.max} mm`],
-      mode?.minPitchDeg && [m.pitch, `${mode.minPitchDeg}°`],
-    ].filter(Boolean) as string[][];
-  }
-  if (spec.kind === 'modular-sheet')
-    return [
-      [m.width, `${spec.effectiveWidthMm} mm`],
-      [
-        m.sheetFormat,
-        spec.lengthModel.kind === 'cut-to-length' ? m.cutSheet : m.fixedSheet,
-      ],
-      spec.lengthModel.kind === 'cut-to-length' && [
-        m.panelLength,
-        `${spec.lengthModel.minPanelLengthMm}–${spec.lengthModel.maxPanelLengthMm} mm`,
-      ],
-      spec.minPitchDeg && [m.pitch, `${spec.minPitchDeg}°`],
-    ].filter(Boolean) as string[][];
+function boolFact(value: boolean | undefined, label: string) {
+  return value === true ? [[label, '✓']] : [];
+}
+
+function facts(
+  spec: Extract<
+    CatalogProductDetail['currentRevision']['technicalSpec'],
+    { kind: 'timber-stock' }
+  >,
+  m: (typeof copy)['pl'],
+) {
   return [
-    spec.installationModes[0] && [
-      m.width,
-      `${spec.installationModes[0].effectiveWidthMm} mm`,
+    [m.width, `${spec.widthMm} mm`],
+    [m.depth, `${spec.depthMm} mm`],
+    [m.length, `${spec.lengthMm} mm`],
+    spec.strengthClass && [m.strengthClass, spec.strengthClass],
+    ...boolFact(spec.kilnDried, m.kilnDried),
+    ...boolFact(spec.planed, m.planed),
+    ...boolFact(spec.treated, m.treated),
+    spec.moisturePercentRange && [
+      m.moisture,
+      `${spec.moisturePercentRange.min}–${spec.moisturePercentRange.max}%`,
     ],
-    [m.panelLength, `${spec.minPanelLengthMm}–${spec.maxPanelLengthMm} mm`],
-    spec.minPitchDeg && [m.pitch, `${spec.minPitchDeg}°`],
   ].filter(Boolean) as string[][];
 }
 
+function matchesSection(
+  section: { widthMm: number; depthMm: number } | undefined,
+  widthMm?: number,
+  depthMm?: number,
+) {
+  if (!section) return true;
+  return widthMm === section.widthMm && depthMm === section.depthMm;
+}
+
 function PickerBody({
-  kind,
   client,
+  requiredSection,
   onApply,
   onManual,
 }: {
-  kind: CoveringKind;
   client: CatalogClient;
-  onApply: (selection: CoveringProductSelection) => void;
+  requiredSection?: { widthMm: number; depthMm: number };
+  onApply: (pick: TimberStockCatalogPick) => void;
   onManual: () => void;
 }) {
   const { i18n } = useTranslation();
@@ -148,7 +169,6 @@ function PickerBody({
   const q = useDebounced(search.trim());
   const [manufacturerId, setManufacturerId] = useState('');
   const [productId, setProductId] = useState<string>();
-  const [variantId, setVariantId] = useState('');
   const [applying, setApplying] = useState(false);
   const [applyError, setApplyError] = useState(false);
   const manufacturers = useQuery({
@@ -157,12 +177,12 @@ function PickerBody({
     staleTime: 5 * 60_000,
   });
   const products = useInfiniteQuery({
-    queryKey: ['catalog', 'products', kind, q, manufacturerId],
+    queryKey: ['catalog', 'products', 'timber-stock', q, manufacturerId],
     queryFn: ({ signal, pageParam }) =>
       client.searchProducts(
         {
           q: q || undefined,
-          kind,
+          kind: 'timber-stock',
           manufacturerId: manufacturerId || undefined,
           limit: 30,
           cursor: pageParam || undefined,
@@ -181,13 +201,18 @@ function PickerBody({
   });
 
   const unavailable = manufacturers.isError || products.isError;
-  const productItems = products.data?.pages.flatMap((page) => page.items);
-  const selectedVariant = detail.data?.variants.find(
-    (item) => item.id === variantId,
-  );
+  const productItems = products.data?.pages
+    .flatMap((page) => page.items)
+    .filter((item) =>
+      matchesSection(
+        requiredSection,
+        item.technicalPreview.sectionWidthMm,
+        item.technicalPreview.sectionDepthMm,
+      ),
+    );
   const detailFacts = useMemo(() => {
     const spec = detail.data?.currentRevision.technicalSpec;
-    return spec && isCoveringTechnicalSpec(spec) ? facts(spec, m) : [];
+    return spec && spec.kind === 'timber-stock' ? facts(spec, m) : [];
   }, [detail.data, m]);
 
   async function apply(item: CatalogProductDetail) {
@@ -205,14 +230,26 @@ function PickerBody({
           client.getRevision(item.product.id, item.currentRevision.id, signal),
         staleTime: Infinity,
       });
-      onApply(
-        createCatalogProductSelection({
-          manufacturer: exact.manufacturer,
-          product: exact.product,
-          revision: exact.revision,
-          variant: selectedVariant,
-        }),
-      );
+      const spec = exact.revision.technicalSpec;
+      if (
+        spec.kind !== 'timber-stock' ||
+        !matchesSection(requiredSection, spec.widthMm, spec.depthMm)
+      ) {
+        setApplyError(true);
+        return;
+      }
+      onApply({
+        lengthMm: spec.lengthMm,
+        widthMm: spec.widthMm,
+        depthMm: spec.depthMm,
+        sourceLabel: [
+          exact.manufacturer.name,
+          exact.product.name,
+          exact.revision.revisionCode,
+        ].join(' · '),
+        commercialVariantId:
+          item.variants.length === 1 ? item.variants[0]!.id : undefined,
+      });
     } catch {
       setApplyError(true);
     } finally {
@@ -222,7 +259,10 @@ function PickerBody({
 
   if (productId)
     return (
-      <div className="a-catalog-picker-body" data-testid="catalog-detail">
+      <div
+        className="a-catalog-picker-body"
+        data-testid="timber-stock-catalog-detail"
+      >
         <button
           className="a-catalog-back"
           onClick={() => setProductId(undefined)}
@@ -259,22 +299,6 @@ function PickerBody({
                 </div>
               ))}
             </dl>
-            {detail.data.variants.length > 0 && (
-              <label className="a-field">
-                <span>{m.variants}</span>
-                <select
-                  value={variantId}
-                  onChange={(event) => setVariantId(event.target.value)}
-                >
-                  <option value="">{m.noVariant}</option>
-                  {detail.data.variants.map((variant) => (
-                    <option key={variant.id} value={variant.id}>
-                      {variant.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
             {applyError && <p role="alert">{m.unavailable}</p>}
             <button
               className="a-button a-primary a-catalog-apply"
@@ -289,8 +313,17 @@ function PickerBody({
     );
 
   return (
-    <div className="a-catalog-picker-body" data-testid="catalog-results">
-      <p className="a-catalog-kind-context">{m.kind[kind]}</p>
+    <div
+      className="a-catalog-picker-body"
+      data-testid="timber-stock-catalog-results"
+    >
+      {requiredSection && (
+        <p className="a-catalog-note">
+          {m.sectionFilter
+            .replace('{{width}}', String(requiredSection.widthMm))
+            .replace('{{depth}}', String(requiredSection.depthMm))}
+        </p>
+      )}
       <div className="a-catalog-filters">
         <label>
           <span>{m.search}</span>
@@ -338,56 +371,34 @@ function PickerBody({
                 {m.currentRevision}
               </span>
               <dl>
-                {product.technicalPreview.effectiveWidthMm && (
+                {product.technicalPreview.sectionWidthMm && (
                   <div>
                     <dt>{m.width}</dt>
-                    <dd>{product.technicalPreview.effectiveWidthMm} mm</dd>
+                    <dd>{product.technicalPreview.sectionWidthMm} mm</dd>
                   </div>
                 )}
-                {product.technicalPreview.gaugeMinMm && (
+                {product.technicalPreview.sectionDepthMm && (
                   <div>
-                    <dt>{m.gauge}</dt>
-                    <dd>
-                      {product.technicalPreview.gaugeMinMm}–
-                      {product.technicalPreview.gaugeMaxMm} mm
-                    </dd>
+                    <dt>{m.depth}</dt>
+                    <dd>{product.technicalPreview.sectionDepthMm} mm</dd>
                   </div>
                 )}
-                {product.technicalPreview.minPitchDeg && (
+                {product.technicalPreview.lengthMm && (
                   <div>
-                    <dt>{m.pitch}</dt>
-                    <dd>{product.technicalPreview.minPitchDeg}°</dd>
+                    <dt>{m.length}</dt>
+                    <dd>{product.technicalPreview.lengthMm} mm</dd>
                   </div>
                 )}
-                {product.technicalPreview.sheetLengthModel && (
+                {product.technicalPreview.strengthClass && (
                   <div>
-                    <dt>{m.sheetFormat}</dt>
-                    <dd>
-                      {product.technicalPreview.sheetLengthModel ===
-                      'cut-to-length'
-                        ? m.cutSheet
-                        : m.fixedSheet}
-                    </dd>
+                    <dt>{m.strengthClass}</dt>
+                    <dd>{product.technicalPreview.strengthClass}</dd>
                   </div>
                 )}
-                {product.technicalPreview.minimumSheetLengthMm !== undefined &&
-                  product.technicalPreview.maximumSheetLengthMm !==
-                    undefined && (
-                    <div>
-                      <dt>{m.panelLength}</dt>
-                      <dd>
-                        {product.technicalPreview.minimumSheetLengthMm}–
-                        {product.technicalPreview.maximumSheetLengthMm} mm
-                      </dd>
-                    </div>
-                  )}
               </dl>
               <button
                 className="a-button"
-                onClick={() => {
-                  setVariantId('');
-                  setProductId(product.id);
-                }}
+                onClick={() => setProductId(product.id)}
               >
                 {m.choose}
               </button>
@@ -404,7 +415,9 @@ function PickerBody({
           )}
         </div>
       ) : (
-        <div className="a-catalog-empty">{m.empty}</div>
+        <div className="a-catalog-empty">
+          {requiredSection ? m.emptySection : m.empty}
+        </div>
       )}
     </div>
   );
@@ -429,16 +442,14 @@ function CatalogUnavailable({
   );
 }
 
-export function CatalogProductPicker({
-  kind,
+export function TimberStockProductPicker({
+  requiredSection,
   onApply,
-  onManual,
   onClose,
   client = catalogClient,
 }: {
-  kind: CoveringKind;
-  onApply: (selection: CoveringProductSelection) => void;
-  onManual: () => void;
+  requiredSection?: { widthMm: number; depthMm: number };
+  onApply: (pick: TimberStockCatalogPick) => void;
   onClose: () => void;
   client?: CatalogClient;
 }) {
@@ -447,10 +458,10 @@ export function CatalogProductPicker({
   const mobile = useMobileWorkbench();
   const body = (
     <PickerBody
-      kind={kind}
       client={client}
+      requiredSection={requiredSection}
       onApply={onApply}
-      onManual={onManual}
+      onManual={onClose}
     />
   );
   if (mobile)

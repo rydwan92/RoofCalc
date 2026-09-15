@@ -9,7 +9,11 @@
     "db:generate": "cd ../.. && drizzle-kit generate --config drizzle.config.ts",
     "db:migrate": "cd ../.. && drizzle-kit migrate --config drizzle.config.ts",
     "catalog:import": "tsx src/cli/import-catalog.ts",
-    "pricing:import": "tsx src/cli/import-pricing.ts"
+    "pricing:import": "tsx src/cli/import-pricing.ts",
+    "db:wait": "tsx src/cli/wait-for-db.ts",
+    "db:seed": "tsx src/cli/seed-all.ts --apply",
+    "db:smoke-check": "tsx src/cli/smoke-check.ts",
+    "db:bootstrap": "pnpm db:wait && pnpm db:migrate && pnpm db:seed && pnpm db:smoke-check"
   },
   "dependencies": {
     "@cieslacalc/catalog-core": "workspace:*",

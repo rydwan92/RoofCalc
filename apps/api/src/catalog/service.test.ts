@@ -99,6 +99,71 @@ const seed: CatalogImportBatchV1 = {
 const app = () =>
   createApp(undefined, new CatalogService(new MemoryCatalogRepository(seed)));
 
+/**
+ * V35: proves `membrane`/`timber-stock` round-trip through the same
+ * search→detail→revision path as `roof-tile`, and that no kind leaks into
+ * another's filtered results — a separate seed so it never perturbs the
+ * roof-tile/modular-sheet/standing-seam assertions above (ordering, counts).
+ */
+const multiKindSeed: CatalogImportBatchV1 = {
+  ...seed,
+  products: [
+    ...seed.products,
+    {
+      id: 'p:delta',
+      manufacturerId: 'm:b',
+      slug: 'delta',
+      name: 'Delta Membrane',
+      coveringKind: 'membrane',
+      active: true,
+    },
+    {
+      id: 'p:epsilon',
+      manufacturerId: 'm:a',
+      slug: 'epsilon',
+      name: 'Epsilon Timber',
+      coveringKind: 'timber-stock',
+      active: true,
+    },
+  ],
+  revisions: [
+    ...seed.revisions,
+    {
+      id: 'r:delta:1',
+      productId: 'p:delta',
+      revisionCode: '1',
+      technicalSpec: {
+        schemaVersion: 1,
+        kind: 'membrane',
+        rollWidthMm: 1500,
+        rollLengthMm: 50_000,
+        minimumOverlapMm: 100,
+        material: 'synthetic',
+        salesUnit: 'roll',
+      },
+    },
+    {
+      id: 'r:epsilon:1',
+      productId: 'p:epsilon',
+      revisionCode: '1',
+      technicalSpec: {
+        schemaVersion: 1,
+        kind: 'timber-stock',
+        widthMm: 45,
+        depthMm: 145,
+        lengthMm: 4000,
+        strengthClass: 'C24',
+        salesUnit: 'piece',
+      },
+    },
+  ],
+};
+const multiKindApp = () =>
+  createApp(
+    undefined,
+    new CatalogService(new MemoryCatalogRepository(multiKindSeed)),
+  );
+
 describe('catalogue read API', () => {
   it('lists manufacturers and searches by query/kind/manufacturer', async () => {
     const manufacturers = await request(app()).get(
@@ -173,5 +238,83 @@ describe('catalogue read API', () => {
       .send({ name: 'Injected product' });
     expect(response.status).toBe(404);
     expect(response.body).toEqual({ error: { code: 'not-found' } });
+  });
+
+  it('round-trips a membrane product through search→detail→revision, exactly like roof-tile', async () => {
+    const search = await request(multiKindApp()).get(
+      '/api/catalog/products?kind=membrane',
+    );
+    expect(search.status).toBe(200);
+    expect(search.body.items.map((item: { id: string }) => item.id)).toEqual([
+      'p:delta',
+    ]);
+    expect(search.body.items[0].technicalPreview).toMatchObject({
+      rollWidthMm: 1500,
+      rollLengthMm: 50_000,
+      minimumOverlapMm: 100,
+    });
+    const product = await request(multiKindApp()).get(
+      '/api/catalog/products/p:delta',
+    );
+    expect(product.status).toBe(200);
+    expect(product.body.item.currentRevision.technicalSpec.kind).toBe(
+      'membrane',
+    );
+    const revision = await request(multiKindApp()).get(
+      '/api/catalog/products/p:delta/revisions/r:delta:1',
+    );
+    expect(revision.status).toBe(200);
+    expect(revision.body.item.revision.id).toBe('r:delta:1');
+  });
+
+  it('round-trips a timber-stock product through search→detail→revision, exactly like roof-tile', async () => {
+    const search = await request(multiKindApp()).get(
+      '/api/catalog/products?kind=timber-stock',
+    );
+    expect(search.status).toBe(200);
+    expect(search.body.items.map((item: { id: string }) => item.id)).toEqual([
+      'p:epsilon',
+    ]);
+    expect(search.body.items[0].technicalPreview).toMatchObject({
+      sectionWidthMm: 45,
+      sectionDepthMm: 145,
+      lengthMm: 4000,
+      strengthClass: 'C24',
+    });
+    const product = await request(multiKindApp()).get(
+      '/api/catalog/products/p:epsilon',
+    );
+    expect(product.status).toBe(200);
+    expect(product.body.item.currentRevision.technicalSpec.kind).toBe(
+      'timber-stock',
+    );
+    const revision = await request(multiKindApp()).get(
+      '/api/catalog/products/p:epsilon/revisions/r:epsilon:1',
+    );
+    expect(revision.status).toBe(200);
+    expect(revision.body.item.revision.id).toBe('r:epsilon:1');
+  });
+
+  it('never leaks a membrane or timber-stock product into another kind filter', async () => {
+    const tileOnly = await request(multiKindApp()).get(
+      '/api/catalog/products?kind=roof-tile',
+    );
+    const tileIds = tileOnly.body.items.map((item: { id: string }) => item.id);
+    expect(tileIds).not.toContain('p:delta');
+    expect(tileIds).not.toContain('p:epsilon');
+
+    const membraneOnly = await request(multiKindApp()).get(
+      '/api/catalog/products?kind=membrane',
+    );
+    expect(
+      membraneOnly.body.items.map((item: { id: string }) => item.id),
+    ).toEqual(['p:delta']);
+
+    const timberOnly = await request(multiKindApp()).get(
+      '/api/catalog/products?kind=timber-stock',
+    );
+    expect(
+      timberOnly.body.items.map((item: { id: string }) => item.id),
+    ).toEqual(['p:epsilon']);
   });
 });

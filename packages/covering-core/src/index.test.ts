@@ -5,12 +5,17 @@ import {
   coveringAssignmentSpecSchema,
   coveringProductSelectionSchema,
   coveringTechnicalSpecSchema,
+  evaluateRoofTileInstallation,
+  membraneOverlapRuleSchema,
+  membraneProductFieldSchema,
+  membraneTechnicalSpecSchema,
   modularSheetTechnicalSpecSchema,
   modularSheetLayoutIntentSchema,
   resolvePrimaryCoveringAssignments,
   roofTileLayoutIntentSchema,
   roofTileTechnicalSpecSchema,
   standingSeamTechnicalSpecSchema,
+  tileInstallationModeSchema,
   type RoofTileTechnicalSpec,
   type CoveringQuantitySemantic,
 } from './index';
@@ -59,6 +64,113 @@ describe('covering technical product contracts', () => {
       min: 145,
       max: 165,
     });
+  });
+
+  it('accepts the V35 range/recommendation fields without disturbing V18 shape', () => {
+    const parsed = roofTileTechnicalSpecSchema.parse({
+      ...tile(),
+      installationModes: [
+        {
+          ...tile().installationModes[0]!,
+          coverWidthRangeMm: { min: 258, max: 261 },
+          recommendedMinPitchDeg: 30,
+        },
+      ],
+    });
+    expect(parsed.installationModes[0]!.coverWidthRangeMm).toEqual({
+      min: 258,
+      max: 261,
+    });
+    expect(parsed.installationModes[0]!.recommendedMinPitchDeg).toBe(30);
+    // Old V18/V19 snapshots (neither field present) still parse unchanged.
+    const legacy = roofTileTechnicalSpecSchema.parse(tile());
+    expect(legacy.installationModes[0]!.coverWidthRangeMm).toBeUndefined();
+    expect(legacy.installationModes[0]!.recommendedMinPitchDeg).toBeUndefined();
+  });
+
+  it('rejects a recommended pitch below the enforced minimum', () => {
+    expect(() =>
+      tileInstallationModeSchema.parse({
+        id: 'standard',
+        coverWidthMm: 260,
+        gaugeRangeMm: { min: 390, max: 430 },
+        minPitchDeg: 30,
+        recommendedMinPitchDeg: 10,
+      }),
+    ).toThrow();
+  });
+
+  it('accepts installationRules as schema/type only, unused by the compatibility engine', () => {
+    const parsed = tileInstallationModeSchema.parse({
+      id: 'standard',
+      coverWidthMm: 300,
+      gaugeRangeMm: { min: 312, max: 340 },
+      installationRules: [
+        {
+          id: 'steep',
+          pitchRangeDeg: { min: 25 },
+          gaugeRangeMm: { min: 312, max: 320 },
+        },
+      ],
+    });
+    expect(parsed.installationRules).toHaveLength(1);
+  });
+
+  it('keeps minPitchDeg as the sole enforced compatibility floor', () => {
+    const spec: RoofTileTechnicalSpec = {
+      ...tile(),
+      installationModes: [
+        {
+          ...tile().installationModes[0]!,
+          minPitchDeg: 10,
+          recommendedMinPitchDeg: 30,
+        },
+      ],
+    };
+    // Below the hard minimum: still a hard-constraint block, unchanged.
+    const belowMinimum = evaluateRoofTileInstallation({
+      productSpec: spec,
+      selectedInstallationModeId: 'scale',
+      roofPitchDeg: 8,
+    });
+    expect(belowMinimum.issues).toContainEqual(
+      expect.objectContaining({
+        code: 'below-minimum-pitch',
+        category: 'hard-constraint',
+      }),
+    );
+    // Between the hard minimum and the recommendation: compatible, but flagged.
+    const belowRecommended = evaluateRoofTileInstallation({
+      productSpec: spec,
+      selectedInstallationModeId: 'scale',
+      roofPitchDeg: 15,
+    });
+    expect(belowRecommended.issues).toContainEqual(
+      expect.objectContaining({
+        code: 'below-recommended-pitch',
+        category: 'recommendation',
+        actual: 15,
+        required: 30,
+      }),
+    );
+    expect(
+      belowRecommended.issues.some(
+        (issue) => issue.category === 'hard-constraint',
+      ),
+    ).toBe(false);
+    // At/above the recommendation: no pitch issue at all.
+    const atRecommended = evaluateRoofTileInstallation({
+      productSpec: spec,
+      selectedInstallationModeId: 'scale',
+      roofPitchDeg: 30,
+    });
+    expect(
+      atRecommended.issues.some(
+        (issue) =>
+          issue.code === 'below-minimum-pitch' ||
+          issue.code === 'below-recommended-pitch',
+      ),
+    ).toBe(false);
   });
 
   it('parses fixed and cut-to-length modular sheet families', () => {
@@ -358,5 +470,64 @@ describe('covering technical product contracts', () => {
         'covering:sheet': [],
       },
     });
+  });
+});
+
+describe('V35 membrane catalogue selection', () => {
+  const membraneSpec = () =>
+    membraneTechnicalSpecSchema.parse({
+      schemaVersion: 1,
+      kind: 'membrane',
+      rollWidthMm: 1500,
+      rollLengthMm: 50_000,
+      minimumOverlapMm: 100,
+    });
+
+  it('accepts directional overlap rules without disturbing the flat baseline', () => {
+    const rule = membraneOverlapRuleSchema.parse({
+      direction: 'longitudinal',
+      minimumOverlapMm: 100,
+      pitchRangeDeg: { min: 10 },
+      requiresSealing: false,
+    });
+    expect(rule.direction).toBe('longitudinal');
+    const spec = membraneTechnicalSpecSchema.parse({
+      ...membraneSpec(),
+      overlapRules: [rule],
+    });
+    expect(spec.overlapRules).toHaveLength(1);
+    // The V1 solver still reads only the flat baseline (unchanged).
+    expect(spec.minimumOverlapMm).toBe(100);
+  });
+
+  it('normalizes a V34C raw spec into a V35 selection wrapper on parse', () => {
+    const raw = membraneSpec();
+    const normalized = membraneProductFieldSchema.parse(raw);
+    expect(normalized).toEqual({ technicalSpecSnapshot: raw });
+    expect(normalized.catalogRef).toBeUndefined();
+  });
+
+  it('parses a V35 selection wrapper unchanged', () => {
+    const selection = {
+      catalogRef: {
+        productId: 'product:dorken:delta-maxx-plus',
+        technicalRevisionId: 'revision:dorken:delta-maxx-plus:2026-09',
+      },
+      displaySnapshot: {
+        manufacturer: 'DÖRKEN',
+        familyName: 'DELTA-MAXX PLUS',
+      },
+      technicalSpecSnapshot: membraneSpec(),
+    };
+    expect(membraneProductFieldSchema.parse(selection)).toEqual(selection);
+  });
+
+  it('rejects a spec whose overlap never advances up-slope, same as before V35', () => {
+    expect(
+      membraneTechnicalSpecSchema.safeParse({
+        ...membraneSpec(),
+        minimumOverlapMm: 1500,
+      }).success,
+    ).toBe(false);
   });
 });

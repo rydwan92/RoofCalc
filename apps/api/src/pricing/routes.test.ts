@@ -80,4 +80,52 @@ describe('GET /api/pricing/variants', () => {
     expect(response.status).toBe(200);
     expect(response.body.items).toEqual([]);
   });
+
+  it('resolves a timber-stock variant through the same route, carrying gross-basis provenance', async () => {
+    const repository = new MemoryPricingRepository({
+      priceLists: [
+        {
+          id: 'list-obi',
+          ownerLabel: 'OBI.pl (retail, observed 2026-09)',
+          currencyCode: 'PLN',
+          validFrom: '2026-09-15',
+        },
+      ],
+      entries: [
+        {
+          id: 'price:obi:2026-09:c24-45x145x4000-treated',
+          priceListId: 'list-obi',
+          commercialVariantId:
+            'variant:timber:c24-45x145x4000-treated:standard',
+          saleUnit: 'piece',
+          netAmountMinor: 11301,
+          sourceAmountBasis: 'gross',
+          sourceVatRateBps: 2300,
+          validFrom: '2026-09-15',
+        },
+      ],
+    });
+    const app = createApp(undefined, undefined, new PricingService(repository));
+    const response = await request(app).get(
+      '/api/pricing/variants?ids=variant:timber:c24-45x145x4000-treated:standard',
+    );
+    expect(response.status).toBe(200);
+    expect(response.body.items).toEqual([
+      {
+        variantId: 'variant:timber:c24-45x145x4000-treated:standard',
+        entry: {
+          id: 'price:obi:2026-09:c24-45x145x4000-treated',
+          priceListId: 'list-obi',
+          commercialVariantId:
+            'variant:timber:c24-45x145x4000-treated:standard',
+          saleUnit: 'piece',
+          netAmountMinor: 11301,
+          sourceAmountBasis: 'gross',
+          sourceVatRateBps: 2300,
+          validFrom: '2026-09-15',
+        },
+        currencyCode: 'PLN',
+      },
+    ]);
+  });
 });

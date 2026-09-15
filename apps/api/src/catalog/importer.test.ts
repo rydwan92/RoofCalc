@@ -93,6 +93,27 @@ describe('canonical catalogue importer', () => {
     ).toBe(300);
   });
 
+  it('flips a family active flag and clears a variant SKU as mutable updates, never conflicts', async () => {
+    const repository = new MemoryCatalogRepository();
+    const importer = new CatalogImporter(repository);
+    await importer.import(batch, { apply: true });
+
+    const revised = structuredClone(batch);
+    revised.products[0]!.active = false;
+    delete revised.variants[0]!.sku;
+    const report = await importer.import(revised, { apply: true });
+
+    expect(report.status).toBe('applied');
+    expect(report.conflicts).toEqual([]);
+    expect(report.products).toMatchObject({ updated: 1, conflicts: 0 });
+    expect(report.variants).toMatchObject({ updated: 1, conflicts: 0 });
+
+    // A re-import of the same (now historical/inactive) data is a no-op.
+    const again = await importer.import(revised, { apply: true });
+    expect(again.products).toMatchObject({ unchanged: 1, updated: 0 });
+    expect(again.variants).toMatchObject({ unchanged: 1, updated: 0 });
+  });
+
   it('rejects broken references before reads or writes', async () => {
     let touched = false;
     const repository = {

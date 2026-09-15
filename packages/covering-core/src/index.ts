@@ -29,16 +29,54 @@ export const tileCoursePatternSchema = z.object({
   battenRowOffsetCycle: z.array(normalizedOffsetFraction).min(1),
 });
 
-export const tileInstallationModeSchema = z.object({
+/**
+ * A pitch-dependent override for one installation mode (V35). Absent this,
+ * the mode's own `gaugeRangeMm`/`minPitchDeg` are unconditional. Schema only
+ * this iteration — `resolveInstallationMode`/`evaluateRoofTileInstallation`
+ * do not yet select a rule by project pitch, so a product whose real gauge
+ * genuinely depends on pitch (e.g. BMI Teviva) must not be seeded with one
+ * flattened `gaugeRangeMm` that would silently claim unconditional
+ * compatibility (`docs/ARCHITECTURE_V35_MATERIAL_CATALOG_AND_DB_BOOTSTRAP.md`).
+ */
+export const tileInstallationRuleSchema = z.object({
   id: stableId,
-  coverWidthMm: finitePositive,
-  gaugeRangeMm: rangeSchema,
-  /** Additive in V19: absent V18 snapshots remain valid but cannot be laid out. */
-  coursePattern: tileCoursePatternSchema.optional(),
-  declaredUnitsPerM2: rangeSchema.optional(),
-  minPitchDeg: pitchDeg.optional(),
+  pitchRangeDeg: z.object({ min: pitchDeg, max: pitchDeg.optional() }),
+  gaugeRangeMm: rangeSchema.optional(),
   technicalConditionId: stableId.optional(),
 });
+
+export const tileInstallationModeSchema = z
+  .object({
+    id: stableId,
+    coverWidthMm: finitePositive,
+    /** Additive in V35: the manufacturer's published min/avg/max, when published. */
+    coverWidthRangeMm: rangeSchema.optional(),
+    gaugeRangeMm: rangeSchema,
+    /** Additive in V19: absent V18 snapshots remain valid but cannot be laid out. */
+    coursePattern: tileCoursePatternSchema.optional(),
+    declaredUnitsPerM2: rangeSchema.optional(),
+    /**
+     * The enforced compatibility floor (`evaluateRoofTileInstallation` blocks
+     * below it) — unchanged semantics since before V35.
+     */
+    minPitchDeg: pitchDeg.optional(),
+    /**
+     * Additive in V35: a manufacturer-published *recommended* minimum, always
+     * >= `minPitchDeg` when both are set. Purely informational — surfaced as a
+     * `'recommendation'`-category issue, never a hard block.
+     */
+    recommendedMinPitchDeg: pitchDeg.optional(),
+    /** Additive in V35, schema/type only this iteration — see doc comment above. */
+    installationRules: z.array(tileInstallationRuleSchema).optional(),
+    technicalConditionId: stableId.optional(),
+  })
+  .refine(
+    (mode) =>
+      mode.minPitchDeg === undefined ||
+      mode.recommendedMinPitchDeg === undefined ||
+      mode.recommendedMinPitchDeg >= mode.minPitchDeg,
+    'invalid_recommended_pitch',
+  );
 
 export const roofTileTechnicalSpecSchema = z.object({
   schemaVersion: z.literal(COVERING_TECHNICAL_SCHEMA_VERSION),
@@ -135,6 +173,22 @@ export const coveringTechnicalSpecSchema = z.union([
  * so it must never enter `resolvePrimaryCoveringAssignments` or any
  * `layoutKind` union.
  */
+/**
+ * A directional/conditional overlap override (V35). Schema only — the V1
+ * course-fit solver (`resolveMembraneCourseFit` in `@cieslacalc/roof-math`)
+ * keeps using the flat `minimumOverlapMm` baseline below; a future iteration
+ * can select a rule by direction/pitch without another schema change.
+ */
+export const membraneOverlapRuleSchema = z.object({
+  direction: z.enum(['longitudinal', 'transverse']),
+  minimumOverlapMm: z.number().finite().nonnegative(),
+  pitchRangeDeg: z
+    .object({ min: pitchDeg.optional(), max: pitchDeg.optional() })
+    .optional(),
+  requiresSealing: z.boolean().optional(),
+  technicalConditionId: stableId.optional(),
+});
+
 export const membraneTechnicalSpecSchema = z
   .object({
     schemaVersion: z.literal(COVERING_TECHNICAL_SCHEMA_VERSION),
@@ -145,6 +199,8 @@ export const membraneTechnicalSpecSchema = z
     minPitchDeg: pitchDeg.optional(),
     material: z.enum(['synthetic', 'bituminous', 'other']).optional(),
     salesUnit: z.enum(['roll', 'square-metre']).optional(),
+    /** Additive in V35, schema only — see doc comment above. */
+    overlapRules: z.array(membraneOverlapRuleSchema).optional(),
   })
   .refine(
     (spec) => spec.minimumOverlapMm < spec.rollWidthMm,
@@ -152,6 +208,51 @@ export const membraneTechnicalSpecSchema = z
   );
 
 export type MembraneTechnicalSpec = z.infer<typeof membraneTechnicalSpecSchema>;
+
+/**
+ * A membrane's project selection: catalogue provenance plus the immutable
+ * technical snapshot layout/cost calculate from (ADR-003's own pattern,
+ * mirrored from `CoveringProductSelection`). Introduced in V35 alongside the
+ * membrane catalogue picker; `roofProjectDocumentV1Schema`
+ * (`@cieslacalc/calculator-core`) accepts the V34C raw-spec shape too and
+ * normalizes it into this wrapper on parse, so a project saved between the
+ * V34C membrane-engine push and this change still opens unchanged.
+ */
+export const membraneProductSelectionSchema = z.object({
+  catalogRef: z
+    .object({
+      productId: stableId,
+      technicalRevisionId: stableId,
+      variantId: stableId.optional(),
+    })
+    .optional(),
+  displaySnapshot: z
+    .object({
+      manufacturer: z.string().min(1).optional(),
+      familyName: z.string().min(1).optional(),
+      variantName: z.string().min(1).optional(),
+      revisionCode: z.string().min(1).optional(),
+    })
+    .optional(),
+  technicalSpecSnapshot: membraneTechnicalSpecSchema,
+});
+
+export type MembraneProductSelection = z.infer<
+  typeof membraneProductSelectionSchema
+>;
+
+/**
+ * Accepts either the V34C raw `MembraneTechnicalSpec` (identified by its own
+ * `kind: 'membrane'` at the top level) or the V35 `MembraneProductSelection`
+ * wrapper, normalizing the former into `{ technicalSpecSnapshot: <raw spec> }`
+ * — normalization on parse, not a schema-version bump
+ * (`docs/SCHEMA_REGISTRY.md` §1's migration policy).
+ */
+export const membraneProductFieldSchema = z
+  .union([membraneTechnicalSpecSchema, membraneProductSelectionSchema])
+  .transform((value): MembraneProductSelection =>
+    'kind' in value ? { technicalSpecSnapshot: value } : value,
+  );
 
 export type RoofTileInstallationMode = z.infer<
   typeof tileInstallationModeSchema

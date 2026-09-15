@@ -1,0 +1,165 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "id": "timber-stock-research-2026-09",
+    "label": "V35: first timber-stock catalog products, from retailer observations (Castorama/OBI/BAT), retrieved 2026-09. No mill/producer is identified in the source, so manufacturer attribution is a generic placeholder.",
+    "sourceRevision": "2026-09"
+  },
+  "manufacturers": [
+    {
+      "id": "manufacturer:generic-sawn-timber",
+      "slug": "generic-sawn-timber",
+      "name": "Generic sawn timber (C24, no identified mill)",
+      "active": true
+    }
+  ],
+  "products": [
+    {
+      "id": "product:timber:c24-45x95x3000",
+      "manufacturerId": "manufacturer:generic-sawn-timber",
+      "slug": "c24-45x95x3000",
+      "name": "C24 45×95×3000",
+      "coveringKind": "timber-stock",
+      "active": true
+    },
+    {
+      "id": "product:timber:c24-45x145x3000",
+      "manufacturerId": "manufacturer:generic-sawn-timber",
+      "slug": "c24-45x145x3000",
+      "name": "C24 45×145×3000",
+      "coveringKind": "timber-stock",
+      "active": true
+    },
+    {
+      "id": "product:timber:c24-45x145x4000",
+      "manufacturerId": "manufacturer:generic-sawn-timber",
+      "slug": "c24-45x145x4000",
+      "name": "C24 45×145×4000",
+      "coveringKind": "timber-stock",
+      "active": true
+    },
+    {
+      "id": "product:timber:c24-45x145x4000-treated",
+      "manufacturerId": "manufacturer:generic-sawn-timber",
+      "slug": "c24-45x145x4000-treated",
+      "name": "C24 45×145×4000 (impregnowane)",
+      "coveringKind": "timber-stock",
+      "active": true
+    }
+  ],
+  "revisions": [
+    {
+      "id": "revision:timber:c24-45x95x3000:2026-09",
+      "productId": "product:timber:c24-45x95x3000",
+      "revisionCode": "2026-09",
+      "validFrom": "2026-09-15",
+      "source": {
+        "label": "Castorama.pl retail listing, retrieved 2026-09. Treatment not stated by the source and is not asserted either way.",
+        "url": "https://www.castorama.pl/drewno-complex-c24-ce-suszone-strugane-45x95x3000-mm/5063022667410_CAPL.prd",
+        "revision": "2026-09"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "timber-stock",
+        "widthMm": 45,
+        "depthMm": 95,
+        "lengthMm": 3000,
+        "strengthClass": "C24",
+        "kilnDried": true,
+        "planed": true,
+        "salesUnit": "piece"
+      }
+    },
+    {
+      "id": "revision:timber:c24-45x145x3000:2026-09",
+      "productId": "product:timber:c24-45x145x3000",
+      "revisionCode": "2026-09",
+      "validFrom": "2026-09-15",
+      "source": {
+        "label": "Castorama.pl retail listing, retrieved 2026-09. Treatment not stated by the source and is not asserted either way.",
+        "url": "https://www.castorama.pl/drewno-complex-c24-ce-suszone-strugane-45x145x3000-mm/5063022666727_CAPL.prd",
+        "revision": "2026-09"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "timber-stock",
+        "widthMm": 45,
+        "depthMm": 145,
+        "lengthMm": 3000,
+        "strengthClass": "C24",
+        "kilnDried": true,
+        "planed": true,
+        "salesUnit": "piece"
+      }
+    },
+    {
+      "id": "revision:timber:c24-45x145x4000:2026-09",
+      "productId": "product:timber:c24-45x145x4000",
+      "revisionCode": "2026-09",
+      "validFrom": "2026-09-15",
+      "source": {
+        "label": "BAT retail listing, retrieved 2026-09. Moisture 15+/-3% stated; treatment not stated by the source and is not asserted either way.",
+        "url": "https://bat.pl/Drewno-konstrukcyjne-C24-45x145mm-dlugosc-4.0m/DSC24N10451454000P",
+        "revision": "2026-09"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "timber-stock",
+        "widthMm": 45,
+        "depthMm": 145,
+        "lengthMm": 4000,
+        "strengthClass": "C24",
+        "moisturePercentRange": { "min": 12, "max": 18 },
+        "salesUnit": "piece"
+      }
+    },
+    {
+      "id": "revision:timber:c24-45x145x4000-treated:2026-09",
+      "productId": "product:timber:c24-45x145x4000-treated",
+      "revisionCode": "2026-09",
+      "validFrom": "2026-09-15",
+      "source": {
+        "label": "OBI.pl retail listing (DURAPEN), retrieved 2026-09. Source explicitly states pressure-treated and planed.",
+        "url": "https://www.obi.pl/p/7081979/drewno-konstrukcyjne-durapen-c24-45-x-145-x-4000-mm",
+        "revision": "2026-09"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "timber-stock",
+        "widthMm": 45,
+        "depthMm": 145,
+        "lengthMm": 4000,
+        "strengthClass": "C24",
+        "planed": true,
+        "treated": true,
+        "salesUnit": "piece"
+      }
+    }
+  ],
+  "variants": [
+    {
+      "id": "variant:timber:c24-45x95x3000:standard",
+      "productId": "product:timber:c24-45x95x3000",
+      "name": "Standard",
+      "active": true
+    },
+    {
+      "id": "variant:timber:c24-45x145x3000:standard",
+      "productId": "product:timber:c24-45x145x3000",
+      "name": "Standard",
+      "active": true
+    },
+    {
+      "id": "variant:timber:c24-45x145x4000:standard",
+      "productId": "product:timber:c24-45x145x4000",
+      "name": "Standard",
+      "active": true
+    },
+    {
+      "id": "variant:timber:c24-45x145x4000-treated:standard",
+      "productId": "product:timber:c24-45x145x4000-treated",
+      "name": "Impregnowane ciśnieniowo",
+      "active": true
+    }
+  ]
+}

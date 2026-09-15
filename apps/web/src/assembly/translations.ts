@@ -604,6 +604,7 @@ export const assemblyPl = {
     availability: 'Dostępne sztuki (opcjonalnie)',
     removeLength: 'Usuń długość',
     addLength: '+ Dodaj długość',
+    addFromCatalogue: '+ Dodaj z katalogu',
     advanced: 'Ustawienia zaawansowane',
     kerf: 'Rzaz między blankami',
     endTrim: 'Obcięcie każdego końca sztangi',
@@ -635,6 +636,12 @@ export const assemblyPl = {
     layouts: 'Układ cięć',
     stockItem: 'Sztanga',
     stockLayout: 'Proporcjonalny układ cięć na sztandze',
+    materialCost: 'Orientacyjny koszt materiału K1',
+    materialCostTotal: 'Suma',
+    materialCostUnpriced:
+      '{{count}} sztang(i) bez ceny w zapisanym cenniku — pominięto w sumie.',
+    materialCostDisclaimer:
+      'Cena z zapisanego cennika, migawka na dzień zapisu — zweryfikuj przed zakupem.',
     reason: {
       'no-compatible-stock':
         '{{count}} krokwie nie mają zgodnej długości handlowej.',
@@ -826,10 +833,11 @@ export const assemblyPl = {
   minimumOverlap: 'Minimalny zakład',
   removeMembraneProduct: 'Usuń produkt',
   addMembraneProduct: 'Dodaj produkt',
+  chooseFromCatalogue: 'Wybierz z katalogu',
   membraneProductInvalid:
     'Podaj dodatnie wartości; zakład musi być mniejszy od szerokości rolki.',
   membraneProductNote:
-    'Wprowadzenie ręczne, bez katalogu. Po ustawieniu ilość membrany liczona jest z rzędów rolki (z zakładem), nie z powierzchni netto. Szerokość rzędu przyjmuje szerokość przy okapie — na połaciach koszowych jest to zawyżenie; otwory dachowe nie są odejmowane.',
+    'Wybierz z katalogu lub wprowadź ręcznie. Po ustawieniu ilość membrany liczona jest z rzędów rolki (z zakładem), nie z powierzchni netto. Szerokość rzędu przyjmuje szerokość przy okapie — na połaciach koszowych jest to zawyżenie; otwory dachowe nie są odejmowane.',
   axisSegmentCount: 'Liczba osi / odcinków',
   segments: 'Odcinki',
   counterBattenLimited:
@@ -1920,6 +1928,7 @@ export const assemblyEn: typeof assemblyPl = {
     availability: 'Available pieces (optional)',
     removeLength: 'Remove length',
     addLength: '+ Add length',
+    addFromCatalogue: '+ Add from catalogue',
     advanced: 'Advanced settings',
     kerf: 'Kerf between blanks',
     endTrim: 'Trim per stock end',
@@ -1951,6 +1960,12 @@ export const assemblyEn: typeof assemblyPl = {
     layouts: 'Cut layouts',
     stockItem: 'Stock item',
     stockLayout: 'Proportional cutting layout on stock',
+    materialCost: 'Estimated K1 material cost',
+    materialCostTotal: 'Total',
+    materialCostUnpriced:
+      '{{count}} stock item(s) have no price in the saved list — excluded from the total.',
+    materialCostDisclaimer:
+      'Price from a saved list, a snapshot as of that save — verify before purchase.',
     reason: {
       'no-compatible-stock':
         '{{count}} rafters have no compatible commercial stock.',
@@ -2139,10 +2154,11 @@ export const assemblyEn: typeof assemblyPl = {
   minimumOverlap: 'Minimum overlap',
   removeMembraneProduct: 'Remove product',
   addMembraneProduct: 'Add product',
+  chooseFromCatalogue: 'Choose from catalogue',
   membraneProductInvalid:
     'Enter positive values; the overlap must be smaller than the roll width.',
   membraneProductNote:
-    'Manual entry, no catalogue. Once set, membrane quantity is computed from roll courses (laps included), not net area. Course width uses the eave width — over-estimated on hip planes; roof windows are not subtracted.',
+    'Choose from the catalogue or enter manually. Once set, membrane quantity is computed from roll courses (laps included), not net area. Course width uses the eave width — over-estimated on hip planes; roof windows are not subtracted.',
   axisSegmentCount: 'Axis / segment count',
   segments: 'Segments',
   counterBattenLimited:

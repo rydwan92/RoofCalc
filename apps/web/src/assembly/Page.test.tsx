@@ -1681,6 +1681,58 @@ describe('dual-mode parametric workbench', () => {
     ).toBeTruthy();
   });
 
+  it('treats a catalogue-picked membrane the same as a manual one, only adding provenance', async () => {
+    render(<App />);
+    builder();
+    act(() => {
+      useAssembly.getState().setMembraneLayer({ enabled: true });
+    });
+    fireEvent.click(screen.getByRole('tab', { name: 'Warstwy' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Membrana' }));
+
+    const manualSpec = {
+      schemaVersion: 1 as const,
+      kind: 'membrane' as const,
+      rollWidthMm: 1500,
+      rollLengthMm: 50_000,
+      minimumOverlapMm: 100,
+    };
+    act(() => {
+      useAssembly
+        .getState()
+        .setMembraneProduct({ technicalSpecSnapshot: manualSpec });
+    });
+    expect(
+      useAssembly.getState().projectDocument.project.membraneProduct,
+    ).toEqual({ technicalSpecSnapshot: manualSpec });
+    expect(
+      screen.queryByTestId('membrane-product-summary')?.textContent,
+    ).not.toMatch(/DÖRKEN/);
+
+    act(() => {
+      useAssembly.getState().setMembraneProduct({
+        catalogRef: {
+          productId: 'product:dorken:delta-maxx-plus',
+          technicalRevisionId: 'revision:dorken:delta-maxx-plus:2026-09',
+        },
+        displaySnapshot: {
+          manufacturer: 'DÖRKEN',
+          familyName: 'DELTA-MAXX PLUS',
+          revisionCode: '2026-09',
+        },
+        technicalSpecSnapshot: manualSpec,
+      });
+    });
+    // Same technical values, so the resolver sees the identical spec either way.
+    expect(
+      useAssembly.getState().projectDocument.project.membraneProduct
+        ?.technicalSpecSnapshot,
+    ).toEqual(manualSpec);
+    expect(screen.getByTestId('membrane-product-summary').textContent).toMatch(
+      /DÖRKEN.*DELTA-MAXX PLUS.*2026-09/,
+    );
+  });
+
   it('opens the geometry-based material schedule and highlights its source members without editing the project', async () => {
     const { container } = render(<App />);
     expect(screen.queryByRole('tab', { name: 'Zestawienie' })).toBeNull();

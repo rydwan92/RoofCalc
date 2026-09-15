@@ -1,15 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import {
   catalogImportBatchV1Schema,
+  catalogTechnicalSpecSchema,
   commercialVariantSchema,
   compareTechnicalRevision,
   createCatalogProductSelection,
+  isCoveringTechnicalSpec,
   manufacturerSchema,
+  technicalPreview,
   technicalProductFamilySchema,
   technicalProductRevisionSchema,
+  timberStockTechnicalSpecSchema,
   type CatalogImportBatchV1,
 } from './index';
-import { resolveRoofTileLayout } from '@cieslacalc/covering-core';
+import {
+  membraneTechnicalSpecSchema,
+  resolveRoofTileLayout,
+} from '@cieslacalc/covering-core';
 
 const manufacturer = manufacturerSchema.parse({
   id: 'manufacturer:demo',
@@ -237,5 +244,142 @@ describe('catalog contracts', () => {
       selection.technicalSpecSnapshot.installationModes[0]?.coverWidthMm,
     ).toBe(300);
     expect(result.totalPositions).toBe(12);
+  });
+});
+
+describe('V35 generalized catalog technical union', () => {
+  it('rejects non-finite/non-positive timber-stock dimensions', () => {
+    const valid = {
+      schemaVersion: 1 as const,
+      kind: 'timber-stock' as const,
+      widthMm: 45,
+      depthMm: 145,
+      lengthMm: 3000,
+      strengthClass: 'C24',
+      salesUnit: 'piece' as const,
+    };
+    expect(timberStockTechnicalSpecSchema.safeParse(valid).success).toBe(true);
+    for (const bad of [
+      { ...valid, widthMm: 0 },
+      { ...valid, depthMm: -1 },
+      { ...valid, lengthMm: Number.NaN },
+    ])
+      expect(timberStockTechnicalSpecSchema.safeParse(bad).success).toBe(false);
+  });
+
+  it('accepts all five catalog technical kinds through one union', () => {
+    const membrane = membraneTechnicalSpecSchema.parse({
+      schemaVersion: 1,
+      kind: 'membrane',
+      rollWidthMm: 1500,
+      rollLengthMm: 50_000,
+      minimumOverlapMm: 100,
+    });
+    const timber = timberStockTechnicalSpecSchema.parse({
+      schemaVersion: 1,
+      kind: 'timber-stock',
+      widthMm: 45,
+      depthMm: 145,
+      lengthMm: 3000,
+      salesUnit: 'piece',
+    });
+    for (const spec of [...specs, membrane, timber])
+      expect(catalogTechnicalSpecSchema.safeParse(spec).success).toBe(true);
+  });
+
+  it('lets a membrane/timber-stock revision live under the same coveringKind field', () => {
+    const membraneProduct = technicalProductFamilySchema.parse({
+      id: 'product:membrane-demo',
+      manufacturerId: manufacturer.id,
+      slug: 'membrane-demo',
+      name: 'Demo membrane',
+      coveringKind: 'membrane',
+      active: true,
+    });
+    const revision = technicalProductRevisionSchema.parse({
+      id: 'revision:membrane-demo:1',
+      productId: membraneProduct.id,
+      revisionCode: '2026-01',
+      technicalSpec: {
+        schemaVersion: 1,
+        kind: 'membrane',
+        rollWidthMm: 1500,
+        rollLengthMm: 50_000,
+        minimumOverlapMm: 100,
+      },
+      source: { label: 'DEMO fixture' },
+    });
+    expect(revision.technicalSpec.kind).toBe('membrane');
+    // The batch's own product/revision-kind cross-check still applies.
+    expect(
+      catalogImportBatchV1Schema.safeParse({
+        schemaVersion: 1,
+        source: { id: 'source:demo', label: 'DEMO' },
+        manufacturers: [manufacturer],
+        products: [membraneProduct],
+        revisions: [{ ...revision, productId: membraneProduct.id }],
+        variants: [],
+      }).success,
+    ).toBe(true);
+    expect(
+      catalogImportBatchV1Schema.safeParse({
+        schemaVersion: 1,
+        source: { id: 'source:demo', label: 'DEMO' },
+        manufacturers: [manufacturer],
+        products: [{ ...membraneProduct, coveringKind: 'timber-stock' }],
+        revisions: [revision],
+        variants: [],
+      }).success,
+    ).toBe(false);
+  });
+
+  it('previews membrane and timber-stock facts without crashing on missing installationModes', () => {
+    expect(
+      technicalPreview({
+        schemaVersion: 1,
+        kind: 'membrane',
+        rollWidthMm: 1500,
+        rollLengthMm: 50_000,
+        minimumOverlapMm: 100,
+      }),
+    ).toMatchObject({ rollWidthMm: 1500, minimumOverlapMm: 100 });
+    expect(
+      technicalPreview({
+        schemaVersion: 1,
+        kind: 'timber-stock',
+        widthMm: 45,
+        depthMm: 145,
+        lengthMm: 3000,
+        strengthClass: 'C24',
+        salesUnit: 'piece',
+      }),
+    ).toMatchObject({
+      sectionWidthMm: 45,
+      sectionDepthMm: 145,
+      lengthMm: 3000,
+    });
+  });
+
+  it('narrows a catalog spec back to the primary-covering union for the existing picker', () => {
+    expect(isCoveringTechnicalSpec(specs[0]!)).toBe(true);
+    expect(
+      isCoveringTechnicalSpec({
+        schemaVersion: 1,
+        kind: 'membrane',
+        rollWidthMm: 1500,
+        rollLengthMm: 50_000,
+        minimumOverlapMm: 100,
+      }),
+    ).toBe(false);
+    expect(
+      isCoveringTechnicalSpec({
+        schemaVersion: 1,
+        kind: 'timber-stock',
+        widthMm: 45,
+        depthMm: 145,
+        lengthMm: 3000,
+        salesUnit: 'piece',
+      }),
+    ).toBe(false);
   });
 });

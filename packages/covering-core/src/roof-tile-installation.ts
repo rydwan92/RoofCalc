@@ -16,6 +16,7 @@ export type TileInstallationIssueCode =
   | 'invalid-product-data'
   | 'invalid-roof-pitch'
   | 'below-minimum-pitch'
+  | 'below-recommended-pitch'
   | 'pitch-data-missing'
   | 'installation-condition-unverified'
   | 'product-dimensions-review';
@@ -117,6 +118,17 @@ export function evaluateRoofTileInstallation(args: {
       source,
       actual: args.roofPitchDeg,
       required: mode.minPitchDeg,
+    });
+  else if (
+    mode?.recommendedMinPitchDeg !== undefined &&
+    args.roofPitchDeg < mode.recommendedMinPitchDeg
+  )
+    issues.push({
+      code: 'below-recommended-pitch',
+      category: 'recommendation',
+      source,
+      actual: args.roofPitchDeg,
+      required: mode.recommendedMinPitchDeg,
     });
   if (mode && mode.minPitchDeg === undefined)
     issues.push({

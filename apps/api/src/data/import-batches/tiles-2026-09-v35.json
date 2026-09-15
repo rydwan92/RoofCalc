@@ -1,0 +1,322 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "id": "manufacturer-research-2026-09-v35",
+    "label": "V35: KODA re-sourced from the official swissporTON page (V34C seed was retailer-sourced with wrong CREATON attribution). Adds SIMPLA, TITANIA, BALANCE, BMI Braas Turmalin. Removes invented SKUs from KODA/DOMINO variants.",
+    "sourceRevision": "2026-09-v35"
+  },
+  "manufacturers": [
+    {
+      "id": "manufacturer:creaton",
+      "slug": "creaton",
+      "name": "CREATON",
+      "countryCode": "DE",
+      "websiteUrl": "https://www.creaton.pl",
+      "active": true
+    },
+    {
+      "id": "manufacturer:swissporton",
+      "slug": "swissporton",
+      "name": "swissporTON",
+      "countryCode": "PL",
+      "websiteUrl": "https://www.swissporton.pl",
+      "active": true
+    },
+    {
+      "id": "manufacturer:bmi-braas",
+      "slug": "bmi-braas",
+      "name": "BMI Braas",
+      "countryCode": "PL",
+      "websiteUrl": "https://www.bmigroup.com/pl",
+      "active": true
+    }
+  ],
+  "products": [
+    {
+      "id": "product:creaton:koda",
+      "manufacturerId": "manufacturer:creaton",
+      "slug": "koda",
+      "name": "KODA",
+      "coveringKind": "roof-tile",
+      "active": false
+    },
+    {
+      "id": "product:swissporton:domino",
+      "manufacturerId": "manufacturer:swissporton",
+      "slug": "domino",
+      "name": "DOMINO",
+      "coveringKind": "roof-tile",
+      "active": true
+    },
+    {
+      "id": "product:swissporton:koda",
+      "manufacturerId": "manufacturer:swissporton",
+      "slug": "koda",
+      "name": "KODA",
+      "coveringKind": "roof-tile",
+      "active": true
+    },
+    {
+      "id": "product:swissporton:simpla",
+      "manufacturerId": "manufacturer:swissporton",
+      "slug": "simpla",
+      "name": "SIMPLA",
+      "coveringKind": "roof-tile",
+      "active": true
+    },
+    {
+      "id": "product:swissporton:titania",
+      "manufacturerId": "manufacturer:swissporton",
+      "slug": "titania",
+      "name": "TITANIA",
+      "coveringKind": "roof-tile",
+      "active": true
+    },
+    {
+      "id": "product:swissporton:balance",
+      "manufacturerId": "manufacturer:swissporton",
+      "slug": "balance",
+      "name": "BALANCE",
+      "coveringKind": "roof-tile",
+      "active": true
+    },
+    {
+      "id": "product:bmi-braas:turmalin",
+      "manufacturerId": "manufacturer:bmi-braas",
+      "slug": "turmalin",
+      "name": "Turmalin",
+      "coveringKind": "roof-tile",
+      "active": true
+    }
+  ],
+  "revisions": [
+    {
+      "id": "revision:swissporton:koda:2026-09",
+      "productId": "product:swissporton:koda",
+      "revisionCode": "2026-09",
+      "validFrom": "2026-09-15",
+      "source": {
+        "label": "swissporton.pl, retrieved 2026-09. Supersedes the retailer-sourced V34C KODA revision under the wrong (CREATON) manufacturer. Historical revision kept, never overwritten. Course pattern is a straight-lay default, not manufacturer-sourced.",
+        "url": "https://www.swissporton.pl/produkty/koda",
+        "revision": "2026-09"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-tile",
+        "physicalWidthMm": 304,
+        "physicalLengthMm": 503,
+        "material": "ceramic",
+        "weightKgPerPiece": 4.6,
+        "salesUnit": "piece",
+        "installationModes": [
+          {
+            "id": "standard",
+            "coverWidthMm": 260,
+            "coverWidthRangeMm": { "min": 258, "max": 261 },
+            "gaugeRangeMm": { "min": 390, "max": 430 },
+            "minPitchDeg": 10,
+            "declaredUnitsPerM2": { "min": 8.9, "max": 9.9 },
+            "coursePattern": {
+              "layers": [{ "id": "base", "horizontalOffsetFraction": 0 }],
+              "battenRowOffsetCycle": [0]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "revision:swissporton:simpla:2026-09",
+      "productId": "product:swissporton:simpla",
+      "revisionCode": "2026-09",
+      "validFrom": "2026-09-15",
+      "source": {
+        "label": "swissporton.pl product page, retrieved 2026-09. Course/row-offset pattern is a straight-lay default, not sourced from the manufacturer installation guide.",
+        "url": "https://www.swissporton.pl/produkty/simpla",
+        "revision": "2026-09"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-tile",
+        "physicalWidthMm": 298,
+        "physicalLengthMm": 500,
+        "material": "ceramic",
+        "weightKgPerPiece": 4.7,
+        "salesUnit": "piece",
+        "installationModes": [
+          {
+            "id": "standard",
+            "coverWidthMm": 263,
+            "coverWidthRangeMm": { "min": 261, "max": 264 },
+            "gaugeRangeMm": { "min": 338, "max": 366 },
+            "minPitchDeg": 10,
+            "declaredUnitsPerM2": { "min": 10.4, "max": 11.3 },
+            "coursePattern": {
+              "layers": [{ "id": "base", "horizontalOffsetFraction": 0 }],
+              "battenRowOffsetCycle": [0]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "revision:swissporton:titania:2026-09",
+      "productId": "product:swissporton:titania",
+      "revisionCode": "2026-09",
+      "validFrom": "2026-09-15",
+      "source": {
+        "label": "swissporton.pl product page, retrieved 2026-09. Course/row-offset pattern is a straight-lay default, not sourced from the manufacturer installation guide.",
+        "url": "https://www.swissporton.pl/produkty/titania",
+        "revision": "2026-09"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-tile",
+        "physicalWidthMm": 324,
+        "physicalLengthMm": 514,
+        "material": "ceramic",
+        "weightKgPerPiece": 4.7,
+        "salesUnit": "piece",
+        "installationModes": [
+          {
+            "id": "standard",
+            "coverWidthMm": 262,
+            "coverWidthRangeMm": { "min": 260, "max": 263 },
+            "gaugeRangeMm": { "min": 380, "max": 420 },
+            "minPitchDeg": 10,
+            "declaredUnitsPerM2": { "min": 9.1, "max": 10.1 },
+            "coursePattern": {
+              "layers": [{ "id": "base", "horizontalOffsetFraction": 0 }],
+              "battenRowOffsetCycle": [0]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "revision:swissporton:balance:2026-09",
+      "productId": "product:swissporton:balance",
+      "revisionCode": "2026-09",
+      "validFrom": "2026-09-15",
+      "source": {
+        "label": "swissporton.pl product page, retrieved 2026-09. Course/row-offset pattern is a straight-lay default, not sourced from the manufacturer installation guide.",
+        "url": "https://www.swissporton.pl/produkty/balance",
+        "revision": "2026-09"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-tile",
+        "physicalWidthMm": 323,
+        "physicalLengthMm": 502,
+        "material": "ceramic",
+        "weightKgPerPiece": 4.9,
+        "salesUnit": "piece",
+        "installationModes": [
+          {
+            "id": "standard",
+            "coverWidthMm": 275,
+            "coverWidthRangeMm": { "min": 274, "max": 277 },
+            "gaugeRangeMm": { "min": 406, "max": 431 },
+            "minPitchDeg": 10,
+            "declaredUnitsPerM2": { "min": 8.4, "max": 9.0 },
+            "coursePattern": {
+              "layers": [{ "id": "base", "horizontalOffsetFraction": 0 }],
+              "battenRowOffsetCycle": [0]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "revision:bmi-braas:turmalin:2026-09",
+      "productId": "product:bmi-braas:turmalin",
+      "revisionCode": "2026-09",
+      "validFrom": "2026-09-15",
+      "source": {
+        "label": "bmigroup.com/pl, retrieved 2026-09. Manufacturer's 30-degree recommended pitch is kept distinct from its 10-degree minimum, not collapsed into one figure. Course pattern is a straight-lay default, not manufacturer-sourced.",
+        "url": "https://www.bmigroup.com/pl/p/turmalin-miedziany-angoba-ceramika-3421544297/",
+        "revision": "2026-09"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-tile",
+        "physicalWidthMm": 277,
+        "physicalLengthMm": 470,
+        "material": "ceramic",
+        "weightKgPerPiece": 4.5,
+        "salesUnit": "piece",
+        "installationModes": [
+          {
+            "id": "standard",
+            "coverWidthMm": 240,
+            "gaugeRangeMm": { "min": 355, "max": 380 },
+            "minPitchDeg": 10,
+            "recommendedMinPitchDeg": 30,
+            "declaredUnitsPerM2": { "min": 11.0, "max": 11.7 },
+            "coursePattern": {
+              "layers": [{ "id": "base", "horizontalOffsetFraction": 0 }],
+              "battenRowOffsetCycle": [0]
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "variants": [
+    {
+      "id": "variant:creaton:koda:copper-nuance",
+      "productId": "product:creaton:koda",
+      "name": "Miedziana (NUANCE, angobowana)",
+      "color": "copper",
+      "finish": "engobe-nuance",
+      "active": true
+    },
+    {
+      "id": "variant:creaton:koda:anthracite-nuance",
+      "productId": "product:creaton:koda",
+      "name": "Antracytowa (NUANCE, angobowana)",
+      "color": "anthracite",
+      "finish": "engobe-nuance",
+      "active": true
+    },
+    {
+      "id": "variant:creaton:koda:slate-finesse",
+      "productId": "product:creaton:koda",
+      "name": "Łupkowa (FINESSE, szkliwiona)",
+      "color": "slate",
+      "finish": "glazed-finesse",
+      "active": true
+    },
+    {
+      "id": "variant:creaton:koda:black-finesse",
+      "productId": "product:creaton:koda",
+      "name": "Czarna (FINESSE, szkliwiona)",
+      "color": "black",
+      "finish": "glazed-finesse",
+      "active": true
+    },
+    {
+      "id": "variant:swissporton:domino:natural-red",
+      "productId": "product:swissporton:domino",
+      "name": "Czerwona naturalna",
+      "color": "natural-red",
+      "finish": "natural",
+      "active": true
+    },
+    {
+      "id": "variant:swissporton:domino:copper-engobe",
+      "productId": "product:swissporton:domino",
+      "name": "Miedziana (angoba)",
+      "color": "copper",
+      "finish": "engobe",
+      "active": true
+    },
+    {
+      "id": "variant:swissporton:domino:black-glaze",
+      "productId": "product:swissporton:domino",
+      "name": "Czarna (glazura)",
+      "color": "black",
+      "finish": "glaze",
+      "active": true
+    }
+  ]
+}

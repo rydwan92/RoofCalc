@@ -21,7 +21,11 @@
     "test:fixtures": "vitest run fixtures",
     "e2e": "playwright test",
     "e2e:install": "playwright install chromium",
-    "verify": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build"
+    "verify": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:bootstrap": "pnpm --filter @cieslacalc/api db:bootstrap",
+    "dev:full": "pnpm db:bootstrap && pnpm dev"
   },
   "devDependencies": {
     "@cieslacalc/calculator-core": "workspace:*",

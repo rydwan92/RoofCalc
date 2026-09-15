@@ -1,6 +1,6 @@
 # RoofCalc / CieślaCalc — Architecture Index
 
-**This is the current-state map, after V34C.** Read it after `PROJECT_BLUEPRINT.md`
+**This is the current-state map, after V35.** Read it after `PROJECT_BLUEPRINT.md`
 and before touching code. It describes what exists today, not the history of how
 it got here. Historical `ARCHITECTURE_V*.md` documents stay authoritative for the
 subsystem they introduced and should be opened only when changing that subsystem.
@@ -53,16 +53,16 @@ Dependency direction is **downward only**.
 | `covering-core` | Covering technical product schemas and the four family layout solvers (tile, fixed modular sheet, standing seam, cut-to-length), plane-ownership resolution, and the quantity bridge. **V34C** adds `membraneTechnicalSpecSchema`/`MembraneTechnicalSpec` — a schema **sibling** to `coveringTechnicalSpecSchema`, deliberately never joined into its union. | `zod` |
 | `calculator-core` | Composition layer: assembly resolution, member instances, fabrication packages, detail previews, and the canonical `RoofProjectDocumentV1`. **V34C** adds the additive optional `project.membraneProduct?: MembraneTechnicalSpec` field. | `roof-math`, `timber-model`, `covering-core`, `drawing-engine`, `shared` |
 | `quantity-core` | Aggregates neutral quantity sources into the member/material schedule. Knows nothing about products, procurement or prices. **V34C** adds optional gross build-up fields (`grossAreaMm2`, `courseCount`, `rollCount`, `semantic: 'gross-installed'`) alongside the always-present net area — exposed only once every contributing plane resolves a roll product, never blended from a partial mix. | `timber-model` |
-| `catalog-core` | Pure catalogue contracts: manufacturers, product families, immutable technical revisions, commercial variants, import batch, read-API payloads. Reuses `covering-core` technical schemas rather than redefining them. | `covering-core`, `zod` |
+| `catalog-core` | Pure catalogue contracts: manufacturers, product families, immutable technical revisions, commercial variants, import batch, read-API payloads. Reuses `covering-core` technical schemas rather than redefining them. **V35** widens the catalogue boundary from covering-only to a general technical material catalogue: `CatalogProductKind`/`CatalogTechnicalSpec` also accept `membrane` and the new `timber-stock` (own `timber-stock-spec.ts`, no roof-plane geometry concept at all). `coveringKind` keeps its field/column name (ADR-011). | `covering-core`, `zod` |
 | `procurement-core` | **V26.** Pure timber cutting/stock planning over explicit required blanks. Indivisible blanks, kerf, stock end trims, reusable remnants, finite availability, three objectives, bounded search with deterministic fallback and honest optimality status. | **nothing — zero dependencies** |
 | `document-core` | **V30.** Pure typed execution-document sections, source identity, deterministic order and readiness filtering. No solver or renderer. Its V34B `cost-estimate` section carries only plain numbers/strings; V34C widens its `basis` literal to include `'gross-area'`. | **nothing — zero dependencies** |
 | `cost-core` | **V34B.** Pure commerce layer: integer-minor-unit money, typed quantity/unit, named `CostQuantityBasis` and `CostSuitability` (never a confidence score), `CostLine`/`CostScenario`, deterministic line/VAT rounding and scenario totals. Knows no product, geometry, procurement or translation. **V34C** adds `'gross-area'` to `CostQuantityBasis` (a gross, overlap-inclusive area is never blended with a net one) and the `'price-list'` `CostLineSource` is now a real join, not just reserved. | `zod` |
-| `pricing-core` | **V34C.** Pure commerce layer, sibling to `cost-core`: `PriceList`/`PriceListEntry` against an opaque `commercialVariantId` (never imports `catalog-core`, never sees a technical dimension). Write-once entries (ADR-004) — an unchanged re-import is a no-op, a genuine price change needs a new entry ID. | `zod` |
+| `pricing-core` | **V34C.** Pure commerce layer, sibling to `cost-core`: `PriceList`/`PriceListEntry` against an opaque `commercialVariantId` (never imports `catalog-core`, never sees a technical dimension). Write-once entries (ADR-004) — an unchanged re-import is a no-op, a genuine price change needs a new entry ID. **V35** adds additive `sourceAmountBasis?`/`sourceVatRateBps?` provenance fields — pure record-keeping; `netAmountMinor` stays the one number everything downstream uses and is always already-net. | `zod` |
 | `project-core` | `ProjectRecordV1` envelope, lifecycle helpers, JSON import/export and the `ProjectRepository` interface. No browser, no React, no i18n. | `calculator-core`, `zod` |
 | `shared` | Cross-cutting DTOs shared by web and API. | — |
 | `ui` | Semantic design tokens (`--ui-*`) and a few primitives. | `react` (peer) |
-| `apps/web` | React workbench: Zustand store, canvases, inspectors, i18n, local persistence, catalogue client. **V34C** adds `apps/web/src/pricing/` (HTTP client + `usePricesForVariants`) and a manual membrane-product entry form in the layers inspector. | the packages above |
-| `apps/api` | Express read-only catalogue API, Drizzle/MySQL repository, canonical importer, CLI. **V34C** adds a sibling `/api/pricing` route tree, `apps/api/src/pricing/`, and `apps/api/src/db/pricing-schema.ts` (a table set sibling to the catalogue-technical `schema.ts`, sharing only the DB connection pool). | `catalog-core`, `covering-core`, `pricing-core`, `shared` |
+| `apps/web` | React workbench: Zustand store, canvases, inspectors, i18n, local persistence, catalogue client. **V34C** adds `apps/web/src/pricing/` (HTTP client + `usePricesForVariants`) and a manual membrane-product entry form in the layers inspector. **V35** adds `MembraneProductPicker.tsx`/`TimberStockProductPicker.tsx` (mirroring `CatalogProductPicker.tsx`'s DI/i18n pattern), `assembly/timber-stock-class.ts` + `timber-stock-adapter.ts` (the web-layer bridge from a catalogue timber pick into `procurement-core`'s pure `StockOption`), and an MVP read-only material-cost panel inside `K1CuttingPlan.tsx`. | the packages above |
+| `apps/api` | Express read-only catalogue API, Drizzle/MySQL repository, canonical importer, CLI. **V34C** adds a sibling `/api/pricing` route tree, `apps/api/src/pricing/`, and `apps/api/src/db/pricing-schema.ts` (a table set sibling to the catalogue-technical `schema.ts`, sharing only the DB connection pool). **V35** adds a deterministic first-run bootstrap CLI (`wait-for-db.ts`, `seed-all.ts`, `smoke-check.ts`) and a root `compose.yaml` (MariaDB, Docker variant). | `catalog-core`, `covering-core`, `pricing-core`, `shared` |
 
 **Never**: a package importing an app; `roof-math` importing React/DOM/Express/
 database; `covering-core` importing React/DOM/Express/Drizzle/mysql2;
@@ -145,6 +145,41 @@ planes and not opening-aware, never silently presented as exact. The real
 catalogue was also seeded with three manufacturers' actual tile data (CREATON
 KODA, swissporTON DOMINO, Nelskamp Planum), retrieved 2026-09 and cited per
 revision. See `docs/ARCHITECTURE_V34C_MATERIAL_TRUTHFULNESS_AND_CATALOGUE.md`.
+
+V35 does four things. (1) It enriches the roof-tile technical model with
+optional `coverWidthRangeMm`/`recommendedMinPitchDeg`/`installationRules`
+(schema only this iteration — not wired into the compatibility solver) and
+corrects a research-debt defect: the KODA revision seeded in V34C was
+retailer-sourced with the wrong manufacturer (CREATON instead of the real
+current swissporTON) — handled as ADR-004's mutable-vs-immutable rules
+intend, a wholly new family/revision under the corrected manufacturer, with
+the old CREATON family flipped `active: false` and never technically
+mutated. Six more real tile products are seeded (swissporTON SIMPLA/
+TITANIA/BALANCE, BMI Braas Turmalin). (2) `catalog-core` generalizes from a
+covering-only catalogue to a general technical material catalogue —
+`CatalogTechnicalSpec` also accepts `membrane` and a new `timber-stock`
+kind, with `coveringKind` keeping its field/column name for compatibility
+(ADR-011, `docs/SCHEMA_REGISTRY.md` §10). No DB migration was needed (the
+technical-spec JSON column and `covering_kind varchar(32)` already accepted
+arbitrary values). (3) A real membrane product (DÖRKEN DELTA-MAXX PLUS) and
+a `MembraneProductPicker` reuse the V34C membrane engine unchanged;
+`project.membraneProduct` evolves from a raw spec to a
+`MembraneProductSelection` wrapper (catalogue provenance, like a covering
+pick) via a backward-compatible normalization, not a migration (`docs/
+SCHEMA_REGISTRY.md` §1). A timber-stock catalogue (4 real Castorama/BAT/OBI
+products) bridges into `procurement-core`'s pure `StockOption` through a
+new `apps/web` adapter — `stockClassId` stays **section-only**, matching
+the pre-existing K1 adapter's own fingerprint exactly, so a catalogue pick
+is never permanently incompatible with a K1 required piece; grade/
+treatment are surfaced to the human in the picker instead, never folded
+into the physical matching key. (4) Timber pricing adds explicit net/gross
+provenance (`sourceAmountBasis`/`sourceVatRateBps`, §11) so a net price
+computed from a source-stated-gross retail figure stays auditable, and a
+deterministic first-run DB bootstrap (`compose.yaml` + `wait-for-db.ts` /
+`seed-all.ts` / `smoke-check.ts`) brings a fresh machine from zero to a
+fully seeded, price-joinable database with one command, working against
+either a bundled Docker MariaDB or an existing local XAMPP instance. See
+`docs/ARCHITECTURE_V35_MATERIAL_CATALOG_AND_DB_BOOTSTRAP.md`.
 
 ---
 
@@ -323,6 +358,12 @@ Technical revisions are **immutable**; read-only routes only; `DATABASE_URL` is
 optional and its absence yields a structured `catalog-unavailable` 503. No price
 column exists in any catalogue table or technical schema.
 
+**V35**: the same pipeline now serves `roof-tile`/`modular-sheet`/
+`standing-seam`/`membrane`/`timber-stock` uniformly — `?kind=` on the search
+route accepts all five, and each of the three pickers (`CatalogProductPicker`,
+`MembraneProductPicker`, `TimberStockProductPicker`) only ever queries its own
+kind, never leaking a cross-kind result (`apps/api/src/catalog/service.test.ts`).
+
 ## 10. Execution semantics research (V26C) — research only
 
 Not implemented. Read before changing any coverage or connection calculation:
@@ -409,6 +450,8 @@ pnpm e2e      # real-browser smoke, desktop 1440x900 and mobile 390x844 (pnpm e2
 | `docs/ARCHITECTURE_V33_ROOF_BUILDUP_INTELLIGENCE.md` | automatic batten spacing, covering composition boundary, hip K1/J1 counter-battens |
 | `docs/ARCHITECTURE_V34A_ROOFING_INSTALLATION_INTELLIGENCE.md` | decision authority, tile capabilities, hard compatibility, manual ownership and explainable repair |
 | `docs/ARCHITECTURE_V34B_COSTING_MVP.md` | `cost-core`, cost suggestions, quantity basis/suitability, VAT, perspective navigation, cost export |
+| `docs/ARCHITECTURE_V34C_MATERIAL_TRUTHFULNESS_AND_CATALOGUE.md` | `pricing-core`, real tile catalogue/pricing data, membrane course-fit engine |
+| `docs/ARCHITECTURE_V35_MATERIAL_CATALOG_AND_DB_BOOTSTRAP.md` | generalized catalogue (membrane/timber-stock), timber procurement/pricing, first-run DB bootstrap |
 | `docs/domain/ROOF_TILE_INSTALLATION_RULES.md` | manufacturer evidence for regular gauge, pitch and manual boundary references |
 | `docs/FUTURE_EXECUTION_SEMANTICS_AUDIT.md` + `docs/domain/*` | touching coverage, overlap or connection semantics |
 | `docs/ARCHITECTURE_FUTURE_COMPOUND_ROOF_SCENE.md` | touching IDs, planes or document shape |

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type {
   MemberInstanceContext,
@@ -61,6 +61,12 @@ import {
   uniformBattenGauge,
 } from './batten-installation';
 import type { BattenAutoComposition } from './batten-composition';
+
+const MembraneProductPicker = lazy(() =>
+  import('../catalog/MembraneProductPicker').then((module) => ({
+    default: module.MembraneProductPicker,
+  })),
+);
 
 export function Inspector({
   result,
@@ -451,34 +457,44 @@ function MembraneProductForm() {
     minimumOverlap: '',
   });
   const [error, setError] = useState('');
-  if (product)
+  const [catalogOpen, setCatalogOpen] = useState(false);
+  if (product) {
+    const spec = product.technicalSpecSnapshot;
     return (
       <fieldset
         className="a-membrane-product"
         data-testid="membrane-product-summary"
       >
         <legend>{t('assembly.membraneProduct')}</legend>
+        {product.catalogRef && (
+          <p className="a-catalogue-source">
+            {[
+              product.displaySnapshot?.manufacturer,
+              product.displaySnapshot?.familyName,
+              product.displaySnapshot?.variantName,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+            {product.displaySnapshot?.revisionCode
+              ? ` · ${t('assembly.catalogRevision')} ${product.displaySnapshot.revisionCode}`
+              : ''}
+          </p>
+        )}
         <dl className="a-facts">
           <div>
             <dt>{t('assembly.rollWidth')}</dt>
-            <dd>
-              {formatLength(product.rollWidthMm, state.unit, i18n.language)}
-            </dd>
+            <dd>{formatLength(spec.rollWidthMm, state.unit, i18n.language)}</dd>
           </div>
           <div>
             <dt>{t('assembly.rollLength')}</dt>
             <dd>
-              {formatLength(product.rollLengthMm, state.unit, i18n.language)}
+              {formatLength(spec.rollLengthMm, state.unit, i18n.language)}
             </dd>
           </div>
           <div>
             <dt>{t('assembly.minimumOverlap')}</dt>
             <dd>
-              {formatLength(
-                product.minimumOverlapMm,
-                state.unit,
-                i18n.language,
-              )}
+              {formatLength(spec.minimumOverlapMm, state.unit, i18n.language)}
             </dd>
           </div>
         </dl>
@@ -490,6 +506,7 @@ function MembraneProductForm() {
         </button>
       </fieldset>
     );
+  }
   const field = (key: keyof typeof draft, label: string) => (
     <label className="a-field">
       <span>{label}</span>
@@ -511,6 +528,19 @@ function MembraneProductForm() {
       </span>
     </label>
   );
+  if (catalogOpen)
+    return (
+      <Suspense fallback={<div className="a-loading-panel" />}>
+        <MembraneProductPicker
+          onApply={(selection) => {
+            state.setMembraneProduct(selection);
+            setCatalogOpen(false);
+          }}
+          onManual={() => setCatalogOpen(false)}
+          onClose={() => setCatalogOpen(false)}
+        />
+      </Suspense>
+    );
   return (
     <form
       className="a-membrane-product"
@@ -532,7 +562,7 @@ function MembraneProductForm() {
               minimumOverlapMm: mm('minimumOverlap'),
             },
           );
-          state.setMembraneProduct(spec);
+          state.setMembraneProduct({ technicalSpecSnapshot: spec });
           setDraft({ rollWidth: '', rollLength: '', minimumOverlap: '' });
         } catch {
           setError(t('assembly.membraneProductInvalid'));
@@ -540,6 +570,13 @@ function MembraneProductForm() {
       }}
     >
       <legend>{t('assembly.membraneProduct')}</legend>
+      <button
+        type="button"
+        data-testid="open-membrane-catalog"
+        onClick={() => setCatalogOpen(true)}
+      >
+        {t('assembly.chooseFromCatalogue')}
+      </button>
       {field('rollWidth', t('assembly.rollWidth'))}
       {field('rollLength', t('assembly.rollLength'))}
       {field('minimumOverlap', t('assembly.minimumOverlap'))}

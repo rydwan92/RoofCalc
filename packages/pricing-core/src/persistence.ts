@@ -36,6 +36,8 @@ export const priceListEntrySchema = z
     commercialVariantId: idSchema,
     saleUnit: saleUnitSchema,
     netAmountMinor: minorUnits,
+    sourceAmountBasis: z.enum(['net', 'gross']).optional(),
+    sourceVatRateBps: z.number().int().min(0).max(100_00).optional(),
     validFrom: dateString,
     validTo: dateString.optional(),
   })

@@ -40,6 +40,16 @@ export interface PriceListEntry {
   saleUnit: PriceQuantityUnit;
   /** Integer minor units, same convention as `cost-core`'s `unitPriceMinor`. */
   netAmountMinor: number;
+  /**
+   * Pure provenance (V35), never used to compute anything at read time:
+   * `netAmountMinor` is always already-net. Records whether the *source*
+   * priced net or gross, so a net figure derived from a gross retail price
+   * (e.g. `sourceAmountBasis: 'gross'`, `sourceVatRateBps: 2300` for a
+   * source-stated 23% VAT) stays auditable back to that source, without ever
+   * letting this package compute or infer a VAT rate itself.
+   */
+  sourceAmountBasis?: 'net' | 'gross';
+  sourceVatRateBps?: number;
   validFrom: string;
   validTo?: string;
 }

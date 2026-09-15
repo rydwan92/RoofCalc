@@ -70,6 +70,21 @@ free; changing meaning, type or required-ness is not.
   counts, gross areas and roll counts are derived
   (`resolveMembraneLayout` in `@cieslacalc/roof-math`) and are never
   serialized. No `schemaVersion` bump.
+- V35 note: `project.membraneProduct`'s type widens from the V34C raw
+  `MembraneTechnicalSpec` to `MembraneProductSelection` (`@cieslacalc/
+  covering-core`): `{catalogRef?, displaySnapshot?, technicalSpecSnapshot}`,
+  the same shape `CoveringProductSelection` already used — so a membrane
+  pick can carry catalogue provenance (Phase 4's `MembraneProductPicker`)
+  exactly like a primary covering pick does. Backward compatibility is a
+  **normalization, not a migration**: `membraneProductFieldSchema =
+  z.union([membraneTechnicalSpecSchema, membraneProductSelectionSchema])
+  .transform(...)` accepts either the old raw-spec shape (has `kind` at the
+  top level) or the new wrapper shape, and normalizes an old raw spec into
+  `{technicalSpecSnapshot: oldSpec}` on parse — every pre-V35 project still
+  opens and shows its manual membrane product unchanged. No `schemaVersion`
+  bump. Covered by `packages/calculator-core/src/project-document.test.ts`
+  ("normalizes a V34C raw membrane spec..." / "round-trips a V35
+  catalogue-backed membrane selection unchanged").
 
 ---
 
@@ -125,6 +140,12 @@ free; changing meaning, type or required-ness is not.
   future overlap field must say explicitly whether it is already included, or
   the two will be double-counted.
 - **No price field may ever be added here** (ADR-005).
+- V35 note: this union stays **exactly** roof-tile/modular-sheet/
+  standing-seam — primary coverings only. `catalog-core` has its own, wider
+  `CatalogTechnicalSpec` union (§10) for the catalogue/revision boundary,
+  which also accepts membrane and timber-stock. The two unions are
+  deliberately different: a membrane or a stock length never competes for
+  roof-plane ownership, so it must never satisfy this schema.
 
 **Migration policy**
 
@@ -158,15 +179,24 @@ free; changing meaning, type or required-ness is not.
 - A required change is a new batch version with a new schema constant; the
   importer should accept the old one for at least one release.
 
+**V35 note**: `products[].coveringKind` and `revisions[].technicalSpec`
+accept the wider `CatalogProductKind`/`CatalogTechnicalSpec` values (§10) —
+`membrane` and `timber-stock` batches use the exact same
+`CatalogImportBatchV1` shape and importer pipeline as `roof-tile` batches
+always have (`apps/api/src/data/import-batches/{membranes,timber-stock}-
+2026-09.json`). No schema version bump; the existing
+`covering-kind-mismatch` cross-check (`product.coveringKind ===
+revision.technicalSpec.kind`) generalizes for free once both enums widen.
+
 ---
 
 ## 5. Catalogue database migrations
 
 | | |
 | --- | --- |
-| Owner | `apps/api/src/db/schema.ts` (Drizzle), generated into `migrations/` |
-| Current state | one migration, `0000_catalog_platform`, journal `migrations/meta/_journal.json` |
-| Tables | `manufacturers`, `technical_product_families`, `technical_product_revisions`, `commercial_variants`, `catalog_import_batches` |
+| Owner | `apps/api/src/db/schema.ts` + `apps/api/src/db/pricing-schema.ts` (Drizzle), generated into `migrations/` |
+| Current state | three migrations: `0000_catalog_platform`, `0001_spooky_rocket_racer` (V34C pricing tables), `0002_colorful_stranger` (V35 pricing provenance columns); journal `migrations/meta/_journal.json` |
+| Tables | `manufacturers`, `technical_product_families`, `technical_product_revisions`, `commercial_variants`, `catalog_import_batches`, `price_lists`, `price_list_entries`, `pricing_import_batches` |
 | Commands | `pnpm --filter @cieslacalc/api db:generate` / `db:migrate` |
 
 **Compatibility expectations**
@@ -186,6 +216,11 @@ free; changing meaning, type or required-ness is not.
 - Rollback is backup/restore or a reviewed forward recovery migration.
 - Normal CI does not need MySQL; the database job is opt-in
   (`workflow_dispatch` in `.github/workflows/ci.yml`).
+
+**V35 note**: `0002_colorful_stranger` adds two nullable columns to
+`price_list_entries` — `source_amount_basis varchar(8)` and
+`source_vat_rate_bps int` (§11's `sourceAmountBasis`/`sourceVatRateBps`).
+Purely additive; every pre-V35 row reads back with both `undefined`.
 
 ---
 
@@ -295,7 +330,95 @@ that can still load the old one.
 
 ---
 
-## 10. Checklist for any schema change
+## 10. `CatalogTechnicalSpec` — generalized catalog technical union (V35)
+
+| | |
+| --- | --- |
+| Owner | `packages/catalog-core/src/index.ts` + `timber-stock-spec.ts` |
+| Current version | `TIMBER_STOCK_TECHNICAL_SCHEMA_VERSION = 1` (new, for the `timber-stock` branch only — the other two branches keep their own independent versions, §3) |
+| Validation | `catalogTechnicalSpecSchema = z.union([coveringTechnicalSpecSchema, membraneTechnicalSpecSchema, timberStockTechnicalSpecSchema])` |
+| Persistence | `technical_product_revisions.technical_spec` (unconstrained `json` column — already accepted any shape) and canonical import batches (§4) |
+
+**Compatibility expectations**
+
+- Strictly **wider** than §3's `CoveringTechnicalSpec`: every valid covering
+  spec is still valid here, but a membrane or timber-stock spec is never
+  valid as a `CoveringTechnicalSpec` — the two unions serve different
+  boundaries on purpose (§3's V35 note).
+- `technicalProductFamilySchema.coveringKind`,
+  `catalogProductSummarySchema.kind` and `catalogSearchQuerySchema.kind` all
+  widened together to `CATALOG_PRODUCT_KINDS = ['roof-tile',
+  'modular-sheet', 'standing-seam', 'membrane', 'timber-stock']`. The field
+  name stays `coveringKind` in the DB column and API for compatibility even
+  though its meaning is now general — decision recorded in
+  `docs/adr/ADR-011-catalog-kind-is-general.md`.
+- `TimberStockTechnicalSpec` (`{schemaVersion, kind: 'timber-stock',
+  widthMm, depthMm, lengthMm, strengthClass?, species?, kilnDried?, planed?,
+  treated?, moisturePercentRange?, salesUnit}`) treats `lengthMm` as a
+  **technical fact**, not a commercial-variant attribute: a distinct
+  (width, depth, length, grade, treatment) combination is one product family
+  with one revision, never a shared family with size-variants (mirrors how
+  a differently-treated same-section item must be a different revision, so
+  a purchase can never silently substitute one grade for another).
+- `isCoveringTechnicalSpec(spec)` narrows this wider union back down to the
+  §3 subset for consumers that are covering-scoped by construction (e.g.
+  `CatalogProductPicker.tsx`).
+
+**Migration policy**
+
+- No DB migration was needed to introduce this (confirmed: the JSON column
+  and `covering_kind varchar(32)` already accepted arbitrary values) —
+  purely a Zod-schema widening.
+- Adding a further product kind follows the same pattern: widen
+  `CATALOG_PRODUCT_KINDS` and `catalogTechnicalSpecSchema`'s union, add a
+  `technicalPreview()` branch, no schema version bump unless the new kind's
+  own technical shape changes meaning later.
+
+---
+
+## 11. `PriceList` / `PriceListEntry` — commercial price-list model (V34C, extended V35)
+
+| | |
+| --- | --- |
+| Owner | `packages/pricing-core/src/{model,persistence}.ts` |
+| Current version | `PriceImportBatchV1`: `schemaVersion: 1` |
+| Validation | `priceListSchema` / `priceListEntrySchema` (Zod), plus `priceImportBatchV1Schema`'s cross-reference and duplicate-ID checks before any write |
+| Persistence | `price_lists` / `price_list_entries` tables (§5); not part of `RoofProjectDocumentV1` or `ProjectRecordV1` — commerce stays downstream of geometry (ADR-005), same reasoning as §9 |
+
+**Compatibility expectations**
+
+- `PriceListEntry` is write-once per entry ID (ADR-004): an unchanged
+  re-import is a no-op, any diff is a conflict — a real price change needs a
+  new entry ID, never a silent overwrite of price history
+  (`comparePriceListEntry`).
+- `commercialVariantId` is an opaque string; `pricing-core` never imports
+  `catalog-core` (confirmed by `tools/architecture/layering.test.ts`'s
+  commercial-boundary assertion).
+- V35 note: `sourceAmountBasis?: 'net' | 'gross'` and `sourceVatRateBps?:
+  number` are additive optional **provenance** fields — pure record-keeping,
+  never used to compute anything at read time. `netAmountMinor` stays the
+  one number everything downstream actually uses, and it is always
+  already-net; these two fields only say whether the *source* priced net or
+  gross and at what stated rate, so a net figure derived from a gross retail
+  price (`apps/api/src/data/import-batches/timber-prices-2026-09.json`:
+  `netAmountMinor = round(grossAmountMinor / 1.23)` from a source-stated 23%
+  VAT) stays auditable back to that source. `pricing-core` never infers a
+  VAT rate from free text and never computes gross-from-net at read time.
+  Absent on every pre-V35 entry (reads back as `undefined`); no
+  `schemaVersion` bump (§5's V35 note covers the matching migration).
+
+**Migration policy**
+
+- Additive optional fields on `PriceList`/`PriceListEntry` are free, same
+  rule as §1/§2/§9.
+- A required change to what `netAmountMinor` *means* would need a new
+  `PriceImportBatchV1` schema version and an explicit reader for both —
+  not expected, since "always net, always minor units" is meant to be a
+  frozen invariant like §6's procurement contract.
+
+---
+
+## 12. Checklist for any schema change
 
 1. Which registry entry does this touch?
 2. Does an existing valid document still parse? If no → new version + explicit reader.

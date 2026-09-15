@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type {
   CoveringAssignmentSpec,
-  MembraneTechnicalSpec,
+  MembraneProductSelection,
 } from '@cieslacalc/covering-core';
 import {
   createRoofProjectDocument,
@@ -426,7 +426,7 @@ export interface AssemblyState {
   removeOpeningFraming: (featureId: string) => void;
   setBattenLayout: (layout?: BattenLayoutSpec) => void;
   setMembraneLayer: (layer?: MembraneLayerSpec) => void;
-  setMembraneProduct: (product?: MembraneTechnicalSpec) => void;
+  setMembraneProduct: (product?: MembraneProductSelection) => void;
   setCounterBattenLayout: (layout?: CounterBattenLayoutSpec) => void;
   setCoveringAssignments: (assignments: CoveringAssignmentSpec[]) => void;
   add: () => void;

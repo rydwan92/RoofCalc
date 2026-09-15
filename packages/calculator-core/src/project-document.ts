@@ -1,9 +1,9 @@
 import { z } from 'zod';
 import {
   coveringAssignmentSpecSchema,
-  membraneTechnicalSpecSchema,
+  membraneProductFieldSchema,
   type CoveringAssignmentSpec,
-  type MembraneTechnicalSpec,
+  type MembraneProductSelection,
 } from '@cieslacalc/covering-core';
 import { roofTemplateSchema } from '@cieslacalc/roof-math';
 import type {
@@ -75,9 +75,12 @@ export interface RoofProjectDocumentV1 {
      * The single roll product used across every plane `buildUp.membrane`
      * assigns, same shape as V21's `coverings.product.technicalSpecSnapshot`.
      * Additive: absent on every pre-V34C project, which keeps today's
-     * net-area-only membrane behaviour exactly as it was.
+     * net-area-only membrane behaviour exactly as it was. V35 widens this
+     * from a raw `MembraneTechnicalSpec` to a `MembraneProductSelection`
+     * wrapper (catalogue provenance + snapshot); `membraneProductFieldSchema`
+     * accepts and normalizes the old raw-spec shape on parse.
      */
-    membraneProduct?: MembraneTechnicalSpec;
+    membraneProduct?: MembraneProductSelection;
   };
 }
 
@@ -90,7 +93,7 @@ export const roofProjectDocumentV1Schema = z
       openingFraming: z.array(roofOpeningFramingSchema).optional(),
       buildUp: roofBuildUpSchema.optional(),
       coverings: z.array(coveringAssignmentSpecSchema).optional(),
-      membraneProduct: membraneTechnicalSpecSchema.optional(),
+      membraneProduct: membraneProductFieldSchema.optional(),
     }),
   })
   .transform((document): RoofProjectDocumentV1 => ({

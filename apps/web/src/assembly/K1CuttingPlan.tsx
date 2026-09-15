@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   aggregateStockRequirements,
@@ -14,17 +14,32 @@ import {
   type LengthUnit,
 } from '@cieslacalc/roof-math';
 import { formatLength, parseDecimal } from '../format';
+import type { TimberStockCatalogPick } from '../catalog/TimberStockProductPicker';
+import type { VariantPrice } from '../pricing/client';
+import { usePricesForVariants } from '../pricing/use-prices';
 import { MobileSheet } from './MobileSheet';
 import {
   k1RequirementSignature,
   type K1CuttingRequirement,
 } from './k1-cutting-adapter';
 
+const TimberStockProductPicker = lazy(() =>
+  import('../catalog/TimberStockProductPicker').then((module) => ({
+    default: module.TimberStockProductPicker,
+  })),
+);
+
 type ResolvedRequirement = Extract<
   K1CuttingRequirement,
   { status: 'resolved' }
 >;
-type StockDraft = { id: number; length: string; availability: string };
+type StockDraft = {
+  id: number;
+  length: string;
+  availability: string;
+  sourceLabel?: string;
+  commercialVariantId?: string;
+};
 type Scenario = {
   unit: LengthUnit;
   stocks: StockDraft[];
@@ -63,6 +78,13 @@ function formatMm(mm: number, unit: LengthUnit, locale: string) {
 
 function metric(mm: number, locale: string) {
   return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(mm / 1000)} m`;
+}
+
+function money(minor: number, currencyCode: string, locale: string) {
+  return new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency: currencyCode,
+  }).format(minor / 100);
 }
 
 function StockLayout({
@@ -153,18 +175,87 @@ function StockLayout({
   );
 }
 
+function MaterialCost({
+  plan,
+  stockPricing,
+  locale,
+}: {
+  plan: CuttingPlan;
+  stockPricing: Map<string, VariantPrice>;
+  locale: string;
+}) {
+  const { t } = useTranslation();
+  const lines = plan.stockUsages.map((usage, index) => ({
+    index,
+    usage,
+    price: stockPricing.get(usage.stockOptionId),
+  }));
+  const priced = lines.filter(
+    (line): line is typeof line & { price: VariantPrice } =>
+      line.price !== undefined,
+  );
+  if (!priced.length) return null;
+  const currencyCode = priced[0]!.price.currencyCode;
+  const sameCurrency = priced.every(
+    (line) => line.price.currencyCode === currencyCode,
+  );
+  const totalMinor = sameCurrency
+    ? priced.reduce((sum, line) => sum + line.price.entry.netAmountMinor, 0)
+    : undefined;
+  const unpricedCount = plan.stockUsages.length - priced.length;
+  return (
+    <section className="a-k1-material-cost" data-testid="k1-material-cost">
+      <h3>{t('assembly.k1Cutting.materialCost')}</h3>
+      <ul>
+        {priced.map((line) => (
+          <li key={line.usage.stockInstanceId}>
+            <span>
+              {t('assembly.k1Cutting.stockItem')} {line.index + 1}
+            </span>
+            <span>
+              {money(
+                line.price.entry.netAmountMinor,
+                line.price.currencyCode,
+                locale,
+              )}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {totalMinor !== undefined && (
+        <p className="a-k1-material-cost-total">
+          <b>{t('assembly.k1Cutting.materialCostTotal')}</b>{' '}
+          {money(totalMinor, currencyCode, locale)}
+        </p>
+      )}
+      {unpricedCount > 0 && (
+        <p className="a-k1-material-cost-unpriced">
+          {t('assembly.k1Cutting.materialCostUnpriced', {
+            count: unpricedCount,
+          })}
+        </p>
+      )}
+      <p className="a-k1-material-cost-disclaimer">
+        {t('assembly.k1Cutting.materialCostDisclaimer')}
+      </p>
+    </section>
+  );
+}
+
 function CuttingResult({
   plan,
   requirement,
   settings,
   projectName,
   unit,
+  stockPricing,
 }: {
   plan: CuttingPlan;
   requirement: ResolvedRequirement;
   settings: CuttingSettings;
   projectName?: string;
   unit: LengthUnit;
+  stockPricing: Map<string, VariantPrice>;
 }) {
   const { t, i18n } = useTranslation();
   const [copied, setCopied] = useState(false);
@@ -248,6 +339,11 @@ function CuttingResult({
           <p>{t('assembly.k1Cutting.noStockAssigned')}</p>
         )}
       </section>
+      <MaterialCost
+        plan={plan}
+        stockPricing={stockPricing}
+        locale={i18n.language}
+      />
       {plan.unassignedPieces.length > 0 && (
         <div
           className="a-k1-unassigned"
@@ -370,8 +466,29 @@ export function K1CuttingPlan({
   );
   const [plan, setPlan] = useState<K1SessionPlan | undefined>(initialPlan);
   const [error, setError] = useState(false);
+  const [catalogOpen, setCatalogOpen] = useState(false);
   const signature = k1RequirementSignature(requirement);
   const activePlan = plan?.signature === signature ? plan : undefined;
+  const variantIds = useMemo(
+    () => [
+      ...new Set(
+        scenario.stocks.flatMap((stock) =>
+          stock.commercialVariantId ? [stock.commercialVariantId] : [],
+        ),
+      ),
+    ],
+    [scenario.stocks],
+  );
+  const prices = usePricesForVariants(variantIds);
+  const stockPricing = useMemo(() => {
+    const map = new Map<string, VariantPrice>();
+    for (const stock of scenario.stocks) {
+      if (!stock.commercialVariantId) continue;
+      const price = prices.get(stock.commercialVariantId);
+      if (price) map.set(`k1-stock-${stock.id}`, price);
+    }
+    return map;
+  }, [scenario.stocks, prices]);
 
   useEffect(() => {
     if (scenario.unit === unit) return;
@@ -396,11 +513,38 @@ export function K1CuttingPlan({
     setScenario((current) => ({
       ...current,
       stocks: current.stocks.map((stock) =>
-        stock.id === id ? { ...stock, [field]: value } : stock,
+        stock.id === id
+          ? {
+              ...stock,
+              [field]: value,
+              ...(field === 'length'
+                ? { sourceLabel: undefined, commercialVariantId: undefined }
+                : {}),
+            }
+          : stock,
       ),
     }));
     setPlan(undefined);
     onPlanChange?.(undefined);
+  };
+  const applyCatalogPick = (pick: TimberStockCatalogPick) => {
+    setScenario((current) => ({
+      ...current,
+      stocks: [
+        ...current.stocks,
+        {
+          id: nextId,
+          length: String(fromMillimetres(pick.lengthMm, scenario.unit)),
+          availability: '',
+          sourceLabel: pick.sourceLabel,
+          commercialVariantId: pick.commercialVariantId,
+        },
+      ],
+    }));
+    setNextId(nextId + 1);
+    setPlan(undefined);
+    onPlanChange?.(undefined);
+    setCatalogOpen(false);
   };
   const updateSetting = (
     field: 'kerf' | 'endTrim' | 'remnant',
@@ -537,6 +681,14 @@ export function K1CuttingPlan({
                   updateStock(stock.id, 'length', event.target.value)
                 }
               />
+              {stock.sourceLabel && (
+                <small
+                  className="a-k1-stock-source"
+                  data-testid="k1-stock-source"
+                >
+                  {stock.sourceLabel}
+                </small>
+              )}
             </label>
             <label>
               <span>{t('assembly.k1Cutting.availability')}</span>
@@ -565,24 +717,46 @@ export function K1CuttingPlan({
             </button>
           </div>
         ))}
-        <button
-          type="button"
-          className="a-button"
-          onClick={() => {
-            setScenario((current) => ({
-              ...current,
-              stocks: [
-                ...current.stocks,
-                { id: nextId, length: '', availability: '' },
-              ],
-            }));
-            setNextId(nextId + 1);
-            setPlan(undefined);
-            onPlanChange?.(undefined);
-          }}
-        >
-          {t('assembly.k1Cutting.addLength')}
-        </button>
+        <div className="a-k1-input-actions">
+          <button
+            type="button"
+            className="a-button"
+            onClick={() => {
+              setScenario((current) => ({
+                ...current,
+                stocks: [
+                  ...current.stocks,
+                  { id: nextId, length: '', availability: '' },
+                ],
+              }));
+              setNextId(nextId + 1);
+              setPlan(undefined);
+              onPlanChange?.(undefined);
+            }}
+          >
+            {t('assembly.k1Cutting.addLength')}
+          </button>
+          <button
+            type="button"
+            className="a-button"
+            data-testid="k1-add-from-catalogue"
+            onClick={() => setCatalogOpen(true)}
+          >
+            {t('assembly.k1Cutting.addFromCatalogue')}
+          </button>
+        </div>
+        {catalogOpen && (
+          <Suspense fallback={<div className="a-loading-panel" />}>
+            <TimberStockProductPicker
+              requiredSection={{
+                widthMm: requirement.blank.section.widthMm,
+                depthMm: requirement.blank.section.depthMm,
+              }}
+              onApply={applyCatalogPick}
+              onClose={() => setCatalogOpen(false)}
+            />
+          </Suspense>
+        )}
       </section>
       <details className="a-k1-advanced">
         <summary>
@@ -653,6 +827,7 @@ export function K1CuttingPlan({
           requirement={requirement}
           projectName={projectName}
           unit={unit}
+          stockPricing={stockPricing}
         />
       )}
     </div>
