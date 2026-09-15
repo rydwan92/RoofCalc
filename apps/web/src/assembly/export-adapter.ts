@@ -3,6 +3,12 @@ import {
   type ResolvedRoofProject,
 } from '@cieslacalc/calculator-core';
 import type { CoveringAssignmentSpec } from '@cieslacalc/covering-core';
+import {
+  calculateLine,
+  sortedScenarioLines,
+  summarizeCostScenario,
+  type CostScenario,
+} from '@cieslacalc/cost-core';
 import type {
   DetailPreviewModel,
   DrawingModel,
@@ -58,6 +64,8 @@ export type ExportFacts = {
     status: string;
     warnings: string[];
   }[];
+  /** Absent means no estimate exists yet for this project. */
+  cost?: CostScenario;
 };
 
 function drawing(model: DrawingModel): DocumentDrawing {
@@ -139,6 +147,44 @@ function k1Section(facts: ExportFacts, k1: ResolvedK1): ExecutionSection {
           }),
         ),
       })),
+  };
+}
+
+/** Copies the current scenario's computed totals. No pricing decision happens here. */
+function costEstimateSection(
+  scenario: CostScenario,
+): Extract<ExecutionSection, { kind: 'cost-estimate' }> {
+  const summary = summarizeCostScenario(scenario);
+  const lines = sortedScenarioLines(scenario)
+    .filter((line) => line.included)
+    .map((line) => {
+      const computed = calculateLine(line, scenario.taxRateBps);
+      return {
+        category: line.category,
+        label: line.label,
+        quantityValue: line.quantity.value,
+        quantityUnit: line.quantity.unit,
+        basis: line.quantityBasis,
+        unitPriceMinor: line.unitPriceMinor,
+        netMinor: computed.netMinor,
+        taxMinor: computed.taxMinor,
+        grossMinor: computed.grossMinor,
+        noteKeys: [...line.noteKeys],
+      };
+    });
+  return {
+    kind: 'cost-estimate',
+    currencyCode: scenario.currencyCode,
+    taxRateBps: scenario.taxRateBps,
+    lines,
+    categoryTotals: summary.categoryTotals.map((total) => ({
+      category: total.category,
+      netMinor: total.netMinor,
+    })),
+    netMinor: summary.netMinor,
+    taxMinor: summary.taxMinor,
+    grossMinor: summary.grossMinor,
+    complete: summary.complete,
   };
 }
 
@@ -565,5 +611,24 @@ export function createExportCandidates(facts: ExportFacts): SectionCandidate[] {
       section: coveringRows.length ? covering : undefined,
     },
     { kind: 'assumptions', readiness: 'available', section: assumptions },
+    (() => {
+      const includedLineCount =
+        facts.cost?.lines.filter((line) => line.included).length ?? 0;
+      if (!facts.cost || !includedLineCount)
+        return {
+          kind: 'cost-estimate' as const,
+          readiness: 'unavailable' as const,
+          reason: 'no-cost-lines',
+        };
+      const section = costEstimateSection(facts.cost);
+      return {
+        kind: 'cost-estimate' as const,
+        readiness: section.complete
+          ? ('available' as const)
+          : ('warning' as const),
+        reason: section.complete ? undefined : 'cost-incomplete',
+        section,
+      };
+    })(),
   ];
 }

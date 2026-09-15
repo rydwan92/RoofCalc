@@ -5,6 +5,7 @@ import {
   ListTree,
   Scissors,
   SquareDashed,
+  Wallet,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAssembly } from './store';
@@ -16,6 +17,7 @@ const tasks = [
   ['covering', Grid3X3],
   ['cuts', Scissors],
   ['materials', ListTree],
+  ['costing', Wallet],
 ] as const;
 
 export function MobileTaskDock() {

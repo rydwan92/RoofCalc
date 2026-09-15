@@ -74,6 +74,7 @@ import {
 import { ContextualResults, HipResults, Results } from './Summary';
 import { Toolbox } from './Toolbox';
 import { WorkbenchControls, MobileViewSettings } from './WorkbenchControls';
+import { PerspectiveBar } from './PerspectiveBar';
 import { PreparationPlan } from './PreparationPlan';
 import { Inspector } from './Inspector';
 import { WorkbenchContextBar } from './WorkbenchContextBar';
@@ -86,6 +87,7 @@ import { resolveWorkbenchSelectionContext } from './selection';
 import { createK1CuttingRequirement } from './k1-cutting-adapter';
 import { k1RequirementSignature } from './k1-cutting-adapter';
 import type { ExportFacts } from './export-adapter';
+import { useCostScenario } from './use-cost-scenario';
 import type { DocumentSource } from '@cieslacalc/document-core';
 import type { K1SessionPlan } from './K1CuttingPlan';
 import {
@@ -155,6 +157,11 @@ const K1CuttingPlan = lazy(() =>
 const ExecutionExport = lazy(() =>
   import('./ExecutionExport').then((module) => ({
     default: module.ExecutionExport,
+  })),
+);
+const CostWorkspace = lazy(() =>
+  import('./CostWorkspace').then((module) => ({
+    default: module.CostWorkspace,
   })),
 );
 
@@ -244,6 +251,9 @@ export function AssemblyPage() {
   }>();
   const [exportSource, setExportSource] = useState<DocumentSource>();
   const [exportError, setExportError] = useState('');
+  const [costScenario, setCostScenario] = useCostScenario(
+    projectSessionState.active?.id,
+  );
   const [projectStartMode, setProjectStartMode] = useState<ProjectStartMode>();
   const [reuseFreshProject, setReuseFreshProject] = useState(false);
   const workbench = state.workbench;
@@ -1527,6 +1537,9 @@ export function AssemblyPage() {
                 />
               )}
               <section className="a-canvas-column">
+                {!mobile && (
+                  <PerspectiveBar onOpenDocuments={openExecutionExport} />
+                )}
                 {!mobile && <WorkbenchControls skeleton={skeleton} />}
                 <WorkbenchContextBar
                   instances={memberInstances}
@@ -1574,6 +1587,7 @@ export function AssemblyPage() {
                       </button>
                     )}
                     {workbench.viewPreset !== 'covering' &&
+                      workbench.viewPreset !== 'costing' &&
                       (workbench.viewPreset !== 'materials' ||
                         workbench.materialsView === 'drawing') && (
                         <button className="a-button" onClick={state.requestFit}>
@@ -1582,7 +1596,8 @@ export function AssemblyPage() {
                         </button>
                       )}
                     {workbench.viewPreset !== 'covering' &&
-                      workbench.viewPreset !== 'materials' && (
+                      workbench.viewPreset !== 'materials' &&
+                      workbench.viewPreset !== 'costing' && (
                         <button
                           className="a-button"
                           aria-pressed={!!workbench.measurement}
@@ -1715,6 +1730,56 @@ export function AssemblyPage() {
                       counterBattens={counterBattenProjection}
                     />
                   </Suspense>
+                ) : workbench.viewPreset === 'costing' ? (
+                  <Suspense fallback={<div className="a-loading-panel" />}>
+                    {costScenario && projectSessionState.active ? (
+                      <CostWorkspace
+                        facts={
+                          {
+                            source: {
+                              projectId: projectSessionState.active.id,
+                              projectName: projectSessionState.active.name,
+                              projectCreatedAt:
+                                projectSessionState.active.createdAt,
+                              projectUpdatedAt:
+                                projectSessionState.active.updatedAt,
+                              projectSchemaVersion:
+                                state.projectDocument.schemaVersion,
+                            },
+                            template: state.template,
+                            resolved: templateResult,
+                            skeleton: framingProjection.composedSkeleton,
+                            surface: surfaceProjection,
+                            windows: roofWindows,
+                            schedule: memberSchedule,
+                            details: allDetailPreviews,
+                            k1: k1Requirement,
+                            cutting: activeCuttingPlan,
+                            membraneEnabled: !!membrane?.enabled,
+                            counterBattensEnabled: !!counterBattens?.enabled,
+                            battensEnabled: !!battenLayout?.enabled,
+                            battens: battenProjection,
+                            battenAutoSource: battenAutoComposition.source,
+                            battenInstallationDecision,
+                            counterBattens: counterBattenProjection,
+                            coverings: coveringAssignments,
+                            coveringStatuses: resolvedCoveringLayouts.map(
+                              (layout) => ({
+                                assignmentId: layout.assignmentId,
+                                status: layout.status,
+                                warnings: [...layout.issueCodes],
+                              }),
+                            ),
+                          } satisfies Omit<ExportFacts, 'cost'>
+                        }
+                        scenario={costScenario}
+                        onScenarioChange={setCostScenario}
+                        onOpenDocuments={openExecutionExport}
+                      />
+                    ) : (
+                      <div className="a-loading-panel" />
+                    )}
+                  </Suspense>
                 ) : workbench.focusId ? (
                   <AssemblyCanvas result={result} focusId={workbench.focusId} />
                 ) : workbench.canvasView === 'hip' && hip ? (
@@ -1745,6 +1810,7 @@ export function AssemblyPage() {
                 )}
               </section>
               {!mobile &&
+                workbench.viewPreset !== 'costing' &&
                 (workbench.viewPreset !== 'materials' || selectedScheduleRow) &&
                 inspectorContent}
             </div>
@@ -1798,6 +1864,7 @@ export function AssemblyPage() {
                           warnings: [...layout.issueCodes],
                         }),
                       ),
+                      cost: costScenario,
                     } satisfies ExportFacts
                   }
                   unit={state.unit}

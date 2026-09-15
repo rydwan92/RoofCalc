@@ -2,6 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { createRoofMemberSchedule } from '@cieslacalc/quantity-core';
 import { createCuttingPlan } from '@cieslacalc/procurement-core';
 import {
+  addCostLine,
+  createCostLine,
+  createEmptyCostScenario,
+  setScenarioTaxRateBps,
+} from '@cieslacalc/cost-core';
+import {
   assemblyDefaults,
   convertRoofTemplate,
   gableTemplateFromAssembly,
@@ -437,6 +443,107 @@ describe('execution export adapter', () => {
       planeCount: 1,
       axisCount: 12,
       segmentCount: 13,
+    });
+  });
+
+  it('has no cost-estimate section before any line has been added', () => {
+    const candidate = createExportCandidates(facts()).find(
+      (row) => row.kind === 'cost-estimate',
+    );
+    expect(candidate).toMatchObject({
+      readiness: 'unavailable',
+      reason: 'no-cost-lines',
+    });
+  });
+
+  it('marks an incomplete estimate as needing review, never as finished', () => {
+    let scenario = createEmptyCostScenario('PLN');
+    scenario = addCostLine(
+      scenario,
+      createCostLine({
+        id: 'unpriced',
+        category: 'material',
+        label: 'Łaty',
+        quantity: { value: 100, unit: 'm' },
+        quantityBasis: 'geometric-length',
+        suitability: 'geometric-estimate',
+        currencyCode: 'PLN',
+        source: 'project-derived',
+      }),
+    );
+    const candidate = createExportCandidates({
+      ...facts(),
+      cost: scenario,
+    }).find((row) => row.kind === 'cost-estimate');
+    expect(candidate?.readiness).toBe('warning');
+    expect(candidate?.reason).toBe('cost-incomplete');
+    expect(candidate?.section).toMatchObject({ complete: false });
+  });
+
+  it('copies a fully priced estimate verbatim, including net/tax/gross', () => {
+    let scenario = createEmptyCostScenario('PLN');
+    scenario = addCostLine(
+      scenario,
+      createCostLine({
+        id: 'battens',
+        category: 'material',
+        label: 'Łaty',
+        quantity: { value: 100, unit: 'm' },
+        quantityBasis: 'geometric-length',
+        suitability: 'geometric-estimate',
+        currencyCode: 'PLN',
+        unitPriceMinor: 500,
+        source: 'project-derived',
+      }),
+    );
+    scenario = setScenarioTaxRateBps(scenario, 2300);
+    const candidate = createExportCandidates({
+      ...facts(),
+      cost: scenario,
+    }).find((row) => row.kind === 'cost-estimate');
+    expect(candidate?.readiness).toBe('available');
+    expect(candidate?.section).toMatchObject({
+      currencyCode: 'PLN',
+      taxRateBps: 2300,
+      netMinor: 50_000,
+      taxMinor: 11_500,
+      grossMinor: 61_500,
+      complete: true,
+    });
+    if (candidate?.section?.kind === 'cost-estimate')
+      expect(candidate.section.lines[0]).toMatchObject({
+        label: 'Łaty',
+        basis: 'geometric-length',
+        quantityValue: 100,
+        quantityUnit: 'm',
+        netMinor: 50_000,
+      });
+  });
+
+  it('never lets a skipped (not-included) line reach the exported estimate', () => {
+    let scenario = createEmptyCostScenario('PLN');
+    scenario = addCostLine(
+      scenario,
+      createCostLine({
+        id: 'skipped',
+        category: 'material',
+        label: 'Pominięte',
+        quantity: { value: 1, unit: 'piece' },
+        quantityBasis: 'manual',
+        suitability: 'manual-required',
+        currencyCode: 'PLN',
+        unitPriceMinor: 1000,
+        source: 'manual',
+        included: false,
+      }),
+    );
+    const candidate = createExportCandidates({
+      ...facts(),
+      cost: scenario,
+    }).find((row) => row.kind === 'cost-estimate');
+    expect(candidate).toMatchObject({
+      readiness: 'unavailable',
+      reason: 'no-cost-lines',
     });
   });
 });

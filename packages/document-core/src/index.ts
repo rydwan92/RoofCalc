@@ -7,7 +7,8 @@ export type SectionKind =
   | 'cutting-plan'
   | 'layers'
   | 'covering'
-  | 'assumptions';
+  | 'assumptions'
+  | 'cost-estimate';
 
 export const sectionOrder: readonly SectionKind[] = [
   'project-summary',
@@ -18,6 +19,7 @@ export const sectionOrder: readonly SectionKind[] = [
   'layers',
   'covering',
   'assumptions',
+  'cost-estimate',
 ];
 
 export interface DocumentSource {
@@ -218,6 +220,42 @@ export interface AssumptionsSection {
     | 'unresolved-execution'
   )[];
 }
+/**
+ * Renderer-neutral cost estimate evidence (V34B). Numbers only — no
+ * translation, no product/geometry concept. `basis` mirrors
+ * `@cieslacalc/cost-core`'s `CostQuantityBasis` as plain strings so this
+ * package keeps its zero-dependency guarantee while staying honest about
+ * what each line's quantity means (never a hidden purchase-count claim).
+ */
+export interface CostEstimateSection {
+  kind: 'cost-estimate';
+  currencyCode: string;
+  taxRateBps?: number;
+  lines: {
+    category: 'material' | 'labour' | 'transport' | 'equipment' | 'other';
+    label: string;
+    quantityValue: number;
+    quantityUnit: 'piece' | 'm' | 'm2' | 'm3' | 'kg' | 'hour' | 'flat';
+    basis:
+      | 'procurement-stock'
+      | 'fabrication-requirement'
+      | 'geometric-length'
+      | 'net-area'
+      | 'effective-coverage'
+      | 'manual';
+    unitPriceMinor?: number;
+    netMinor?: number;
+    taxMinor?: number;
+    grossMinor?: number;
+    noteKeys: string[];
+  }[];
+  categoryTotals: { category: string; netMinor: number }[];
+  netMinor: number;
+  taxMinor?: number;
+  grossMinor?: number;
+  complete: boolean;
+}
+
 export type ExecutionSection =
   | ProjectSummarySection
   | RoofOverviewSection
@@ -226,7 +264,8 @@ export type ExecutionSection =
   | CuttingPlanSection
   | LayersSection
   | CoveringSection
-  | AssumptionsSection;
+  | AssumptionsSection
+  | CostEstimateSection;
 
 export interface SectionCandidate {
   kind: SectionKind;

@@ -13,7 +13,52 @@ import type {
 export type WorkbenchMode = 'quick' | 'builder';
 export type WorkbenchCanvasView = 'skeleton' | 'rafter' | 'hip';
 export type ViewPreset =
-  'construction' | 'openings' | 'layers' | 'covering' | 'cuts' | 'materials';
+  | 'construction'
+  | 'openings'
+  | 'layers'
+  | 'covering'
+  | 'cuts'
+  | 'materials'
+  | 'costing';
+
+/**
+ * Perspective grouping over the existing task ribbon (V34B). Purely a
+ * presentation grouping — no new persisted or canonical state. `documents`
+ * has no `ViewPreset` of its own; it opens the existing execution-export
+ * flow instead of switching the workspace.
+ */
+export type WorkbenchPerspective =
+  'project' | 'execution' | 'materials' | 'costing' | 'documents';
+
+const PERSPECTIVE_TASKS: Record<WorkbenchPerspective, readonly ViewPreset[]> = {
+  project: ['construction', 'openings', 'layers', 'covering'],
+  execution: ['cuts'],
+  materials: ['materials'],
+  costing: ['costing'],
+  documents: [],
+};
+
+export function perspectiveForTask(preset: ViewPreset): WorkbenchPerspective {
+  for (const perspective of Object.keys(
+    PERSPECTIVE_TASKS,
+  ) as WorkbenchPerspective[])
+    if (PERSPECTIVE_TASKS[perspective].includes(preset)) return perspective;
+  return 'project';
+}
+
+export function tasksForPerspective(
+  perspective: WorkbenchPerspective,
+): readonly ViewPreset[] {
+  return PERSPECTIVE_TASKS[perspective];
+}
+
+export const WORKBENCH_PERSPECTIVES: readonly WorkbenchPerspective[] = [
+  'project',
+  'execution',
+  'materials',
+  'costing',
+  'documents',
+];
 export type BuildUpView =
   'overview' | 'membrane' | 'counterBattens' | 'battens';
 export type MaterialsView = 'summary' | 'schedule' | 'drawing';

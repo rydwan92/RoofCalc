@@ -15,6 +15,9 @@ import {
   dimensionAllowed,
   initialWorkbenchViewState,
   layoutOperationMarkers,
+  perspectiveForTask,
+  tasksForPerspective,
+  WORKBENCH_PERSPECTIVES,
 } from './workbench';
 
 describe('workbench view projection', () => {
@@ -186,5 +189,34 @@ describe('workbench view projection', () => {
     expect(
       layoutOperationMarkers(input, true).every((marker) => marker.compact),
     ).toBe(true);
+  });
+});
+
+describe('workbench perspective grouping', () => {
+  it('groups every task under exactly one perspective', () => {
+    const tasks = [
+      'construction',
+      'openings',
+      'layers',
+      'covering',
+      'cuts',
+      'materials',
+      'costing',
+    ] as const;
+    for (const task of tasks) {
+      const perspective = perspectiveForTask(task);
+      expect(tasksForPerspective(perspective)).toContain(task);
+    }
+  });
+
+  it('documents has no task of its own — it opens the export flow instead', () => {
+    expect(tasksForPerspective('documents')).toEqual([]);
+  });
+
+  it('lists every perspective exactly once', () => {
+    expect(new Set(WORKBENCH_PERSPECTIVES).size).toBe(
+      WORKBENCH_PERSPECTIVES.length,
+    );
+    expect(WORKBENCH_PERSPECTIVES).toContain('costing');
   });
 });

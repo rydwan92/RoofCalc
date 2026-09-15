@@ -11,6 +11,7 @@ import {
   Scissors,
   SlidersHorizontal,
   SquareDashed,
+  Wallet,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { RoofSkeleton } from '@cieslacalc/timber-model';
@@ -30,6 +31,8 @@ export function WorkbenchControls({ skeleton }: { skeleton: RoofSkeleton }) {
     policy,
     hasSelection: state.workbench.selectedId !== 'roof',
   });
+  // Every task stays directly clickable — the perspective bar above this
+  // ribbon groups and jumps, it never hides a task (§3: fast direct nav).
   const tasks = [
     ['construction', Hammer],
     ['openings', SquareDashed],
@@ -37,6 +40,7 @@ export function WorkbenchControls({ skeleton }: { skeleton: RoofSkeleton }) {
     ['covering', Grid3X3],
     ['cuts', Scissors],
     ['materials', ListTree],
+    ['costing', Wallet],
   ] as const;
   return (
     <div className="a-workbench-controls">

@@ -119,6 +119,42 @@ const copy = {
     noReuse: 'odpad',
     notPurchase: 'To wynik geometryczny układu, nie ilość do zamówienia.',
     unresolved: 'Wynik nierozwiązany - sprawdź pokrycie w projekcie.',
+    'cost-estimate': 'Kosztorys',
+    cost: {
+      net: 'Netto',
+      tax: 'VAT',
+      gross: 'Brutto',
+      noVat: 'VAT nie ustawiono',
+      incomplete:
+        'Kosztorys niekompletny - część pozycji wymaga ceny lub ilości.',
+      item: 'Pozycja',
+      quantity: 'Ilość',
+      unitPrice: 'Cena jedn.',
+      category: {
+        material: 'Materiał',
+        labour: 'Robocizna',
+        transport: 'Transport',
+        equipment: 'Sprzęt',
+        other: 'Inne',
+      },
+      basis: {
+        'procurement-stock': 'Plan zakupu',
+        'fabrication-requirement': 'Wymóg przygotowania',
+        'geometric-length': 'Geometria',
+        'net-area': 'Powierzchnia netto',
+        'effective-coverage': 'Pozycje krycia',
+        manual: 'Ręcznie',
+      },
+      unitLabel: {
+        piece: 'szt.',
+        m: 'm',
+        m2: 'm²',
+        m3: 'm³',
+        kg: 'kg',
+        hour: 'godz.',
+        flat: 'kpl.',
+      },
+    },
     assumptionsText: {
       'ridge-board':
         'K1: zamodelowano połączenie z centralną deską kalenicową; brak wariantu belki konstrukcyjnej, wieszaka i nakładki.',
@@ -145,6 +181,8 @@ const copy = {
       'no-members': 'Brak elementów.',
       'invalid-roof-surface': 'Sprawdź otwory i powierzchnię dachu.',
       'cutting-incomplete': 'Część blanków pozostaje nieprzypisana.',
+      'no-cost-lines': 'Nie dodano żadnej pozycji kosztorysu.',
+      'cost-incomplete': 'Część pozycji wymaga jeszcze ceny lub ilości.',
     },
   },
   en: {
@@ -242,6 +280,42 @@ const copy = {
     noReuse: 'waste',
     notPurchase: 'This is a geometric layout result, not an order quantity.',
     unresolved: 'Unresolved result - review covering in the project.',
+    'cost-estimate': 'Cost estimate',
+    cost: {
+      net: 'Net',
+      tax: 'VAT',
+      gross: 'Gross',
+      noVat: 'VAT not configured',
+      incomplete:
+        'The estimate is incomplete - some lines need a price or quantity.',
+      item: 'Item',
+      quantity: 'Quantity',
+      unitPrice: 'Unit price',
+      category: {
+        material: 'Material',
+        labour: 'Labour',
+        transport: 'Transport',
+        equipment: 'Equipment',
+        other: 'Other',
+      },
+      basis: {
+        'procurement-stock': 'Purchase plan',
+        'fabrication-requirement': 'Fabrication requirement',
+        'geometric-length': 'Geometry',
+        'net-area': 'Net area',
+        'effective-coverage': 'Coverage positions',
+        manual: 'Manual',
+      },
+      unitLabel: {
+        piece: 'pc',
+        m: 'm',
+        m2: 'm²',
+        m3: 'm³',
+        kg: 'kg',
+        hour: 'hr',
+        flat: 'set',
+      },
+    },
     assumptionsText: {
       'ridge-board':
         'K1: modeled against a centered ridge board; structural beam, hanger and half-lap variants are absent.',
@@ -267,6 +341,8 @@ const copy = {
       'no-members': 'No members.',
       'invalid-roof-surface': 'Review openings and roof surface.',
       'cutting-incomplete': 'Some blanks are unassigned.',
+      'no-cost-lines': 'No estimate lines added yet.',
+      'cost-incomplete': 'Some lines still need a price or quantity.',
     },
   },
 } as const;
@@ -821,6 +897,78 @@ function SectionBody({
           ))}
         </ol>
       );
+    case 'cost-estimate': {
+      const money = (minor: number) =>
+        new Intl.NumberFormat(locale, {
+          style: 'currency',
+          currency: section.currencyCode,
+        }).format(minor / 100);
+      return (
+        <>
+          {!section.complete && (
+            <p className="doc-warning">{m.cost.incomplete}</p>
+          )}
+          <table className="doc-cost-table">
+            <thead>
+              <tr>
+                <th>{m.cost.item}</th>
+                <th>{m.basis}</th>
+                <th>{m.cost.quantity}</th>
+                <th>{m.cost.unitPrice}</th>
+                <th>{m.cost.net}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {section.lines.map((row, index) => (
+                <tr key={index}>
+                  <td>
+                    {row.label}
+                    <small> · {m.cost.category[row.category]}</small>
+                  </td>
+                  <td>{m.cost.basis[row.basis]}</td>
+                  <td>
+                    {new Intl.NumberFormat(locale, {
+                      maximumFractionDigits: 2,
+                    }).format(row.quantityValue)}{' '}
+                    {m.cost.unitLabel[row.quantityUnit]}
+                  </td>
+                  <td>
+                    {row.unitPriceMinor !== undefined
+                      ? money(row.unitPriceMinor)
+                      : '—'}
+                  </td>
+                  <td>
+                    {row.netMinor !== undefined ? money(row.netMinor) : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="doc-cost-totals">
+            <span>
+              {m.cost.net}: <strong>{money(section.netMinor)}</strong>
+            </span>
+            {section.taxRateBps !== undefined &&
+            section.taxMinor !== undefined ? (
+              <>
+                <span>
+                  {m.cost.tax} ({(section.taxRateBps / 100).toFixed(0)}%):{' '}
+                  <strong>{money(section.taxMinor)}</strong>
+                </span>
+                <span>
+                  {m.cost.gross}:{' '}
+                  <strong>
+                    {money(section.grossMinor ?? section.netMinor)}
+                  </strong>
+                </span>
+              </>
+            ) : (
+              <span>{m.cost.noVat}</span>
+            )}
+          </div>
+        </>
+      );
+    }
   }
 }
 

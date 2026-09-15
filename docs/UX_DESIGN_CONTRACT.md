@@ -27,14 +27,14 @@ Consequences enforced in review:
 
 ## 2. Task ribbon and dock
 
-Six tasks, one vocabulary, same order everywhere:
+Seven tasks, one vocabulary, same order everywhere:
 
 ```text
-construction · openings · layers · covering · cuts · materials
+construction · openings · layers · covering · cuts · materials · costing
 ```
 
 - Desktop: a horizontal ribbon of `role="tab"` buttons above the workspace.
-- Mobile (`≤800px`): a fixed six-item bottom dock, short visible label plus a
+- Mobile (`≤800px`): a fixed seven-item bottom dock, short visible label plus a
   full `aria-label`, with bottom safe-area padding.
 - Each button carries `data-task="<task>"` so browser QA does not depend on copy.
 - Changing task is transient view state: it closes the active mobile panel and
@@ -42,6 +42,9 @@ construction · openings · layers · covering · cuts · materials
   entry.
 - The Toolbox filters its sections by the active task and always offers
   *Wszystkie narzędzia* as the explicit escape to the full model.
+- V34B adds a **perspective bar** above the ribbon (§13). It groups tasks and
+  jumps; it never hides a task from the ribbon, so direct one-click navigation
+  between any two tasks is unchanged.
 
 ## 3. Selection semantics
 
@@ -236,3 +239,49 @@ and their totals are never added together.
   state. Material and export views repeat the derived spacing mode, actual
   gauge/range, course count and counter-batten axis/segment status without
   implying purchase quantities.
+
+## 13. Perspective navigation and Cost Workspace (V34B)
+
+- Five perspectives group the seven-task ribbon: **Projekt** (construction,
+  openings, layers, covering), **Wykonanie** (cuts), **Materiały** (materials),
+  **Kosztorys** (costing) and **Dokumenty** (opens the existing execution-export
+  flow; it owns no `ViewPreset` of its own). `PerspectiveBar.tsx` derives the
+  active perspective from the current task — no new persisted or canonical
+  state — and clicking a perspective jumps to its first task, or opens export
+  for Dokumenty. It is real navigation, not a decorative label: see §2.
+- Each perspective carries one small, restrained accent used only for the
+  active nav marker, its icon colour and a thin selected-tab underline: blue-teal
+  (Projekt, `--a-feature`), warm amber (Wykonanie, `--a-warning`), green-teal
+  (Materiały, `--a-accent`), indigo (Kosztorys, `--a-framing`), graphite
+  (Dokumenty, `--a-text-muted`). Never recolour a whole page; `--a-warning` /
+  `--a-danger` keep their existing semantic meaning for actual warnings/errors,
+  unrelated to which perspective is active.
+- The Cost Workspace (`CostWorkspace.tsx`) is a full-width panel like Materials
+  and Covering — no Inspector alongside it; a line's detail expands inline in
+  its own row instead.
+- **Suitability, not a percentage.** Every cost line shows one of five named
+  bases via `assembly.cost.suitability.*`: *Dokładna ilość zakupowa*, *Na
+  podstawie wykonania*, *Szacunek geometryczny*, *Wymaga ilości ręcznej*, *Brak
+  podstawy*. Never a fabricated confidence score. `assembly.cost.basis.*`
+  separately names what the quantity itself means (plan zakupu / geometria /
+  powierzchnia netto / pozycje krycia / ręcznie), mirroring `@cieslacalc/cost-core`'s
+  `CostQuantityBasis` as plain strings.
+- **Covering is never pre-priced.** A covering suggestion shows the raw
+  geometric fact (coverage positions or a geometric run length) as text only;
+  accepting it ("Uzupełnij") always creates a line with quantity `0`, never the
+  geometric count, so the user must type a real purchase quantity themselves
+  (§20/§46 of the V34B prompt; enforced by `cost-adapter.test.ts` and
+  `CostWorkspace.test.tsx`).
+- **No silent quantity change.** A project-derived line's live project value is
+  compared against the value it was added with; a mismatch shows an inline
+  banner ("Projekt zmienił tę wartość: X → Y") with *Aktualizuj* / *Zachowaj
+  ręczną*, never a silent update. Directly editing a line's quantity always
+  converts its `source` to `manual` (`withManualQuantity`); a `manual` line
+  whose key still matches a live suggestion offers *Przywróć z projektu*.
+- **VAT is scenario-level and off by default.** One optional tax rate applies
+  to every included line; unset shows net only ("VAT: nie ustawiono" /
+  `vatUnset`). No 23% default, no per-line override in V34B.
+- **Completeness is honest.** The header never claims "gotowe" unless every
+  *included* line has both a valid quantity and price
+  (`CostScenarioSummary.complete`); an unpriced or quantity-less included line
+  contributes zero to the total but still blocks that claim.

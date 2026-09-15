@@ -1708,7 +1708,7 @@
 }
 .a-task-ribbon {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   width: 100%;
 }
 .a-task-ribbon button {
@@ -7190,5 +7190,257 @@
   }
   .a-k1-purchase header .a-button {
     flex-shrink: 0;
+  }
+}
+
+/* V34B — perspective bar (Projekt/Wykonanie/Materiały/Kosztorys/Dokumenty). */
+.a-perspective-bar {
+  --pb-project: var(--a-feature, #356cab);
+  --pb-execution: var(--a-warning, #b35b2d);
+  --pb-materials: var(--a-accent, #235344);
+  --pb-costing: var(--a-framing, #6b4ca5);
+  --pb-documents: var(--a-text-muted, #667b71);
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+  width: 100%;
+  margin-bottom: 6px;
+  padding: 4px;
+  border: 1px solid var(--a-line);
+  border-radius: 10px;
+  background: var(--a-canvas);
+}
+.a-perspective-bar button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 7px;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--a-muted);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.a-perspective-bar button svg {
+  flex-shrink: 0;
+}
+.a-perspective-bar button[data-perspective='project'] svg {
+  color: var(--pb-project);
+}
+.a-perspective-bar button[data-perspective='execution'] svg {
+  color: var(--pb-execution);
+}
+.a-perspective-bar button[data-perspective='materials'] svg {
+  color: var(--pb-materials);
+}
+.a-perspective-bar button[data-perspective='costing'] svg {
+  color: var(--pb-costing);
+}
+.a-perspective-bar button[data-perspective='documents'] svg {
+  color: var(--pb-documents);
+}
+.a-perspective-bar button[aria-selected='true'] {
+  background: var(--a-surface);
+  color: var(--a-text);
+  box-shadow: 0 1px 4px #17382b14;
+}
+.a-perspective-bar button[data-perspective='project'][aria-selected='true'] {
+  border-bottom-color: var(--pb-project);
+}
+.a-perspective-bar button[data-perspective='execution'][aria-selected='true'] {
+  border-bottom-color: var(--pb-execution);
+}
+.a-perspective-bar button[data-perspective='materials'][aria-selected='true'] {
+  border-bottom-color: var(--pb-materials);
+}
+.a-perspective-bar button[data-perspective='costing'][aria-selected='true'] {
+  border-bottom-color: var(--pb-costing);
+}
+.a-perspective-bar button[data-perspective='documents'][aria-selected='true'] {
+  border-bottom-color: var(--pb-documents);
+}
+@media (max-width: 1100px) {
+  .a-perspective-bar button span {
+    display: none;
+  }
+}
+
+/* V34B — Cost Workspace (Kosztorys). */
+.cw-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 4px 2px 24px;
+}
+.cw-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px 22px;
+  padding: 14px 16px;
+  border: 1px solid var(--a-line);
+  border-radius: 12px;
+  background: var(--a-surface);
+}
+.cw-summary-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cw-summary-main span {
+  font-size: 11px;
+  color: var(--a-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.cw-summary-main strong {
+  font-size: 26px;
+  color: var(--pb-costing, #6b4ca5);
+}
+.cw-summary-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  font-size: 12px;
+  color: var(--a-muted);
+}
+.cw-summary-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  font-size: 12px;
+}
+.cw-summary-status [data-status='warning'] {
+  color: var(--a-state-warning);
+}
+.cw-vat select {
+  margin-left: 6px;
+}
+.cw-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+.cw-suggestions {
+  border: 1px dashed var(--a-line-strong);
+  border-radius: 12px;
+  padding: 12px 16px;
+  background: var(--a-canvas);
+}
+.cw-suggestions h3 {
+  margin: 0 0 2px;
+}
+.cw-intro {
+  margin: 0 0 10px;
+  color: var(--a-muted);
+  font-size: 12px;
+}
+.cw-suggestions ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cw-suggestions li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--a-line);
+  border-radius: 8px;
+  background: var(--a-surface);
+}
+.cw-suggestions li > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cw-suggestions li small {
+  color: var(--a-muted);
+}
+.cw-suggestion-actions {
+  display: flex;
+  gap: 6px;
+}
+.cw-category-group h4 {
+  margin: 0 0 6px;
+  color: var(--pb-materials, #235344);
+}
+.cw-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.cw-table th,
+.cw-table td {
+  padding: 6px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--a-line);
+}
+.cw-table input[type='text'] {
+  width: 100%;
+  min-width: 64px;
+  border: 1px solid var(--a-line);
+  border-radius: 6px;
+  padding: 4px 6px;
+}
+.cw-diff-row td {
+  background: var(--a-warning-fill);
+  font-size: 11px;
+}
+.cw-diff-row button {
+  margin-left: 8px;
+}
+.cw-empty {
+  color: var(--a-muted);
+  padding: 24px 0;
+  text-align: center;
+}
+.cw-add-manual {
+  align-self: flex-start;
+}
+.cw-manual-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  padding: 12px 16px;
+  border: 1px solid var(--a-line);
+  border-radius: 12px;
+  background: var(--a-surface);
+}
+.cw-manual-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--a-muted);
+}
+.cw-manual-form input,
+.cw-manual-form select {
+  min-height: 34px;
+  border: 1px solid var(--a-line);
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+@media (max-width: 800px) {
+  .cw-summary {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .cw-actions {
+    margin-left: 0;
+  }
+  .cw-table {
+    display: block;
+    overflow-x: auto;
   }
 }

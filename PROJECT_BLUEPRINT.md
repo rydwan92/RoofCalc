@@ -1297,6 +1297,141 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+**Iteration:** `034B - Costing MVP and Workbench Perspectives`
+
+**Status:** `COMPLETE (SCOPED) - FULL VERIFY GREEN; H1/J1 cost suggestions and full
+five-perspective ribbon filtering deliberately deferred (see below)`
+
+**Completed:** Baseline V34A gates first confirmed green from clean `main`
+(`db4920a`): `pnpm verify` 705/705 + both builds, `pnpm e2e` 34/36 (2
+pre-existing, deterministic, V34B-unrelated failures on the V33 grouped
+counter-batten-warning test, reproduced on a clean checkout and flagged as
+`task_8a3ea003` for separate follow-up — not chased further per the prompt's
+"do not re-audit V34A" instruction).
+
+New pure `packages/cost-core` (money in integer minor units, typed quantity +
+`CostQuantityBasis`, named `CostSuitability` — never a numeric confidence
+score, `CostLine`/`CostScenario`, deterministic line/VAT rounding, scenario
+totals; zero React/DOM/i18n/geometry dependency, only `zod`). A new
+`apps/web/src/assembly/cost-adapter.ts` turns already-trusted facts (K1
+cutting plan, battens, counter-battens, membrane) into `CostSuggestion`s; K1
+stock is suggested only once a cutting plan has actually been run, and
+covering coverage positions/panel runs are **never** auto-priced — accepting
+one always creates a manual line with quantity `0`, never the geometric count
+(the load-bearing truthfulness rule from the prompt's §20/§46, covered by both
+a unit and a component test). `CostWorkspace.tsx` is a new full-width Kosztorys
+panel (suggestions, grouped priced table, VAT, manual lines, CSV/export
+actions). Cost data persists in a new `CostScenarioV1` sidecar
+(`localStorage`, keyed by project ID) deliberately kept **outside**
+`RoofProjectDocumentV1`/`ProjectRecordV1` and roof Undo/Redo — see
+`docs/SCHEMA_REGISTRY.md` §9 for why. `document-core` gained one more section,
+`cost-estimate`, wired into the existing V30 export/print pipeline with no new
+renderer; `cost-csv.ts` adds a semicolon/BOM CSV download. A five-perspective
+bar (Projekt/Wykonanie/Materiały/Kosztorys/Dokumenty) now sits above the
+task ribbon — real navigation (jumps to a perspective's first task, or opens
+export for Dokumenty), but it never hides a task, so every one of the (now
+seven, Kosztorys added) ribbon tabs stays directly one-click reachable on
+desktop and mobile. Full write-up: `docs/ARCHITECTURE_V34B_COSTING_MVP.md`.
+
+**Deferred from this iteration:** H1/J1/purlin/collar-tie timber never gets an
+automatic cost suggestion (no fabrication/procurement resolution exists for
+them yet — a candidate V35 item once there is appetite for the extra rows).
+The five-perspective bar groups and jumps but does not filter the task ribbon
+down to the active perspective's tasks — that stricter design was prototyped
+and rejected: it would cost expert users an extra click for common
+cross-perspective jumps and it broke every existing `openTask(page, …)` E2E
+helper that clicks a task tab directly. Per-line VAT, a stale-K1-suggestion
+orphan check, and renaming a suggested (non-manual) line are also out of scope
+— see §9 of the architecture doc for the full list.
+
+**Changed / WIP files:** new package `packages/cost-core/src/{model,
+validation,line,scenario,persistence,index}.ts` + `index.test.ts` (32 tests);
+`packages/document-core/src/index.ts` (`CostEstimateSection`); `apps/web/src/
+assembly/{cost-adapter.ts,cost-adapter.test.ts,cost-csv.ts,cost-csv.test.ts,
+CostWorkspace.tsx,CostWorkspace.test.tsx,use-cost-scenario.ts,
+PerspectiveBar.tsx}` (new), `export-adapter.ts`, `export-adapter.test.ts`,
+`ExecutionExport.tsx`, `Page.tsx`, `WorkbenchControls.tsx`,
+`MobileTaskDock.tsx`, `workbench.ts`, `workbench.test.ts`, `translations.ts`,
+`styles.css`, `MobilePage.test.tsx` (six-task assertion → seven);
+`apps/web/src/projects/{cost-repository.ts,cost-repository.test.ts}` (new);
+`apps/web/package.json` (+`@cieslacalc/cost-core`); this checkpoint,
+`docs/ARCHITECTURE_V34B_COSTING_MVP.md` (new), `docs/SCHEMA_REGISTRY.md` §9,
+`docs/ARCHITECTURE_INDEX.md`, `docs/UX_DESIGN_CONTRACT.md` §2/§13. No commit
+or push.
+
+**Assumptions:** VAT is scenario-level only (one rate for the whole estimate),
+matching the prompt's own §22 mockup rather than a per-line override. A cost
+line's `label` is fixed at creation for a suggested line; only a fully manual
+line chooses its own label. A direct edit to a project-derived line's quantity
+always converts its `source` to `manual` (never keeps stale "derived"
+provenance); the resulting "Przywróć z projektu" action re-syncs it. Deleting
+a project does not delete its cost sidecar row (an orphaned but harmless
+key).
+
+**Validation:** Baseline (clean `main`, before any V34B edit) `pnpm verify`
+705/705 + both builds passed; `pnpm e2e` 34/36 with 2 pre-existing failures
+(flagged, see above). After implementation: full `pnpm verify`
+(typecheck → lint → format:check → test → build) passed clean; direct
+`vitest run` across the whole repo: **82/82 test files, 821/821 tests**
+(cost-core 32, cost-adapter 8, cost-csv 4, cost-repository 5, CostWorkspace
+5, workbench +3, export-adapter +4, all pre-existing suites unchanged and
+green including Page.test.tsx's full 65 and MobilePage.test.tsx's 9).
+`git diff --check` clean. One real regression was caught and fixed before
+this checkpoint: the new `PerspectiveBar` "Projekt"/"Kosztorys" tab labels
+collided with `role="tab"` accessible names already used elsewhere
+(MaterialSchedule's local "Projekt" summary sub-tab, and the task ribbon's own
+"Kosztorys" tab), breaking `Page.test.tsx`'s
+`getByRole('tab', { name: 'Projekt' })` query with a multiple-match error;
+fixed by giving every `PerspectiveBar` button a disambiguating
+`aria-label="Perspektywa: <name>"` distinct from its visible (unchanged)
+label — a general fix, not a one-off patch, since it protects against future
+single-word label collisions too. A second real bug was caught only through
+live-browser QA, not by any existing or new unit/component test at the time:
+the quantity/price `<input>`s in `CostWorkspace.tsx` are uncontrolled
+(`defaultValue` + blur-commit, matching the repo's own established field
+pattern), so React does not refresh their visible text after an external
+scenario update such as "Aktualizuj" — the total/summary updated correctly but
+the input kept showing the stale typed value. Fixed with the same
+`key={`${line.id}:${line.<field>}`}` remount-on-external-change trick already
+used for this exact purpose in `CoveringWorkspace.tsx`'s numeric fields, and
+locked in with a new regression test ("refreshes the visible quantity input
+after accepting a project change"). A `vitest`/`pnpm` worker "Timeout calling
+onTaskUpdate" warning appears on full-suite runs on this machine and reports
+zero failures when reproduced in isolation — the same class of environment
+flakiness the V32 checkpoint already documented, not a source defect.
+
+**Visual / mobile QA:** Live-browser verification against the running dev
+server (not just Playwright): desktop 1920×1080 — perspective bar renders
+with five distinct accent-coloured icons, clicking Kosztorys/Projekt
+navigates correctly, a manual line adds/prices/computes VAT (23% → correct
+gross), Otwórz w eksporcie opens the existing export modal with a real
+"Kosztorys ✓ Gotowe" candidate and the printed page renders the table/totals
+correctly (including a fix for a raw `"piece"` unit leaking into the printed
+page instead of the translated `"szt."`, caught during this pass); 1024×768 —
+perspective bar collapses to icon-only per its `≤1100px` rule, ribbon and
+Kosztorys panel stay usable; 390×844 — Kosztorys is the seventh mobile-dock
+entry, the summary/suggestions stack vertically with no page-level horizontal
+overflow, and the line table scrolls horizontally inside its own container
+(by design) rather than breaking the page. `pnpm e2e` was not rerun after the
+implementation pass (the desktop-and-mobile Playwright fixtures do not yet
+cover Kosztorys) — see NEXT ACTION.
+
+**Known limitations:** everything in "Deferred from this iteration" above,
+plus: no Playwright coverage of the Kosztorys flow yet (unit + component
+tests only); CSV/print truthfulness `noteKeys` reach the on-screen workspace
+but not yet a per-row footnote on the printed page; a stale K1-stock
+suggestion (plan re-run with different stock lengths) is not flagged as
+orphaned.
+
+**NEXT ACTION:** Run `pnpm e2e` once more after this checkpoint lands to
+confirm no Playwright regression from the navigation changes (Page/MobilePage
+Vitest suites already prove the DOM-level behavior; E2E adds real-browser
+confidence). If time allows in a follow-up session: add a Playwright scenario
+for the Kosztorys flow (add a suggestion, price it, toggle VAT, export
+preview shows the section) mirroring the existing K1/export scenarios. Then
+await the user's next scoped prompt — do not start V35 automatically, and do
+not commit/push automatically.
+
 **Iteration:** `034A - Roofing installation intelligence`
 
 **Status:** `COMPLETE - required V34A flows pass; final full gates pending`

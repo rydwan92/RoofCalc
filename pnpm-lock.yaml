@@ -132,6 +132,9 @@ importers:
       '@cieslacalc/catalog-core':
         specifier: workspace:*
         version: link:../../packages/catalog-core
+      '@cieslacalc/cost-core':
+        specifier: workspace:*
+        version: link:../../packages/cost-core
       '@cieslacalc/covering-core':
         specifier: workspace:*
         version: link:../../packages/covering-core
@@ -223,6 +226,12 @@ importers:
       '@cieslacalc/covering-core':
         specifier: workspace:*
         version: link:../covering-core
+      zod:
+        specifier: ^3.25.0
+        version: 3.25.76
+
+  packages/cost-core:
+    dependencies:
       zod:
         specifier: ^3.25.0
         version: 3.25.76

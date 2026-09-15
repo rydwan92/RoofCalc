@@ -98,13 +98,13 @@ async function addMobileManualCovering(
   fireEvent.click(within(draft).getByTestId('confirm-manual-covering'));
 }
 
-it('opens mobile Builder on drawing with six tasks and one on-demand tools sheet', async () => {
+it('opens mobile Builder on drawing with seven tasks and one on-demand tools sheet', async () => {
   render(<App />);
   fireEvent.click(screen.getByRole('button', { name: 'Kreator' }));
   await screen.findByTestId('skeleton-drawing');
   expect(screen.queryByRole('dialog')).toBeNull();
   const dock = screen.getByRole('tablist', { name: 'Widok zadaniowy' });
-  expect(within(dock).getAllByRole('tab')).toHaveLength(6);
+  expect(within(dock).getAllByRole('tab')).toHaveLength(7);
   expect(useAssembly.getState().historyPast).toHaveLength(0);
   fireEvent.click(screen.getByRole('button', { name: 'Narzędzia' }));
   const sheet = screen.getByRole('dialog', { name: 'Narzędzia' });

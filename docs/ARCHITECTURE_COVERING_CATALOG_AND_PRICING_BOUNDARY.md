@@ -43,6 +43,12 @@ Manual products use the same `technicalSpecSnapshot` without a `catalogRef`. Thi
 
 These are conceptual V21 boundaries, not a commitment to SQL columns. A future service may store technical parameters as versioned JSON validated with the same `covering-core` Zod schema used by the web calculation path.
 
+**V34B note:** the "future cost engine" above is now the pure `packages/cost-core`
+(`docs/ARCHITECTURE_V34B_COSTING_MVP.md`). It joins *manual* prices to
+already-trusted quantities today; `CostLineSource` reserves a `price-list`
+variant for exactly this `PriceList`/`PriceListEntry` join, but no database
+price list exists yet — V34B prices are always typed in by hand.
+
 ## Compatibility is not structural approval
 
 Pitch and batten-gauge checks only compare declared technical constraints to canonical project values. They do not certify installation, wind/snow resistance, fastening, substrate, fire performance, waterproofing, or structural safety. Manufacturer instructions and qualified verification remain authoritative.

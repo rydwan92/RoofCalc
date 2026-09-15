@@ -24,7 +24,7 @@ procurement                stock selection, cut placement, kerf, trims, remnants
         ↓
 documentation              typed evidence → selected print pages / offline PDF
         ↓
-future cost                NOT IMPLEMENTED — commercial valuation
+cost estimate               V34B — suggested/manual lines, prices, VAT, totals
 ```
 
 Each stage consumes only the stage above it, and adds one kind of fact.
@@ -53,7 +53,8 @@ Dependency direction is **downward only**.
 | `quantity-core` | Aggregates neutral quantity sources into the member/material schedule. Knows nothing about products, procurement or prices. | `timber-model` |
 | `catalog-core` | Pure catalogue contracts: manufacturers, product families, immutable technical revisions, commercial variants, import batch, read-API payloads. Reuses `covering-core` technical schemas rather than redefining them. | `covering-core`, `zod` |
 | `procurement-core` | **V26.** Pure timber cutting/stock planning over explicit required blanks. Indivisible blanks, kerf, stock end trims, reusable remnants, finite availability, three objectives, bounded search with deterministic fallback and honest optimality status. | **nothing — zero dependencies** |
-| `document-core` | **V30.** Pure typed execution-document sections, source identity, deterministic order and readiness filtering. No solver or renderer. | **nothing — zero dependencies** |
+| `document-core` | **V30.** Pure typed execution-document sections, source identity, deterministic order and readiness filtering. No solver or renderer. Its V34B `cost-estimate` section carries only plain numbers/strings. | **nothing — zero dependencies** |
+| `cost-core` | **V34B.** Pure commerce layer: integer-minor-unit money, typed quantity/unit, named `CostQuantityBasis` and `CostSuitability` (never a confidence score), `CostLine`/`CostScenario`, deterministic line/VAT rounding and scenario totals. Knows no product, geometry, procurement or translation. | `zod` |
 | `project-core` | `ProjectRecordV1` envelope, lifecycle helpers, JSON import/export and the `ProjectRepository` interface. No browser, no React, no i18n. | `calculator-core`, `zod` |
 | `shared` | Cross-cutting DTOs shared by web and API. | — |
 | `ui` | Semantic design tokens (`--ui-*`) and a few primitives. | `react` (peer) |
@@ -64,7 +65,12 @@ Dependency direction is **downward only**.
 database; `covering-core` importing React/DOM/Express/Drizzle/mysql2;
 `quantity-core` importing UI, a database or the catalogue; `catalog-core`
 importing Drizzle/Express/React/UI; `project-core` importing i18n, React or
-`localStorage`; `procurement-core` importing **anything**.
+`localStorage`; `procurement-core` importing **anything**; `roof-math`,
+`covering-core`, `quantity-core`, `procurement-core`, `catalog-core` or
+`timber-model` naming a pricing concept (`priceList`, `unitPrice`, `vatRate`,
+`currencyCode`, …) — enforced by `tools/architecture/layering.test.ts`'s
+"commercial boundary" tests (ADR-005); `cost-core` importing React, DOM, i18n,
+a roof-geometry package, `quantity-core` or `procurement-core`.
 
 `procurement-core` is deliberately **not** wired into `quantity-core` or
 `RoofProjectDocumentV1`. A V28 web application adapter connects only proven,
@@ -101,6 +107,17 @@ unambiguous; multiple modes require selection. Eave/ridge references stay manual
 project inputs. Per-plane explanations are carried by the V33 solver result and
 copied to typed execution evidence. No persisted schema or dependency changes.
 See `docs/ARCHITECTURE_V34A_ROOFING_INSTALLATION_INTELLIGENCE.md`.
+
+V34B adds the pure `cost-core` package (commerce layer, ADR-005) and a
+sidecar-persisted `CostScenarioV1` per project (`docs/SCHEMA_REGISTRY.md` §9),
+outside `RoofProjectDocumentV1`/`ProjectRecordV1` and roof history. A new
+`apps/web/src/assembly/cost-adapter.ts` is the only place that turns already-
+trusted facts (K1 cutting plan, battens, counter-battens, membrane) into
+priceable suggestions; covering coverage positions/panel runs are deliberately
+never auto-priced. `document-core` gains one more section, `cost-estimate`,
+consumed by the existing V30 export/print pipeline; `cost-core` is not wired
+into `quantity-core`, `procurement-core` or the catalogue. See
+`docs/ARCHITECTURE_V34B_COSTING_MVP.md`.
 
 ---
 
@@ -364,6 +381,7 @@ pnpm e2e      # real-browser smoke, desktop 1440x900 and mobile 390x844 (pnpm e2
 | `docs/ARCHITECTURE_V32_STRUCTURAL_SYSTEMS_AND_EXECUTION.md` | roof structural system, collar tie, K1 ridge-connection variants |
 | `docs/ARCHITECTURE_V33_ROOF_BUILDUP_INTELLIGENCE.md` | automatic batten spacing, covering composition boundary, hip K1/J1 counter-battens |
 | `docs/ARCHITECTURE_V34A_ROOFING_INSTALLATION_INTELLIGENCE.md` | decision authority, tile capabilities, hard compatibility, manual ownership and explainable repair |
+| `docs/ARCHITECTURE_V34B_COSTING_MVP.md` | `cost-core`, cost suggestions, quantity basis/suitability, VAT, perspective navigation, cost export |
 | `docs/domain/ROOF_TILE_INSTALLATION_RULES.md` | manufacturer evidence for regular gauge, pitch and manual boundary references |
 | `docs/FUTURE_EXECUTION_SEMANTICS_AUDIT.md` + `docs/domain/*` | touching coverage, overlap or connection semantics |
 | `docs/ARCHITECTURE_FUTURE_COMPOUND_ROOF_SCENE.md` | touching IDs, planes or document shape |

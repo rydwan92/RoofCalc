@@ -236,6 +236,7 @@ design, without changing `RoofProjectDocumentV1` by implication.
 | `cieslacalc.projects.v1` | `apps/web/src/projects/local-repository.ts` | project metadata index |
 | `cieslacalc.projects.v1:<id>` | same | one `ProjectRecordV1` |
 | `cieslacalc.activeProject.v1` | same | active project ID |
+| `cieslacalc.costEstimate.v1:<projectId>` | `apps/web/src/projects/cost-repository.ts` | one `CostScenarioV1` (§9) |
 | display-unit preference | `apps/web/src/unit-preference.ts` | separate adapter; never part of a project |
 
 Changing the shape behind a key requires a new key suffix (`.v2`) and a reader
@@ -243,7 +244,46 @@ that can still load the old one.
 
 ---
 
-## 9. Checklist for any schema change
+## 9. `CostScenarioV1` — cost estimate sidecar (V34B)
+
+| | |
+| --- | --- |
+| Owner | `packages/cost-core/src/persistence.ts` (`costScenarioV1Schema`) |
+| Current version | `schemaVersion: 1` |
+| Validation | Zod, on every parse and before every write |
+| Persistence | `localStorage` key `cieslacalc.costEstimate.v1:<projectId>` via `LocalCostRepository`; loaded/saved by `apps/web/src/assembly/use-cost-scenario.ts` |
+| Contains | `currencyCode`, optional scenario-level `taxRateBps`, `lines: CostLine[]`, `metadata.updatedAt` |
+
+**Compatibility expectations**
+
+- Deliberately **not** part of `RoofProjectDocumentV1` or `ProjectRecordV1`.
+  Commerce is one layer downstream of geometry/quantity/procurement (ADR-005);
+  by the same reasoning that keeps a `CuttingPlan` out of the canonical
+  document (§6, ADR-009), a cost estimate stays out of it too. It never enters
+  roof Undo/Redo history (ADR-002).
+- Keyed by project ID, independent of `ProjectRecordV1`'s own save/dirty
+  tracking in `ProjectSession`. Deleting a project does not automatically
+  delete its sidecar row today — a known V35 cleanup item.
+- `CostLine.quantityBasis` and `.suitability` are named, stable strings (never
+  a numeric confidence score) so a UI can render them without knowing the
+  originating suggestion. `document-core`'s `CostEstimateSection.lines[].basis`
+  duplicates the same string union independently, by convention (document-core
+  stays a zero-dependency package; see its entry below).
+- No price ever enters `RoofProjectDocumentV1`, `CoveringTechnicalSpec`, the
+  catalogue schema, `quantity-core` or `procurement-core` — `tools/architecture
+/layering.test.ts`'s "commercial boundary" tests fail the build if it does.
+
+**Migration policy**
+
+- Additive optional fields are free, same rule as §1/§2.
+- A required change bumps `costScenarioV1Schema`'s version and needs an
+  explicit reader for both, since existing sidecar rows must keep loading.
+- A corrupt or unreadable row must not block opening the project: it is
+  treated as absent and a fresh empty scenario is offered instead.
+
+---
+
+## 10. Checklist for any schema change
 
 1. Which registry entry does this touch?
 2. Does an existing valid document still parse? If no → new version + explicit reader.
