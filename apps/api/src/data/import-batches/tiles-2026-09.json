@@ -1,0 +1,241 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "id": "manufacturer-research-2026-09",
+    "label": "Real manufacturer roof-tile data researched 2026-09 from public retailer pages — verify against current manufacturer data sheet before ordering.",
+    "sourceRevision": "2026-09"
+  },
+  "manufacturers": [
+    {
+      "id": "manufacturer:creaton",
+      "slug": "creaton",
+      "name": "CREATON",
+      "countryCode": "DE",
+      "websiteUrl": "https://www.creaton.pl",
+      "active": true
+    },
+    {
+      "id": "manufacturer:swissporton",
+      "slug": "swissporton",
+      "name": "swissporTON",
+      "countryCode": "PL",
+      "websiteUrl": "https://www.swissporton.pl",
+      "active": true
+    },
+    {
+      "id": "manufacturer:nelskamp",
+      "slug": "nelskamp",
+      "name": "Nelskamp",
+      "countryCode": "DE",
+      "websiteUrl": "https://nelskamp.pl",
+      "active": true
+    }
+  ],
+  "products": [
+    {
+      "id": "product:creaton:koda",
+      "manufacturerId": "manufacturer:creaton",
+      "slug": "koda",
+      "name": "KODA",
+      "coveringKind": "roof-tile",
+      "active": true
+    },
+    {
+      "id": "product:swissporton:domino",
+      "manufacturerId": "manufacturer:swissporton",
+      "slug": "domino",
+      "name": "DOMINO",
+      "coveringKind": "roof-tile",
+      "active": true
+    },
+    {
+      "id": "product:nelskamp:planum",
+      "manufacturerId": "manufacturer:nelskamp",
+      "slug": "planum",
+      "name": "Planum",
+      "coveringKind": "roof-tile",
+      "active": true
+    }
+  ],
+  "revisions": [
+    {
+      "id": "revision:creaton:koda:2026-09",
+      "productId": "product:creaton:koda",
+      "revisionCode": "2026-09",
+      "validFrom": "2026-09-01",
+      "source": {
+        "label": "rabatplus.pl product page, retrieved 2026-09. Course/row-offset pattern is a straight-lay default, not sourced from the manufacturer installation guide.",
+        "url": "https://rabatplus.pl/dach/dachowka/ceramiczna/creaton/koda/creaton-koda-dachowka-podstawowa.html",
+        "revision": "2026-09"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-tile",
+        "physicalWidthMm": 304,
+        "physicalLengthMm": 505,
+        "material": "ceramic",
+        "weightKgPerPiece": 4.9,
+        "salesUnit": "piece",
+        "installationModes": [
+          {
+            "id": "standard",
+            "coverWidthMm": 261,
+            "gaugeRangeMm": { "min": 393, "max": 433 },
+            "minPitchDeg": 25,
+            "declaredUnitsPerM2": { "min": 9.0, "max": 9.9 },
+            "coursePattern": {
+              "layers": [{ "id": "base", "horizontalOffsetFraction": 0 }],
+              "battenRowOffsetCycle": [0]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "revision:swissporton:domino:2026-09",
+      "productId": "product:swissporton:domino",
+      "revisionCode": "2026-09",
+      "validFrom": "2026-09-01",
+      "source": {
+        "label": "swissporton.pl product page, retrieved 2026-09. Course/row-offset pattern is a straight-lay default, not sourced from the manufacturer installation guide.",
+        "url": "https://www.swissporton.pl/produkty/domino",
+        "revision": "2026-09"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-tile",
+        "physicalWidthMm": 257,
+        "physicalLengthMm": 436,
+        "material": "ceramic",
+        "weightKgPerPiece": 4.2,
+        "salesUnit": "piece",
+        "installationModes": [
+          {
+            "id": "standard",
+            "coverWidthMm": 225,
+            "gaugeRangeMm": { "min": 343, "max": 354 },
+            "minPitchDeg": 10,
+            "declaredUnitsPerM2": { "min": 12.4, "max": 13.1 },
+            "coursePattern": {
+              "layers": [{ "id": "base", "horizontalOffsetFraction": 0 }],
+              "battenRowOffsetCycle": [0]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "revision:nelskamp:planum:2026-09",
+      "productId": "product:nelskamp:planum",
+      "revisionCode": "2026-09",
+      "validFrom": "2026-09-01",
+      "source": {
+        "label": "ambit.gda.pl product page, retrieved 2026-09 — partial data, no published minimum-pitch figure. Course/row-offset pattern is a straight-lay default, not sourced from the manufacturer installation guide.",
+        "url": "https://www.ambit.gda.pl/oferta/dachy-skosne/dachowki-betonowe/plaskie-dachowki-betonowe/nelskamp-planum",
+        "revision": "2026-09"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-tile",
+        "material": "concrete",
+        "weightKgPerPiece": 5,
+        "salesUnit": "piece",
+        "installationModes": [
+          {
+            "id": "standard",
+            "coverWidthMm": 300,
+            "gaugeRangeMm": { "min": 312, "max": 340 },
+            "declaredUnitsPerM2": { "min": 10, "max": 10 },
+            "coursePattern": {
+              "layers": [{ "id": "base", "horizontalOffsetFraction": 0 }],
+              "battenRowOffsetCycle": [0]
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "variants": [
+    {
+      "id": "variant:creaton:koda:copper-nuance",
+      "productId": "product:creaton:koda",
+      "sku": "CRE-KODA-CU-NU",
+      "name": "Miedziana (NUANCE, angobowana)",
+      "color": "copper",
+      "finish": "engobe-nuance",
+      "active": true
+    },
+    {
+      "id": "variant:creaton:koda:anthracite-nuance",
+      "productId": "product:creaton:koda",
+      "sku": "CRE-KODA-AN-NU",
+      "name": "Antracytowa (NUANCE, angobowana)",
+      "color": "anthracite",
+      "finish": "engobe-nuance",
+      "active": true
+    },
+    {
+      "id": "variant:creaton:koda:slate-finesse",
+      "productId": "product:creaton:koda",
+      "sku": "CRE-KODA-SL-FI",
+      "name": "Łupkowa (FINESSE, szkliwiona)",
+      "color": "slate",
+      "finish": "glazed-finesse",
+      "active": true
+    },
+    {
+      "id": "variant:creaton:koda:black-finesse",
+      "productId": "product:creaton:koda",
+      "sku": "CRE-KODA-BL-FI",
+      "name": "Czarna (FINESSE, szkliwiona)",
+      "color": "black",
+      "finish": "glazed-finesse",
+      "active": true
+    },
+    {
+      "id": "variant:swissporton:domino:natural-red",
+      "productId": "product:swissporton:domino",
+      "sku": "SWT-DOM-NAT",
+      "name": "Czerwona naturalna",
+      "color": "natural-red",
+      "finish": "natural",
+      "active": true
+    },
+    {
+      "id": "variant:swissporton:domino:copper-engobe",
+      "productId": "product:swissporton:domino",
+      "sku": "SWT-DOM-CU-EN",
+      "name": "Miedziana (angoba)",
+      "color": "copper",
+      "finish": "engobe",
+      "active": true
+    },
+    {
+      "id": "variant:swissporton:domino:black-glaze",
+      "productId": "product:swissporton:domino",
+      "sku": "SWT-DOM-BL-GL",
+      "name": "Czarna (glazura)",
+      "color": "black",
+      "finish": "glaze",
+      "active": true
+    },
+    {
+      "id": "variant:nelskamp:planum:dark-grey",
+      "productId": "product:nelskamp:planum",
+      "sku": "NEL-PLA-DGR",
+      "name": "Grafitowa (LongLife, mat)",
+      "color": "dark-grey",
+      "finish": "longlife-matt",
+      "active": true
+    },
+    {
+      "id": "variant:nelskamp:planum:brick-red",
+      "productId": "product:nelskamp:planum",
+      "sku": "NEL-PLA-BRR",
+      "name": "Ceglasta (LongLife, mat)",
+      "color": "brick-red",
+      "finish": "longlife-matt",
+      "active": true
+    }
+  ]
+}

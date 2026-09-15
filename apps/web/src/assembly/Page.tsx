@@ -7,6 +7,7 @@ import {
   useSyncExternalStore,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   createRoofProjectDocument,
   currentMemberInstance,
@@ -87,6 +88,7 @@ import { resolveWorkbenchSelectionContext } from './selection';
 import { createK1CuttingRequirement } from './k1-cutting-adapter';
 import { k1RequirementSignature } from './k1-cutting-adapter';
 import type { ExportFacts } from './export-adapter';
+import { usePricesForVariants } from '../pricing/use-prices';
 import { useCostScenario } from './use-cost-scenario';
 import type { DocumentSource } from '@cieslacalc/document-core';
 import type { K1SessionPlan } from './K1CuttingPlan';
@@ -233,7 +235,7 @@ function isStandingSeamAssignment(
   return assignment.product.technicalSpecSnapshot.kind === 'standing-seam';
 }
 
-export function AssemblyPage() {
+function AssemblyPageContent() {
   const state = useAssembly(),
     { t, i18n } = useTranslation();
   const [projectSession] = useState(() => new ProjectSession());
@@ -419,6 +421,19 @@ export function AssemblyPage() {
   const coveringOwnership = useMemo(
     () => resolvePrimaryCoveringAssignments(coveringAssignments),
     [coveringAssignments],
+  );
+  const coveringVariantIds = useMemo(
+    () =>
+      coveringAssignments.flatMap((assignment) => {
+        const variantId = assignment.product.catalogRef?.variantId;
+        return variantId ? [variantId] : [];
+      }),
+    [coveringAssignments],
+  );
+  const variantPricesById = usePricesForVariants(coveringVariantIds);
+  const variantPrices = useMemo(
+    () => [...variantPricesById.values()],
+    [variantPricesById],
   );
   const effectiveBattenLayout = useMemo(
     () =>
@@ -1770,6 +1785,8 @@ export function AssemblyPage() {
                                 warnings: [...layout.issueCodes],
                               }),
                             ),
+                            coveringLayouts: resolvedCoveringLayouts,
+                            variantPrices,
                           } satisfies Omit<ExportFacts, 'cost'>
                         }
                         scenario={costScenario}
@@ -1864,6 +1881,8 @@ export function AssemblyPage() {
                           warnings: [...layout.issueCodes],
                         }),
                       ),
+                      coveringLayouts: resolvedCoveringLayouts,
+                      variantPrices,
                       cost: costScenario,
                     } satisfies ExportFacts
                   }
@@ -2034,5 +2053,19 @@ export function AssemblyPage() {
         />
       )}
     </div>
+  );
+}
+
+export function AssemblyPage() {
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
+      }),
+  );
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AssemblyPageContent />
+    </QueryClientProvider>
   );
 }

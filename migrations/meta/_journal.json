@@ -8,6 +8,13 @@
       "when": 1789321526420,
       "tag": "0000_catalog_platform",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1789475192686,
+      "tag": "0001_spooky_rocket_racer",
+      "breakpoints": true
     }
   ]
 }

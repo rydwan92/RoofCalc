@@ -8,11 +8,13 @@
     "build": "tsup --config tsup.config.ts",
     "db:generate": "cd ../.. && drizzle-kit generate --config drizzle.config.ts",
     "db:migrate": "cd ../.. && drizzle-kit migrate --config drizzle.config.ts",
-    "catalog:import": "tsx src/cli/import-catalog.ts"
+    "catalog:import": "tsx src/cli/import-catalog.ts",
+    "pricing:import": "tsx src/cli/import-pricing.ts"
   },
   "dependencies": {
     "@cieslacalc/catalog-core": "workspace:*",
     "@cieslacalc/covering-core": "workspace:*",
+    "@cieslacalc/pricing-core": "workspace:*",
     "@cieslacalc/shared": "workspace:*",
     "drizzle-orm": "0.44.0",
     "express": "^4.21.2",

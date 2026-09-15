@@ -128,6 +128,31 @@ export const coveringTechnicalSpecSchema = z.union([
   standingSeamTechnicalSpecSchema,
 ]);
 
+/**
+ * A membrane roll's technical shape. Deliberately NOT a member of
+ * `coveringTechnicalSpecSchema` — a membrane is a build-up layer under/over
+ * the primary covering, not a competing candidate for roof-plane ownership,
+ * so it must never enter `resolvePrimaryCoveringAssignments` or any
+ * `layoutKind` union.
+ */
+export const membraneTechnicalSpecSchema = z
+  .object({
+    schemaVersion: z.literal(COVERING_TECHNICAL_SCHEMA_VERSION),
+    kind: z.literal('membrane'),
+    rollWidthMm: finitePositive,
+    rollLengthMm: finitePositive,
+    minimumOverlapMm: z.number().finite().nonnegative(),
+    minPitchDeg: pitchDeg.optional(),
+    material: z.enum(['synthetic', 'bituminous', 'other']).optional(),
+    salesUnit: z.enum(['roll', 'square-metre']).optional(),
+  })
+  .refine(
+    (spec) => spec.minimumOverlapMm < spec.rollWidthMm,
+    'invalid_overlap',
+  );
+
+export type MembraneTechnicalSpec = z.infer<typeof membraneTechnicalSpecSchema>;
+
 export type RoofTileInstallationMode = z.infer<
   typeof tileInstallationModeSchema
 >;

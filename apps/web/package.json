@@ -16,6 +16,7 @@
     "@cieslacalc/drawing-engine": "workspace:*",
     "@cieslacalc/document-core": "workspace:*",
     "@cieslacalc/project-core": "workspace:*",
+    "@cieslacalc/pricing-core": "workspace:*",
     "@cieslacalc/procurement-core": "workspace:*",
     "@cieslacalc/quantity-core": "workspace:*",
     "@cieslacalc/roof-math": "workspace:*",

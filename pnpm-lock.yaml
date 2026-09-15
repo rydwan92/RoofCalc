@@ -89,6 +89,9 @@ importers:
       '@cieslacalc/covering-core':
         specifier: workspace:*
         version: link:../../packages/covering-core
+      '@cieslacalc/pricing-core':
+        specifier: workspace:*
+        version: link:../../packages/pricing-core
       '@cieslacalc/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -144,6 +147,9 @@ importers:
       '@cieslacalc/drawing-engine':
         specifier: workspace:*
         version: link:../../packages/drawing-engine
+      '@cieslacalc/pricing-core':
+        specifier: workspace:*
+        version: link:../../packages/pricing-core
       '@cieslacalc/procurement-core':
         specifier: workspace:*
         version: link:../../packages/procurement-core
@@ -245,6 +251,12 @@ importers:
   packages/document-core: {}
 
   packages/drawing-engine: {}
+
+  packages/pricing-core:
+    dependencies:
+      zod:
+        specifier: ^3.25.0
+        version: 3.25.76
 
   packages/procurement-core: {}
 

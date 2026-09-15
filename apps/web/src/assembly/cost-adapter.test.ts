@@ -15,7 +15,8 @@ import {
   k1RequirementSignature,
 } from './k1-cutting-adapter';
 import { createWorkbenchProjectResolver } from './workbench-project';
-import type { ExportFacts } from './export-adapter';
+import type { ExportFacts, ResolvedCoveringLayout } from './export-adapter';
+import type { RoofTileLayoutResult } from '@cieslacalc/covering-core';
 
 const source = {
   projectId: 'p1',
@@ -257,6 +258,288 @@ describe('cost suggestion adapter', () => {
     // Critical truthfulness invariant: no automatically priceable quantity.
     expect('quantity' in covering).toBe(false);
     expect(suggestions.some((s) => s.kind === 'k1-stock')).toBe(false);
+  });
+
+  function tileLayout(
+    overrides: Partial<RoofTileLayoutResult>,
+  ): RoofTileLayoutResult {
+    return {
+      kind: 'roof-tile',
+      status: 'resolved',
+      assignmentId: 'assignment-1',
+      roofPlaneIds: ['roof-plane:left'],
+      planes: [],
+      totalPositions: 2070,
+      fullPositions: 2000,
+      cutPositions: 70,
+      splitPositions: 0,
+      issueCodes: [],
+      issues: [],
+      ...overrides,
+    };
+  }
+
+  it('surfaces a manufacturer-declared consumption range instead of a bare position count', () => {
+    const facts = baseFacts();
+    const withCovering: ExportFacts = {
+      ...facts,
+      schedule: createRoofMemberSchedule({
+        skeleton: facts.skeleton,
+        covering: [
+          {
+            id: 'covering:1',
+            coveringAssignmentId: 'assignment-1',
+            sourceRoofPlaneIds: ['roof-plane:left'],
+            quantity: 2070,
+            requirementReadiness: 'geometric-only',
+            layoutKind: 'roof-tile',
+            semantic: 'effective-coverage-position',
+            unit: 'coverage-position',
+            fullPositions: 2000,
+            cutPositions: 70,
+          },
+        ],
+      }),
+      coveringLayouts: [
+        tileLayout({
+          declaredConsumptionReference: {
+            netAssignedAreaMm2: 200_000_000,
+            minimumPieces: 1800,
+            maximumPieces: 1980,
+          },
+        }),
+      ] satisfies ResolvedCoveringLayout[],
+    };
+    const suggestions = createCostSuggestions(withCovering);
+    const consumption = suggestions.find(
+      (s) => s.kind === 'covering-consumption',
+    );
+    expect(consumption).toBeDefined();
+    if (consumption?.kind !== 'covering-consumption') return;
+    expect(consumption.suitability).toBe('execution-based');
+    expect(consumption.minimumPieces).toBe(1800);
+    expect(consumption.maximumPieces).toBe(1980);
+    // Safe default is the top of the declared range, never silently rounded down.
+    expect(consumption.quantity).toEqual({ value: 1980, unit: 'piece' });
+    // The same assignment must not also appear as a bare position-count nudge.
+    expect(suggestions.some((s) => s.kind === 'covering-positions')).toBe(
+      false,
+    );
+  });
+
+  it('keeps the bare position-count nudge for an assignment with no declared consumption', () => {
+    const facts = baseFacts();
+    const withCovering: ExportFacts = {
+      ...facts,
+      schedule: createRoofMemberSchedule({
+        skeleton: facts.skeleton,
+        covering: [
+          {
+            id: 'covering:1',
+            coveringAssignmentId: 'assignment-1',
+            sourceRoofPlaneIds: ['roof-plane:left'],
+            quantity: 2070,
+            requirementReadiness: 'geometric-only',
+            layoutKind: 'roof-tile',
+            semantic: 'effective-coverage-position',
+            unit: 'coverage-position',
+            fullPositions: 2000,
+            cutPositions: 70,
+          },
+        ],
+      }),
+      coveringLayouts: [
+        tileLayout({ declaredConsumptionReference: undefined }),
+      ] satisfies ResolvedCoveringLayout[],
+    };
+    const suggestions = createCostSuggestions(withCovering);
+    expect(suggestions.some((s) => s.kind === 'covering-consumption')).toBe(
+      false,
+    );
+    const covering = suggestions.find((s) => s.kind === 'covering-positions');
+    expect(covering).toBeDefined();
+    if (covering?.kind === 'covering-positions')
+      expect(covering.totalPositions).toBe(2070);
+  });
+
+  function factsWithConsumptionAndCoverings(
+    overrides: Partial<ExportFacts>,
+  ): ExportFacts {
+    const facts = baseFacts();
+    return {
+      ...facts,
+      schedule: createRoofMemberSchedule({
+        skeleton: facts.skeleton,
+        covering: [
+          {
+            id: 'covering:1',
+            coveringAssignmentId: 'assignment-1',
+            sourceRoofPlaneIds: ['roof-plane:left'],
+            quantity: 2070,
+            requirementReadiness: 'geometric-only',
+            layoutKind: 'roof-tile',
+            semantic: 'effective-coverage-position',
+            unit: 'coverage-position',
+            fullPositions: 2000,
+            cutPositions: 70,
+          },
+        ],
+      }),
+      coveringLayouts: [
+        tileLayout({
+          declaredConsumptionReference: {
+            netAssignedAreaMm2: 200_000_000,
+            minimumPieces: 1800,
+            maximumPieces: 1980,
+          },
+        }),
+      ] satisfies ResolvedCoveringLayout[],
+      coverings: [
+        {
+          id: 'assignment-1',
+          product: { catalogRef: { variantId: 'variant-1' } },
+        },
+      ],
+      ...overrides,
+    } as unknown as ExportFacts;
+  }
+
+  it('pre-fills the catalogue price on a consumption suggestion when the assignment resolves one', () => {
+    const facts = factsWithConsumptionAndCoverings({
+      variantPrices: [
+        {
+          variantId: 'variant-1',
+          entry: {
+            id: 'entry-1',
+            priceListId: 'list-1',
+            commercialVariantId: 'variant-1',
+            saleUnit: 'piece',
+            netAmountMinor: 924,
+            validFrom: '2026-09-01',
+          },
+          currencyCode: 'PLN',
+        },
+      ],
+    } as Partial<ExportFacts>);
+    const suggestions = createCostSuggestions(facts);
+    const consumption = suggestions.find(
+      (s) => s.kind === 'covering-consumption',
+    );
+    expect(consumption).toBeDefined();
+    if (consumption?.kind !== 'covering-consumption') return;
+    expect(consumption.unitPriceMinor).toBe(924);
+    expect(consumption.currencyCode).toBe('PLN');
+  });
+
+  it('leaves the price blank when contributing assignments resolve mismatched prices', () => {
+    const base = baseFacts();
+    const facts = {
+      ...base,
+      schedule: createRoofMemberSchedule({
+        skeleton: base.skeleton,
+        covering: [
+          {
+            id: 'covering:1',
+            coveringAssignmentId: 'assignment-1',
+            sourceRoofPlaneIds: ['roof-plane:left'],
+            quantity: 2070,
+            requirementReadiness: 'geometric-only',
+            layoutKind: 'roof-tile',
+            semantic: 'effective-coverage-position',
+            unit: 'coverage-position',
+            fullPositions: 2000,
+            cutPositions: 70,
+          },
+          {
+            id: 'covering:2',
+            coveringAssignmentId: 'assignment-2',
+            sourceRoofPlaneIds: ['roof-plane:right'],
+            quantity: 500,
+            requirementReadiness: 'geometric-only',
+            layoutKind: 'roof-tile',
+            semantic: 'effective-coverage-position',
+            unit: 'coverage-position',
+            fullPositions: 480,
+            cutPositions: 20,
+          },
+        ],
+      }),
+      coveringLayouts: [
+        tileLayout({
+          declaredConsumptionReference: {
+            netAssignedAreaMm2: 200_000_000,
+            minimumPieces: 1800,
+            maximumPieces: 1980,
+          },
+        }),
+        tileLayout({
+          assignmentId: 'assignment-2',
+          roofPlaneIds: ['roof-plane:right'],
+          totalPositions: 500,
+          fullPositions: 480,
+          cutPositions: 20,
+          declaredConsumptionReference: {
+            netAssignedAreaMm2: 50_000_000,
+            minimumPieces: 450,
+            maximumPieces: 495,
+          },
+        }),
+      ] satisfies ResolvedCoveringLayout[],
+      coverings: [
+        {
+          id: 'assignment-1',
+          product: { catalogRef: { variantId: 'variant-1' } },
+        },
+        {
+          id: 'assignment-2',
+          product: { catalogRef: { variantId: 'variant-2' } },
+        },
+      ],
+      variantPrices: [
+        {
+          variantId: 'variant-1',
+          entry: {
+            id: 'entry-1',
+            priceListId: 'list-1',
+            commercialVariantId: 'variant-1',
+            saleUnit: 'piece',
+            netAmountMinor: 924,
+            validFrom: '2026-09-01',
+          },
+          currencyCode: 'PLN',
+        },
+        {
+          variantId: 'variant-2',
+          entry: {
+            id: 'entry-2',
+            priceListId: 'list-1',
+            commercialVariantId: 'variant-2',
+            saleUnit: 'piece',
+            netAmountMinor: 1050,
+            validFrom: '2026-09-01',
+          },
+          currencyCode: 'PLN',
+        },
+      ],
+    } as unknown as ExportFacts;
+    const consumption = createCostSuggestions(facts).find(
+      (s) => s.kind === 'covering-consumption',
+    );
+    expect(consumption).toBeDefined();
+    if (consumption?.kind !== 'covering-consumption') return;
+    expect(consumption.unitPriceMinor).toBeUndefined();
+    expect(consumption.currencyCode).toBeUndefined();
+  });
+
+  it('leaves the price blank when no catalogue price is available for the assignment', () => {
+    const facts = factsWithConsumptionAndCoverings({});
+    const consumption = createCostSuggestions(facts).find(
+      (s) => s.kind === 'covering-consumption',
+    );
+    expect(consumption).toBeDefined();
+    if (consumption?.kind !== 'covering-consumption') return;
+    expect(consumption.unitPriceMinor).toBeUndefined();
+    expect(consumption.currencyCode).toBeUndefined();
   });
 
   it('reports no live suggestion quantity for an unknown key', () => {

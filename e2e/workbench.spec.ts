@@ -748,7 +748,9 @@ test.describe('V33 — build-up closeout', () => {
     await openTask(page, 'covering');
     const warning = page.locator('.a-covering-warning');
     await expect(warning).toHaveCount(1);
-    await expect(warning.locator('p')).toHaveCount(1);
+    // One paragraph states the mismatch, a second (added by V34A) previews
+    // the automatic repair before it is applied.
+    await expect(warning.locator('p')).toHaveCount(2);
     await expect(warning).toContainText('dotyczy 2 połaci');
     await expect(
       page.locator('[data-guidance="covering-warning"]'),

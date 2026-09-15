@@ -1248,9 +1248,11 @@ export const assemblyPl = {
       membrane: 'Membrana',
       coveringPositions: 'Pokrycie (pozycje krycia)',
       coveringRuns: 'Pokrycie (przebiegi geometryczne)',
+      coveringConsumption: 'Pokrycie (wg zużycia producenta)',
     },
     notPurchaseFact:
       '{{count}} {{unit}} — wynik geometryczny, nie ilość do zakupu.',
+    consumptionRange: '{{min}}–{{max}} szt. wg deklaracji producenta',
     note: {
       'no-allowance-no-stock-length': 'Bez zapasu i długości handlowych.',
       'net-area-no-overlap-no-rolls':
@@ -1258,6 +1260,9 @@ export const assemblyPl = {
       'partial-counter-battens': 'Wynik częściowy — sprawdź granicę H1.',
       'covering-not-a-purchase-count':
         'To wynik geometryczny, nie liczba do zakupu.',
+      'declared-consumption-not-a-resolved-purchase-count':
+        'Zużycie deklarowane przez producenta — bez odpadu, docinek i zakładek na krawędziach.',
+      'price-from-catalogue': 'Cena z cennika — sprawdź, zanim zamówisz.',
     },
     item: 'Pozycja',
     basisHeader: 'Podstawa',
@@ -2538,9 +2543,11 @@ export const assemblyEn: typeof assemblyPl = {
       membrane: 'Membrane',
       coveringPositions: 'Covering (positions)',
       coveringRuns: 'Covering (geometric runs)',
+      coveringConsumption: 'Covering (manufacturer consumption)',
     },
     notPurchaseFact:
       '{{count}} {{unit}} — a geometric result, not a purchase quantity.',
+    consumptionRange: '{{min}}–{{max}} pcs per manufacturer declaration',
     note: {
       'no-allowance-no-stock-length':
         'No allowance or commercial stock lengths.',
@@ -2549,6 +2556,10 @@ export const assemblyEn: typeof assemblyPl = {
       'partial-counter-battens': 'Partial result — review the H1 boundary.',
       'covering-not-a-purchase-count':
         'This is a geometric result, not a purchase count.',
+      'declared-consumption-not-a-resolved-purchase-count':
+        'Manufacturer-declared consumption — excludes waste, cutting and edge laps.',
+      'price-from-catalogue':
+        'Price from the catalogue — verify before ordering.',
     },
     item: 'Item',
     basisHeader: 'Basis',

@@ -71,6 +71,26 @@ export interface CoveringPositionsSuggestion extends CostSuggestionBase {
   manualUnit: 'piece';
 }
 
+/**
+ * A manufacturer-declared consumption range (pieces/m² × net assigned area),
+ * already computed by `resolveRoofTileLayout` when the product declares
+ * `declaredUnitsPerM2`. Materially better than a bare position count, but
+ * still not a resolved purchase count (waste, breakage and offcut reuse are
+ * excluded) — `execution-based`, never `exact-purchase`.
+ */
+export interface CoveringConsumptionSuggestion extends CostSuggestionBase {
+  kind: 'covering-consumption';
+  category: 'material';
+  quantityBasis: 'effective-coverage';
+  suitability: 'execution-based';
+  quantity: { value: number; unit: 'piece' };
+  minimumPieces: number;
+  maximumPieces: number;
+  /** Set only when every contributing assignment shares one catalogue price. */
+  unitPriceMinor?: number;
+  currencyCode?: string;
+}
+
 export interface CoveringRunsSuggestion extends CostSuggestionBase {
   kind: 'covering-runs';
   category: 'material';
@@ -86,7 +106,8 @@ export type CostSuggestion =
   | CounterBattensSuggestion
   | MembraneSuggestion
   | CoveringPositionsSuggestion
-  | CoveringRunsSuggestion;
+  | CoveringRunsSuggestion
+  | CoveringConsumptionSuggestion;
 
 const MM_PER_M = 1000;
 const MM2_PER_M2 = 1_000_000;
@@ -182,22 +203,120 @@ function membraneSuggestion(facts: ExportFacts): MembraneSuggestion[] {
 }
 
 /**
- * Covering is never auto-priced (§20/§46): coverage positions and panel runs
- * are geometric layout facts, not a commercial purchase count. This produces
- * at most one nudge per unit family, carrying the raw geometric fact as
- * information only — never as a pre-filled priceable quantity.
+ * A catalogue price for the tile assignments feeding a consumption
+ * suggestion, only when every one of them resolves to the exact same price
+ * (same amount and currency) — mixing two different priced products into
+ * one blended number would misstate the estimate, so a mismatch leaves the
+ * price blank and lets the user price it themselves.
+ */
+function resolveConsumptionPrice(
+  facts: ExportFacts,
+  assignmentIds: ReadonlySet<string>,
+): { unitPriceMinor: number; currencyCode: string } | undefined {
+  if (!facts.variantPrices?.length) return undefined;
+  const priceByVariantId = new Map(
+    facts.variantPrices.map((row) => [row.variantId, row]),
+  );
+  const prices = [...assignmentIds].flatMap((assignmentId) => {
+    const assignment = facts.coverings.find((row) => row.id === assignmentId);
+    const variantId = assignment?.product.catalogRef?.variantId;
+    const price = variantId ? priceByVariantId.get(variantId) : undefined;
+    return price
+      ? [
+          {
+            unitPriceMinor: price.entry.netAmountMinor,
+            currencyCode: price.currencyCode,
+          },
+        ]
+      : [];
+  });
+  if (!prices.length) return undefined;
+  const first = prices[0]!;
+  const allSame = prices.every(
+    (price) =>
+      price.unitPriceMinor === first.unitPriceMinor &&
+      price.currencyCode === first.currencyCode,
+  );
+  return allSame ? first : undefined;
+}
+
+/**
+ * Covering positions/runs are never auto-priced by themselves (§20/§46):
+ * they are geometric layout facts, not a commercial purchase count. The one
+ * exception is a manufacturer's own declared consumption (pieces/m²) already
+ * resolved by `resolveRoofTileLayout` — that is the product's own stated
+ * purchase guidance, not geometry we invented, so it may pre-fill a quantity
+ * at `execution-based` suitability. Assignments with a declared consumption
+ * are excluded from the bare-position-count fallback so the same tiles are
+ * never suggested twice.
  */
 function coveringSuggestions(
   facts: ExportFacts,
-): (CoveringPositionsSuggestion | CoveringRunsSuggestion)[] {
+): (
+  | CoveringPositionsSuggestion
+  | CoveringRunsSuggestion
+  | CoveringConsumptionSuggestion
+)[] {
+  const tileLayoutsWithConsumption = (facts.coveringLayouts ?? []).filter(
+    (layout) =>
+      layout.kind === 'roof-tile' &&
+      layout.status === 'resolved' &&
+      layout.declaredConsumptionReference,
+  );
+  const consumptionAssignmentIds = new Set(
+    tileLayoutsWithConsumption.map((layout) => layout.assignmentId),
+  );
   const positionRows = facts.schedule.coveringRows.filter(
-    (row) => row.semantic === 'effective-coverage-position',
+    (row) =>
+      row.semantic === 'effective-coverage-position' &&
+      !consumptionAssignmentIds.has(row.assignmentId),
   );
   const runRows = facts.schedule.coveringRows.filter(
     (row) => row.semantic === 'geometric-panel-run',
   );
-  const suggestions: (CoveringPositionsSuggestion | CoveringRunsSuggestion)[] =
-    [];
+  const suggestions: (
+    | CoveringPositionsSuggestion
+    | CoveringRunsSuggestion
+    | CoveringConsumptionSuggestion
+  )[] = [];
+  if (tileLayoutsWithConsumption.length) {
+    const minimumPieces = tileLayoutsWithConsumption.reduce(
+      (sum, layout) =>
+        sum +
+        (layout.kind === 'roof-tile'
+          ? (layout.declaredConsumptionReference?.minimumPieces ?? 0)
+          : 0),
+      0,
+    );
+    const maximumPieces = tileLayoutsWithConsumption.reduce(
+      (sum, layout) =>
+        sum +
+        (layout.kind === 'roof-tile'
+          ? (layout.declaredConsumptionReference?.maximumPieces ?? 0)
+          : 0),
+      0,
+    );
+    const catalogPrice = resolveConsumptionPrice(
+      facts,
+      consumptionAssignmentIds,
+    );
+    suggestions.push({
+      kind: 'covering-consumption',
+      key: 'covering-consumption',
+      category: 'material',
+      quantityBasis: 'effective-coverage',
+      suitability: 'execution-based',
+      quantity: { value: maximumPieces, unit: 'piece' },
+      minimumPieces,
+      maximumPieces,
+      unitPriceMinor: catalogPrice?.unitPriceMinor,
+      currencyCode: catalogPrice?.currencyCode,
+      noteKeys: [
+        'declared-consumption-not-a-resolved-purchase-count',
+        ...(catalogPrice ? ['price-from-catalogue'] : []),
+      ],
+    });
+  }
   if (positionRows.length)
     suggestions.push({
       kind: 'covering-positions',

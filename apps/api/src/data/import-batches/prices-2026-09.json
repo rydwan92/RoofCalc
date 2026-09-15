@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "id": "manufacturer-research-2026-09",
+    "label": "Retail price observed 2026-09 on rabatplus.pl — illustrative, not an official manufacturer price list; verify current price and any per-finish premium before ordering.",
+    "sourceRevision": "2026-09"
+  },
+  "priceLists": [
+    {
+      "id": "price-list:rabatplus-retail-2026-09",
+      "ownerLabel": "rabatplus.pl (retail, observed 2026-09)",
+      "currencyCode": "PLN",
+      "regionCode": "PL",
+      "taxContext": "net price as listed — VAT treatment not confirmed",
+      "validFrom": "2026-09-01"
+    }
+  ],
+  "entries": [
+    {
+      "id": "price:rabatplus:2026-09:koda-copper-nuance",
+      "priceListId": "price-list:rabatplus-retail-2026-09",
+      "commercialVariantId": "variant:creaton:koda:copper-nuance",
+      "saleUnit": "piece",
+      "netAmountMinor": 924,
+      "validFrom": "2026-09-01"
+    },
+    {
+      "id": "price:rabatplus:2026-09:koda-anthracite-nuance",
+      "priceListId": "price-list:rabatplus-retail-2026-09",
+      "commercialVariantId": "variant:creaton:koda:anthracite-nuance",
+      "saleUnit": "piece",
+      "netAmountMinor": 924,
+      "validFrom": "2026-09-01"
+    },
+    {
+      "id": "price:rabatplus:2026-09:koda-slate-finesse",
+      "priceListId": "price-list:rabatplus-retail-2026-09",
+      "commercialVariantId": "variant:creaton:koda:slate-finesse",
+      "saleUnit": "piece",
+      "netAmountMinor": 924,
+      "validFrom": "2026-09-01"
+    },
+    {
+      "id": "price:rabatplus:2026-09:koda-black-finesse",
+      "priceListId": "price-list:rabatplus-retail-2026-09",
+      "commercialVariantId": "variant:creaton:koda:black-finesse",
+      "saleUnit": "piece",
+      "netAmountMinor": 924,
+      "validFrom": "2026-09-01"
+    }
+  ]
+}

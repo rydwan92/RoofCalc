@@ -2,13 +2,20 @@ import {
   createAssemblyDrawing,
   type ResolvedRoofProject,
 } from '@cieslacalc/calculator-core';
-import type { CoveringAssignmentSpec } from '@cieslacalc/covering-core';
+import type {
+  CoveringAssignmentSpec,
+  CutToLengthSheetLayoutResult,
+  ModularSheetLayoutResult,
+  RoofTileLayoutResult,
+  StandingSeamLayoutResult,
+} from '@cieslacalc/covering-core';
 import {
   calculateLine,
   sortedScenarioLines,
   summarizeCostScenario,
   type CostScenario,
 } from '@cieslacalc/cost-core';
+import type { VariantPrice } from '../pricing/client';
 import type {
   DetailPreviewModel,
   DrawingModel,
@@ -40,6 +47,11 @@ import type { BattenInstallationDecision } from './batten-installation';
 import { uniformBattenGauge } from './batten-installation';
 
 type ResolvedK1 = Extract<K1CuttingRequirement, { status: 'resolved' }>;
+export type ResolvedCoveringLayout =
+  | RoofTileLayoutResult
+  | ModularSheetLayoutResult
+  | CutToLengthSheetLayoutResult
+  | StandingSeamLayoutResult;
 export type ExportFacts = {
   source: DocumentSource;
   template: RoofTemplateSpec;
@@ -64,6 +76,10 @@ export type ExportFacts = {
     status: string;
     warnings: string[];
   }[];
+  /** Full resolved layout results, used to reach `declaredConsumptionReference`. */
+  coveringLayouts?: ResolvedCoveringLayout[];
+  /** Active catalogue prices for the project's assigned `catalogRef.variantId`s. */
+  variantPrices?: VariantPrice[];
   /** Absent means no estimate exists yet for this project. */
   cost?: CostScenario;
 };

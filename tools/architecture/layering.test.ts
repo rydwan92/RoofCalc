@@ -152,8 +152,9 @@ describe('package dependency direction', () => {
 
 describe('commercial boundary', () => {
   /**
-   * ADR-005: geometry, quantity and procurement stay free of commerce. A Cost
-   * Engine, when it exists, gets its own package; these layers keep producing
+   * ADR-005: geometry, quantity and procurement stay free of commerce.
+   * `cost-core` (V34B) and `pricing-core` (V34C) are the two packages this
+   * boundary was drawn for — everything below the boundary keeps producing
    * physical facts only.
    */
   const PRICING =
@@ -174,7 +175,37 @@ describe('commercial boundary', () => {
       }).toEqual({ directory, matches: [] });
   });
 
-  it('the catalogue database schema stores no prices', () => {
-    expect(forbiddenText('apps/api/src/db', PRICING)).toEqual([]);
+  it('the catalogue technical schema stores no prices', () => {
+    // V34C: apps/api/src/db also holds pricing-schema.ts/pricing-repository.ts
+    // (the PriceList/PriceListEntry tables ADR-005 always reserved) — those
+    // are the legitimate home for these words, not a boundary loosening.
+    // schema.ts and catalog-repository.ts, the catalogue-technical tables,
+    // stay exactly as forbidden as before.
+    expect(
+      forbiddenText('apps/api/src/db', PRICING, {
+        allow: [
+          'apps/api/src/db/pricing-schema.ts',
+          'apps/api/src/db/pricing-repository.ts',
+        ],
+      }),
+    ).toEqual([]);
+  });
+
+  it('pricing concepts stay confined to pricing-core, its DB tables, cost-core and apps/web', () => {
+    for (const directory of [
+      'packages/roof-math',
+      'packages/covering-core',
+      'packages/quantity-core',
+      'packages/procurement-core',
+      'packages/catalog-core',
+      'packages/timber-model',
+      'packages/project-core',
+      'packages/drawing-engine',
+      'apps/api/src/catalog',
+    ])
+      expect({
+        directory,
+        matches: forbiddenText(directory, PRICING),
+      }).toEqual({ directory, matches: [] });
   });
 });

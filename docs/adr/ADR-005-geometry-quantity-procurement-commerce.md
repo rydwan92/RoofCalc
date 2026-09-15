@@ -2,7 +2,10 @@
 
 ## Status
 
-Accepted. Extended in V26 to name procurement as its own layer.
+Accepted. Extended in V26 to name procurement as its own layer. Extended in
+V34B/V34C to implement the commerce layer itself: `cost-core` (line-item
+estimation) and `pricing-core` (price lists), both previously only named as
+"not implemented" below.
 
 ## Context
 
@@ -32,8 +35,16 @@ Geometry  →  Quantity  →  Procurement  →  Commerce
 - **Procurement** (`procurement-core`) turns explicit required fabrication
   blanks and available stock lengths into a cutting plan. It knows kerf, trims,
   remnants and availability — physical facts — and no prices.
-- **Commerce** (not implemented) will join a plan and resolved quantities to
-  price lists, waste factors, labour and tax in its own package.
+- **Commerce** (`cost-core`, `pricing-core`) joins a plan and resolved
+  quantities to price lists, waste factors, labour and tax, in packages of
+  its own. `cost-core` models a cost scenario's line items, quantity basis
+  and suitability; `pricing-core` models supplier price lists and their
+  entries against an opaque commercial-variant ID — it never imports
+  `catalog-core` and carries no technical product shape. Neither package is
+  imported by any geometry, quantity or procurement package, and
+  `apps/api/src/db/pricing-schema.ts` is a sibling table set to the
+  catalogue-technical `schema.ts`, not a merge into it (see
+  `docs/ARCHITECTURE_COVERING_CATALOG_AND_PRICING_BOUNDARY.md`).
 
 Physical technical values (effective width, module length, minimum pitch, kerf,
 stock length) belong below commerce. Commercial values (price, currency,
@@ -42,8 +53,12 @@ discount, VAT, supplier terms, availability *policy*) belong to commerce.
 
 ## Consequences
 
-- A Cost Engine can be added without touching a solver.
+- The Cost Engine (`cost-core`, `pricing-core`) was added without touching a
+  solver, confirming the layering held under real pressure.
 - Quantity output is *geometric evidence*, not a purchase list; procurement
   output is a *physical plan*, not a quotation.
 - `tools/architecture/layering.test.ts` fails the build if a pricing identifier
-  appears in a geometry, quantity, procurement or catalogue-technical package.
+  appears in a geometry, quantity, procurement or catalogue-technical package
+  — `pricing-schema.ts`/`pricing-repository.ts` are the one explicitly
+  allowlisted exception inside `apps/api/src/db`, since they are the
+  commerce layer's own tables sharing the platform's DB connection.

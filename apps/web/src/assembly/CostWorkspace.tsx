@@ -63,6 +63,8 @@ function suggestionLabelKey(suggestion: CostSuggestion): string {
       return 'coveringPositions';
     case 'covering-runs':
       return 'coveringRuns';
+    case 'covering-consumption':
+      return 'coveringConsumption';
   }
 }
 
@@ -108,6 +110,12 @@ export function CostWorkspace({
       'quantity' in suggestion
         ? suggestion.quantity
         : { value: 0, unit: suggestion.manualUnit };
+    const catalogPrice =
+      suggestion.kind === 'covering-consumption' &&
+      suggestion.unitPriceMinor !== undefined &&
+      suggestion.currencyCode === scenario.currencyCode
+        ? suggestion.unitPriceMinor
+        : undefined;
     const line = createCostLine({
       id: suggestion.key,
       category: suggestion.category,
@@ -116,7 +124,12 @@ export function CostWorkspace({
       quantityBasis: suggestion.quantityBasis,
       suitability: suggestion.suitability,
       currencyCode: scenario.currencyCode,
-      source: manual ? 'manual' : 'project-derived',
+      unitPriceMinor: catalogPrice,
+      source: manual
+        ? 'manual'
+        : catalogPrice !== undefined
+          ? 'price-list'
+          : 'project-derived',
       noteKeys: suggestion.noteKeys,
       projectQuantityValue: manual ? undefined : quantity.value,
     });
@@ -243,7 +256,14 @@ export function CostWorkspace({
                   <small>
                     {t(`assembly.cost.suitability.${suggestion.suitability}`)}
                   </small>
-                  {'quantity' in suggestion ? (
+                  {suggestion.kind === 'covering-consumption' ? (
+                    <span>
+                      {t('assembly.cost.consumptionRange', {
+                        min: formatNumber(suggestion.minimumPieces, locale, 0),
+                        max: formatNumber(suggestion.maximumPieces, locale, 0),
+                      })}
+                    </span>
+                  ) : 'quantity' in suggestion ? (
                     <span>
                       {formatNumber(suggestion.quantity.value, locale, 2)}{' '}
                       {t(`assembly.cost.unitLabel.${suggestion.quantity.unit}`)}
