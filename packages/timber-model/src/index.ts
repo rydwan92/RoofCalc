@@ -411,6 +411,8 @@ export interface RoofOpeningFramingSpec {
 }
 export interface BattenLayoutSpec {
   enabled: boolean;
+  /** Absent on pre-V33 documents and therefore interpreted as manual. */
+  mode?: 'manual' | 'auto-from-covering';
   roofPlaneIds?: string[];
   battenHeightMm: number;
   battenWidthMm: number;

@@ -150,6 +150,17 @@ export interface LayersSection {
     areaMm2?: number;
     basis: 'net-geometric' | 'resolved-visible' | 'axis-geometric';
     warnings: string[];
+    layoutFacts?: {
+      mode?: 'manual' | 'auto-from-covering';
+      status: 'disabled' | 'resolved' | 'partial' | 'incomplete';
+      actualGaugeMm?: number;
+      minimumGaugeMm?: number;
+      maximumGaugeMm?: number;
+      planeCount?: number;
+      courseCount?: number;
+      axisCount?: number;
+      segmentCount?: number;
+    };
   }[];
 }
 export interface CoveringSection {

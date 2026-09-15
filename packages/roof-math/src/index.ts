@@ -15,6 +15,7 @@ export * from './jack-rafter';
 export * from './hip-roof';
 export * from './roof-template';
 export * from './roof-features';
+export * from './batten-spacing';
 export * from './roof-surface';
 export * from './counter-battens';
 export * from './opening-framing';

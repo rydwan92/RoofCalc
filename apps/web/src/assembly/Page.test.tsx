@@ -1142,7 +1142,7 @@ describe('dual-mode parametric workbench', () => {
       'Otwór nie mieści się w polu',
     );
     fireEvent.click(screen.getByRole('tab', { name: 'Warstwy' }));
-    fireEvent.click(screen.getByRole('tab', { name: 'Łaty' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Łaty' }));
     const battenSwitch = screen.getByRole('switch', {
       name: 'Łaty · Wyłączona',
     });
@@ -1653,9 +1653,9 @@ describe('dual-mode parametric workbench', () => {
     const before = structuredClone(useAssembly.getState().projectDocument);
 
     fireEvent.click(screen.getByRole('tab', { name: 'Warstwy' }));
-    fireEvent.click(screen.getByRole('tab', { name: 'Membrana' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Membrana' }));
     expect(container.querySelectorAll('[data-roof-surface]')).toHaveLength(2);
-    fireEvent.click(screen.getByRole('tab', { name: 'Kontrłaty' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Kontrłaty' }));
     expect(
       container.querySelectorAll('[data-counter-batten-row]').length,
     ).toBeGreaterThan(0);
@@ -2064,13 +2064,39 @@ describe('dual-mode parametric workbench', () => {
       product: { technicalSpecSnapshot: { kind: 'roof-tile' } },
     });
     expect(screen.getAllByText(/Włącz i skonfiguruj łaty/)).toHaveLength(2);
+    const historyBeforeFit = useAssembly.getState().historyPast.length;
     fireEvent.click(
-      screen.getByRole('button', { name: 'Przejdź do Warstwy → Łaty' }),
+      screen.getByRole('button', { name: 'Dopasuj łaty automatycznie' }),
     );
-    expect(useAssembly.getState().workbench).toMatchObject({
-      viewPreset: 'layers',
-      buildUpView: 'battens',
+    expect(
+      useAssembly.getState().projectDocument.project.buildUp.battenLayout,
+    ).toMatchObject({
+      enabled: true,
+      mode: 'auto-from-covering',
+      roofPlaneIds: ['roof-plane:left'],
     });
+    expect(useAssembly.getState().historyPast).toHaveLength(
+      historyBeforeFit + 1,
+    );
+    expect(screen.queryByText(/Włącz i skonfiguruj łaty/)).toBeNull();
+    fireEvent.click(screen.getByRole('tab', { name: 'Warstwy' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Łaty' }));
+    expect(
+      screen
+        .getByRole('button', { name: 'Automatycznie z pokrycia' })
+        .getAttribute('aria-pressed'),
+    ).toBe('true');
+    const automaticGauge =
+      useAssembly.getState().projectDocument.project.buildUp.battenLayout!
+        .gaugeMm;
+    fireEvent.click(screen.getByRole('button', { name: 'Ręcznie' }));
+    expect(
+      useAssembly.getState().projectDocument.project.buildUp.battenLayout,
+    ).toMatchObject({ mode: 'manual' });
+    expect(
+      useAssembly.getState().projectDocument.project.buildUp.battenLayout!
+        .gaugeMm,
+    ).toBe(automaticGauge);
   });
 
   it('keeps an incomplete manual covering form outside canonical state and history', async () => {

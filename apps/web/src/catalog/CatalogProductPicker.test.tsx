@@ -195,13 +195,13 @@ describe('catalogue product picker', () => {
       timeout: 1_500,
     });
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Wybierz' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Szczegóły' }));
     const product = await screen.findByTestId('catalog-detail');
     fireEvent.change(await within(product).findByLabelText('Wariant'), {
       target: { value: 'v:tile:red' },
     });
     fireEvent.click(
-      within(product).getByRole('button', { name: 'Zastosuj produkt' }),
+      within(product).getByRole('button', { name: 'Użyj produktu' }),
     );
     await waitFor(() => expect(onApply).toHaveBeenCalledTimes(1));
     expect(api.getRevision).toHaveBeenCalledWith(
@@ -257,7 +257,7 @@ describe('catalogue product picker', () => {
     renderPicker(client());
     const dialog = screen.getByRole('dialog', { name: 'Katalog produktów' });
     await within(dialog).findByText('Tile 30 (DEMO)');
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Wybierz' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Szczegóły' }));
     await within(dialog).findByTestId('catalog-detail');
     expect(screen.getAllByRole('dialog')).toHaveLength(1);
     fireEvent.click(
@@ -282,7 +282,7 @@ describe('catalogue product picker', () => {
       within(sheet).getByPlaceholderText(/Szukaj producenta lub produktu/),
     ).toBeTruthy();
     await within(sheet).findByText('Tile 30 (DEMO)');
-    fireEvent.click(within(sheet).getByRole('button', { name: 'Wybierz' }));
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Szczegóły' }));
     await within(sheet).findByTestId('catalog-detail');
     expect(screen.getAllByRole('dialog')).toHaveLength(1);
     fireEvent.click(

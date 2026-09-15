@@ -1297,6 +1297,31 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+> V33 started 2026-09-15 from clean `main` at `bf7cdd7` under the attached
+> Roof Build-up Intelligence contract. Baseline source was clean and matched the
+> requested commit. `pnpm verify` reached 684/688 tests: three known stale
+> catalogue-picker expectations (`Wybierz` versus the current `Szczegóły`) and
+> one ProjectManager timeout; typecheck/lint/format were clean apart from the
+> recorded `Page.tsx` exhaustive-deps warning. Baseline E2E reused a stale
+> pre-V31 `dist` because verification stopped before build, so all 26 scenarios
+> failed at the absent start assistant; rebuild and rerun are required before
+> treating this as source evidence. Definition of Ready:
+> `docs/ARCHITECTURE_V33_ROOF_BUILDUP_INTELLIGENCE.md`.
+
+**Iteration:** `033 — Roof Build-up Intelligence + Professional Workbench UX`
+
+**Status:** `IN PROGRESS`
+
+**Current work:** Implement additive Auto/Manual batten intent, a pure exact
+whole-course solver, snapshot composition, grouped/actionable covering issues,
+hip K1/J1 counter-battens with partial H1 boundaries, compact layer/workflow UX,
+overlays, material/export facts and regression/E2E coverage.
+
+**NEXT ACTION:** implement and test the pure auto-batten and hip counter-batten
+domain slices, then connect them once in `Page.tsx` before changing presentation.
+
+---
+
 > V32 started 2026-09-14/15 from clean `main` at `82b4d64` (`30 done i v31
 > prawie skoczona`). Audited before starting: V31's checkpoint text below was
 > stale (it read "source implementation has not started"), but `82b4d64`'s own

@@ -327,6 +327,35 @@ project history.
 
 ---
 
+## BUILDUP-001 — Automatic battens from roof-tile covering · `AUTOMATED`
+
+1. Assign one roof-tile covering with a valid installation gauge range.
+2. Use **Dopasuj łaty automatycznie** from the grouped compatibility warning.
+3. Change roof geometry, inspect each plane result, switch to manual and Undo.
+
+**Holds:** the repair is one canonical history entry; each plane uses an integer
+number of equal intervals inside the stored technical range; the first and last
+station equal the explicit eave/ridge references with no accumulated drift;
+the compatibility warning disappears; manual mode retains its exact numeric
+gauge; Undo restores the earlier intent. Repeated per-plane gauge warnings are
+shown as one cause with the affected plane count.
+
+---
+
+## BUILDUP-002 — Hip counter-battens with openings · `AUTOMATED`
+
+1. Enable counter-battens on a rectangular hip roof.
+2. Add a roof opening that crosses one resolved K1 or J1 axis.
+3. Inspect the layer, material schedule and export.
+
+**Holds:** K1/J1 counter-batten axes remain visible and contribute exact
+opening-split segment lengths; the crossed axis has two visible segments; the
+H1 boundary detail remains a structured partial warning without removing the
+useful axes; summary, material and export views report consistent axis, segment
+and total visible length facts.
+
+---
+
 ## COMPOUND-001 — Higher house + lower garage · `PLANNED`
 
 **Not implemented.** No multi-structure document, transform, connection graph or

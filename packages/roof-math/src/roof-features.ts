@@ -7,6 +7,10 @@ import type {
   RoofTemplateSpec,
   RoofWindowFeature,
 } from '@cieslacalc/timber-model';
+import {
+  resolveAutoBattenSpacing,
+  type AutoBattenSpacingIssueCode,
+} from './batten-spacing';
 
 export interface RoofPlaneBasis {
   id: string;
@@ -38,8 +42,41 @@ export interface ResolvedBatten {
 }
 
 export interface BattenLayoutResult {
+  status: 'disabled' | 'resolved' | 'partial' | 'incomplete';
+  mode: 'manual' | 'auto-from-covering';
   battens: ResolvedBatten[];
   totalLengthMm: number;
+  planes: BattenPlaneLayoutResult[];
+  issues: BattenLayoutIssueCode[];
+}
+
+export type BattenLayoutIssueCode =
+  AutoBattenSpacingIssueCode | 'auto-source-missing' | 'auto-source-conflict';
+
+export interface BattenPlaneLayoutResult {
+  roofPlaneId: string;
+  status: 'resolved' | 'unresolved';
+  firstStationMm: number;
+  lastStationMm: number;
+  regularSpanMm: number;
+  intervalCount?: number;
+  courseCount: number;
+  actualGaugeMm?: number;
+  stations: number[];
+  issues: BattenLayoutIssueCode[];
+}
+
+export type BattenAutoSource =
+  | {
+      status: 'resolved';
+      minimumGaugeMm: number;
+      maximumGaugeMm: number;
+      preferredGaugeMm?: number;
+    }
+  | { status: 'missing' | 'conflict' };
+
+export function battenLayoutMode(layout: BattenLayoutSpec) {
+  return layout.mode ?? 'manual';
 }
 
 export interface RoofWindowBay {
@@ -766,9 +803,22 @@ export function resolveBattenLayout(args: {
   template: RoofTemplateSpec;
   layout: BattenLayoutSpec;
   features?: RoofFeature[];
+  autoSource?: BattenAutoSource;
 }): BattenLayoutResult {
-  if (!args.layout.enabled) return { battens: [], totalLengthMm: 0 };
-  if (!Number.isFinite(args.layout.gaugeMm) || !(args.layout.gaugeMm > 0))
+  const mode = battenLayoutMode(args.layout);
+  if (!args.layout.enabled)
+    return {
+      status: 'disabled',
+      mode,
+      battens: [],
+      totalLengthMm: 0,
+      planes: [],
+      issues: [],
+    };
+  if (
+    mode === 'manual' &&
+    (!Number.isFinite(args.layout.gaugeMm) || !(args.layout.gaugeMm > 0))
+  )
     throw new RangeError('invalid_batten_gauge');
   if (
     !Number.isFinite(args.layout.battenWidthMm) ||
@@ -794,22 +844,80 @@ export function resolveBattenLayout(args: {
           'roof-plane:front',
           'roof-plane:rear',
         ]);
+  if (mode === 'auto-from-covering' && args.autoSource?.status !== 'resolved') {
+    const issue: BattenLayoutIssueCode =
+      args.autoSource?.status === 'conflict'
+        ? 'auto-source-conflict'
+        : 'auto-source-missing';
+    return {
+      status: 'incomplete',
+      mode,
+      battens: [],
+      totalLengthMm: 0,
+      planes: [],
+      issues: [issue],
+    };
+  }
+  const autoConstraint =
+    args.autoSource?.status === 'resolved' ? args.autoSource : undefined;
+  const planes: BattenPlaneLayoutResult[] = [];
   const battens = planeIds.flatMap((roofPlaneId) => {
     const basis = resolveRoofPlaneBasis(args.template, roofPlaneId);
     const minV = Math.min(...basis.polygon.map((item) => item.vMm));
-    const maxV =
-      Math.max(...basis.polygon.map((item) => item.vMm)) -
-      (args.layout.ridgeOffsetMm ?? 0);
+    const maxV = Math.max(...basis.polygon.map((item) => item.vMm));
+    const firstStationMm = minV + args.layout.eaveOffsetMm;
+    const lastStationMm = maxV - (args.layout.ridgeOffsetMm ?? 0);
+    const spacing =
+      mode === 'auto-from-covering'
+        ? resolveAutoBattenSpacing({
+            firstStationMm,
+            lastStationMm,
+            minimumGaugeMm: autoConstraint!.minimumGaugeMm,
+            maximumGaugeMm: autoConstraint!.maximumGaugeMm,
+            preferredGaugeMm: autoConstraint!.preferredGaugeMm,
+          })
+        : undefined;
+    const stations = spacing
+      ? spacing.status === 'resolved'
+        ? spacing.stations
+        : []
+      : (() => {
+          const result: number[] = [];
+          for (
+            let stationMm = firstStationMm;
+            stationMm <= lastStationMm + EPSILON;
+            stationMm += args.layout.gaugeMm
+          )
+            result.push(stationMm);
+          return result;
+        })();
+    const planeIssues = spacing?.issues ?? [];
+    planes.push({
+      roofPlaneId,
+      status: spacing?.status ?? 'resolved',
+      firstStationMm,
+      lastStationMm,
+      regularSpanMm: lastStationMm - firstStationMm,
+      intervalCount:
+        spacing?.status === 'resolved'
+          ? spacing.intervalCount
+          : Math.max(0, stations.length - 1),
+      courseCount: stations.length,
+      actualGaugeMm:
+        spacing?.status === 'resolved'
+          ? spacing.actualGaugeMm
+          : stations.length
+            ? args.layout.gaugeMm
+            : undefined,
+      stations,
+      issues: planeIssues,
+    });
     const windows = (args.features ?? []).filter(
       (feature): feature is RoofWindowFeature =>
         feature.kind === 'roof-window' && feature.roofPlaneId === roofPlaneId,
     );
     const rows: ResolvedBatten[] = [];
-    for (
-      let stationMm = minV + args.layout.eaveOffsetMm, index = 1;
-      stationMm <= maxV + EPSILON;
-      stationMm += args.layout.gaugeMm, index += 1
-    ) {
+    stations.forEach((stationMm, stationIndex) => {
       const segments = subtractIntervals(
         intervalsAtV(basis.polygon, stationMm),
         windows
@@ -824,7 +932,7 @@ export function resolveBattenLayout(args: {
           })),
       );
       rows.push({
-        id: `batten:${roofPlaneId}:${index}`,
+        id: `batten:${roofPlaneId}:${stationIndex + 1}`,
         roofPlaneId,
         stationMm,
         segments,
@@ -833,14 +941,27 @@ export function resolveBattenLayout(args: {
           0,
         ),
       });
-    }
+    });
     return rows;
   });
+  const issues = [...new Set(planes.flatMap((plane) => plane.issues))].sort();
+  const resolvedPlaneCount = planes.filter(
+    (plane) => plane.status === 'resolved',
+  ).length;
   return {
+    status:
+      issues.length === 0
+        ? 'resolved'
+        : resolvedPlaneCount > 0
+          ? 'partial'
+          : 'incomplete',
+    mode,
     battens,
     totalLengthMm: battens.reduce(
       (total, batten) => total + batten.usableLengthMm,
       0,
     ),
+    planes,
+    issues,
   };
 }

@@ -47,6 +47,7 @@ describe('RoofProjectDocumentV1', () => {
       buildUp: {
         battenLayout: {
           enabled: true,
+          mode: 'auto-from-covering',
           battenHeightMm: 40,
           battenWidthMm: 60,
           gaugeMm: 350,
@@ -67,6 +68,12 @@ describe('RoofProjectDocumentV1', () => {
       buildUp: {},
       coverings: [],
     });
+    const legacy = structuredClone(document);
+    delete legacy.project.buildUp.battenLayout!.mode;
+    expect(
+      parseRoofProjectDocument(serializeRoofProjectDocument(legacy)).project
+        .buildUp.battenLayout,
+    ).not.toHaveProperty('mode');
   });
 
   it('round-trips membrane and counter-batten intent without changing the V1 schema', () => {

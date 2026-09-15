@@ -1,6 +1,6 @@
 # RoofCalc / CieślaCalc — Architecture Index
 
-**This is the current-state map, after V32.** Read it after `PROJECT_BLUEPRINT.md`
+**This is the current-state map, after V33.** Read it after `PROJECT_BLUEPRINT.md`
 and before touching code. It describes what exists today, not the history of how
 it got here. Historical `ARCHITECTURE_V*.md` documents stay authoritative for the
 subsystem they introduced and should be opened only when changing that subsystem.
@@ -84,6 +84,16 @@ and one new `SkeletonMemberKind` (`collar-tie`, schedule family `C1`). The
 collar tie is schedule/drawing-only — it never enters `RoofFabricationPackage`
 or K1-style procurement. A `half-lap` ridge connection deliberately never
 resolves a K1 fabrication blank; `direct-meeting` and `ridge-board` do.
+
+V33 adds no package dependency. `apps/web` is the sole composition boundary
+from a trusted roof-tile technical snapshot to neutral batten gauge constraints.
+`roof-math` owns the pure integer whole-course solver and per-plane station
+results; it does not import covering concepts. `BattenLayoutSpec.mode?` is an
+additive optional intent (`manual | auto-from-covering`), with absence retaining
+the pre-V33 manual behaviour. Hip counter-battens now resolve physical K1/J1
+axes and opening interruptions while H1 boundary connection detail remains an
+explicit structured partial result. See
+`docs/ARCHITECTURE_V33_ROOF_BUILDUP_INTELLIGENCE.md`.
 
 ---
 
@@ -345,6 +355,7 @@ pnpm e2e      # real-browser smoke, desktop 1440x900 and mobile 390x844 (pnpm e2
 | `docs/ARCHITECTURE_V30_DOCUMENT_EXPORT_ENGINE.md` | execution document, export readiness, preview and browser print |
 | `docs/ARCHITECTURE_V31_CREATOR_AND_COVERING_EXPERIENCE.md` | guided project start, derived guidance and covering-studio UX |
 | `docs/ARCHITECTURE_V32_STRUCTURAL_SYSTEMS_AND_EXECUTION.md` | roof structural system, collar tie, K1 ridge-connection variants |
+| `docs/ARCHITECTURE_V33_ROOF_BUILDUP_INTELLIGENCE.md` | automatic batten spacing, covering composition boundary, hip K1/J1 counter-battens |
 | `docs/FUTURE_EXECUTION_SEMANTICS_AUDIT.md` + `docs/domain/*` | touching coverage, overlap or connection semantics |
 | `docs/ARCHITECTURE_FUTURE_COMPOUND_ROOF_SCENE.md` | touching IDs, planes or document shape |
 | `docs/ARCHITECTURE_COVERING_CATALOG_AND_PRICING_BOUNDARY.md` | covering, catalogue or future pricing |
@@ -358,6 +369,7 @@ pnpm e2e      # real-browser smoke, desktop 1440x900 and mobile 390x844 (pnpm e2
 | `ARCHITECTURE_V6`–`V8`, `HIP_RAFTER_GEOMETRY`, `JACK_RAFTER_GEOMETRY` | hip/jack rafters, compound cuts, detail previews |
 | `ARCHITECTURE_V9`–`V11` | project workbench, member instances, quick details |
 | `ARCHITECTURE_V12`, `V16` | roof features, battens, build-up |
+| `domain/BATTEN_COUNTERBATTEN_LAYOUT_RESEARCH` | batten references, whole-course fitting, hip counter-batten semantics |
 | `ARCHITECTURE_V13`, `V17` | interaction, units, dimensions, measurement |
 | `ARCHITECTURE_V14`, `domain/ROOF_OPENING_FRAMING` | openings and framing adaptation |
 | `ARCHITECTURE_V15` | quantity engine and member schedule |

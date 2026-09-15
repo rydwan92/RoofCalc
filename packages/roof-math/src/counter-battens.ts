@@ -18,9 +18,17 @@ import { roofPlaneIds, roofPlaneSide } from './roof-surface';
 const EPSILON = 1e-7;
 
 export type CounterBattenWarning =
-  | 'unsupported-hip-counter-battens'
+  | 'hip-boundary-detail-unresolved'
   | 'unknown-roof-plane'
-  | 'invalid-source-axis';
+  | 'invalid-source-axis'
+  | 'unsupported-member-reference';
+
+export interface CounterBattenIssue {
+  code: CounterBattenWarning;
+  roofPlaneId?: string;
+  roofPlaneIds?: string[];
+  sourceMemberId?: string;
+}
 
 export interface CounterBattenSegment {
   from: Point3D;
@@ -37,15 +45,19 @@ export interface ResolvedCounterBatten {
   segments: CounterBattenSegment[];
   visibleLengthMm: number;
   section: { widthMm: number; depthMm: number };
-  status: 'resolved' | 'limited';
+  status: 'resolved' | 'partial';
   warnings: CounterBattenWarning[];
 }
 
 export interface CounterBattenLayoutResult {
-  status: 'disabled' | 'resolved' | 'limited';
+  status: 'disabled' | 'resolved' | 'partial';
   rows: ResolvedCounterBatten[];
   totalVisibleLengthMm: number;
   warnings: CounterBattenWarning[];
+  issues: CounterBattenIssue[];
+  resolvedAxisCount: number;
+  visibleSegmentCount: number;
+  roofPlaneIds: string[];
 }
 
 /**
@@ -54,6 +66,16 @@ export interface CounterBattenLayoutResult {
  */
 function originalRafterId(member: SkeletonMember3D) {
   return member.sourceMemberId ?? member.id;
+}
+
+function hipBoundaryPlanes(member: SkeletonMember3D): string[] {
+  const roles: Partial<Record<SkeletonMember3D['side'], string[]>> = {
+    'front-left': ['roof-plane:front', 'roof-plane:left'],
+    'front-right': ['roof-plane:front', 'roof-plane:right'],
+    'rear-left': ['roof-plane:rear', 'roof-plane:left'],
+    'rear-right': ['roof-plane:rear', 'roof-plane:right'],
+  };
+  return roles[member.side] ?? [];
 }
 
 function verticalIntervalAtU(
@@ -111,8 +133,8 @@ function subtractOpenings(
 }
 
 /**
- * Derives visible counter-batten axes from physical common-rafter placements.
- * Hip/J1 axes stay explicitly limited until their face/reference convention is fixed.
+ * Derives visible counter-batten axes from physical K1/J1 rafter placements.
+ * H1 boundary detail remains an explicit partial result until its face reference is fixed.
  */
 export function resolveCounterBattenLayout(args: {
   template: RoofTemplateSpec;
@@ -126,6 +148,10 @@ export function resolveCounterBattenLayout(args: {
       rows: [],
       totalVisibleLengthMm: 0,
       warnings: [],
+      issues: [],
+      resolvedAxisCount: 0,
+      visibleSegmentCount: 0,
+      roofPlaneIds: [],
     };
   if (
     !Number.isFinite(args.layout.widthMm) ||
@@ -134,20 +160,13 @@ export function resolveCounterBattenLayout(args: {
     args.layout.heightMm <= 0
   )
     throw new RangeError('invalid_counter_batten_section');
-  if (args.template.type === 'hip')
-    return {
-      status: 'limited',
-      rows: [],
-      totalVisibleLengthMm: 0,
-      warnings: ['unsupported-hip-counter-battens'],
-    };
-
   const knownPlanes = roofPlaneIds(args.template);
   const requestedPlanes = args.layout.roofPlaneIds ?? knownPlanes;
   const unknown = requestedPlanes.filter((id) => !knownPlanes.includes(id));
-  const warnings: CounterBattenWarning[] = unknown.length
-    ? ['unknown-roof-plane']
-    : [];
+  const issues: CounterBattenIssue[] = unknown.map((roofPlaneId) => ({
+    code: 'unknown-roof-plane',
+    roofPlaneId,
+  }));
   const rows: ResolvedCounterBatten[] = [];
 
   for (const roofPlaneId of requestedPlanes.filter((id) =>
@@ -155,7 +174,7 @@ export function resolveCounterBattenLayout(args: {
   )) {
     const side = roofPlaneSide(args.template, roofPlaneId);
     if (!side) {
-      warnings.push('unknown-roof-plane');
+      issues.push({ code: 'unknown-roof-plane', roofPlaneId });
       continue;
     }
     const basis = resolveRoofPlaneBasis(args.template, roofPlaneId);
@@ -165,7 +184,9 @@ export function resolveCounterBattenLayout(args: {
     );
     const candidates = args.skeleton.members.filter(
       (member) =>
-        (member.kind === 'rafter' || member.kind === 'rafter-segment') &&
+        (member.kind === 'rafter' ||
+          member.kind === 'rafter-segment' ||
+          member.kind === 'jack-rafter') &&
         member.side === side,
     );
     const axes = new Map<string, SkeletonMember3D[]>();
@@ -184,8 +205,20 @@ export function resolveCounterBattenLayout(args: {
         localPoints.reduce((sum, point) => sum + point.uMm, 0) /
         localPoints.length;
       const interval = verticalIntervalAtU(basis.polygon, uMm);
-      if (!interval || !Number.isFinite(uMm)) {
-        warnings.push('invalid-source-axis');
+      const uSpread =
+        Math.max(...localPoints.map((point) => point.uMm)) -
+        Math.min(...localPoints.map((point) => point.uMm));
+      if (
+        !interval ||
+        !Number.isFinite(uMm) ||
+        !Number.isFinite(uSpread) ||
+        uSpread > EPSILON
+      ) {
+        issues.push({
+          code: 'invalid-source-axis',
+          roofPlaneId,
+          sourceMemberId,
+        });
         continue;
       }
       const segments = subtractOpenings(interval, uMm, openings).map(
@@ -214,21 +247,53 @@ export function resolveCounterBattenLayout(args: {
           widthMm: args.layout.widthMm,
           depthMm: args.layout.heightMm,
         },
-        status: warnings.includes('invalid-source-axis')
-          ? 'limited'
-          : 'resolved',
+        status: 'resolved',
         warnings: [],
       });
     }
   }
-  const uniqueWarnings = [...new Set(warnings)].sort();
+  if (args.template.type === 'hip') {
+    for (const member of args.skeleton.members
+      .filter((candidate) => candidate.kind === 'hip-rafter')
+      .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }))) {
+      const affectedPlanes = hipBoundaryPlanes(member).filter((id) =>
+        requestedPlanes.includes(id),
+      );
+      if (affectedPlanes.length)
+        issues.push({
+          code: 'hip-boundary-detail-unresolved',
+          roofPlaneIds: affectedPlanes,
+          sourceMemberId: member.id,
+        });
+    }
+  }
+  const orderedIssues = issues.sort(
+    (a, b) =>
+      a.code.localeCompare(b.code) ||
+      (a.roofPlaneId ?? a.roofPlaneIds?.join(',') ?? '').localeCompare(
+        b.roofPlaneId ?? b.roofPlaneIds?.join(',') ?? '',
+      ) ||
+      (a.sourceMemberId ?? '').localeCompare(b.sourceMemberId ?? ''),
+  );
+  const uniqueWarnings = [
+    ...new Set(orderedIssues.map((issue) => issue.code)),
+  ].sort();
+  const coveredPlanes = [...new Set(rows.map((row) => row.roofPlaneId))];
+  const visibleSegmentCount = rows.reduce(
+    (sum, row) => sum + row.segments.length,
+    0,
+  );
   return {
-    status: uniqueWarnings.length ? 'limited' : 'resolved',
+    status: uniqueWarnings.length ? 'partial' : 'resolved',
     rows,
     totalVisibleLengthMm: rows.reduce(
       (sum, row) => sum + row.visibleLengthMm,
       0,
     ),
     warnings: uniqueWarnings,
+    issues: orderedIssues,
+    resolvedAxisCount: rows.length,
+    visibleSegmentCount,
+    roofPlaneIds: coveredPlanes,
   };
 }

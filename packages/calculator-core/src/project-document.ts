@@ -38,6 +38,7 @@ const roofBuildUpSchema: z.ZodType<RoofBuildUp> = z.object({
   battenLayout: z
     .object({
       enabled: z.boolean(),
+      mode: z.enum(['manual', 'auto-from-covering']).optional(),
       roofPlaneIds: z.array(z.string().min(1)).optional(),
       battenHeightMm: z.number().positive(),
       battenWidthMm: z.number().positive(),

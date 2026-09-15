@@ -18,6 +18,9 @@ import {
   projectPlaneLocalToWorld,
   resolveRoofPlaneBasis,
   roofStructureSystem,
+  type BattenAutoSource,
+  type BattenLayoutResult,
+  type CounterBattenLayoutResult,
   type RoofSurfaceGeometryResult,
 } from '@cieslacalc/roof-math';
 import type {
@@ -43,7 +46,10 @@ export type ExportFacts = {
   membraneEnabled: boolean;
   counterBattensEnabled: boolean;
   battensEnabled: boolean;
+  battens: BattenLayoutResult;
+  battenAutoSource: BattenAutoSource;
   coverings: CoveringAssignmentSpec[];
+  counterBattens: CounterBattenLayoutResult;
   coveringStatuses: {
     assignmentId: string;
     status: string;
@@ -274,6 +280,35 @@ export function createExportCandidates(facts: ExportFacts): SectionCandidate[] {
         lengthMm: row.totalLengthMm,
         basis: row.lengthBasis,
         warnings: row.warningKeys,
+        ...(row.familyKey === 'L'
+          ? {
+              layoutFacts: {
+                mode: facts.battens.mode,
+                status: facts.battens.status,
+                actualGaugeMm: facts.battens.planes[0]?.actualGaugeMm,
+                ...(facts.battenAutoSource.status === 'resolved'
+                  ? {
+                      minimumGaugeMm: facts.battenAutoSource.minimumGaugeMm,
+                      maximumGaugeMm: facts.battenAutoSource.maximumGaugeMm,
+                    }
+                  : {}),
+                planeCount: facts.battens.planes.length,
+                courseCount: facts.battens.planes.reduce(
+                  (sum, plane) => sum + plane.courseCount,
+                  0,
+                ),
+              },
+            }
+          : row.familyKey === 'KL'
+            ? {
+                layoutFacts: {
+                  status: facts.counterBattens.status,
+                  planeCount: facts.counterBattens.roofPlaneIds.length,
+                  axisCount: facts.counterBattens.resolvedAxisCount,
+                  segmentCount: facts.counterBattens.visibleSegmentCount,
+                },
+              }
+            : {}),
       })),
     ];
   const layerGroups = new Map<string, (typeof ungroupedLayers)[number]>();

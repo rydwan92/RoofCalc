@@ -173,6 +173,89 @@ describe('roof feature geometry', () => {
     );
   });
 
+  it('fits automatic rows per plane to exact eave and ridge references', () => {
+    const roof = template();
+    const result = resolveBattenLayout({
+      template: roof,
+      layout: {
+        enabled: true,
+        mode: 'auto-from-covering',
+        roofPlaneIds: ['roof-plane:left', 'roof-plane:right'],
+        battenHeightMm: 40,
+        battenWidthMm: 60,
+        gaugeMm: 347,
+        eaveOffsetMm: 250,
+        ridgeOffsetMm: 120,
+      },
+      autoSource: {
+        status: 'resolved',
+        minimumGaugeMm: 320,
+        maximumGaugeMm: 380,
+        preferredGaugeMm: 350,
+      },
+    });
+    expect(result.status).toBe('resolved');
+    expect(result.mode).toBe('auto-from-covering');
+    expect(result.planes).toHaveLength(2);
+    for (const plane of result.planes) {
+      expect(plane.stations[0]).toBe(plane.firstStationMm);
+      expect(plane.stations.at(-1)).toBe(plane.lastStationMm);
+      expect(plane.actualGaugeMm).toBeGreaterThanOrEqual(320);
+      expect(plane.actualGaugeMm).toBeLessThanOrEqual(380);
+      expect(plane.courseCount).toBe(plane.intervalCount! + 1);
+    }
+    expect(result.battens).toHaveLength(
+      result.planes.reduce((sum, plane) => sum + plane.courseCount, 0),
+    );
+  });
+
+  it('keeps automatic source problems explicit instead of falling back to manual gauge', () => {
+    const roof = template();
+    const base = {
+      enabled: true,
+      mode: 'auto-from-covering' as const,
+      battenHeightMm: 40,
+      battenWidthMm: 60,
+      gaugeMm: 350,
+      eaveOffsetMm: 250,
+    };
+    expect(resolveBattenLayout({ template: roof, layout: base })).toMatchObject(
+      {
+        status: 'incomplete',
+        mode: 'auto-from-covering',
+        battens: [],
+        issues: ['auto-source-missing'],
+      },
+    );
+    expect(
+      resolveBattenLayout({
+        template: roof,
+        layout: base,
+        autoSource: { status: 'conflict' },
+      }),
+    ).toMatchObject({
+      status: 'incomplete',
+      issues: ['auto-source-conflict'],
+    });
+  });
+
+  it('treats a legacy layout with no mode as manual', () => {
+    const roof = template();
+    const result = resolveBattenLayout({
+      template: roof,
+      layout: {
+        enabled: true,
+        battenHeightMm: 40,
+        battenWidthMm: 60,
+        gaugeMm: 350,
+        eaveOffsetMm: 250,
+      },
+    });
+    expect(result.mode).toBe('manual');
+    expect(result.status).toBe('resolved');
+    expect(result.planes[0]?.actualGaugeMm).toBe(350);
+  });
+
   it('rejects non-finite or non-positive batten geometry before row iteration', () => {
     const roof = template();
     expect(() =>

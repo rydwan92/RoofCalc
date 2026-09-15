@@ -12,11 +12,11 @@ import {
   createOpeningFramingDraft,
   distributeRoofWindowsAlongEave,
   resolveOpeningFraming,
-  resolveBattenLayout,
   resolveRoofFeatureCollisions,
   resolveNearestRoofWindowBay,
   roofPlaneIds,
   toMillimetres,
+  type BattenLayoutResult,
   type CounterBattenLayoutResult,
   type RoofWindowAlignmentMode,
   type RoofSurfaceGeometryResult,
@@ -48,6 +48,7 @@ import type { WorkbenchSelectionContext } from './selection';
 import { useAssembly } from './store';
 import { SpacingSummary } from './Summary';
 import { memberInstanceCode } from './workbench';
+import type { BattenAutoComposition } from './batten-composition';
 
 export function Inspector({
   result,
@@ -59,6 +60,8 @@ export function Inspector({
   activeInstance,
   roofPackage,
   surfaceGeometry,
+  battens,
+  battenAutoComposition,
   counterBattens,
 }: {
   result: Calculation | null;
@@ -74,6 +77,8 @@ export function Inspector({
   activeInstance?: MemberInstanceContext;
   roofPackage: RoofFabricationPackage;
   surfaceGeometry: RoofSurfaceGeometryResult;
+  battens: BattenLayoutResult;
+  battenAutoComposition: BattenAutoComposition;
   counterBattens: CounterBattenLayoutResult;
 }) {
   const state = useAssembly();
@@ -209,7 +214,12 @@ export function Inspector({
               <CounterBattenInspector result={counterBattens} />
             )}
           {workbench.viewPreset === 'layers' &&
-            workbench.buildUpView === 'battens' && <BattenLayoutInspector />}
+            workbench.buildUpView === 'battens' && (
+              <BattenLayoutInspector
+                result={battens}
+                composition={battenAutoComposition}
+              />
+            )}
           {(isRafter || isJack || workbench.selectedId === 'cut:eave') && (
             <TimberInputs />
           )}
@@ -509,14 +519,20 @@ function CounterBattenInspector({
           {t('assembly.segments').toLowerCase()}
         </p>
       )}
-      {result.status === 'limited' && (
+      {result.status === 'partial' && (
         <p className="a-limit-note">{t('assembly.counterBattenLimited')}</p>
       )}
     </section>
   );
 }
 
-function BattenLayoutInspector() {
+function BattenLayoutInspector({
+  result,
+  composition,
+}: {
+  result: BattenLayoutResult;
+  composition: BattenAutoComposition;
+}) {
   const state = useAssembly();
   const { t, i18n } = useTranslation();
   const layout = state.projectDocument.project.buildUp.battenLayout ?? {
@@ -527,14 +543,18 @@ function BattenLayoutInspector() {
     eaveOffsetMm: 250,
     ridgeOffsetMm: 0,
   };
-  const result = resolveBattenLayout({
-    template: state.template,
-    layout,
-    features: state.projectDocument.project.features,
-  });
   const update = (field: keyof typeof layout, value: number) => {
     state.setBattenLayout({ ...layout, [field]: value, enabled: true });
   };
+  const mode = layout.mode ?? 'manual';
+  const actualGaugeMm = result.planes[0]?.actualGaugeMm;
+  const setMode = (next: 'manual' | 'auto-from-covering') =>
+    state.setBattenLayout({
+      ...layout,
+      mode: next,
+      gaugeMm: layout.gaugeMm,
+      enabled: true,
+    });
   const selectedRow = result.battens.find(
     (batten) => batten.id === state.workbench.selectedId,
   );
@@ -544,41 +564,103 @@ function BattenLayoutInspector() {
   return (
     <section className="a-batten-inspector" data-testid="batten-inspector">
       <h3>{t('assembly.battens')}</h3>
+      <div
+        className="a-segmented"
+        role="group"
+        aria-label={t('assembly.battenMode')}
+      >
+        <button
+          className={mode === 'auto-from-covering' ? 'is-active' : ''}
+          aria-pressed={mode === 'auto-from-covering'}
+          onClick={() => setMode('auto-from-covering')}
+        >
+          {t('assembly.battenModeAuto')}
+        </button>
+        <button
+          className={mode === 'manual' ? 'is-active' : ''}
+          aria-pressed={mode === 'manual'}
+          onClick={() => setMode('manual')}
+        >
+          {t('assembly.battenModeManual')}
+        </button>
+      </div>
+      {mode === 'auto-from-covering' ? (
+        composition.source.status === 'resolved' ? (
+          <p
+            className="a-layer-status is-ready"
+            data-testid="batten-auto-source"
+          >
+            {t('assembly.battenAutoSourceReady', {
+              product: composition.productLabel ?? t('assembly.roofTile'),
+              min: length(composition.source.minimumGaugeMm),
+              max: length(composition.source.maximumGaugeMm),
+            })}
+          </p>
+        ) : (
+          <p
+            className="a-layer-status is-warning"
+            data-testid="batten-auto-source"
+          >
+            {t(
+              `assembly.battenAutoSource.${composition.reason ?? 'tile-covering-missing'}`,
+            )}
+          </p>
+        )
+      ) : (
+        <DraftLengthField
+          label={t('assembly.battenGauge')}
+          value={layout.gaugeMm}
+          min={1}
+          onCommit={(value) => update('gaugeMm', value)}
+        />
+      )}
+      {mode === 'manual' && composition.source.status === 'resolved' && (
+        <button
+          className="a-button a-primary"
+          onClick={() => setMode('auto-from-covering')}
+        >
+          {t('assembly.fitBattensAutomatically')}
+        </button>
+      )}
       <details className="a-layer-help">
         <summary>{t('assembly.geometryHelp')}</summary>
         <p>{t('assembly.battenGeometricNote')}</p>
       </details>
-      <h4>{t('assembly.battenGeometry')}</h4>
-      {(
-        [
-          ['battenWidthMm', 'battenWidth'],
-          ['battenHeightMm', 'battenHeight'],
-        ] as const
-      ).map(([field, label]) => (
-        <DraftLengthField
-          key={field}
-          label={t(`assembly.${label}`)}
-          value={layout[field]}
-          min={1}
-          onCommit={(value) => update(field, value)}
-        />
-      ))}
-      <h4>{t('assembly.battenDistribution')}</h4>
-      {(
-        [
-          ['gaugeMm', 'battenGauge'],
-          ['eaveOffsetMm', 'battenEaveOffset'],
-          ['ridgeOffsetMm', 'battenRidgeOffset'],
-        ] as const
-      ).map(([field, label]) => (
-        <DraftLengthField
-          key={field}
-          label={t(`assembly.${label}`)}
-          value={layout[field] ?? 0}
-          min={field === 'gaugeMm' ? 1 : 0}
-          onCommit={(value) => update(field, value)}
-        />
-      ))}
+      <details className="a-inspector-advanced">
+        <summary>{t('assembly.advanced')}</summary>
+        <div>
+          <h4>{t('assembly.battenGeometry')}</h4>
+          {(
+            [
+              ['battenWidthMm', 'battenWidth'],
+              ['battenHeightMm', 'battenHeight'],
+            ] as const
+          ).map(([field, label]) => (
+            <DraftLengthField
+              key={field}
+              label={t(`assembly.${label}`)}
+              value={layout[field]}
+              min={1}
+              onCommit={(value) => update(field, value)}
+            />
+          ))}
+          <h4>{t('assembly.battenDistribution')}</h4>
+          {(
+            [
+              ['eaveOffsetMm', 'battenEaveOffset'],
+              ['ridgeOffsetMm', 'battenRidgeOffset'],
+            ] as const
+          ).map(([field, label]) => (
+            <DraftLengthField
+              key={field}
+              label={t(`assembly.${label}`)}
+              value={layout[field] ?? 0}
+              min={0}
+              onCommit={(value) => update(field, value)}
+            />
+          ))}
+        </div>
+      </details>
       <h4>{t('assembly.battenResult')}</h4>
       <dl className="a-batten-results">
         <div>
@@ -595,10 +677,27 @@ function BattenLayoutInspector() {
           </dd>
         </div>
         <div>
-          <dt>{t('assembly.battenGauge')}</dt>
-          <dd>{length(layout.gaugeMm)}</dd>
+          <dt>{t('assembly.actualBattenGauge')}</dt>
+          <dd>{actualGaugeMm ? length(actualGaugeMm) : '—'}</dd>
         </div>
       </dl>
+      {result.status === 'incomplete' && (
+        <p className="a-limit-note">{t('assembly.battenAutoIncomplete')}</p>
+      )}
+      {result.planes.length > 1 && (
+        <details className="a-layer-help">
+          <summary>{t('assembly.perPlaneResults')}</summary>
+          <ul>
+            {result.planes.map((plane) => (
+              <li key={plane.roofPlaneId}>
+                {planeName(plane.roofPlaneId)} · {plane.courseCount}{' '}
+                {t('assembly.battenRows').toLowerCase()} ·{' '}
+                {plane.actualGaugeMm ? length(plane.actualGaugeMm) : '—'}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
       {selectedRow && (
         <section
           className="a-batten-row-detail"

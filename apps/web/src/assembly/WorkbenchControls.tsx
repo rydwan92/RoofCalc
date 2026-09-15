@@ -58,26 +58,6 @@ export function WorkbenchControls({ skeleton }: { skeleton: RoofSkeleton }) {
           </button>
         ))}
       </div>
-      {state.workbench.viewPreset === 'layers' && (
-        <div
-          className="a-layer-switch"
-          role="tablist"
-          aria-label={t('assembly.roofBuildUp')}
-        >
-          {(['overview', 'membrane', 'counterBattens', 'battens'] as const).map(
-            (view) => (
-              <button
-                key={view}
-                role="tab"
-                aria-selected={state.workbench.buildUpView === view}
-                onClick={() => state.setBuildUpView(view)}
-              >
-                {t(`assembly.${view}LayerView`)}
-              </button>
-            ),
-          )}
-        </div>
-      )}
       <div className="a-smart-view-controls">
         <button
           className="a-isolate-button a-measure-button"

@@ -299,6 +299,13 @@
   border-collapse: collapse;
   font-size: 9pt;
 }
+.doc-layer-facts {
+  display: block;
+  margin-top: 3px;
+  color: #53685c;
+  font-size: 8px;
+  line-height: 1.35;
+}
 .doc-page th,
 .doc-page td {
   padding: 2.5mm 2mm;

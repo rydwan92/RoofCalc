@@ -62,6 +62,10 @@ export function Toolbox({
     (activeTask === 'cuts' && section === 'active') ||
     (activeTask === 'materials' && section === 'quantity');
   const buildUp = state.projectDocument.project.buildUp;
+  const tileAssignments = state.projectDocument.project.coverings.filter(
+    (assignment) =>
+      assignment.product.technicalSpecSnapshot.kind === 'roof-tile',
+  );
   const membrane = buildUp.membrane ?? { enabled: false };
   const counterBattens = buildUp.counterBattens ?? {
     enabled: false,
@@ -455,6 +459,12 @@ export function Toolbox({
                 state.setBattenLayout({
                   ...battens,
                   enabled: !battens.enabled,
+                  ...(!buildUp.battenLayout && tileAssignments.length === 1
+                    ? {
+                        mode: 'auto-from-covering' as const,
+                        roofPlaneIds: [...tileAssignments[0]!.roofPlaneIds],
+                      }
+                    : {}),
                 }),
             },
           ] as const

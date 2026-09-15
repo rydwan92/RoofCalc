@@ -19,7 +19,9 @@ export function BuildUpSummaryBar({
   counterBattenLengthMm,
   battensEnabled,
   battenLengthMm,
-  limited,
+  partial,
+  selectedView,
+  onSelect,
 }: {
   membraneEnabled: boolean;
   membraneAreaMm2: number;
@@ -27,7 +29,11 @@ export function BuildUpSummaryBar({
   counterBattenLengthMm: number;
   battensEnabled: boolean;
   battenLengthMm: number;
-  limited: boolean;
+  partial: boolean;
+  selectedView: 'overview' | 'membrane' | 'counterBattens' | 'battens';
+  onSelect: (
+    view: 'overview' | 'membrane' | 'counterBattens' | 'battens',
+  ) => void;
 }) {
   const { t, i18n } = useTranslation();
   return (
@@ -36,7 +42,16 @@ export function BuildUpSummaryBar({
       aria-label={t('assembly.roofBuildUp')}
     >
       <dl>
-        <div>
+        <div
+          role="button"
+          tabIndex={0}
+          aria-current={selectedView === 'membrane' ? 'page' : undefined}
+          onClick={() => onSelect('membrane')}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ')
+              onSelect('membrane');
+          }}
+        >
           <dt>{t('assembly.netGeometricArea')}</dt>
           <dd>
             {metric(
@@ -49,22 +64,41 @@ export function BuildUpSummaryBar({
             )}
           </dd>
         </div>
-        <div data-limited={limited || undefined}>
+        <div
+          role="button"
+          tabIndex={0}
+          aria-current={selectedView === 'counterBattens' ? 'page' : undefined}
+          data-limited={partial || undefined}
+          onClick={() => onSelect('counterBattens')}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ')
+              onSelect('counterBattens');
+          }}
+        >
           <dt>{t('assembly.counterBattens')}</dt>
           <dd>
-            {limited && counterBattensEnabled
-              ? t('assembly.limited')
-              : metric(
-                  counterBattensEnabled,
-                  counterBattenLengthMm,
-                  1000,
-                  'm',
-                  i18n.language,
-                  t('assembly.disabled'),
-                )}
+            {metric(
+              counterBattensEnabled,
+              counterBattenLengthMm,
+              1000,
+              'm',
+              i18n.language,
+              t('assembly.disabled'),
+            )}
+            {partial && counterBattensEnabled
+              ? ` · ${t('assembly.partial')}`
+              : ''}
           </dd>
         </div>
-        <div>
+        <div
+          role="button"
+          tabIndex={0}
+          aria-current={selectedView === 'battens' ? 'page' : undefined}
+          onClick={() => onSelect('battens')}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') onSelect('battens');
+          }}
+        >
           <dt>{t('assembly.battens')}</dt>
           <dd>
             {metric(

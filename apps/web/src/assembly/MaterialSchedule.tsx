@@ -7,13 +7,18 @@ import type {
   RoofMemberSchedule,
   RoofMemberScheduleRow,
 } from '@cieslacalc/quantity-core';
-import type { LengthUnit } from '@cieslacalc/roof-math';
+import type {
+  BattenLayoutResult,
+  CounterBattenLayoutResult,
+  LengthUnit,
+} from '@cieslacalc/roof-math';
 import { formatLength } from '../format';
 import { memberInstanceCode } from './workbench';
 import { useAssembly } from './store';
 import { ResultBasis, ResultLayerProgress } from './ResultBasis';
 import type { K1CuttingRequirement } from './k1-cutting-adapter';
 import type { ProjectWorkflowStatus } from './project-workflow';
+import type { BattenAutoComposition } from './batten-composition';
 
 function metres(valueMm: number, locale: string) {
   return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(valueMm / 1000)} m`;
@@ -111,6 +116,9 @@ export function MaterialSchedule({
   k1,
   coveringStatus,
   onOpenCutting,
+  battens,
+  counterBattens,
+  battenAutoComposition,
 }: {
   schedule: RoofMemberSchedule;
   selectedRowId?: string;
@@ -120,6 +128,9 @@ export function MaterialSchedule({
   k1: K1CuttingRequirement;
   coveringStatus: ProjectWorkflowStatus;
   onOpenCutting: () => void;
+  battens: BattenLayoutResult;
+  counterBattens: CounterBattenLayoutResult;
+  battenAutoComposition: BattenAutoComposition;
 }) {
   const state = useAssembly();
   const { t, i18n } = useTranslation();
@@ -388,6 +399,43 @@ export function MaterialSchedule({
             <small>{t('assembly.roofBuildUp')}</small>
             <h3>{t('assembly.roofLayers')}</h3>
           </header>
+          <div className="a-build-up-intelligence">
+            {state.projectDocument.project.buildUp.battenLayout?.enabled && (
+              <article>
+                <span>{t('assembly.battens')}</span>
+                <strong>
+                  {t(
+                    battens.mode === 'auto-from-covering'
+                      ? 'assembly.battenModeAuto'
+                      : 'assembly.battenModeManual',
+                  )}
+                </strong>
+                <small>
+                  {battens.planes[0]?.actualGaugeMm
+                    ? `${t('assembly.actualBattenGauge')}: ${displayLength(battens.planes[0].actualGaugeMm, state.unit, i18n.language)}`
+                    : t('assembly.battenAutoIncomplete')}
+                  {battenAutoComposition.source.status === 'resolved'
+                    ? ` · ${displayLength(battenAutoComposition.source.minimumGaugeMm, state.unit, i18n.language)}–${displayLength(battenAutoComposition.source.maximumGaugeMm, state.unit, i18n.language)}`
+                    : ''}
+                </small>
+              </article>
+            )}
+            {state.projectDocument.project.buildUp.counterBattens?.enabled && (
+              <article data-status={counterBattens.status}>
+                <span>{t('assembly.counterBattens')}</span>
+                <strong>
+                  {counterBattens.resolvedAxisCount} /{' '}
+                  {counterBattens.visibleSegmentCount}
+                </strong>
+                <small>
+                  {metres(counterBattens.totalVisibleLengthMm, i18n.language)}
+                  {counterBattens.status === 'partial'
+                    ? ` · ${t('assembly.partial')}`
+                    : ''}
+                </small>
+              </article>
+            )}
+          </div>
           <div className="a-build-up-quantity-groups">
             {schedule.surfaceBuildUpRows.map((row) => (
               <article key={row.id} className="a-build-up-surface-summary">

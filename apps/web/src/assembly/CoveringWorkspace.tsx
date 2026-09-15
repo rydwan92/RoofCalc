@@ -14,6 +14,7 @@ import {
 import { fromMillimetres, toMillimetres } from '@cieslacalc/roof-math';
 import type {
   BattenLayoutResult,
+  CounterBattenLayoutResult,
   RoofSurfaceGeometryResult,
 } from '@cieslacalc/roof-math';
 import { parseDecimal } from '../format';
@@ -64,6 +65,50 @@ type SupportedLayout =
   | ModularSheetLayoutResult
   | CutToLengthSheetLayoutResult
   | StandingSeamLayoutResult;
+
+interface CoveringIssueSummary {
+  code: string;
+  actual?: number;
+  required?: number;
+  minimum?: number;
+  maximum?: number;
+  roofPlaneIds: string[];
+}
+
+function groupedCoveringIssues(
+  layout?: SupportedLayout,
+): CoveringIssueSummary[] {
+  if (!layout) return [];
+  const issues =
+    layout.kind === 'standing-seam' ||
+    layout.kind === 'modular-sheet-cut-to-length'
+      ? layout.issueCodes
+          .map((code) => layout.issues.find((issue) => issue.code === code))
+          .filter((issue): issue is NonNullable<typeof issue> => !!issue)
+      : layout.issues;
+  const grouped = new Map<string, CoveringIssueSummary>();
+  for (const issue of issues) {
+    const key = [
+      issue.code,
+      issue.actual,
+      issue.required,
+      issue.minimum,
+      issue.maximum,
+    ].join(':');
+    const current = grouped.get(key) ?? {
+      code: issue.code,
+      actual: issue.actual,
+      required: issue.required,
+      minimum: issue.minimum,
+      maximum: issue.maximum,
+      roofPlaneIds: [],
+    };
+    if (issue.roofPlaneId && !current.roofPlaneIds.includes(issue.roofPlaneId))
+      current.roofPlaneIds.push(issue.roofPlaneId);
+    grouped.set(key, current);
+  }
+  return [...grouped.values()];
+}
 
 function isTileAssignment(
   assignment: CoveringAssignmentSpec,
@@ -277,6 +322,7 @@ export function CoveringWorkspace({
   conflicts,
   surfaceGeometry,
   battens,
+  counterBattens,
 }: {
   assignments: readonly CoveringAssignmentSpec[];
   assignment?: CoveringAssignmentSpec;
@@ -284,6 +330,7 @@ export function CoveringWorkspace({
   conflicts: readonly PrimaryCoveringPlaneConflict[];
   surfaceGeometry: RoofSurfaceGeometryResult;
   battens: BattenLayoutResult;
+  counterBattens: CounterBattenLayoutResult;
 }) {
   const state = useAssembly();
   const { t, i18n } = useTranslation();
@@ -296,6 +343,9 @@ export function CoveringWorkspace({
   const [drawingDetail, setDrawingDetail] = useState<
     'auto' | 'detailed' | 'simplified'
   >('auto');
+  const [showBattens, setShowBattens] = useState(true);
+  const [showCounterBattens, setShowCounterBattens] = useState(false);
+  const issueSummaries = useMemo(() => groupedCoveringIssues(layout), [layout]);
   const planeIds = surfaceGeometry.planes.map((plane) => plane.roofPlaneId);
   useEffect(() => {
     if (!selectedPlaneId || !planeIds.includes(selectedPlaneId))
@@ -409,6 +459,24 @@ export function CoveringWorkspace({
     state.setMobilePanel('none');
     setAdding(false);
     setCatalogKind(kind);
+  };
+
+  const fitBattensAutomatically = () => {
+    if (!assignment || !isTileAssignment(assignment)) return;
+    const current = state.projectDocument.project.buildUp.battenLayout ?? {
+      enabled: true,
+      battenHeightMm: 40,
+      battenWidthMm: 60,
+      gaugeMm: 350,
+      eaveOffsetMm: 250,
+      ridgeOffsetMm: 0,
+    };
+    state.setBattenLayout({
+      ...current,
+      enabled: true,
+      mode: 'auto-from-covering',
+      roofPlaneIds: [...assignment.roofPlaneIds],
+    });
   };
 
   const addAssignment = (
@@ -720,14 +788,8 @@ export function CoveringWorkspace({
           <AlertTriangle size={18} />
           <div>
             <strong>{t(`assembly.coveringStatus.${layout.status}`)}</strong>
-            {(layout.kind === 'standing-seam' ||
-            layout.kind === 'modular-sheet-cut-to-length'
-              ? layout.issueCodes.map((code) =>
-                  layout.issues.find((issue) => issue.code === code)!,
-                )
-              : layout.issues
-            ).map((issue, index) => (
-              <p key={`${issue.code}:${issue.roofPlaneId ?? ''}:${index}`}>
+            {issueSummaries.map((issue, index) => (
+              <p key={`${issue.code}:${index}`}>
                 {t(`assembly.coveringIssue.${issue.code}`)}
                 {issue.actual !== undefined && (
                   <small>
@@ -744,19 +806,23 @@ export function CoveringWorkspace({
                         }`}
                   </small>
                 )}
+                {issue.roofPlaneIds.length > 1 && (
+                  <small>
+                    {' · '}
+                    {t('assembly.affectedRoofPlanes', {
+                      count: issue.roofPlaneIds.length,
+                    })}
+                  </small>
+                )}
               </p>
             ))}
           </div>
-          {layout.issueCodes.some((code) => code.startsWith('batten-')) && (
-            <button
-              onClick={() => {
-                state.setViewPreset('layers');
-                state.setBuildUpView('battens');
-              }}
-            >
-              {t('assembly.openBattenSettings')}
-            </button>
-          )}
+          {layout.issueCodes.some((code) => code.startsWith('batten-')) &&
+            isTileAssignment(assignment) && (
+              <button onClick={fitBattensAutomatically}>
+                {t('assembly.fitBattensAutomatically')}
+              </button>
+            )}
         </div>
       )}
       <div className="a-covering-body">
@@ -804,6 +870,24 @@ export function CoveringWorkspace({
                 {t(`assembly.drawingDetailLevel.${level}`)}
               </button>
             ))}
+            <label>
+              <input
+                type="checkbox"
+                checked={showBattens}
+                onChange={(event) => setShowBattens(event.target.checked)}
+              />
+              {t('assembly.battens')}
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={showCounterBattens}
+                onChange={(event) =>
+                  setShowCounterBattens(event.target.checked)
+                }
+              />
+              {t('assembly.counterBattens')}
+            </label>
           </div>
           <div
             className="a-covering-plane-tabs"
@@ -968,6 +1052,7 @@ export function CoveringWorkspace({
               />
               {layout?.kind !== 'standing-seam' &&
                 layout?.kind !== 'modular-sheet-cut-to-length' &&
+                showBattens &&
                 battens.battens
                   .filter((row) => row.roofPlaneId === selectedPlaneId)
                   .flatMap((row) =>
@@ -979,6 +1064,21 @@ export function CoveringWorkspace({
                         x2={segment.toUMm}
                         y1={row.stationMm}
                         y2={row.stationMm}
+                      />
+                    )),
+                  )}
+              {showCounterBattens &&
+                counterBattens.rows
+                  .filter((row) => row.roofPlaneId === selectedPlaneId)
+                  .flatMap((row) =>
+                    row.segments.map((segment, index) => (
+                      <line
+                        key={`${row.id}:counter:${index}`}
+                        className="a-covering-counter-batten"
+                        x1={segment.fromLocal.uMm}
+                        x2={segment.toLocal.uMm}
+                        y1={segment.fromLocal.vMm}
+                        y2={segment.toLocal.vMm}
                       />
                     )),
                   )}
@@ -2136,6 +2236,7 @@ export function CoveringInspector({
 }) {
   const state = useAssembly();
   const { t } = useTranslation();
+  const issueSummaries = useMemo(() => groupedCoveringIssues(layout), [layout]);
   const selectedSurfaceId = state.workbench.selectedId.startsWith('surface:')
     ? state.workbench.selectedId.slice('surface:'.length)
     : undefined;
@@ -2190,18 +2291,11 @@ export function CoveringInspector({
               {t('assembly.coveringPlaneConflict')}
             </p>
           )}
-          {(layout?.kind === 'standing-seam' ||
-          layout?.kind === 'modular-sheet-cut-to-length'
-            ? layout.issueCodes.map((code) =>
-                layout.issues.find((issue) => issue.code === code)!,
-              )
-            : (layout?.issues ?? [])
-          ).map((issue, index) => (
-            <p
-              className="a-limit-note"
-              key={`${issue.code}:${issue.roofPlaneId ?? ''}:${index}`}
-            >
+          {issueSummaries.map((issue, index) => (
+            <p className="a-limit-note" key={`${issue.code}:${index}`}>
               {t(`assembly.coveringIssue.${issue.code}`)}
+              {issue.roofPlaneIds.length > 1 &&
+                ` · ${t('assembly.affectedRoofPlanes', { count: issue.roofPlaneIds.length })}`}
             </p>
           ))}
           {assignment && isTileAssignment(assignment) && (

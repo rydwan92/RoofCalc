@@ -38,20 +38,7 @@ async function openTask(page: Page, task: string) {
   ).toBeVisible();
 }
 
-async function openResolvedTileSchedule(page: Page, project: string) {
-  await openTask(page, 'layers');
-  const toolbox =
-    project === 'mobile'
-      ? await (async () => {
-          await page.getByTestId('mobile-open-tools').click();
-          return page.getByRole('dialog');
-        })()
-      : page;
-  const battens = toolbox.getByRole('switch', { name: /Łaty/ }).first();
-  if ((await battens.getAttribute('aria-checked')) !== 'true')
-    await battens.click();
-  if (project === 'mobile') await page.keyboard.press('Escape');
-
+async function openResolvedTileSchedule(page: Page) {
   await openTask(page, 'covering');
   const assistant = page.getByTestId('covering-add-assistant');
   await assistant.locator('[data-covering-family="roof-tile"]').click();
@@ -69,6 +56,16 @@ async function openResolvedTileSchedule(page: Page, project: string) {
     await assistant.locator(`[data-manual-field="${field}"]`).fill(value);
   await assistant.getByTestId('confirm-manual-covering').click();
   await expect(page.getByTestId('tile-layout-drawing')).toBeVisible();
+  const automaticFit = page
+    .locator('button:visible')
+    .filter({ hasText: /Dopasuj łaty automatycznie/ })
+    .first();
+  await expect(automaticFit).toBeVisible();
+  await automaticFit.click();
+  await expect(automaticFit).toBeHidden();
+  await expect(
+    page.getByTestId('tile-layout-drawing').locator('.a-covering-batten'),
+  ).not.toHaveCount(0);
   await openTask(page, 'materials');
   return page.getByTestId('covering-quantity');
 }
@@ -213,7 +210,7 @@ test.describe('G — guided project workflow', () => {
     await expect(
       page.locator('[data-task="covering"][aria-selected="true"]:visible'),
     ).toBeVisible();
-    await openResolvedTileSchedule(page, testInfo.project.name);
+    await openResolvedTileSchedule(page);
     await expect(workflow.locator('[data-stage="covering"]')).toHaveAttribute(
       'data-status',
       'complete',
@@ -473,12 +470,9 @@ test.describe('D — A saved project survives a reload', () => {
 test.describe('E — Result semantics remain truthful and reachable', () => {
   test('covering schedule exposes coverage positions, basis and unresolved purchase', async ({
     page,
-  }, testInfo) => {
+  }) => {
     await openBuilder(page);
-    const schedule = await openResolvedTileSchedule(
-      page,
-      testInfo.project.name,
-    );
+    const schedule = await openResolvedTileSchedule(page);
     await expect(schedule).toBeVisible();
 
     const row = schedule.locator(
@@ -570,6 +564,35 @@ test.describe('F — K1 physical blank to cutting plan', () => {
         .locator('.a-schedule-family > header strong')
         .filter({ hasText: 'J1' }),
     ).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+  });
+
+  test('hip counter-battens expose useful K1/J1 axes with a partial H1 boundary', async ({
+    page,
+  }, testInfo) => {
+    await page.goto('/#/calculators/common-rafter');
+    await page.getByRole('button', { name: 'Krokiew narożna' }).click();
+    await page.locator(BUILDER).click();
+    const assistant = page.getByTestId('project-start-assistant');
+    await assistant.getByTestId('project-start-submit').click();
+    await openTask(page, 'layers');
+    const tools =
+      testInfo.project.name === 'mobile'
+        ? await (async () => {
+            await page.getByTestId('mobile-open-tools').click();
+            return page.getByRole('dialog');
+          })()
+        : page;
+    await tools.getByRole('switch', { name: /Kontrłaty/ }).click();
+    if (testInfo.project.name === 'mobile') await page.keyboard.press('Escape');
+    await expect(page.locator('[data-counter-batten-row]')).not.toHaveCount(0);
+    await expect(page.locator('.a-build-up-summary')).toContainText(
+      'Częściowo',
+    );
+    await openTask(page, 'materials');
+    await expect(
+      page.locator('.a-build-up-intelligence [data-status="partial"]'),
+    ).toContainText('Częściowo');
     await expectNoHorizontalOverflow(page);
   });
 });

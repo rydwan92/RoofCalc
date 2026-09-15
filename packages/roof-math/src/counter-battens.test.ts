@@ -128,7 +128,7 @@ describe('counter-batten geometry', () => {
     );
   });
 
-  it('returns an explicit limited result for current hip complexity', () => {
+  it('resolves K1/J1 hip axes while keeping unresolved H1 boundary details explicit', () => {
     const source = template();
     const roof = {
       ...source,
@@ -142,11 +142,69 @@ describe('counter-batten geometry', () => {
       skeleton: createRoofSkeleton(roof),
       layout,
     });
-    expect(result).toMatchObject({
-      status: 'limited',
-      rows: [],
-      warnings: ['unsupported-hip-counter-battens'],
+    const skeleton = createRoofSkeleton(roof);
+    const supportedSourceIds = new Set(
+      skeleton.members
+        .filter(
+          (member) => member.kind === 'rafter' || member.kind === 'jack-rafter',
+        )
+        .map((member) => member.sourceMemberId ?? member.id),
+    );
+    expect(result.status).toBe('partial');
+    expect(result.rows.length).toBeGreaterThan(0);
+    expect(
+      result.rows.every((row) => supportedSourceIds.has(row.sourceMemberId)),
+    ).toBe(true);
+    expect(result.roofPlaneIds).toHaveLength(4);
+    expect(result.resolvedAxisCount).toBe(result.rows.length);
+    expect(result.warnings).toEqual(['hip-boundary-detail-unresolved']);
+    expect(result.issues).toHaveLength(4);
+  });
+
+  it('splits a resolved hip J1/K1 axis around a roof window', () => {
+    const source = template();
+    const roof = {
+      ...source,
+      id: 'template:counter-batten-hip-opening',
+      type: 'hip' as const,
+      buildingLengthMm: 10000,
+      hipRafterSection: { widthMm: 100, depthMm: 240 },
+    };
+    const skeleton = createRoofSkeleton(roof);
+    const base = resolveCounterBattenLayout({
+      template: roof,
+      skeleton,
+      layout,
     });
+    const candidate = base.rows.find(
+      (row) => row.roofPlaneId === 'roof-plane:left',
+    );
+    expect(candidate).toBeDefined();
+    if (!candidate) throw new Error('expected a resolved left-plane axis');
+    const first = candidate.segments[0]!;
+    const centreV = (first.fromLocal.vMm + first.toLocal.vMm) / 2;
+    const feature: RoofWindowFeature = {
+      id: 'feature:hip-window',
+      kind: 'roof-window',
+      roofPlaneId: candidate.roofPlaneId,
+      widthMm: 200,
+      heightMm: 400,
+      position: {
+        uMm: first.fromLocal.uMm - 100,
+        vMm: centreV - 200,
+      },
+    };
+    const withOpening = resolveCounterBattenLayout({
+      template: roof,
+      skeleton,
+      layout,
+      features: [feature],
+    });
+    const split = withOpening.rows.find(
+      (row) => row.sourceMemberId === candidate.sourceMemberId,
+    );
+    expect(split?.segments).toHaveLength(2);
+    expect(split!.visibleLengthMm).toBeLessThan(candidate.visibleLengthMm);
   });
 
   it('rejects non-finite sections and never emits non-finite geometry', () => {

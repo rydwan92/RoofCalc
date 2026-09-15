@@ -100,6 +100,7 @@ import {
   type ProjectStartMode,
 } from './ProjectStartAssistant';
 import { deriveProjectGuidance } from './project-guidance';
+import { resolveBattenAutoComposition } from './batten-composition';
 import './styles.css';
 
 const creatorStartSeenKey = 'cieslacalc.creatorStartSeen.v1';
@@ -383,36 +384,22 @@ export function AssemblyPage() {
     : 0;
   const counterBattenProjection = useMemo(
     () =>
-      counterBattens
-        ? resolveCounterBattenLayout({
-            template: state.template,
-            skeleton: framingProjection.composedSkeleton,
-            layout: counterBattens,
-            features: state.projectDocument.project.features,
-          })
-        : {
-            status: 'disabled' as const,
-            rows: [],
-            totalVisibleLengthMm: 0,
-            warnings: [],
-          },
+      resolveCounterBattenLayout({
+        template: state.template,
+        skeleton: framingProjection.composedSkeleton,
+        layout: counterBattens ?? {
+          enabled: false,
+          widthMm: 40,
+          heightMm: 60,
+        },
+        features: state.projectDocument.project.features,
+      }),
     [
       counterBattens,
       framingProjection.composedSkeleton,
       state.projectDocument.project.features,
       state.template,
     ],
-  );
-  const battenProjection = useMemo(
-    () =>
-      battenLayout?.enabled
-        ? resolveBattenLayout({
-            template: state.template,
-            layout: battenLayout,
-            features: state.projectDocument.project.features,
-          })
-        : { battens: [], totalLengthMm: 0 },
-    [battenLayout, state.projectDocument.project.features, state.template],
   );
   const coveringAssignments = useMemo(
     () => state.projectDocument.project.coverings,
@@ -421,6 +408,50 @@ export function AssemblyPage() {
   const coveringOwnership = useMemo(
     () => resolvePrimaryCoveringAssignments(coveringAssignments),
     [coveringAssignments],
+  );
+  const effectiveBattenLayout = useMemo(
+    () =>
+      battenLayout ?? {
+        enabled: false,
+        battenHeightMm: 40,
+        battenWidthMm: 60,
+        gaugeMm: 350,
+        eaveOffsetMm: 250,
+        ridgeOffsetMm: 0,
+      },
+    [battenLayout],
+  );
+  const battenAutoComposition = useMemo(
+    () =>
+      resolveBattenAutoComposition({
+        layout: effectiveBattenLayout,
+        assignments: coveringAssignments,
+        ownership: coveringOwnership,
+        roofPlaneIds: surfaceProjection.planes.map(
+          (plane) => plane.roofPlaneId,
+        ),
+      }),
+    [
+      coveringAssignments,
+      coveringOwnership,
+      effectiveBattenLayout,
+      surfaceProjection.planes,
+    ],
+  );
+  const battenProjection = useMemo(
+    () =>
+      resolveBattenLayout({
+        template: state.template,
+        layout: effectiveBattenLayout,
+        features: state.projectDocument.project.features,
+        autoSource: battenAutoComposition.source,
+      }),
+    [
+      battenAutoComposition.source,
+      effectiveBattenLayout,
+      state.projectDocument.project.features,
+      state.template,
+    ],
   );
   const resolvedCoveringLayouts = useMemo(
     () =>
@@ -679,7 +710,7 @@ export function AssemblyPage() {
         battenLayout?.enabled,
       ].filter(Boolean).length,
       layerWarnings:
-        counterBattenProjection.status === 'limited' ||
+        counterBattenProjection.status === 'partial' ||
         memberSchedule.buildUpRows.some((row) => row.warningKeys.length > 0) ||
         memberSchedule.surfaceBuildUpRows.some(
           (row) => row.warningKeys.length > 0,
@@ -1152,6 +1183,8 @@ export function AssemblyPage() {
         activeInstance={activeInstance}
         roofPackage={fabricationPackage}
         surfaceGeometry={surfaceProjection}
+        battens={battenProjection}
+        battenAutoComposition={battenAutoComposition}
         counterBattens={counterBattenProjection}
       />
     );
@@ -1469,31 +1502,6 @@ export function AssemblyPage() {
                   selectedScheduleRow={selectedScheduleRow}
                   openingSummary={openingSummary}
                 />
-                {mobile && workbench.viewPreset === 'layers' && (
-                  <div
-                    className="a-mobile-layer-switch"
-                    role="tablist"
-                    aria-label={t('assembly.roofBuildUp')}
-                  >
-                    {(
-                      [
-                        'overview',
-                        'membrane',
-                        'counterBattens',
-                        'battens',
-                      ] as const
-                    ).map((view) => (
-                      <button
-                        key={view}
-                        role="tab"
-                        aria-selected={workbench.buildUpView === view}
-                        onClick={() => state.setBuildUpView(view)}
-                      >
-                        {t(`assembly.${view}LayerView`)}
-                      </button>
-                    ))}
-                  </div>
-                )}
                 {mobile && (
                   <div className="a-mobile-workspace-actions">
                     <button
@@ -1561,7 +1569,15 @@ export function AssemblyPage() {
                     }
                     battensEnabled={!!battenLayout?.enabled}
                     battenLengthMm={battenProjection.totalLengthMm}
-                    limited={counterBattenProjection.status === 'limited'}
+                    partial={counterBattenProjection.status === 'partial'}
+                    selectedView={workbench.buildUpView}
+                    onSelect={(view) => {
+                      state.setBuildUpView(view);
+                      if (view !== 'overview')
+                        state.select(
+                          `layer:${view === 'counterBattens' ? 'counter-battens' : view}`,
+                        );
+                    }}
                   />
                 )}
                 {workbench.focusId && (
@@ -1624,6 +1640,7 @@ export function AssemblyPage() {
                           relatedIds={relatedSelectionIds}
                           activeInstance={activeInstance}
                           surfaceGeometry={surfaceProjection}
+                          battens={battenProjection}
                           counterBattens={counterBattenProjection}
                           compact
                         />
@@ -1640,6 +1657,9 @@ export function AssemblyPage() {
                           selectedInstanceId={
                             workbench.selectedScheduleInstanceId
                           }
+                          battens={battenProjection}
+                          counterBattens={counterBattenProjection}
+                          battenAutoComposition={battenAutoComposition}
                           onSelectRow={(row) => {
                             state.setScheduleSelection(row.id);
                             if (mobile) state.setMobilePanel('inspector');
@@ -1658,6 +1678,7 @@ export function AssemblyPage() {
                       conflicts={activeCoveringConflicts}
                       surfaceGeometry={surfaceProjection}
                       battens={battenProjection}
+                      counterBattens={counterBattenProjection}
                     />
                   </Suspense>
                 ) : workbench.focusId ? (
@@ -1683,6 +1704,7 @@ export function AssemblyPage() {
                       relatedIds={relatedSelectionIds}
                       activeInstance={activeInstance}
                       surfaceGeometry={surfaceProjection}
+                      battens={battenProjection}
                       counterBattens={counterBattenProjection}
                     />
                   </Suspense>
@@ -1730,6 +1752,9 @@ export function AssemblyPage() {
                       membraneEnabled: !!membrane?.enabled,
                       counterBattensEnabled: !!counterBattens?.enabled,
                       battensEnabled: !!battenLayout?.enabled,
+                      battens: battenProjection,
+                      battenAutoSource: battenAutoComposition.source,
+                      counterBattens: counterBattenProjection,
                       coverings: coveringAssignments,
                       coveringStatuses: resolvedCoveringLayouts.map(
                         (layout) => ({

@@ -199,3 +199,25 @@ and their totals are never added together.
 - The collar tie gets its own semantic 3D colour (`--a-collar-tie`), distinct
   from timber (K1/H1/J1), the ridge and purlins, following the existing
   `kind-<name>` CSS convention rather than a one-off class.
+
+## 12. Roof build-up intelligence
+
+- The left build-up tool group is the primary layer navigation. The centre
+  summary is status-first and may open a layer, but the workbench must not add a
+  second strip of equally prominent membrane/counter-batten/batten tabs.
+- Batten spacing exposes two explicit intents: **Automatic from covering** and
+  **Manual**. Automatic mode names the source product/range and shows the actual
+  solved gauge and course count. Manual mode always retains an exact numeric
+  gauge; switching modes never destroys that manual value.
+- A covering compatibility warning is grouped by cause and numeric range. One
+  primary message may list the number of affected roof planes; do not repeat the
+  same sentence once per plane. Its primary repair action performs the safe
+  automatic batten fit as one undoable canonical edit.
+- K1/J1 counter-batten axes and opening interruptions are useful resolved facts
+  on a hip roof. An unresolved H1 boundary connection is presented as a
+  **partial** detail next to those facts, never as a generic empty "limited"
+  result.
+- Covering overlay checkboxes and drawing-detail controls are transient view
+  state. Material and export views repeat the derived spacing mode, actual
+  gauge/range, course count and counter-batten axis/segment status without
+  implying purchase quantities.

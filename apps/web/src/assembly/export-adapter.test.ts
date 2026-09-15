@@ -22,6 +22,28 @@ const source = {
   projectSchemaVersion: 1,
 };
 
+const noBuildUpFacts = {
+  battens: {
+    status: 'disabled' as const,
+    mode: 'manual' as const,
+    battens: [],
+    totalLengthMm: 0,
+    planes: [],
+    issues: [],
+  },
+  battenAutoSource: { status: 'missing' as const },
+  counterBattens: {
+    status: 'disabled' as const,
+    rows: [],
+    totalVisibleLengthMm: 0,
+    warnings: [],
+    issues: [],
+    resolvedAxisCount: 0,
+    visibleSegmentCount: 0,
+    roofPlaneIds: [],
+  },
+};
+
 function facts(hip = false) {
   const gable = gableTemplateFromAssembly(assemblyDefaults);
   const template = hip ? convertRoofTemplate(gable, 'hip') : gable;
@@ -41,6 +63,7 @@ function facts(hip = false) {
     membraneEnabled: false,
     counterBattensEnabled: false,
     battensEnabled: false,
+    ...noBuildUpFacts,
     coverings: [],
     coveringStatuses: [],
   };
@@ -147,6 +170,7 @@ describe('execution export adapter', () => {
       membraneEnabled: false,
       counterBattensEnabled: false,
       battensEnabled: false,
+      ...noBuildUpFacts,
       coverings: [],
       coveringStatuses: [],
     };
@@ -218,6 +242,7 @@ describe('execution export adapter', () => {
       membraneEnabled: false,
       counterBattensEnabled: false,
       battensEnabled: false,
+      ...noBuildUpFacts,
       coverings: [],
       coveringStatuses: [],
     };
@@ -236,5 +261,89 @@ describe('execution export adapter', () => {
     )?.section;
     if (assumptions?.kind === 'assumptions')
       expect(assumptions.codes).toContain('collar-tie-geometric');
+  });
+
+  it('exports automatic batten and partial counter-batten facts without inventing purchase data', () => {
+    const input = facts();
+    const candidates = createExportCandidates({
+      ...input,
+      battensEnabled: true,
+      counterBattensEnabled: true,
+      schedule: createRoofMemberSchedule({
+        skeleton: input.skeleton,
+        buildUp: [
+          {
+            id: 'batten:1',
+            familyKey: 'L',
+            memberKind: 'batten',
+            lengthMm: 5000,
+            section: { widthMm: 60, depthMm: 40 },
+          },
+          {
+            id: 'counter:1',
+            familyKey: 'KL',
+            memberKind: 'counter-batten',
+            lengthMm: 6000,
+            section: { widthMm: 40, depthMm: 60 },
+          },
+        ],
+      }),
+      battens: {
+        status: 'resolved',
+        mode: 'auto-from-covering',
+        battens: [],
+        totalLengthMm: 5000,
+        issues: [],
+        planes: [
+          {
+            roofPlaneId: 'roof-plane:left',
+            status: 'resolved',
+            firstStationMm: 250,
+            lastStationMm: 3750,
+            regularSpanMm: 3500,
+            intervalCount: 10,
+            courseCount: 11,
+            actualGaugeMm: 350,
+            stations: [],
+            issues: [],
+          },
+        ],
+      },
+      battenAutoSource: {
+        status: 'resolved',
+        minimumGaugeMm: 320,
+        maximumGaugeMm: 380,
+      },
+      counterBattens: {
+        status: 'partial',
+        rows: [],
+        totalVisibleLengthMm: 6000,
+        warnings: ['hip-boundary-detail-unresolved'],
+        issues: [],
+        resolvedAxisCount: 12,
+        visibleSegmentCount: 13,
+        roofPlaneIds: ['roof-plane:left'],
+      },
+    });
+    const layers = candidates.find(
+      (candidate) => candidate.kind === 'layers',
+    )?.section;
+    expect(layers?.kind).toBe('layers');
+    if (layers?.kind !== 'layers') return;
+    expect(layers.rows.find((row) => row.code === 'L')?.layoutFacts).toEqual({
+      mode: 'auto-from-covering',
+      status: 'resolved',
+      actualGaugeMm: 350,
+      minimumGaugeMm: 320,
+      maximumGaugeMm: 380,
+      planeCount: 1,
+      courseCount: 11,
+    });
+    expect(layers.rows.find((row) => row.code === 'KL')?.layoutFacts).toEqual({
+      status: 'partial',
+      planeCount: 1,
+      axisCount: 12,
+      segmentCount: 13,
+    });
   });
 });

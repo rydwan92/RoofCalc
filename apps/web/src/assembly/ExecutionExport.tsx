@@ -69,6 +69,13 @@ const copy = {
     basis: 'Podstawa',
     axis: 'oś geometryczna',
     visible: 'długość widoczna',
+    automatic: 'automatycznie z pokrycia',
+    manual: 'ręcznie',
+    actualGauge: 'rzeczywisty rozstaw',
+    allowedGauge: 'dopuszczalny zakres',
+    courses: 'rzędy',
+    axesSegments: 'osie / odcinki',
+    partial: 'częściowo',
     blank: 'Wymagany blank K1',
     blankNote:
       'Długość blanku dla zamodelowanych cięć; bez dodatkowego naddatku obróbki.',
@@ -185,6 +192,13 @@ const copy = {
     basis: 'Basis',
     axis: 'geometric axis',
     visible: 'visible length',
+    automatic: 'automatic from covering',
+    manual: 'manual',
+    actualGauge: 'actual gauge',
+    allowedGauge: 'allowed range',
+    courses: 'courses',
+    axesSegments: 'axes / segments',
+    partial: 'partial',
     blank: 'Required K1 blank',
     blankNote:
       'Blank length for modeled cuts; no additional machining allowance.',
@@ -677,6 +691,31 @@ function SectionBody({
                     : row.basis === 'axis-geometric'
                       ? m.axis
                       : m.visible}
+                  {row.layoutFacts && (
+                    <small className="doc-layer-facts">
+                      {row.layoutFacts.mode
+                        ? row.layoutFacts.mode === 'auto-from-covering'
+                          ? m.automatic
+                          : m.manual
+                        : ''}
+                      {row.layoutFacts.actualGaugeMm !== undefined
+                        ? ` · ${m.actualGauge}: ${length(row.layoutFacts.actualGaugeMm)}`
+                        : ''}
+                      {row.layoutFacts.minimumGaugeMm !== undefined &&
+                      row.layoutFacts.maximumGaugeMm !== undefined
+                        ? ` · ${m.allowedGauge}: ${length(row.layoutFacts.minimumGaugeMm)}–${length(row.layoutFacts.maximumGaugeMm)}`
+                        : ''}
+                      {row.layoutFacts.courseCount !== undefined
+                        ? ` · ${m.courses}: ${row.layoutFacts.courseCount}`
+                        : ''}
+                      {row.layoutFacts.axisCount !== undefined
+                        ? ` · ${m.axesSegments}: ${row.layoutFacts.axisCount} / ${row.layoutFacts.segmentCount ?? 0}`
+                        : ''}
+                      {row.layoutFacts.status === 'partial'
+                        ? ` · ${m.partial}`
+                        : ''}
+                    </small>
+                  )}
                 </td>
               </tr>
             ))}

@@ -36,13 +36,13 @@ import {
   gablePitchDegFromRidgeHeight,
   gableRidgeHeightMm,
   projectPlaneLocalToWorld,
-  resolveBattenLayout,
   resolveRoofFeatureCollisions,
   resolveNearestRoofWindowBay,
   resolveRoofWindowAlignmentSnap,
   resolveRoofPlaneBasis,
   roofPlaneIntervalsAtV,
   roofPlaneIds as resolveRoofPlaneIds,
+  type BattenLayoutResult,
   type CounterBattenLayoutResult,
   type RoofWindowAlignmentGuide,
   type RoofSurfaceGeometryResult,
@@ -151,6 +151,7 @@ function SkeletonCanvasComponent({
   relatedIds,
   activeInstance,
   surfaceGeometry,
+  battens: battenResult,
   counterBattens,
   compact = false,
 }: {
@@ -163,6 +164,7 @@ function SkeletonCanvasComponent({
   relatedIds?: ReadonlySet<string>;
   activeInstance?: MemberInstanceContext;
   surfaceGeometry: RoofSurfaceGeometryResult;
+  battens: BattenLayoutResult;
   counterBattens: CounterBattenLayoutResult;
   compact?: boolean;
 }) {
@@ -561,17 +563,6 @@ function SkeletonCanvasComponent({
         ]),
       ),
     [collisionSkeleton, roofWindows, template],
-  );
-  const battenResult = useMemo(
-    () =>
-      selectedStore.battenLayout?.enabled
-        ? resolveBattenLayout({
-            template,
-            layout: selectedStore.battenLayout,
-            features: selectedStore.features,
-          })
-        : { battens: [], totalLengthMm: 0 },
-    [selectedStore.battenLayout, selectedStore.features, template],
   );
   const windowOverlays = roofWindows.map((feature) => {
     const basis = resolveRoofPlaneBasis(template, feature.roofPlaneId);
@@ -1280,7 +1271,7 @@ function SkeletonCanvasComponent({
           {state.workbench.viewPreset === 'layers' &&
           state.workbench.buildUpView === 'battens' &&
           selectedStore.battenLayout?.enabled
-            ? `${battenResult.battens.length} ${t('assembly.battenRows').toLowerCase()} · ${length(selectedStore.battenLayout.gaugeMm)} · ${new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 1 }).format(battenResult.totalLengthMm / 1000)} m`
+            ? `${battenResult.battens.length} ${t('assembly.battenRows').toLowerCase()} · ${battenResult.planes[0]?.actualGaugeMm ? length(battenResult.planes[0].actualGaugeMm) : '—'} · ${new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 1 }).format(battenResult.totalLengthMm / 1000)} m`
             : template.type === 'hip'
               ? t('assembly.hipSkeletonCount', {
                   common: skeleton.members.filter(

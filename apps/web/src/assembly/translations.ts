@@ -692,6 +692,7 @@ export const assemblyPl = {
   enabled: 'Włączona',
   disabled: 'Wyłączona',
   limited: 'Ograniczone',
+  partial: 'Częściowo',
   status: 'Status',
   result: 'Wynik',
   mainParameters: 'Parametry główne',
@@ -705,7 +706,7 @@ export const assemblyPl = {
   axisSegmentCount: 'Liczba osi / odcinków',
   segments: 'Odcinki',
   counterBattenLimited:
-    'Dla obecnej geometrii dachu kopertowego kontrłaty pozostają jawnie nieobsługiwane — bez przybliżeń osi H1/J1.',
+    'Osie kontrłat K1 i J1 są rozliczone. Detal styku kontrłaty przy osi H1 pozostaje częściowy i nie jest zgadywany.',
   geometryHelp: 'Wyjaśnienie geometrii',
   battenGeometricNote:
     'Układ geometryczny. Moduł i przekrój podaje użytkownik; nie jest to dobór pokrycia ani weryfikacja konstrukcyjna.',
@@ -724,6 +725,24 @@ export const assemblyPl = {
   segment: 'Segment',
   battenRows: 'Liczba rzędów',
   battenTotalLength: 'Łączna długość',
+  battenMode: 'Sposób ustalania rozstawu łat',
+  battenModeAuto: 'Automatycznie z pokrycia',
+  battenModeManual: 'Ręcznie',
+  actualBattenGauge: 'Rzeczywisty rozstaw',
+  fitBattensAutomatically: 'Dopasuj łaty automatycznie',
+  battenAutoSourceReady: '{{product}} · dopuszczalny rozstaw {{min}}–{{max}}',
+  battenAutoIncomplete:
+    'Automatyczne dopasowanie wymaga jednego zgodnego pokrycia i kompletnego zakresu montażowego.',
+  perPlaneResults: 'Wyniki dla połaci',
+  affectedRoofPlanes: 'dotyczy {{count}} połaci',
+  battenAutoSource: {
+    'tile-covering-missing': 'Najpierw przypisz dachówkę do wybranych połaci.',
+    'installation-mode-missing': 'Wybierz wariant montażowy pokrycia.',
+    'target-planes-not-covered':
+      'Pokrycie nie obejmuje wszystkich połaci wybranych dla łat.',
+    'covering-source-conflict':
+      'Więcej niż jedno pokrycie przypisano do tej samej połaci.',
+  },
   windowCollision: 'Kolizja geometryczna z krokwią',
   windowClear: 'Otwór znajduje się geometrycznie między krokwiami.',
   placeBetweenRafters: 'Umieść między krokwiami',
@@ -1762,6 +1781,7 @@ export const assemblyEn: typeof assemblyPl = {
   enabled: 'Enabled',
   disabled: 'Disabled',
   limited: 'Limited',
+  partial: 'Partial',
   status: 'Status',
   result: 'Result',
   mainParameters: 'Main parameters',
@@ -1775,7 +1795,7 @@ export const assemblyEn: typeof assemblyPl = {
   axisSegmentCount: 'Axis / segment count',
   segments: 'Segments',
   counterBattenLimited:
-    'Counter-battens are explicitly unsupported for the current hip geometry; no H1/J1 axis approximation is made.',
+    'K1 and J1 counter-batten axes are resolved. The H1 boundary connection remains partial and is not guessed.',
   geometryHelp: 'Geometry explanation',
   battenGeometricNote:
     'Geometric layout. The user supplies the gauge and section; this is not a covering selection or structural check.',
@@ -1794,6 +1814,25 @@ export const assemblyEn: typeof assemblyPl = {
   segment: 'Segment',
   battenRows: 'Row count',
   battenTotalLength: 'Total length',
+  battenMode: 'Batten spacing mode',
+  battenModeAuto: 'Automatic from covering',
+  battenModeManual: 'Manual',
+  actualBattenGauge: 'Actual gauge',
+  fitBattensAutomatically: 'Fit battens automatically',
+  battenAutoSourceReady: '{{product}} · allowed gauge {{min}}–{{max}}',
+  battenAutoIncomplete:
+    'Automatic fitting requires one compatible covering and a complete installation range.',
+  perPlaneResults: 'Results by roof plane',
+  affectedRoofPlanes: 'affects {{count}} roof planes',
+  battenAutoSource: {
+    'tile-covering-missing':
+      'Assign a roof tile to the selected roof planes first.',
+    'installation-mode-missing': 'Select a covering installation mode.',
+    'target-planes-not-covered':
+      'The covering does not own every plane selected for battens.',
+    'covering-source-conflict':
+      'More than one covering is assigned to the same roof plane.',
+  },
   windowCollision: 'Geometric collision with a rafter',
   windowClear: 'The opening is geometrically between rafters.',
   placeBetweenRafters: 'Place between rafters',

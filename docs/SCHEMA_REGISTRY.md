@@ -52,6 +52,12 @@ free; changing meaning, type or required-ness is not.
   `fixtures/projects/10-gable-collar-tie-direct-meeting.cieslacalc.json` and by
   every pre-V32 fixture parsing unchanged. `RoofStructureIntent.collarTie` is
   only meaningful for `type: 'gable'`; hip templates never carry `structure`.
+- V33 note: `RoofBuildUp.battenLayout.mode?: 'manual' |
+  'auto-from-covering'` is additive and optional. Absence is read as `manual`,
+  so every pre-V33 project and fixture retains its exact layout behaviour.
+  Automatic station rows, actual gauge, per-plane course counts, counter-batten
+  axes and compatibility messages are derived and are never serialized. No
+  `schemaVersion` bump.
 
 ---
 
