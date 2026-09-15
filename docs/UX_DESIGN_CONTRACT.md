@@ -27,6 +27,11 @@ Consequences enforced in review:
 
 ## 2. Task ribbon and dock
 
+V36: Materials opens the material plan first. K1 cutting and technical schedule
+are secondary local tools; project/drawing auxiliary views live in a disclosure.
+Commerce inputs in the material plan belong to its downstream pricing workflow,
+not the geometry Inspector. Price drafts never edit technical construction state.
+
 Seven tasks, one vocabulary, same order everywhere:
 
 ```text

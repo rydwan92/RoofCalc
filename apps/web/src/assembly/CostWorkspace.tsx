@@ -30,6 +30,7 @@ import {
 } from './cost-adapter';
 import { downloadCostEstimateCsv } from './cost-csv';
 import type { ExportFacts } from './export-adapter';
+import { materialCopy } from './material-copy';
 
 const QUANTITY_UNITS: readonly QuantityUnit[] = [
   'piece',
@@ -107,9 +108,11 @@ export function CostWorkspace({
 
   const addSuggestion = (suggestion: CostSuggestion, manual: boolean) => {
     const quantity =
-      'quantity' in suggestion
-        ? suggestion.quantity
-        : { value: 0, unit: suggestion.manualUnit };
+      suggestion.kind === 'covering-consumption'
+        ? { value: 0, unit: 'piece' as const }
+        : 'quantity' in suggestion
+          ? suggestion.quantity
+          : { value: 0, unit: suggestion.manualUnit };
     const catalogPrice =
       suggestion.kind === 'covering-consumption' &&
       suggestion.unitPriceMinor !== undefined &&
@@ -291,11 +294,13 @@ export function CostWorkspace({
                     onClick={() =>
                       addSuggestion(
                         suggestion,
-                        suggestion.suitability === 'manual-required',
+                        suggestion.suitability === 'manual-required' ||
+                          suggestion.kind === 'covering-consumption',
                       )
                     }
                   >
-                    {suggestion.suitability === 'manual-required'
+                    {suggestion.suitability === 'manual-required' ||
+                    suggestion.kind === 'covering-consumption'
                       ? t('assembly.cost.fillManually')
                       : t('assembly.cost.add')}
                   </button>
@@ -428,6 +433,17 @@ export function CostWorkspace({
                                     );
                                 }}
                               />
+                              {line.priceProvenance && (
+                                <small>
+                                  {line.priceProvenance.source === 'manual'
+                                    ? materialCopy(locale).manual
+                                    : line.priceProvenance.label}
+                                </small>
+                              )}
+                              {line.priceProvenance?.source ===
+                                'price-list' && (
+                                <small>{materialCopy(locale).verify}</small>
+                              )}
                             </td>
                             <td>
                               {money(

@@ -1,6 +1,6 @@
 # RoofCalc / CieślaCalc — Architecture Index
 
-**This is the current-state map, after V35.** Read it after `PROJECT_BLUEPRINT.md`
+**This is the current-state map, after V36.** Read it after `PROJECT_BLUEPRINT.md`
 and before touching code. It describes what exists today, not the history of how
 it got here. Historical `ARCHITECTURE_V*.md` documents stay authoritative for the
 subsystem they introduced and should be opened only when changing that subsystem.
@@ -184,6 +184,15 @@ either a bundled Docker MariaDB or an existing local XAMPP instance. See
 ---
 
 ## 3. State classification
+
+V36 makes the application-level material plan the default Materials surface.
+`apps/web/src/assembly/material-plan.ts` composes existing K1 procurement,
+build-up quantities and declared covering consumption, preserving ranges and
+partial limitations. Selected offers/manual price drafts are session state;
+accepted price provenance is additive optional cost-sidecar state. Export adds
+`material-list` evidence and CSV, separately from the accepted cost estimate.
+API `environment.ts` initializes root `.env` once for server, CLI and Drizzle;
+`pnpm db:doctor` is read-only and never forwards connection credentials.
 
 | Kind | Where it lives | Serialized? | In Undo history? |
 | --- | --- | --- | --- |
@@ -433,6 +442,7 @@ pnpm e2e      # real-browser smoke, desktop 1440x900 and mobile 390x844 (pnpm e2
 
 | Document | Read when |
 | --- | --- |
+| `ARCHITECTURE_V36_MATERIAL_PLAN` | Materials plan, price selection/provenance, BOM/CSV and DB runtime diagnostics |
 | `PROJECT_BLUEPRINT.md` | always first; holds the work checkpoint |
 | `docs/ARCHITECTURE_INDEX.md` | always second; this file |
 | `docs/ROOFCALC_PRODUCT_NORTH_STAR.md` | always third; long-term constraints |

@@ -3,6 +3,33 @@ import request from 'supertest';
 import { createApp } from './app';
 
 describe('API', () => {
+  it('permits local Apache reads without allowing external origins or credentialed writes', async () => {
+    for (const origin of ['http://localhost', 'http://127.0.0.1:8080']) {
+      const response = await request(createApp())
+        .get('/api/catalog/manufacturers')
+        .set('Origin', origin);
+      expect(response.status).toBe(503);
+      expect(response.headers['access-control-allow-origin']).toBe(origin);
+      expect(
+        response.headers['access-control-allow-credentials'],
+      ).toBeUndefined();
+      expect(response.headers.vary).toContain('Origin');
+    }
+    for (const origin of [
+      'https://example.com',
+      'http://localhost.evil.example',
+      'null',
+    ]) {
+      const response = await request(createApp())
+        .get('/api/health')
+        .set('Origin', origin);
+      expect(response.headers['access-control-allow-origin']).toBeUndefined();
+    }
+    const write = await request(createApp())
+      .post('/api/catalog/manufacturers')
+      .set('Origin', 'http://localhost');
+    expect(write.headers['access-control-allow-origin']).toBeUndefined();
+  });
   it('reports health without a database', async () => {
     const response = await request(createApp()).get('/api/health');
     expect(response.status).toBe(200);

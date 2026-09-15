@@ -56,6 +56,14 @@ export const COST_LINE_CATEGORIES: readonly CostLineCategory[] = [
   'other',
 ];
 
+export interface CostPriceProvenance {
+  source: 'manual' | 'price-list';
+  label?: string;
+  entryId?: string;
+  variantId?: string;
+  saleUnit?: QuantityUnit;
+}
+
 export interface CostLine {
   id: string;
   category: CostLineCategory;
@@ -77,6 +85,7 @@ export interface CostLine {
    * project change without silently overwriting the line (§26).
    */
   projectQuantityValue?: number;
+  priceProvenance?: CostPriceProvenance;
 }
 
 export interface ComputedCostLine {

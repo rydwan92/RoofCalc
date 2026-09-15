@@ -10,6 +10,7 @@ import {
   type Manufacturer,
 } from '@cieslacalc/catalog-core';
 import type { z } from 'zod';
+import { resolveApiBaseUrl } from '../api-base';
 
 export class CatalogClientError extends Error {
   constructor(readonly code: string) {
@@ -60,7 +61,7 @@ async function requestJson<T>(
 }
 
 export class HttpCatalogClient implements CatalogClient {
-  constructor(private readonly baseUrl = '/api/catalog') {}
+  constructor(private readonly baseUrl = `${resolveApiBaseUrl()}/catalog`) {}
 
   async listManufacturers(signal?: AbortSignal) {
     return (

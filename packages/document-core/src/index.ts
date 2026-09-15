@@ -8,6 +8,7 @@ export type SectionKind =
   | 'layers'
   | 'covering'
   | 'assumptions'
+  | 'material-list'
   | 'cost-estimate';
 
 export const sectionOrder: readonly SectionKind[] = [
@@ -19,6 +20,7 @@ export const sectionOrder: readonly SectionKind[] = [
   'layers',
   'covering',
   'assumptions',
+  'material-list',
   'cost-estimate',
 ];
 
@@ -261,6 +263,34 @@ export interface CostEstimateSection {
   complete: boolean;
 }
 
+export interface MaterialListSection {
+  kind: 'material-list';
+  rows: {
+    category: string;
+    labelKey: string;
+    description?: string;
+    product?: string;
+    basis: string;
+    quantity?: number;
+    minimumQuantity?: number;
+    maximumQuantity?: number;
+    unit: string;
+    partial: boolean;
+    warnings: string[];
+    metrics: {
+      labelKey: string;
+      value: number;
+      maxValue?: number;
+      unit: string;
+    }[];
+    priceProvenance?: string;
+    unitPriceMinor?: number;
+    minimumValueMinor?: number;
+    maximumValueMinor?: number;
+    currencyCode?: string;
+  }[];
+}
+
 export type ExecutionSection =
   | ProjectSummarySection
   | RoofOverviewSection
@@ -270,6 +300,7 @@ export type ExecutionSection =
   | LayersSection
   | CoveringSection
   | AssumptionsSection
+  | MaterialListSection
   | CostEstimateSection;
 
 export interface SectionCandidate {

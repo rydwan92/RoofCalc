@@ -1,6 +1,7 @@
 import type {
   ComputedCostLine,
   CostLine,
+  CostPriceProvenance,
   CostLineCategory,
   CostLineSource,
   CostQuantityBasis,
@@ -33,6 +34,7 @@ export interface CostLineInput {
   included?: boolean;
   noteKeys?: readonly string[];
   projectQuantityValue?: number;
+  priceProvenance?: CostPriceProvenance;
 }
 
 function validateLineInput(input: CostLineInput) {
@@ -67,6 +69,7 @@ export function createCostLine(input: CostLineInput): CostLine {
     included: input.included ?? true,
     noteKeys: input.noteKeys ?? [],
     projectQuantityValue: input.projectQuantityValue,
+    priceProvenance: input.priceProvenance,
   };
 }
 
@@ -126,7 +129,7 @@ export function withUnitPrice(
     throw new CostValidationError([
       costIssue('unitPriceMinor', 'invalid-unit-price'),
     ]);
-  return { ...line, unitPriceMinor };
+  return { ...line, unitPriceMinor, priceProvenance: { source: 'manual' } };
 }
 
 /** A direct manual quantity edit always drops project ownership (§25). */

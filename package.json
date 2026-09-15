@@ -8,7 +8,7 @@
     "node": ">=20.16.0"
   },
   "scripts": {
-    "dev": "pnpm --parallel --filter \"./apps/*\" dev",
+    "dev": "node tools/dev.mjs",
     "build": "pnpm --filter @cieslacalc/web build && pnpm --filter @cieslacalc/api build",
     "start": "node apps/api/dist/server.js",
     "typecheck": "tsc --noEmit",
@@ -25,6 +25,7 @@
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
     "db:bootstrap": "pnpm --filter @cieslacalc/api db:bootstrap",
+    "db:doctor": "pnpm --filter @cieslacalc/api db:doctor",
     "dev:full": "pnpm db:bootstrap && pnpm dev"
   },
   "devDependencies": {

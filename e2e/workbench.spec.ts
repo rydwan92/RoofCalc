@@ -36,6 +36,10 @@ async function openTask(page: Page, task: string) {
   await expect(
     page.locator(`[data-task="${task}"][aria-selected="true"]:visible`).first(),
   ).toBeVisible();
+  if (task === 'materials')
+    await page
+      .getByRole('tab', { name: 'Zestawienie techniczne', exact: true })
+      .click();
 }
 
 async function addTile(page: Page, gaugeMin = '30', gaugeMax = '38') {
@@ -219,7 +223,11 @@ test.describe('G — guided project workflow', () => {
       'data-status',
       'complete',
     );
-    await page.locator('.a-material-local-switch [role="tab"]').first().click();
+    await page.locator('.mp-secondary-views summary').click();
+    await page
+      .locator('.a-material-local-switch')
+      .getByRole('tab', { name: 'Projekt', exact: true })
+      .click();
     await expect(page.getByTestId('project-summary')).toBeVisible();
     await page.getByTestId('summary-k1-cutting-cta').click();
     await expect(page.getByTestId('k1-cutting-panel')).toBeVisible();

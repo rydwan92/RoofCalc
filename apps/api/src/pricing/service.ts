@@ -1,5 +1,5 @@
 import {
-  resolvePriceForVariant,
+  activePriceListEntries,
   type PriceListEntry,
 } from '@cieslacalc/pricing-core';
 import type { PricingRepository } from './repository';
@@ -14,6 +14,8 @@ export interface VariantPrice {
   variantId: string;
   entry: PriceListEntry;
   currencyCode: string;
+  ownerLabel?: string;
+  taxContext?: string;
 }
 
 /**
@@ -35,15 +37,27 @@ export class PricingService {
     const priceLists = await this.repository.priceListsForIds([
       ...new Set(entries.map((entry) => entry.priceListId)),
     ]);
-    const currencyByListId = new Map(
-      priceLists.map((list) => [list.id, list.currencyCode]),
-    );
+    const byListId = new Map(priceLists.map((list) => [list.id, list]));
     return variantIds.flatMap((variantId) => {
-      const entry = resolvePriceForVariant(entries, variantId);
-      const currencyCode = entry
-        ? currencyByListId.get(entry.priceListId)
-        : undefined;
-      return entry && currencyCode ? [{ variantId, entry, currencyCode }] : [];
+      return activePriceListEntries(entries)
+        .filter((entry) => entry.commercialVariantId === variantId)
+        .flatMap((entry) => {
+          const list = byListId.get(entry.priceListId);
+          const today = new Date().toISOString().slice(0, 10);
+          return list &&
+            list.validFrom <= today &&
+            (!list.validTo || list.validTo >= today)
+            ? [
+                {
+                  variantId,
+                  entry,
+                  currencyCode: list.currencyCode,
+                  ownerLabel: list.ownerLabel,
+                  taxContext: list.taxContext,
+                },
+              ]
+            : [];
+        });
     });
   }
 }

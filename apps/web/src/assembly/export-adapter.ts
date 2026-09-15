@@ -45,6 +45,13 @@ import type { K1CuttingRequirement } from './k1-cutting-adapter';
 import type { K1SessionPlan } from './K1CuttingPlan';
 import type { BattenInstallationDecision } from './batten-installation';
 import { uniformBattenGauge } from './batten-installation';
+import {
+  createMaterialPlanRows,
+  materialValue,
+  type MaterialPlanRow,
+  type MaterialPriceSelection,
+} from './material-plan';
+import type { MembraneProductSelection } from '@cieslacalc/covering-core';
 
 type ResolvedK1 = Extract<K1CuttingRequirement, { status: 'resolved' }>;
 export type ResolvedCoveringLayout =
@@ -82,6 +89,9 @@ export type ExportFacts = {
   variantPrices?: VariantPrice[];
   /** Absent means no estimate exists yet for this project. */
   cost?: CostScenario;
+  membraneProduct?: MembraneProductSelection;
+  materialRows?: MaterialPlanRow[];
+  materialPrices?: Record<string, MaterialPriceSelection>;
 };
 
 function drawing(model: DrawingModel): DocumentDrawing {
@@ -627,6 +637,54 @@ export function createExportCandidates(facts: ExportFacts): SectionCandidate[] {
       section: coveringRows.length ? covering : undefined,
     },
     { kind: 'assumptions', readiness: 'available', section: assumptions },
+    (() => {
+      const rows =
+        facts.materialRows ??
+        createMaterialPlanRows(facts, facts.membraneProduct);
+      return {
+        kind: 'material-list' as const,
+        readiness: rows.length
+          ? ('warning' as const)
+          : ('unavailable' as const),
+        reason: rows.length ? undefined : 'no-materials',
+        section: rows.length
+          ? {
+              kind: 'material-list' as const,
+              rows: rows.map((row) => {
+                const chosen = facts.materialPrices?.[row.id];
+                const price =
+                  chosen &&
+                  chosen.valid !== false &&
+                  (chosen.source === 'manual' ||
+                    (chosen.variantId === row.product?.variantId &&
+                      chosen.saleUnit === row.unit))
+                    ? chosen
+                    : undefined;
+                const value = materialValue(row, price);
+                return {
+                  category: row.category,
+                  labelKey: row.labelKey,
+                  description: row.description,
+                  product: row.product?.name,
+                  basis: row.range ? 'manufacturer' : row.basis,
+                  quantity: row.quantity,
+                  minimumQuantity: row.range?.min,
+                  maximumQuantity: row.range?.max,
+                  unit: row.unit,
+                  partial: row.partial,
+                  warnings: row.warnings,
+                  metrics: row.metrics,
+                  priceProvenance: price?.provenance,
+                  unitPriceMinor: price?.amountMinor,
+                  minimumValueMinor: value?.min,
+                  maximumValueMinor: value?.max,
+                  currencyCode: price?.currencyCode,
+                };
+              }),
+            }
+          : undefined,
+      };
+    })(),
     (() => {
       const includedLineCount =
         facts.cost?.lines.filter((line) => line.included).length ?? 0;

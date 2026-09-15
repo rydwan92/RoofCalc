@@ -1,3 +1,4 @@
+import '../environment';
 import { drizzle, type MySql2Database } from 'drizzle-orm/mysql2';
 import mysql, { type Pool } from 'mysql2/promise';
 import * as catalogSchema from './schema';
@@ -23,6 +24,7 @@ export function createCatalogDatabase(
     uri: databaseUrl,
     connectionLimit: 10,
     enableKeepAlive: true,
+    connectTimeout: 5000,
   });
   return {
     db: drizzle(pool, { schema, mode: 'default' }),

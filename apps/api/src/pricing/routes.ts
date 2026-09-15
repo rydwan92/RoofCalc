@@ -9,6 +9,8 @@ const pricingVariantsResponseSchema = z.object({
       variantId: z.string(),
       entry: priceListEntrySchema,
       currencyCode: z.string(),
+      ownerLabel: z.string().optional(),
+      taxContext: z.string().optional(),
     }),
   ),
 });

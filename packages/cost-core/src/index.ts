@@ -8,6 +8,7 @@ export type {
   ComputedCostLine,
   CostCategoryTotal,
   CostLine,
+  CostPriceProvenance,
   CostLineCategory,
   CostLineSource,
   CostQuantityBasis,

@@ -21,6 +21,7 @@ import { detailStepText } from './DetailPreview';
 import { roofPlaneShortLabelKey } from './covering-presentation';
 import { createExportCandidates, type ExportFacts } from './export-adapter';
 import './execution-export.css';
+import { materialCopy, materialText } from './material-copy';
 
 const copy = {
   pl: {
@@ -120,6 +121,8 @@ const copy = {
     notPurchase: 'To wynik geometryczny układu, nie ilość do zamówienia.',
     unresolved: 'Wynik nierozwiązany - sprawdź pokrycie w projekcie.',
     'cost-estimate': 'Kosztorys',
+    'material-list': 'Lista materiałów',
+    'no-materials': 'Brak materiałów',
     cost: {
       net: 'Netto',
       tax: 'VAT',
@@ -282,6 +285,8 @@ const copy = {
     notPurchase: 'This is a geometric layout result, not an order quantity.',
     unresolved: 'Unresolved result - review covering in the project.',
     'cost-estimate': 'Cost estimate',
+    'material-list': 'Material list',
+    'no-materials': 'No materials',
     cost: {
       net: 'Net',
       tax: 'VAT',
@@ -899,6 +904,116 @@ function SectionBody({
           ))}
         </ol>
       );
+    case 'material-list': {
+      const mc = materialCopy(locale);
+      const unit = (value: string) =>
+        ({
+          piece: locale.startsWith('pl') ? 'szt.' : 'pcs',
+          m2: 'm²',
+          roll: locale.startsWith('pl') ? 'rol.' : 'rolls',
+          'piece/m2': locale.startsWith('pl') ? 'szt./m²' : 'pcs/m²',
+        })[value] ?? value;
+      const number = (value: number) =>
+        new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(
+          value,
+        );
+      return (
+        <>
+          {(['timber', 'layers', 'covering', 'other'] as const).map(
+            (category) => (
+              <div key={category}>
+                <h3>{mc[category]}</h3>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>{mc.title}</th>
+                      <th>{m.basis}</th>
+                      <th>{mc.value}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {section.rows
+                      .filter((row) => row.category === category)
+                      .map((row, index) => {
+                        const money = (value: number) =>
+                          new Intl.NumberFormat(locale, {
+                            style: 'currency',
+                            currency: row.currencyCode ?? 'PLN',
+                          }).format(value / 100);
+                        return (
+                          <tr key={index}>
+                            <td>
+                              {materialText(locale, row.labelKey)}{' '}
+                              {row.description}
+                              <p>{row.product}</p>
+                              {row.metrics.map((metric) => (
+                                <p key={metric.labelKey}>
+                                  {materialText(locale, metric.labelKey)}:{' '}
+                                  {number(metric.value)}
+                                  {metric.maxValue !== undefined
+                                    ? `–${number(metric.maxValue)}`
+                                    : ''}{' '}
+                                  {unit(metric.unit)}
+                                </p>
+                              ))}
+                              {row.warnings.map((warning) => (
+                                <p key={warning}>
+                                  {materialText(locale, warning)}
+                                </p>
+                              ))}
+                            </td>
+                            <td>
+                              {row.basis === 'procurement-stock'
+                                ? mc.procurement
+                                : row.basis === 'fabrication-requirement'
+                                  ? mc.fabrication
+                                  : row.basis === 'manufacturer'
+                                    ? mc.manufacturer
+                                    : mc.geometry}
+                              <p>
+                                {row.minimumQuantity !== undefined &&
+                                row.maximumQuantity !== undefined
+                                  ? `${number(row.minimumQuantity)}–${number(row.maximumQuantity)}`
+                                  : row.quantity !== undefined
+                                    ? number(row.quantity)
+                                    : '—'}{' '}
+                                {unit(row.unit)}
+                              </p>
+                              {row.partial && <strong>{mc.partial}</strong>}
+                            </td>
+                            <td>
+                              {row.minimumValueMinor !== undefined &&
+                              row.maximumValueMinor !== undefined
+                                ? `${money(row.minimumValueMinor)}${row.minimumValueMinor !== row.maximumValueMinor ? `–${money(row.maximumValueMinor)}` : ''}`
+                                : '—'}
+                              <p>
+                                {row.priceProvenance === 'manual'
+                                  ? mc.manual
+                                  : row.priceProvenance}
+                              </p>
+                              {row.unitPriceMinor !== undefined && (
+                                <p>
+                                  {mc.price}: {money(row.unitPriceMinor)}/
+                                  {unit(row.unit)}
+                                </p>
+                              )}
+                              {row.priceProvenance &&
+                                row.priceProvenance !== mc.manual &&
+                                row.priceProvenance !== 'manual' && (
+                                  <small>{mc.verify}</small>
+                                )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
+            ),
+          )}
+        </>
+      );
+    }
     case 'cost-estimate': {
       const money = (minor: number) =>
         new Intl.NumberFormat(locale, {

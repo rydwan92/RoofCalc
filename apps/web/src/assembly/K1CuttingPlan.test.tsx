@@ -124,14 +124,14 @@ describe('K1CuttingPlan catalogue-sourced commercial lengths', () => {
     );
   });
 
-  it('appends a pre-filled, source-labelled stock row on a catalogue pick', async () => {
+  it('replaces the initial empty stock with a source-labelled catalogue pick', async () => {
     renderK1();
     expect(screen.getAllByTestId('k1-stock-length')).toHaveLength(1);
     fireEvent.click(screen.getByTestId('k1-add-from-catalogue'));
     fireEvent.click(await screen.findByText('fake-apply'));
     const lengthInputs = screen.getAllByTestId('k1-stock-length');
-    expect(lengthInputs).toHaveLength(2);
-    expect((lengthInputs[1] as HTMLInputElement).value).toBe('4000');
+    expect(lengthInputs).toHaveLength(1);
+    expect((lengthInputs[0] as HTMLInputElement).value).toBe('4000');
     expect(screen.getByTestId('k1-stock-source').textContent).toBe(
       'Generic sawn timber (C24) · C24 45×145×4000 · 2026-09',
     );
@@ -144,7 +144,7 @@ describe('K1CuttingPlan catalogue-sourced commercial lengths', () => {
     fireEvent.click(await screen.findByText('fake-apply'));
     expect(screen.getByTestId('k1-stock-source')).toBeTruthy();
     const lengthInputs = screen.getAllByTestId('k1-stock-length');
-    fireEvent.change(lengthInputs[1]!, { target: { value: '3900' } });
+    fireEvent.change(lengthInputs[0]!, { target: { value: '3900' } });
     expect(screen.queryByTestId('k1-stock-source')).toBeNull();
   });
 });

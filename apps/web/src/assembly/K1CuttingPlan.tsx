@@ -18,6 +18,7 @@ import type { TimberStockCatalogPick } from '../catalog/TimberStockProductPicker
 import type { VariantPrice } from '../pricing/client';
 import { usePricesForVariants } from '../pricing/use-prices';
 import { MobileSheet } from './MobileSheet';
+import { materialCopy } from './material-copy';
 import {
   k1RequirementSignature,
   type K1CuttingRequirement,
@@ -38,6 +39,7 @@ type StockDraft = {
   length: string;
   availability: string;
   sourceLabel?: string;
+  commercialFacts?: string[];
   commercialVariantId?: string;
 };
 type Scenario = {
@@ -219,6 +221,21 @@ function MaterialCost({
                 locale,
               )}
             </span>
+            <small>
+              {[
+                line.price.ownerLabel,
+                line.price.entry.validFrom,
+                materialCopy(locale).net,
+                line.price.entry.sourceAmountBasis === 'gross'
+                  ? materialCopy(locale).gross
+                  : '',
+                line.price.entry.sourceVatRateBps !== undefined
+                  ? `VAT ${line.price.entry.sourceVatRateBps / 100}%`
+                  : line.price.taxContext,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </small>
           </li>
         ))}
       </ul>
@@ -485,7 +502,12 @@ export function K1CuttingPlan({
     for (const stock of scenario.stocks) {
       if (!stock.commercialVariantId) continue;
       const price = prices.get(stock.commercialVariantId);
-      if (price) map.set(`k1-stock-${stock.id}`, price);
+      if (
+        price?.entry.saleUnit === 'piece' &&
+        (price.entry.sourceAmountBasis !== 'gross' ||
+          price.entry.sourceVatRateBps !== undefined)
+      )
+        map.set(`k1-stock-${stock.id}`, price);
     }
     return map;
   }, [scenario.stocks, prices]);
@@ -518,7 +540,11 @@ export function K1CuttingPlan({
               ...stock,
               [field]: value,
               ...(field === 'length'
-                ? { sourceLabel: undefined, commercialVariantId: undefined }
+                ? {
+                    sourceLabel: undefined,
+                    commercialVariantId: undefined,
+                    commercialFacts: undefined,
+                  }
                 : {}),
             }
           : stock,
@@ -531,12 +557,13 @@ export function K1CuttingPlan({
     setScenario((current) => ({
       ...current,
       stocks: [
-        ...current.stocks,
+        ...current.stocks.filter((stock) => stock.length.trim() !== ''),
         {
           id: nextId,
           length: String(fromMillimetres(pick.lengthMm, scenario.unit)),
           availability: '',
           sourceLabel: pick.sourceLabel,
+          commercialFacts: pick.commercialFacts,
           commercialVariantId: pick.commercialVariantId,
         },
       ],

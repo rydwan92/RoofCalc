@@ -55,6 +55,7 @@ describe('GET /api/pricing/variants', () => {
           validFrom: '2026-09-01',
         },
         currencyCode: 'PLN',
+        ownerLabel: 'Test retailer',
       },
     ]);
   });
@@ -125,6 +126,7 @@ describe('GET /api/pricing/variants', () => {
           validFrom: '2026-09-15',
         },
         currencyCode: 'PLN',
+        ownerLabel: 'OBI.pl (retail, observed 2026-09)',
       },
     ]);
   });

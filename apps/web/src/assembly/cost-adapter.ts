@@ -120,7 +120,11 @@ const MM2_PER_M2 = 1_000_000;
 
 /** Groups K1 stock usages by commercial length. Never recomputes the plan. */
 function k1StockSuggestions(facts: ExportFacts): K1StockSuggestion[] {
-  if (facts.k1.status !== 'resolved' || !facts.cutting) return [];
+  if (
+    facts.k1.status !== 'resolved' ||
+    facts.cutting?.value.status !== 'complete'
+  )
+    return [];
   const section = facts.k1.blank.section;
   const counts = new Map<number, number>();
   for (const usage of facts.cutting.value.stockUsages)
@@ -251,7 +255,15 @@ function resolveConsumptionPrice(
 ): { unitPriceMinor: number; currencyCode: string } | undefined {
   if (!facts.variantPrices?.length) return undefined;
   const priceByVariantId = new Map(
-    facts.variantPrices.map((row) => [row.variantId, row]),
+    facts.variantPrices
+      .filter(
+        (row) =>
+          row.entry.saleUnit === 'piece' &&
+          facts.variantPrices!.filter(
+            (candidate) => candidate.variantId === row.variantId,
+          ).length === 1,
+      )
+      .map((row) => [row.variantId, row]),
   );
   const prices = [...assignmentIds].flatMap((assignmentId) => {
     const assignment = facts.coverings.find((row) => row.id === assignmentId);
@@ -266,7 +278,15 @@ function resolveConsumptionPrice(
         ]
       : [];
   });
-  if (!prices.length) return undefined;
+  if (!prices.length || prices.length !== assignmentIds.size) return undefined;
+  const variants = new Set(
+    [...assignmentIds].map(
+      (id) =>
+        facts.coverings.find((assignment) => assignment.id === id)?.product
+          .catalogRef?.variantId,
+    ),
+  );
+  if (variants.size !== 1 || variants.has(undefined)) return undefined;
   const first = prices[0]!;
   const allSame = prices.every(
     (price) =>

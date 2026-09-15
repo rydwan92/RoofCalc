@@ -192,6 +192,11 @@ describe('dual-mode parametric workbench', () => {
     fireEvent.click(screen.getByTestId('project-next-action'));
     expect(useAssembly.getState().workbench.viewPreset).toBe('covering');
     act(() => useAssembly.getState().setViewPreset('materials'));
+    fireEvent.click(
+      screen.getByText('Więcej ustawień', {
+        selector: '.mp-secondary-views summary',
+      }),
+    );
     fireEvent.click(screen.getByRole('tab', { name: 'Projekt' }));
     expect(screen.getByTestId('project-summary')).toBeTruthy();
     expect(useAssembly.getState().workbench.materialsView).toBe('summary');

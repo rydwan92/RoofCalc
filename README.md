@@ -25,6 +25,16 @@ wyboru z katalogu ani cen.
 
 Skopiuj `.env.example` do `.env` i wybierz jeden z dwóch wariantów:
 
+```powershell
+Copy-Item .env.example .env
+```
+
+API i wszystkie CLI bazy/importów automatycznie czytają rootowy `.env`.
+Zmienne ustawione w systemie lub terminalu mają pierwszeństwo. Produkcja i CI
+nie wymagają `.env`. Nie commituj pliku z hasłami.
+Polecenia uruchamiaj w osobnych liniach (również w PowerShell 5).
+`pnpm db:doctor` sprawdza połączenie, migracje, katalog i ceny bez ujawniania danych logowania.
+
 **Wariant A — kontener Docker (MariaDB, port 3307, nie koliduje z XAMPP):**
 
 ```bash
@@ -35,6 +45,11 @@ pnpm dev
 
 `pnpm dev:full` łączy oba ostatnie kroki. `pnpm db:down` zatrzymuje kontener
 (dane zostają w nazwanym wolumenie).
+
+`pnpm dev` wykrywa już działające CieślaCalc API i Vite, wykorzystuje je
+ponownie i uruchamia tylko brakujący serwer. Ponowne `pnpm dev:full` nie
+uruchamia drugiej kopii Vite na porcie 5173. Otwórz
+http://127.0.0.1:5173/#/calculators/common-rafter i odśwież kartę po starcie.
 
 **Wariant B — istniejąca lokalna baza (np. XAMPP MariaDB na porcie 3306):**
 
@@ -75,7 +90,7 @@ Wersje `common-rafter@1.0.0` i `@2.0.0` pozostają w rejestrze historycznym z te
 npx pnpm@10.15.1 build
 ```
 
-Po buildzie w tym układzie XAMPP otwórz http://localhost/projects/RoofCalc/apps/web/dist/#/calculators/common-rafter i odśwież stronę przez Ctrl+F5, aby pominąć cache. `index.php` przekierowuje do `apps/web/dist/`. Po zmianie kodu wykonaj build lub użyj serwera Vite. Apache wystarcza do lokalnych obliczeń; API działa osobno na porcie 3001.
+Po buildzie w tym układzie XAMPP otwórz http://localhost/RoofCalc/apps/web/dist/#/calculators/common-rafter i odśwież stronę przez Ctrl+F5, aby pominąć cache. `index.php` przekierowuje do `apps/web/dist/`. Po zmianie kodu wykonaj build lub użyj serwera Vite. Apache wystarcza do lokalnych obliczeń; API działa osobno na porcie 3001 (uruchom `pnpm dev` lub `pnpm start`). Lokalny build otwarty pod `localhost/.../apps/web/dist/` pobiera katalog i ceny z `http://127.0.0.1:3001/api`. API zezwala na odczyt z lokalnych adresów przeglądarki; projekty pozostają w pamięci lokalnej dotychczasowego adresu XAMPP. Vite i hosting Node nadal korzystają z `/api` na swoim adresie. Przy innym adresie API ustaw `VITE_API_BASE_URL` w `apps/web/.env.local` i wykonaj ponownie build.
 
 Na hostingu Node uruchom `npx pnpm@10.15.1 start`. Express serwuje frontend i `/api/health`. Dostępne zmienne: `PORT` (domyślnie 3001), `HOST` (127.0.0.1). Publicznym katalogiem jest `apps/web/dist`, nie całe repozytorium. `VITE_BRAND_NAME` w `apps/web/.env.local` ustawia nazwę przed buildem. HashRouter obsługuje podkatalogi.
 

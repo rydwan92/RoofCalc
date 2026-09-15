@@ -264,6 +264,10 @@ result. Nothing procurement produces is written into `RoofProjectDocumentV1`,
 
 ## 7. `ExecutionDocumentV1` — transient output contract
 
+V36 adds the renderer-neutral `material-list` section: categories, quantity
+bases, ranges, partial flags, limitations, metrics and selected price
+provenance. This remains transient; technical saved-project readers are unchanged.
+
 `ExecutionDocument` V1 (`packages/document-core/src/index.ts`) is a **transient,
 versioned output contract**, not a saved-project schema. It carries source
 project ID/name/created/updated timestamps, ProjectDocument schema version,
@@ -292,6 +296,12 @@ that can still load the old one.
 ---
 
 ## 9. `CostScenarioV1` — cost estimate sidecar (V34B)
+
+V36 adds optional `CostLine.priceProvenance` (manual/price-list source,
+display label, entry ID, opaque variant ID and sale unit). Previously saved
+sidecars still parse with this field absent. Accepted prices can be restored
+offline with their source; directly editing a unit price clears its catalogue
+reference and marks the price manual. Quantity ownership remains independent.
 
 | | |
 | --- | --- |

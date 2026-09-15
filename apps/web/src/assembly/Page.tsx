@@ -89,7 +89,12 @@ import { resolveWorkbenchSelectionContext } from './selection';
 import { createK1CuttingRequirement } from './k1-cutting-adapter';
 import { k1RequirementSignature } from './k1-cutting-adapter';
 import type { ExportFacts } from './export-adapter';
-import { usePricesForVariants } from '../pricing/use-prices';
+import { usePriceOptions } from '../pricing/use-prices';
+import {
+  createMaterialPlanRows,
+  materialScenarioPrices,
+  type MaterialPriceSelection,
+} from './material-plan';
 import { useCostScenario } from './use-cost-scenario';
 import type { DocumentSource } from '@cieslacalc/document-core';
 import type { K1SessionPlan } from './K1CuttingPlan';
@@ -161,6 +166,9 @@ const ExecutionExport = lazy(() =>
   import('./ExecutionExport').then((module) => ({
     default: module.ExecutionExport,
   })),
+);
+const MaterialPlan = lazy(() =>
+  import('./MaterialPlan').then((module) => ({ default: module.MaterialPlan })),
 );
 const CostWorkspace = lazy(() =>
   import('./CostWorkspace').then((module) => ({
@@ -248,6 +256,10 @@ function AssemblyPageContent() {
     (typeof allDetailPreviews)[number] | undefined
   >();
   const [cuttingOpen, setCuttingOpen] = useState(false);
+  const [materialPrices, setMaterialPrices] = useState<
+    Record<string, MaterialPriceSelection>
+  >({});
+  useEffect(() => setMaterialPrices({}), [projectSessionState.active?.id]);
   const [currentCuttingPlan, setCurrentCuttingPlan] = useState<{
     projectId: string;
     plan: K1SessionPlan;
@@ -454,11 +466,15 @@ function AssemblyPageContent() {
       }),
     [coveringAssignments],
   );
-  const variantPricesById = usePricesForVariants(coveringVariantIds);
-  const variantPrices = useMemo(
-    () => [...variantPricesById.values()],
-    [variantPricesById],
-  );
+  const variantPrices = usePriceOptions([
+    ...coveringVariantIds,
+    ...(currentCuttingPlan?.plan.scenario.stocks.flatMap((stock) =>
+      stock.commercialVariantId ? [stock.commercialVariantId] : [],
+    ) ?? []),
+    ...(membraneProduct?.catalogRef?.variantId
+      ? [membraneProduct.catalogRef.variantId]
+      : []),
+  ]);
   const effectiveBattenLayout = useMemo(
     () =>
       battenLayout ?? {
@@ -780,6 +796,48 @@ function AssemblyPageContent() {
   useEffect(() => {
     if (k1Requirement.status !== 'resolved') setCuttingOpen(false);
   }, [k1Requirement.status]);
+  const materialFacts: ExportFacts = {
+    source: {
+      projectId: projectSessionState.active?.id ?? 'unsaved',
+      projectName: projectSessionState.active?.name ?? brand,
+      projectCreatedAt: projectSessionState.active?.createdAt ?? '',
+      projectUpdatedAt: projectSessionState.active?.updatedAt ?? '',
+      projectSchemaVersion: state.projectDocument.schemaVersion,
+    },
+    template: state.template,
+    resolved: templateResult,
+    skeleton: framingProjection.composedSkeleton,
+    surface: surfaceProjection,
+    windows: roofWindows,
+    schedule: memberSchedule,
+    details: allDetailPreviews,
+    k1: k1Requirement,
+    cutting: activeCuttingPlan,
+    membraneEnabled: !!membrane?.enabled,
+    membraneProduct,
+    counterBattensEnabled: !!counterBattens?.enabled,
+    battensEnabled: !!battenLayout?.enabled,
+    battens: battenProjection,
+    battenAutoSource: battenAutoComposition.source,
+    battenInstallationDecision,
+    counterBattens: counterBattenProjection,
+    coverings: coveringAssignments,
+    coveringStatuses: resolvedCoveringLayouts.map((layout) => ({
+      assignmentId: layout.assignmentId,
+      status: layout.status,
+      warnings: [...layout.issueCodes],
+    })),
+    coveringLayouts: resolvedCoveringLayouts,
+    variantPrices,
+    cost: costScenario,
+  };
+  const effectiveMaterialPrices = {
+    ...materialScenarioPrices(
+      costScenario,
+      createMaterialPlanRows(materialFacts, membraneProduct),
+    ),
+    ...materialPrices,
+  };
   const projectWorkflowFacts = useMemo(
     () => ({
       constructionReady:
@@ -1172,6 +1230,7 @@ function AssemblyPageContent() {
       setProjectStartMode((current) => current ?? 'new');
     }
   }, [
+    projectSession,
     projectSessionState.freshProject,
     projectSessionState.initialized,
     workbench.mode,
@@ -1721,8 +1780,29 @@ function AssemblyPageContent() {
                       role="tablist"
                       aria-label={t('assembly.materialWorkspaceView')}
                     >
-                      {(['summary', 'schedule', 'drawing'] as const).map(
-                        (view) => (
+                      {(['plan'] as const).map((view) => (
+                        <button
+                          key={view}
+                          role="tab"
+                          aria-selected={workbench.materialsView === view}
+                          onClick={() => state.setMaterialsView(view)}
+                        >
+                          {t(`assembly.${view}MaterialView`)}
+                        </button>
+                      ))}
+                      <button onClick={openCutting}>
+                        {t('assembly.k1Cutting.title')}
+                      </button>
+                      <button
+                        role="tab"
+                        aria-selected={workbench.materialsView === 'schedule'}
+                        onClick={() => state.setMaterialsView('schedule')}
+                      >
+                        {t('assembly.scheduleMaterialView')}
+                      </button>
+                      <details className="mp-secondary-views">
+                        <summary>{t('assembly.materialDetailViews')}</summary>
+                        {(['summary', 'drawing'] as const).map((view) => (
                           <button
                             key={view}
                             role="tab"
@@ -1731,8 +1811,26 @@ function AssemblyPageContent() {
                           >
                             {t(`assembly.${view}MaterialView`)}
                           </button>
-                        ),
-                      )}
+                        ))}
+                      </details>
+                    </div>
+                    <div data-material-surface="plan">
+                      <Suspense fallback={<div className="a-loading-panel" />}>
+                        <MaterialPlan
+                          key={projectSessionState.active?.id ?? 'unsaved'}
+                          facts={materialFacts}
+                          membrane={membraneProduct}
+                          scenario={costScenario}
+                          prices={effectiveMaterialPrices}
+                          onPricesChange={setMaterialPrices}
+                          onScenarioChange={setCostScenario}
+                          onOpenCutting={openCutting}
+                          onOpenLayers={() => state.setViewPreset('layers')}
+                          onOpenCovering={() => state.setViewPreset('covering')}
+                          onOpenCosting={() => state.setViewPreset('costing')}
+                          onOpenExport={openExecutionExport}
+                        />
+                      </Suspense>
                     </div>
                     <div data-material-surface="summary">
                       <ProjectSummary
@@ -1934,6 +2032,12 @@ function AssemblyPageContent() {
                       coveringLayouts: resolvedCoveringLayouts,
                       variantPrices,
                       cost: costScenario,
+                      membraneProduct,
+                      materialRows: createMaterialPlanRows(
+                        materialFacts,
+                        membraneProduct,
+                      ),
+                      materialPrices: effectiveMaterialPrices,
                     } satisfies ExportFacts
                   }
                   unit={state.unit}

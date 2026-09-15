@@ -12,6 +12,26 @@ export function createApp(
 ) {
   const app = express();
   app.disable('x-powered-by');
+  // Local Apache builds keep their own origin and local project storage.
+  // Only browser GET/HEAD requests from explicit loopback origins may read API.
+  app.use('/api', (req, res, next) => {
+    res.vary('Origin');
+    const origin = req.get('Origin');
+    if (origin && (req.method === 'GET' || req.method === 'HEAD')) {
+      try {
+        const url = new URL(origin);
+        if (
+          url.origin === origin &&
+          ['http:', 'https:'].includes(url.protocol) &&
+          ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)
+        )
+          res.setHeader('Access-Control-Allow-Origin', origin);
+      } catch {
+        /* An invalid origin receives no CORS permission. */
+      }
+    }
+    next();
+  });
   app.get('/api/health', (_req, res) => {
     const response: HealthResponse = {
       status: 'ok',

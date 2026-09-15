@@ -10,6 +10,8 @@ import { useTranslation } from 'react-i18next';
 import { MobileSheet } from '../assembly/MobileSheet';
 import { useMobileWorkbench } from '../assembly/mobile-workbench';
 import { catalogClient, type CatalogClient } from './client';
+import { usePriceOptions } from '../pricing/use-prices';
+import { materialCopy } from '../assembly/material-copy';
 
 /**
  * One length picked from the timber-stock catalogue, ready to pre-fill a
@@ -23,6 +25,7 @@ export interface TimberStockCatalogPick {
   widthMm: number;
   depthMm: number;
   sourceLabel: string;
+  commercialFacts?: string[];
   /**
    * Set only when the product has exactly one commercial variant — timber
    * items are seeded with either zero or one, never a color/finish choice
@@ -151,6 +154,55 @@ function matchesSection(
   return widthMm === section.widthMm && depthMm === section.depthMm;
 }
 
+function TimberCardOffers({
+  productId,
+  client,
+  locale,
+}: {
+  productId: string;
+  client: CatalogClient;
+  locale: string;
+}) {
+  const m = materialCopy(locale);
+  const detail = useQuery({
+    queryKey: ['catalog', 'product', productId],
+    queryFn: ({ signal }) => client.getProduct(productId, signal),
+    staleTime: 60_000,
+  });
+  const prices = usePriceOptions(
+    detail.data?.variants.map((variant) => variant.id) ?? [],
+  );
+  return (
+    <>
+      {prices
+        .filter(
+          (price) =>
+            price.entry.saleUnit === 'piece' &&
+            (price.entry.sourceAmountBasis !== 'gross' ||
+              price.entry.sourceVatRateBps !== undefined),
+        )
+        .map((price) => (
+          <p key={price.entry.id}>
+            <strong>
+              {new Intl.NumberFormat(locale, {
+                style: 'currency',
+                currency: price.currencyCode,
+              }).format(price.entry.netAmountMinor / 100)}{' '}
+              / {locale.startsWith('pl') ? 'szt.' : 'piece'} · {m.net}
+            </strong>
+            <small>
+              {price.ownerLabel} · {price.entry.validFrom}{' '}
+              {price.entry.sourceVatRateBps !== undefined
+                ? ` · VAT ${price.entry.sourceVatRateBps / 100}%`
+                : price.taxContext}
+            </small>
+            <small>{m.verify}</small>
+          </p>
+        ))}
+    </>
+  );
+}
+
 function PickerBody({
   client,
   requiredSection,
@@ -247,6 +299,9 @@ function PickerBody({
           exact.product.name,
           exact.revision.revisionCode,
         ].join(' · '),
+        commercialFacts: facts(spec, m).map(
+          ([label, value]) => `${label}: ${value}`,
+        ),
         commercialVariantId:
           item.variants.length === 1 ? item.variants[0]!.id : undefined,
       });
@@ -396,6 +451,11 @@ function PickerBody({
                   </div>
                 )}
               </dl>
+              <TimberCardOffers
+                productId={product.id}
+                client={client}
+                locale={i18n.language}
+              />
               <button
                 className="a-button"
                 onClick={() => setProductId(product.id)}

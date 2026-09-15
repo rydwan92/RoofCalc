@@ -1,3 +1,4 @@
+import './apps/api/src/environment';
 import { defineConfig } from 'drizzle-kit';
 
 export default defineConfig({

@@ -211,6 +211,12 @@ describe('timber stock catalogue picker', () => {
       lengthMm: 4000,
       widthMm: 45,
       depthMm: 145,
+      commercialFacts: [
+        'Szerokość przekroju: 45 mm',
+        'Wysokość przekroju: 145 mm',
+        'Długość: 4000 mm',
+        'Klasa wytrzymałości: C24',
+      ],
       sourceLabel: 'Generic sawn timber (C24) · C24 45×145×4000 · 2026-09',
       commercialVariantId: 'variant:timber:c24-45x145x4000:standard',
     });

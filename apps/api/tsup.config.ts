@@ -8,6 +8,7 @@ export default defineConfig({
     'src/cli/wait-for-db.ts',
     'src/cli/seed-all.ts',
     'src/cli/smoke-check.ts',
+    'src/cli/doctor.ts',
   ],
   format: ['esm'],
   platform: 'node',

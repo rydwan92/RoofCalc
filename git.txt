@@ -11,3 +11,13 @@ cd C:\xampp\htdocs\RoofCalc
 git fetch origin
 git pull --ff-only origin main
 git status
+
+
+
+# Wariant A — Docker (nowy)
+pnpm db:up && pnpm db:bootstrap && pnpm dev
+# albo jedną komendą:
+pnpm dev:full
+
+# Wariant B — istniejący XAMPP (port 3306, ustaw DATABASE_URL w .env)
+pnpm db:bootstrap && pnpm dev

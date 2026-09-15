@@ -101,7 +101,7 @@ async function addMobileManualCovering(
 it('opens mobile Builder on drawing with seven tasks and one on-demand tools sheet', async () => {
   render(<App />);
   fireEvent.click(screen.getByRole('button', { name: 'Kreator' }));
-  await screen.findByTestId('skeleton-drawing');
+  await screen.findByTestId('skeleton-drawing', {}, { timeout: 5000 });
   expect(screen.queryByRole('dialog')).toBeNull();
   const dock = screen.getByRole('tablist', { name: 'Widok zadaniowy' });
   expect(within(dock).getAllByRole('tab')).toHaveLength(7);

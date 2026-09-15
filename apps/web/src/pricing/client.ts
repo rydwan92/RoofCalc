@@ -3,6 +3,7 @@ import {
   type PriceListEntry,
 } from '@cieslacalc/pricing-core';
 import { z } from 'zod';
+import { resolveApiBaseUrl } from '../api-base';
 
 const pricingVariantsResponseSchema = z.object({
   items: z.array(
@@ -10,6 +11,8 @@ const pricingVariantsResponseSchema = z.object({
       variantId: z.string(),
       entry: priceListEntrySchema,
       currencyCode: z.string(),
+      ownerLabel: z.string().optional(),
+      taxContext: z.string().optional(),
     }),
   ),
 });
@@ -24,6 +27,8 @@ export interface VariantPrice {
   variantId: string;
   entry: PriceListEntry;
   currencyCode: string;
+  ownerLabel?: string;
+  taxContext?: string;
 }
 
 export interface PricingClient {
@@ -34,7 +39,7 @@ export interface PricingClient {
 }
 
 export class HttpPricingClient implements PricingClient {
-  constructor(private readonly baseUrl = '/api/pricing') {}
+  constructor(private readonly baseUrl = `${resolveApiBaseUrl()}/pricing`) {}
 
   async pricesForVariants(variantIds: string[], signal?: AbortSignal) {
     if (!variantIds.length) return [];

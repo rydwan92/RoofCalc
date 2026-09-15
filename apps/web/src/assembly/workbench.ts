@@ -61,7 +61,7 @@ export const WORKBENCH_PERSPECTIVES: readonly WorkbenchPerspective[] = [
 ];
 export type BuildUpView =
   'overview' | 'membrane' | 'counterBattens' | 'battens';
-export type MaterialsView = 'summary' | 'schedule' | 'drawing';
+export type MaterialsView = 'plan' | 'summary' | 'schedule' | 'drawing';
 export type MobilePanel = 'none' | 'tools' | 'inspector' | 'view';
 export type DimensionLevel = 'minimal' | 'working' | 'full';
 export type DetailDockMode = 'collapsed' | 'working' | 'focus';
@@ -186,7 +186,7 @@ export const initialWorkbenchViewState: WorkbenchViewState = {
   canvasView: 'skeleton',
   viewPreset: 'construction',
   buildUpView: 'overview',
-  materialsView: 'schedule',
+  materialsView: 'plan',
   mobilePanel: 'none',
   returnViewPreset: undefined,
   isolateSelection: false,

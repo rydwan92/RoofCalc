@@ -8,7 +8,7 @@ import { pricingClient, type PricingClient, type VariantPrice } from './client';
  * price may pre-fill a cost line (`docs/ARCHITECTURE_V34C_MATERIAL_
  * TRUTHFULNESS_AND_CATALOGUE.md`).
  */
-export function usePricesForVariants(
+export function usePriceOptions(
   variantIds: readonly string[],
   client: PricingClient = pricingClient,
 ) {
@@ -19,8 +19,21 @@ export function usePricesForVariants(
     enabled: sortedIds.length > 0,
     staleTime: 60_000,
   });
-  const byVariantId = new Map<string, VariantPrice>(
-    (query.data ?? []).map((row) => [row.variantId, row]),
-  );
+  return query.data ?? [];
+}
+
+export function usePricesForVariants(
+  variantIds: readonly string[],
+  client: PricingClient = pricingClient,
+) {
+  const options = usePriceOptions(variantIds, client);
+  const byVariantId = new Map<string, VariantPrice>();
+  for (const row of options) {
+    if (
+      options.filter((candidate) => candidate.variantId === row.variantId)
+        .length === 1
+    )
+      byVariantId.set(row.variantId, row);
+  }
   return byVariantId;
 }

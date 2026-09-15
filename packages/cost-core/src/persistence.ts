@@ -50,6 +50,15 @@ const costLineV1Schema = z.object({
   included: z.boolean(),
   noteKeys: z.array(z.string()).default([]),
   projectQuantityValue: z.number().finite().min(0).optional(),
+  priceProvenance: z
+    .object({
+      source: z.enum(['manual', 'price-list']),
+      label: z.string().optional(),
+      entryId: nonBlank.optional(),
+      variantId: nonBlank.optional(),
+      saleUnit: quantityUnitSchema.optional(),
+    })
+    .optional(),
 });
 
 /** Sidecar persistence boundary (§13): never inside `RoofProjectDocumentV1`. */
