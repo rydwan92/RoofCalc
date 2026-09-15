@@ -19,6 +19,7 @@ const BASIS_LABEL: Record<CostQuantityBasis, string> = {
   'fabrication-requirement': 'Wymóg przygotowania',
   'geometric-length': 'Geometria',
   'net-area': 'Powierzchnia netto',
+  'gross-area': 'Powierzchnia brutto (z zakładami)',
   'effective-coverage': 'Pozycje krycia',
   manual: 'Ręcznie',
 };

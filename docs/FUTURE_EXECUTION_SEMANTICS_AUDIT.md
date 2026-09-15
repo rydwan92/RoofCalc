@@ -80,8 +80,12 @@ There is no safe universal `overlapMm`, `installationAllowanceMm`,
 Current tile/fixed-sheet positions and panel runs are effective-coverage
 geometry. Their warnings correctly state that they are not order quantities,
 but `full`, `cut`, `sheet`, or `piece` labels can still look commercial when
-shown without that context. Membrane is net geometric area only. Timber schedule
-axis lengths are takeoff geometry, not universal fabrication blanks.
+shown without that context. Membrane is net geometric area only when no roll
+product is set; V34C added an opt-in gross (overlap-inclusive) course basis
+once one is — still not an order quantity (see
+`docs/domain/EXECUTION_SEMANTICS_MATRIX.md` roadmap item 4 for what shipped
+and what remains deferred). Timber schedule axis lengths are takeoff
+geometry, not universal fabrication blanks.
 
 Future product snapshots should preserve versioned physical/effective facts,
 applicability conditions, and permitted installation rules so saved projects do

@@ -14,6 +14,10 @@ const presentation = {
     layer: 'geometry',
     title: 'netGeometric',
   },
+  'gross-installed': {
+    layer: 'geometry',
+    title: 'grossInstalled',
+  },
   'effective-coverage-position': {
     layer: 'effectiveCoverage',
     title: 'effectiveCoveragePosition',

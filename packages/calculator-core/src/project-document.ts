@@ -1,7 +1,9 @@
 import { z } from 'zod';
 import {
   coveringAssignmentSpecSchema,
+  membraneTechnicalSpecSchema,
   type CoveringAssignmentSpec,
+  type MembraneTechnicalSpec,
 } from '@cieslacalc/covering-core';
 import { roofTemplateSchema } from '@cieslacalc/roof-math';
 import type {
@@ -69,6 +71,13 @@ export interface RoofProjectDocumentV1 {
     openingFraming: RoofOpeningFramingSpec[];
     buildUp: RoofBuildUp;
     coverings: CoveringAssignmentSpec[];
+    /**
+     * The single roll product used across every plane `buildUp.membrane`
+     * assigns, same shape as V21's `coverings.product.technicalSpecSnapshot`.
+     * Additive: absent on every pre-V34C project, which keeps today's
+     * net-area-only membrane behaviour exactly as it was.
+     */
+    membraneProduct?: MembraneTechnicalSpec;
   };
 }
 
@@ -81,6 +90,7 @@ export const roofProjectDocumentV1Schema = z
       openingFraming: z.array(roofOpeningFramingSchema).optional(),
       buildUp: roofBuildUpSchema.optional(),
       coverings: z.array(coveringAssignmentSpecSchema).optional(),
+      membraneProduct: membraneTechnicalSpecSchema.optional(),
     }),
   })
   .transform((document): RoofProjectDocumentV1 => ({
@@ -91,6 +101,7 @@ export const roofProjectDocumentV1Schema = z
       openingFraming: document.project.openingFraming ?? [],
       buildUp: document.project.buildUp ?? {},
       coverings: document.project.coverings ?? [],
+      membraneProduct: document.project.membraneProduct,
     },
   }));
 
@@ -99,7 +110,11 @@ export function createRoofProjectDocument(
   composition: Partial<
     Pick<
       RoofProjectDocumentV1['project'],
-      'features' | 'openingFraming' | 'buildUp' | 'coverings'
+      | 'features'
+      | 'openingFraming'
+      | 'buildUp'
+      | 'coverings'
+      | 'membraneProduct'
     >
   > = {},
 ): RoofProjectDocumentV1 {
@@ -111,6 +126,7 @@ export function createRoofProjectDocument(
       openingFraming: composition.openingFraming ?? [],
       buildUp: composition.buildUp ?? {},
       coverings: composition.coverings ?? [],
+      membraneProduct: composition.membraneProduct,
     },
   });
 }

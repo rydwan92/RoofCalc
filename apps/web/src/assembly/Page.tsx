@@ -53,6 +53,7 @@ import {
   resolveOpeningFramingSet,
   resolveBattenLayout,
   resolveCounterBattenLayout,
+  resolveMembraneLayout,
   resolveRoofFeatureCollisions,
   resolveRoofSurfaceGeometry,
 } from '@cieslacalc/roof-math';
@@ -377,6 +378,7 @@ function AssemblyPageContent() {
   );
   const battenLayout = state.projectDocument.project.buildUp.battenLayout;
   const membrane = state.projectDocument.project.buildUp.membrane;
+  const membraneProduct = state.projectDocument.project.membraneProduct;
   const counterBattens = state.projectDocument.project.buildUp.counterBattens;
   const surfaceProjection = useMemo(
     () =>
@@ -395,6 +397,27 @@ function AssemblyPageContent() {
         )
         .reduce((sum, plane) => sum + plane.netAreaMm2, 0)
     : 0;
+  const membraneCourseLayout = useMemo(
+    () =>
+      membrane?.enabled && membraneProduct
+        ? resolveMembraneLayout({
+            template: state.template,
+            layout: membrane,
+            product: {
+              rollWidthMm: membraneProduct.rollWidthMm,
+              rollLengthMm: membraneProduct.rollLengthMm,
+              minimumOverlapMm: membraneProduct.minimumOverlapMm,
+            },
+            features: state.projectDocument.project.features,
+          })
+        : undefined,
+    [
+      membrane,
+      membraneProduct,
+      state.projectDocument.project.features,
+      state.template,
+    ],
+  );
   const counterBattenProjection = useMemo(
     () =>
       resolveCounterBattenLayout({
@@ -691,15 +714,40 @@ function AssemblyPageContent() {
                   membrane.roofPlaneIds === undefined ||
                   membrane.roofPlaneIds.includes(plane.roofPlaneId),
               )
-              .map((plane) => ({
-                id: `surface:${plane.roofPlaneId}`,
-                familyKey: 'MEM',
-                memberKind: 'membrane' as const,
-                semantic: 'net-geometric' as const,
-                roofPlaneId: plane.roofPlaneId,
-                areaMm2: plane.netAreaMm2,
-                warningKeys: plane.issues.map((issue) => issue.code),
-              }))
+              .map((plane) => {
+                const course = membraneCourseLayout?.planes.find(
+                  (row) =>
+                    row.roofPlaneId === plane.roofPlaneId &&
+                    row.status === 'resolved',
+                );
+                const warningKeys = [
+                  ...plane.issues.map((issue) => issue.code),
+                  ...(course?.tapers ? ['hip-course-width-approximated'] : []),
+                  ...(course?.hasOpenings ? ['openings-not-subtracted'] : []),
+                ];
+                return course
+                  ? {
+                      id: `surface:${plane.roofPlaneId}`,
+                      familyKey: 'MEM',
+                      memberKind: 'membrane' as const,
+                      semantic: 'gross-installed' as const,
+                      roofPlaneId: plane.roofPlaneId,
+                      areaMm2: plane.netAreaMm2,
+                      grossAreaMm2: course.grossAreaMm2,
+                      courseCount: course.courseCount,
+                      rollCount: course.rollCount,
+                      warningKeys,
+                    }
+                  : {
+                      id: `surface:${plane.roofPlaneId}`,
+                      familyKey: 'MEM',
+                      memberKind: 'membrane' as const,
+                      semantic: 'net-geometric' as const,
+                      roofPlaneId: plane.roofPlaneId,
+                      areaMm2: plane.netAreaMm2,
+                      warningKeys,
+                    };
+              })
           : [],
         covering: coveringQuantitySources,
       }),
@@ -711,6 +759,7 @@ function AssemblyPageContent() {
       coveringQuantitySources,
       framingProjection.composedSkeleton,
       membrane,
+      membraneCourseLayout,
       state.template.ridge.id,
       state.template.ridge.depthMm,
       state.template.ridge.thicknessMm,

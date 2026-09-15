@@ -548,6 +548,7 @@ export const assemblyPl = {
       axisGeometric: 'Oś elementu',
       resolvedVisible: 'Widoczna długość',
       netGeometric: 'Powierzchnia netto połaci',
+      grossInstalled: 'Powierzchnia brutto (z zakładami)',
       effectiveCoveragePosition: 'Pozycje krycia',
       geometricPanelRun: 'Przebiegi geometryczne',
     },
@@ -558,6 +559,8 @@ export const assemblyPl = {
         'Długość widoczna po przycięciu do połaci i otworów. Nie zawiera zapasu, łączeń ani długości handlowych.',
       netGeometric:
         'Pole połaci po odjęciu otworów. Nie zawiera zakładów, wywinięć, rozkładu rolek ani zapasu.',
+      grossInstalled:
+        'Liczba rzędów membrany × szerokość rolki × szerokość połaci przy okapie. Zakład już uwzględniony, ale szerokość na połaciach kalenicowych (koszowych) jest zawyżona, a otwory dachowe nie są odejmowane.',
       effectiveCoveragePosition:
         'Pozycje siatki opartej na efektywnych wymiarach krycia. Nie są potwierdzonymi sztukami fizycznymi ani ilością do zamówienia.',
       geometricPanelRun:
@@ -817,6 +820,16 @@ export const assemblyPl = {
   netGeometricArea: 'Powierzchnia netto geometryczna',
   membraneBoundaryNote:
     'Powierzchnia geometryczna nie uwzględnia zakładów, wywinięć, zapasu ani wymagań producenta.',
+  membraneProduct: 'Produkt (rolka membrany)',
+  rollWidth: 'Szerokość rolki',
+  rollLength: 'Długość rolki',
+  minimumOverlap: 'Minimalny zakład',
+  removeMembraneProduct: 'Usuń produkt',
+  addMembraneProduct: 'Dodaj produkt',
+  membraneProductInvalid:
+    'Podaj dodatnie wartości; zakład musi być mniejszy od szerokości rolki.',
+  membraneProductNote:
+    'Wprowadzenie ręczne, bez katalogu. Po ustawieniu ilość membrany liczona jest z rzędów rolki (z zakładem), nie z powierzchni netto. Szerokość rzędu przyjmuje szerokość przy okapie — na połaciach koszowych jest to zawyżenie; otwory dachowe nie są odejmowane.',
   axisSegmentCount: 'Liczba osi / odcinków',
   segments: 'Odcinki',
   counterBattenLimited:
@@ -1238,6 +1251,7 @@ export const assemblyPl = {
       'fabrication-requirement': 'Wymóg przygotowania',
       'geometric-length': 'Geometria',
       'net-area': 'Powierzchnia netto',
+      'gross-area': 'Powierzchnia brutto (z zakładami)',
       'effective-coverage': 'Pozycje krycia',
       manual: 'Ręcznie',
     },
@@ -1263,6 +1277,12 @@ export const assemblyPl = {
       'declared-consumption-not-a-resolved-purchase-count':
         'Zużycie deklarowane przez producenta — bez odpadu, docinek i zakładek na krawędziach.',
       'price-from-catalogue': 'Cena z cennika — sprawdź, zanim zamówisz.',
+      'gross-area-no-roll-reuse':
+        'Powierzchnia brutto z zakładami — bez optymalizacji cięcia i wykorzystania resztek rolki.',
+      'hip-course-width-approximated':
+        'Szerokość rzędów membrany przyjęta z okapu — zawyżona na połaciach koszowych.',
+      'openings-not-subtracted':
+        'Otwory dachowe nie są odejmowane od powierzchni membrany.',
     },
     item: 'Pozycja',
     basisHeader: 'Podstawa',
@@ -1844,6 +1864,7 @@ export const assemblyEn: typeof assemblyPl = {
       axisGeometric: 'Member axis',
       resolvedVisible: 'Visible length',
       netGeometric: 'Net roof-plane area',
+      grossInstalled: 'Gross area (laps included)',
       effectiveCoveragePosition: 'Coverage positions',
       geometricPanelRun: 'Geometric runs',
     },
@@ -1854,6 +1875,8 @@ export const assemblyEn: typeof assemblyPl = {
         'Visible length clipped to roof planes and openings. It includes no allowance, joint or commercial stock length.',
       netGeometric:
         'Roof-plane area after opening deduction. It includes no laps, upstands, roll layout or allowance.',
+      grossInstalled:
+        'Membrane course count × roll width × the eave-width of each plane. The lap is already included, but the width is over-estimated on hip planes and roof windows are not subtracted.',
       effectiveCoveragePosition:
         'Grid positions based on effective covering dimensions. They are not confirmed physical pieces or an order quantity.',
       geometricPanelRun:
@@ -2110,6 +2133,16 @@ export const assemblyEn: typeof assemblyPl = {
   netGeometricArea: 'Net geometric area',
   membraneBoundaryNote:
     'Geometric area excludes laps, upstands, allowance, waste, and manufacturer requirements.',
+  membraneProduct: 'Product (membrane roll)',
+  rollWidth: 'Roll width',
+  rollLength: 'Roll length',
+  minimumOverlap: 'Minimum overlap',
+  removeMembraneProduct: 'Remove product',
+  addMembraneProduct: 'Add product',
+  membraneProductInvalid:
+    'Enter positive values; the overlap must be smaller than the roll width.',
+  membraneProductNote:
+    'Manual entry, no catalogue. Once set, membrane quantity is computed from roll courses (laps included), not net area. Course width uses the eave width — over-estimated on hip planes; roof windows are not subtracted.',
   axisSegmentCount: 'Axis / segment count',
   segments: 'Segments',
   counterBattenLimited:
@@ -2533,6 +2566,7 @@ export const assemblyEn: typeof assemblyPl = {
       'fabrication-requirement': 'Fabrication requirement',
       'geometric-length': 'Geometry',
       'net-area': 'Net area',
+      'gross-area': 'Gross area (laps included)',
       'effective-coverage': 'Coverage positions',
       manual: 'Manual',
     },
@@ -2560,6 +2594,12 @@ export const assemblyEn: typeof assemblyPl = {
         'Manufacturer-declared consumption — excludes waste, cutting and edge laps.',
       'price-from-catalogue':
         'Price from the catalogue — verify before ordering.',
+      'gross-area-no-roll-reuse':
+        'Gross area with laps included — excludes cutting optimisation and roll offcut reuse.',
+      'hip-course-width-approximated':
+        'Membrane course width taken from the eave — over-estimated on hip planes.',
+      'openings-not-subtracted':
+        'Roof windows are not subtracted from the membrane area.',
     },
     item: 'Item',
     basisHeader: 'Basis',

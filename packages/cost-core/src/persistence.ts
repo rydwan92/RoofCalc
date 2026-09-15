@@ -20,6 +20,7 @@ const quantityBasisSchema = z.enum([
   'fabrication-requirement',
   'geometric-length',
   'net-area',
+  'gross-area',
   'effective-coverage',
   'manual',
 ]);

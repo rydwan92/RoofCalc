@@ -62,7 +62,9 @@ every contributing tile assignment resolves to the exact same priced
 variant — a mismatch leaves the price blank rather than blending two
 different products' prices into one number. The first real price list
 (`price-list:rabatplus-retail-2026-09`) is a dated, cited retail snapshot,
-not a live feed — there is no automatic price refresh or scraping.
+not a live feed — there is no automatic price refresh or scraping. See
+`docs/ARCHITECTURE_V34C_MATERIAL_TRUTHFULNESS_AND_CATALOGUE.md` for the full
+V34C change, including the membrane course-fit engine.
 
 ## Compatibility is not structural approval
 

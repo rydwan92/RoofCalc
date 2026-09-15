@@ -537,4 +537,75 @@ describe('quantity-core geometric member schedule', () => {
     ]);
     expect(report.surfaceBuildUpSummary.areaMm2).toBe(160_700_000);
   });
+
+  it('exposes gross membrane totals only when every contributing plane resolves a roll product', () => {
+    const report = createRoofMemberSchedule({
+      skeleton: skeleton([]),
+      surfaceBuildUp: [
+        {
+          id: 'surface:roof-plane:left',
+          familyKey: 'MEM',
+          memberKind: 'membrane',
+          semantic: 'gross-installed',
+          roofPlaneId: 'roof-plane:left',
+          areaMm2: 81_200_000,
+          grossAreaMm2: 90_000_000,
+          courseCount: 8,
+          rollCount: 2,
+        },
+        {
+          id: 'surface:roof-plane:right',
+          familyKey: 'MEM',
+          memberKind: 'membrane',
+          semantic: 'gross-installed',
+          roofPlaneId: 'roof-plane:right',
+          areaMm2: 79_500_000,
+          grossAreaMm2: 88_000_000,
+          courseCount: 8,
+          rollCount: 2,
+        },
+      ],
+    });
+    expect(report.surfaceBuildUpRows).toEqual([
+      expect.objectContaining({
+        semantic: 'gross-installed',
+        areaMm2: 160_700_000,
+        grossAreaMm2: 178_000_000,
+        courseCount: 16,
+        rollCount: 4,
+      }),
+    ]);
+  });
+
+  it('never blends a partial gross total when only some planes resolve a product', () => {
+    const report = createRoofMemberSchedule({
+      skeleton: skeleton([]),
+      surfaceBuildUp: [
+        {
+          id: 'surface:roof-plane:left',
+          familyKey: 'MEM',
+          memberKind: 'membrane',
+          semantic: 'gross-installed',
+          roofPlaneId: 'roof-plane:left',
+          areaMm2: 81_200_000,
+          grossAreaMm2: 90_000_000,
+          courseCount: 8,
+          rollCount: 2,
+        },
+        {
+          id: 'surface:roof-plane:right',
+          familyKey: 'MEM',
+          memberKind: 'membrane',
+          semantic: 'net-geometric',
+          roofPlaneId: 'roof-plane:right',
+          areaMm2: 79_500_000,
+        },
+      ],
+    });
+    const [row] = report.surfaceBuildUpRows;
+    expect(row!.semantic).toBe('net-geometric');
+    expect(row!.grossAreaMm2).toBeUndefined();
+    expect(row!.courseCount).toBeUndefined();
+    expect(row!.rollCount).toBeUndefined();
+  });
 });

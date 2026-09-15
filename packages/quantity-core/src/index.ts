@@ -14,6 +14,7 @@ export type QuantityLengthBasis = 'axis-geometric' | 'resolved-visible';
 export type QuantitySemanticKind =
   | QuantityLengthBasis
   | 'net-geometric'
+  | 'gross-installed'
   | 'effective-coverage-position'
   | 'geometric-panel-run';
 export type RequirementReadiness =
@@ -43,10 +44,14 @@ export interface SurfaceBuildUpSource {
   id: string;
   familyKey: string;
   memberKind: 'membrane';
-  semantic: 'net-geometric';
+  semantic: 'net-geometric' | 'gross-installed';
   areaMm2: number;
   roofPlaneId?: string;
   warningKeys?: string[];
+  /** Present only when `semantic` is `'gross-installed'` (a roll product is set). */
+  grossAreaMm2?: number;
+  courseCount?: number;
+  rollCount?: number;
 }
 
 export type CoveringQuantityLayoutKind =
@@ -135,9 +140,13 @@ export interface RoofSurfaceQuantityRow {
   roofPlaneIds: string[];
   areaMm2: number;
   unit: 'm2';
-  semantic: 'net-geometric';
+  semantic: 'net-geometric' | 'gross-installed';
   requirementReadiness: 'geometric-only';
   warningKeys: string[];
+  /** Present only when every contributing source is `'gross-installed'`. */
+  grossAreaMm2?: number;
+  courseCount?: number;
+  rollCount?: number;
 }
 
 export interface RoofMemberScheduleRow {
@@ -493,6 +502,12 @@ function createSurfaceBuildUpRows(
   return [...groups.values()]
     .map((items) => {
       const first = items[0]!;
+      // Gross fields are exposed only when every contributing source has a
+      // roll product resolved — a partial mix must never invent a gross
+      // total from an incomplete subset.
+      const allGross = items.every(
+        (item) => item.semantic === 'gross-installed',
+      );
       return {
         id: `quantity:roof-build-up:${first.familyKey}:membrane`,
         category: 'roof-build-up' as const,
@@ -504,11 +519,29 @@ function createSurfaceBuildUpRows(
           .sort(),
         areaMm2: items.reduce((sum, item) => sum + item.areaMm2, 0),
         unit: 'm2' as const,
-        semantic: 'net-geometric' as const,
+        semantic: allGross
+          ? ('gross-installed' as const)
+          : ('net-geometric' as const),
         requirementReadiness: 'geometric-only' as const,
         warningKeys: [
           ...new Set(items.flatMap((item) => item.warningKeys ?? [])),
         ].sort(),
+        ...(allGross
+          ? {
+              grossAreaMm2: items.reduce(
+                (sum, item) => sum + (item.grossAreaMm2 ?? 0),
+                0,
+              ),
+              courseCount: items.reduce(
+                (sum, item) => sum + (item.courseCount ?? 0),
+                0,
+              ),
+              rollCount: items.reduce(
+                (sum, item) => sum + (item.rollCount ?? 0),
+                0,
+              ),
+            }
+          : {}),
       };
     })
     .sort((a, b) => a.id.localeCompare(b.id));

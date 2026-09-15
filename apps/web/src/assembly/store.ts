@@ -1,5 +1,8 @@
 import { create } from 'zustand';
-import type { CoveringAssignmentSpec } from '@cieslacalc/covering-core';
+import type {
+  CoveringAssignmentSpec,
+  MembraneTechnicalSpec,
+} from '@cieslacalc/covering-core';
 import {
   createRoofProjectDocument,
   parseRoofProjectDocument,
@@ -291,6 +294,7 @@ function committedTemplate(
       openingFraming: currentDocument?.project.openingFraming ?? [],
       buildUp: currentDocument?.project.buildUp ?? {},
       coverings: currentDocument?.project.coverings ?? [],
+      membraneProduct: currentDocument?.project.membraneProduct,
     }),
     template,
     spec,
@@ -422,6 +426,7 @@ export interface AssemblyState {
   removeOpeningFraming: (featureId: string) => void;
   setBattenLayout: (layout?: BattenLayoutSpec) => void;
   setMembraneLayer: (layer?: MembraneLayerSpec) => void;
+  setMembraneProduct: (product?: MembraneTechnicalSpec) => void;
   setCounterBattenLayout: (layout?: CounterBattenLayoutSpec) => void;
   setCoveringAssignments: (assignments: CoveringAssignmentSpec[]) => void;
   add: () => void;
@@ -1124,6 +1129,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         openingFraming: state.projectDocument.project.openingFraming,
         buildUp: state.projectDocument.project.buildUp,
         coverings: state.projectDocument.project.coverings,
+        membraneProduct: state.projectDocument.project.membraneProduct,
       });
       return {
         ...withHistory(
@@ -1345,6 +1351,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         openingFraming: state.projectDocument.project.openingFraming,
         buildUp: state.projectDocument.project.buildUp,
         coverings: state.projectDocument.project.coverings,
+        membraneProduct: state.projectDocument.project.membraneProduct,
       });
       return {
         ...withHistory(
@@ -1381,6 +1388,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         ),
         buildUp: state.projectDocument.project.buildUp,
         coverings: state.projectDocument.project.coverings,
+        membraneProduct: state.projectDocument.project.membraneProduct,
       });
       return {
         ...withHistory(
@@ -1492,6 +1500,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         openingFraming: state.projectDocument.project.openingFraming,
         buildUp: state.projectDocument.project.buildUp,
         coverings: state.projectDocument.project.coverings,
+        membraneProduct: state.projectDocument.project.membraneProduct,
       });
       return {
         ...withHistory(
@@ -1550,6 +1559,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         openingFraming: state.projectDocument.project.openingFraming,
         buildUp: state.projectDocument.project.buildUp,
         coverings: state.projectDocument.project.coverings,
+        membraneProduct: state.projectDocument.project.membraneProduct,
       });
       return {
         ...withHistory(
@@ -1589,6 +1599,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         openingFraming: state.projectDocument.project.openingFraming,
         buildUp: state.projectDocument.project.buildUp,
         coverings: state.projectDocument.project.coverings,
+        membraneProduct: state.projectDocument.project.membraneProduct,
       });
       return {
         ...withHistory(
@@ -1622,6 +1633,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         openingFraming: state.projectDocument.project.openingFraming,
         buildUp: state.projectDocument.project.buildUp,
         coverings: state.projectDocument.project.coverings,
+        membraneProduct: state.projectDocument.project.membraneProduct,
       });
       return {
         ...withHistory(
@@ -1670,6 +1682,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         openingFraming: state.projectDocument.project.openingFraming,
         buildUp: state.projectDocument.project.buildUp,
         coverings: state.projectDocument.project.coverings,
+        membraneProduct: state.projectDocument.project.membraneProduct,
       });
       return {
         ...withHistory(
@@ -1763,6 +1776,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         ),
         buildUp: state.projectDocument.project.buildUp,
         coverings: state.projectDocument.project.coverings,
+        membraneProduct: state.projectDocument.project.membraneProduct,
       });
       applied = true;
       return {
@@ -1796,6 +1810,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         openingFraming,
         buildUp: state.projectDocument.project.buildUp,
         coverings: state.projectDocument.project.coverings,
+        membraneProduct: state.projectDocument.project.membraneProduct,
       });
       return {
         ...withHistory(
@@ -1815,6 +1830,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         openingFraming: state.projectDocument.project.openingFraming,
         buildUp: { ...state.projectDocument.project.buildUp, battenLayout },
         coverings: state.projectDocument.project.coverings,
+        membraneProduct: state.projectDocument.project.membraneProduct,
       });
       return withHistory(
         state,
@@ -1828,6 +1844,21 @@ export const useAssembly = create<AssemblyState>((set) => ({
         openingFraming: state.projectDocument.project.openingFraming,
         buildUp: { ...state.projectDocument.project.buildUp, membrane },
         coverings: state.projectDocument.project.coverings,
+        membraneProduct: state.projectDocument.project.membraneProduct,
+      });
+      return withHistory(
+        state,
+        committedDocument(document, state.drafts, state.invalidFields),
+      );
+    }),
+  setMembraneProduct: (membraneProduct) =>
+    set((state) => {
+      const document = createRoofProjectDocument(state.template, {
+        features: state.projectDocument.project.features,
+        openingFraming: state.projectDocument.project.openingFraming,
+        buildUp: state.projectDocument.project.buildUp,
+        coverings: state.projectDocument.project.coverings,
+        membraneProduct,
       });
       return withHistory(
         state,
@@ -1841,6 +1872,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         openingFraming: state.projectDocument.project.openingFraming,
         buildUp: { ...state.projectDocument.project.buildUp, counterBattens },
         coverings: state.projectDocument.project.coverings,
+        membraneProduct: state.projectDocument.project.membraneProduct,
       });
       return withHistory(
         state,
@@ -1854,6 +1886,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         openingFraming: state.projectDocument.project.openingFraming,
         buildUp: state.projectDocument.project.buildUp,
         coverings,
+        membraneProduct: state.projectDocument.project.membraneProduct,
       });
       const previousId = state.workbench.selectedCoveringAssignmentId;
       const previousIndex = previousId

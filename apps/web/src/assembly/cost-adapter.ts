@@ -57,7 +57,13 @@ export interface CounterBattensSuggestion extends CostSuggestionBase {
 export interface MembraneSuggestion extends CostSuggestionBase {
   kind: 'membrane';
   category: 'material';
-  quantityBasis: 'net-area';
+  /**
+   * `'gross-area'` only once a roll product is set on the membrane layer
+   * (`resolveMembraneLayout` course-fit succeeded for every assigned plane)
+   * — still `geometric-estimate`, never `exact-purchase`: roll cutting,
+   * reuse and waste across courses/openings are still not modelled.
+   */
+  quantityBasis: 'net-area' | 'gross-area';
   suitability: 'geometric-estimate';
   quantity: { value: number; unit: 'm2' };
 }
@@ -188,6 +194,36 @@ function membraneSuggestion(facts: ExportFacts): MembraneSuggestion[] {
   if (!facts.membraneEnabled) return [];
   const rows = facts.schedule.surfaceBuildUpRows;
   if (!rows.length) return [];
+  // Gross (overlap-inclusive) data appears only once every contributing
+  // plane resolved a roll product — a partial mix must never blend a gross
+  // total from an incomplete subset (mirrors quantity-core's own rule).
+  const allGross = rows.every((row) => row.semantic === 'gross-installed');
+  if (allGross) {
+    const grossAreaMm2 = rows.reduce(
+      (sum, row) => sum + (row.grossAreaMm2 ?? 0),
+      0,
+    );
+    const warningKeys = new Set(rows.flatMap((row) => row.warningKeys));
+    return [
+      {
+        kind: 'membrane',
+        key: 'membrane',
+        category: 'material',
+        quantityBasis: 'gross-area',
+        suitability: 'geometric-estimate',
+        quantity: { value: grossAreaMm2 / MM2_PER_M2, unit: 'm2' },
+        noteKeys: [
+          'gross-area-no-roll-reuse',
+          ...(warningKeys.has('hip-course-width-approximated')
+            ? ['hip-course-width-approximated']
+            : []),
+          ...(warningKeys.has('openings-not-subtracted')
+            ? ['openings-not-subtracted']
+            : []),
+        ],
+      },
+    ];
+  }
   const areaMm2 = rows.reduce((sum, row) => sum + row.areaMm2, 0);
   return [
     {

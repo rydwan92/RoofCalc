@@ -1297,6 +1297,152 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+**Iteration:** `034C - Tile Consumption Truthfulness, Real Catalogue Data, Pricing Module, Membrane Overlap Engine`
+
+**Status:** `COMPLETE - FULL VERIFY GREEN (typecheck, lint, format, 880/880
+unit tests, both builds, 36/36 e2e); Phases 1-3 committed and pushed
+(2673583); Phase 4 (membrane engine) implemented and verified in the same
+session, not yet committed`
+
+**Completed:** After reviewing the live V34B Kosztorys, the user asked for
+two closed truthfulness gaps (tile and membrane "zakładki") plus real
+manufacturer product/price data, delegating the architecture call on whether
+pricing needed its own module. **Phase 1**: the covering-consumption cost
+suggestion now surfaces `RoofTileLayoutResult.declaredConsumptionReference`
+(already computed since V26C, never surfaced) as `execution-based`
+suitability with the declared min/max range, instead of a bare
+`manual-required` position count. **Phase 2**: seeded the catalogue with real
+manufacturer tile data (CREATON KODA, swissporTON DOMINO, Nelskamp Planum,
+retrieved 2026-09, cited per revision) via the existing unmodified
+`CatalogImportBatchV1` importer. **Phase 3**: new pure `packages/pricing-core`
+(`PriceList`/`PriceListEntry`, write-once per entry per ADR-004, zero
+dependency but `zod`) plus `apps/api/src/db/pricing-schema.ts` (sibling table
+set to the catalogue-technical `schema.ts`, sharing only the DB connection
+pool) and a `/api/pricing` route tree — fills the boundary ADR-005 reserved
+and V34B explicitly left unfilled. The web layer (`apps/web/src/pricing/`)
+pre-fills a covering-consumption suggestion's price only when every
+contributing tile assignment resolves to the exact same priced variant,
+never blending mismatched prices; seeded the real KODA retail price (9.24
+PLN/szt.). **Phase 4**: new membrane course-fit solver
+(`resolveMembraneCourseFit` + `resolveMembraneLayout` in `roof-math`,
+mirroring `resolveAutoBattenSpacing`/`resolveBattenLayout`'s own shape and
+home — membrane is a build-up layer, not a covering, so it lives beside
+battens, not inside `covering-core`) turns an optional manually-entered roll
+product (`project.membraneProduct?: MembraneTechnicalSpec`, additive, no
+schema bump) into a gross, overlap-inclusive course area. Two disclosed V1
+simplifications, never silent: course width uses each plane's eave (widest)
+width, not the exact per-station width a hip/valley plane narrows to
+(`hip-course-width-approximated`, over-estimates — the safe direction);
+opening interruption is not modeled (`openings-not-subtracted`).
+`quantity-core` and `cost-adapter.ts` both enforce the same rule: gross data
+is exposed only once *every* contributing plane resolves it, never blended
+from a partial mix. Full write-up:
+`docs/ARCHITECTURE_V34C_MATERIAL_TRUTHFULNESS_AND_CATALOGUE.md`.
+
+**Bugs found and fixed during this iteration (not pre-existing):** (1) a
+`currencyCode` gap — `PriceListEntry` doesn't carry currency (it lives on the
+parent `PriceList`), but an early draft of the web pre-fill logic hardcoded
+`'PLN'`; fixed by denormalizing `currencyCode` onto each API `VariantPrice`
+row end-to-end (service → routes → web client → cost-adapter). (2) Adding
+`usePricesForVariants` (a `useQuery` call) directly into `AssemblyPage`
+turned a previously-optional `QueryClientProvider` into a hard dependency,
+breaking ~80 tests across `Page.test.tsx`/`MobilePage.test.tsx`/
+`ProjectManager.test.tsx` that render `<App>` without one; fixed by giving
+`AssemblyPage` its own `QueryClientProvider` (and removing the now-redundant
+one from `main.tsx`) rather than retrofitting every test call site. (3) One
+stale `apps/api/src/pricing/routes.test.ts` assertion predating the
+currencyCode fix. (4) One stale, **pre-existing, unrelated** e2e assertion
+from V34A (`e2e/workbench.spec.ts` "invalid manual gauge" test expected
+exactly 1 `<p>` in `.a-covering-warning`, but V34A's own repair-preview
+feature had already added a second paragraph there — never updated in that
+iteration) — found only because this session's `pnpm e2e` run was the first
+since V34A to actually exercise that assertion; fixed the count, confirmed
+the second paragraph is the intentional V34A repair-preview text, not a bug.
+
+**Deferred from this iteration:** no automatic price-refresh/scraping (the
+seeded price list is a one-time dated snapshot); no membrane catalogue/picker
+(manual roll entry only); no opening-aware membrane course subtraction, no
+hip/valley-exact course width, no roll-cutting/reuse optimizer across courses
+or planes; membrane's roll product is one per layer, not per plane. Full list
+in the architecture doc §6.
+
+**Changed / WIP files:** Phases 1-3 — see the commit `2673583` message and
+`docs/ARCHITECTURE_V34C_MATERIAL_TRUTHFULNESS_AND_CATALOGUE.md` §5 for the
+full file list (new `packages/pricing-core`, `apps/api/src/{pricing,cli/
+import-pricing.ts,db/pricing-{schema,repository}.ts}`, `apps/web/src/
+pricing/`, plus `apps/web/src/assembly/{Page,CostWorkspace,cost-adapter,
+export-adapter,translations,main.tsx}` and `tools/architecture/
+layering.test.ts`). Phase 4 (uncommitted at time of writing) —
+`packages/covering-core/src/index.ts` (`membraneTechnicalSpecSchema`);
+`packages/roof-math/src/membrane-layout.ts` (new) + test;
+`packages/roof-math/src/roof-features.ts` (`resolveMembraneLayout`) +
+extended `roof-features.test.ts`; `packages/quantity-core/src/index.ts`
+(gross fields) + extended `index.test.ts`; `packages/calculator-core/src/
+project-document.ts` (`membraneProduct?`); `packages/cost-core/src/{model,
+persistence}.ts` (`'gross-area'` basis); `packages/document-core/src/
+index.ts` (basis literal widened); `apps/web/src/assembly/{store,Page,
+cost-adapter,ResultBasis,translations,cost-adapter.test}.ts(x)`;
+`apps/web/src/assembly/Inspector.tsx` (manual membrane product form); this
+checkpoint, `docs/adr/ADR-005-*.md`, `docs/ARCHITECTURE_COVERING_CATALOG_
+AND_PRICING_BOUNDARY.md`, `docs/ARCHITECTURE_INDEX.md`,
+`docs/SCHEMA_REGISTRY.md` §1, `docs/FUTURE_EXECUTION_SEMANTICS_AUDIT.md`,
+`docs/domain/EXECUTION_SEMANTICS_MATRIX.md` (roadmap item 4),
+`docs/ARCHITECTURE_V34C_MATERIAL_TRUTHFULNESS_AND_CATALOGUE.md` (new).
+
+**Assumptions:** the membrane roll product is manual-entry-only (roll width/
+length/minimum overlap; no material/salesUnit UI yet though the schema
+carries them) and applies to the whole membrane layer, matching how
+`buildUp.membrane.roofPlaneIds` already scopes the layer as a whole, not
+per-plane. Course width's hip/valley taper is detected by comparing a
+plane's eave-vertex U-extent to its ridge-vertex U-extent (exact for the
+supported rectangle/trapezoid/triangle roof-plane shapes), not by porting
+battens' full per-station `intervalsAtV` resolution — a deliberate, smaller
+piece of geometry reused only at the two boundary stations.
+
+**Validation:** Phases 1-3 — full `pnpm verify` clean, `pnpm e2e` 36/36 (2
+intentionally desktop-only skipped), committed and pushed to
+`origin/main` at `2673583`. Phase 4 — full `pnpm typecheck`/`lint`/
+`format:check` clean; `pnpm test` 880/880 (one `vitest`-worker
+"Timeout calling onTaskUpdate" flake reproduced clean in isolation, same
+environment-flakiness class the V32/V34B checkpoints already documented, not
+a source defect); `pnpm e2e` 36/36; both builds clean. Live-browser
+end-to-end verification against the running server: (a) Phase 3 — added
+CREATON KODA (Miedziana/copper-nuance variant) to a gable project, confirmed
+the real declared-consumption range (395.5-435.1 → resolved 791.1-870.2 szt.
+across both planes) and the real seeded price (9.24 PLN) pre-filled a
+Kosztorys line at exactly quantity × price = 8040.35 zł; (b) Phase 4 —
+enabled membrane on a hip ("Kopertowy") project (4 planes), added a manual
+150 cm / 5000 cm / 10 cm roll product, confirmed the "Warstwy" workflow
+stage correctly flipped to "needs attention" (pre-existing logic reacting
+truthfully to the new `hip-course-width-approximated` warning key — not a
+bug), and confirmed the Kosztorys membrane suggestion switched from net
+98.88 m² to gross 216 m² with the "Powierzchnia brutto (z zakładami)" basis
+label, adding cleanly to the scenario. No console errors in either pass.
+
+**Visual / mobile QA:** Desktop 1440×900 only this iteration (both live
+passes above); no dedicated mobile pass — the new UI (membrane product form,
+price pre-fill) sits inside existing responsive panels already covered by
+V34B/V34A's own mobile QA, and no mobile-specific styling changed.
+
+**Known limitations:** everything in "Deferred from this iteration" above.
+Additionally: Phase 4 is implemented and fully verified but **not yet
+committed/pushed** — the user's last explicit instruction was to push
+Phases 1-3 ("pushnij tylko zmiany jeszcze"), which is done; Phase 4 awaits
+either an explicit push instruction or the end of this session's natural
+scope. `noteKeys`/warning keys reach the on-screen Kosztorys and the raw CSV
+export but not yet a per-row footnote on the printed/exported document page
+(same pre-existing gap V34B's checkpoint already noted, now also true for
+the three new V34C note keys).
+
+**NEXT ACTION:** Commit and push Phase 4 once the user confirms (or asks
+directly, as they did for Phases 1-3). Then deliver the technical review the
+original V34C request asked for (what's accounted for, what's correct, how
+it's verified, communicated to the user) — not yet sent as of this
+checkpoint. Await the user's next scoped prompt — do not start V35
+automatically.
+
+---
+
 **Iteration:** `034B - Costing MVP and Workbench Perspectives`
 
 **Status:** `COMPLETE (SCOPED) - FULL VERIFY GREEN; H1/J1 cost suggestions and full

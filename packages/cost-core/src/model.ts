@@ -27,6 +27,7 @@ export type CostQuantityBasis =
   | 'fabrication-requirement'
   | 'geometric-length'
   | 'net-area'
+  | 'gross-area'
   | 'effective-coverage'
   | 'manual';
 

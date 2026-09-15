@@ -21,6 +21,10 @@ import {
   type RoofWindowAlignmentMode,
   type RoofSurfaceGeometryResult,
 } from '@cieslacalc/roof-math';
+import {
+  membraneTechnicalSpecSchema,
+  type MembraneTechnicalSpec,
+} from '@cieslacalc/covering-core';
 import type {
   ResolvedHipRafter,
   ResolvedRafterSpacing,
@@ -431,8 +435,120 @@ function MembraneInspector({
           </label>
         ))}
       </fieldset>
+      <MembraneProductForm />
       <p className="a-limit-note">{t('assembly.membraneBoundaryNote')}</p>
     </section>
+  );
+}
+
+function MembraneProductForm() {
+  const state = useAssembly();
+  const { t, i18n } = useTranslation();
+  const product = state.projectDocument.project.membraneProduct;
+  const [draft, setDraft] = useState({
+    rollWidth: '',
+    rollLength: '',
+    minimumOverlap: '',
+  });
+  const [error, setError] = useState('');
+  if (product)
+    return (
+      <fieldset
+        className="a-membrane-product"
+        data-testid="membrane-product-summary"
+      >
+        <legend>{t('assembly.membraneProduct')}</legend>
+        <dl className="a-facts">
+          <div>
+            <dt>{t('assembly.rollWidth')}</dt>
+            <dd>
+              {formatLength(product.rollWidthMm, state.unit, i18n.language)}
+            </dd>
+          </div>
+          <div>
+            <dt>{t('assembly.rollLength')}</dt>
+            <dd>
+              {formatLength(product.rollLengthMm, state.unit, i18n.language)}
+            </dd>
+          </div>
+          <div>
+            <dt>{t('assembly.minimumOverlap')}</dt>
+            <dd>
+              {formatLength(
+                product.minimumOverlapMm,
+                state.unit,
+                i18n.language,
+              )}
+            </dd>
+          </div>
+        </dl>
+        <button
+          type="button"
+          onClick={() => state.setMembraneProduct(undefined)}
+        >
+          {t('assembly.removeMembraneProduct')}
+        </button>
+      </fieldset>
+    );
+  const field = (key: keyof typeof draft, label: string) => (
+    <label className="a-field">
+      <span>{label}</span>
+      <span className="a-input-with-unit">
+        <input
+          data-manual-field={key}
+          aria-label={label}
+          inputMode="decimal"
+          value={draft[key]}
+          onChange={(event) => {
+            setError('');
+            setDraft((current) => ({
+              ...current,
+              [key]: event.target.value,
+            }));
+          }}
+        />
+        <small>{state.unit}</small>
+      </span>
+    </label>
+  );
+  return (
+    <form
+      className="a-membrane-product"
+      data-testid="membrane-product-form"
+      onSubmit={(event) => {
+        event.preventDefault();
+        const mm = (key: keyof typeof draft) => {
+          const parsed = parseDecimal(draft[key]);
+          if (parsed === null || parsed <= 0) throw new Error('required');
+          return toMillimetres(parsed, state.unit);
+        };
+        try {
+          const spec: MembraneTechnicalSpec = membraneTechnicalSpecSchema.parse(
+            {
+              schemaVersion: 1,
+              kind: 'membrane',
+              rollWidthMm: mm('rollWidth'),
+              rollLengthMm: mm('rollLength'),
+              minimumOverlapMm: mm('minimumOverlap'),
+            },
+          );
+          state.setMembraneProduct(spec);
+          setDraft({ rollWidth: '', rollLength: '', minimumOverlap: '' });
+        } catch {
+          setError(t('assembly.membraneProductInvalid'));
+        }
+      }}
+    >
+      <legend>{t('assembly.membraneProduct')}</legend>
+      {field('rollWidth', t('assembly.rollWidth'))}
+      {field('rollLength', t('assembly.rollLength'))}
+      {field('minimumOverlap', t('assembly.minimumOverlap'))}
+      {error && <p className="a-field-error">{error}</p>}
+      <button type="submit" data-testid="confirm-membrane-product">
+        {t('assembly.addMembraneProduct')}
+      </button>
+      <p className="a-limit-note">{t('assembly.membraneProductNote')}</p>
+    </form>
   );
 }
 

@@ -150,7 +150,11 @@ export interface LayersSection {
     count?: number;
     lengthMm?: number;
     areaMm2?: number;
-    basis: 'net-geometric' | 'resolved-visible' | 'axis-geometric';
+    basis:
+      | 'net-geometric'
+      | 'gross-installed'
+      | 'resolved-visible'
+      | 'axis-geometric';
     warnings: string[];
     layoutFacts?: {
       mode?: 'manual' | 'auto-from-covering';
@@ -241,6 +245,7 @@ export interface CostEstimateSection {
       | 'fabrication-requirement'
       | 'geometric-length'
       | 'net-area'
+      | 'gross-area'
       | 'effective-coverage'
       | 'manual';
     unitPriceMinor?: number;

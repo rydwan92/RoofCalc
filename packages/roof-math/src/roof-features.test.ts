@@ -12,6 +12,7 @@ import {
   projectPlaneLocalToWorld,
   projectPlaneWorldToLocal,
   resolveBattenLayout,
+  resolveMembraneLayout,
   resolveRoofFeatureCollisions,
   resolveRoofWindowAlignmentSnap,
   resolveRoofWindowPlacement,
@@ -436,4 +437,111 @@ describe('roof feature geometry', () => {
       expect(result.feature.position.uMm).toBe(dragged.position.uMm);
     },
   );
+});
+
+describe('membrane course layout', () => {
+  const product = {
+    rollWidthMm: 1500,
+    rollLengthMm: 50_000,
+    minimumOverlapMm: 100,
+  };
+
+  it('is disabled without an enabled layer', () => {
+    expect(
+      resolveMembraneLayout({
+        template: template(),
+        layout: { enabled: false },
+        product,
+      }),
+    ).toMatchObject({ status: 'disabled', planes: [] });
+  });
+
+  it('fits whole courses to each gable plane without a taper warning', () => {
+    const roof = template();
+    const basis = resolveRoofPlaneBasis(roof, 'roof-plane:left');
+    const vValues = basis.polygon.map((point) => point.vMm);
+    const spanMm = Math.max(...vValues) - Math.min(...vValues);
+    const result = resolveMembraneLayout({
+      template: roof,
+      layout: { enabled: true, roofPlaneIds: ['roof-plane:left'] },
+      product,
+    });
+    expect(result.status).toBe('resolved');
+    expect(result.warnings).not.toContain('hip-course-width-approximated');
+    const [plane] = result.planes;
+    expect(plane).toMatchObject({
+      roofPlaneId: 'roof-plane:left',
+      status: 'resolved',
+      courseWidthMm: roof.buildingLengthMm,
+      tapers: false,
+      hasOpenings: false,
+    });
+    expect(plane!.spanMm).toBeCloseTo(spanMm, 6);
+    // Gross area is exactly courses × roll width × eave width — never derived
+    // from net area, since gross intentionally includes the lap waste.
+    expect(plane!.grossAreaMm2).toBeCloseTo(
+      plane!.courseCount * product.rollWidthMm * roof.buildingLengthMm,
+      6,
+    );
+    expect(result.grossAreaMm2).toBeCloseTo(plane!.grossAreaMm2, 6);
+    expect(result.rollCount).toBeGreaterThan(0);
+  });
+
+  it('flags a hip plane that narrows from eave to ridge', () => {
+    const roof = {
+      ...template(),
+      type: 'hip' as const,
+      hipRafterSection: { widthMm: 100, depthMm: 240 },
+    };
+    const result = resolveMembraneLayout({
+      template: roof,
+      layout: { enabled: true, roofPlaneIds: ['roof-plane:left'] },
+      product,
+    });
+    expect(result.status).toBe('resolved');
+    expect(result.warnings).toContain('hip-course-width-approximated');
+    expect(result.planes[0]).toMatchObject({ tapers: true });
+  });
+
+  it('flags an assigned plane carrying a roof window without subtracting it', () => {
+    const roof = template();
+    const result = resolveMembraneLayout({
+      template: roof,
+      layout: { enabled: true, roofPlaneIds: ['roof-plane:left'] },
+      product,
+      features: [window({ uMm: 1000, vMm: 900 })],
+    });
+    expect(result.warnings).toContain('openings-not-subtracted');
+    expect(result.planes[0]).toMatchObject({ hasOpenings: true });
+    // The course fit ignores the opening entirely — same gross area with or
+    // without it, disclosed rather than silently wrong.
+    const withoutWindow = resolveMembraneLayout({
+      template: roof,
+      layout: { enabled: true, roofPlaneIds: ['roof-plane:left'] },
+      product,
+    });
+    expect(result.grossAreaMm2).toBeCloseTo(withoutWindow.grossAreaMm2, 6);
+  });
+
+  it('fails safe for an overlap that cannot advance up-slope', () => {
+    const result = resolveMembraneLayout({
+      template: template(),
+      layout: { enabled: true, roofPlaneIds: ['roof-plane:left'] },
+      product: { ...product, minimumOverlapMm: product.rollWidthMm },
+    });
+    expect(result.status).toBe('incomplete');
+    expect(result.issues).toContain('invalid-overlap');
+  });
+
+  it('rejects an unknown roof plane', () => {
+    const result = resolveMembraneLayout({
+      template: template(),
+      layout: { enabled: true, roofPlaneIds: ['roof-plane:front'] },
+      product,
+    });
+    expect(result).toMatchObject({
+      status: 'incomplete',
+      issues: ['roof-plane-not-found'],
+    });
+  });
 });

@@ -1,5 +1,6 @@
 import type {
   BattenLayoutSpec,
+  MembraneLayerSpec,
   Point3D,
   RoofFeature,
   RoofPlanePosition,
@@ -12,6 +13,10 @@ import {
   type AutoBattenSpacingIssueCode,
   type AutoBattenSpacingResult,
 } from './batten-spacing';
+import {
+  resolveMembraneCourseFit,
+  type MembraneCourseFitIssueCode,
+} from './membrane-layout';
 import { roofTemplateSchema } from './roof-template';
 
 export interface RoofPlaneBasis {
@@ -1047,6 +1052,191 @@ export function resolveBattenLayout(args: {
       0,
     ),
     planes,
+    issues,
+  };
+}
+
+export interface MembraneCourseProduct {
+  rollWidthMm: number;
+  rollLengthMm: number;
+  minimumOverlapMm: number;
+}
+
+export type MembraneLayoutIssueCode =
+  | MembraneCourseFitIssueCode
+  | 'invalid-layout-geometry'
+  | 'roof-plane-not-found';
+
+/**
+ * Named, disclosed V1 simplifications — never a silent gap. A course's
+ * horizontal length always uses the plane's eave (widest) width rather than
+ * the exact per-station width a hip/trapezoid plane narrows to above the
+ * eave, which over-estimates material on such planes (the safe direction for
+ * a purchase suggestion). Opening interruption is not modelled: a course is
+ * assumed to run continuous under a later-framed roof window.
+ */
+export type MembraneLayoutWarningCode =
+  'hip-course-width-approximated' | 'openings-not-subtracted';
+
+export interface MembranePlaneLayoutResult {
+  roofPlaneId: string;
+  status: 'resolved' | 'unresolved';
+  spanMm: number;
+  courseWidthMm: number;
+  courseCount: number;
+  grossAreaMm2: number;
+  courseLengthTotalMm: number;
+  rollCount: number;
+  tapers: boolean;
+  hasOpenings: boolean;
+  issues: MembraneLayoutIssueCode[];
+}
+
+export interface MembraneLayoutResult {
+  status: 'disabled' | 'resolved' | 'partial' | 'incomplete';
+  planes: MembranePlaneLayoutResult[];
+  grossAreaMm2: number;
+  courseCount: number;
+  rollCount: number;
+  warnings: MembraneLayoutWarningCode[];
+  issues: MembraneLayoutIssueCode[];
+}
+
+/**
+ * Resolves how many full-width membrane courses cover each assigned roof
+ * plane's eave-to-ridge run, and the gross (overlap-inclusive) material area
+ * that implies. Mirrors `resolveBattenLayout`'s per-plane wrapping of a pure
+ * whole-interval-fit solver (`resolveMembraneCourseFit`), but only when a
+ * roll product is given — absent one, callers keep today's net-area-only
+ * behaviour untouched.
+ */
+export function resolveMembraneLayout(args: {
+  template: RoofTemplateSpec;
+  layout: MembraneLayerSpec;
+  product: MembraneCourseProduct;
+  features?: RoofFeature[];
+}): MembraneLayoutResult {
+  const empty = (
+    status: MembraneLayoutResult['status'],
+    issues: MembraneLayoutIssueCode[] = [],
+  ): MembraneLayoutResult => ({
+    status,
+    planes: [],
+    grossAreaMm2: 0,
+    courseCount: 0,
+    rollCount: 0,
+    warnings: [],
+    issues,
+  });
+  if (!args.layout.enabled) return empty('disabled');
+  if (
+    !roofTemplateSchema.safeParse(args.template).success ||
+    !Number.isFinite(args.product.rollWidthMm) ||
+    !Number.isFinite(args.product.rollLengthMm) ||
+    !Number.isFinite(args.product.minimumOverlapMm)
+  )
+    return empty('incomplete', ['invalid-layout-geometry']);
+  const planeIds =
+    args.layout.roofPlaneIds ??
+    (args.template.type === 'gable'
+      ? ['roof-plane:left', 'roof-plane:right']
+      : [
+          'roof-plane:left',
+          'roof-plane:right',
+          'roof-plane:front',
+          'roof-plane:rear',
+        ]);
+  const knownPlanes =
+    args.template.type === 'gable'
+      ? ['roof-plane:left', 'roof-plane:right']
+      : [
+          'roof-plane:left',
+          'roof-plane:right',
+          'roof-plane:front',
+          'roof-plane:rear',
+        ];
+  if (!planeIds.length || planeIds.some((id) => !knownPlanes.includes(id)))
+    return empty('incomplete', ['roof-plane-not-found']);
+  const windows = (args.features ?? []).filter(
+    (feature): feature is RoofWindowFeature => feature.kind === 'roof-window',
+  );
+  const planes: MembranePlaneLayoutResult[] = planeIds.map((roofPlaneId) => {
+    const basis = resolveRoofPlaneBasis(args.template, roofPlaneId);
+    const vValues = basis.polygon.map((point) => point.vMm);
+    const minV = Math.min(...vValues);
+    const maxV = Math.max(...vValues);
+    const uAtV = (vMm: number) =>
+      basis.polygon
+        .filter((point) => Math.abs(point.vMm - vMm) <= EPSILON)
+        .map((point) => point.uMm);
+    const eaveU = uAtV(minV);
+    const ridgeU = uAtV(maxV);
+    const eaveWidthMm = Math.max(...eaveU) - Math.min(...eaveU);
+    const ridgeWidthMm =
+      ridgeU.length > 1 ? Math.max(...ridgeU) - Math.min(...ridgeU) : 0;
+    const fit = resolveMembraneCourseFit({
+      spanMm: maxV - minV,
+      rollWidthMm: args.product.rollWidthMm,
+      minimumOverlapMm: args.product.minimumOverlapMm,
+    });
+    if (fit.status !== 'resolved')
+      return {
+        roofPlaneId,
+        status: 'unresolved',
+        spanMm: maxV - minV,
+        courseWidthMm: eaveWidthMm,
+        courseCount: 0,
+        grossAreaMm2: 0,
+        courseLengthTotalMm: 0,
+        rollCount: 0,
+        tapers: Math.abs(eaveWidthMm - ridgeWidthMm) > EPSILON,
+        hasOpenings: windows.some(
+          (window) => window.roofPlaneId === roofPlaneId,
+        ),
+        issues: fit.issues,
+      };
+    const courseLengthTotalMm = fit.courseCount * eaveWidthMm;
+    return {
+      roofPlaneId,
+      status: 'resolved',
+      spanMm: fit.spanMm,
+      courseWidthMm: eaveWidthMm,
+      courseCount: fit.courseCount,
+      grossAreaMm2: fit.courseCount * args.product.rollWidthMm * eaveWidthMm,
+      courseLengthTotalMm,
+      rollCount: Math.max(
+        1,
+        Math.ceil(courseLengthTotalMm / args.product.rollLengthMm - EPSILON),
+      ),
+      tapers: Math.abs(eaveWidthMm - ridgeWidthMm) > EPSILON,
+      hasOpenings: windows.some((window) => window.roofPlaneId === roofPlaneId),
+      issues: [],
+    };
+  });
+  const issues = [...new Set(planes.flatMap((plane) => plane.issues))].sort();
+  const resolvedPlaneCount = planes.filter(
+    (plane) => plane.status === 'resolved',
+  ).length;
+  const warnings: MembraneLayoutWarningCode[] = [
+    ...(planes.some((plane) => plane.tapers)
+      ? (['hip-course-width-approximated'] as const)
+      : []),
+    ...(planes.some((plane) => plane.hasOpenings)
+      ? (['openings-not-subtracted'] as const)
+      : []),
+  ];
+  return {
+    status:
+      issues.length === 0
+        ? 'resolved'
+        : resolvedPlaneCount > 0
+          ? 'partial'
+          : 'incomplete',
+    planes,
+    grossAreaMm2: planes.reduce((sum, plane) => sum + plane.grossAreaMm2, 0),
+    courseCount: planes.reduce((sum, plane) => sum + plane.courseCount, 0),
+    rollCount: planes.reduce((sum, plane) => sum + plane.rollCount, 0),
+    warnings,
     issues,
   };
 }

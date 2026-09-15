@@ -227,6 +227,79 @@ describe('cost suggestion adapter', () => {
     expect(suggestion.quantity).toEqual({ value: 200, unit: 'm2' });
   });
 
+  it('upgrades membrane to a gross-area estimate once every plane resolves a roll product', () => {
+    const facts = baseFacts();
+    const withMembrane: ExportFacts = {
+      ...facts,
+      membraneEnabled: true,
+      schedule: createRoofMemberSchedule({
+        skeleton: facts.skeleton,
+        surfaceBuildUp: [
+          {
+            id: 'membrane:1',
+            familyKey: 'M',
+            memberKind: 'membrane',
+            semantic: 'gross-installed',
+            areaMm2: 200_000_000,
+            grossAreaMm2: 220_000_000,
+            courseCount: 16,
+            rollCount: 4,
+            warningKeys: ['hip-course-width-approximated'],
+          },
+        ],
+      }),
+    };
+    const suggestion = createCostSuggestions(withMembrane).find(
+      (s) => s.kind === 'membrane',
+    );
+    expect(suggestion).toBeDefined();
+    if (suggestion?.kind !== 'membrane') return;
+    expect(suggestion.suitability).toBe('geometric-estimate');
+    expect(suggestion.quantityBasis).toBe('gross-area');
+    expect(suggestion.quantity).toEqual({ value: 220, unit: 'm2' });
+    expect(suggestion.noteKeys).toContain('gross-area-no-roll-reuse');
+    expect(suggestion.noteKeys).toContain('hip-course-width-approximated');
+    expect(suggestion.noteKeys).not.toContain('openings-not-subtracted');
+  });
+
+  it('keeps the net-area basis when only some membrane planes resolve a roll product', () => {
+    const facts = baseFacts();
+    const withMembrane: ExportFacts = {
+      ...facts,
+      membraneEnabled: true,
+      schedule: createRoofMemberSchedule({
+        skeleton: facts.skeleton,
+        surfaceBuildUp: [
+          {
+            id: 'membrane:1',
+            familyKey: 'M',
+            memberKind: 'membrane',
+            semantic: 'gross-installed',
+            areaMm2: 100_000_000,
+            grossAreaMm2: 110_000_000,
+            courseCount: 8,
+            rollCount: 2,
+          },
+          {
+            id: 'membrane:2',
+            familyKey: 'M',
+            memberKind: 'membrane',
+            semantic: 'net-geometric',
+            areaMm2: 100_000_000,
+          },
+        ],
+      }),
+    };
+    const suggestion = createCostSuggestions(withMembrane).find(
+      (s) => s.kind === 'membrane',
+    );
+    expect(suggestion).toBeDefined();
+    if (suggestion?.kind !== 'membrane') return;
+    expect(suggestion.quantityBasis).toBe('net-area');
+    expect(suggestion.quantity).toEqual({ value: 200, unit: 'm2' });
+    expect(suggestion.noteKeys).toEqual(['net-area-no-overlap-no-rolls']);
+  });
+
   it('never turns covering coverage positions into a purchase quantity', () => {
     const facts = baseFacts();
     const withCovering: ExportFacts = {

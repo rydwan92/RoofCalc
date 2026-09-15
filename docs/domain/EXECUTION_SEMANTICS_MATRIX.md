@@ -21,7 +21,7 @@ system/snapshot; **RESEARCH REQUIRED** means evidence is not yet sufficient;
 | Fixed modular sheet            | Total width/length and physical sheet role                         | Effective width/length; module pitch       | Side/end engagement already encoded in effective grid; any additional joint must be explicit                           | Start/end course, eaves, ridge, verge, hip/valley, opening/abutment                   | Effective coverage rectangles and geometric position counts                                               | **PARTIALLY MODELED**                                                | Start/end sheet rules, joint permissions, gross piece extents, fasteners, cut/reuse                  | `covering-core`; catalogue snapshot                                                   | C6--C8   |
 | Cut-to-length profiled sheet   | Total width; manufactured sheet length/format                      | Effective width; visible slope run         | Only after a segmentation decision; no universal transverse overlap                                                    | Eaves/ridge allowances, side boundaries, hips/valleys, opening, wall, supported joint | Effective-width strips and connected geometric run lengths; no `orderLengthMm`                            | **PARTIALLY MODELED**; segmentation **NOT MODELED**                  | Production increment, max/order/handling/transport length, support and product joint detail          | `covering-core`; catalogue snapshot; exact pieces in `quantity-core`                  | C8--C10  |
 | Standing seam                  | Total strip/panel width and manufactured length                    | Effective seam width; visible run          | No transverse joint on a valid continuous full-slope panel; explicit segmented joint is pitch/product/support-specific | Eaves/ridge forming, verge, hip/valley, window, wall, staggered joint                 | Effective-width columns and connected geometric runs; max violation is diagnostic only                    | Full-slope run **MODELED**; joint **NOT MODELED / PRODUCT-SPECIFIC** | Segmentation policy/location, joint type/overlap/support/stagger, forming allowances                 | `covering-core`; catalogue snapshot                                                   | C11--C13 |
-| Roofing membrane               | Roll width/length and material orientation                         | None currently; net target area only       | Course/end laps and sealing are system/detail-specific                                                                 | Eaves, ridge, hip, valley, window, penetration, upstand/abutment                      | Net geometric roof-plane area (`net-geometric`)                                                           | Net area **MODELED**; gross installation **NOT MODELED**             | Product laps, orientation, boundary allowances, cut/reuse policy, roll format                        | `covering-core` installation resolver; catalogue snapshot; `quantity-core`            | C14--C16 |
+| Roofing membrane               | Roll width/length and material orientation                         | Course fit when a roll product is set: whole courses advance by `rollWidthMm - minimumOverlapMm` after the first | Course/end laps and sealing are system/detail-specific; V34C models only the up-slope course lap, never a sealed detail | Eaves, ridge, hip, valley, window, penetration, upstand/abutment                      | Net geometric roof-plane area (`net-geometric`) always; gross course area (`gross-installed`) once a roll product is set | Net area **MODELED**; gross installation **PARTIALLY MODELED (V34C)** — gable-exact, hip/valley course width over-estimated (uses eave width, disclosed `hip-course-width-approximated`), openings not subtracted (disclosed `openings-not-subtracted`) | Manual entry only (no catalogue), roll cut/reuse policy, boundary/detail sealing rules, exact hip/valley course width | `roof-math` (`resolveMembraneLayout`, mirroring the batten build-up layer, not a `covering-core` layout engine); `quantity-core` gross fields | C14--C16 |
 | Common rafter                  | Section and physical solid; ridge-board thickness/support geometry | Not applicable                             | Explicit end connection required; current case terminates at near ridge-board face                                     | Ridge and eaves/support ends                                                          | Axis line plus K1 finished ridge-face plumb cut/minimum geometric stock extent                            | Current ridge-board case **MODELED**; alternatives **NOT MODELED**   | Connection intent, fastener/connector, blank allowance; structural acceptance                        | `timber-model` intent; `roof-math` cut; `quantity-core` blank                         | T1--T3   |
 | Hip rafter H1                  | Section, physical target/support faces                             | Not applicable                             | Compound termination, backing/drop and connector are selected operations                                               | Ridge/apex, eaves/plate, intersecting jacks                                           | Regular equal-pitch centerline/face length, conceptual double-cheek cut, backing angle                    | **PARTIALLY MODELED**                                                | Final backing/drop choice, bearing/contact, hardware, blank; **REQUIRES STRUCTURAL DESIGN**          | `timber-model` + `roof-math`                                                          | T1, T4   |
 | Jack rafter J1                 | Jack/H1 sections and actual H1 face                                | Not applicable                             | Butt/cheek/hanger detail must be selected; no universal face deduction                                                 | Hip end and wall/eaves support                                                        | J1 axis ends on theoretical vertical H1 center plane                                                      | **PARTIALLY MODELED**                                                | Physical hip-face deduction, finished cut datum/bevel, connector, allowance                          | `timber-model` + `roof-math`; connector snapshot when applicable                      | T4, T5   |
@@ -157,19 +157,54 @@ reduces practical risk without prematurely choosing an execution schema.
   gross length, pitch/support failures, deterministic multi-plane identities.
 - **Evidence:** exact manufacturer product/revision plus current logistics data.
 
-### 4. Resolve membrane installation before roll procurement
+### 4. Resolve membrane installation before roll procurement — IMPLEMENTED (V34C, partially)
 
 - **User problem:** net m2 is not enough to buy or install rolls.
-- **Owner:** `covering-core` for course/boundary installation; `quantity-core` for
-  gross physical strips.
-- **ProjectDocument/schema:** product snapshot and laying intent required.
-- **Catalogue:** roll sizes, permitted orientation/laps, boundary/detail rules.
-- **Quantity:** net area retained; gross strips/area added with provenance.
-- **Procurement:** later roll cutting/reuse adapter, without a waste percentage.
-- **UI:** net versus installed versus rolls; unresolved detail warnings.
-- **Regression tests:** horizontal courses, end laps, ridge/hip/valley, openings,
-  roll-edge reuse and anti-double-counting.
-- **Evidence:** selected membrane installation system and detail set.
+- **Owner:** shipped in `roof-math` (`resolveMembraneCourseFit` +
+  `resolveMembraneLayout`), not `covering-core` — membrane is architecturally a
+  build-up layer (like battens), never a covering competing for roof-plane
+  ownership, so the course solver mirrors `resolveAutoBattenSpacing`/
+  `resolveBattenLayout`'s home instead of the originally proposed
+  `covering-core` location. `quantity-core` carries the resulting gross
+  physical strips.
+- **ProjectDocument/schema:** shipped as `project.membraneProduct?:
+  MembraneTechnicalSpec` (`packages/covering-core`, a schema **sibling** to
+  `coveringTechnicalSpecSchema`, never joined into its union) — additive, no
+  `schemaVersion` bump (`docs/SCHEMA_REGISTRY.md` §1, V34C note).
+- **Catalogue:** manual entry only in V34C — roll width/length/minimum overlap
+  typed in by the user (no catalogue picker yet); boundary/detail sealing
+  rules are still not modeled.
+- **Quantity:** net area retained unchanged (`net-geometric`, always present);
+  gross strips/area added with provenance (`gross-installed`,
+  `grossAreaMm2`/`courseCount`/`rollCount`) only once every contributing plane
+  resolves the roll product — a partial mix never blends a gross total from an
+  incomplete subset.
+- **Procurement:** still deferred — no roll cutting/reuse adapter; `rollCount`
+  is a simple per-plane ceiling division, never optimized across planes.
+- **UI:** net versus gross both shown (`ResultBasis`'s `netGeometric` vs
+  `grossInstalled`); the Kosztorys membrane suggestion switches basis label
+  from "Net area" to "Gross area (laps included)" once a product is set, with
+  `gross-area-no-roll-reuse` plus the two warning keys below surfaced as
+  disclosed note keys.
+- **Disclosed V1 simplifications (not silent gaps):** a course's horizontal
+  length always uses the plane's eave (widest) width rather than the exact
+  per-station width a hip/valley plane narrows to above the eave — this
+  over-estimates material on such planes (the safe direction for a purchase
+  suggestion), tagged `hip-course-width-approximated`; gable planes are exact.
+  Opening interruption is not modeled — a course is assumed to run continuous
+  under a later-framed roof window — tagged `openings-not-subtracted`.
+- **Regression tests:** `packages/roof-math/src/membrane-layout.test.ts` (pure
+  solver: invalid input, hand-checked course count, single-course/threshold
+  cases, capacity guard, never-under-covers sweep) and the `membrane course
+  layout` suite in `roof-features.test.ts` (disabled, gable exact with no
+  taper warning, hip taper warning, opening warning without area change,
+  invalid-overlap fail-safe, unknown roof plane); `quantity-core`'s gross
+  aggregation and never-blend-a-partial-mix tests; `cost-adapter.test.ts`'s
+  gross-area-upgrade and net-area-when-partial tests.
+- **Still open for a future iteration:** roll-edge reuse/cut optimization
+  across courses and planes, exact hip/valley course width, opening-aware
+  subtraction, a membrane catalogue picker, boundary/detail sealing rules
+  (ridge, hip, valley, penetration, upstand/abutment).
 
 ### 5. Add a discriminated timber connection/blank slice
 

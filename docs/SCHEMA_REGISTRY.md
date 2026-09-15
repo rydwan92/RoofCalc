@@ -16,7 +16,7 @@ free; changing meaning, type or required-ness is not.
 | Current version | `schemaVersion: 1` |
 | Validation | `roofProjectDocumentV1Schema` (Zod), on every parse and on `createRoofProjectDocument` |
 | Persistence | nested inside `ProjectRecordV1`; `localStorage` via `LocalProjectRepository`; `.cieslacalc.json` archives |
-| Contains | `project.roof`, `project.features`, `project.openingFraming`, `project.buildUp`, `project.coverings` |
+| Contains | `project.roof`, `project.features`, `project.openingFraming`, `project.buildUp`, `project.coverings`, `project.membraneProduct` |
 
 **Compatibility expectations**
 
@@ -58,6 +58,18 @@ free; changing meaning, type or required-ness is not.
   Automatic station rows, actual gauge, per-plane course counts, counter-batten
   axes and compatibility messages are derived and are never serialized. No
   `schemaVersion` bump.
+- V34C note: `project.membraneProduct?: MembraneTechnicalSpec`
+  (`@cieslacalc/covering-core`) is additive and optional — the single roll
+  product used across every plane `buildUp.membrane` assigns (manual entry
+  only in V1, no catalogue picker). Absence keeps membrane's exact pre-V34C
+  net-area-only behavior; setting it is what upgrades a membrane cost
+  suggestion from `net-area` to the disclosed, overlap-inclusive `gross-area`
+  basis. `MembraneTechnicalSpec` is deliberately **not** a member of
+  `coveringTechnicalSpecSchema`'s union — a membrane never competes for
+  roof-plane ownership the way a primary covering does. Resolved course
+  counts, gross areas and roll counts are derived
+  (`resolveMembraneLayout` in `@cieslacalc/roof-math`) and are never
+  serialized. No `schemaVersion` bump.
 
 ---
 
