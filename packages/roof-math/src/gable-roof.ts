@@ -4,8 +4,10 @@ import type {
   GableRoofSkeleton,
   GableRoofTemplateSpec,
   RafterSpacingSpec,
+  ResolvedCollarTie,
   ResolvedMemberPrototype,
   ResolvedRafterSpacing,
+  RoofTemplateSpec,
   SkeletonMember3D,
 } from '@cieslacalc/timber-model';
 import {
@@ -13,6 +15,13 @@ import {
   calculateAssembly,
   supportSpecSchema,
 } from './assembly';
+import {
+  COLLAR_TIE_PROTOTYPE_ID,
+  calculateCollarTie,
+  clampCollarTieHeightMm,
+  collarTieSpecSchema,
+  maxCollarTieHeightMm,
+} from './collar-tie';
 
 const positiveMm = z.number().finite().min(1).max(100000);
 const pitchDeg = z.number().finite().min(1).max(80);
@@ -68,8 +77,17 @@ export const gableRoofTemplateSchema: z.ZodType<GableRoofTemplateSpec> = z
       id: z.string().regex(/^[a-z][a-z0-9:-]*$/),
       thicknessMm: z.number().finite().min(0).max(1000),
       depthMm: z.number().finite().min(1).max(2000).optional(),
+      connection: z
+        .enum(['ridge-board', 'direct-meeting', 'half-lap'])
+        .optional(),
     }),
     intermediateSupports: z.array(support),
+    structure: z
+      .object({
+        system: z.enum(['rafter', 'rafter-collar-tie']),
+        collarTie: collarTieSpecSchema.optional(),
+      })
+      .optional(),
   })
   .superRefine((template, ctx) => {
     if (template.wallPlate.kind !== 'wall-plate')
@@ -92,7 +110,63 @@ export const gableRoofTemplateSchema: z.ZodType<GableRoofTemplateSpec> = z
         path: ['intermediateSupports'],
         message: 'intermediate_support_kind',
       });
+    if (template.structure?.system === 'rafter-collar-tie') {
+      const collarTie = template.structure.collarTie;
+      if (!collarTie)
+        ctx.addIssue({
+          code: 'custom',
+          path: ['structure', 'collarTie'],
+          message: 'collar_tie_required',
+        });
+      else if (
+        collarTie.heightAboveWallPlateMm >
+        maxCollarTieHeightMm(template.halfRunMm, template.pitchDeg)
+      )
+        ctx.addIssue({
+          code: 'custom',
+          path: ['structure', 'collarTie', 'heightAboveWallPlateMm'],
+          message: 'collar_tie_above_ridge',
+        });
+    }
   });
+
+/** Structural-system intent, distinct from roof shape. Hip roofs are always `rafter`. */
+export function roofStructureSystem(
+  template: RoofTemplateSpec,
+): 'rafter' | 'rafter-collar-tie' {
+  return template.type === 'gable' &&
+    template.structure?.system === 'rafter-collar-tie'
+    ? 'rafter-collar-tie'
+    : 'rafter';
+}
+
+/** One resolved collar tie per rafter station. Empty unless the structural
+ * system is `rafter-collar-tie`. */
+export function resolveCollarTies(
+  template: GableRoofTemplateSpec,
+): ResolvedCollarTie[] {
+  const collarTie = template.structure?.collarTie;
+  if (roofStructureSystem(template) !== 'rafter-collar-tie' || !collarTie)
+    return [];
+  const geometry = calculateCollarTie({
+    halfRunMm: template.halfRunMm,
+    pitchDeg: template.pitchDeg,
+    heightAboveWallPlateMm: collarTie.heightAboveWallPlateMm,
+  });
+  const spacing = resolveRafterSpacing(
+    template.buildingLengthMm,
+    template.rafterSpacing,
+  );
+  return spacing.stations.map((station) => ({
+    id: `${station.id}:collar-tie`,
+    stationId: station.id,
+    alongBuildingMm: station.alongBuildingMm,
+    heightAboveWallPlateMm: collarTie.heightAboveWallPlateMm,
+    positionAlongRafterMm: geometry.positionAlongRafterMm,
+    lengthMm: geometry.lengthMm,
+    section: collarTie.section,
+  }));
+}
 
 export function resolveRafterSpacing(
   buildingLengthMm: number,
@@ -176,7 +250,7 @@ export function gableTemplateFromAssembly(
   raw: AssemblySpec,
   layout: Pick<
     GableRoofTemplateSpec,
-    'id' | 'buildingLengthMm' | 'rafterSpacing'
+    'id' | 'buildingLengthMm' | 'rafterSpacing' | 'structure'
   > = {
     id: 'template:gable-1',
     buildingLengthMm: 8000,
@@ -187,6 +261,21 @@ export function gableTemplateFromAssembly(
   const wallPlate = assembly.supports.find(
     (support) => support.kind === 'wall-plate',
   )!;
+  const collarTie = layout.structure?.collarTie;
+  const structure =
+    layout.structure?.system === 'rafter-collar-tie' && collarTie
+      ? {
+          system: 'rafter-collar-tie' as const,
+          collarTie: {
+            ...collarTie,
+            heightAboveWallPlateMm: clampCollarTieHeightMm(
+              assembly.roof.runMm,
+              assembly.roof.pitchDeg,
+              collarTie.heightAboveWallPlateMm,
+            ),
+          },
+        }
+      : layout.structure;
   return gableRoofTemplateSchema.parse({
     id: layout.id,
     type: 'gable',
@@ -201,6 +290,7 @@ export function gableTemplateFromAssembly(
     intermediateSupports: assembly.supports.filter(
       (support) => support.kind === 'purlin',
     ),
+    structure,
   });
 }
 
@@ -285,6 +375,15 @@ export function createGableRoofSkeletonFromResolved(
   const eaveX = template.halfRunMm + template.eaveOverhangMm;
   const eaveZ = -template.eaveOverhangMm * slope;
   const alongLength = template.buildingLengthMm;
+  const collarTieSpec = template.structure?.collarTie;
+  const collarTieGeometry =
+    roofStructureSystem(template) === 'rafter-collar-tie' && collarTieSpec
+      ? calculateCollarTie({
+          halfRunMm: template.halfRunMm,
+          pitchDeg: template.pitchDeg,
+          heightAboveWallPlateMm: collarTieSpec.heightAboveWallPlateMm,
+        })
+      : undefined;
   const members: SkeletonMember3D[] = [
     {
       id: 'skeleton:wall-plate-left',
@@ -389,6 +488,27 @@ export function createGableRoofSkeletonFromResolved(
         },
       ];
     }),
+    ...(collarTieGeometry
+      ? rafterSpacing.stations.map((station) => ({
+          id: `${station.id}:collar-tie`,
+          prototypeId: COLLAR_TIE_PROTOTYPE_ID,
+          selectionId: `${station.id}:collar-tie`,
+          kind: 'collar-tie' as const,
+          from: {
+            x: collarTieGeometry.leftXmm,
+            y: station.alongBuildingMm,
+            z: collarTieSpec!.heightAboveWallPlateMm,
+          },
+          to: {
+            x: collarTieGeometry.rightXmm,
+            y: station.alongBuildingMm,
+            z: collarTieSpec!.heightAboveWallPlateMm,
+          },
+          section: collarTieSpec!.section,
+          side: 'center' as const,
+          stationMm: station.alongBuildingMm,
+        }))
+      : []),
   ];
   return { ridgeHeightMm, members };
 }

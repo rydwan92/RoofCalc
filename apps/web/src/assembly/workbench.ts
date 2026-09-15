@@ -373,6 +373,13 @@ export function createWorkbenchLegend(args: {
       labelKey: 'jackRafter',
       role: 'family',
     });
+  if (kinds.has('collar-tie'))
+    entries.push({
+      id: 'family:C1',
+      code: 'C1',
+      labelKey: 'collar-tie',
+      role: 'family',
+    });
   const purlinIds = [
     ...new Set(
       args.skeleton.members
@@ -460,6 +467,19 @@ export function createWorkbenchToolRegistry(args: {
       enabled: true,
     },
   ];
+  if (args.template.type === 'gable' && args.template.structure?.collarTie) {
+    tools.push({
+      id: 'tool:collar-tie',
+      category: 'timber',
+      action: 'select',
+      selectionId: 'member:collar-tie-1',
+      prototypeId: 'member:collar-tie-1',
+      labelKey: 'collar-tie',
+      code: 'C1',
+      icon: 'timber',
+      enabled: true,
+    });
+  }
   if (args.template.type === 'hip') {
     tools.push(
       {

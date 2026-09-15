@@ -258,6 +258,8 @@ function familyFor(member: SkeletonMember3D) {
       return 'R';
     case 'purlin':
       return purlinFamilyCode(member.prototypeId);
+    case 'collar-tie':
+      return 'C1';
     case 'opening-header':
     case 'rafter-segment':
       return openingFamilyCode(member.id);

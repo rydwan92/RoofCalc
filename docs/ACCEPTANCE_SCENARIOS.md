@@ -280,6 +280,42 @@ problem and selection states use semantic styling plus non-colour cues.
 
 ---
 
+## STRUCT-001 — Collar-tie structural system · `AUTOMATED`
+
+1. On a gable project, switch structural system from Więźba krokwiowa to
+   Więźba krokwiowo-jętkowa.
+2. Edit the collar-tie height above the wall plate and its section.
+3. Switch back to Więźba krokwiowa.
+
+**Holds:** enabling the system creates one collar tie per rafter station with
+a positive resolved length, a distinct 3D colour and a member-schedule row
+coded `C1`; height and section are one shared value editable from either the
+roof panel or a selected collar tie; a height that would reach the ridge is
+rejected as invalid input; disabling the system removes every collar-tie
+member and its schedule row; no collar tie ever enters `RoofFabricationPackage`
+or the K1 cutting plan; each toggle is exactly one Undo entry.
+
+---
+
+## RIDGE-001 — K1 ridge connection variants · `AUTOMATED`
+
+1. On a gable project, open the ridge properties and read the default
+   connection.
+2. Switch to Połączenie bezpośrednie (direct meeting), then to Nakładka
+   (half-lap).
+3. With each connection, inspect K1 preparation, the K1 cutting plan and the
+   execution export.
+
+**Holds:** the default is Deska kalenicowa and reproduces the pre-V32 K1
+geometry exactly; direct meeting resolves a K1 blank longer than the board
+case and shows a distinct assumptions note; half-lap shows an inline note
+that its geometry is not modeled, hides K1 preparation and the cutting plan,
+and the export's assumptions section explains why instead of silently
+omitting the section; switching connection always invalidates a previously
+planned cutting plan, even when the required length happens to coincide.
+
+---
+
 ## PERF-001 — Large layouts stay usable · `MANUAL`
 
 1. Build a long roof with a fine covering grid so fragment count exceeds 1200.

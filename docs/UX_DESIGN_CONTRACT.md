@@ -181,3 +181,21 @@ and their totals are never added together.
 - Roof-plane assignment uses cards with name, area and assigned state. Colour is
   reinforced by text and outline, and the legend contains only states present in
   the current drawing.
+
+## 11. Structural system and ridge connection
+
+- Roof structural system (Więźba krokwiowa / Więźba krokwiowo-jętkowa) and K1
+  ridge connection (Deska kalenicowa / Połączenie bezpośrednie / Nakładka) are
+  two separate segmented-button groups, styled like the existing roof-type
+  selector. Neither is inferred from the other or from roof shape.
+- A collar tie (Jętka) shares one height/section pair across the whole family;
+  its inspector fields are reachable both from the roof-level "advanced"
+  section and from selecting any individual collar tie in the drawing — there
+  is exactly one place the values live, never two independent copies.
+- Choosing `half-lap` shows an inline note next to the selector explaining
+  that its geometry is not modeled yet, in addition to K1 preparation and
+  cutting becoming unavailable. The user is told why, not just that something
+  disappeared.
+- The collar tie gets its own semantic 3D colour (`--a-collar-tie`), distinct
+  from timber (K1/H1/J1), the ridge and purlins, following the existing
+  `kind-<name>` CSS convention rather than a one-off class.

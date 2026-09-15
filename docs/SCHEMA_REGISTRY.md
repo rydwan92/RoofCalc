@@ -42,6 +42,16 @@ free; changing meaning, type or required-ness is not.
 - V26 note: the new `SkeletonMember3D` provenance fields (`sourceMemberId`,
   `sourceFeatureId`, `openingRole`) are on a **derived** runtime type, not on any
   persisted schema, so ADR-007 cost no serialization compatibility.
+- V32 note: `GableRoofTemplateSpec.structure?: RoofStructureIntent` (roof
+  structural system, `{ system: 'rafter' | 'rafter-collar-tie'; collarTie? }`)
+  and `AssemblySpec['ridge'].connection?: RidgeConnectionType` (K1 ridge
+  termination, `'ridge-board' | 'direct-meeting' | 'half-lap'`) are additive
+  optional fields inside `project.roof`. Both are absent on every pre-V32
+  document; absence means exactly the pre-V32 behavior (`system: 'rafter'`,
+  `connection: 'ridge-board'`). No `schemaVersion` bump. Covered by
+  `fixtures/projects/10-gable-collar-tie-direct-meeting.cieslacalc.json` and by
+  every pre-V32 fixture parsing unchanged. `RoofStructureIntent.collarTie` is
+  only meaningful for `type: 'gable'`; hip templates never carry `structure`.
 
 ---
 

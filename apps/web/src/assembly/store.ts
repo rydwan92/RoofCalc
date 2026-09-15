@@ -15,6 +15,7 @@ import {
   assemblyDefaults,
   assemblyFromRoofTemplate,
   calculateBirdsmouth,
+  clampCollarTieHeightMm,
   clampRoofWindow,
   convertRoofTemplate,
   createDefaultRoofWindow,
@@ -25,6 +26,7 @@ import {
   gableTemplateFromAssembly,
   HIP_RAFTER_PROTOTYPE_ID,
   JACK_RAFTER_PROTOTYPE_ID,
+  maxCollarTieHeightMm,
   resolveRoofWindowPlacement,
   resolveOpeningFraming,
   resolveOpeningFramingSet,
@@ -42,6 +44,7 @@ import type {
   CounterBattenLayoutSpec,
   EndStationPolicy,
   RafterSpacingMode,
+  RidgeConnectionType,
   RoofTemplateSpec,
   RoofOpeningFramingSpec,
   MembraneLayerSpec,
@@ -76,6 +79,9 @@ export type EditField =
   | 'ridge.depthMm'
   | 'template.buildingLengthMm'
   | 'template.rafterSpacingMm'
+  | 'collarTie.heightAboveWallPlateMm'
+  | 'collarTie.widthMm'
+  | 'collarTie.depthMm'
   | `support/${string}/${SupportField}`;
 type AssemblyEditField = Exclude<
   EditField,
@@ -83,6 +89,9 @@ type AssemblyEditField = Exclude<
   | 'template.rafterSpacingMm'
   | 'hip.widthMm'
   | 'hip.depthMm'
+  | 'collarTie.heightAboveWallPlateMm'
+  | 'collarTie.widthMm'
+  | 'collarTie.depthMm'
 >;
 export const supportField = (id: string, field: SupportField): EditField =>
   `support/${id}/${field}`;
@@ -117,6 +126,18 @@ export function editValue(
     return template?.type === 'hip' ? template.hipRafterSection.widthMm : NaN;
   if (field === 'hip.depthMm')
     return template?.type === 'hip' ? template.hipRafterSection.depthMm : NaN;
+  if (field === 'collarTie.heightAboveWallPlateMm')
+    return template?.type === 'gable'
+      ? (template.structure?.collarTie?.heightAboveWallPlateMm ?? NaN)
+      : NaN;
+  if (field === 'collarTie.widthMm')
+    return template?.type === 'gable'
+      ? (template.structure?.collarTie?.section.widthMm ?? NaN)
+      : NaN;
+  if (field === 'collarTie.depthMm')
+    return template?.type === 'gable'
+      ? (template.structure?.collarTie?.section.depthMm ?? NaN)
+      : NaN;
   if (field === 'ridge.depthMm') return spec.ridge.depthMm ?? NaN;
   if (field.startsWith('support/')) {
     const [, id, key] = field.split('/');
@@ -226,6 +247,32 @@ function editedTemplate(
       hipRafterSection: { ...template.hipRafterSection, [key]: value },
     };
   }
+  if (
+    field === 'collarTie.heightAboveWallPlateMm' ||
+    field === 'collarTie.widthMm' ||
+    field === 'collarTie.depthMm'
+  ) {
+    if (template.type !== 'gable' || !template.structure?.collarTie)
+      throw new RangeError('collar_tie_required');
+    const collarTie = template.structure.collarTie;
+    return {
+      ...template,
+      structure: {
+        ...template.structure,
+        collarTie:
+          field === 'collarTie.heightAboveWallPlateMm'
+            ? { ...collarTie, heightAboveWallPlateMm: value }
+            : {
+                ...collarTie,
+                section: {
+                  ...collarTie.section,
+                  [field === 'collarTie.widthMm' ? 'widthMm' : 'depthMm']:
+                    value,
+                },
+              },
+      },
+    };
+  }
   return roofTemplateFromAssembly(
     editedSpec(spec, field as AssemblyEditField, value),
     template,
@@ -288,6 +335,8 @@ export interface AssemblyState {
   activeTransaction?: DomainSnapshot;
   setMode: (mode: WorkbenchMode) => void;
   setRoofType: (type: RoofTemplateSpec['type']) => void;
+  setRoofStructureSystem: (system: 'rafter' | 'rafter-collar-tie') => void;
+  setRidgeConnection: (connection: RidgeConnectionType) => void;
   setProjectRoof: (template: RoofTemplateSpec) => void;
   setView: (view: WorkbenchCanvasView) => void;
   setViewPreset: (preset: ViewPreset) => void;
@@ -466,6 +515,54 @@ export const useAssembly = create<AssemblyState>((set) => ({
           measurement: undefined,
         },
       };
+    }),
+  setRoofStructureSystem: (system) =>
+    set((state) => {
+      if (state.template.type !== 'gable') return state;
+      const template: RoofTemplateSpec = {
+        ...state.template,
+        structure:
+          system === 'rafter-collar-tie'
+            ? {
+                system,
+                collarTie: state.template.structure?.collarTie ?? {
+                  heightAboveWallPlateMm: clampCollarTieHeightMm(
+                    state.template.halfRunMm,
+                    state.template.pitchDeg,
+                    maxCollarTieHeightMm(
+                      state.template.halfRunMm,
+                      state.template.pitchDeg,
+                    ) / 2,
+                  ),
+                  section: { widthMm: 100, depthMm: 38 },
+                },
+              }
+            : { system },
+      };
+      return withHistory(
+        state,
+        committedTemplate(
+          template,
+          state.drafts,
+          state.invalidFields,
+          state.projectDocument,
+        ),
+      );
+    }),
+  setRidgeConnection: (connection) =>
+    set((state) => {
+      const next = structuredClone(state.spec);
+      next.ridge.connection = connection;
+      const template = roofTemplateFromAssembly(next, state.template);
+      return withHistory(
+        state,
+        committedTemplate(
+          template,
+          state.drafts,
+          state.invalidFields,
+          state.projectDocument,
+        ),
+      );
     }),
   setProjectRoof: (template) =>
     set((state) => ({

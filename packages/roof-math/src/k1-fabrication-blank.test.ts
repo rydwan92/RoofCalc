@@ -2,6 +2,46 @@ import { describe, expect, it } from 'vitest';
 import { assemblyDefaults, calculateAssembly } from './assembly';
 import { resolveK1FabricationBlank } from './k1-fabrication-blank';
 
+describe('K1 ridge connection variants', () => {
+  it('resolves a direct-opposing-rafter meeting with a longer blank than the board case', () => {
+    const boardCalculation = calculateAssembly(assemblyDefaults);
+    const boardResult = resolveK1FabricationBlank(
+      boardCalculation.assembly,
+      assemblyDefaults.ridge.thicknessMm,
+      'ridge-board',
+    );
+    const directSpec = structuredClone(assemblyDefaults);
+    directSpec.ridge.connection = 'direct-meeting';
+    const directCalculation = calculateAssembly(directSpec);
+    const directResult = resolveK1FabricationBlank(
+      directCalculation.assembly,
+      directSpec.ridge.thicknessMm,
+      'direct-meeting',
+    );
+    expect(boardResult.status).toBe('resolved');
+    expect(directResult.status).toBe('resolved');
+    if (boardResult.status !== 'resolved' || directResult.status !== 'resolved')
+      return;
+    expect(directResult.ridgeConnection).toBe(
+      'direct-opposing-rafter-plumb-meeting',
+    );
+    expect(directResult.requiredBlankLengthMm).toBeGreaterThan(
+      boardResult.requiredBlankLengthMm,
+    );
+  });
+
+  it('never resolves a half-lap blank, regardless of thickness', () => {
+    const calculation = calculateAssembly(assemblyDefaults);
+    expect(
+      resolveK1FabricationBlank(
+        calculation.assembly,
+        assemblyDefaults.ridge.thicknessMm,
+        'half-lap',
+      ),
+    ).toEqual({ status: 'unresolved', reason: 'ridge-connection-not-modeled' });
+  });
+});
+
 describe('K1 physical blank proof', () => {
   const calculation = calculateAssembly(assemblyDefaults);
 

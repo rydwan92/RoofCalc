@@ -8,7 +8,10 @@ import {
   gableTemplateFromAssembly,
   resolveRoofTemplate,
 } from '@cieslacalc/roof-math';
-import { createK1CuttingRequirement } from './k1-cutting-adapter';
+import {
+  createK1CuttingRequirement,
+  k1RequirementSignature,
+} from './k1-cutting-adapter';
 
 function projection(hip = false) {
   const gable = gableTemplateFromAssembly(assemblyDefaults);
@@ -104,5 +107,55 @@ describe('K1 application procurement boundary', () => {
       settings: { kerfMm: 0, endTrimMm: 0, minimumReusableRemnantMm: 0 },
     });
     expect(plan.unassignedPieces[0]?.reason).toBe('no-compatible-stock');
+  });
+});
+
+describe('K1 ridge connection selection', () => {
+  it('resolves a direct rafter meeting and never confuses it with the board case', () => {
+    const boardProjection = projection();
+    const boardResult = createK1CuttingRequirement(
+      boardProjection.resolved,
+      boardProjection.schedule,
+    );
+    const directAssembly = structuredClone(assemblyDefaults);
+    directAssembly.ridge.connection = 'direct-meeting';
+    const directResolved = resolveRoofTemplate(
+      gableTemplateFromAssembly(directAssembly),
+    );
+    const directSchedule = createRoofMemberSchedule({
+      skeleton: createRoofSkeletonFromResolved(directResolved),
+    });
+    const directResult = createK1CuttingRequirement(
+      directResolved,
+      directSchedule,
+    );
+    expect(boardResult.status).toBe('resolved');
+    expect(directResult.status).toBe('resolved');
+    if (boardResult.status !== 'resolved' || directResult.status !== 'resolved')
+      return;
+    expect(directResult.blank.ridgeConnection).toBe(
+      'direct-opposing-rafter-plumb-meeting',
+    );
+    expect(boardResult.blank.ridgeConnection).toBe(
+      'centered-vertical-ridge-board-near-face-butt',
+    );
+    expect(k1RequirementSignature(directResult)).not.toBe(
+      k1RequirementSignature(boardResult),
+    );
+  });
+
+  it('reports a half-lap ridge connection as not yet modeled, never as a fake blank', () => {
+    const halfLapAssembly = structuredClone(assemblyDefaults);
+    halfLapAssembly.ridge.connection = 'half-lap';
+    const resolved = resolveRoofTemplate(
+      gableTemplateFromAssembly(halfLapAssembly),
+    );
+    const schedule = createRoofMemberSchedule({
+      skeleton: createRoofSkeletonFromResolved(resolved),
+    });
+    expect(createK1CuttingRequirement(resolved, schedule)).toEqual({
+      status: 'unresolved',
+      reason: 'ridge-connection-not-modeled',
+    });
   });
 });

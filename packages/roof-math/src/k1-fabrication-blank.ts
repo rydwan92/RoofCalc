@@ -1,15 +1,21 @@
 import type {
   Point2D,
   ResolvedAssembly,
+  RidgeConnectionType,
   TimberSection,
 } from '@cieslacalc/timber-model';
 
 export type K1BlankUnresolvedReason =
   | 'ridge-board-not-modeled'
+  | 'ridge-connection-not-modeled'
   | 'incomplete-cuts'
   | 'invalid-section'
   | 'geometry-outside-blank'
   | 'stock-envelope-mismatch';
+
+export type K1RidgeConnectionBasis =
+  | 'centered-vertical-ridge-board-near-face-butt'
+  | 'direct-opposing-rafter-plumb-meeting';
 
 export type K1FabricationBlankResolution =
   | {
@@ -23,7 +29,7 @@ export type K1FabricationBlankResolution =
       };
       requiredBlankLengthMm: number;
       basis: 'modeled-k1-cut-envelope';
-      ridgeConnection: 'centered-vertical-ridge-board-near-face-butt';
+      ridgeConnection: K1RidgeConnectionBasis;
       fabricationAllowanceMm: 0;
     }
   | { status: 'unresolved'; reason: K1BlankUnresolvedReason };
@@ -34,12 +40,25 @@ const toleranceMm = 1e-6;
  * Proves an unmachined rectangular blank for the currently modeled K1 cuts.
  * The eave station is local x=0; the longitudinal extent is derived from all
  * finished and removed-cut vertices, not from minimumStockLengthMm.
+ *
+ * `ridge-board` requires a positive modeled board thickness, exactly as
+ * before V32. `direct-meeting` resolves the same near-face-to-axis envelope
+ * with zero effective thickness (the caller's `assembly` must already reflect
+ * that, see `resolveAssembly`). `half-lap` has no modeled overlap/cut-reduction
+ * geometry yet and never resolves a blank — it is reported as unresolved with
+ * a structured reason rather than guessed.
  */
 export function resolveK1FabricationBlank(
   assembly: ResolvedAssembly,
   ridgeBoardThicknessMm: number,
+  connection: RidgeConnectionType = 'ridge-board',
 ): K1FabricationBlankResolution {
-  if (!Number.isFinite(ridgeBoardThicknessMm) || ridgeBoardThicknessMm <= 0)
+  if (connection === 'half-lap')
+    return { status: 'unresolved', reason: 'ridge-connection-not-modeled' };
+  if (
+    connection === 'ridge-board' &&
+    (!Number.isFinite(ridgeBoardThicknessMm) || ridgeBoardThicknessMm <= 0)
+  )
     return { status: 'unresolved', reason: 'ridge-board-not-modeled' };
 
   const section = assembly.member.section;
@@ -115,7 +134,10 @@ export function resolveK1FabricationBlank(
     },
     requiredBlankLengthMm: lengthMm,
     basis: 'modeled-k1-cut-envelope',
-    ridgeConnection: 'centered-vertical-ridge-board-near-face-butt',
+    ridgeConnection:
+      connection === 'direct-meeting'
+        ? 'direct-opposing-rafter-plumb-meeting'
+        : 'centered-vertical-ridge-board-near-face-butt',
     fabricationAllowanceMm: 0,
   };
 }

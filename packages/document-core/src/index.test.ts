@@ -25,6 +25,7 @@ const candidates: SectionCandidate[] = [
     section: {
       kind: 'project-summary',
       roofType: 'gable',
+      structuralSystem: 'rafter',
       buildingLengthMm: 10000,
       halfRunMm: 4000,
       pitchDeg: 35,

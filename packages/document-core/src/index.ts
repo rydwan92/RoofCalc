@@ -42,6 +42,7 @@ export interface DocumentDrawing {
 export interface ProjectSummarySection {
   kind: 'project-summary';
   roofType: 'gable' | 'hip';
+  structuralSystem: 'rafter' | 'rafter-collar-tie';
   buildingLengthMm: number;
   halfRunMm: number;
   pitchDeg: number;
@@ -83,6 +84,7 @@ export interface MemberFabricationSection {
   count: number;
   section: { widthMm: number; depthMm: number };
   requiredBlankLengthMm: number;
+  ridgeConnection: 'ridge-board' | 'direct-meeting';
   drawing: DocumentDrawing;
   details: {
     type: 'birdsmouth-detail' | 'ridge-cut-detail';
@@ -174,6 +176,9 @@ export interface AssumptionsSection {
   kind: 'assumptions';
   codes: (
     | 'ridge-board'
+    | 'ridge-direct-meeting'
+    | 'ridge-half-lap-unresolved'
+    | 'collar-tie-geometric'
     | 'geometric-covering'
     | 'net-membrane'
     | 'no-structural-check'

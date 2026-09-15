@@ -99,12 +99,28 @@ export interface SupportSpec {
   placement: { mode: 'horizontal-from-wall'; xMm: number };
   joint: JointPreference;
 }
+/**
+ * Explicit K1 ridge-termination intent. `ridge-board` is the pre-V32 default
+ * (near-face butt against a centered vertical board). `direct-meeting` is the
+ * same plumb-cut reference geometry with zero board thickness (opposing
+ * rafters meet on the run axis). `half-lap` names an overlap/nakładka
+ * connection whose cut geometry is not yet modeled; it never resolves a
+ * fabrication blank (see `resolveK1FabricationBlank`). None of these variants
+ * claim structural adequacy, fastener selection or code compliance.
+ */
+export type RidgeConnectionType = 'ridge-board' | 'direct-meeting' | 'half-lap';
 /** Editable intent only. All positions and lengths are canonical millimetres. */
 export interface AssemblySpec {
   roof: { runMm: number; pitchDeg: number; overhangMm: number };
   member: { id: EntityId; section: TimberSection };
   supports: SupportSpec[];
-  ridge: { id: EntityId; thicknessMm: number; depthMm?: number };
+  ridge: {
+    id: EntityId;
+    thicknessMm: number;
+    depthMm?: number;
+    /** Absent means `ridge-board`, matching every project saved before V32. */
+    connection?: RidgeConnectionType;
+  };
 }
 export type RafterSpacingMode =
   'max-even-spacing' | 'target-even-spacing' | 'fixed-module';
@@ -119,6 +135,21 @@ export type RafterSpacingSpec =
       spacingMm: number;
       endPolicy: EndStationPolicy;
     };
+/** One collar-tie (jętka) physical placement. Geometry only; no structural sizing. */
+export interface CollarTieSpec {
+  /** Vertical clearance above the wall-plate top / seat-plane reference. */
+  heightAboveWallPlateMm: number;
+  section: TimberSection;
+}
+/**
+ * Explicit roof structural-system intent, distinct from roof shape (gable/hip)
+ * and from K1 ridge-connection intent. `rafter-collar-tie` is currently
+ * supported for gable roofs only.
+ */
+export interface RoofStructureIntent {
+  system: 'rafter' | 'rafter-collar-tie';
+  collarTie?: CollarTieSpec;
+}
 /** Editable intent for a symmetric gable roof. The cross section resolves through AssemblySpec. */
 export interface GableRoofTemplateSpec {
   id: EntityId;
@@ -132,6 +163,8 @@ export interface GableRoofTemplateSpec {
   wallPlate: SupportSpec;
   ridge: AssemblySpec['ridge'];
   intermediateSupports: SupportSpec[];
+  /** Absent means the pre-V32 default: `{ system: 'rafter' }`. */
+  structure?: RoofStructureIntent;
 }
 /** Editable intent for the V6 regular rectangular equal-pitch hip roof. */
 export interface HipRoofTemplateSpec {
@@ -331,6 +364,20 @@ export interface ResolvedRafterSpacing {
   stationCount: number;
   stations: RafterStation[];
 }
+/**
+ * One resolved collar tie, paired with its rafter station. Length and
+ * position are theoretical/centerline geometry (reference to the rafter
+ * axis), not a finished, notch-aware fabrication result.
+ */
+export interface ResolvedCollarTie {
+  id: EntityId;
+  stationId: EntityId;
+  alongBuildingMm: number;
+  heightAboveWallPlateMm: number;
+  positionAlongRafterMm: number;
+  lengthMm: number;
+  section: TimberSection;
+}
 export interface Point3D {
   x: number;
   y: number;
@@ -401,7 +448,8 @@ export type SkeletonMemberKind =
   | 'jack-rafter'
   | 'purlin'
   | 'opening-header'
-  | 'rafter-segment';
+  | 'rafter-segment'
+  | 'collar-tie';
 export type SkeletonMemberSide =
   | 'left'
   | 'right'

@@ -128,4 +128,113 @@ describe('execution export adapter', () => {
       reusableRemnantLengthMm: plan.summary.reusableRemnantLengthMm,
     });
   });
+
+  function factsFromAssembly(assembly: typeof assemblyDefaults) {
+    const gable = gableTemplateFromAssembly(assembly);
+    const resolved = createWorkbenchProjectResolver().resolve(gable);
+    const schedule = createRoofMemberSchedule({ skeleton: resolved.skeleton });
+    const k1 = createK1CuttingRequirement(resolved.resolved, schedule);
+    return {
+      source,
+      template: gable,
+      resolved: resolved.resolved,
+      skeleton: resolved.skeleton,
+      surface: resolveRoofSurfaceGeometry({ template: gable, features: [] }),
+      windows: [],
+      schedule,
+      details: resolved.detailPreviews,
+      k1,
+      membraneEnabled: false,
+      counterBattensEnabled: false,
+      battensEnabled: false,
+      coverings: [],
+      coveringStatuses: [],
+    };
+  }
+
+  it('never presents a half-lap ridge connection as fabrication-ready, but explains why', () => {
+    const assembly = structuredClone(assemblyDefaults);
+    assembly.ridge.connection = 'half-lap';
+    const input = factsFromAssembly(assembly);
+    expect(input.k1.status).toBe('unresolved');
+    const candidates = createExportCandidates(input);
+    const fabrication = candidates.find(
+      (row) => row.kind === 'member-fabrication',
+    );
+    expect(fabrication).toMatchObject({
+      readiness: 'unavailable',
+      reason: 'k1-unresolved',
+    });
+    const assumptions = candidates.find(
+      (row) => row.kind === 'assumptions',
+    )?.section;
+    expect(assumptions?.kind).toBe('assumptions');
+    if (assumptions?.kind === 'assumptions')
+      expect(assumptions.codes).toContain('ridge-half-lap-unresolved');
+  });
+
+  it('labels a direct ridge meeting distinctly from the ridge-board default', () => {
+    const assembly = structuredClone(assemblyDefaults);
+    assembly.ridge.connection = 'direct-meeting';
+    const input = factsFromAssembly(assembly);
+    const candidates = createExportCandidates(input);
+    const fabrication = candidates.find(
+      (row) => row.kind === 'member-fabrication',
+    )?.section;
+    expect(fabrication?.kind).toBe('member-fabrication');
+    if (fabrication?.kind === 'member-fabrication')
+      expect(fabrication.ridgeConnection).toBe('direct-meeting');
+    const assumptions = candidates.find(
+      (row) => row.kind === 'assumptions',
+    )?.section;
+    if (assumptions?.kind === 'assumptions') {
+      expect(assumptions.codes).toContain('ridge-direct-meeting');
+      expect(assumptions.codes).not.toContain('ridge-board');
+    }
+  });
+
+  it('reports the collar-tie structural system truthfully in the project summary', () => {
+    const gable = gableTemplateFromAssembly(assemblyDefaults);
+    if (gable.type !== 'gable') throw new Error('expected a gable template');
+    gable.structure = {
+      system: 'rafter-collar-tie',
+      collarTie: {
+        heightAboveWallPlateMm: 1000,
+        section: { widthMm: 100, depthMm: 38 },
+      },
+    };
+    const resolved = createWorkbenchProjectResolver().resolve(gable);
+    const schedule = createRoofMemberSchedule({ skeleton: resolved.skeleton });
+    const input = {
+      source,
+      template: gable,
+      resolved: resolved.resolved,
+      skeleton: resolved.skeleton,
+      surface: resolveRoofSurfaceGeometry({ template: gable, features: [] }),
+      windows: [],
+      schedule,
+      details: resolved.detailPreviews,
+      k1: createK1CuttingRequirement(resolved.resolved, schedule),
+      membraneEnabled: false,
+      counterBattensEnabled: false,
+      battensEnabled: false,
+      coverings: [],
+      coveringStatuses: [],
+    };
+    const candidates = createExportCandidates(input);
+    const summary = candidates.find(
+      (row) => row.kind === 'project-summary',
+    )?.section;
+    expect(summary?.kind).toBe('project-summary');
+    if (summary?.kind === 'project-summary')
+      expect(summary.structuralSystem).toBe('rafter-collar-tie');
+    expect(
+      schedule.timberRows.find((row) => row.familyKey === 'C1')?.quantity,
+    ).toBeGreaterThan(0);
+    const assumptions = candidates.find(
+      (row) => row.kind === 'assumptions',
+    )?.section;
+    if (assumptions?.kind === 'assumptions')
+      expect(assumptions.codes).toContain('collar-tie-geometric');
+  });
 });

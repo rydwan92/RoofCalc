@@ -1802,6 +1802,44 @@ describe('dual-mode parametric workbench', () => {
     expect(screen.getByText(/Brak fizycznej deski kalenicowej/)).toBeTruthy();
   });
 
+  it('explains why K1 cutting is unavailable for an unmodeled half-lap ridge connection', async () => {
+    render(<App />);
+    builder();
+    act(() => useAssembly.getState().setRidgeConnection('half-lap'));
+    fireEvent.click(screen.getByRole('tab', { name: 'Zestawienie' }));
+    await screen.findByTestId('material-schedule');
+    expect(screen.queryByTestId('k1-cutting-cta')).toBeNull();
+    expect(
+      screen.getByText(/nakładka\) nie jest jeszcze opracowana/),
+    ).toBeTruthy();
+  });
+
+  it('resolves K1 cutting for a direct ridge meeting exactly like the ridge-board default', async () => {
+    render(<App />);
+    builder();
+    act(() => useAssembly.getState().setRidgeConnection('direct-meeting'));
+    fireEvent.click(screen.getByRole('tab', { name: 'Zestawienie' }));
+    await screen.findByTestId('material-schedule');
+    expect(screen.getByTestId('k1-cutting-cta')).toBeTruthy();
+  });
+
+  it('adds and removes collar ties when the structural system is toggled', async () => {
+    render(<App />);
+    builder();
+    const history = useAssembly.getState().historyPast.length;
+    act(() =>
+      useAssembly.getState().setRoofStructureSystem('rafter-collar-tie'),
+    );
+    expect(useAssembly.getState().historyPast.length).toBeGreaterThan(history);
+    fireEvent.click(screen.getByRole('tab', { name: 'Zestawienie' }));
+    await screen.findByTestId('material-schedule');
+    expect(screen.getAllByText('C1', { exact: false }).length).toBeGreaterThan(
+      0,
+    );
+    act(() => useAssembly.getState().setRoofStructureSystem('rafter'));
+    expect(screen.queryByText('C1', { exact: false })).toBeNull();
+  });
+
   it('preserves separate geometric length groups for hip-roof J1 members', async () => {
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: 'Krokiew narożna' }));

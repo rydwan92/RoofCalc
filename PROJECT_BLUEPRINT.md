@@ -1297,29 +1297,102 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
-> V30 source at `d4e4dea` was recovered and closed before V31. Its only failed
-> gate was Prettier formatting in `apps/web/src/assembly/Page.test.tsx`; the
-> focused mechanical fix is retained. Final recovered V30 validation:
-> `pnpm verify` PASS with 653 tests in 69 files and web/API builds; `pnpm e2e`
-> PASS with 22/22 desktop/mobile scenarios. No V30 solver, schema or output
-> semantics changed during recovery.
+> V32 started 2026-09-14/15 from clean `main` at `82b4d64` (`30 done i v31
+> prawie skoczona`). Audited before starting: V31's checkpoint text below was
+> stale (it read "source implementation has not started"), but `82b4d64`'s own
+> diff shows the full V31 implementation (`ProjectStartAssistant.tsx`,
+> `CoveringAddAssistant.tsx`, `project-start.ts`, `project-guidance.ts`, doc
+> updates) already landed. Baseline `pnpm verify` re-run from that clean HEAD
+> PASSED (typecheck/lint/format/test/build all green) before any V32 edit, so
+> V31 is now marked **COMPLETE** below instead of re-implemented.
 
 **Iteration:** `031 — Creator Experience & Covering Studio`
 
-**Status:** `IN PROGRESS`
+**Status:** `COMPLETE — BASELINE `pnpm verify` PASS RE-CONFIRMED AT 82b4d64 BEFORE V32`
 
-**Current work:** Implement the user-approved guided project start, Quick →
-Creator bridge, derived contextual guidance, safe covering family/source/manual
-draft flow and truthful family-specific covering presentation. Definition of
-Ready: `docs/ARCHITECTURE_V31_CREATOR_AND_COVERING_EXPERIENCE.md`.
+**Completed:** Guided project-start assistant, Quick → Creator width/pitch/eave
+handoff, derived two-item-max project guidance, explicit covering
+family → source → product flow with safe manual drafts, and truthful
+family-specific covering presentation (Schemat krycia, semantic states). See
+`docs/ARCHITECTURE_V31_CREATOR_AND_COVERING_EXPERIENCE.md` for the full
+Definition of Ready; all thirteen points are satisfied by the code already on
+`main`.
 
-**Changed / WIP files:** V30 formatting recovery in
-`apps/web/src/assembly/Page.test.tsx`; V31 architecture document and this
-checkpoint. Source implementation has not started.
+---
 
-**NEXT ACTION:** Implement the pure project-start mapping and guidance model,
-then wire the start assistant and safe covering add flow before presentation
-polish. Do not commit/push or begin V32.
+**Iteration:** `032 — Structural Systems, Ridge Connections & Execution Workbench`
+
+**Status:** `COMPLETE (SCOPED) — FULL VERIFY AND E2E GREEN; WORKBENCH PERSPECTIVES DEFERRED`
+
+**Current work:** Added `RoofStructureIntent` (rafter / rafter-collar-tie,
+gable-only, additive on `GableRoofTemplateSpec.structure`), a collar-tie
+(Jętka) geometric member family (`packages/roof-math/src/collar-tie.ts`,
+`SkeletonMemberKind: 'collar-tie'`, schedule family `C1`, schedule/drawing
+only — never procurement), and an explicit K1 `RidgeConnectionType`
+(`ridge-board` / `direct-meeting` / `half-lap`, additive on
+`AssemblySpec['ridge'].connection`). `resolveK1FabricationBlank` now branches
+on connection: `ridge-board` and `direct-meeting` resolve a blank,
+`half-lap` never does (`reason: 'ridge-connection-not-modeled'`), and
+`k1RequirementSignature` hashes the connection so a changed connection always
+invalidates a cached `CuttingPlan`. `document-core`/`export-adapter.ts` carry
+the new facts truthfully (structural system in the summary, ridge connection
+on the K1 fabrication section, new assumptions codes including an explicit
+"half-lap not modeled" disclosure). No H1/J1 math, no schema version bump, no
+Cost Engine. Full write-up: `docs/ARCHITECTURE_V32_STRUCTURAL_SYSTEMS_AND_EXECUTION.md`.
+
+**Deferred from this iteration:** the five-perspective workbench navigation
+layer (Projekt/Wykonanie/Materiały/Kosztorys/Dokumenty) requested by the V32
+prompt. Rationale and recommended next step are in the architecture doc's
+"Workbench perspectives (deferred)" section and the session's final report.
+
+**Changed / WIP files:** `packages/timber-model/src/index.ts`;
+`packages/roof-math/src/{collar-tie.ts (new),cuts/ridge-cut.ts,assembly.ts,
+gable-roof.ts,hip-roof.ts,k1-fabrication-blank.ts,roof-template.ts,index.ts}`
+plus their test files; `packages/quantity-core/src/index.ts`;
+`packages/document-core/src/index.ts`; `apps/web/src/assembly/{store.ts,
+Inputs.tsx,Inspector.tsx,workbench.ts,k1-cutting-adapter.ts,export-adapter.ts,
+ExecutionExport.tsx,translations.ts,styles.css}` plus their test files;
+`packages/ui/src/tokens.css`; `fixtures/projects/10-gable-collar-tie-direct-meeting.cieslacalc.json`;
+`fixtures/projects/reference-projects.test.ts`; this checkpoint and the docs
+listed in the architecture doc's "Files touched".
+
+**Validation:** `pnpm verify`'s constituent commands were run directly
+(`tsc`, `eslint`, `prettier`, `vitest`, `vite build`, `tsup build`) because
+`pnpm run <script>` itself hung on this machine independent of any source
+change (confirmed: three concurrent `pnpm typecheck` invocations were found
+stuck at pnpm's own startup, well before spawning a compiler process; a
+direct `node node_modules/typescript/bin/tsc` run succeeded immediately).
+Results: typecheck clean; lint clean (the one pre-existing
+`Page.tsx` exhaustive-deps warning only); format clean after one
+`prettier --write` pass; `vitest run` 685/688 passing — the 3 failures are in
+`apps/web/src/catalog/CatalogProductPicker.test.tsx` and reproduce identically
+on a `git stash`-clean `82b4d64` tree (pre-existing, unrelated to V32; a
+stale "Wybierz" button-name expectation against a component that now renders
+"Szczegóły" — flagged as task `task_cc638044`); both app builds succeed.
+`pnpm e2e` was likewise run directly (`vite preview` on 4173, then
+`@playwright/test`'s CLI): the first full run also surfaced one **pre-existing,
+V32-unrelated** V31 regression — `F … hip schedule offers cutting only for
+whole K1 rafters` never dismisses the V31 project-start assistant before
+navigating, so its click is blocked; fixed directly (added the same
+assistant-submit step every other test already uses) since it was a
+trivial, well-understood test-only fix blocking a clean e2e baseline. The
+same run also caught a real bug in this iteration's own new E2E test: the
+new "structural system and ridge connection" scenario didn't close the
+mobile Toolbox/Inspector sheet before switching tasks, so its mobile variant
+timed out; fixed with the same `Escape`-to-close pattern
+`openResolvedTileSchedule` already uses. Final re-run: **26/26 e2e scenarios
+pass** (desktop + mobile), in 35s. Browser QA performed live against the
+built preview at both 1440×900-class desktop and 375×812 mobile: structural
+system toggle, collar-tie 3D rendering/colour/legend/selection/Inspector
+fields, and all three ridge-connection options (including the half-lap
+inline "not modeled" note and K1 preparation/export gating) all confirmed
+working as designed at both sizes with no horizontal overflow.
+
+**NEXT ACTION:** V32 is closed. Recommended V33 direction: the deferred
+five-perspective workbench navigation layer (see the architecture doc), or a
+discriminated `RafterEndConnectionIntent`-style half-lap geometry slice if a
+reliable engagement-depth/removed-face reference becomes available. Do not
+commit/push or begin V33 without explicit user direction.
 
 ---
 

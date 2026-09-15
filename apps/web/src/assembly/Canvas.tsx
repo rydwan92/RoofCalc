@@ -63,6 +63,9 @@ export function entityLabel(
     /^instance:(?:rafter-pair|hip-common-pair)-(\d+):(left|right)$/.exec(id);
   if (instance)
     return `${t('assembly.rafter')} #${instance[1]} - ${t(`assembly.${instance[2]}`)}`;
+  const collarTie = /^instance:rafter-pair-(\d+):collar-tie$/.exec(id);
+  if (collarTie) return `${t('assembly.collar-tie')} #${collarTie[1]}`;
+  if (id === 'member:collar-tie-1') return t('assembly.collar-tie');
   if (id === state.spec.member.id) return t('assembly.rafter');
   if (id === state.spec.ridge.id) return t('assembly.ridge');
   if (id === 'cut:ridge') return t('assembly.ridgeCut');

@@ -57,6 +57,9 @@ export const assemblySpecSchema: z.ZodType<AssemblySpec> = z
       id: entityId,
       thicknessMm: mm(0, 1000),
       depthMm: mm(1, 2000).optional(),
+      connection: z
+        .enum(['ridge-board', 'direct-meeting', 'half-lap'])
+        .optional(),
     }),
   })
   .superRefine((spec, ctx) => {
@@ -228,6 +231,7 @@ export function resolveAssembly(raw: AssemblySpec): ResolvedAssembly {
     pitchDeg,
     depthMm,
     thicknessMm: spec.ridge.thicknessMm,
+    connection: spec.ridge.connection,
   });
   const aBottom = { x: 0, y: 0 },
     aTop = local(atX(top, -overhangMm));
@@ -288,7 +292,7 @@ export function resolveAssembly(raw: AssemblySpec): ResolvedAssembly {
         visualExtentOnly: true,
         topReference: [ridgeBottom, ridgeTop],
         worldProfile:
-          spec.ridge.thicknessMm === 0
+          ridge.horizontalDeductionMm === 0
             ? []
             : [
                 { x: ridgeBottom.x, y: ridgeBottom.y - 70 },

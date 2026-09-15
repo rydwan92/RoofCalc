@@ -312,6 +312,77 @@ test.describe('H — execution package', () => {
   });
 });
 
+/** The roof's advanced section (ridge, structural system) lives in the same
+ * Inspector on desktop and, on mobile, inside the Toolbox sheet after
+ * selecting "Połać" — mirroring `pitchField`'s existing mobile route. */
+async function openRoofAdvanced(page: Page, project: string) {
+  const scope = await (async () => {
+    if (project !== 'mobile') return page;
+    await page.getByTestId('mobile-open-tools').click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await dialog
+      .getByRole('button', { name: 'Połać', exact: true })
+      .first()
+      .click();
+    await expect(dialog).toBeVisible();
+    return dialog;
+  })();
+  const details = scope.locator('details.a-inspector-advanced');
+  if (!(await details.getAttribute('open')))
+    await scope.getByText('Zaawansowane').click();
+  return scope;
+}
+
+/** The mobile Toolbox/Inspector sheet blocks the task dock underneath it
+ * until dismissed — mirroring `openResolvedTileSchedule`'s existing pattern. */
+async function closeRoofAdvanced(page: Page, project: string) {
+  if (project === 'mobile') await page.keyboard.press('Escape');
+}
+
+test.describe('I — structural system and ridge connection', () => {
+  test('collar tie enters the schedule and the ridge connection gates K1 truthfully', async ({
+    page,
+  }, testInfo) => {
+    await openBuilder(page);
+    const scope = await openRoofAdvanced(page, testInfo.project.name);
+
+    await scope
+      .getByRole('button', { name: 'Więźba krokwiowo-jętkowa' })
+      .click();
+    await closeRoofAdvanced(page, testInfo.project.name);
+    await openTask(page, 'materials');
+    await expect(
+      page
+        .locator('.a-schedule-family > header strong')
+        .filter({ hasText: 'C1' }),
+    ).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+
+    await openTask(page, 'construction');
+    const backScope = await openRoofAdvanced(page, testInfo.project.name);
+    await backScope
+      .getByRole('button', { name: 'Nakładka', exact: true })
+      .click();
+    await expect(
+      backScope.getByText(/nakładki nie jest jeszcze opracowana/),
+    ).toBeVisible();
+    await closeRoofAdvanced(page, testInfo.project.name);
+    await openTask(page, 'materials');
+    await expect(page.getByTestId('k1-cutting-cta')).toHaveCount(0);
+
+    await openTask(page, 'construction');
+    const finalScope = await openRoofAdvanced(page, testInfo.project.name);
+    await finalScope
+      .getByRole('button', { name: 'Połączenie bezpośrednie' })
+      .click();
+    await closeRoofAdvanced(page, testInfo.project.name);
+    await openTask(page, 'materials');
+    await expect(page.getByTestId('k1-cutting-cta')).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+  });
+});
+
 test.describe('B — Exact roof geometry is reachable on mobile', () => {
   test('the Toolbox routes the roof to an exact numeric field', async ({
     page,
@@ -483,6 +554,10 @@ test.describe('F — K1 physical blank to cutting plan', () => {
     await page.goto('/#/calculators/common-rafter');
     await page.getByRole('button', { name: 'Krokiew narożna' }).click();
     await page.locator(BUILDER).click();
+    const assistant = page.getByTestId('project-start-assistant');
+    await expect(assistant).toBeVisible();
+    await assistant.getByTestId('project-start-submit').click();
+    await expect(assistant).toBeHidden();
     await openTask(page, 'materials');
     await expect(page.getByTestId('k1-cutting-cta')).toHaveCount(1);
     await expect(

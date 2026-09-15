@@ -73,7 +73,12 @@ const copy = {
     blankNote:
       'Długość blanku dla zamodelowanych cięć; bez dodatkowego naddatku obróbki.',
     ridgeNote:
-      'K1 jest docięta do bliskiej płaszczyzny pionowej deski kalenicowej osadzonej centralnie. Inne połączenia kalenicowe nie są tu opracowane.',
+      'K1 jest docięta do bliskiej płaszczyzny pionowej deski kalenicowej osadzonej centralnie.',
+    ridgeNoteDirect:
+      'K1 dochodzi bezpośrednio do osi kalenicy - przeciwległe krokwie stykają się bez deski kalenicowej.',
+    structure: 'Konstrukcja więźby',
+    structureRafter: 'Więźba krokwiowa',
+    structureCollarTie: 'Więźba krokwiowo-jętkowa',
     datum:
       'Punkt odniesienia: zewnętrzny okap. Oznacz górną i dolną krawędź oraz kierunek okap → kalenica.',
     birdsmouth: 'Zacios przy podporze',
@@ -109,7 +114,13 @@ const copy = {
     unresolved: 'Wynik nierozwiązany - sprawdź pokrycie w projekcie.',
     assumptionsText: {
       'ridge-board':
-        'K1: zamodelowano połączenie z centralną deską kalenicową; brak wariantu belki konstrukcyjnej, wieszaka i styku krokwi bez deski.',
+        'K1: zamodelowano połączenie z centralną deską kalenicową; brak wariantu belki konstrukcyjnej, wieszaka i nakładki.',
+      'ridge-direct-meeting':
+        'K1: zamodelowano bezpośredni styk przeciwległych krokwi w osi kalenicy, bez deski kalenicowej.',
+      'ridge-half-lap-unresolved':
+        'K1: wybrano połączenie na nakładkę w kalenicy; geometria tego połączenia nie jest jeszcze opracowana, więc przygotowanie elementu i rozkrój K1 są niedostępne.',
+      'collar-tie-geometric':
+        'Jętka: długość i położenie to wynik geometryczny względem osi krokwi, bez cięć wykonawczych ani doboru przekroju konstrukcyjnego.',
       'geometric-covering':
         'Pokrycie: pozycje krycia i przebiegi są wynikami geometrycznymi, bez liczby do zakupu.',
       'net-membrane':
@@ -178,7 +189,12 @@ const copy = {
     blankNote:
       'Blank length for modeled cuts; no additional machining allowance.',
     ridgeNote:
-      'K1 terminates at the near face of a centered vertical ridge board. Other ridge connections are not modeled.',
+      'K1 terminates at the near face of a centered vertical ridge board.',
+    ridgeNoteDirect:
+      'K1 reaches the ridge axis directly - opposing rafters meet with no ridge board.',
+    structure: 'Roof structural system',
+    structureRafter: 'Rafter roof',
+    structureCollarTie: 'Rafter and collar-tie roof',
     datum:
       'Datum: outer eave. Mark top and bottom edges and the direction eave → ridge.',
     birdsmouth: 'Support birdsmouth',
@@ -214,7 +230,13 @@ const copy = {
     unresolved: 'Unresolved result - review covering in the project.',
     assumptionsText: {
       'ridge-board':
-        'K1: modeled against a centered ridge board; structural beam, hanger and direct rafter meeting variants are absent.',
+        'K1: modeled against a centered ridge board; structural beam, hanger and half-lap variants are absent.',
+      'ridge-direct-meeting':
+        'K1: modeled as a direct meeting of opposing rafters on the ridge axis, with no ridge board.',
+      'ridge-half-lap-unresolved':
+        'K1: a half-lap ridge connection is selected; its cut geometry is not modeled yet, so member preparation and K1 cutting are unavailable.',
+      'collar-tie-geometric':
+        'Collar tie: length and position are a geometric result referenced to the rafter axis, with no fabrication cuts or structural section sizing.',
       'geometric-covering':
         'Covering: positions and runs are geometric results, not quantities to purchase.',
       'net-membrane': 'Membrane: net area excludes laps, upstands and waste.',
@@ -393,6 +415,14 @@ function SectionBody({
               <strong>{length(section.buildingLengthMm)}</strong>
             </div>
             <div>
+              <span>{m.structure}</span>
+              <strong>
+                {section.structuralSystem === 'rafter-collar-tie'
+                  ? m.structureCollarTie
+                  : m.structureRafter}
+              </strong>
+            </div>
+            <div>
               <span>{m.halfRun}</span>
               <strong>{length(section.halfRunMm)}</strong>
             </div>
@@ -529,7 +559,11 @@ function SectionBody({
               </article>
             ))}
           </div>
-          <p className="doc-warning">{m.ridgeNote}</p>
+          <p className="doc-warning">
+            {section.ridgeConnection === 'direct-meeting'
+              ? m.ridgeNoteDirect
+              : m.ridgeNote}
+          </p>
         </>
       );
     case 'cutting-plan':

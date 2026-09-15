@@ -43,6 +43,7 @@ export function roofTemplateFromAssembly(
       id: current.id,
       buildingLengthMm: current.buildingLengthMm,
       rafterSpacing: current.rafterSpacing,
+      structure: current.structure,
     });
   return hipTemplateFromAssembly(assembly, {
     id: current.id,

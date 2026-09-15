@@ -30,13 +30,14 @@ export type K1CuttingRequirement =
 export function k1RequirementSignature(
   requirement: Extract<K1CuttingRequirement, { status: 'resolved' }>,
 ) {
-  return JSON.stringify(
+  return JSON.stringify([
+    requirement.blank.ridgeConnection,
     requirement.requiredPieces.map((piece) => [
       piece.id,
       piece.requiredBlankLengthMm,
       piece.stockClassId,
     ]),
-  );
+  ]);
 }
 
 /** Application-only bridge. Schedule axes are used as an ID whitelist, never as lengths. */
@@ -79,6 +80,7 @@ export function createK1CuttingRequirement(
   const blank = resolveK1FabricationBlank(
     resolved.calculation.assembly,
     resolved.template.ridge.thicknessMm,
+    resolved.template.ridge.connection ?? 'ridge-board',
   );
   if (blank.status === 'unresolved') return blank;
   if (blank.finishedGeometryReference.memberPrototypeId !== prototype.id)

@@ -26,6 +26,31 @@ describe('vertical symmetric ridge board', () => {
     expect(r.nearFaceXmm).toBe(4000);
     expect(r.alongMemberDeductionMm).toBe(0);
   });
+  it('defaults the connection to ridge-board', () => {
+    const r = calculateRidgeCut({
+      runMm: 4000,
+      pitchDeg: 30,
+      depthMm: 200,
+      thicknessMm: 40,
+    });
+    expect(r.connection).toBe('ridge-board');
+  });
+  it.each(['direct-meeting', 'half-lap'] as const)(
+    'ignores the declared thickness for %s and reaches the axis',
+    (connection) => {
+      const r = calculateRidgeCut({
+        runMm: 4000,
+        pitchDeg: 30,
+        depthMm: 200,
+        thicknessMm: 40,
+        connection,
+      });
+      expect(r.connection).toBe(connection);
+      expect(r.nearFaceXmm).toBe(4000);
+      expect(r.horizontalDeductionMm).toBe(0);
+      expect(r.alongMemberDeductionMm).toBe(0);
+    },
+  );
   it.each([-1, Infinity, NaN, 1001])('rejects thickness %s', (thicknessMm) => {
     expect(() =>
       calculateRidgeCut({

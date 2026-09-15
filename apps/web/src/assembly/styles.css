@@ -26,6 +26,8 @@
   --a-membrane: #6aa9b6;
   --a-framing: #6b4ca5;
   --a-framing-light: #d8c9ef;
+  --a-collar-tie: var(--ui-collar-tie, #8a4a6b);
+  --a-collar-tie-light: #c98aa8;
   --a-warning: var(--ui-warning, #b35b2d);
   --a-warning-fill: #fff0df;
   --a-state-selected: #007f73;
@@ -2270,6 +2272,16 @@
 .a-skeleton-member.kind-purlin .face-start,
 .a-skeleton-member.kind-purlin .face-end {
   fill: #ae7b4d;
+}
+.a-skeleton-member.kind-collar-tie .face-bottom,
+.a-skeleton-member.kind-collar-tie .face-side-a,
+.a-skeleton-member.kind-collar-tie .face-side-b {
+  fill: var(--a-collar-tie);
+}
+.a-skeleton-member.kind-collar-tie .face-top,
+.a-skeleton-member.kind-collar-tie .face-start,
+.a-skeleton-member.kind-collar-tie .face-end {
+  fill: var(--a-collar-tie-light);
 }
 .a-skeleton-member.is-muted {
   opacity: 0.18;

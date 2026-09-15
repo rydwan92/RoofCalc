@@ -17,6 +17,7 @@ import type { RoofMemberSchedule } from '@cieslacalc/quantity-core';
 import {
   projectPlaneLocalToWorld,
   resolveRoofPlaneBasis,
+  roofStructureSystem,
   type RoofSurfaceGeometryResult,
 } from '@cieslacalc/roof-math';
 import type {
@@ -80,6 +81,10 @@ function k1Section(facts: ExportFacts, k1: ResolvedK1): ExecutionSection {
     count: k1.requiredPieces.length,
     section: k1.blank.section,
     requiredBlankLengthMm: k1.blank.requiredBlankLengthMm,
+    ridgeConnection:
+      k1.blank.ridgeConnection === 'direct-opposing-rafter-plumb-meeting'
+        ? 'direct-meeting'
+        : 'ridge-board',
     drawing: drawing(
       createAssemblyDrawing(facts.resolved.calculation.assembly),
     ),
@@ -139,6 +144,7 @@ export function createExportCandidates(facts: ExportFacts): SectionCandidate[] {
   const summary: ExecutionSection = {
     kind: 'project-summary',
     roofType: facts.template.type,
+    structuralSystem: roofStructureSystem(facts.template),
     buildingLengthMm: facts.template.buildingLengthMm,
     halfRunMm: facts.template.halfRunMm,
     pitchDeg: facts.template.pitchDeg,
@@ -181,11 +187,13 @@ export function createExportCandidates(facts: ExportFacts): SectionCandidate[] {
                 ? 'J1'
                 : member.kind === 'ridge'
                   ? 'KR'
-                  : member.kind === 'opening-header'
-                    ? 'N'
-                    : member.kind === 'rafter-segment'
-                      ? 'K1*'
-                      : member.kind,
+                  : member.kind === 'collar-tie'
+                    ? 'C1'
+                    : member.kind === 'opening-header'
+                      ? 'N'
+                      : member.kind === 'rafter-segment'
+                        ? 'K1*'
+                        : member.kind,
         from: { x: member.from.x, y: member.from.y },
         to: { x: member.to.x, y: member.to.y },
         role: member.kind,
@@ -390,7 +398,20 @@ export function createExportCandidates(facts: ExportFacts): SectionCandidate[] {
   const assumptions: ExecutionSection = {
     kind: 'assumptions',
     codes: [
-      ...(facts.k1.status === 'resolved' ? ['ridge-board' as const] : []),
+      ...(facts.k1.status === 'resolved'
+        ? [
+            facts.k1.blank.ridgeConnection ===
+            'direct-opposing-rafter-plumb-meeting'
+              ? ('ridge-direct-meeting' as const)
+              : ('ridge-board' as const),
+          ]
+        : facts.k1.status === 'unresolved' &&
+            facts.k1.reason === 'ridge-connection-not-modeled'
+          ? ['ridge-half-lap-unresolved' as const]
+          : []),
+      ...(roofStructureSystem(facts.template) === 'rafter-collar-tie'
+        ? ['collar-tie-geometric' as const]
+        : []),
       ...(coveringRows.length ? ['geometric-covering' as const] : []),
       ...(facts.membraneEnabled ? ['net-membrane' as const] : []),
       'no-structural-check',

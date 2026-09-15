@@ -126,6 +126,85 @@ export function GeometryInputs({
     </>
   );
 }
+export function StructureSystemSelector() {
+  const state = useAssembly(),
+    { t } = useTranslation();
+  const system =
+    state.template.type === 'gable' && state.template.structure?.system
+      ? state.template.structure.system
+      : 'rafter';
+  return (
+    <div className="a-roof-type">
+      <span>{t('assembly.structureSystem')}</span>
+      <div role="group" aria-label={t('assembly.structureSystem')}>
+        {(['rafter', 'rafter-collar-tie'] as const).map((option) => (
+          <button
+            key={option}
+            type="button"
+            aria-pressed={system === option}
+            onClick={() => state.setRoofStructureSystem(option)}
+          >
+            {t(
+              `assembly.${option === 'rafter' ? 'rafterSystem' : 'rafterCollarTieSystem'}`,
+            )}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+export function RidgeConnectionSelector() {
+  const state = useAssembly(),
+    { t } = useTranslation();
+  const connection = state.spec.ridge.connection ?? 'ridge-board';
+  return (
+    <div className="a-roof-type">
+      <span>{t('assembly.ridgeConnection')}</span>
+      <div role="group" aria-label={t('assembly.ridgeConnection')}>
+        {(['ridge-board', 'direct-meeting', 'half-lap'] as const).map(
+          (option) => (
+            <button
+              key={option}
+              type="button"
+              aria-pressed={connection === option}
+              onClick={() => state.setRidgeConnection(option)}
+            >
+              {t(
+                `assembly.${
+                  option === 'ridge-board'
+                    ? 'ridgeBoardConnection'
+                    : option === 'direct-meeting'
+                      ? 'directMeetingConnection'
+                      : 'halfLapConnection'
+                }`,
+              )}
+            </button>
+          ),
+        )}
+      </div>
+      {connection === 'half-lap' && (
+        <p className="a-help">{t('assembly.halfLapUnresolvedNote')}</p>
+      )}
+    </div>
+  );
+}
+export function CollarTieInputs() {
+  const state = useAssembly();
+  if (state.template.type !== 'gable' || !state.template.structure?.collarTie)
+    return null;
+  return (
+    <>
+      <NumberField
+        field="collarTie.heightAboveWallPlateMm"
+        label="collarTieHeight"
+        min={1}
+        max={100000}
+      />
+      <NumberField field="collarTie.widthMm" label="width" min={1} max={1000} />
+      <NumberField field="collarTie.depthMm" label="depth" min={1} max={2000} />
+    </>
+  );
+}
 export function RoofTypeSelector({ context }: { context: 'roof' | 'member' }) {
   const state = useAssembly(),
     { t } = useTranslation();

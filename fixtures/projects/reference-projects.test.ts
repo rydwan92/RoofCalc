@@ -220,6 +220,7 @@ describe('reference project corpus', () => {
       '07-gable-standing-seam.cieslacalc.json',
       '08-gable-cut-to-length-sheet.cieslacalc.json',
       '09-hip-catalogue-snapshot.cieslacalc.json',
+      '10-gable-collar-tie-direct-meeting.cieslacalc.json',
     ]);
   });
 
@@ -316,6 +317,23 @@ describe('geometry invariants', () => {
       project.schedule.rows.some((row) => row.role === 'upper') &&
         project.schedule.rows.some((row) => row.role === 'lower'),
     ).toBe(true);
+  });
+
+  it('10 collar-tie roof with a direct ridge meeting resolves both K1 and C1', () => {
+    const project = resolveProject(
+      '10-gable-collar-tie-direct-meeting.cieslacalc.json',
+    );
+    expect(project.roof.type).toBe('gable');
+    if (project.roof.type !== 'gable')
+      throw new Error('expected a gable template');
+    expect(project.roof.structure?.system).toBe('rafter-collar-tie');
+    expect(project.roof.ridge.connection).toBe('direct-meeting');
+    const k1 = project.schedule.rows.find((row) => row.familyKey === 'K1');
+    const c1 = project.schedule.rows.find((row) => row.familyKey === 'C1');
+    expect(k1?.quantity).toBe(22);
+    expect(c1?.quantity).toBe(11);
+    expect(c1?.lengthMm).toBeGreaterThan(0);
+    expect(c1?.lengthMm).toBeLessThan(project.roof.halfRunMm * 2);
   });
 });
 

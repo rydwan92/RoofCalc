@@ -8,9 +8,13 @@ import {
   createGableRoofSkeleton,
   gablePitchDegFromRidgeHeight,
   gableRidgeHeightMm,
+  gableRoofTemplateSchema,
+  gableTemplateFromAssembly,
   minimumGableHalfRunMm,
+  resolveCollarTies,
   resolveGableRoofTemplate,
   resolveRafterSpacing,
+  roofStructureSystem,
 } from './gable-roof';
 
 function template(): GableRoofTemplateSpec {
@@ -259,5 +263,94 @@ describe('gable roof template', () => {
       skeleton.members.find((member) => member.id === 'instance:purlin-1:left')
         ?.from.z,
     ).toBeCloseTo(1800 * Math.tan((35 * Math.PI) / 180), 10);
+  });
+});
+
+describe('structural system and collar tie', () => {
+  it('defaults to the rafter system when structure is absent', () => {
+    expect(roofStructureSystem(template())).toBe('rafter');
+    expect(resolveCollarTies(template())).toEqual([]);
+  });
+
+  it('rejects rafter-collar-tie without a collar-tie spec', () => {
+    const spec = template();
+    spec.structure = { system: 'rafter-collar-tie' };
+    expect(() => gableRoofTemplateSchema.parse(spec)).toThrow();
+  });
+
+  it('rejects a collar tie at or above the ridge apex', () => {
+    const spec = template();
+    spec.structure = {
+      system: 'rafter-collar-tie',
+      collarTie: {
+        heightAboveWallPlateMm: gableRidgeHeightMm(4000, 35),
+        section: { widthMm: 100, depthMm: 38 },
+      },
+    };
+    expect(() => gableRoofTemplateSchema.parse(spec)).toThrow();
+  });
+
+  it('resolves one collar tie per rafter station once enabled', () => {
+    const spec = template();
+    spec.structure = {
+      system: 'rafter-collar-tie',
+      collarTie: {
+        heightAboveWallPlateMm: 1000,
+        section: { widthMm: 100, depthMm: 38 },
+      },
+    };
+    expect(roofStructureSystem(spec)).toBe('rafter-collar-tie');
+    const ties = resolveCollarTies(spec);
+    const spacing = resolveRafterSpacing(
+      spec.buildingLengthMm,
+      spec.rafterSpacing,
+    );
+    expect(ties).toHaveLength(spacing.stationCount);
+    expect(ties.every((tie) => tie.lengthMm > 0)).toBe(true);
+    expect(ties.every((tie) => tie.section.widthMm === 100)).toBe(true);
+
+    const skeleton = createGableRoofSkeleton(spec);
+    const collarTieMembers = skeleton.members.filter(
+      (member) => member.kind === 'collar-tie',
+    );
+    expect(collarTieMembers).toHaveLength(spacing.stationCount);
+    expect(
+      collarTieMembers.every(
+        (member) => member.from.z === 1000 && member.to.z === 1000,
+      ),
+    ).toBe(true);
+  });
+
+  it('clamps an existing collar-tie height when the roof geometry shrinks', () => {
+    const spec = template();
+    spec.structure = {
+      system: 'rafter-collar-tie',
+      collarTie: {
+        heightAboveWallPlateMm: 2500,
+        section: { widthMm: 100, depthMm: 38 },
+      },
+    };
+    const resolved = resolveGableRoofTemplate(spec);
+    // A direct parse does not auto-clamp; the store's edit path does via
+    // gableTemplateFromAssembly, exercised below.
+    expect(resolved.template.structure?.collarTie?.heightAboveWallPlateMm).toBe(
+      2500,
+    );
+    expect(() =>
+      gableRoofTemplateSchema.parse({ ...spec, halfRunMm: 1500 }),
+    ).toThrow();
+
+    const assembly = assemblyFromGableTemplate(spec);
+    assembly.roof.runMm = 1500;
+    const rebuilt = gableTemplateFromAssembly(assembly, {
+      id: spec.id,
+      buildingLengthMm: spec.buildingLengthMm,
+      rafterSpacing: spec.rafterSpacing,
+      structure: spec.structure,
+    });
+    const clampedHeight =
+      rebuilt.structure?.collarTie?.heightAboveWallPlateMm ?? 0;
+    expect(clampedHeight).toBeLessThan(2500);
+    expect(clampedHeight).toBeGreaterThan(0);
   });
 });

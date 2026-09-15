@@ -1161,3 +1161,42 @@ it('keeps standing-seam mode, alignment and plane edits canonical with exact und
   useAssembly.getState().redo();
   expect(useAssembly.getState().projectDocument).toEqual(after);
 });
+
+it('toggles the collar-tie structural system with a valid default height and one history entry', () => {
+  useAssembly.setState({ historyPast: [], historyFuture: [] });
+  expect(useAssembly.getState().template.type).toBe('gable');
+  useAssembly.getState().setRoofStructureSystem('rafter-collar-tie');
+  const enabled = useAssembly.getState().template;
+  if (enabled.type !== 'gable') throw new Error('expected a gable template');
+  expect(enabled.structure?.system).toBe('rafter-collar-tie');
+  expect(enabled.structure?.collarTie?.heightAboveWallPlateMm).toBeGreaterThan(
+    0,
+  );
+  expect(useAssembly.getState().historyPast).toHaveLength(1);
+  const skeleton = createRoofSkeleton(enabled);
+  expect(skeleton.members.some((member) => member.kind === 'collar-tie')).toBe(
+    true,
+  );
+  useAssembly.getState().setRoofStructureSystem('rafter');
+  const disabled = useAssembly.getState().template;
+  if (disabled.type !== 'gable') throw new Error('expected a gable template');
+  expect(disabled.structure?.system).toBe('rafter');
+  expect(
+    createRoofSkeleton(disabled).members.some(
+      (member) => member.kind === 'collar-tie',
+    ),
+  ).toBe(false);
+});
+
+it('selects a ridge connection and reflects it on the assembly spec', () => {
+  expect(useAssembly.getState().spec.ridge.connection ?? 'ridge-board').toBe(
+    'ridge-board',
+  );
+  useAssembly.getState().setRidgeConnection('direct-meeting');
+  expect(useAssembly.getState().spec.ridge.connection).toBe('direct-meeting');
+  expect(useAssembly.getState().template.ridge.connection).toBe(
+    'direct-meeting',
+  );
+  useAssembly.getState().setRidgeConnection('half-lap');
+  expect(useAssembly.getState().spec.ridge.connection).toBe('half-lap');
+});

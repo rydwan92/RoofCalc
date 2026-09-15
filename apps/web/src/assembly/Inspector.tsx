@@ -6,6 +6,7 @@ import type {
 } from '@cieslacalc/calculator-core';
 import type { DetailPreviewModel } from '@cieslacalc/drawing-engine';
 import {
+  COLLAR_TIE_PROTOTYPE_ID,
   HIP_RAFTER_PROTOTYPE_ID,
   JACK_RAFTER_PROTOTYPE_ID,
   createOpeningFramingDraft,
@@ -30,10 +31,13 @@ import { entityLabel } from './Canvas';
 import { roofPlaneShortLabelKey } from './covering-presentation';
 import { editableLength, formatLength, parseDecimal } from '../format';
 import {
+  CollarTieInputs,
   GeometryInputs,
   HipTimberInputs,
   NumberField,
+  RidgeConnectionSelector,
   RoofTypeSelector,
+  StructureSystemSelector,
   SupportInputs,
   TemplateInputs,
   TimberInputs,
@@ -89,6 +93,9 @@ export function Inspector({
   const isJack =
     workbench.selectedId === JACK_RAFTER_PROTOTYPE_ID ||
     workbench.selectedPrototypeId === JACK_RAFTER_PROTOTYPE_ID;
+  const isCollarTie =
+    workbench.selectedId.endsWith(':collar-tie') ||
+    workbench.selectedPrototypeId === COLLAR_TIE_PROTOTYPE_ID;
   const roofWindow = state.projectDocument.project.features.find(
     (feature): feature is RoofWindowFeature =>
       feature.id === workbench.selectedId && feature.kind === 'roof-window',
@@ -135,6 +142,7 @@ export function Inspector({
           {workbench.selectedId === 'roof' && (
             <>
               <RoofTypeSelector context="roof" />
+              {state.template.type === 'gable' && <StructureSystemSelector />}
               <section className="a-inspector-group is-primary">
                 <h3>{t('assembly.mainParameters')}</h3>
                 <GeometryInputs />
@@ -162,6 +170,13 @@ export function Inspector({
                       <HipTimberInputs />
                     </>
                   )}
+                  {state.template.type === 'gable' &&
+                    state.template.structure?.collarTie && (
+                      <>
+                        <h3>{t('assembly.collar-tie')}</h3>
+                        <CollarTieInputs />
+                      </>
+                    )}
                   <h3>{t('assembly.ridge')}</h3>
                   <NumberField
                     field="ridge.thicknessMm"
@@ -175,6 +190,7 @@ export function Inspector({
                     max={2000}
                     optional
                   />
+                  <RidgeConnectionSelector />
                 </div>
               </details>
             </>
@@ -220,6 +236,13 @@ export function Inspector({
                 max={2000}
                 optional
               />
+              <RidgeConnectionSelector />
+            </>
+          )}
+          {isCollarTie && (
+            <>
+              <h3>{t('assembly.collar-tie')}</h3>
+              <CollarTieInputs />
             </>
           )}
           {support && <SupportInputs support={support} result={result} />}

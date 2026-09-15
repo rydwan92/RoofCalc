@@ -244,6 +244,17 @@ export const assemblyPl = {
   commonRafter: 'Krokiew zwykła',
   hipRafter: 'Krokiew narożna',
   jackRafter: 'Kulawek',
+  structureSystem: 'Konstrukcja więźby',
+  rafterSystem: 'Więźba krokwiowa',
+  rafterCollarTieSystem: 'Więźba krokwiowo-jętkowa',
+  ridgeConnection: 'Połączenie w kalenicy',
+  ridgeBoardConnection: 'Deska kalenicowa',
+  directMeetingConnection: 'Połączenie bezpośrednie',
+  halfLapConnection: 'Nakładka',
+  halfLapUnresolvedNote:
+    'Geometria nakładki nie jest jeszcze opracowana: przygotowanie elementu K1 i rozkrój pozostają niedostępne.',
+  collarTieHeight: 'Wysokość jętki nad murłatą',
+  collarTieSection: 'Przekrój jętki',
   quickHint: 'Szybkie obliczenie pojedynczej krokwi z trzech wymiarów.',
   builderHint:
     'Zbuduj dach, dodaj warstwy i pokrycie, a potem sprawdź zestawienie.',
@@ -524,6 +535,8 @@ export const assemblyPl = {
         'Model blanku K1 nie wskazuje tej samej krokwi co zestawienie.',
       'ridge-board-not-modeled':
         'Brak fizycznej deski kalenicowej dla modelowanego cięcia K1.',
+      'ridge-connection-not-modeled':
+        'Geometria wybranego połączenia kalenicowego (nakładka) nie jest jeszcze opracowana.',
       'incomplete-cuts': 'Nie wszystkie cięcia K1 są rozstrzygnięte.',
       'invalid-section': 'Przekrój K1 jest nieprawidłowy.',
       'geometry-outside-blank':
@@ -761,6 +774,7 @@ export const assemblyPl = {
   'wall-plate': 'Murłata',
   purlin: 'Płatew',
   ridge: 'Kalenica',
+  'collar-tie': 'Jętka',
   notch: 'Zacios',
   ridgeCut: 'Cięcie kalenicowe',
   eaveCut: 'Cięcie okapu',
@@ -1302,6 +1316,17 @@ export const assemblyEn: typeof assemblyPl = {
   commonRafter: 'Common rafter',
   hipRafter: 'Hip rafter',
   jackRafter: 'Jack rafter',
+  structureSystem: 'Roof structural system',
+  rafterSystem: 'Rafter roof',
+  rafterCollarTieSystem: 'Rafter and collar-tie roof',
+  ridgeConnection: 'Ridge connection',
+  ridgeBoardConnection: 'Ridge board',
+  directMeetingConnection: 'Direct meeting',
+  halfLapConnection: 'Half-lap',
+  halfLapUnresolvedNote:
+    'Half-lap geometry is not modeled yet: K1 preparation and cutting stay unavailable.',
+  collarTieHeight: 'Collar-tie height above wall plate',
+  collarTieSection: 'Collar-tie section',
   quickHint: 'A fast single-rafter calculation from three dimensions.',
   builderHint:
     'Define the roof, add layers and covering, then inspect the schedule.',
@@ -1583,6 +1608,8 @@ export const assemblyEn: typeof assemblyPl = {
         'The K1 blank model does not reference the same rafter as the schedule.',
       'ridge-board-not-modeled':
         'No physical ridge board is modeled for this K1 cut.',
+      'ridge-connection-not-modeled':
+        'The selected ridge connection (half-lap) has no modeled geometry yet.',
       'incomplete-cuts': 'Not all K1 cuts are resolved.',
       'invalid-section': 'The K1 section is invalid.',
       'geometry-outside-blank': 'Modeled K1 cuts do not fit the blank.',
@@ -1817,6 +1844,7 @@ export const assemblyEn: typeof assemblyPl = {
   'wall-plate': 'Wall plate',
   purlin: 'Purlin',
   ridge: 'Ridge',
+  'collar-tie': 'Collar tie',
   notch: 'Notch',
   ridgeCut: 'Ridge cut',
   eaveCut: 'Eave cut',

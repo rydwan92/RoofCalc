@@ -9,6 +9,7 @@ export * from './assembly';
 export * from './k1-fabrication-blank';
 export * from './geometry/lines';
 export * from './gable-roof';
+export * from './collar-tie';
 export * from './hip-rafter';
 export * from './jack-rafter';
 export * from './hip-roof';

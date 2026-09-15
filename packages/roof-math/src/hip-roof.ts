@@ -46,6 +46,9 @@ export const hipRoofTemplateSchema: z.ZodType<HipRoofTemplateSpec> = z
       id: z.string().regex(/^[a-z][a-z0-9:-]*$/),
       thicknessMm: z.number().finite().min(0).max(1000),
       depthMm: z.number().finite().min(1).max(2000).optional(),
+      connection: z
+        .enum(['ridge-board', 'direct-meeting', 'half-lap'])
+        .optional(),
     }),
     intermediateSupports: z.array(supportSpecSchema),
   })

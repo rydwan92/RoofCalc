@@ -1,6 +1,6 @@
 # RoofCalc / CieślaCalc — Architecture Index
 
-**This is the current-state map, after V31.** Read it after `PROJECT_BLUEPRINT.md`
+**This is the current-state map, after V32.** Read it after `PROJECT_BLUEPRINT.md`
 and before touching code. It describes what exists today, not the history of how
 it got here. Historical `ARCHITECTURE_V*.md` documents stay authoritative for the
 subsystem they introduced and should be opened only when changing that subsystem.
@@ -76,6 +76,14 @@ V30's lazy web export adapter reads that existing K1 result and current plan;
 V31 adds no package dependency and no schema. `apps/web` owns the transient
 Creator start draft, derived guidance and the family → source → product covering
 flow. Confirmed values still enter the existing roof and covering contracts.
+
+V32 adds no package dependency. It adds two additive optional fields inside
+`project.roof` (roof structural system, K1 ridge connection — see
+`docs/SCHEMA_REGISTRY.md` §1 and `docs/ARCHITECTURE_V32_STRUCTURAL_SYSTEMS_AND_EXECUTION.md`)
+and one new `SkeletonMemberKind` (`collar-tie`, schedule family `C1`). The
+collar tie is schedule/drawing-only — it never enters `RoofFabricationPackage`
+or K1-style procurement. A `half-lap` ridge connection deliberately never
+resolves a K1 fabrication blank; `direct-meeting` and `ridge-board` do.
 
 ---
 
@@ -336,6 +344,7 @@ pnpm e2e      # real-browser smoke, desktop 1440x900 and mobile 390x844 (pnpm e2
 | `docs/ARCHITECTURE_V29_GUIDED_WORKFLOW_UX.md` | derived project guidance, summary and workbench UX |
 | `docs/ARCHITECTURE_V30_DOCUMENT_EXPORT_ENGINE.md` | execution document, export readiness, preview and browser print |
 | `docs/ARCHITECTURE_V31_CREATOR_AND_COVERING_EXPERIENCE.md` | guided project start, derived guidance and covering-studio UX |
+| `docs/ARCHITECTURE_V32_STRUCTURAL_SYSTEMS_AND_EXECUTION.md` | roof structural system, collar tie, K1 ridge-connection variants |
 | `docs/FUTURE_EXECUTION_SEMANTICS_AUDIT.md` + `docs/domain/*` | touching coverage, overlap or connection semantics |
 | `docs/ARCHITECTURE_FUTURE_COMPOUND_ROOF_SCENE.md` | touching IDs, planes or document shape |
 | `docs/ARCHITECTURE_COVERING_CATALOG_AND_PRICING_BOUNDARY.md` | covering, catalogue or future pricing |
