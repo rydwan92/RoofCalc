@@ -12,6 +12,19 @@ import type {
 
 export type WorkbenchMode = 'quick' | 'builder';
 export type WorkbenchCanvasView = 'skeleton' | 'rafter' | 'hip';
+/**
+ * Which renderer draws the current technical task (V38). Transient: it is a
+ * view of the same resolved project, never a perspective, never persisted and
+ * never part of roof history.
+ */
+export type WorkspaceRenderer = '2d' | '3d';
+
+/** Tasks whose workspace can be drawn by the technical 3D viewport. */
+const RENDERER_3D_TASKS: readonly ViewPreset[] = ['construction', 'cuts'];
+
+export function supportsTechnical3D(preset: ViewPreset): boolean {
+  return RENDERER_3D_TASKS.includes(preset);
+}
 export type ViewPreset =
   | 'construction'
   | 'openings'
@@ -195,6 +208,8 @@ export interface WorkbenchViewState {
   /** Active primary covering editor target; view-only and never serialized. */
   selectedCoveringAssignmentId?: string;
   canvasView: WorkbenchCanvasView;
+  /** V38 transient renderer choice for the central workspace. */
+  workspaceRenderer: WorkspaceRenderer;
   viewPreset: ViewPreset;
   buildUpView: BuildUpView;
   materialsView: MaterialsView;
@@ -257,6 +272,7 @@ export const initialWorkbenchViewState: WorkbenchViewState = {
   selectedScheduleInstanceId: undefined,
   selectedCoveringAssignmentId: undefined,
   canvasView: 'skeleton',
+  workspaceRenderer: '2d',
   viewPreset: 'construction',
   buildUpView: 'overview',
   materialsView: 'plan',
@@ -382,29 +398,57 @@ export function dimensionAllowed(
   return group === 'primary' || hasFocusedSelection;
 }
 
+/**
+ * The identity triple every renderer resolves emphasis from. It is exactly
+ * what a skeleton member and a technical-scene `sourceRef` both carry, so 2D
+ * and 3D can never drift into two different selection rules.
+ */
+export interface MemberIdentityRef {
+  memberId?: string;
+  selectionId?: string;
+  prototypeId?: string;
+}
+
+export function resolveMemberRefVisualState(args: {
+  ref: MemberIdentityRef;
+  view: WorkbenchViewState;
+  relatedSupportId?: string;
+  relatedIds?: ReadonlySet<string>;
+}): Exclude<VisualInteractionState, 'hover' | 'warning' | 'invalid'> {
+  const { ref, view, relatedSupportId, relatedIds } = args;
+  const selected =
+    (!!ref.memberId && view.selectedInstanceId === ref.memberId) ||
+    (!!ref.selectionId && view.selectedId === ref.selectionId) ||
+    (!!ref.memberId && view.selectedId === ref.memberId) ||
+    (!!ref.prototypeId && view.selectedId === ref.prototypeId);
+  if (selected) return 'selected';
+  const related =
+    (!!ref.selectionId && relatedSupportId === ref.selectionId) ||
+    (!!ref.memberId && relatedIds?.has(ref.memberId)) ||
+    relatedIds?.has(ref.selectionId ?? '') ||
+    relatedIds?.has(ref.prototypeId ?? '') ||
+    (!!view.selectedPrototypeId &&
+      view.selectedPrototypeId === ref.prototypeId);
+  if (related) return 'related';
+  if (view.selectedId !== 'roof') return 'muted';
+  return 'normal';
+}
+
 export function resolveMemberVisualState(args: {
   member: SkeletonMember3D;
   view: WorkbenchViewState;
   relatedSupportId?: string;
   relatedIds?: ReadonlySet<string>;
 }): Exclude<VisualInteractionState, 'hover' | 'warning' | 'invalid'> {
-  const { member, view, relatedSupportId, relatedIds } = args;
-  const selected =
-    view.selectedInstanceId === member.id ||
-    view.selectedId === member.selectionId ||
-    view.selectedId === member.id ||
-    view.selectedId === member.prototypeId;
-  if (selected) return 'selected';
-  const related =
-    relatedSupportId === member.selectionId ||
-    relatedIds?.has(member.id) ||
-    relatedIds?.has(member.selectionId ?? '') ||
-    relatedIds?.has(member.prototypeId) ||
-    (!!view.selectedPrototypeId &&
-      view.selectedPrototypeId === member.prototypeId);
-  if (related) return 'related';
-  if (view.selectedId !== 'roof') return 'muted';
-  return 'normal';
+  const { member, ...rest } = args;
+  return resolveMemberRefVisualState({
+    ...rest,
+    ref: {
+      memberId: member.id,
+      selectionId: member.selectionId,
+      prototypeId: member.prototypeId,
+    },
+  });
 }
 
 /** Small deterministic presentation policy; operation anchors stay canonical. */

@@ -402,6 +402,64 @@ and total visible length facts.
 
 ---
 
+## SCENE3D-001 — One project, two renderers · `AUTOMATED`
+
+1. Open the gable example and switch the workspace to **3D**.
+2. Click a rafter in the scene, then isolate it, then show the whole roof.
+3. Switch view presets (Izometria / Z góry) and projection
+   (Perspektywa / Ortogonalny).
+4. Switch back to **2D**.
+
+**Holds:** the 3D scene draws the same resolved skeleton as the 2D drawing; the
+3D click sets the one canonical selection, so the Inspector, context bar and
+breadcrumb follow; the same member is still selected in the 2D drawing
+afterwards; isolation, camera, preset, projection and filters create no project
+history and are never persisted; the page never scrolls horizontally; returning
+to 2D needs no interaction with the canvas.
+Covered by `e2e/technical-3d.spec.ts` at 1440×900 and 390×844.
+
+---
+
+## SCENE3D-002 — Hip roof stays truthful in 3D · `AUTOMATED`
+
+1. Open the hip example in 3D.
+2. Open **Rodziny** and read the offered families.
+3. Select an H1 hip rafter, then a J1 jack rafter.
+
+**Holds:** K1, H1 and J1 are all drawn and individually selectable, each mapped
+to its own physical member identity; the family filter lists only families this
+roof actually resolves; every solid is reference geometry and the HUD states
+"Geometria referencyjna — detal połączenia nie jest jeszcze modelowany" for
+H1/J1. No finished hip face, backing or compound cut solid is drawn, and no cut
+or notch is subtracted from any member. No console errors.
+
+---
+
+## SCENE3D-003 — Collar ties in space · `AUTOMATED`
+
+1. Open the collar-tie example in 3D.
+2. Select one collar tie.
+3. Return to 2D.
+
+**Holds:** collar ties are drawn in their correct spatial location with their
+own semantic colour and appear in the family filter; selecting one selects the
+same canonical member in the 2D drawing.
+
+---
+
+## SCENE3D-004 — 3D unavailable never breaks the workbench · `AUTOMATED`
+
+1. Open the workspace in 3D on a device or browser without a usable WebGL
+   context.
+
+**Holds:** the workspace says "Widok 3D jest niedostępny na tym urządzeniu."
+and offers **Wróć do 2D**; the project document and its history are untouched;
+all 2D calculations, schedules and exports remain fully available. Covered by
+`apps/web/src/assembly/scene3d/TechnicalScene3D.test.tsx`, which runs in JSDOM
+where WebGL genuinely does not exist.
+
+---
+
 ## COMPOUND-001 — Higher house + lower garage · `PLANNED`
 
 **Not implemented.** No multi-structure document, transform, connection graph or

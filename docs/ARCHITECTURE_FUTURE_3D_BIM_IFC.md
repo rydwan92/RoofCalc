@@ -1,6 +1,10 @@
 # RoofCalc / CieślaCalc — future 3D, BIM and IFC visualization strategy
 
-**Status:** strategic product/architecture direction only. This document does not authorize implementation by itself and introduces no runtime dependency.
+**Status:** strategic product/architecture direction. Stages 1–3 of §10 were
+implemented in V38 — see `docs/ARCHITECTURE_V38_TECHNICAL_3D_MVP.md` for what
+actually exists. Everything beyond stage 3, and the whole BIM/IFC direction in
+§4–§5, remains direction only: this document still authorizes no further
+implementation by itself and introduces no further runtime dependency.
 
 This direction extends the existing rule that the whole-roof preview must be derived from the same canonical project/assembly/geometry model as calculations, fabrication, quantities and documentation. A future 3D viewer must never become a second geometry engine.
 
@@ -70,27 +74,43 @@ The scene adapter may triangulate/mesh canonical geometry for rendering, but it 
 
 ---
 
-## 3. Candidate web 3D stack
+## 3. Web 3D stack — benchmarked and decided in V38
 
-The preferred direction to benchmark first is:
+The direction named here was **Three.js + React Three Fiber**. V38 benchmarked
+it and adopted only half of it:
 
-- **Three.js** as the low-level WebGL/WebGPU-capable rendering foundation,
-- **React Three Fiber** as the React integration layer for `apps/web`,
-- renderer-specific helpers only above a renderer-neutral technical scene boundary.
+- **Three.js — adopted** (`three` 0.186.0), as the low-level rendering
+  foundation, with `OrbitControls` from its own `examples/jsm`. It declares no
+  peer dependencies, so it constrains nothing in `apps/web`.
+- **React Three Fiber — rejected for this repository.**
+  `@react-three/fiber@9.7.0`, the latest stable, declares
+  `peerDependencies.react: ">=19 <19.3"`, while `apps/web`'s `react: ^19.1.0`
+  resolves to 19.3.0. Adopting it would mean shipping a knowingly violated peer
+  range or pinning the application's React back for a viewer. A generated scene
+  also gains little from a reconciler, and one dependency keeps the lazy chunk
+  smaller and the renderer boundary trivially auditable.
+- Renderer-specific helpers stay above the renderer-neutral scene boundary,
+  which is now real: `packages/technical-scene`.
 
-This is a candidate, not a frozen dependency decision. The active implementation iteration must first define the scene contract, performance target, browser/mobile constraints and fallback strategy.
+This decision is reviewable, not permanent: if a future R3F release supports the
+React version the application actually resolves, and the scene grows enough
+interactive React-shaped surface to justify it, the boundary already makes the
+swap local to `apps/web/src/assembly/scene3d/`.
 
-A possible future package boundary is conceptually:
+That boundary now exists, as `packages/technical-scene`:
 
 ```text
 canonical project + resolved geometry
               ↓
-     visualization scene adapter
+     visualization scene adapter      (technical-scene/roof-scene.ts)
               ↓
-      renderer-neutral scene DTOs
+      renderer-neutral scene DTOs     (technical-scene/scene.ts)
               ↓
-   Three.js / React Three Fiber view
+   Three.js view                      (apps/web/src/assembly/scene3d/)
 ```
+
+An architecture test keeps it honest: no package may import a renderer, and
+`apps/web` may import `three` only inside `assembly/scene3d/`.
 
 Do not put React/Three.js into `roof-math`, `timber-model`, `calculator-core`, `covering-core`, `quantity-core` or another pure domain package.
 
@@ -250,9 +270,12 @@ A change to a numeric roof parameter updates the canonical project, runs the exi
 
 Do not begin with IFC or photorealism. A sensible future sequence is:
 
-1. **Scene contract** — define renderer-neutral 3D primitives/semantic scene DTOs from current resolved roof/member geometry.
-2. **Technical 3D MVP** — render current gable/hip skeletons with stable selection and deterministic dimensions.
-3. **Workbench interaction** — isolate/focus/view presets, clipping, orthographic views, synchronized 2D/3D selection.
+1. ~~**Scene contract**~~ — **done (V38)**: `packages/technical-scene`.
+2. ~~**Technical 3D MVP**~~ — **done (V38)**: gable, hip and collar-tie
+   skeletons with shared selection identity and deterministic dimensions.
+3. ~~**Workbench interaction**~~ — **mostly done (V38)**: isolate, fit selected,
+   view presets, orthographic/perspective and synchronized 2D/3D selection.
+   Clipping/section planes remain unimplemented.
 4. **Fabrication integration** — focus cuts/joints and link 3D instances to canonical fabrication details.
 5. **Roof build-up / covering** — semantic layer visualization and exploded views derived from existing solvers.
 6. **Reference BIM import** — load IFC as a separate reference scene.
@@ -264,17 +287,22 @@ Each stage should remain useful without requiring the next one.
 
 ---
 
-## 11. Research gates before implementation
+## 11. Research gates
 
-Before the first implementation iteration, research and record:
+The first five gates were answered by V38 and are recorded in
+`docs/ARCHITECTURE_V38_TECHNICAL_3D_MVP.md`: the scene contract and the frozen
+Z-up millimetre coordinate convention (§2–§3), the member→solid mapping (§4),
+one shared selection identity (§6), the mobile/fallback behaviour (§13) and the
+instancing strategy (§9). WebGL was sufficient; WebGPU changed nothing about
+the design, because the renderer sits behind a neutral DTO boundary either way.
 
-- renderer-neutral scene contract and coordinate conventions,
-- exact mapping from current roof/member/cut geometry to render meshes,
-- selection identity across 2D/3D/fabrication/document views,
-- mobile GPU/performance budget and graceful fallback,
-- instancing strategy for repeated rafters/battens/tiles,
+Still open, before any further stage:
+
 - clipping/section-plane behavior,
-- whether WebGL or WebGPU capability changes the initial design,
+- covering/build-up layer visualization and exploded views,
+- cut-solid modelling (boolean subtraction of resolved notches and end cuts),
+- finished H1/J1 connection geometry, which is a fabrication-research question
+  before it is a rendering one,
 - That Open/Fragments license, bundle/runtime model and IFC conversion workflow,
 - benchmark against xeokit and Autodesk APS for the exact RoofCalc use case,
 - IFC classes/properties that can be mapped reliably versus those that must remain reference-only,

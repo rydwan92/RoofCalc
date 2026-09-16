@@ -49,6 +49,21 @@ export interface ProjectedTimberPrismFace extends TimberPrismFace {
   projected: [Point, Point, Point, Point];
   paintOrder: number;
 }
+/**
+ * Orthonormal local frame of one timber prism, in the same world millimetres
+ * as the member axis. `width` stays horizontal and perpendicular to the plan
+ * axis, `along` follows the resolved member axis, and `depth` completes a
+ * right-handed frame in the order (width, along, depth).
+ *
+ * This is the single derivation shared by the 2D skeleton faces and the 3D
+ * technical scene's oriented boxes, so the two views can never disagree.
+ */
+export interface TimberPrismBasis {
+  along: Point3D;
+  width: Point3D;
+  depth: Point3D;
+  lengthMm: number;
+}
 const vector3 = (from: Point3D, to: Point3D): Point3D => ({
   x: to.x - from.x,
   y: to.y - from.y,
@@ -84,12 +99,11 @@ function prismCorner(
     scale3(depthDirection, (depthMm / 2) * depthSign),
   );
 }
-/** Builds six deterministic rectangular timber faces from an axis and real section dimensions. */
-export function createTimberPrismFaces(
+/** Derives the orthonormal local frame of one timber prism from its resolved axis. */
+export function createTimberPrismBasis(
   axis: TimberPrismAxis,
-  section: TimberPrismSection,
   orientation: TimberPrismOrientation,
-): TimberPrismFace[] {
+): TimberPrismBasis {
   if (
     ![
       axis.from.x,
@@ -98,30 +112,48 @@ export function createTimberPrismFaces(
       axis.to.x,
       axis.to.y,
       axis.to.z,
-      section.widthMm,
-      section.depthMm,
-    ].every(Number.isFinite) ||
-    section.widthMm <= 0 ||
-    section.depthMm <= 0
+    ].every(Number.isFinite)
   )
-    throw new RangeError('invalid_prism_section');
+    throw new RangeError('invalid_prism_axis');
   if (orientation !== 'along-roof' && orientation !== 'along-building')
     throw new RangeError('invalid_prism_orientation');
-  const direction = unit3(vector3(axis.from, axis.to));
+  const span = vector3(axis.from, axis.to);
+  const direction = unit3(span);
   const planLength = Math.hypot(direction.x, direction.y);
   if (planLength <= 1e-8) throw new RangeError('invalid_prism_orientation');
   // Width stays horizontal and perpendicular to the member's exact plan axis.
   // This preserves the V5 common-rafter result and also supports diagonal hips.
-  const widthDirection = {
+  const width = {
     x: -direction.y / planLength,
     y: direction.x / planLength,
     z: 0,
   };
-  const depthDirection = unit3({
-    x: widthDirection.y * direction.z,
-    y: -widthDirection.x * direction.z,
-    z: widthDirection.x * direction.y - widthDirection.y * direction.x,
+  const depth = unit3({
+    x: width.y * direction.z,
+    y: -width.x * direction.z,
+    z: width.x * direction.y - width.y * direction.x,
   });
+  return {
+    along: direction,
+    width,
+    depth,
+    lengthMm: Math.hypot(span.x, span.y, span.z),
+  };
+}
+/** Builds six deterministic rectangular timber faces from an axis and real section dimensions. */
+export function createTimberPrismFaces(
+  axis: TimberPrismAxis,
+  section: TimberPrismSection,
+  orientation: TimberPrismOrientation,
+): TimberPrismFace[] {
+  if (
+    ![section.widthMm, section.depthMm].every(Number.isFinite) ||
+    section.widthMm <= 0 ||
+    section.depthMm <= 0
+  )
+    throw new RangeError('invalid_prism_section');
+  const { width: widthDirection, depth: depthDirection } =
+    createTimberPrismBasis(axis, orientation);
   const a = prismCorner(
       axis.from,
       widthDirection,

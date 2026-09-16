@@ -1374,6 +1374,39 @@ export const assemblyPl = {
     'Wybierz K1, H1 lub konkretny J1. Zaznaczona sztuka pozostaje mocna, a pozostała konstrukcja pokazuje jej kontekst.',
   skeletonHint:
     'Przeciągnij uchwyt konstrukcji lub wybierz element, aby zobaczyć dokładne parametry.',
+  workspaceRenderer: 'Widok roboczy',
+  workspaceRenderer2D: '2D',
+  workspaceRenderer3D: '3D',
+  workspaceRenderer2DTitle: 'Rysunek techniczny 2D',
+  workspaceRenderer3DTitle: 'Techniczna scena 3D tego samego projektu',
+  scene3d: {
+    title: 'Scena techniczna 3D',
+    loading: 'Ładowanie widoku 3D...',
+    canvasLabel:
+      'Techniczna scena 3D więźby. Obracaj lewym przyciskiem, przesuwaj prawym, przybliżaj kółkiem.',
+    hint: 'Kliknij element, aby go wybrać. Ten sam element pozostaje wybrany po powrocie do 2D.',
+    referenceGeometry: 'Geometria referencyjna — bez detalu cięć',
+    viewPresets: 'Widoki techniczne',
+    preset: {
+      isometric: 'Izometria',
+      top: 'Z góry',
+      front: 'Przód',
+      side: 'Bok',
+    },
+    projection: {
+      perspective: 'Perspektywa',
+      orthographic: 'Ortogonalny',
+    },
+    fitSelected: 'Pokaż wybrany',
+    xray: 'Prześwietlenie',
+    families: 'Rodziny',
+    roofPlanes: 'Połacie dachu',
+    openPreparation: 'Otwórz przygotowanie elementu',
+    connectionNotModelled:
+      'Geometria referencyjna — detal połączenia nie jest jeszcze modelowany.',
+    unavailable: 'Widok 3D jest niedostępny na tym urządzeniu.',
+    backTo2D: 'Wróć do 2D',
+  },
   purlinPresent: 'Model zawiera płatew. Jej parametry edytujesz w Kreatorze.',
   hipFabrication: 'Karta przygotowania krokwi narożnej H1',
   hipSheetHint:
@@ -2942,6 +2975,39 @@ export const assemblyEn: typeof assemblyPl = {
     'Select K1, H1 or one physical J1. The selected piece remains strong while the rest of the roof provides context.',
   skeletonHint:
     'Drag a construction handle or select an element for exact properties.',
+  workspaceRenderer: 'Workspace view',
+  workspaceRenderer2D: '2D',
+  workspaceRenderer3D: '3D',
+  workspaceRenderer2DTitle: '2D technical drawing',
+  workspaceRenderer3DTitle: 'Technical 3D scene of the same project',
+  scene3d: {
+    title: 'Technical 3D scene',
+    loading: 'Loading the 3D view...',
+    canvasLabel:
+      'Technical 3D roof scene. Orbit with the left button, pan with the right, zoom with the wheel.',
+    hint: 'Click an element to select it. The same element stays selected when you return to 2D.',
+    referenceGeometry: 'Reference geometry — no cut detail',
+    viewPresets: 'Technical views',
+    preset: {
+      isometric: 'Isometric',
+      top: 'Top',
+      front: 'Front',
+      side: 'Side',
+    },
+    projection: {
+      perspective: 'Perspective',
+      orthographic: 'Orthographic',
+    },
+    fitSelected: 'Show selected',
+    xray: 'X-ray',
+    families: 'Families',
+    roofPlanes: 'Roof planes',
+    openPreparation: 'Open element preparation',
+    connectionNotModelled:
+      'Reference geometry — the connection detail is not modelled yet.',
+    unavailable: 'The 3D view is not available on this device.',
+    backTo2D: 'Back to 2D',
+  },
   purlinPresent:
     'This model includes a purlin. Edit its properties in Builder.',
   hipFabrication: 'H1 hip-rafter fabrication sheet',

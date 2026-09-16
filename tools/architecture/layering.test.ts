@@ -19,6 +19,8 @@ const I18N = [/^i18next$/, /^react-i18next$/];
 const APPS = [/(^|\/)apps\//, /^@cieslacalc\/(web|api)$/];
 const CLIENT_STATE = [/^zustand(\/|$)/, /^@tanstack\//];
 const CATALOGUE = [/^@cieslacalc\/catalog-core$/];
+/** V38: renderer libraries belong above the scene contract, never inside it. */
+const RENDERERS = [/^three(\/|$)/, /^@react-three\//, /^@types\/three$/];
 
 const PURE_DOMAIN = [
   ...REACT,
@@ -101,6 +103,50 @@ describe('package dependency direction', () => {
     ).toEqual([]);
   });
 
+  /**
+   * V38: `technical-scene` is the renderer-neutral boundary between resolved
+   * roof geometry and any viewer. If Three.js, React or the DOM ever enters
+   * it, the 3D view has started to become a second geometry engine.
+   */
+  it('technical-scene stays free of renderers, React, DOM, server and app code', () => {
+    expect(
+      forbiddenImports('packages/technical-scene', [
+        ...PURE_DOMAIN,
+        ...RENDERERS,
+      ]),
+    ).toEqual([]);
+    expect(forbiddenText('packages/technical-scene', BROWSER_GLOBALS)).toEqual(
+      [],
+    );
+  });
+
+  it('technical-scene consumes resolved geometry and no solver', () => {
+    expect(
+      forbiddenImports('packages/technical-scene', [
+        /^@cieslacalc\/(roof-math|calculator-core|covering-core|quantity-core|procurement-core|catalog-core|cost-core|pricing-core|project-core)$/,
+      ]),
+    ).toEqual([]);
+  });
+
+  it('no renderer library reaches a package', () => {
+    for (const name of workspacePackageDirectories())
+      expect({
+        package: name,
+        matches: forbiddenImports(`packages/${name}`, RENDERERS),
+      }).toEqual({ package: name, matches: [] });
+  });
+
+  /**
+   * V38: Three.js is allowed in exactly one web folder. Anywhere else it would
+   * mean renderer code leaking into the workbench, or a second scene adapter.
+   */
+  it('Three.js stays inside the web 3D viewport folder', () => {
+    const offenders = forbiddenImports('apps/web', RENDERERS).filter(
+      (entry) => !entry.file.startsWith('apps/web/src/assembly/scene3d/'),
+    );
+    expect(offenders).toEqual([]);
+  });
+
   it('pure domain packages never touch browser globals', () => {
     for (const directory of [
       'packages/roof-math',
@@ -111,6 +157,7 @@ describe('package dependency direction', () => {
       'packages/procurement-core',
       'packages/timber-model',
       'packages/drawing-engine',
+      'packages/technical-scene',
     ])
       expect({
         directory,
@@ -201,6 +248,7 @@ describe('commercial boundary', () => {
       'packages/timber-model',
       'packages/project-core',
       'packages/drawing-engine',
+      'packages/technical-scene',
       'apps/api/src/catalog',
     ])
       expect({

@@ -64,6 +64,7 @@ const DOMAIN_DIRECTORIES = [
   'packages/procurement-core',
   'packages/project-core',
   'packages/timber-model',
+  'packages/technical-scene',
   'apps/api/src',
 ];
 

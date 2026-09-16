@@ -61,6 +61,7 @@ import {
   initialWorkbenchViewState,
   pushNavigationTrail,
   sameWorkbenchLocation,
+  supportsTechnical3D,
   tasksForPerspective,
   type WorkbenchLocation,
   type WorkbenchPerspective,
@@ -73,6 +74,7 @@ import {
   type WorkbenchMode,
   type WorkbenchToolCategory,
   type WorkbenchViewState,
+  type WorkspaceRenderer,
 } from './workbench';
 
 export type SupportField = 'xMm' | 'widthMm' | 'heightMm' | 'valueMm';
@@ -349,6 +351,8 @@ export interface AssemblyState {
   setRidgeConnection: (connection: RidgeConnectionType) => void;
   setProjectRoof: (template: RoofTemplateSpec) => void;
   setView: (view: WorkbenchCanvasView) => void;
+  /** V38 transient 2D/3D workspace renderer. Never history, never persisted. */
+  setWorkspaceRenderer: (renderer: WorkspaceRenderer) => void;
   setViewPreset: (preset: ViewPreset) => void;
   setBuildUpView: (view: BuildUpView) => void;
   setMaterialsView: (view: MaterialsView) => void;
@@ -487,6 +491,11 @@ function withViewPreset(
   return {
     ...workbench,
     viewPreset,
+    // The renderer is a property of the workspace, so a task without a
+    // technical 3D workspace falls back to 2D rather than showing nothing.
+    workspaceRenderer: supportsTechnical3D(viewPreset)
+      ? workbench.workspaceRenderer
+      : '2d',
     mobilePanel: 'none',
     measurement: undefined,
     returnViewPreset:
@@ -655,6 +664,15 @@ export const useAssembly = create<AssemblyState>((set) => ({
     })),
   setView: (canvasView) =>
     set((state) => ({ workbench: { ...state.workbench, canvasView } })),
+  setWorkspaceRenderer: (workspaceRenderer) =>
+    set((state) => ({
+      workbench: {
+        ...state.workbench,
+        workspaceRenderer: supportsTechnical3D(state.workbench.viewPreset)
+          ? workspaceRenderer
+          : '2d',
+      },
+    })),
   setViewPreset: (viewPreset) =>
     set((state) => ({
       workbench: withViewPreset(state.workbench, viewPreset),

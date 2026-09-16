@@ -1297,7 +1297,108 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
-**Iteration:** `037 — Product experience, Creator 2.0, Covering Studio 2.0`
+**Iteration:** `038 — Technical 3D MVP`
+
+**Status:** `IMPLEMENTED — uncommitted on main after 2041971 (V37); no commit/push by request`
+
+**Completed:** one resolved roof project now drives two renderers. New pure
+package `packages/technical-scene` holds the renderer-neutral contract
+(`TechnicalScene`/`TechnicalSceneEntity`, oriented-box/polygon/line primitives,
+`SceneSourceRef` canonical identity, `geometryStatus` + named `limitations`),
+the roof→scene adapter, pure `fitCamera` framing and the visibility policy —
+no React, DOM, Three.js or solver, enforced by four new architecture rules.
+Coordinate convention frozen and documented: the roof's own millimetres,
+right-handed, Z-up (x transverse, y longitudinal, z vertical) with **zero**
+transformations anywhere in the pipeline; the Three.js cameras set
+`up = (0,0,1)` instead. `createTimberPrismBasis` extracted from
+`drawing-engine` so 2D faces and 3D solids share one orientation formula.
+Lazily loaded Three.js viewport in `apps/web/src/assembly/scene3d/`: orbit /
+pan / zoom with bounded distance, Izometria/Z góry/Przód/Bok presets,
+Perspektywa/Ortogonalny, Dopasuj widok, Pokaż wybrany (+ double-click), Izoluj
+(the existing transient flag), family filters with live counts, X-ray, subtle
+hover outline, and a HUD naming each value's layer (Przekrój / Oś elementu).
+Selection identity is shared: `resolveMemberVisualState` now delegates to a new
+`resolveMemberRefVisualState` over the `{memberId, selectionId, prototypeId}`
+triple, and a 3D click calls the same `select()` a 2D click calls. `[2D|3D]`
+switch sits with the technical view controls on construction-capable tasks
+only; 2D tools stand down in 3D. WebGL failure shows "Widok 3D jest
+niedostępny na tym urządzeniu." + Wróć do 2D without touching the project.
+Instancing: entities bucketed by (family, section, length) into solid/ghost
+`InstancedMesh` pairs with per-instance colour and `instanceId`→member mapping.
+
+**Files:** new `packages/technical-scene/` (package.json, src/{index,scene,
+roof-scene,camera,visibility}.ts + roof-scene/camera/visibility tests); new
+`apps/web/src/assembly/scene3d/` (TechnicalScene3D.tsx, viewport.ts,
+scene-presentation.ts, scene-3d.test.ts, TechnicalScene3D.test.tsx);
+`packages/drawing-engine/src/index.ts` (`createTimberPrismBasis`); web
+assembly `workbench.ts`, `store.ts`, `Page.tsx`, `WorkbenchControls.tsx`,
+`translations.ts`, `v37.css`; `tools/architecture/{layering,opaque-ids}.test.ts`;
+new `e2e/technical-3d.spec.ts`; `apps/web/package.json` (+three 0.186.0,
++@types/three), root `pnpm-lock.yaml`; docs — new
+`ARCHITECTURE_V38_TECHNICAL_3D_MVP.md`, updated `ARCHITECTURE_INDEX.md`,
+`UX_DESIGN_CONTRACT.md` (§7.1), `ACCEPTANCE_SCENARIOS.md` (SCENE3D-001…004),
+`ARCHITECTURE_FUTURE_3D_BIM_IFC.md` (§3 stack decision, §10 stages 1–3 done,
+§11 gates closed/remaining), this checkpoint.
+
+**Renderer decision:** `three` 0.186.0 alone + `OrbitControls` from its own
+`examples/jsm`. React Three Fiber was benchmarked and rejected:
+`@react-three/fiber@9.7.0` declares `peerDependencies.react ">=19 <19.3"`
+while `apps/web` resolves React **19.3.0**. `three` declares no peers at all.
+No BIM/IFC framework, no drei, no post-processing.
+
+**Bundle:** initial `index-*.js` 725 404 → 729 682 B (gz 210 809 → 210 819);
+CSS 181 714 → 185 820 B; icons 23 432 → 24 915 B; new lazy
+`TechnicalScene3D-*.js` 595 613 B (gz 150 813 B); total emitted JS
+1 203 951 → 1 805 325 B. The whole Three stack is behind one dynamic import;
+Quick Calc and the Creator never load it.
+
+**Entity counts / instancing:** 01-basic-gable 25 entities / 3 instance keys;
+02-basic-hip 59 (55 members + 4 planes) / 9; 10-gable-collar-tie 36 / 4;
+a 24 m hip at 600 mm spacing 129 entities (52 K1, 64 J1, 4 H1, 4 plates,
+1 ridge) / 21 instance keys. Rendering is on demand — a frame is requested only
+when camera, scene or presentation changes.
+
+**Assumptions/limitations:** every solid is **reference** geometry — no cut or
+notch is subtracted anywhere (deliberate), and H1/J1 additionally disclose
+"detal połączenia nie jest jeszcze modelowany"; roof-plane context exists only
+for hip roofs because `createRoofSkeletonFromResolved` emits `guides` only
+there; no covering/batten/counter-batten/membrane layer, no section planes, no
+world-space dimensioning, no exploded views, no 3D editing; orthographic zoom
+is not carried across a projection switch (framing preserved approximately);
+mobile 3D is smoke-level, 2D remains the primary phone experience; no schema,
+no persisted state and no domain-package change.
+
+**Validation:** baseline `pnpm verify` before changes — typecheck/lint/format
+clean, 959/960 unit tests pass with one pre-existing full-suite flake
+(`ProjectManager.test.tsx` "manages named local projects…" times out at 5000 ms
+under contention, passes isolated in 787 ms); architecture 25/25; both builds
+pass. After V38: typecheck, lint and format clean; `packages/technical-scene`
+33/33; `apps/web/.../scene3d` 13/13; architecture **29/29** (4 new rules);
+full unit suite pass with the same single pre-existing flake — this time
+`Page.test.tsx` "renders first-class J1 members…" at 5061 ms, which passes with
+its whole file (66/66) in isolation; both builds pass; `git diff --check`
+clean. Playwright full suite **52 passed, 6 deliberate skips**, including the
+new `e2e/technical-3d.spec.ts` 10/10 across desktop 1440×900 and mobile
+390×844. Browser QA on the running dev server at 1440×900 and 390×844: gable,
+hip (K1/H1/J1) and collar-tie projects in 3D; 3D click → Inspector
+"Krokiew #4 - prawa" / context "K1-04" → back to 2D still selecting
+`instance:rafter-pair-4:right`; H1 selection shows the connection disclosure;
+isolate, X-ray, orthographic, presets and family filters verified; zero console
+errors; zero horizontal overflow at either width. Four real defects were found
+and fixed during that QA: bounding-sphere framing wasting most of the viewport
+(now fits the projected extent), a canvas `height:100%` that did not resolve
+against its flex parent, a resize that snapped the user's camera back, and
+mobile controls overlaying the whole phone viewport.
+
+**NEXT ACTION:** user review of V38 in the browser (open Projekt › Konstrukcja
+and use `[2D|3D]`); then decide V39 scope — the recommendation is
+execution-focused 3D: subtract resolved K1 notches and end cuts into real cut
+solids, and focus the camera on a selected cut/joint from the fabrication
+detail. No commit/push without an explicit request.
+
+---
+
+**Previous iteration:** `037 — Product experience, Creator 2.0, Covering Studio 2.0`
 
 **Status:** `IMPLEMENTED — uncommitted on main after e510bdf (V36); no commit/push by request`
 

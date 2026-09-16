@@ -1,0 +1,14 @@
+{
+  "name": "@cieslacalc/technical-scene",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@cieslacalc/drawing-engine": "workspace:*",
+    "@cieslacalc/timber-model": "workspace:*"
+  },
+  "devDependencies": {
+    "@cieslacalc/roof-math": "workspace:*"
+  }
+}

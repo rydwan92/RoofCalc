@@ -185,6 +185,16 @@ const CostWorkspace = lazy(() =>
     default: module.CostWorkspace,
   })),
 );
+/**
+ * V38: the whole Three.js stack lives behind this one dynamic import, so the
+ * initial Quick/Creator bundle never pays for a renderer the user has not
+ * opened. 2D remains the default workspace renderer.
+ */
+const TechnicalScene3D = lazy(() =>
+  import('./scene3d/TechnicalScene3D').then((module) => ({
+    default: module.TechnicalScene3D,
+  })),
+);
 
 type TileAssignment = CoveringAssignmentSpec & {
   product: CoveringAssignmentSpec['product'] & {
@@ -1165,6 +1175,23 @@ function AssemblyPageContent() {
     if (k1Requirement.status !== 'resolved') return;
     state.navigateTo(workbenchLocation('materials', 'cutting'));
   };
+  /**
+   * V38: a 3D selection opens the element's existing preparation through the
+   * existing navigation. No fabrication surface is duplicated in 3D.
+   */
+  const openInstancePreparation = (instanceId: string, prototypeId: string) => {
+    const instance = memberInstances.find(
+      (candidate) => candidate.instanceId === instanceId,
+    );
+    if (workbench.viewPreset !== 'cuts')
+      state.navigateTo(workbenchLocation('cuts'), { remember: true });
+    state.navigateToInstance({
+      instanceId,
+      prototypeId,
+      operationIds: instance?.relatedOperationIds ?? [],
+    });
+    if (mobile) state.setMobilePanel('inspector');
+  };
   const openExecutionExport = () =>
     state.navigateTo(workbenchLocation('documents'));
   const openDocument = (
@@ -1757,7 +1784,10 @@ function AssemblyPageContent() {
                         {t('assembly.editSelection')}
                       </button>
                     )}
-                    {workbench.viewPreset !== 'covering' &&
+                    {/* V38: Fit and Measure act on the 2D drawing; the 3D
+                        viewport carries its own camera controls. */}
+                    {workbench.workspaceRenderer === '2d' &&
+                      workbench.viewPreset !== 'covering' &&
                       (workbench.viewPreset !== 'materials' ||
                         workbench.materialsView === 'drawing') && (
                         <button className="a-button" onClick={state.requestFit}>
@@ -1765,7 +1795,8 @@ function AssemblyPageContent() {
                           {t('assembly.fit')}
                         </button>
                       )}
-                    {workbench.viewPreset !== 'covering' &&
+                    {workbench.workspaceRenderer === '2d' &&
+                      workbench.viewPreset !== 'covering' &&
                       workbench.viewPreset !== 'materials' && (
                         <button
                           className="a-button"
@@ -2068,6 +2099,21 @@ function AssemblyPageContent() {
                   />
                 ) : workbench.canvasView === 'rafter' ? (
                   <AssemblyCanvas result={result} />
+                ) : workbench.workspaceRenderer === '3d' ? (
+                  <Suspense
+                    fallback={
+                      <div className="a-loading-panel" role="status">
+                        {t('assembly.scene3d.loading')}
+                      </div>
+                    }
+                  >
+                    <TechnicalScene3D
+                      skeleton={skeleton}
+                      relatedIds={relatedSelectionIds}
+                      onReturnTo2D={() => state.setWorkspaceRenderer('2d')}
+                      onOpenPreparation={openInstancePreparation}
+                    />
+                  </Suspense>
                 ) : (
                   <Suspense fallback={<div className="a-loading-panel" />}>
                     <SkeletonCanvas

@@ -1,6 +1,6 @@
 # RoofCalc / CieślaCalc — Architecture Index
 
-**This is the current-state map, after V37.** Read it after `PROJECT_BLUEPRINT.md`
+**This is the current-state map, after V38.** Read it after `PROJECT_BLUEPRINT.md`
 and before touching code. It describes what exists today, not the history of how
 it got here. Historical `ARCHITECTURE_V*.md` documents stay authoritative for the
 subsystem they introduced and should be opened only when changing that subsystem.
@@ -49,7 +49,8 @@ Dependency direction is **downward only**.
 | --- | --- | --- |
 | `timber-model` | Pure type vocabulary: sections, members, skeletons, templates, build-up, features. No logic, no dependencies. | — |
 | `roof-math` | The geometry engine. Templates → resolved roofs, skeletons, rafters, hips, jacks, cuts, plane bases, roof surfaces, battens, counter-battens, opening framing. **Generates and owns roof-plane IDs.** **V34C** adds the membrane build-up layer's course-fit solver (`resolveMembraneCourseFit`, `resolveMembraneLayout`), mirroring the batten solver's own shape and home — a membrane never enters `covering-core`'s layout engines, since it is a build-up layer, not a primary covering. | `timber-model`, `zod` |
-| `drawing-engine` | Renderer-neutral projection: lanes, dimensions, interaction hit-testing, measurement. Produces view models, not DOM. | — |
+| `drawing-engine` | Renderer-neutral projection: lanes, dimensions, interaction hit-testing, measurement. Produces view models, not DOM. **V38** extracts `createTimberPrismBasis` so the 2D faces and the 3D solid share one orientation formula. | — |
+| `technical-scene` | **V38.** The renderer-neutral technical scene: `TechnicalScene`/`TechnicalSceneEntity` DTOs, the roof→scene adapter, pure camera framing and the visibility policy. Consumes resolved geometry; runs no solver and knows no renderer. | `timber-model`, `drawing-engine` |
 | `covering-core` | Covering technical product schemas and the four family layout solvers (tile, fixed modular sheet, standing seam, cut-to-length), plane-ownership resolution, and the quantity bridge. **V34C** adds `membraneTechnicalSpecSchema`/`MembraneTechnicalSpec` — a schema **sibling** to `coveringTechnicalSpecSchema`, deliberately never joined into its union. | `zod` |
 | `calculator-core` | Composition layer: assembly resolution, member instances, fabrication packages, detail previews, and the canonical `RoofProjectDocumentV1`. **V34C** adds the additive optional `project.membraneProduct?: MembraneTechnicalSpec` field. | `roof-math`, `timber-model`, `covering-core`, `drawing-engine`, `shared` |
 | `quantity-core` | Aggregates neutral quantity sources into the member/material schedule. Knows nothing about products, procurement or prices. **V34C** adds optional gross build-up fields (`grossAreaMm2`, `courseCount`, `rollCount`, `semantic: 'gross-installed'`) alongside the always-present net area — exposed only once every contributing plane resolves a roll product, never blended from a partial mix. | `timber-model` |
@@ -61,10 +62,13 @@ Dependency direction is **downward only**.
 | `project-core` | `ProjectRecordV1` envelope, lifecycle helpers, JSON import/export and the `ProjectRepository` interface. No browser, no React, no i18n. | `calculator-core`, `zod` |
 | `shared` | Cross-cutting DTOs shared by web and API. | — |
 | `ui` | Semantic design tokens (`--ui-*`) and a few primitives. | `react` (peer) |
-| `apps/web` | React workbench: Zustand store, canvases, inspectors, i18n, local persistence, catalogue client. **V34C** adds `apps/web/src/pricing/` (HTTP client + `usePricesForVariants`) and a manual membrane-product entry form in the layers inspector. **V35** adds `MembraneProductPicker.tsx`/`TimberStockProductPicker.tsx` (mirroring `CatalogProductPicker.tsx`'s DI/i18n pattern), `assembly/timber-stock-class.ts` + `timber-stock-adapter.ts` (the web-layer bridge from a catalogue timber pick into `procurement-core`'s pure `StockOption`), and an MVP read-only material-cost panel inside `K1CuttingPlan.tsx`. | the packages above |
+| `apps/web` | React workbench: Zustand store, canvases, inspectors, i18n, local persistence, catalogue client. **V38** adds `assembly/scene3d/` — the lazily loaded Three.js technical viewport, the only place in the repository allowed to import a renderer. **V34C** adds `apps/web/src/pricing/` (HTTP client + `usePricesForVariants`) and a manual membrane-product entry form in the layers inspector. **V35** adds `MembraneProductPicker.tsx`/`TimberStockProductPicker.tsx` (mirroring `CatalogProductPicker.tsx`'s DI/i18n pattern), `assembly/timber-stock-class.ts` + `timber-stock-adapter.ts` (the web-layer bridge from a catalogue timber pick into `procurement-core`'s pure `StockOption`), and an MVP read-only material-cost panel inside `K1CuttingPlan.tsx`. | the packages above |
 | `apps/api` | Express read-only catalogue API, Drizzle/MySQL repository, canonical importer, CLI. **V34C** adds a sibling `/api/pricing` route tree, `apps/api/src/pricing/`, and `apps/api/src/db/pricing-schema.ts` (a table set sibling to the catalogue-technical `schema.ts`, sharing only the DB connection pool). **V35** adds a deterministic first-run bootstrap CLI (`wait-for-db.ts`, `seed-all.ts`, `smoke-check.ts`) and a root `compose.yaml` (MariaDB, Docker variant). | `catalog-core`, `covering-core`, `pricing-core`, `shared` |
 
-**Never**: a package importing an app; `roof-math` importing React/DOM/Express/
+**Never**: a package importing an app; **any** package importing `three` or
+`@react-three/*`, or `apps/web` importing one outside
+`apps/web/src/assembly/scene3d/`; `technical-scene` importing React/DOM/a
+renderer/a solver; `roof-math` importing React/DOM/Express/
 database; `covering-core` importing React/DOM/Express/Drizzle/mysql2;
 `quantity-core` importing UI, a database or the catalogue; `catalog-core`
 importing Drizzle/Express/React/UI; `project-core` importing i18n, React or
@@ -181,9 +185,30 @@ fully seeded, price-joinable database with one command, working against
 either a bundled Docker MariaDB or an existing local XAMPP instance. See
 `docs/ARCHITECTURE_V35_MATERIAL_CATALOG_AND_DB_BOOTSTRAP.md`.
 
+V38 adds the pure `packages/technical-scene` package and a second renderer for
+the same resolved project. One adapter turns the already-resolved
+`RoofSkeleton` into renderer-neutral `TechnicalScene` DTOs in canonical
+millimetres and the roof's own Z-up coordinates — no axis swap, no unit change,
+no re-derived geometry — and a lazily loaded Three.js viewport in
+`apps/web/src/assembly/scene3d/` renders them. Selection is shared with the 2D
+canvas through one `resolveMemberRefVisualState` rule and one `select()`
+action; there is no 3D selection state. `three` is the only new runtime
+dependency (React Three Fiber was benchmarked and rejected: its stable peer
+range excludes the React 19.3 this app resolves), it loads behind a dynamic
+import so the initial bundle grows by ~4 KB raw / ~0 KB gzipped, and an
+architecture test confines it to that one folder. Every solid is reference
+geometry — no cut is subtracted and the unresolved H1/J1 connection detail is
+stated in words. See `docs/ARCHITECTURE_V38_TECHNICAL_3D_MVP.md`.
+
 ---
 
 ## 3. State classification
+
+V38 adds only one transient field, `WorkbenchViewState.workspaceRenderer`
+(`'2d' | '3d'`). Camera, projection, view preset, family filters, X-ray and
+hover live inside the 3D viewport component and never reach the store at all.
+Selecting in 3D calls the same `select()` the 2D canvas calls, so there is
+exactly one selection state.
 
 V37 adds only transient application state. `WorkbenchViewState` gains a
 `documents` view preset, a `cutting` materials view and a bounded
@@ -212,10 +237,11 @@ API `environment.ts` initializes root `.env` once for server, CLI and Drizzle;
 | **Transient view/session** | `AssemblyState.workbench`, component `useState` (camera, hover, pointer maps) | no | no |
 | **Remote/server** | TanStack Query cache (catalogue only) | no | no |
 
-Transient means: mode, task/view preset, selection, hover, isolation, dimension
-level, layer visibility, panel and sheet state, `mobilePanel`,
-`selectedCoveringAssignmentId`, drawing detail level, camera/pan/zoom,
-measurement, drafts and invalid-field flags.
+Transient means: mode, task/view preset, workspace renderer (2D/3D), selection,
+hover, isolation, dimension level, layer visibility, panel and sheet state,
+`mobilePanel`, `selectedCoveringAssignmentId`, drawing detail level,
+camera/pan/zoom, 3D projection, view preset and family filters, measurement,
+drafts and invalid-field flags.
 
 A procurement `CuttingPlan` is **derived**: it is computed from explicit inputs
 and is not part of any persisted document (ADR-009).
@@ -411,6 +437,11 @@ dock, with tools/inspector/view in one `MobileSheet` at a time.
 **Inspector** edits exact values, **Context bar** explains the selection. Every
 editable geometric value has an exact numeric input on desktop *and* mobile.
 
+V38: the Workspace can be drawn by either renderer on construction-capable
+tasks — `[ 2D | 3D ]` beside the technical view controls. 3D is a *view* of the
+current task, never a perspective, and it edits nothing: the Inspector remains
+the one exact-edit surface.
+
 ## 12. Future multi-structure constraint
 
 Today there is exactly one `project.roof`, and local IDs (`roof-plane:left`,
@@ -439,7 +470,9 @@ pnpm verify   # typecheck → lint → format:check → tests (incl. architectur
 pnpm e2e      # real-browser smoke, desktop 1440x900 and mobile 390x844 (pnpm e2e:install first)
 ```
 
-- `tools/architecture/` — executable dependency and opaque-ID rules.
+- `tools/architecture/` — executable dependency and opaque-ID rules, including
+  the V38 renderer boundary (`three` may appear only in
+  `apps/web/src/assembly/scene3d/`, never in a package).
 - `fixtures/projects/` — nine reference project archives with aggregate
   invariants (see `docs/ACCEPTANCE_SCENARIOS.md`). Procurement is **not**
   duplicated here; `procurement-core` owns its own golden fixtures.
@@ -455,6 +488,7 @@ pnpm e2e      # real-browser smoke, desktop 1440x900 and mobile 390x844 (pnpm e2
 | --- | --- |
 | `ARCHITECTURE_V36_MATERIAL_PLAN` | Materials plan, price selection/provenance, BOM/CSV and DB runtime diagnostics |
 | `ARCHITECTURE_V37_PRODUCT_EXPERIENCE_AND_COVERING_STUDIO` | perspective navigation and return trail, Document Hub, guided Creator and examples, Covering Studio technical/visual views |
+| `ARCHITECTURE_V38_TECHNICAL_3D_MVP` | the technical scene contract, coordinate convention, roof→scene adapter, Three.js viewport, 2D/3D selection identity and renderer boundary |
 | `domain/ROOF_TILE_EDGE_PLACEMENT` | eave/verge evidence; why no physical tile edge projection is modelled |
 | `PROJECT_BLUEPRINT.md` | always first; holds the work checkpoint |
 | `docs/ARCHITECTURE_INDEX.md` | always second; this file |
@@ -478,6 +512,7 @@ pnpm e2e      # real-browser smoke, desktop 1440x900 and mobile 390x844 (pnpm e2
 | `docs/domain/ROOF_TILE_INSTALLATION_RULES.md` | manufacturer evidence for regular gauge, pitch and manual boundary references |
 | `docs/FUTURE_EXECUTION_SEMANTICS_AUDIT.md` + `docs/domain/*` | touching coverage, overlap or connection semantics |
 | `docs/ARCHITECTURE_FUTURE_COMPOUND_ROOF_SCENE.md` | touching IDs, planes or document shape |
+| `docs/ARCHITECTURE_FUTURE_3D_BIM_IFC.md` | long-term 3D/BIM/IFC direction; V38 implemented its stages 1–3 |
 | `docs/ARCHITECTURE_COVERING_CATALOG_AND_PRICING_BOUNDARY.md` | covering, catalogue or future pricing |
 | `docs/DOMAIN_RESEARCH_ROADMAP.md` | before implementing new domain geometry |
 

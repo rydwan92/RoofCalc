@@ -162,6 +162,49 @@ and their totals are never added together.
   in an SVG `fill` falls back to black — the V21 defect, now guarded by
   `token-contract.test.ts` and E2E scenario C.
 
+## 7.1 Technical 3D workspace (V38)
+
+- The Workspace can be drawn by either renderer on a construction-capable task.
+  `[ 2D | 3D ]` (`data-workspace-renderer`) sits with the technical view
+  controls, never beside Projekt / Wykonanie / Materiały: **3D is a view of the
+  current task, not a perspective.** Leaving such a task falls the renderer
+  back to 2D rather than leaving a dead switch.
+- 2D is the default and the whole 3D stack is lazily loaded. Its first open
+  shows "Ładowanie widoku 3D...", never a blank workspace. If WebGL is
+  unavailable the workspace says so and offers **Wróć do 2D**; every 2D
+  calculation stays available.
+- **There is one selection.** A 3D click calls the same `select()` a 2D click
+  calls, so the Inspector, the context bar and the breadcrumb follow, and the
+  member stays selected when the renderer changes. Display codes K1/H1/J1 are
+  never the identity mechanism (§8).
+- Selection is carried by an edge outline as well as colour; *related* is a
+  distinctly lighter tone than *selected*, and §3's semantics are unchanged.
+  Timber keeps its 2D semantic family colours so a member looks like the same
+  member in both views.
+- While 3D is active the 2D drawing tools (Miarka, Dopasuj, dimension level,
+  drawing layers) stand down; the viewport owns its own camera, isolation,
+  family and X-ray controls instead of duplicating them.
+- **Izoluj element** is the same transient `isolateSelection` flag as in 2D.
+  Family filters, X-ray, projection, view preset and camera are renderer-local
+  transient state. None of it enters the project, its history or persistence.
+- Hover is renderer-local feedback only — a quiet outline and a pointer cursor.
+  It never writes a canonical selection on pointer move. A pointer that moved
+  more than ~6 px is a camera gesture, never a selection.
+- The HUD card restates already-resolved values and names the layer each comes
+  from (§4): *Przekrój* and *Oś elementu*, never a bare number that could be
+  mistaken for a fabrication blank. The Inspector owns full detail; the HUD
+  owns none of it and edits nothing.
+- **The scene never looks more finished than it is.** The viewport header reads
+  "Geometria referencyjna — bez detalu cięć", and an H1/J1 selection adds
+  "Geometria referencyjna — detal połączenia nie jest jeszcze modelowany."
+  No cut, notch, hip face deduction or jack finished face is modelled.
+- Mobile (`≤800px`): the switch lives in the View sheet, the viewport controls
+  become one horizontally scrollable row above the stage, and the page still
+  never scrolls horizontally. 3D is a smoke-level capability there; 2D remains
+  the primary phone experience.
+- Every 3D control is a real labelled button with `aria-pressed` where it
+  toggles; returning to 2D never requires touching the canvas.
+
 ## 8. Language and identity
 
 - All user-facing text is translatable; the app ships Polish and English.
