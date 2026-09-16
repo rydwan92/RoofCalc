@@ -101,8 +101,9 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Apply committed migrations
-        run: pnpm --filter @cieslacalc/api db:migrate
-      # Dry run only: never mutate catalogue data from CI.
-      - name: Import the DEMO catalogue (dry run)
-        run: pnpm --filter @cieslacalc/api catalog:import src/data/demo-catalog.v1.json
+      - name: Bootstrap disposable MariaDB
+        run: pnpm db:bootstrap
+      - name: Replay bootstrap to prove idempotency
+        run: pnpm db:bootstrap
+      - name: Read-only diagnostics
+        run: pnpm db:doctor

@@ -2176,6 +2176,17 @@ function ModularSheetEditor({
         }
       />
       <NumericField
+        label={t('assembly.battenGauge')}
+        value={spec.battenGaugeMm}
+        unit="length"
+        minimum={1}
+        onCommit={(value) =>
+          update((draft) => {
+            draft.product.technicalSpecSnapshot.battenGaugeMm = value;
+          })
+        }
+      />
+      <NumericField
         label={t('assembly.minimumPitch')}
         value={spec.minPitchDeg}
         minimum={Number.EPSILON}

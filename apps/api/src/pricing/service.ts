@@ -29,7 +29,10 @@ export interface VariantPrice {
 export class PricingService {
   constructor(private readonly repository: PricingRepository) {}
 
-  async pricesForVariants(variantIds: string[]): Promise<VariantPrice[]> {
+  async pricesForVariants(
+    variantIds: string[],
+    atDate = new Date().toISOString().slice(0, 10),
+  ): Promise<VariantPrice[]> {
     if (!variantIds.length) return [];
     if (variantIds.some((id) => !id.trim()))
       throw new PricingServiceError('pricing-invalid-request');
@@ -39,14 +42,13 @@ export class PricingService {
     ]);
     const byListId = new Map(priceLists.map((list) => [list.id, list]));
     return variantIds.flatMap((variantId) => {
-      return activePriceListEntries(entries)
+      return activePriceListEntries(entries, atDate)
         .filter((entry) => entry.commercialVariantId === variantId)
         .flatMap((entry) => {
           const list = byListId.get(entry.priceListId);
-          const today = new Date().toISOString().slice(0, 10);
           return list &&
-            list.validFrom <= today &&
-            (!list.validTo || list.validTo >= today)
+            list.validFrom <= atDate &&
+            (!list.validTo || list.validTo >= atDate)
             ? [
                 {
                   variantId,

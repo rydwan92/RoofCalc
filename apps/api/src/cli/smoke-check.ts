@@ -2,12 +2,14 @@ import { createCatalogDatabase } from '../db/client';
 import { DrizzleCatalogRepository } from '../db/catalog-repository';
 import { DrizzlePricingRepository } from '../db/pricing-repository';
 
-/**
- * Only the kinds `seed-all.ts` actually seeds today — `modular-sheet` and
- * `standing-seam` are valid `CatalogProductKind` values with zero seeded
- * products, so checking the full kind enum here would flag a false gap.
- */
-const SEEDED_KINDS = ['roof-tile', 'membrane', 'timber-stock'] as const;
+/** Every currently seeded product kind must be queryable after bootstrap. */
+const SEEDED_KINDS = [
+  'roof-tile',
+  'modular-sheet',
+  'standing-seam',
+  'membrane',
+  'timber-stock',
+] as const;
 
 async function main() {
   const connection = createCatalogDatabase();
@@ -44,6 +46,14 @@ async function main() {
     const priced = await pricing.entriesForVariants([timberVariantId]);
     counts.timberPriceEntries = priced.length;
     if (!priced.length) problems.push(`no price entry for ${timberVariantId}`);
+
+    const ruukkiVariantId = 'variant:ruukki:finnera:qc50-pural-bt-mat';
+    const ruukkiPrices = await pricing.entriesForVariants([ruukkiVariantId]);
+    counts.ruukkiPriceEntries = ruukkiPrices.length;
+    if (!ruukkiPrices.some((entry) => entry.netAmountMinor === 6979))
+      problems.push(
+        `expected dated Ruukki price missing for ${ruukkiVariantId}`,
+      );
 
     const result = { ok: problems.length === 0, counts, problems };
     console.log(JSON.stringify(result, null, 2));

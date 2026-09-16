@@ -1,6 +1,6 @@
 # RoofCalc / CieślaCalc — Architecture Index
 
-**This is the current-state map, after V39.** Read it after `PROJECT_BLUEPRINT.md`
+**This is the current-state map, after V42.** Read it after `PROJECT_BLUEPRINT.md`
 and before touching code. It describes what exists today, not the history of how
 it got here. Historical `ARCHITECTURE_V*.md` documents stay authoritative for the
 subsystem they introduced and should be opened only when changing that subsystem.
@@ -202,6 +202,15 @@ can show the real birdsmouth and ridge cut while H1/J1 stay honestly
 reference-only. Material Plan, Cost and Export needed no change: they already
 consume the resolver's own status. See
 `docs/ARCHITECTURE_V39_EXECUTION_GEOMETRY_AND_HIP_BOUNDARY.md`.
+
+V42 keeps one MariaDB/MySQL + Drizzle + mysql2 schema. Local Node reads a
+private `DATABASE_URL`; the Cloudflare Worker uses Hyperdrive and the same
+repositories/services through a shared HTTP handler. V42 adds an optional
+metal-sheet batten gauge distinct from physical module length and additive
+metal/price seeds. The immutable V39 T18 revision remains stored, while its
+mutable family is inactive for new selections. See
+`docs/ARCHITECTURE_V42_SHARED_DEV_AND_METAL.md` and
+`docs/CLOUDFLARE_SEOHOST_V42.md`.
 
 V38 adds the pure `packages/technical-scene` package and a second renderer for
 the same resolved project. One adapter turns the already-resolved
@@ -509,6 +518,7 @@ pnpm e2e      # real-browser smoke, desktop 1440x900 and mobile 390x844 (pnpm e2
 | `ARCHITECTURE_V37_PRODUCT_EXPERIENCE_AND_COVERING_STUDIO` | perspective navigation and return trail, Document Hub, guided Creator and examples, Covering Studio technical/visual views |
 | `ARCHITECTURE_V38_TECHNICAL_3D_MVP` | the technical scene contract, coordinate convention, roof→scene adapter, Three.js viewport, 2D/3D selection identity and renderer boundary |
 | `ARCHITECTURE_V39_EXECUTION_GEOMETRY_AND_HIP_BOUNDARY` | hip-boundary counter-batten detail, J1→H1 finished termination, finished K1 3D solid, hip execution intent |
+| `ARCHITECTURE_V42_SHARED_DEV_AND_METAL` | shared DEV SQL, Cloudflare Worker/Hyperdrive boundary, additive metal seed, batten/module semantics |
 | `domain/ROOF_TILE_EDGE_PLACEMENT` | eave/verge evidence; why no physical tile edge projection is modelled |
 | `PROJECT_BLUEPRINT.md` | always first; holds the work checkpoint |
 | `docs/ARCHITECTURE_INDEX.md` | always second; this file |

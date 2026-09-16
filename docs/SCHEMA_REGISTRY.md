@@ -159,6 +159,13 @@ free; changing meaning, type or required-ness is not.
   but cannot be laid out. Optional field + an explicit "cannot compute" status.
 - `modular-sheet.lengthModel` discriminates `fixed-sheet` vs `cut-to-length`, and
   that choice selects the solver.
+- V42 adds optional `modular-sheet.battenGaugeMm`. `moduleLengthMm` remains
+  physical/profile repeat; the layout's required support gauge is
+  `battenGaugeMm ?? moduleLengthMm` so pre-V42 snapshots behave unchanged.
+  Optional advisory/physical metal facts preserve their meanings without
+  making a recommended pitch a hard minimum. `standing-seam` gains optional
+  recommended pitch and mass. No schema version bump or SQL migration: stored
+  technical JSON is unchanged.
 - **Effective dimensions may already encode installation overlap** (V26C). Any
   future overlap field must say explicitly whether it is already included, or
   the two will be double-counted.

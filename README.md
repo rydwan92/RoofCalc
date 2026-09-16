@@ -19,7 +19,7 @@ Frontend: http://127.0.0.1:5173. API: http://127.0.0.1:3001/api/health. Przy glo
 
 Geometria, tryby Szybkie/Kreator i lokalne projekty działają w pełni bez
 bazy danych. Katalog materiałów (dachówki, membrany, tarcica) i moduł cen
-wymagają osiągalnego `DATABASE_URL` — bez niego `/api/catalog` i
+wymagają osiągalnego `DATABASE_URL` w lokalnym Node API — bez niego `/api/catalog` i
 `/api/pricing` zwracają kontrolowany błąd 503, a UI po prostu nie pokazuje
 wyboru z katalogu ani cen.
 
@@ -33,7 +33,7 @@ API i wszystkie CLI bazy/importów automatycznie czytają rootowy `.env`.
 Zmienne ustawione w systemie lub terminalu mają pierwszeństwo. Produkcja i CI
 nie wymagają `.env`. Nie commituj pliku z hasłami.
 Polecenia uruchamiaj w osobnych liniach (również w PowerShell 5).
-`pnpm db:doctor` sprawdza połączenie, migracje, katalog i ceny bez ujawniania danych logowania.
+`pnpm db:doctor` sprawdza połączenie, wersję serwera, migracje, liczby produktów według rodzaju i ceny bez ujawniania danych logowania.
 
 **Wariant A — kontener Docker (MariaDB, port 3307, nie koliduje z XAMPP):**
 
@@ -65,6 +65,31 @@ zasila katalog i cennik realnymi, cytowanymi danymi (dachówki, membrana,
 tarcica konstrukcyjna z realnych obserwacji rynkowych) i na końcu
 weryfikuje wynik (`apps/api/src/cli/smoke-check.ts`). Działa identycznie w
 obu wariantach — różni je tylko `DATABASE_URL`.
+
+**Wariant C — wspólna baza DEV na SEOHost:** prywatny root `.env` może wskazywać
+`srv118516_roofcalc_dev` na `h86.seohost.pl:3306`. W panelu SEOHost trzeba
+dopuścić aktualny publiczny adres IP komputera. Uruchom `pnpm db:doctor`,
+sprawdź stan, a następnie świadomie `pnpm db:bootstrap`. Drugi bootstrap
+sprawdza powtarzalność seedów. Do zwykłej pracy używaj `pnpm dev:remote`:
+diagnostyka i start bez migracji ani seedowania przy każdym uruchomieniu.
+Lokalne `.env` nigdy nie trafia do Git. Przykładowy URL bez hasła jest w
+`.env.example`.
+
+## Publiczne DEV na Cloudflare
+
+Repo zawiera adapter Worker + Static Assets, ponieważ istniejący publiczny
+adres jest w domenie `workers.dev`. `/api` pozostaje na tym samym originie co
+frontend. Worker korzysta z bindingu `HYPERDRIVE`, `mysql2` i tych samych
+repozytoriów Drizzle oraz usług co Node. `pnpm build:edge` wykonuje lokalny
+dry-run pakowania. Konfiguracja bez sekretów jest w `wrangler.example.jsonc`.
+Przed wdrożeniem skopiuj ją do ignorowanego `wrangler.jsonc`, wpisz prawdziwe
+ID Hyperdrive i wykonaj bramkę TLS/ACL opisaną w
+[`docs/CLOUDFLARE_SEOHOST_V42.md`](docs/CLOUDFLARE_SEOHOST_V42.md).
+Nie publikuj Workera z przykładowym ID. Hasło bazy zapisuje się tylko w
+konfiguracji Hyperdrive po stronie Cloudflare, nigdy jako `VITE_*`.
+Dodany cennik Ruukki z 28.04.2026 jest archiwalny: producent ogłosił
+cennik od 28.08.2026, więc domyślny lookup nie podaje dawnej ceny jako
+aktualnej. Dla kontroli zapisu historycznego API przyjmuje `&at=2026-07-01`.
 
 ## Szybkie i Kreator — model 8.0.0
 

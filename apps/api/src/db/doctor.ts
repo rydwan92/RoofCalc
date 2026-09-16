@@ -14,7 +14,7 @@ export function databaseFailureReason(error: unknown): string {
     case 'ECONNREFUSED':
     case 'ETIMEDOUT':
     case 'ENOTFOUND':
-      return 'Server unavailable. Start XAMPP MySQL (or your database service) and check host/port.';
+      return 'Server unavailable. Check database host/port and provider remote-access ACL.';
     case 'ER_NOT_KEYFILE':
     case 'ER_CRASHED_ON_USAGE':
       return 'MariaDB reports a damaged table. Back up and check affected tables before repairing them.';
@@ -50,6 +50,14 @@ export async function diagnoseDatabase(
   }
   lines.push('Database: connected');
   try {
+    const [server] = await connection.query(
+      'SELECT VERSION() AS version, DATABASE() AS database_name',
+    );
+    const serverRow = (server as RowDataPacket[])[0];
+    lines.push(
+      `Server: ${String(serverRow?.version ?? 'unknown')}`,
+      `Database name: ${String(serverRow?.database_name ?? 'unknown')}`,
+    );
     const [migrations] = await connection.query(
       'SELECT COUNT(*) AS count FROM __drizzle_migrations',
     );
@@ -60,11 +68,21 @@ export async function diagnoseDatabase(
     const [products] = await connection.query(
       'SELECT COUNT(*) AS count FROM technical_product_families WHERE active = 1',
     );
+    const [manufacturers] = await connection.query(
+      'SELECT COUNT(*) AS count FROM manufacturers WHERE active = 1',
+    );
+    const [kinds] = await connection.query(
+      'SELECT covering_kind AS kind, COUNT(*) AS count FROM technical_product_families WHERE active = 1 GROUP BY covering_kind ORDER BY covering_kind',
+    );
     const [prices] = await connection.query(
       'SELECT COUNT(*) AS count FROM price_list_entries',
     );
     lines.push(
       `Catalogue: ${Number((products as RowDataPacket[])[0]?.count ?? 0)} products`,
+      `Manufacturers: ${Number((manufacturers as RowDataPacket[])[0]?.count ?? 0)}`,
+      ...(kinds as RowDataPacket[]).map(
+        (row) => `Kind ${String(row.kind)}: ${Number(row.count)}`,
+      ),
       `Prices: ${Number((prices as RowDataPacket[])[0]?.count ?? 0)} entries`,
     );
   } catch {

@@ -22,14 +22,8 @@ export default defineConfig({
      * the test is wrong, not the threshold.
      */
     testTimeout: 20000,
-    /**
-     * Cap the worker pool. With one fork per core (20 here) the jsdom suites
-     * saturate the machine, and vitest's own worker→main reporter channel
-     * then misses its `onTaskUpdate` deadline: the run reported 1044/1044
-     * passing and still exited non-zero on an unhandled RPC timeout. Eight
-     * forks keep the suite fast without starving that channel.
-     */
-    poolOptions: { forks: { maxForks: 8 } },
+    /** Keep jsdom suites within the workstation/CI memory budget. */
+    maxWorkers: 4,
   },
   esbuild: { jsx: 'automatic' },
 });

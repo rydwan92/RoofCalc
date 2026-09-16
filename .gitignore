@@ -2,6 +2,9 @@ node_modules/
 dist/
 coverage/
 .env
+.dev.vars
+wrangler.jsonc
+.wrangler/
 .env.local
 *.log
 .DS_Store

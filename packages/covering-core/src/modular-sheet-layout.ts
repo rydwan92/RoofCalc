@@ -431,13 +431,15 @@ export function resolveModularSheetLayout(
       for (let index = 1; index < battens.length; index += 1) {
         const actual =
           battens[index]!.stationVMm - battens[index - 1]!.stationVMm;
-        if (Math.abs(actual - input.productSpec.moduleLengthMm) > EPSILON) {
+        const required =
+          input.productSpec.battenGaugeMm ?? input.productSpec.moduleLengthMm;
+        if (Math.abs(actual - required) > EPSILON) {
           issues.push({
             code: 'module-batten-spacing-mismatch',
             severity: 'error',
             roofPlaneId,
             actual,
-            required: input.productSpec.moduleLengthMm,
+            required,
           });
           break;
         }

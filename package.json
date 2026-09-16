@@ -9,7 +9,8 @@
   },
   "scripts": {
     "dev": "node tools/dev.mjs",
-    "build": "pnpm --filter @cieslacalc/web build && pnpm --filter @cieslacalc/api build",
+    "build": "pnpm --filter @cieslacalc/web build && pnpm --filter @cieslacalc/api build && pnpm --filter @cieslacalc/api build:edge",
+    "build:edge": "pnpm --filter @cieslacalc/web build && pnpm --filter @cieslacalc/api build:edge",
     "start": "node apps/api/dist/server.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -26,7 +27,8 @@
     "db:down": "docker compose down",
     "db:bootstrap": "pnpm --filter @cieslacalc/api db:bootstrap",
     "db:doctor": "pnpm --filter @cieslacalc/api db:doctor",
-    "dev:full": "pnpm db:bootstrap && pnpm dev"
+    "dev:full": "pnpm db:bootstrap && pnpm dev",
+    "dev:remote": "pnpm db:doctor && pnpm dev"
   },
   "devDependencies": {
     "@cieslacalc/calculator-core": "workspace:*",
@@ -52,7 +54,7 @@
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.35.0",
     "vite": "^6.1.0",
-    "vitest": "^3.2.0"
+    "vitest": "^4.1.11"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

@@ -68,6 +68,15 @@ describe('GET /api/pricing/variants', () => {
     expect(response.body.items).toEqual([]);
   });
 
+  it('supports an explicit historical lookup date and rejects malformed dates', async () => {
+    const app = appWithSeed();
+    const path = '/api/pricing/variants?ids=variant:creaton:koda:copper-nuance';
+    expect(
+      (await request(app).get(`${path}&at=2026-08-01`)).body.items,
+    ).toEqual([]);
+    expect((await request(app).get(`${path}&at=tomorrow`)).status).toBe(400);
+  });
+
   it('resolves several variant IDs in one request', async () => {
     const response = await request(appWithSeed()).get(
       '/api/pricing/variants?ids=variant:creaton:koda:copper-nuance,variant:unpriced',

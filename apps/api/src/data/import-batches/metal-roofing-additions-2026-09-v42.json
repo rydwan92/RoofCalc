@@ -1,0 +1,1604 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "id": "official-metal-roofing-research-2026-09-v42",
+    "label": "V42 additive manufacturer-backed metal-roofing batch. Designed to run after V39 metal-sheets-2026-09.json; does not replace FIORD/TIGRA/T18 immutable revisions.",
+    "sourceRevision": "2026-09-16-v42",
+    "sourceUrl": "https://github.com/rydwan92/RoofCalc"
+  },
+  "manufacturers": [
+    {
+      "id": "manufacturer:blachotrapez",
+      "slug": "blachotrapez",
+      "name": "Blachotrapez",
+      "countryCode": "PL",
+      "websiteUrl": "https://www.blachotrapez.eu",
+      "active": true
+    },
+    {
+      "id": "manufacturer:bratex",
+      "slug": "bratex",
+      "name": "Bratex",
+      "countryCode": "PL",
+      "websiteUrl": "https://bratex.pl",
+      "active": true
+    },
+    {
+      "id": "manufacturer:budmat",
+      "slug": "budmat",
+      "name": "BUDMAT",
+      "countryCode": "PL",
+      "websiteUrl": "https://www.budmat.com",
+      "active": true
+    },
+    {
+      "id": "manufacturer:pruszynski",
+      "slug": "pruszynski",
+      "name": "Pruszyński",
+      "countryCode": "PL",
+      "websiteUrl": "https://pruszynski.com.pl",
+      "active": true
+    },
+    {
+      "id": "manufacturer:ruukki",
+      "slug": "ruukki",
+      "name": "Ruukki",
+      "countryCode": "FI",
+      "websiteUrl": "https://www.ruukki.com/pol/dachy",
+      "active": true
+    }
+  ],
+  "products": [
+    {
+      "id": "product:blachotrapez:estima-aluminium",
+      "manufacturerId": "manufacturer:blachotrapez",
+      "slug": "estima-aluminium",
+      "name": "Estima — aluminium 0,6 mm",
+      "coveringKind": "modular-sheet",
+      "active": true
+    },
+    {
+      "id": "product:blachotrapez:estima-steel",
+      "manufacturerId": "manufacturer:blachotrapez",
+      "slug": "estima-steel",
+      "name": "Estima — stal 0,5 mm",
+      "coveringKind": "modular-sheet",
+      "active": true
+    },
+    {
+      "id": "product:blachotrapez:talia-nova-aluminium",
+      "manufacturerId": "manufacturer:blachotrapez",
+      "slug": "talia-nova-aluminium",
+      "name": "Talia Nova — aluminium 0,6 mm",
+      "coveringKind": "modular-sheet",
+      "active": true
+    },
+    {
+      "id": "product:blachotrapez:talia-nova-steel",
+      "manufacturerId": "manufacturer:blachotrapez",
+      "slug": "talia-nova-steel",
+      "name": "Talia Nova — stal 0,5 mm",
+      "coveringKind": "modular-sheet",
+      "active": true
+    },
+    {
+      "id": "product:bratex:aurora-steel-05",
+      "manufacturerId": "manufacturer:bratex",
+      "slug": "aurora-steel-05",
+      "name": "Aurora — stal 0,5 mm",
+      "coveringKind": "modular-sheet",
+      "active": true
+    },
+    {
+      "id": "product:bratex:centro-fixed-aluminium-06",
+      "manufacturerId": "manufacturer:bratex",
+      "slug": "centro-fixed-aluminium-06",
+      "name": "Centro — arkusz stały — aluminium 0,6 mm",
+      "coveringKind": "modular-sheet",
+      "active": true
+    },
+    {
+      "id": "product:bratex:centro-fixed-steel-05",
+      "manufacturerId": "manufacturer:bratex",
+      "slug": "centro-fixed-steel-05",
+      "name": "Centro — arkusz stały — stal 0,5 mm",
+      "coveringKind": "modular-sheet",
+      "active": true
+    },
+    {
+      "id": "product:bratex:centro-fixed-steel-06",
+      "manufacturerId": "manufacturer:bratex",
+      "slug": "centro-fixed-steel-06",
+      "name": "Centro — arkusz stały — stal 0,6 mm",
+      "coveringKind": "modular-sheet",
+      "active": true
+    },
+    {
+      "id": "product:bratex:horizon-fixed-aluminium-06",
+      "manufacturerId": "manufacturer:bratex",
+      "slug": "horizon-fixed-aluminium-06",
+      "name": "Horizon — arkusz stały — aluminium 0,6 mm",
+      "coveringKind": "modular-sheet",
+      "active": true
+    },
+    {
+      "id": "product:bratex:horizon-fixed-steel-05",
+      "manufacturerId": "manufacturer:bratex",
+      "slug": "horizon-fixed-steel-05",
+      "name": "Horizon — arkusz stały — stal 0,5 mm",
+      "coveringKind": "modular-sheet",
+      "active": true
+    },
+    {
+      "id": "product:bratex:horizon-fixed-steel-06",
+      "manufacturerId": "manufacturer:bratex",
+      "slug": "horizon-fixed-steel-06",
+      "name": "Horizon — arkusz stały — stal 0,6 mm",
+      "coveringKind": "modular-sheet",
+      "active": true
+    },
+    {
+      "id": "product:bratex:savanna-steel-05",
+      "manufacturerId": "manufacturer:bratex",
+      "slug": "savanna-steel-05",
+      "name": "Savanna — stal 0,5 mm",
+      "coveringKind": "modular-sheet",
+      "active": true
+    },
+    {
+      "id": "product:bratex:savanna-steel-06",
+      "manufacturerId": "manufacturer:bratex",
+      "slug": "savanna-steel-06",
+      "name": "Savanna — stal 0,6 mm",
+      "coveringKind": "modular-sheet",
+      "active": true
+    },
+    {
+      "id": "product:bratex:scandinavia-steel-05",
+      "manufacturerId": "manufacturer:bratex",
+      "slug": "scandinavia-steel-05",
+      "name": "Scandinavia — stal 0,5 mm",
+      "coveringKind": "modular-sheet",
+      "active": true
+    },
+    {
+      "id": "product:bratex:snap-lock-aluminium-06",
+      "manufacturerId": "manufacturer:bratex",
+      "slug": "snap-lock-aluminium-06",
+      "name": "Snap Lock — aluminium 0,6 mm",
+      "coveringKind": "standing-seam",
+      "active": true
+    },
+    {
+      "id": "product:bratex:snap-lock-steel-05",
+      "manufacturerId": "manufacturer:bratex",
+      "slug": "snap-lock-steel-05",
+      "name": "Snap Lock — steel 0,5 mm",
+      "coveringKind": "standing-seam",
+      "active": true
+    },
+    {
+      "id": "product:bratex:snap-lock-steel-06",
+      "manufacturerId": "manufacturer:bratex",
+      "slug": "snap-lock-steel-06",
+      "name": "Snap Lock — steel 0,6 mm",
+      "coveringKind": "standing-seam",
+      "active": true
+    },
+    {
+      "id": "product:budmat:bella-sara",
+      "manufacturerId": "manufacturer:budmat",
+      "slug": "bella-sara",
+      "name": "Bella Sara",
+      "coveringKind": "modular-sheet",
+      "active": true
+    },
+    {
+      "id": "product:budmat:como",
+      "manufacturerId": "manufacturer:budmat",
+      "slug": "como",
+      "name": "Como",
+      "coveringKind": "modular-sheet",
+      "active": true
+    },
+    {
+      "id": "product:budmat:garda",
+      "manufacturerId": "manufacturer:budmat",
+      "slug": "garda",
+      "name": "Garda",
+      "coveringKind": "modular-sheet",
+      "active": true
+    },
+    {
+      "id": "product:budmat:murano",
+      "manufacturerId": "manufacturer:budmat",
+      "slug": "murano",
+      "name": "Murano",
+      "coveringKind": "modular-sheet",
+      "active": true
+    },
+    {
+      "id": "product:budmat:rialto",
+      "manufacturerId": "manufacturer:budmat",
+      "slug": "rialto",
+      "name": "Rialto",
+      "coveringKind": "modular-sheet",
+      "active": true
+    },
+    {
+      "id": "product:budmat:taira",
+      "manufacturerId": "manufacturer:budmat",
+      "slug": "taira",
+      "name": "Taira",
+      "coveringKind": "modular-sheet",
+      "active": true
+    },
+    {
+      "id": "product:budmat:venecja",
+      "manufacturerId": "manufacturer:budmat",
+      "slug": "venecja",
+      "name": "Venecja",
+      "coveringKind": "modular-sheet",
+      "active": true
+    },
+    {
+      "id": "product:pruszynski:modus",
+      "manufacturerId": "manufacturer:pruszynski",
+      "slug": "modus",
+      "name": "MODUS",
+      "coveringKind": "modular-sheet",
+      "active": true
+    },
+    {
+      "id": "product:pruszynski:optima",
+      "manufacturerId": "manufacturer:pruszynski",
+      "slug": "optima",
+      "name": "OPTIMA",
+      "coveringKind": "modular-sheet",
+      "active": true
+    },
+    {
+      "id": "product:pruszynski:regle",
+      "manufacturerId": "manufacturer:pruszynski",
+      "slug": "regle",
+      "name": "REGLE",
+      "coveringKind": "modular-sheet",
+      "active": true
+    },
+    {
+      "id": "product:ruukki:adamante",
+      "manufacturerId": "manufacturer:ruukki",
+      "slug": "adamante",
+      "name": "Adamante",
+      "coveringKind": "modular-sheet",
+      "active": true
+    },
+    {
+      "id": "product:ruukki:classic-d",
+      "manufacturerId": "manufacturer:ruukki",
+      "slug": "classic-d",
+      "name": "Classic D",
+      "coveringKind": "standing-seam",
+      "active": true
+    },
+    {
+      "id": "product:ruukki:classic-design-c",
+      "manufacturerId": "manufacturer:ruukki",
+      "slug": "classic-design-c",
+      "name": "Classic Design C",
+      "coveringKind": "standing-seam",
+      "active": true
+    },
+    {
+      "id": "product:ruukki:classic-pro-c",
+      "manufacturerId": "manufacturer:ruukki",
+      "slug": "classic-pro-c",
+      "name": "Classic Pro C",
+      "coveringKind": "standing-seam",
+      "active": true
+    },
+    {
+      "id": "product:ruukki:finnera",
+      "manufacturerId": "manufacturer:ruukki",
+      "slug": "finnera",
+      "name": "Finnera",
+      "coveringKind": "modular-sheet",
+      "active": true
+    },
+    {
+      "id": "product:ruukki:frigge",
+      "manufacturerId": "manufacturer:ruukki",
+      "slug": "frigge",
+      "name": "Frigge",
+      "coveringKind": "modular-sheet",
+      "active": true
+    },
+    {
+      "id": "product:ruukki:hyygge",
+      "manufacturerId": "manufacturer:ruukki",
+      "slug": "hyygge",
+      "name": "Hyygge",
+      "coveringKind": "modular-sheet",
+      "active": true
+    },
+    {
+      "id": "product:ruukki:modular",
+      "manufacturerId": "manufacturer:ruukki",
+      "slug": "modular",
+      "name": "Ruukki Modular",
+      "coveringKind": "modular-sheet",
+      "active": true
+    },
+    {
+      "id": "product:ruukki:monterrey-grand",
+      "manufacturerId": "manufacturer:ruukki",
+      "slug": "monterrey-grand",
+      "name": "Monterrey Grand",
+      "coveringKind": "modular-sheet",
+      "active": true
+    }
+  ],
+  "revisions": [
+    {
+      "id": "revision:blachotrapez:estima-aluminium:2026-09-16",
+      "productId": "product:blachotrapez:estima-aluminium",
+      "revisionCode": "2026-09-16",
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "modular-sheet",
+        "effectiveWidthMm": 1157,
+        "totalWidthMm": 1191,
+        "lengthModel": {
+          "kind": "cut-to-length",
+          "minPanelLengthMm": 720,
+          "maxPanelLengthMm": 4920
+        },
+        "moduleLengthMm": 350,
+        "minPitchDeg": 14,
+        "physicalThicknessMm": 0.6,
+        "material": "aluminium",
+        "salesUnit": "square-metre"
+      },
+      "source": {
+        "label": "Official Blachotrapez Estima product page; material configuration aluminium 0.6 mm.",
+        "url": "https://www.blachotrapez.eu/pl/produkt/estima",
+        "revision": "retrieved-2026-09-16"
+      }
+    },
+    {
+      "id": "revision:blachotrapez:estima-steel:2026-09-16",
+      "productId": "product:blachotrapez:estima-steel",
+      "revisionCode": "2026-09-16",
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "modular-sheet",
+        "effectiveWidthMm": 1157,
+        "totalWidthMm": 1191,
+        "lengthModel": {
+          "kind": "cut-to-length",
+          "minPanelLengthMm": 720,
+          "maxPanelLengthMm": 4920
+        },
+        "moduleLengthMm": 350,
+        "minPitchDeg": 14,
+        "physicalThicknessMm": 0.5,
+        "material": "steel",
+        "salesUnit": "square-metre"
+      },
+      "source": {
+        "label": "Official Blachotrapez Estima product page; material configuration steel 0.5 mm.",
+        "url": "https://www.blachotrapez.eu/pl/produkt/estima",
+        "revision": "retrieved-2026-09-16"
+      }
+    },
+    {
+      "id": "revision:blachotrapez:talia-nova-aluminium:2026-09-16",
+      "productId": "product:blachotrapez:talia-nova-aluminium",
+      "revisionCode": "2026-09-16",
+      "source": {
+        "label": "Official Blachotrapez Talia Nova page; 1145/~1212 mm, 720–5970 mm, 350 mm module, 14° minimum. Split technical family: aluminium 0,6 mm.",
+        "url": "https://www.blachotrapez.eu/pl/produkt/talia-nova",
+        "revision": "retrieved-2026-09-16"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "modular-sheet",
+        "effectiveWidthMm": 1145,
+        "totalWidthMm": 1212,
+        "lengthModel": {
+          "kind": "cut-to-length",
+          "minPanelLengthMm": 720,
+          "maxPanelLengthMm": 5970
+        },
+        "moduleLengthMm": 350,
+        "minPitchDeg": 14,
+        "physicalThicknessMm": 0.6,
+        "material": "aluminium",
+        "salesUnit": "square-metre"
+      }
+    },
+    {
+      "id": "revision:blachotrapez:talia-nova-steel:2026-09-16",
+      "productId": "product:blachotrapez:talia-nova-steel",
+      "revisionCode": "2026-09-16",
+      "source": {
+        "label": "Official Blachotrapez Talia Nova page; 1145/~1212 mm, 720–5970 mm, 350 mm module, 14° minimum. Split technical family: stal 0,5 mm.",
+        "url": "https://www.blachotrapez.eu/pl/produkt/talia-nova",
+        "revision": "retrieved-2026-09-16"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "modular-sheet",
+        "effectiveWidthMm": 1145,
+        "totalWidthMm": 1212,
+        "lengthModel": {
+          "kind": "cut-to-length",
+          "minPanelLengthMm": 720,
+          "maxPanelLengthMm": 5970
+        },
+        "moduleLengthMm": 350,
+        "minPitchDeg": 14,
+        "physicalThicknessMm": 0.5,
+        "material": "steel",
+        "salesUnit": "square-metre"
+      }
+    },
+    {
+      "id": "revision:bratex:aurora-steel-05:2026-09-16",
+      "productId": "product:bratex:aurora-steel-05",
+      "revisionCode": "2026-09-16",
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "modular-sheet",
+        "effectiveWidthMm": 1150,
+        "totalWidthMm": 1200,
+        "lengthModel": {
+          "kind": "fixed-sheet",
+          "effectiveLengthMm": 700,
+          "totalLengthMm": 707
+        },
+        "moduleLengthMm": 350,
+        "profileHeightMm": 19,
+        "minPitchDeg": 12,
+        "physicalThicknessMm": 0.5,
+        "material": "steel",
+        "salesUnit": "piece"
+      },
+      "source": {
+        "label": "Official Bratex Aurora product page.",
+        "url": "https://bratex.pl/produkty/aurora",
+        "revision": "retrieved-2026-09-16"
+      }
+    },
+    {
+      "id": "revision:bratex:centro-fixed-aluminium-06:2026-09-16",
+      "productId": "product:bratex:centro-fixed-aluminium-06",
+      "revisionCode": "2026-09-16",
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "modular-sheet",
+        "effectiveWidthMm": 1115,
+        "totalWidthMm": 1175,
+        "lengthModel": {
+          "kind": "fixed-sheet",
+          "effectiveLengthMm": 700,
+          "totalLengthMm": 708
+        },
+        "moduleLengthMm": 350,
+        "profileHeightMm": 40,
+        "minPitchDeg": 12,
+        "physicalThicknessMm": 0.6,
+        "material": "aluminium",
+        "salesUnit": "piece"
+      },
+      "source": {
+        "label": "Official Bratex Centro page; fixed-sheet model and exact material/thickness configuration.",
+        "url": "https://bratex.pl/produkty/centro",
+        "revision": "retrieved-2026-09-16"
+      }
+    },
+    {
+      "id": "revision:bratex:centro-fixed-steel-05:2026-09-16",
+      "productId": "product:bratex:centro-fixed-steel-05",
+      "revisionCode": "2026-09-16",
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "modular-sheet",
+        "effectiveWidthMm": 1115,
+        "totalWidthMm": 1175,
+        "lengthModel": {
+          "kind": "fixed-sheet",
+          "effectiveLengthMm": 700,
+          "totalLengthMm": 708
+        },
+        "moduleLengthMm": 350,
+        "profileHeightMm": 40,
+        "minPitchDeg": 12,
+        "physicalThicknessMm": 0.5,
+        "material": "steel",
+        "salesUnit": "piece"
+      },
+      "source": {
+        "label": "Official Bratex Centro page; fixed-sheet model and exact material/thickness configuration.",
+        "url": "https://bratex.pl/produkty/centro",
+        "revision": "retrieved-2026-09-16"
+      }
+    },
+    {
+      "id": "revision:bratex:centro-fixed-steel-06:2026-09-16",
+      "productId": "product:bratex:centro-fixed-steel-06",
+      "revisionCode": "2026-09-16",
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "modular-sheet",
+        "effectiveWidthMm": 1115,
+        "totalWidthMm": 1175,
+        "lengthModel": {
+          "kind": "fixed-sheet",
+          "effectiveLengthMm": 700,
+          "totalLengthMm": 708
+        },
+        "moduleLengthMm": 350,
+        "profileHeightMm": 40,
+        "minPitchDeg": 12,
+        "physicalThicknessMm": 0.6,
+        "material": "steel",
+        "salesUnit": "piece"
+      },
+      "source": {
+        "label": "Official Bratex Centro page; fixed-sheet model and exact material/thickness configuration.",
+        "url": "https://bratex.pl/produkty/centro",
+        "revision": "retrieved-2026-09-16"
+      }
+    },
+    {
+      "id": "revision:bratex:horizon-fixed-aluminium-06:2026-09-16",
+      "productId": "product:bratex:horizon-fixed-aluminium-06",
+      "revisionCode": "2026-09-16",
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "modular-sheet",
+        "effectiveWidthMm": 1172,
+        "totalWidthMm": 1200,
+        "lengthModel": {
+          "kind": "fixed-sheet",
+          "effectiveLengthMm": 700,
+          "totalLengthMm": 708
+        },
+        "moduleLengthMm": 350,
+        "profileHeightMm": 11,
+        "minPitchDeg": 12,
+        "physicalThicknessMm": 0.6,
+        "material": "aluminium",
+        "salesUnit": "piece"
+      },
+      "source": {
+        "label": "Official Bratex Horizon page; fixed-sheet model and exact material/thickness configuration.",
+        "url": "https://bratex.pl/produkty/horizon",
+        "revision": "retrieved-2026-09-16"
+      }
+    },
+    {
+      "id": "revision:bratex:horizon-fixed-steel-05:2026-09-16",
+      "productId": "product:bratex:horizon-fixed-steel-05",
+      "revisionCode": "2026-09-16",
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "modular-sheet",
+        "effectiveWidthMm": 1172,
+        "totalWidthMm": 1200,
+        "lengthModel": {
+          "kind": "fixed-sheet",
+          "effectiveLengthMm": 700,
+          "totalLengthMm": 708
+        },
+        "moduleLengthMm": 350,
+        "profileHeightMm": 11,
+        "minPitchDeg": 12,
+        "physicalThicknessMm": 0.5,
+        "material": "steel",
+        "salesUnit": "piece"
+      },
+      "source": {
+        "label": "Official Bratex Horizon page; fixed-sheet model and exact material/thickness configuration.",
+        "url": "https://bratex.pl/produkty/horizon",
+        "revision": "retrieved-2026-09-16"
+      }
+    },
+    {
+      "id": "revision:bratex:horizon-fixed-steel-06:2026-09-16",
+      "productId": "product:bratex:horizon-fixed-steel-06",
+      "revisionCode": "2026-09-16",
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "modular-sheet",
+        "effectiveWidthMm": 1172,
+        "totalWidthMm": 1200,
+        "lengthModel": {
+          "kind": "fixed-sheet",
+          "effectiveLengthMm": 700,
+          "totalLengthMm": 708
+        },
+        "moduleLengthMm": 350,
+        "profileHeightMm": 11,
+        "minPitchDeg": 12,
+        "physicalThicknessMm": 0.6,
+        "material": "steel",
+        "salesUnit": "piece"
+      },
+      "source": {
+        "label": "Official Bratex Horizon page; fixed-sheet model and exact material/thickness configuration.",
+        "url": "https://bratex.pl/produkty/horizon",
+        "revision": "retrieved-2026-09-16"
+      }
+    },
+    {
+      "id": "revision:bratex:savanna-steel-05:2026-09-16",
+      "productId": "product:bratex:savanna-steel-05",
+      "revisionCode": "2026-09-16",
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "modular-sheet",
+        "effectiveWidthMm": 1175,
+        "totalWidthMm": 1240,
+        "lengthModel": {
+          "kind": "fixed-sheet",
+          "effectiveLengthMm": 700,
+          "totalLengthMm": 707
+        },
+        "moduleLengthMm": 350,
+        "profileHeightMm": 5,
+        "minPitchDeg": 25,
+        "physicalThicknessMm": 0.5,
+        "material": "steel",
+        "salesUnit": "piece"
+      },
+      "source": {
+        "label": "Official Bratex Savanna product page; material configuration steel 0.5 mm.",
+        "url": "https://bratex.pl/produkty/savanna",
+        "revision": "retrieved-2026-09-16"
+      }
+    },
+    {
+      "id": "revision:bratex:savanna-steel-06:2026-09-16",
+      "productId": "product:bratex:savanna-steel-06",
+      "revisionCode": "2026-09-16",
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "modular-sheet",
+        "effectiveWidthMm": 1175,
+        "totalWidthMm": 1240,
+        "lengthModel": {
+          "kind": "fixed-sheet",
+          "effectiveLengthMm": 700,
+          "totalLengthMm": 707
+        },
+        "moduleLengthMm": 350,
+        "profileHeightMm": 5,
+        "minPitchDeg": 25,
+        "physicalThicknessMm": 0.6,
+        "material": "steel",
+        "salesUnit": "piece"
+      },
+      "source": {
+        "label": "Official Bratex Savanna product page; material configuration steel 0.6 mm.",
+        "url": "https://bratex.pl/produkty/savanna",
+        "revision": "retrieved-2026-09-16"
+      }
+    },
+    {
+      "id": "revision:bratex:scandinavia-steel-05:2026-09-16",
+      "productId": "product:bratex:scandinavia-steel-05",
+      "revisionCode": "2026-09-16",
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "modular-sheet",
+        "effectiveWidthMm": 1145,
+        "totalWidthMm": 1200,
+        "lengthModel": {
+          "kind": "fixed-sheet",
+          "effectiveLengthMm": 700,
+          "totalLengthMm": 707
+        },
+        "moduleLengthMm": 350,
+        "profileHeightMm": 29,
+        "minPitchDeg": 12,
+        "physicalThicknessMm": 0.5,
+        "material": "steel",
+        "salesUnit": "piece"
+      },
+      "source": {
+        "label": "Official Bratex Scandinavia product page.",
+        "url": "https://bratex.pl/produkty/scandinavia",
+        "revision": "retrieved-2026-09-16"
+      }
+    },
+    {
+      "id": "revision:bratex:snap-lock-aluminium-06:2026-09-16",
+      "productId": "product:bratex:snap-lock-aluminium-06",
+      "revisionCode": "2026-09-16",
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "standing-seam",
+        "installationModes": [
+          {
+            "id": "standard-484",
+            "effectiveWidthMm": 484,
+            "totalWidthMm": 524,
+            "minPitchDeg": 8
+          }
+        ],
+        "minPanelLengthMm": 500,
+        "maxPanelLengthMm": 12000,
+        "seamHeightMm": 32,
+        "minPitchDeg": 8,
+        "physicalThicknessMm": 0.6,
+        "material": "aluminium",
+        "salesUnit": "square-metre"
+      },
+      "source": {
+        "label": "Official Bratex Snap Lock product page; technical material configuration aluminium 0.6 mm.",
+        "url": "https://bratex.pl/produkty/snap-lock",
+        "revision": "retrieved-2026-09-16"
+      }
+    },
+    {
+      "id": "revision:bratex:snap-lock-steel-05:2026-09-16",
+      "productId": "product:bratex:snap-lock-steel-05",
+      "revisionCode": "2026-09-16",
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "standing-seam",
+        "installationModes": [
+          {
+            "id": "standard-484",
+            "effectiveWidthMm": 484,
+            "totalWidthMm": 524,
+            "minPitchDeg": 8
+          }
+        ],
+        "minPanelLengthMm": 500,
+        "maxPanelLengthMm": 12000,
+        "seamHeightMm": 32,
+        "minPitchDeg": 8,
+        "physicalThicknessMm": 0.5,
+        "material": "steel",
+        "salesUnit": "square-metre"
+      },
+      "source": {
+        "label": "Official Bratex Snap Lock product page; technical material configuration steel 0.5 mm.",
+        "url": "https://bratex.pl/produkty/snap-lock",
+        "revision": "retrieved-2026-09-16"
+      }
+    },
+    {
+      "id": "revision:bratex:snap-lock-steel-06:2026-09-16",
+      "productId": "product:bratex:snap-lock-steel-06",
+      "revisionCode": "2026-09-16",
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "standing-seam",
+        "installationModes": [
+          {
+            "id": "standard-484",
+            "effectiveWidthMm": 484,
+            "totalWidthMm": 524,
+            "minPitchDeg": 8
+          }
+        ],
+        "minPanelLengthMm": 500,
+        "maxPanelLengthMm": 12000,
+        "seamHeightMm": 32,
+        "minPitchDeg": 8,
+        "physicalThicknessMm": 0.6,
+        "material": "steel",
+        "salesUnit": "square-metre"
+      },
+      "source": {
+        "label": "Official Bratex Snap Lock product page; technical material configuration steel 0.6 mm.",
+        "url": "https://bratex.pl/produkty/snap-lock",
+        "revision": "retrieved-2026-09-16"
+      }
+    },
+    {
+      "id": "revision:budmat:bella-sara:2026-09-16",
+      "productId": "product:budmat:bella-sara",
+      "revisionCode": "2026-09-16",
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "modular-sheet",
+        "effectiveWidthMm": 1150,
+        "lengthModel": {
+          "kind": "fixed-sheet",
+          "effectiveLengthMm": 700,
+          "totalLengthMm": 735
+        },
+        "moduleLengthMm": 350,
+        "profileHeightMm": 59,
+        "minPitchDeg": 9,
+        "physicalThicknessMm": 0.5,
+        "material": "steel",
+        "salesUnit": "piece"
+      },
+      "source": {
+        "label": "Official BUDMAT Bella Sara product page; total width range intentionally omitted by current schema.",
+        "url": "https://www.budmat.com/pl/produkt/bella-sara-wiecznie-piekna-189",
+        "revision": "retrieved-2026-09-16"
+      }
+    },
+    {
+      "id": "revision:budmat:como:2026-09-16",
+      "productId": "product:budmat:como",
+      "revisionCode": "2026-09-16",
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "modular-sheet",
+        "effectiveWidthMm": 1182,
+        "lengthModel": {
+          "kind": "fixed-sheet",
+          "effectiveLengthMm": 700,
+          "totalLengthMm": 725
+        },
+        "moduleLengthMm": 350,
+        "profileHeightMm": 35,
+        "minPitchDeg": 9,
+        "physicalThicknessMm": 0.5,
+        "material": "steel",
+        "salesUnit": "piece"
+      },
+      "source": {
+        "label": "Official BUDMAT Como product page; substrate-dependent total width intentionally omitted.",
+        "url": "https://www.budmat.com/pl/produkt/como-przyszlosc-estetyki-dachu-1413",
+        "revision": "retrieved-2026-09-16"
+      }
+    },
+    {
+      "id": "revision:budmat:garda:2026-09-16",
+      "productId": "product:budmat:garda",
+      "revisionCode": "2026-09-16",
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "modular-sheet",
+        "effectiveWidthMm": 1190,
+        "lengthModel": {
+          "kind": "fixed-sheet",
+          "effectiveLengthMm": 700
+        },
+        "moduleLengthMm": 350,
+        "minPitchDeg": 25,
+        "salesUnit": "piece"
+      },
+      "source": {
+        "label": "Official BUDMAT Garda product page; unsupported/unstated facts intentionally omitted.",
+        "url": "https://www.budmat.com/pl/produkt/blachodachowka-modulowa-garda-2139",
+        "revision": "retrieved-2026-09-16"
+      }
+    },
+    {
+      "id": "revision:budmat:murano:2026-09-16",
+      "productId": "product:budmat:murano",
+      "revisionCode": "2026-09-16",
+      "source": {
+        "label": "Official BUDMAT Murano page; 1140×700 effective, 1196×725 total, 350 mm module, 0.5 mm steel, 9° minimum.",
+        "url": "https://www.budmat.com/pl/produkt/murano-klasycznie-czy-murano-73",
+        "revision": "retrieved-2026-09-16"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "modular-sheet",
+        "effectiveWidthMm": 1140,
+        "totalWidthMm": 1196,
+        "lengthModel": {
+          "kind": "fixed-sheet",
+          "effectiveLengthMm": 700,
+          "totalLengthMm": 725
+        },
+        "moduleLengthMm": 350,
+        "profileHeightMm": 46,
+        "minPitchDeg": 9,
+        "physicalThicknessMm": 0.5,
+        "material": "steel",
+        "salesUnit": "piece"
+      }
+    },
+    {
+      "id": "revision:budmat:rialto:2026-09-16",
+      "productId": "product:budmat:rialto",
+      "revisionCode": "2026-09-16",
+      "source": {
+        "label": "Official BUDMAT Rialto page; 1150×700 effective, 1195×735 total, 350 mm module, 0.5 mm steel, 9° minimum.",
+        "url": "https://www.budmat.com/pl/produkt/rialto-technologia-dla-stylu-188",
+        "revision": "retrieved-2026-09-16"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "modular-sheet",
+        "effectiveWidthMm": 1150,
+        "totalWidthMm": 1195,
+        "lengthModel": {
+          "kind": "fixed-sheet",
+          "effectiveLengthMm": 700,
+          "totalLengthMm": 735
+        },
+        "moduleLengthMm": 350,
+        "profileHeightMm": 58,
+        "minPitchDeg": 9,
+        "physicalThicknessMm": 0.5,
+        "material": "steel",
+        "salesUnit": "piece"
+      }
+    },
+    {
+      "id": "revision:budmat:taira:2026-09-16",
+      "productId": "product:budmat:taira",
+      "revisionCode": "2026-09-16",
+      "source": {
+        "label": "Official BUDMAT page and Taira technical card; 1175/1208 mm widths, 1060–6500 mm, 350 mm length module, 38 mm overall height.",
+        "url": "https://www.budmat.com/pl/pokrycia-dachowe-blachodachowka",
+        "revision": "retrieved-2026-09-16"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "modular-sheet",
+        "effectiveWidthMm": 1175,
+        "totalWidthMm": 1208,
+        "lengthModel": {
+          "kind": "cut-to-length",
+          "minPanelLengthMm": 1060,
+          "maxPanelLengthMm": 6500
+        },
+        "moduleLengthMm": 350,
+        "profileHeightMm": 38,
+        "minPitchDeg": 9,
+        "physicalThicknessMm": 0.5,
+        "material": "steel",
+        "salesUnit": "square-metre"
+      }
+    },
+    {
+      "id": "revision:budmat:venecja:2026-09-16",
+      "productId": "product:budmat:venecja",
+      "revisionCode": "2026-09-16",
+      "source": {
+        "label": "Official BUDMAT Venecja page; 1150×700 effective, 1190×736 total, 350 mm module, 0.5 mm steel, 9° minimum.",
+        "url": "https://www.budmat.com/pl/produkt/venecja-pierwsza-w-rodzinie-133",
+        "revision": "retrieved-2026-09-16"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "modular-sheet",
+        "effectiveWidthMm": 1150,
+        "totalWidthMm": 1190,
+        "lengthModel": {
+          "kind": "fixed-sheet",
+          "effectiveLengthMm": 700,
+          "totalLengthMm": 736
+        },
+        "moduleLengthMm": 350,
+        "profileHeightMm": 61,
+        "minPitchDeg": 9,
+        "physicalThicknessMm": 0.5,
+        "material": "steel",
+        "salesUnit": "piece"
+      }
+    },
+    {
+      "id": "revision:pruszynski:modus:2026-09-16",
+      "productId": "product:pruszynski:modus",
+      "revisionCode": "2026-09-16",
+      "source": {
+        "label": "Official Pruszyński MODUS page + 2026 panel catalogue. Fixed panel = two 350 mm modules; effective area 0.756 m² at 1080×700.",
+        "url": "https://pruszynski.com.pl/produkt/pokrycia-dachowe/blachodachowka-panelowa-modulowa/modus/",
+        "revision": "retrieved-2026-09-16"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "modular-sheet",
+        "effectiveWidthMm": 1080,
+        "totalWidthMm": 1179,
+        "lengthModel": {
+          "kind": "fixed-sheet",
+          "effectiveLengthMm": 700
+        },
+        "moduleLengthMm": 350,
+        "profileHeightMm": 35,
+        "minPitchDeg": 15,
+        "physicalThicknessMm": 0.5,
+        "material": "steel",
+        "salesUnit": "piece"
+      }
+    },
+    {
+      "id": "revision:pruszynski:optima:2026-09-16",
+      "productId": "product:pruszynski:optima",
+      "revisionCode": "2026-09-16",
+      "source": {
+        "label": "Official Pruszyński OPTIMA page; 1080/~1179 mm, 750–5315 mm recommended, 350 mm module, 0.5 mm, 9° minimum.",
+        "url": "https://pruszynski.com.pl/produkt/pokrycia-dachowe/blachodachowka/optima-na-wymiar/",
+        "revision": "retrieved-2026-09-16"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "modular-sheet",
+        "effectiveWidthMm": 1080,
+        "totalWidthMm": 1179,
+        "lengthModel": {
+          "kind": "cut-to-length",
+          "minPanelLengthMm": 750,
+          "maxPanelLengthMm": 5315
+        },
+        "moduleLengthMm": 350,
+        "profileHeightMm": 35,
+        "minPitchDeg": 9,
+        "physicalThicknessMm": 0.5,
+        "material": "steel",
+        "salesUnit": "square-metre"
+      }
+    },
+    {
+      "id": "revision:pruszynski:regle:2026-09-16",
+      "productId": "product:pruszynski:regle",
+      "revisionCode": "2026-09-16",
+      "source": {
+        "label": "Official Pruszyński REGLE page; one-module sheet, 370 mm module, 1205/~1223 mm, 5 mm profile, 25° minimum.",
+        "url": "https://pruszynski.com.pl/produkt/pokrycia-dachowe/blachodachowka-panelowa-modulowa/regle/",
+        "revision": "retrieved-2026-09-16"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "modular-sheet",
+        "effectiveWidthMm": 1205,
+        "totalWidthMm": 1223,
+        "lengthModel": {
+          "kind": "fixed-sheet",
+          "effectiveLengthMm": 370
+        },
+        "moduleLengthMm": 370,
+        "profileHeightMm": 5,
+        "minPitchDeg": 25,
+        "physicalThicknessMm": 0.5,
+        "material": "steel",
+        "salesUnit": "piece"
+      }
+    },
+    {
+      "id": "revision:ruukki:adamante:2026-09-16",
+      "productId": "product:ruukki:adamante",
+      "revisionCode": "2026-09-16",
+      "source": {
+        "label": "Official Ruukki Adamante page/product card; TS55-350-1125. 150 mm transverse overlap is preserved in research for the schema extension.",
+        "url": "https://www.ruukki.com/pol/dachy/produkty/pokrycia-dachowe/pokrycia-dachowe-produkty/adamante",
+        "revision": "retrieved-2026-09-16"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "modular-sheet",
+        "effectiveWidthMm": 1125,
+        "totalWidthMm": 1164,
+        "lengthModel": {
+          "kind": "cut-to-length",
+          "minPanelLengthMm": 850,
+          "maxPanelLengthMm": 8200
+        },
+        "moduleLengthMm": 350,
+        "profileHeightMm": 55,
+        "minPitchDeg": 9,
+        "physicalThicknessMm": 0.5,
+        "material": "steel",
+        "salesUnit": "square-metre"
+      }
+    },
+    {
+      "id": "revision:ruukki:classic-d:2026-09-16",
+      "productId": "product:ruukki:classic-d",
+      "revisionCode": "2026-09-16",
+      "source": {
+        "label": "Official Ruukki Classic D page + 2026 price list; 475 mm cover, 8° base pitch, 200 mm longitudinal joint requires 14°.",
+        "url": "https://www.ruukki.com/pol/dachy/produkty/pokrycia-dachowe/classic-d-produkty/classic-d",
+        "revision": "retrieved-2026-09-16"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "standing-seam",
+        "installationModes": [
+          {
+            "id": "standard-475",
+            "effectiveWidthMm": 475,
+            "totalWidthMm": 505,
+            "minPitchDeg": 8
+          }
+        ],
+        "minPanelLengthMm": 1000,
+        "maxPanelLengthMm": 10000,
+        "seamHeightMm": 32,
+        "minPitchDeg": 8,
+        "physicalThicknessMm": 0.5,
+        "material": "steel",
+        "salesUnit": "square-metre",
+        "transverseOverlap": {
+          "minimumOverlapMm": 200,
+          "minPitchDeg": 14
+        }
+      }
+    },
+    {
+      "id": "revision:ruukki:classic-design-c:2026-09-16",
+      "productId": "product:ruukki:classic-design-c",
+      "revisionCode": "2026-09-16",
+      "source": {
+        "label": "Official Ruukki Classic Design C page + 2026 price list. Multi-width technical modes are seeded; width-dependent prices deliberately are not.",
+        "url": "https://www.ruukki.com/pol/dachy/produkty/pokrycia-dachowe/classic-design-produkty/ruukki-classic-design-c",
+        "revision": "retrieved-2026-09-16"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "standing-seam",
+        "installationModes": [
+          {
+            "id": "width-475",
+            "effectiveWidthMm": 475,
+            "totalWidthMm": 512,
+            "minPitchDeg": 8
+          },
+          {
+            "id": "width-355",
+            "effectiveWidthMm": 355,
+            "totalWidthMm": 392,
+            "minPitchDeg": 8
+          },
+          {
+            "id": "width-271",
+            "effectiveWidthMm": 271,
+            "totalWidthMm": 308,
+            "minPitchDeg": 8
+          }
+        ],
+        "minPanelLengthMm": 200,
+        "maxPanelLengthMm": 10000,
+        "seamHeightMm": 32,
+        "minPitchDeg": 8,
+        "physicalThicknessMm": 0.5,
+        "material": "steel",
+        "salesUnit": "square-metre",
+        "transverseOverlap": {
+          "minimumOverlapMm": 200,
+          "minPitchDeg": 14
+        }
+      }
+    },
+    {
+      "id": "revision:ruukki:classic-pro-c:2026-09-16",
+      "productId": "product:ruukki:classic-pro-c",
+      "revisionCode": "2026-09-16",
+      "source": {
+        "label": "Official Ruukki 2026 price list; Classic Pro C: 510/540 mm, 1200–8000 mm, 28 mm seam, 8° base and 14° when joined.",
+        "url": "https://www.ruukki.com/pol/dachy/produkty/pokrycia-dachowe",
+        "revision": "retrieved-2026-09-16"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "standing-seam",
+        "installationModes": [
+          {
+            "id": "standard-510",
+            "effectiveWidthMm": 510,
+            "totalWidthMm": 540,
+            "minPitchDeg": 8
+          }
+        ],
+        "minPanelLengthMm": 1200,
+        "maxPanelLengthMm": 8000,
+        "seamHeightMm": 28,
+        "minPitchDeg": 8,
+        "physicalThicknessMm": 0.5,
+        "material": "steel",
+        "salesUnit": "square-metre",
+        "transverseOverlap": {
+          "minimumOverlapMm": 200,
+          "minPitchDeg": 14
+        }
+      }
+    },
+    {
+      "id": "revision:ruukki:finnera:2026-09-16",
+      "productId": "product:ruukki:finnera",
+      "revisionCode": "2026-09-16",
+      "source": {
+        "label": "Official Ruukki Finnera product page + 2026 price list: TS52-330-1140; dimensions, pitch and 330 mm batten/module.",
+        "url": "https://www.ruukki.com/pol/dachy/produkty/pokrycia-dachowe/finnera-produkty/finnera",
+        "revision": "retrieved-2026-09-16"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "modular-sheet",
+        "effectiveWidthMm": 1140,
+        "totalWidthMm": 1190,
+        "lengthModel": {
+          "kind": "fixed-sheet",
+          "effectiveLengthMm": 660,
+          "totalLengthMm": 705
+        },
+        "moduleLengthMm": 330,
+        "profileHeightMm": 52,
+        "minPitchDeg": 9,
+        "physicalThicknessMm": 0.5,
+        "material": "steel",
+        "salesUnit": "piece"
+      }
+    },
+    {
+      "id": "revision:ruukki:frigge:2026-09-16",
+      "productId": "product:ruukki:frigge",
+      "revisionCode": "2026-09-16",
+      "source": {
+        "label": "Official Ruukki Frigge product page + 2026 price list: TS41-350-1185; dimensions, pitch and 350 mm batten/module.",
+        "url": "https://www.ruukki.com/pol/dachy/produkty/pokrycia-dachowe/frigge-produkty/ruukki-frigge",
+        "revision": "retrieved-2026-09-16"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "modular-sheet",
+        "effectiveWidthMm": 1185,
+        "totalWidthMm": 1213,
+        "lengthModel": {
+          "kind": "fixed-sheet",
+          "effectiveLengthMm": 700,
+          "totalLengthMm": 720
+        },
+        "moduleLengthMm": 350,
+        "profileHeightMm": 41,
+        "minPitchDeg": 9,
+        "physicalThicknessMm": 0.5,
+        "material": "steel",
+        "salesUnit": "piece"
+      }
+    },
+    {
+      "id": "revision:ruukki:hyygge:2026-09-16",
+      "productId": "product:ruukki:hyygge",
+      "revisionCode": "2026-09-16",
+      "source": {
+        "label": "Official Ruukki Hyygge page + 2026 price list; 14° minimum, 25° recommended, 290 mm batten spacing. Recommendation is documented separately.",
+        "url": "https://www.ruukki.com/pol/dachy/produkty/pokrycia-dachowe/hyygge-produkty/ruukki-hyygge",
+        "revision": "retrieved-2026-09-16"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "modular-sheet",
+        "effectiveWidthMm": 1178,
+        "totalWidthMm": 1200,
+        "lengthModel": {
+          "kind": "fixed-sheet",
+          "effectiveLengthMm": 290,
+          "totalLengthMm": 343
+        },
+        "moduleLengthMm": 290,
+        "profileHeightMm": 26,
+        "minPitchDeg": 14,
+        "physicalThicknessMm": 0.6,
+        "material": "steel",
+        "salesUnit": "piece"
+      }
+    },
+    {
+      "id": "revision:ruukki:modular:2026-09-16",
+      "productId": "product:ruukki:modular",
+      "revisionCode": "2026-09-16",
+      "source": {
+        "label": "Official Ruukki Modular product page + 2026 price list; 1145×700 effective, 350 mm module, 9° minimum.",
+        "url": "https://www.ruukki.com/pol/dachy/produkty/pokrycia-dachowe/pokrycia-dachowe-produkty/ruukki-modular",
+        "revision": "retrieved-2026-09-16"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "modular-sheet",
+        "effectiveWidthMm": 1145,
+        "totalWidthMm": 1200,
+        "lengthModel": {
+          "kind": "fixed-sheet",
+          "effectiveLengthMm": 700,
+          "totalLengthMm": 725
+        },
+        "moduleLengthMm": 350,
+        "profileHeightMm": 47.5,
+        "minPitchDeg": 9,
+        "physicalThicknessMm": 0.5,
+        "material": "steel",
+        "salesUnit": "piece"
+      }
+    },
+    {
+      "id": "revision:ruukki:monterrey-grand:2026-09-16",
+      "productId": "product:ruukki:monterrey-grand",
+      "revisionCode": "2026-09-16",
+      "source": {
+        "label": "Official Ruukki Monterrey Grand page + 2026 price list. 50 mm transverse overlap is preserved in research for the schema extension.",
+        "url": "https://www.ruukki.com/pol/dachy/produkty/pokrycia-dachowe/pokrycia-dachowe-produkty/ruukki-monterrey-grand",
+        "revision": "retrieved-2026-09-16"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "modular-sheet",
+        "effectiveWidthMm": 1100,
+        "totalWidthMm": 1180,
+        "lengthModel": {
+          "kind": "cut-to-length",
+          "minPanelLengthMm": 750,
+          "maxPanelLengthMm": 8200
+        },
+        "moduleLengthMm": 350,
+        "profileHeightMm": 54,
+        "minPitchDeg": 9,
+        "physicalThicknessMm": 0.5,
+        "material": "steel",
+        "salesUnit": "square-metre"
+      }
+    }
+  ],
+  "variants": [
+    {
+      "id": "variant:ruukki:adamante:qc30-polyester",
+      "productId": "product:ruukki:adamante",
+      "name": "Ruukki 30 — Poliester",
+      "finish": "polyester",
+      "metadata": {
+        "qualityClass": "Ruukki 30",
+        "pricingGranularity": "quality-finish"
+      },
+      "active": true
+    },
+    {
+      "id": "variant:ruukki:adamante:qc40-crown-bt",
+      "productId": "product:ruukki:adamante",
+      "name": "Ruukki 40 — GreenCoat Crown BT",
+      "finish": "greencoat-crown-bt",
+      "metadata": {
+        "qualityClass": "Ruukki 40",
+        "pricingGranularity": "quality-finish"
+      },
+      "active": true
+    },
+    {
+      "id": "variant:ruukki:adamante:qc40-polyester-rough-mat",
+      "productId": "product:ruukki:adamante",
+      "name": "Ruukki 40 — Poliester Rough mat",
+      "finish": "polyester-rough-mat",
+      "metadata": {
+        "qualityClass": "Ruukki 40",
+        "pricingGranularity": "quality-finish"
+      },
+      "active": true
+    },
+    {
+      "id": "variant:ruukki:adamante:qc50-pural-bt-mat",
+      "productId": "product:ruukki:adamante",
+      "name": "Ruukki 50 — GreenCoat Pural BT mat",
+      "finish": "greencoat-pural-bt-mat",
+      "metadata": {
+        "qualityClass": "Ruukki 50",
+        "pricingGranularity": "quality-finish"
+      },
+      "active": true
+    },
+    {
+      "id": "variant:ruukki:classic-d:qc40-polyester-rough-mat",
+      "productId": "product:ruukki:classic-d",
+      "name": "Ruukki 40 — Poliester Rough mat",
+      "finish": "polyester-rough-mat",
+      "metadata": {
+        "qualityClass": "Ruukki 40",
+        "pricingGranularity": "quality-finish"
+      },
+      "active": true
+    },
+    {
+      "id": "variant:ruukki:classic-d:qc50-pural-bt-mat",
+      "productId": "product:ruukki:classic-d",
+      "name": "Ruukki 50 — GreenCoat Pural BT mat",
+      "finish": "greencoat-pural-bt-mat",
+      "metadata": {
+        "qualityClass": "Ruukki 50",
+        "pricingGranularity": "quality-finish"
+      },
+      "active": true
+    },
+    {
+      "id": "variant:ruukki:classic-pro-c:qc30-polyester-magzn-mat",
+      "productId": "product:ruukki:classic-pro-c",
+      "name": "Ruukki 30 — Poliester MagZn mat",
+      "finish": "polyester-magzn-mat",
+      "metadata": {
+        "qualityClass": "Ruukki 30",
+        "pricingGranularity": "quality-finish"
+      },
+      "active": true
+    },
+    {
+      "id": "variant:ruukki:classic-pro-c:qc40-polyester-rough-mat",
+      "productId": "product:ruukki:classic-pro-c",
+      "name": "Ruukki 40 — Poliester Rough mat",
+      "finish": "polyester-rough-mat",
+      "metadata": {
+        "qualityClass": "Ruukki 40",
+        "pricingGranularity": "quality-finish"
+      },
+      "active": true
+    },
+    {
+      "id": "variant:ruukki:classic-pro-c:qc50-pural-bt-mat",
+      "productId": "product:ruukki:classic-pro-c",
+      "name": "Ruukki 50 — GreenCoat Pural BT mat",
+      "finish": "greencoat-pural-bt-mat",
+      "metadata": {
+        "qualityClass": "Ruukki 50",
+        "pricingGranularity": "quality-finish"
+      },
+      "active": true
+    },
+    {
+      "id": "variant:ruukki:finnera:qc40-crown-bt",
+      "productId": "product:ruukki:finnera",
+      "name": "Ruukki 40 — GreenCoat Crown BT",
+      "finish": "greencoat-crown-bt",
+      "metadata": {
+        "qualityClass": "Ruukki 40",
+        "pricingGranularity": "quality-finish"
+      },
+      "active": true
+    },
+    {
+      "id": "variant:ruukki:finnera:qc50-pural-bt-mat",
+      "productId": "product:ruukki:finnera",
+      "name": "Ruukki 50 — GreenCoat Pural BT mat",
+      "finish": "greencoat-pural-bt-mat",
+      "metadata": {
+        "qualityClass": "Ruukki 50",
+        "pricingGranularity": "quality-finish"
+      },
+      "active": true
+    },
+    {
+      "id": "variant:ruukki:frigge:qc40-crown-bt",
+      "productId": "product:ruukki:frigge",
+      "name": "Ruukki 40 — GreenCoat Crown BT",
+      "finish": "greencoat-crown-bt",
+      "metadata": {
+        "qualityClass": "Ruukki 40",
+        "pricingGranularity": "quality-finish"
+      },
+      "active": true
+    },
+    {
+      "id": "variant:ruukki:frigge:qc40-polyester-rough-mat",
+      "productId": "product:ruukki:frigge",
+      "name": "Ruukki 40 — Poliester Rough mat",
+      "finish": "polyester-rough-mat",
+      "metadata": {
+        "qualityClass": "Ruukki 40",
+        "pricingGranularity": "quality-finish"
+      },
+      "active": true
+    },
+    {
+      "id": "variant:ruukki:frigge:qc50-pural-bt-mat",
+      "productId": "product:ruukki:frigge",
+      "name": "Ruukki 50 — GreenCoat Pural BT mat",
+      "finish": "greencoat-pural-bt-mat",
+      "metadata": {
+        "qualityClass": "Ruukki 50",
+        "pricingGranularity": "quality-finish"
+      },
+      "active": true
+    },
+    {
+      "id": "variant:ruukki:hyygge:qc40-crown-bt",
+      "productId": "product:ruukki:hyygge",
+      "name": "Ruukki 40 — GreenCoat Crown BT",
+      "finish": "greencoat-crown-bt",
+      "metadata": {
+        "qualityClass": "Ruukki 40",
+        "pricingGranularity": "quality-finish"
+      },
+      "active": true
+    },
+    {
+      "id": "variant:ruukki:hyygge:qc50-pural-bt-mat",
+      "productId": "product:ruukki:hyygge",
+      "name": "Ruukki 50 — GreenCoat Pural BT mat",
+      "finish": "greencoat-pural-bt-mat",
+      "metadata": {
+        "qualityClass": "Ruukki 50",
+        "pricingGranularity": "quality-finish"
+      },
+      "active": true
+    },
+    {
+      "id": "variant:ruukki:modular:qc30-polyester",
+      "productId": "product:ruukki:modular",
+      "name": "Ruukki 30 — Poliester",
+      "finish": "polyester",
+      "metadata": {
+        "qualityClass": "Ruukki 30",
+        "pricingGranularity": "quality-finish"
+      },
+      "active": true
+    },
+    {
+      "id": "variant:ruukki:modular:qc40-crown-bt",
+      "productId": "product:ruukki:modular",
+      "name": "Ruukki 40 — GreenCoat Crown BT",
+      "finish": "greencoat-crown-bt",
+      "metadata": {
+        "qualityClass": "Ruukki 40",
+        "pricingGranularity": "quality-finish"
+      },
+      "active": true
+    },
+    {
+      "id": "variant:ruukki:modular:qc40-polyester-rough-mat",
+      "productId": "product:ruukki:modular",
+      "name": "Ruukki 40 — Poliester Rough mat",
+      "finish": "polyester-rough-mat",
+      "metadata": {
+        "qualityClass": "Ruukki 40",
+        "pricingGranularity": "quality-finish"
+      },
+      "active": true
+    },
+    {
+      "id": "variant:ruukki:monterrey-grand:qc30-polyester",
+      "productId": "product:ruukki:monterrey-grand",
+      "name": "Ruukki 30 — Poliester",
+      "finish": "polyester",
+      "metadata": {
+        "qualityClass": "Ruukki 30",
+        "pricingGranularity": "quality-finish"
+      },
+      "active": true
+    },
+    {
+      "id": "variant:ruukki:monterrey-grand:qc30-polyester-magzn-mat",
+      "productId": "product:ruukki:monterrey-grand",
+      "name": "Ruukki 30 — Poliester MagZn mat",
+      "finish": "polyester-magzn-mat",
+      "metadata": {
+        "qualityClass": "Ruukki 30",
+        "pricingGranularity": "quality-finish"
+      },
+      "active": true
+    },
+    {
+      "id": "variant:ruukki:monterrey-grand:qc40-crown-bt",
+      "productId": "product:ruukki:monterrey-grand",
+      "name": "Ruukki 40 — GreenCoat Crown BT",
+      "finish": "greencoat-crown-bt",
+      "metadata": {
+        "qualityClass": "Ruukki 40",
+        "pricingGranularity": "quality-finish"
+      },
+      "active": true
+    },
+    {
+      "id": "variant:ruukki:monterrey-grand:qc40-polyester-rough-mat",
+      "productId": "product:ruukki:monterrey-grand",
+      "name": "Ruukki 40 — Poliester Rough mat",
+      "finish": "polyester-rough-mat",
+      "metadata": {
+        "qualityClass": "Ruukki 40",
+        "pricingGranularity": "quality-finish"
+      },
+      "active": true
+    },
+    {
+      "id": "variant:ruukki:monterrey-grand:qc50-pural-bt-mat",
+      "productId": "product:ruukki:monterrey-grand",
+      "name": "Ruukki 50 — GreenCoat Pural BT mat",
+      "finish": "greencoat-pural-bt-mat",
+      "metadata": {
+        "qualityClass": "Ruukki 50",
+        "pricingGranularity": "quality-finish"
+      },
+      "active": true
+    }
+  ]
+}

@@ -1,0 +1,237 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "id": "ruukki-official-price-list-2026-04-28",
+    "label": "Historical Ruukki official Polish roofing price list, valid from 2026-04-28 until superseded by the 2026-08-28 list. Imported amounts are the published net effective prices / piece prices.",
+    "sourceRevision": "2026-04-28"
+  },
+  "priceLists": [
+    {
+      "id": "price-list:ruukki-official-2026-04-28",
+      "ownerLabel": "Ruukki Polska Sp. z o.o. — official roofing price list",
+      "currencyCode": "PLN",
+      "regionCode": "PL",
+      "taxContext": "official list publishes net and gross values; imported amounts are published net values",
+      "validFrom": "2026-04-28",
+      "validTo": "2026-08-27"
+    }
+  ],
+  "entries": [
+    {
+      "id": "price:ruukki:2026-04-28:hyygge:qc50-pural-bt-mat",
+      "priceListId": "price-list:ruukki-official-2026-04-28",
+      "commercialVariantId": "variant:ruukki:hyygge:qc50-pural-bt-mat",
+      "saleUnit": "piece",
+      "netAmountMinor": 10607,
+      "sourceAmountBasis": "net",
+      "validFrom": "2026-04-28"
+    },
+    {
+      "id": "price:ruukki:2026-04-28:hyygge:qc40-crown-bt",
+      "priceListId": "price-list:ruukki-official-2026-04-28",
+      "commercialVariantId": "variant:ruukki:hyygge:qc40-crown-bt",
+      "saleUnit": "piece",
+      "netAmountMinor": 9518,
+      "sourceAmountBasis": "net",
+      "validFrom": "2026-04-28"
+    },
+    {
+      "id": "price:ruukki:2026-04-28:finnera:qc50-pural-bt-mat",
+      "priceListId": "price-list:ruukki-official-2026-04-28",
+      "commercialVariantId": "variant:ruukki:finnera:qc50-pural-bt-mat",
+      "saleUnit": "piece",
+      "netAmountMinor": 6979,
+      "sourceAmountBasis": "net",
+      "validFrom": "2026-04-28"
+    },
+    {
+      "id": "price:ruukki:2026-04-28:finnera:qc40-crown-bt",
+      "priceListId": "price-list:ruukki-official-2026-04-28",
+      "commercialVariantId": "variant:ruukki:finnera:qc40-crown-bt",
+      "saleUnit": "piece",
+      "netAmountMinor": 6193,
+      "sourceAmountBasis": "net",
+      "validFrom": "2026-04-28"
+    },
+    {
+      "id": "price:ruukki:2026-04-28:frigge:qc50-pural-bt-mat",
+      "priceListId": "price-list:ruukki-official-2026-04-28",
+      "commercialVariantId": "variant:ruukki:frigge:qc50-pural-bt-mat",
+      "saleUnit": "piece",
+      "netAmountMinor": 7118,
+      "sourceAmountBasis": "net",
+      "validFrom": "2026-04-28"
+    },
+    {
+      "id": "price:ruukki:2026-04-28:frigge:qc40-crown-bt",
+      "priceListId": "price-list:ruukki-official-2026-04-28",
+      "commercialVariantId": "variant:ruukki:frigge:qc40-crown-bt",
+      "saleUnit": "piece",
+      "netAmountMinor": 6311,
+      "sourceAmountBasis": "net",
+      "validFrom": "2026-04-28"
+    },
+    {
+      "id": "price:ruukki:2026-04-28:frigge:qc40-polyester-rough-mat",
+      "priceListId": "price-list:ruukki-official-2026-04-28",
+      "commercialVariantId": "variant:ruukki:frigge:qc40-polyester-rough-mat",
+      "saleUnit": "piece",
+      "netAmountMinor": 5936,
+      "sourceAmountBasis": "net",
+      "validFrom": "2026-04-28"
+    },
+    {
+      "id": "price:ruukki:2026-04-28:modular:qc40-crown-bt",
+      "priceListId": "price-list:ruukki-official-2026-04-28",
+      "commercialVariantId": "variant:ruukki:modular:qc40-crown-bt",
+      "saleUnit": "piece",
+      "netAmountMinor": 5581,
+      "sourceAmountBasis": "net",
+      "validFrom": "2026-04-28"
+    },
+    {
+      "id": "price:ruukki:2026-04-28:modular:qc40-polyester-rough-mat",
+      "priceListId": "price-list:ruukki-official-2026-04-28",
+      "commercialVariantId": "variant:ruukki:modular:qc40-polyester-rough-mat",
+      "saleUnit": "piece",
+      "netAmountMinor": 5426,
+      "sourceAmountBasis": "net",
+      "validFrom": "2026-04-28"
+    },
+    {
+      "id": "price:ruukki:2026-04-28:modular:qc30-polyester",
+      "priceListId": "price-list:ruukki-official-2026-04-28",
+      "commercialVariantId": "variant:ruukki:modular:qc30-polyester",
+      "saleUnit": "piece",
+      "netAmountMinor": 5168,
+      "sourceAmountBasis": "net",
+      "validFrom": "2026-04-28"
+    },
+    {
+      "id": "price:ruukki:2026-04-28:adamante:qc50-pural-bt-mat",
+      "priceListId": "price-list:ruukki-official-2026-04-28",
+      "commercialVariantId": "variant:ruukki:adamante:qc50-pural-bt-mat",
+      "saleUnit": "m2",
+      "netAmountMinor": 6068,
+      "sourceAmountBasis": "net",
+      "validFrom": "2026-04-28"
+    },
+    {
+      "id": "price:ruukki:2026-04-28:adamante:qc40-crown-bt",
+      "priceListId": "price-list:ruukki-official-2026-04-28",
+      "commercialVariantId": "variant:ruukki:adamante:qc40-crown-bt",
+      "saleUnit": "m2",
+      "netAmountMinor": 5488,
+      "sourceAmountBasis": "net",
+      "validFrom": "2026-04-28"
+    },
+    {
+      "id": "price:ruukki:2026-04-28:adamante:qc40-polyester-rough-mat",
+      "priceListId": "price-list:ruukki-official-2026-04-28",
+      "commercialVariantId": "variant:ruukki:adamante:qc40-polyester-rough-mat",
+      "saleUnit": "m2",
+      "netAmountMinor": 4828,
+      "sourceAmountBasis": "net",
+      "validFrom": "2026-04-28"
+    },
+    {
+      "id": "price:ruukki:2026-04-28:adamante:qc30-polyester",
+      "priceListId": "price-list:ruukki-official-2026-04-28",
+      "commercialVariantId": "variant:ruukki:adamante:qc30-polyester",
+      "saleUnit": "m2",
+      "netAmountMinor": 4520,
+      "sourceAmountBasis": "net",
+      "validFrom": "2026-04-28"
+    },
+    {
+      "id": "price:ruukki:2026-04-28:monterrey-grand:qc50-pural-bt-mat",
+      "priceListId": "price-list:ruukki-official-2026-04-28",
+      "commercialVariantId": "variant:ruukki:monterrey-grand:qc50-pural-bt-mat",
+      "saleUnit": "m2",
+      "netAmountMinor": 6068,
+      "sourceAmountBasis": "net",
+      "validFrom": "2026-04-28"
+    },
+    {
+      "id": "price:ruukki:2026-04-28:monterrey-grand:qc40-crown-bt",
+      "priceListId": "price-list:ruukki-official-2026-04-28",
+      "commercialVariantId": "variant:ruukki:monterrey-grand:qc40-crown-bt",
+      "saleUnit": "m2",
+      "netAmountMinor": 5488,
+      "sourceAmountBasis": "net",
+      "validFrom": "2026-04-28"
+    },
+    {
+      "id": "price:ruukki:2026-04-28:monterrey-grand:qc40-polyester-rough-mat",
+      "priceListId": "price-list:ruukki-official-2026-04-28",
+      "commercialVariantId": "variant:ruukki:monterrey-grand:qc40-polyester-rough-mat",
+      "saleUnit": "m2",
+      "netAmountMinor": 4828,
+      "sourceAmountBasis": "net",
+      "validFrom": "2026-04-28"
+    },
+    {
+      "id": "price:ruukki:2026-04-28:monterrey-grand:qc30-polyester",
+      "priceListId": "price-list:ruukki-official-2026-04-28",
+      "commercialVariantId": "variant:ruukki:monterrey-grand:qc30-polyester",
+      "saleUnit": "m2",
+      "netAmountMinor": 4520,
+      "sourceAmountBasis": "net",
+      "validFrom": "2026-04-28"
+    },
+    {
+      "id": "price:ruukki:2026-04-28:monterrey-grand:qc30-polyester-magzn-mat",
+      "priceListId": "price-list:ruukki-official-2026-04-28",
+      "commercialVariantId": "variant:ruukki:monterrey-grand:qc30-polyester-magzn-mat",
+      "saleUnit": "m2",
+      "netAmountMinor": 4607,
+      "sourceAmountBasis": "net",
+      "validFrom": "2026-04-28"
+    },
+    {
+      "id": "price:ruukki:2026-04-28:classic-d:qc50-pural-bt-mat",
+      "priceListId": "price-list:ruukki-official-2026-04-28",
+      "commercialVariantId": "variant:ruukki:classic-d:qc50-pural-bt-mat",
+      "saleUnit": "m2",
+      "netAmountMinor": 7514,
+      "sourceAmountBasis": "net",
+      "validFrom": "2026-04-28"
+    },
+    {
+      "id": "price:ruukki:2026-04-28:classic-d:qc40-polyester-rough-mat",
+      "priceListId": "price-list:ruukki-official-2026-04-28",
+      "commercialVariantId": "variant:ruukki:classic-d:qc40-polyester-rough-mat",
+      "saleUnit": "m2",
+      "netAmountMinor": 6033,
+      "sourceAmountBasis": "net",
+      "validFrom": "2026-04-28"
+    },
+    {
+      "id": "price:ruukki:2026-04-28:classic-pro-c:qc50-pural-bt-mat",
+      "priceListId": "price-list:ruukki-official-2026-04-28",
+      "commercialVariantId": "variant:ruukki:classic-pro-c:qc50-pural-bt-mat",
+      "saleUnit": "m2",
+      "netAmountMinor": 7210,
+      "sourceAmountBasis": "net",
+      "validFrom": "2026-04-28"
+    },
+    {
+      "id": "price:ruukki:2026-04-28:classic-pro-c:qc40-polyester-rough-mat",
+      "priceListId": "price-list:ruukki-official-2026-04-28",
+      "commercialVariantId": "variant:ruukki:classic-pro-c:qc40-polyester-rough-mat",
+      "saleUnit": "m2",
+      "netAmountMinor": 5700,
+      "sourceAmountBasis": "net",
+      "validFrom": "2026-04-28"
+    },
+    {
+      "id": "price:ruukki:2026-04-28:classic-pro-c:qc30-polyester-magzn-mat",
+      "priceListId": "price-list:ruukki-official-2026-04-28",
+      "commercialVariantId": "variant:ruukki:classic-pro-c:qc30-polyester-magzn-mat",
+      "saleUnit": "m2",
+      "netAmountMinor": 5394,
+      "sourceAmountBasis": "net",
+      "validFrom": "2026-04-28"
+    }
+  ]
+}

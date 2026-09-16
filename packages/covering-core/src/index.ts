@@ -115,10 +115,27 @@ export const modularSheetTechnicalSpecSchema = z.object({
   effectiveWidthMm: finitePositive,
   totalWidthMm: finitePositive.optional(),
   lengthModel: z.union([fixedSheetLengthSchema, cutToLengthSchema]),
+  /** Physical/profile repeat along the roof slope, not support spacing. */
   moduleLengthMm: finitePositive,
+  /** Regular support spacing; absent V1 snapshots use moduleLengthMm. */
+  battenGaugeMm: finitePositive.optional(),
   moduleWidthMm: finitePositive.optional(),
   profileHeightMm: finitePositive.optional(),
   minPitchDeg: pitchDeg.optional(),
+  recommendedMinPitchDeg: pitchDeg.optional(),
+  declaredEffectiveAreaM2: finitePositive.optional(),
+  weightKgPerPiece: finitePositive.optional(),
+  massKgPerM2: finitePositive.optional(),
+  stepHeightMm: finitePositive.optional(),
+  waveHeightMm: finitePositive.optional(),
+  wavePitchMm: finitePositive.optional(),
+  profileDepthMm: finitePositive.optional(),
+  transverseOverlap: z
+    .object({
+      minimumOverlapMm: finitePositive,
+      minPitchDeg: pitchDeg.optional(),
+    })
+    .optional(),
   physicalThicknessMm: finitePositive.optional(),
   material: z.enum(['steel', 'aluminium', 'other']).optional(),
   salesUnit: z.enum(['piece', 'square-metre']).optional(),
@@ -143,6 +160,8 @@ export const standingSeamTechnicalSpecSchema = z
     maxPanelLengthMm: finitePositive,
     seamHeightMm: finitePositive,
     minPitchDeg: pitchDeg.optional(),
+    recommendedMinPitchDeg: pitchDeg.optional(),
+    massKgPerM2: finitePositive.optional(),
     physicalThicknessMm: finitePositive.optional(),
     material: z.enum(['steel', 'aluminium', 'other']).optional(),
     salesUnit: z.enum(['piece', 'square-metre']).optional(),

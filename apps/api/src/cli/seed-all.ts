@@ -19,8 +19,10 @@ const BATCH_DIR = resolve(here, '../data/import-batches');
  * .json` needs the timber-stock variants). `tiles-2026-09-v35.json` runs
  * after `tiles-2026-09.json` because it corrects/supersedes some of that
  * batch's entities (the CREATON→swissporTON KODA rebrand) rather than
- * standing alone. Each entry here is idempotent: a repeat `seed-all` run
- * reports `unchanged`/`applied` for the same rows, never a conflict.
+ * standing alone. The ordered run is idempotent in its final database state:
+ * repeating it adds no canonical rows and causes no immutable conflicts.
+ * Earlier V35 batches may temporarily update mutable family/variant rows
+ * before the later correction batch restores their final values.
  */
 const CATALOG_BATCHES = [
   'tiles-2026-09.json',
@@ -31,10 +33,12 @@ const CATALOG_BATCHES = [
   // was empty before this, so the covering picker could only offer manual
   // entry for blachodachówka and blacha trapezowa.
   'metal-sheets-2026-09.json',
+  'metal-roofing-additions-2026-09-v42.json',
 ] as const;
 const PRICING_BATCHES = [
   'prices-2026-09.json',
   'timber-prices-2026-09.json',
+  'metal-prices-ruukki-2026-04-28.json',
 ] as const;
 
 async function main() {

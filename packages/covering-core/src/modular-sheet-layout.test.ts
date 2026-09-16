@@ -62,6 +62,26 @@ function fixture(
 }
 
 describe('fixed modular sheet layout strategy', () => {
+  it('uses a declared batten gauge and preserves the legacy module fallback', () => {
+    const legacy = fixture({ battens: battens(undefined, 350) });
+    expect(legacy.status).toBe('resolved');
+    const declared = fixture({
+      battens: battens(undefined, 330),
+      productSpec: fixedSpec({ battenGaugeMm: 330 }),
+    });
+    expect(declared.status).toBe('resolved');
+    const mismatch = fixture({
+      battens: battens(undefined, 350),
+      productSpec: fixedSpec({ battenGaugeMm: 330 }),
+    });
+    expect(mismatch.issues).toContainEqual(
+      expect.objectContaining({
+        code: 'module-batten-spacing-mismatch',
+        required: 330,
+        actual: 350,
+      }),
+    );
+  });
   it('uses effective width and effective length as the deterministic grid', () => {
     const result = fixture();
     expect(result.status).toBe('resolved');

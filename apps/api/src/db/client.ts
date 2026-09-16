@@ -1,12 +1,9 @@
 import '../environment';
 import { drizzle, type MySql2Database } from 'drizzle-orm/mysql2';
 import mysql, { type Pool } from 'mysql2/promise';
-import * as catalogSchema from './schema';
-import * as pricingSchema from './pricing-schema';
+import { schema } from './schema-bundle';
 
 /** One shared schema/connection for both the catalogue and pricing tables. */
-const schema = { ...catalogSchema, ...pricingSchema };
-
 export type CatalogDatabase = MySql2Database<typeof schema>;
 export type PricingDatabase = CatalogDatabase;
 

@@ -1297,6 +1297,30 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+**Iteration:** `042 — shared DEV database adapter and additive metal catalogue`
+
+**Status:** `IMPLEMENTED LOCALLY — uncommitted on current main 7d7526e96d9ca25a1353e794975dd525bd5b6669; remote acceptance pending provider TLS and account access`
+
+**Completed:** fetched and verified the actual origin/main before implementation. Kept one MariaDB/MySQL + Drizzle + mysql2 model. Added a shared API endpoint handler for the existing Node transport and a Cloudflare Worker with static assets and Hyperdrive binding. The Worker reuses the same schemas, repositories and services; it has no migration/seed side effects. Added an optional remote doctor/start command and a nonsecret Wrangler example. The normal SQL bootstrap remains explicit.
+
+**Catalogue:** the V42 metal batch is additive after the V39 FIORD/TIGRA/T18 batch: 36 products/revisions and 24 variants. The V39 T18 family is deactivated as a mutable family because it represents cut-to-length sheet, while its immutable revision remains unchanged. Added 24 historical Ruukki net price entries, ending the supplied April list's mutable validity interval on 2026-08-27 after a newer August list appeared. Current price lookup does not present those old prices as current; `?at=YYYY-MM-DD` supports historical inspection.
+
+**Coverage/UI:** optional technical metal facts include `battenGaugeMm`; modular sheet layout uses that gauge, falling back to module length for old snapshots. The covering inspector exposes an exact numeric batten spacing control in desktop and mobile. No structural or procurement claim was added.
+
+**Database:** no SQL migration or project document version bump is required; new fields are optional inside the existing technical JSON snapshot. Local MariaDB 10.4.32 bootstrap applied the existing 3 migrations and replayed cleanly. Final local active catalogue: 50 products, 11 manufacturers, 30 price entries; by kind: roof tile 7, modular sheet 32, standing seam 6, membrane 1, timber stock 4. Remote SEOHost database was not bootstrapped: the private workstation `DATABASE_URL` still targets local MariaDB. A credential-free TCP probe reached SEOHost port 3306, but validated TLS failed with a self-signed certificate. Hyperdrive and the public API are not live; public `/api/health` returned 404 on the preexisting deployment.
+
+**Files changed / WIP:** API `app.ts`, shared `http/handler.ts`, `edge/worker.ts`, `db/schema-bundle.ts`, doctor, pricing service/tests, seed/smoke CLIs and V39/V42/Ruukki batches; covering core spec/layout/tests; covering workspace/translations; CI, package scripts/lockfile, Wrangler example, edge bundle check; README and V42 architecture/Cloudflare docs. The old API transport route modules were removed after moving semantics to the shared handler. Vitest was upgraded from 3.2.7 to 4.1.11 to resolve a reproducible worker notification timeout that made an otherwise passing baseline suite exit 1.
+
+**Assumptions/limitations:** the supplied Ruukki April amounts are historical handoff data; the manufacturer's stable download page now serves an August list, so the April source PDF could not be independently retrieved. The August validity cutoff is inferred. SEOHost's provider CA, remote ACL and Cloudflare Hyperdrive account configuration still need provider/account action. The existing auto-batten composition applies to tile workflows; a separate metal terminal/overlap rule would need a documented domain decision before automatic metal placement.
+
+**Validation:** baseline `pnpm verify` reached 1044 passing tests but exited 1 due the Vitest 3 worker notification timeout. Local bootstrap and second replay succeeded; `pnpm db:doctor`, API health/catalog/kind queries, historical price and default current-price checks passed. V42 unit/architecture checks and isolated heavy UI test passed. Final full verify and desktop/mobile E2E results: **pending at this checkpoint update**. `git diff --check` passed. No commit or push.
+
+**NEXT ACTION:** finish `pnpm verify` and `pnpm e2e`, update this validation line, then review with SEOHost the trusted external TLS certificate/CA and allowed Hyperdrive egress. Once a private remote credential and Cloudflare binding are configured outside Git, run `db:doctor`, remote bootstrap twice, deploy the Worker, and compare live same-origin endpoints against local Node. Do not claim this acceptance before those checks pass.
+
+---
+
+**Previous iteration:** `039 — Execution geometry and the hip boundary`
+
 **Iteration:** `039 — Execution geometry and the hip boundary`
 
 **Status:** `IMPLEMENTED — committed and pushed on main after 1705e89 (V38)`

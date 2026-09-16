@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsup --config tsup.config.ts",
+    "build:edge": "wrangler deploy --dry-run --config ../../wrangler.example.jsonc --outdir .wrangler/v42-dryrun && node ../../tools/check-edge-bundle.mjs",
     "db:generate": "cd ../.. && drizzle-kit generate --config drizzle.config.ts",
     "db:migrate": "cd ../.. && drizzle-kit migrate --config drizzle.config.ts",
     "catalog:import": "tsx src/cli/import-catalog.ts",
@@ -32,6 +33,7 @@
     "drizzle-kit": "0.31.0",
     "supertest": "^7.1.0",
     "tsup": "^8.5.0",
-    "tsx": "^4.20.0"
+    "tsx": "^4.20.0",
+    "wrangler": "^4.132.0"
   }
 }
