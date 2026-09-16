@@ -841,6 +841,8 @@ function AssemblyPageContent() {
                       roofPlaneId: plane.roofPlaneId,
                       areaMm2: plane.netAreaMm2,
                       grossAreaMm2: course.grossAreaMm2,
+                      overlapAreaMm2: course.overlapAreaMm2,
+                      ridgeOverrunAreaMm2: course.ridgeOverrunAreaMm2,
                       courseCount: course.courseCount,
                       rollCount: course.rollCount,
                       warningKeys,

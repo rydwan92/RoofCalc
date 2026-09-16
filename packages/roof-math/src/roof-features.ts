@@ -1085,6 +1085,17 @@ export interface MembranePlaneLayoutResult {
   courseWidthMm: number;
   courseCount: number;
   grossAreaMm2: number;
+  /**
+   * The part of `grossAreaMm2` consumed by laps between adjacent courses:
+   * `(courseCount - 1) · minimumOverlapMm · courseWidthMm`. Physical
+   * installation geometry, never a waste allowance.
+   */
+  overlapAreaMm2: number;
+  /**
+   * The part of `grossAreaMm2` by which the last whole-width course runs past
+   * the eave-to-ridge span: `(effectiveSpanMm - spanMm) · courseWidthMm`.
+   */
+  ridgeOverrunAreaMm2: number;
   courseLengthTotalMm: number;
   rollCount: number;
   tapers: boolean;
@@ -1096,6 +1107,8 @@ export interface MembraneLayoutResult {
   status: 'disabled' | 'resolved' | 'partial' | 'incomplete';
   planes: MembranePlaneLayoutResult[];
   grossAreaMm2: number;
+  overlapAreaMm2: number;
+  ridgeOverrunAreaMm2: number;
   courseCount: number;
   rollCount: number;
   warnings: MembraneLayoutWarningCode[];
@@ -1123,6 +1136,8 @@ export function resolveMembraneLayout(args: {
     status,
     planes: [],
     grossAreaMm2: 0,
+    overlapAreaMm2: 0,
+    ridgeOverrunAreaMm2: 0,
     courseCount: 0,
     rollCount: 0,
     warnings: [],
@@ -1187,6 +1202,8 @@ export function resolveMembraneLayout(args: {
         courseWidthMm: eaveWidthMm,
         courseCount: 0,
         grossAreaMm2: 0,
+        overlapAreaMm2: 0,
+        ridgeOverrunAreaMm2: 0,
         courseLengthTotalMm: 0,
         rollCount: 0,
         tapers: Math.abs(eaveWidthMm - ridgeWidthMm) > EPSILON,
@@ -1203,6 +1220,9 @@ export function resolveMembraneLayout(args: {
       courseWidthMm: eaveWidthMm,
       courseCount: fit.courseCount,
       grossAreaMm2: fit.courseCount * args.product.rollWidthMm * eaveWidthMm,
+      overlapAreaMm2:
+        (fit.courseCount - 1) * fit.minimumOverlapMm * eaveWidthMm,
+      ridgeOverrunAreaMm2: (fit.effectiveSpanMm - fit.spanMm) * eaveWidthMm,
       courseLengthTotalMm,
       rollCount: Math.max(
         1,
@@ -1234,6 +1254,14 @@ export function resolveMembraneLayout(args: {
           : 'incomplete',
     planes,
     grossAreaMm2: planes.reduce((sum, plane) => sum + plane.grossAreaMm2, 0),
+    overlapAreaMm2: planes.reduce(
+      (sum, plane) => sum + plane.overlapAreaMm2,
+      0,
+    ),
+    ridgeOverrunAreaMm2: planes.reduce(
+      (sum, plane) => sum + plane.ridgeOverrunAreaMm2,
+      0,
+    ),
     courseCount: planes.reduce((sum, plane) => sum + plane.courseCount, 0),
     rollCount: planes.reduce((sum, plane) => sum + plane.rollCount, 0),
     warnings,

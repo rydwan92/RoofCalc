@@ -911,6 +911,7 @@ function SectionBody({
           piece: locale.startsWith('pl') ? 'szt.' : 'pcs',
           m2: 'm²',
           roll: locale.startsWith('pl') ? 'rol.' : 'rolls',
+          course: locale.startsWith('pl') ? 'pas.' : 'courses',
           'piece/m2': locale.startsWith('pl') ? 'szt./m²' : 'pcs/m²',
         })[value] ?? value;
       const number = (value: number) =>

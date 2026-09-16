@@ -116,7 +116,7 @@ test('V36 offline material plan, manual estimate and mobile layout', async ({
   await openMaterialProject(page);
   const plan = page.getByTestId('material-plan');
   await expect(plan).toContainText(
-    'Katalog niedostępny — obliczenia lokalne działają',
+    'Katalog niedostępny — możesz pracować ręcznie',
   );
   const battens = page.getByTestId('material-row-battens');
   await expect(battens).toContainText('GEOMETRIA');
@@ -156,7 +156,7 @@ test('V36 live catalogue → timber procurement/price → membrane → estimate 
   );
   await openMaterialProject(page);
   await expect(page.getByTestId('material-plan')).toContainText(
-    'Katalog online',
+    'Katalog dostępny',
   );
   await page
     .getByTestId('material-row-k1')
@@ -190,8 +190,8 @@ test('V36 live catalogue → timber procurement/price → membrane → estimate 
     .getByRole('button', { name: 'Szczegóły' })
     .click();
   await page.locator('.a-catalog-apply').click();
-  await expect(membrane).toContainText('Powierzchnia z zakładami');
-  await expect(membrane).toContainText('Liczba rolek');
+  await expect(membrane).toContainText('Z uwzględnieniem zakładów');
+  await expect(membrane).toContainText('Plan wg obecnego układu');
   const tile = page.getByTestId('material-row-tile');
   await tile.getByRole('combobox').selectOption('manual');
   await tile.getByRole('textbox').fill('9,24');

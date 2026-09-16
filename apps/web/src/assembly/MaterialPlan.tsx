@@ -17,6 +17,7 @@ import {
   type MaterialPriceSelection,
 } from './material-plan';
 import { downloadMaterialCsv } from './material-csv';
+import { MembraneMaterialCard } from './MembraneMaterialCard';
 import type { ExportFacts } from './export-adapter';
 
 const MembraneProductPicker = lazy(() =>
@@ -81,6 +82,7 @@ export function MaterialPlan({
       piece: locale.startsWith('pl') ? 'szt.' : 'pcs',
       m2: 'm²',
       roll: locale.startsWith('pl') ? 'rol.' : 'rolls',
+      course: locale.startsWith('pl') ? 'pas.' : 'courses',
       'piece/m2': locale.startsWith('pl') ? 'szt./m²' : 'pcs/m²',
     })[value] ?? value;
   const activePrice = (row: MaterialPlanRow) => {
@@ -108,6 +110,15 @@ export function MaterialPlan({
         : row.basis === 'fabrication-requirement'
           ? m.fabrication
           : m.geometry;
+  // One status per row, so the four summary counts always add up to the rows.
+  const statusOf = (row: MaterialPlanRow) =>
+    row.partial || row.suitability === 'manual-required'
+      ? 'needs-data'
+      : row.basis === 'procurement-stock'
+        ? 'purchase'
+        : row.range
+          ? 'estimate'
+          : 'geometry';
   const displayQuantity = (row: MaterialPlanRow) =>
     row.range
       ? `${number(row.range.min)}–${number(row.range.max)}`
@@ -119,13 +130,25 @@ export function MaterialPlan({
       <header className="mp-header">
         <div>
           <h2>{m.title}</h2>
-          <small data-status={catalogue.isError ? 'warning' : 'neutral'}>
+          <small
+            data-status={catalogue.isError ? 'warning' : 'neutral'}
+            data-testid="catalogue-status"
+          >
             {catalogue.isPending
               ? m.loading
               : catalogue.isError
                 ? m.offline
                 : m.online}
           </small>
+          {catalogue.isError && (
+            <button
+              type="button"
+              className="mp-retry"
+              onClick={() => void catalogue.refetch()}
+            >
+              {m.retry}
+            </button>
+          )}
         </div>
         <div className="mp-actions">
           <button
@@ -151,29 +174,25 @@ export function MaterialPlan({
         <span>
           {m.purchaseCount}
           <strong>
-            {rows.filter((row) => row.basis === 'procurement-stock').length}
+            {rows.filter((row) => statusOf(row) === 'purchase').length}
+          </strong>
+        </span>
+        <span>
+          {m.geometryCount}
+          <strong>
+            {rows.filter((row) => statusOf(row) === 'geometry').length}
           </strong>
         </span>
         <span>
           {m.estimates}
           <strong>
-            {
-              rows.filter(
-                (row) =>
-                  row.basis !== 'procurement-stock' &&
-                  row.suitability !== 'manual-required',
-              ).length
-            }
+            {rows.filter((row) => statusOf(row) === 'estimate').length}
           </strong>
         </span>
         <span>
           {m.needsData}
           <strong>
-            {
-              rows.filter(
-                (row) => row.partial || !materialValue(row, activePrice(row)),
-              ).length
-            }
+            {rows.filter((row) => statusOf(row) === 'needs-data').length}
           </strong>
         </span>
         <span>
@@ -221,57 +240,63 @@ export function MaterialPlan({
                   className="mp-row"
                   data-testid={`material-row-${row.labelKey}`}
                 >
-                  <div className="mp-row-main">
-                    <div>
-                      <h4>{label}</h4>
-                      <span
-                        className="mp-badge"
-                        data-status={
-                          row.basis === 'procurement-stock'
-                            ? 'success'
-                            : 'neutral'
-                        }
-                      >
-                        {basis(row)}
-                      </span>
-                      {row.partial && (
-                        <span className="mp-badge" data-status="warning">
-                          {m.partial}
-                        </span>
-                      )}
-                      {row.product?.name && (
-                        <p>
-                          <small>
-                            {row.category === 'timber'
-                              ? m.commercial
-                              : row.productSource === 'catalog'
-                                ? m.catalogue
-                                : ''}
-                          </small>
-                          <br />
-                          {row.product.name}
-                        </p>
-                      )}
-                    </div>
-                    <strong className="mp-quantity">
-                      {displayQuantity(row)} <small>{unit(row.unit)}</small>
-                    </strong>
-                  </div>
-                  {row.metrics.length > 0 && (
-                    <dl className="mp-metrics">
-                      {row.metrics.map((metric) => (
-                        <div key={metric.labelKey}>
-                          <dt>{materialText(locale, metric.labelKey)}</dt>
-                          <dd>
-                            {number(metric.value)}
-                            {metric.maxValue !== undefined
-                              ? `–${number(metric.maxValue)}`
-                              : ''}{' '}
-                            {unit(metric.unit)}
-                          </dd>
+                  {row.labelKey === 'membrane' ? (
+                    <MembraneMaterialCard row={row} locale={locale} />
+                  ) : (
+                    <>
+                      <div className="mp-row-main">
+                        <div>
+                          <h4>{label}</h4>
+                          <span
+                            className="mp-badge"
+                            data-status={
+                              row.basis === 'procurement-stock'
+                                ? 'success'
+                                : 'neutral'
+                            }
+                          >
+                            {basis(row)}
+                          </span>
+                          {row.partial && (
+                            <span className="mp-badge" data-status="warning">
+                              {m.partial}
+                            </span>
+                          )}
+                          {row.product?.name && (
+                            <p>
+                              <small>
+                                {row.category === 'timber'
+                                  ? m.commercial
+                                  : row.productSource === 'catalog'
+                                    ? m.catalogue
+                                    : ''}
+                              </small>
+                              <br />
+                              {row.product.name}
+                            </p>
+                          )}
                         </div>
-                      ))}
-                    </dl>
+                        <strong className="mp-quantity">
+                          {displayQuantity(row)} <small>{unit(row.unit)}</small>
+                        </strong>
+                      </div>
+                      {row.metrics.length > 0 && (
+                        <dl className="mp-metrics">
+                          {row.metrics.map((metric) => (
+                            <div key={metric.labelKey}>
+                              <dt>{materialText(locale, metric.labelKey)}</dt>
+                              <dd>
+                                {number(metric.value)}
+                                {metric.maxValue !== undefined
+                                  ? `–${number(metric.maxValue)}`
+                                  : ''}{' '}
+                                {unit(metric.unit)}
+                              </dd>
+                            </div>
+                          ))}
+                        </dl>
+                      )}
+                    </>
                   )}
                   {row.range && <p className="mp-note">{m.rangeNote}</p>}
                   <div className="mp-price">

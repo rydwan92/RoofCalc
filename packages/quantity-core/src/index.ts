@@ -50,6 +50,9 @@ export interface SurfaceBuildUpSource {
   warningKeys?: string[];
   /** Present only when `semantic` is `'gross-installed'` (a roll product is set). */
   grossAreaMm2?: number;
+  /** Lap and ridge-overrun parts of `grossAreaMm2`, from the course solver. */
+  overlapAreaMm2?: number;
+  ridgeOverrunAreaMm2?: number;
   courseCount?: number;
   rollCount?: number;
 }
@@ -145,6 +148,9 @@ export interface RoofSurfaceQuantityRow {
   warningKeys: string[];
   /** Present only when every contributing source is `'gross-installed'`. */
   grossAreaMm2?: number;
+  /** Lap and ridge-overrun parts of `grossAreaMm2`, from the course solver. */
+  overlapAreaMm2?: number;
+  ridgeOverrunAreaMm2?: number;
   courseCount?: number;
   rollCount?: number;
 }
@@ -532,6 +538,19 @@ function createSurfaceBuildUpRows(
                 (sum, item) => sum + (item.grossAreaMm2 ?? 0),
                 0,
               ),
+              // A breakdown is exposed only when every source carries one.
+              ...(items.every((item) => item.overlapAreaMm2 !== undefined)
+                ? {
+                    overlapAreaMm2: items.reduce(
+                      (sum, item) => sum + (item.overlapAreaMm2 ?? 0),
+                      0,
+                    ),
+                    ridgeOverrunAreaMm2: items.reduce(
+                      (sum, item) => sum + (item.ridgeOverrunAreaMm2 ?? 0),
+                      0,
+                    ),
+                  }
+                : {}),
               courseCount: items.reduce(
                 (sum, item) => sum + (item.courseCount ?? 0),
                 0,

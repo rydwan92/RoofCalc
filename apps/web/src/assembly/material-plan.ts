@@ -36,6 +36,14 @@ export interface MaterialPlanRow {
   warnings: string[];
   sourceReferences: string[];
   costSuggestionKey?: string;
+  /** Membrane only: a roll plan exists once every plane resolved courses. */
+  membranePlan?: 'roll-plan' | 'net-only';
+  membraneRoll?: {
+    widthMm: number;
+    lengthMm: number;
+    overlapMm: number;
+    revisionCode?: string;
+  };
 }
 
 export interface MaterialPriceSelection {
@@ -160,23 +168,60 @@ export function createMaterialPlanRows(
           surfaces.reduce((sum, item) => sum + item.areaMm2, 0) / 1_000_000,
         unit: 'm2',
       });
-      if (
-        surfaces.length &&
+      const rollPlan =
+        surfaces.length > 0 &&
         surfaces.every(
           (item) =>
             item.semantic === 'gross-installed' && item.rollCount !== undefined,
-        )
-      ) {
+        );
+      row.membranePlan = rollPlan ? 'roll-plan' : 'net-only';
+      if (rollPlan) {
+        const sum = (pick: (item: (typeof surfaces)[number]) => number) =>
+          surfaces.reduce((total, item) => total + pick(item), 0) / 1_000_000;
+        row.metrics.push({
+          labelKey: 'grossArea',
+          value: suggestion.quantity.value,
+          unit: 'm2',
+        });
+        // Breakdown of gross − net, straight from the course solver. Absent
+        // on snapshots produced before V43A; never re-derived here.
+        if (surfaces.every((item) => item.overlapAreaMm2 !== undefined)) {
+          const overlap = sum((item) => item.overlapAreaMm2 ?? 0);
+          const overrun = sum((item) => item.ridgeOverrunAreaMm2 ?? 0);
+          const simplification =
+            suggestion.quantity.value -
+            overlap -
+            overrun -
+            (row.metrics[0]?.value ?? 0);
+          row.metrics.push(
+            { labelKey: 'overlapArea', value: overlap, unit: 'm2' },
+            ...(overrun > 1e-6
+              ? [{ labelKey: 'ridgeOverrunArea', value: overrun, unit: 'm2' }]
+              : []),
+            ...(simplification > 1e-6
+              ? [
+                  {
+                    labelKey: 'simplificationArea',
+                    value: simplification,
+                    unit: 'm2',
+                  },
+                ]
+              : []),
+          );
+        }
         row.metrics.push(
           {
-            labelKey: 'grossArea',
-            value: suggestion.quantity.value,
-            unit: 'm2',
+            labelKey: 'courseCount',
+            value: surfaces.reduce(
+              (total, item) => total + (item.courseCount ?? 0),
+              0,
+            ),
+            unit: 'course',
           },
           {
             labelKey: 'rollCount',
             value: surfaces.reduce(
-              (sum, item) => sum + (item.rollCount ?? 0),
+              (total, item) => total + (item.rollCount ?? 0),
               0,
             ),
             unit: 'roll',
@@ -186,6 +231,31 @@ export function createMaterialPlanRows(
       if (membrane) {
         row.productSource = membrane.catalogRef ? 'catalog' : 'manual';
         const spec = membrane.technicalSpecSnapshot;
+        row.membraneRoll = {
+          widthMm: spec.rollWidthMm,
+          lengthMm: spec.rollLengthMm,
+          overlapMm: spec.minimumOverlapMm,
+          revisionCode: membrane.displaySnapshot?.revisionCode,
+        };
+        // Labelled product facts so the CSV and material document read the
+        // same roll data as the card.
+        row.metrics.push(
+          { labelKey: 'rollWidth', value: spec.rollWidthMm / 1000, unit: 'm' },
+          {
+            labelKey: 'rollLength',
+            value: spec.rollLengthMm / 1000,
+            unit: 'm',
+          },
+          {
+            labelKey: 'overlapUsed',
+            value: spec.minimumOverlapMm / 10,
+            unit: 'cm',
+          },
+        );
+        // cost-core has no roll unit: the line stays priced per m², and a
+        // per-roll price list entry can never join this row (unit mismatch).
+        if (spec.salesUnit === 'roll')
+          row.warnings = [...row.warnings, 'membrane-sold-per-roll'];
         row.product = {
           name: [
             membrane.displaySnapshot?.manufacturer,

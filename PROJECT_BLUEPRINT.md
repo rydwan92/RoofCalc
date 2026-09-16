@@ -1297,9 +1297,29 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
-**Iteration:** `042 — shared DEV database adapter and additive metal catalogue`
+**Iteration:** `043A — membrane material truth (first commercial vertical slice)`
 
-**Status:** `IMPLEMENTED LOCALLY — uncommitted on current main 7d7526e96d9ca25a1353e794975dd525bd5b6669; remote acceptance pending provider TLS and account access`
+**Status:** `IMPLEMENTED — committed and pushed on main after e2657b0`
+
+**Completed:** Material Plan → Membrana is now a dedicated card (`MembraneMaterialCard.tsx`) answering "what does this number mean": net roof area, area including overlaps, roll plan for the current layout, product + roll size, KATALOG (with revision) or RĘCZNIE badge, a plan-kind badge (*PLAN KONSERWATYWNY* when every plane resolved courses, *TYLKO NETTO* otherwise), a "Dlaczego więcej niż netto?" breakdown and only the applicable limitations. The existing course solver was not rewritten: `resolveMembraneLayout` now also reports `overlapAreaMm2 = (courses−1)·overlap·courseWidth` and `ridgeOverrunAreaMm2 = (effectiveSpan−span)·courseWidth` per plane and in total; quantity-core carries them only when every source has them (old snapshots show no breakdown rather than a fake zero). `createMaterialPlanRows` projects them as metrics (`overlapArea`, `ridgeOverrunArea`, `simplificationArea` = remaining gross−net from eave-width/opening simplifications, `courseCount`, `rollCount`, `rollWidth`, `rollLength`, `overlapUsed`), plus `membranePlan` and `membraneRoll`. The CSV and material-list document read the same metrics (no recalculation). Summary counts are now one status per row: Plan zakupowy / Geometria / Szacunki / Wymagają danych. Catalogue status copy is nontechnical ("Katalog dostępny" / "Katalog niedostępny — możesz pracować ręcznie") with a retry button.
+
+**Semantics:** gross = net + overlaps + last-course ridge overrun + simplifications (taper at eave width, openings not subtracted from gross). Roll count = ceil(Σ course lengths / roll length) per plane, without re-laying offcuts — an upper estimate, never "exact purchase". Browser QA (default gable fixture, 1,5 × 50 m, 10 cm): 87,9 m² net + 4,8 overlaps + 3,3 ridge overrun = 96,0 m²; 8 courses; 2 rolls.
+
+**Costing:** cost-core has no `roll` unit, so a per-roll price cannot be represented safely. The membrane line stays priced per m² gross; a per-roll price-list entry can never join the row (unit filter, tested); products with `salesUnit: 'roll'` show the explicit limitation `membrane-sold-per-roll`.
+
+**Files:** `packages/roof-math/src/roof-features.ts`, `packages/quantity-core/src/index.ts`, web `Page.tsx`, `material-plan.ts`, `MaterialPlan.tsx`, new `MembraneMaterialCard.tsx`, `material-copy.ts`, `ExecutionExport.tsx` (course unit), `styles.css`, new `material-test-facts.ts` (fixture extracted from `material-plan.test.ts` so tests are not re-registered), new `membrane-material-truth.test.tsx`, `e2e/material-plan.spec.ts` copy; `eslint.config.js`, `.prettierignore`.
+
+**Not done (deliberately):** course/strip visualization in Warstwy → Membrana (skipped for budget; solver has per-plane course facts but no per-course polygons); per-roll pricing (needs a cost-core unit decision); roll reuse optimisation; per-station hip course width; opening subtraction from gross.
+
+**Validation:** typecheck, lint, format:check, `pnpm build` (web + api + edge), architecture 29/29, full unit suite 1054/1054 (before the final one-line export unit fix; focused material/export tests 28/28 after it), browser QA at 1440×900 of Materiały → Plan materiałów → Membrana and Dokumenty → Lista materiałów, `git diff --check`. E2E `e2e/material-plan.spec.ts` desktop+mobile: 2 passed, 4 skipped (live-DB/XAMPP-gated); first run caught stale catalogue copy in the offline spec, fixed. Full `pnpm e2e` not run this session.
+
+**NEXT ACTION:** (1) user: point private `.env` at SEOHost DEV, allow workstation IP, then `pnpm db:doctor`, `pnpm db:bootstrap` ×2, `pnpm db:doctor`; resolve SEOHost TLS CA before Hyperdrive. (2) code: decide whether cost-core gains a `roll` quantity unit (with a roll-count quantity basis) so membrane can be costed per roll; then optionally draw resolved courses in the membrane layer view.
+
+---
+
+**Previous iteration:** `042 — shared DEV database adapter and additive metal catalogue`
+
+**Status:** `CODE COMPLETE — EXTERNAL BLOCKER. Committed as e2657b0 ("V42 chyba niedokończone"); code-side validation closed in V43A`
 
 **Completed:** fetched and verified the actual origin/main before implementation. Kept one MariaDB/MySQL + Drizzle + mysql2 model. Added a shared API endpoint handler for the existing Node transport and a Cloudflare Worker with static assets and Hyperdrive binding. The Worker reuses the same schemas, repositories and services; it has no migration/seed side effects. Added an optional remote doctor/start command and a nonsecret Wrangler example. The normal SQL bootstrap remains explicit.
 
@@ -1313,9 +1333,9 @@ If code is temporarily incomplete, explicitly list:
 
 **Assumptions/limitations:** the supplied Ruukki April amounts are historical handoff data; the manufacturer's stable download page now serves an August list, so the April source PDF could not be independently retrieved. The August validity cutoff is inferred. SEOHost's provider CA, remote ACL and Cloudflare Hyperdrive account configuration still need provider/account action. The existing auto-batten composition applies to tile workflows; a separate metal terminal/overlap rule would need a documented domain decision before automatic metal placement.
 
-**Validation:** baseline `pnpm verify` reached 1044 passing tests but exited 1 due the Vitest 3 worker notification timeout. Local bootstrap and second replay succeeded; `pnpm db:doctor`, API health/catalog/kind queries, historical price and default current-price checks passed. V42 unit/architecture checks and isolated heavy UI test passed. Final full verify and desktop/mobile E2E results: **pending at this checkpoint update**. `git diff --check` passed. No commit or push.
+**Validation (closed 2026-09-16 in V43A session):** `pnpm verify` failed only in lint on the generated, git-ignored `.wrangler/v42-dryrun/worker.js` bundle; `.wrangler/**` is now ignored by ESLint and Prettier. Then lint, format, build (incl. edge), architecture 29/29, full unit suite 1054/1054 green. `pnpm db:doctor` on 2026-09-16: `DATABASE_URL` configured but still points at local 127.0.0.1, which was not running → *Server unavailable*. Remote SEOHost bootstrap **not run**; Hyperdrive **not live**.
 
-**NEXT ACTION:** finish `pnpm verify` and `pnpm e2e`, update this validation line, then review with SEOHost the trusted external TLS certificate/CA and allowed Hyperdrive egress. Once a private remote credential and Cloudflare binding are configured outside Git, run `db:doctor`, remote bootstrap twice, deploy the Worker, and compare live same-origin endpoints against local Node. Do not claim this acceptance before those checks pass.
+**External blocker:** the private workstation `.env` must point at the SEOHost DEV database (`srv118516_roofcalc_dev` on h86.seohost.pl) with the workstation IP allowed; Hyperdrive additionally needs a verifiable TLS certificate/CA (the origin presents a self-signed certificate) and Cloudflare egress ACL. No code change is pending for this.
 
 ---
 

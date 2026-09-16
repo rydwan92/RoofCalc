@@ -15,11 +15,6 @@ import type { CostScenario } from '@cieslacalc/cost-core';
 import { createRoofMemberSchedule } from '@cieslacalc/quantity-core';
 import { createCuttingPlan } from '@cieslacalc/procurement-core';
 import {
-  assemblyDefaults,
-  gableTemplateFromAssembly,
-  resolveRoofSurfaceGeometry,
-} from '@cieslacalc/roof-math';
-import {
   createEmptyCostScenario,
   withManualQuantity,
   replaceCostLine,
@@ -28,11 +23,7 @@ import {
   withUnitPrice,
 } from '@cieslacalc/cost-core';
 import type { RoofTileLayoutResult } from '@cieslacalc/covering-core';
-import { createWorkbenchProjectResolver } from './workbench-project';
-import {
-  createK1CuttingRequirement,
-  k1RequirementSignature,
-} from './k1-cutting-adapter';
+import { k1RequirementSignature } from './k1-cutting-adapter';
 import {
   acceptMaterialRow,
   compatibleMaterialPrices,
@@ -43,59 +34,9 @@ import {
   type MaterialPlanRow,
 } from './material-plan';
 import { materialCsv } from './material-csv';
+import { materialTestFacts } from './material-test-facts';
 import { createExportCandidates, type ExportFacts } from './export-adapter';
 import type { VariantPrice } from '../pricing/client';
-
-export function materialTestFacts(): ExportFacts {
-  const template = gableTemplateFromAssembly(assemblyDefaults);
-  const project = createWorkbenchProjectResolver().resolve(template);
-  const schedule = createRoofMemberSchedule({ skeleton: project.skeleton });
-  return {
-    source: {
-      projectId: 'test',
-      projectName: 'Test',
-      projectCreatedAt: '2026-01-01T00:00:00.000Z',
-      projectUpdatedAt: '2026-01-01T00:00:00.000Z',
-      projectSchemaVersion: 1,
-    },
-    template,
-    resolved: project.resolved,
-    skeleton: project.skeleton,
-    surface: resolveRoofSurfaceGeometry({ template, features: [] }),
-    windows: [],
-    schedule,
-    details: [],
-    k1: createK1CuttingRequirement(project.resolved, schedule),
-    membraneEnabled: false,
-    counterBattensEnabled: false,
-    battensEnabled: false,
-    battens: {
-      status: 'disabled',
-      mode: 'manual',
-      battens: [],
-      totalLengthMm: 0,
-      planes: [],
-      issues: [],
-    },
-    battenAutoSource: { status: 'missing' },
-    counterBattens: {
-      status: 'disabled',
-      rows: [],
-      totalVisibleLengthMm: 0,
-      warnings: [],
-      issues: [],
-      resolvedAxisCount: 0,
-      interiorAxisCount: 0,
-      hipBoundaryRunCount: 0,
-      hipBoundaries: [],
-      unresolvedHipBoundaryCount: 0,
-      visibleSegmentCount: 0,
-      roofPlaneIds: [],
-    },
-    coverings: [],
-    coveringStatuses: [],
-  };
-}
 
 const manual: MaterialPriceSelection = {
   source: 'manual',
@@ -260,7 +201,9 @@ it('shows net, gross and rolls only for a fully resolved membrane snapshot', () 
   const membrane = createMaterialPlanRows(facts).find(
     (row) => row.id === 'membrane',
   )!;
-  expect(membrane.metrics.map((metric) => metric.value)).toEqual([200, 220, 4]);
+  expect(membrane.metrics.map((metric) => metric.value)).toEqual([
+    200, 220, 16, 4,
+  ]);
   expect(membrane.warnings).toContain('gross-area-no-roll-reuse');
   expect(membrane.warnings).toContain('openings-not-subtracted');
   facts.schedule.surfaceBuildUpRows[0]!.semantic = 'net-geometric';
@@ -402,9 +345,7 @@ it('works with an unavailable catalogue and reviews updates while keeping manual
     ),
   );
   expect(
-    await screen.findByText(
-      'Katalog niedostępny — obliczenia lokalne działają',
-    ),
+    await screen.findByText('Katalog niedostępny — możesz pracować ręcznie'),
   ).toBeTruthy();
   const row = within(screen.getByTestId('material-row-battens'));
   fireEvent.change(row.getByRole('combobox'), { target: { value: 'manual' } });
