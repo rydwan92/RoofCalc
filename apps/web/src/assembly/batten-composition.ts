@@ -12,7 +12,8 @@ export type BattenAutoSourceReason =
   | 'tile-covering-missing'
   | 'installation-mode-missing'
   | 'target-planes-not-covered'
-  | 'covering-source-conflict';
+  | 'covering-source-conflict'
+  | 'pitch-rule-unavailable';
 
 export interface BattenAutoComposition {
   source: BattenAutoSource;
@@ -91,11 +92,24 @@ export function resolveBattenAutoComposition(args: {
       assignmentId: assignment.id,
       installation,
     };
+  // V43B: the range that applies at this pitch, never a flattened mode range
+  // when the snapshot declares pitch-dependent rules.
+  if (!installation.gaugeRangeMm)
+    return {
+      source: { status: 'missing' },
+      reason: 'pitch-rule-unavailable',
+      assignmentId: assignment.id,
+      installationMode,
+      installation,
+      productLabel:
+        assignment.product.displaySnapshot?.familyName ??
+        assignment.product.displaySnapshot?.manufacturer,
+    };
   return {
     source: {
       status: 'resolved',
-      minimumGaugeMm: installationMode.gaugeRangeMm.min,
-      maximumGaugeMm: installationMode.gaugeRangeMm.max,
+      minimumGaugeMm: installation.gaugeRangeMm.min,
+      maximumGaugeMm: installation.gaugeRangeMm.max,
     },
     assignmentId: assignment.id,
     installationMode,

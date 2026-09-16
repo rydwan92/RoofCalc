@@ -44,6 +44,11 @@ const noBuildUpFacts = {
     totalLengthMm: 0,
     planes: [],
     issues: [],
+    scope: {
+      kind: 'whole-roof' as const,
+      roofPlaneIds: ['roof-plane:left', 'roof-plane:right'],
+      knownRoofPlaneIds: ['roof-plane:left', 'roof-plane:right'],
+    },
   },
   battenAutoSource: { status: 'missing' as const },
   counterBattens: {
@@ -396,10 +401,18 @@ describe('execution export adapter', () => {
         battens: [],
         totalLengthMm: 5000,
         issues: [],
+        scope: {
+          kind: 'subset',
+          roofPlaneIds: ['roof-plane:left'],
+          knownRoofPlaneIds: ['roof-plane:left', 'roof-plane:right'],
+        },
         planes: [
           {
             roofPlaneId: 'roof-plane:left',
             status: 'resolved',
+            slopeLengthMm: 4000,
+            totalRowLengthMm: 5000,
+            openingDeductionMm: 0,
             firstStationMm: 250,
             lastStationMm: 3750,
             regularSpanMm: 3500,

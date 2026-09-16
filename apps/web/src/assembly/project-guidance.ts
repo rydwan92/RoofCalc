@@ -6,6 +6,7 @@ import type {
   BattenInstallationDecision,
   BattenInstallationIssue,
 } from './batten-installation';
+import type { BattenWorkflow, CounterBattenWorkflow } from './batten-workflow';
 
 export type ProjectGuidanceSeverity =
   'blocker' | 'warning' | 'info' | 'success';
@@ -15,6 +16,9 @@ export type ProjectGuidanceKind =
   | 'layer-warning'
   | 'covering-missing'
   | 'covering-warning'
+  | 'battens-check'
+  | 'hip-detail-required'
+  | 'layers-ready'
   | 'k1-ready'
   | 'export-ready';
 
@@ -26,7 +30,14 @@ export interface ProjectGuidanceItem {
   targetTask?:
     'construction' | 'openings' | 'layers' | 'covering' | 'cuts' | 'materials';
   source:
-    'geometry' | 'opening' | 'layer' | 'covering' | 'fabrication' | 'document';
+    | 'geometry'
+    | 'opening'
+    | 'layer'
+    | 'covering'
+    | 'battens'
+    | 'counter-battens'
+    | 'fabrication'
+    | 'document';
 }
 
 const priority: Record<ProjectGuidanceSeverity, number> = {
@@ -36,10 +47,17 @@ const priority: Record<ProjectGuidanceSeverity, number> = {
   success: 3,
 };
 
+/**
+ * V43B: after the covering, guidance walks the real build-up order —
+ * battens (checked against the covering), then the counter-batten hip detail,
+ * then "layers ready". A placeholder gauge can never produce a ready step,
+ * because readiness comes from `BattenWorkflow.complete` alone.
+ */
 export function deriveProjectGuidance(
   facts: ProjectWorkflowFacts,
   exportReady: boolean,
   installation?: BattenInstallationDecision,
+  workflow?: { battens: BattenWorkflow; counterBattens: CounterBattenWorkflow },
 ): ProjectGuidanceItem[] {
   const items: ProjectGuidanceItem[] = [];
   if (!facts.constructionReady)
@@ -58,7 +76,11 @@ export function deriveProjectGuidance(
       targetTask: 'openings',
       source: 'opening',
     });
-  if (facts.layerWarnings > 0)
+  // A blocked batten decision has its own, more specific step below.
+  if (
+    facts.layerWarnings > 0 &&
+    !(workflow?.battens.tone === 'blocked' && facts.coveringCount > 0)
+  )
     items.push({
       kind: 'layer-warning',
       severity: 'warning',
@@ -92,6 +114,42 @@ export function deriveProjectGuidance(
         installation?.issues.find(
           (issue) => issue.category === 'hard-constraint',
         )?.code ?? installation?.issues[0]?.code,
+    });
+  const battens = workflow?.battens;
+  const counter = workflow?.counterBattens;
+  if (
+    facts.constructionReady &&
+    facts.coveringCount > 0 &&
+    battens &&
+    (battens.capability?.requiresBattens ?? true) &&
+    !battens.complete
+  )
+    items.push({
+      kind: 'battens-check',
+      severity: battens.tone === 'blocked' ? 'warning' : 'info',
+      action: 'reviewBattens',
+      targetTask: 'layers',
+      source: 'battens',
+    });
+  if (facts.constructionReady && counter?.state === 'needs-hip-detail')
+    items.push({
+      kind: 'hip-detail-required',
+      severity: 'info',
+      action: 'reviewHipDetail',
+      targetTask: 'layers',
+      source: 'counter-battens',
+    });
+  if (
+    facts.constructionReady &&
+    battens?.complete &&
+    (counter?.complete ?? false)
+  )
+    items.push({
+      kind: 'layers-ready',
+      severity: 'success',
+      action: 'reviewLayers',
+      targetTask: 'layers',
+      source: 'layer',
     });
   if (facts.k1Ready)
     items.push({

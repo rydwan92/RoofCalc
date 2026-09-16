@@ -163,6 +163,14 @@ describe('cost suggestion adapter', () => {
     expect(battens.quantityBasis).toBe('geometric-length');
     expect(battens.quantity).toEqual({ value: 12, unit: 'm' });
     expect(battens.noteKeys).toContain('no-allowance-no-stock-length');
+    expect(battens.noteKeys).not.toContain('batten-gauge-unverified');
+    // V43B: same exact length, but an unverified manual gauge is labelled.
+    const unverified = createCostSuggestions({
+      ...withBattens,
+      battenWorkflow: { state: 'manual-unverified' } as never,
+    }).find((s) => s.kind === 'battens');
+    expect(unverified?.quantity).toEqual({ value: 12, unit: 'm' });
+    expect(unverified?.noteKeys).toContain('batten-gauge-unverified');
   });
 
   it('flags a partial counter-batten result without hiding it', () => {

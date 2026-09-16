@@ -369,6 +369,26 @@ and their totals are never added together.
   gauge/range, course count and counter-batten axis/segment status without
   implying purchase quantities.
 
+## 12.1 Covering-first installation workflow (V43B)
+
+- The order is covering → battens → counter-battens. A beginner never enters a
+  raw gauge first; a covering proposes **Rozmieść łaty automatycznie**.
+- Every gauge shows its owner badge (AUTO / RĘCZNIE) next to the value. A
+  manual gauge without a covering reads "Rozstaw ręczny · niezweryfikowany z
+  pokryciem" and is never "Gotowe". Auto without covering data draws no rows
+  and offers **Wybierz pokrycie** / **Ustaw ręcznie**.
+- Regular gauge, Detal okapu and Detal kalenicy are three separate facts; edge
+  details are always manual and explained with a sketch.
+- A mismatch states value and product range and offers one-step
+  **Dopasuj automatycznie**; the manual value is never silently overwritten.
+- Partial counter-battens say why in the summary itself ("4 grzbiety H1
+  wymagają wyboru detalu") with a direct action; each hip option shows what it
+  changes in length.
+- A narrowed batten plane scope is always visible ("Tylko 1 z 4 połaci").
+- The composite plan uses stroke hierarchy, not colour alone: subtle covering,
+  wide translucent counter-battens underneath, thin dark battens on top.
+- Installation lengths are "geometric", never "do zakupu".
+
 ## 13. Perspective navigation and Cost Workspace (V34B)
 
 - Five perspectives are the primary navigation (§2): **Projekt**,

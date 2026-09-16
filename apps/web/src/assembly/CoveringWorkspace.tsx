@@ -29,6 +29,11 @@ import type {
 } from '@cieslacalc/roof-math';
 import { parseDecimal } from '../format';
 import { useAssembly } from './store';
+import { newBattenLayer } from './build-up-defaults';
+import {
+  CoveringInstallationBlock,
+  type InstallationWorkflowFacts,
+} from './InstallationWorkflow';
 import {
   coveringKindLabelKey,
   installationModeLabelKey,
@@ -334,6 +339,7 @@ export function CoveringWorkspace({
   surfaceGeometry,
   battens,
   counterBattens,
+  installation,
 }: {
   assignments: readonly CoveringAssignmentSpec[];
   assignment?: CoveringAssignmentSpec;
@@ -342,6 +348,7 @@ export function CoveringWorkspace({
   surfaceGeometry: RoofSurfaceGeometryResult;
   battens: BattenLayoutResult;
   counterBattens: CounterBattenLayoutResult;
+  installation?: InstallationWorkflowFacts;
 }) {
   const state = useAssembly();
   const { t, i18n } = useTranslation();
@@ -526,20 +533,28 @@ export function CoveringWorkspace({
     kind: 'roof-tile' | 'modular-sheet' | 'standing-seam',
     product?: CoveringProductSelection,
   ) => {
+    // V43B: a normal roof has one covering, so a new assignment takes every
+    // plane no other assignment owns. Only when all planes are already owned
+    // does it start on one plane, where the ownership conflict stays visible.
+    const freePlaneIds = surfaceGeometry.planes
+      .map((plane) => plane.roofPlaneId)
+      .filter(
+        (id) => !assignments.some((item) => item.roofPlaneIds.includes(id)),
+      );
+    const roofPlaneIds = freePlaneIds.length
+      ? freePlaneIds
+      : [surfaceGeometry.planes[0]!.roofPlaneId];
     const next =
       kind === 'roof-tile'
-        ? createManualTileAssignment({
-            existing: assignments,
-            roofPlaneIds: [surfaceGeometry.planes[0]!.roofPlaneId],
-          })
+        ? createManualTileAssignment({ existing: assignments, roofPlaneIds })
         : kind === 'modular-sheet'
           ? createManualModularSheetAssignment({
               existing: assignments,
-              roofPlaneIds: [surfaceGeometry.planes[0]!.roofPlaneId],
+              roofPlaneIds,
             })
           : createManualStandingSeamAssignment({
               existing: assignments,
-              roofPlaneIds: [surfaceGeometry.planes[0]!.roofPlaneId],
+              roofPlaneIds,
             });
     if (product) {
       next.product = product;
@@ -817,6 +832,12 @@ export function CoveringWorkspace({
         )}
       </header>
       {picker}
+      {installation && (
+        <CoveringInstallationBlock
+          assignment={assignment}
+          facts={installation}
+        />
+      )}
       {conflicts.length > 0 && (
         <div className="a-covering-warning" role="alert">
           <AlertTriangle size={18} />
@@ -862,16 +883,9 @@ export function CoveringWorkspace({
           {layout.issueCodes.some((code) => code.startsWith('batten-')) &&
             isTileAssignment(assignment) && (
               <BattenAutoRepair
-                targetPlaneIds={assignment.roofPlaneIds}
                 layout={
-                  state.projectDocument.project.buildUp.battenLayout ?? {
-                    enabled: true,
-                    gaugeMm: 350,
-                    eaveOffsetMm: 250,
-                    ridgeOffsetMm: 0,
-                    battenWidthMm: 60,
-                    battenHeightMm: 40,
-                  }
+                  state.projectDocument.project.buildUp.battenLayout ??
+                  newBattenLayer()
                 }
               />
             )}

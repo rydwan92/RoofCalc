@@ -8,6 +8,8 @@ export type ProjectWorkflowAction =
   | 'completeGeometry'
   | 'reviewOpenings'
   | 'reviewLayers'
+  | 'reviewBattens'
+  | 'reviewHipDetail'
   | 'addCovering'
   | 'reviewCovering'
   | 'planK1'

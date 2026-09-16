@@ -163,7 +163,17 @@ function battensSuggestion(facts: ExportFacts): BattensSuggestion[] {
       quantityBasis: 'geometric-length',
       suitability: 'geometric-estimate',
       quantity: { value: totalLengthMm / MM_PER_M, unit: 'm' },
-      noteKeys: ['no-allowance-no-stock-length'],
+      // V43B: the geometric length stays exact, but a gauge the covering never
+      // confirmed must not read like a finished installation quantity.
+      noteKeys: [
+        'no-allowance-no-stock-length',
+        ...(facts.battenWorkflow?.state === 'manual-unverified'
+          ? ['batten-gauge-unverified']
+          : facts.battenWorkflow?.state === 'manual-incompatible' ||
+              facts.battenWorkflow?.state === 'auto-incompatible'
+            ? ['batten-gauge-incompatible']
+            : []),
+      ],
     },
   ];
 }

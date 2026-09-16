@@ -39,6 +39,12 @@ export function materialTestFacts(): ExportFacts {
       totalLengthMm: 0,
       planes: [],
       issues: [],
+      scope: {
+        kind: 'whole-roof',
+        // Disabled layer fixture: plane lists come only from the template resolver.
+        roofPlaneIds: [],
+        knownRoofPlaneIds: [],
+      },
     },
     battenAutoSource: { status: 'missing' },
     counterBattens: {

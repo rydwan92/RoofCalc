@@ -59,6 +59,8 @@ import { formatLength } from '../format';
 import { MemberInstanceOverlay } from './MemberInstanceOverlay';
 import { roofPlaneShortLabelKey } from './covering-presentation';
 import { useAssembly } from './store';
+import { uniformBattenGauge } from './batten-installation';
+import { InstallationLegend } from './InstallationWorkflow';
 import { useMobileWorkbench } from './mobile-workbench';
 import {
   pinchViewport,
@@ -188,6 +190,7 @@ function SkeletonCanvasComponent({
       fitRequestId: store.workbench.fitRequestId,
       features: store.projectDocument.project.features,
       battenLayout: store.projectDocument.project.buildUp.battenLayout,
+      coverings: store.projectDocument.project.coverings,
       membrane: store.projectDocument.project.buildUp.membrane,
       counterBattenLayout: store.projectDocument.project.buildUp.counterBattens,
       beginTransaction: store.beginTransaction,
@@ -637,6 +640,17 @@ function SkeletonCanvasComponent({
     : undefined;
   const selectedBatten = battenResult.battens.find(
     (batten) => batten.id === state.workbench.selectedId,
+  );
+  // V43B: the HUD shows the solver's actual gauge for this plane. It used to
+  // print the retained manual `gaugeMm` (e.g. 350) even while Auto owned it.
+  const selectedBattenGaugeMm = selectedBatten
+    ? battenResult.planes.find(
+        (plane) => plane.roofPlaneId === selectedBatten.roofPlaneId,
+      )?.actualGaugeMm
+    : undefined;
+  const uniformGaugeMm = uniformBattenGauge(battenResult);
+  const coveredPlaneIds = new Set(
+    selectedStore.coverings.flatMap((assignment) => assignment.roofPlaneIds),
   );
   const bayMemberIds = new Set(selectedBay?.memberInstanceIds ?? []);
   const placementPlanes = resolveRoofPlaneIds(template).map((roofPlaneId) => {
@@ -1295,7 +1309,7 @@ function SkeletonCanvasComponent({
           {state.workbench.viewPreset === 'layers' &&
           state.workbench.buildUpView === 'battens' &&
           selectedStore.battenLayout?.enabled
-            ? `${battenResult.battens.length} ${t('assembly.battenRows').toLowerCase()} · ${battenResult.planes[0]?.actualGaugeMm ? length(battenResult.planes[0].actualGaugeMm) : '—'} · ${new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 1 }).format(battenResult.totalLengthMm / 1000)} m`
+            ? `${battenResult.battens.length} ${t('assembly.battenRows').toLowerCase()} · ${uniformGaugeMm !== undefined ? length(uniformGaugeMm) : '—'} · ${new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 1 }).format(battenResult.totalLengthMm / 1000)} m`
             : template.type === 'hip'
               ? t('assembly.hipSkeletonCount', {
                   common: skeleton.members.filter(
@@ -1313,6 +1327,8 @@ function SkeletonCanvasComponent({
                 })}
         </span>
       </div>
+      {selectedStore.viewPreset === 'layers' &&
+        selectedStore.buildUpView === 'installation' && <InstallationLegend />}
       {selectedStore.placementTool && (
         <div className="a-placement-banner" role="status">
           {t(
@@ -1433,6 +1449,22 @@ function SkeletonCanvasComponent({
             </text>
           </g>
         )}
+        {policy.showCoveringUnderlay && (
+          <g
+            className="a-covering-underlay"
+            aria-hidden="true"
+            data-testid="installation-covering-underlay"
+          >
+            {placementPlanes
+              .filter((plane) => coveredPlaneIds.has(plane.roofPlaneId))
+              .map((plane) => (
+                <polygon
+                  key={plane.roofPlaneId}
+                  points={pointString(plane.corners)}
+                />
+              ))}
+          </g>
+        )}
         {policy.showMembrane && (
           <g
             className={`a-membrane-layer ${selectedStore.membrane?.enabled ? '' : 'is-disabled'}`}
@@ -1510,6 +1542,56 @@ function SkeletonCanvasComponent({
             )}
           </g>
         )}
+        {/* Counter-battens lie under battens: draw them first (V43B). */}
+        {policy.showCounterBattens && (
+          <g
+            className="a-counter-batten-layer"
+            aria-label={t('assembly.counterBattens')}
+          >
+            {counterBattenLines.map((row) => {
+              const selected = state.workbench.selectedId === row.rowId;
+              return (
+                <g
+                  key={row.id}
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={selected}
+                  data-counter-batten-row={row.rowId}
+                  className={selected ? 'is-selected' : ''}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    state.select(row.rowId);
+                  }}
+                  onDoubleClick={(event) => {
+                    event.stopPropagation();
+                    focusScreenPoints([row.from, row.to]);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      state.select(row.rowId);
+                    }
+                  }}
+                >
+                  <line
+                    className="a-counter-batten-hit-target"
+                    x1={row.from.x}
+                    y1={row.from.y}
+                    x2={row.to.x}
+                    y2={row.to.y}
+                  />
+                  <line
+                    className="a-counter-batten-segment"
+                    x1={row.from.x}
+                    y1={row.from.y}
+                    x2={row.to.x}
+                    y2={row.to.y}
+                  />
+                </g>
+              );
+            })}
+          </g>
+        )}
         {policy.showBattens && (
           <g className="a-batten-layer" aria-label={t('assembly.battens')}>
             {battenLines.map((batten) => (
@@ -1560,55 +1642,6 @@ function SkeletonCanvasComponent({
                 />
               </g>
             ))}
-          </g>
-        )}
-        {policy.showCounterBattens && (
-          <g
-            className="a-counter-batten-layer"
-            aria-label={t('assembly.counterBattens')}
-          >
-            {counterBattenLines.map((row) => {
-              const selected = state.workbench.selectedId === row.rowId;
-              return (
-                <g
-                  key={row.id}
-                  role="button"
-                  tabIndex={0}
-                  aria-pressed={selected}
-                  data-counter-batten-row={row.rowId}
-                  className={selected ? 'is-selected' : ''}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    state.select(row.rowId);
-                  }}
-                  onDoubleClick={(event) => {
-                    event.stopPropagation();
-                    focusScreenPoints([row.from, row.to]);
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault();
-                      state.select(row.rowId);
-                    }
-                  }}
-                >
-                  <line
-                    className="a-counter-batten-hit-target"
-                    x1={row.from.x}
-                    y1={row.from.y}
-                    x2={row.to.x}
-                    y2={row.to.y}
-                  />
-                  <line
-                    className="a-counter-batten-segment"
-                    x1={row.from.x}
-                    y1={row.from.y}
-                    x2={row.to.x}
-                    y2={row.to.y}
-                  />
-                </g>
-              );
-            })}
           </g>
         )}
         {unresolvedHipBoundaries.length > 0 && (
@@ -2079,8 +2112,9 @@ function SkeletonCanvasComponent({
       {selectedBatten && !selectedWindowOverlay && (
         <div className="a-window-hud a-batten-hud" role="status">
           <strong>
-            L{selectedBatten.id.split(':').at(-1)} ·{' '}
-            {length(selectedStore.battenLayout?.gaugeMm ?? 0)}
+            L{selectedBatten.rowNumber}
+            {selectedBattenGaugeMm !== undefined &&
+              ` · ${length(selectedBattenGaugeMm)}`}
           </strong>
           <span>
             {length(selectedBatten.usableLengthMm)} ·{' '}

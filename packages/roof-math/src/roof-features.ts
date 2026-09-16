@@ -43,6 +43,8 @@ export interface BattenSegment {
 export interface ResolvedBatten {
   id: string;
   roofPlaneId: string;
+  /** 1-based course number on its plane, counted uphill from the eave. */
+  rowNumber: number;
   stationMm: number;
   usableLengthMm: number;
   segments: BattenSegment[];
@@ -52,9 +54,19 @@ export interface BattenLayoutResult {
   status: 'disabled' | 'resolved' | 'partial' | 'incomplete';
   mode: 'manual' | 'auto-from-covering';
   battens: ResolvedBatten[];
+  /** Exact sum of every visible clipped row segment; equals the plane sum. */
   totalLengthMm: number;
   planes: BattenPlaneLayoutResult[];
   issues: BattenLayoutIssueCode[];
+  /**
+   * V43B scope evidence. `roofPlaneIds` is the layer's own target list; a
+   * `subset` scope is legitimate user intent but must never be silent.
+   */
+  scope: {
+    kind: 'whole-roof' | 'subset';
+    roofPlaneIds: string[];
+    knownRoofPlaneIds: string[];
+  };
 }
 
 export type BattenLayoutIssueCode =
@@ -71,11 +83,17 @@ export type BattenLayoutIssueCode =
 export interface BattenPlaneLayoutResult {
   roofPlaneId: string;
   status: 'resolved' | 'unresolved';
+  /** Plane-local eave-to-top distance measured along the fall line (v). */
+  slopeLengthMm: number;
   firstStationMm: number;
   lastStationMm: number;
   regularSpanMm: number;
   intervalCount?: number;
   courseCount: number;
+  /** V43B evidence: visible clipped length of this plane's rows. */
+  totalRowLengthMm: number;
+  /** Row length removed by roof openings (unclipped minus visible). */
+  openingDeductionMm: number;
   actualGaugeMm?: number;
   stations: number[];
   issues: BattenLayoutIssueCode[];
@@ -822,42 +840,55 @@ export function resolveBattenLayout(args: {
   autoSource?: BattenAutoSource;
 }): BattenLayoutResult {
   const mode = battenLayoutMode(args.layout);
-  const invalid = (issue: BattenLayoutIssueCode): BattenLayoutResult => ({
-    status: 'incomplete',
+  const knownPlanes =
+    args.template.type === 'gable'
+      ? ['roof-plane:left', 'roof-plane:right']
+      : [
+          'roof-plane:left',
+          'roof-plane:right',
+          'roof-plane:front',
+          'roof-plane:rear',
+        ];
+  const planeIds = args.layout.roofPlaneIds ?? knownPlanes;
+  const scope: BattenLayoutResult['scope'] = {
+    kind: knownPlanes.every((id) => planeIds.includes(id))
+      ? 'whole-roof'
+      : 'subset',
+    roofPlaneIds: [...planeIds],
+    knownRoofPlaneIds: knownPlanes,
+  };
+  const empty = (
+    status: BattenLayoutResult['status'],
+    issues: BattenLayoutIssueCode[],
+  ): BattenLayoutResult => ({
+    status,
     mode,
     battens: [],
     totalLengthMm: 0,
     planes: [],
-    issues: [issue],
+    issues,
+    scope,
   });
-  if (!args.layout.enabled)
-    return {
-      status: 'disabled',
-      mode,
-      battens: [],
-      totalLengthMm: 0,
-      planes: [],
-      issues: [],
-    };
+  if (!args.layout.enabled) return empty('disabled', []);
   if (
     mode === 'manual' &&
     (!Number.isFinite(args.layout.gaugeMm) || !(args.layout.gaugeMm > 0))
   )
-    return invalid('invalid-batten-gauge');
+    return empty('incomplete', ['invalid-batten-gauge']);
   if (
     !Number.isFinite(args.layout.battenWidthMm) ||
     !Number.isFinite(args.layout.battenHeightMm) ||
     !(args.layout.battenWidthMm > 0) ||
     !(args.layout.battenHeightMm > 0)
   )
-    return invalid('invalid-batten-section');
+    return empty('incomplete', ['invalid-batten-section']);
   if (
     !Number.isFinite(args.layout.eaveOffsetMm) ||
     args.layout.eaveOffsetMm < 0 ||
     !Number.isFinite(args.layout.ridgeOffsetMm ?? 0) ||
     (args.layout.ridgeOffsetMm ?? 0) < 0
   )
-    return invalid('invalid-batten-offset');
+    return empty('incomplete', ['invalid-batten-offset']);
   if (
     !roofTemplateSchema.safeParse(args.template).success ||
     (args.features ?? []).some(
@@ -873,42 +904,19 @@ export function resolveBattenLayout(args: {
           feature.heightMm <= 0),
     )
   )
-    return invalid('invalid-layout-geometry');
-  const planeIds =
-    args.layout.roofPlaneIds ??
-    (args.template.type === 'gable'
-      ? ['roof-plane:left', 'roof-plane:right']
-      : [
-          'roof-plane:left',
-          'roof-plane:right',
-          'roof-plane:front',
-          'roof-plane:rear',
-        ]);
-  const knownPlanes =
-    args.template.type === 'gable'
-      ? ['roof-plane:left', 'roof-plane:right']
-      : [
-          'roof-plane:left',
-          'roof-plane:right',
-          'roof-plane:front',
-          'roof-plane:rear',
-        ];
-  if (!planeIds.length || planeIds.some((id) => !knownPlanes.includes(id)))
-    return invalid('roof-plane-not-found');
-  if (mode === 'auto-from-covering' && args.autoSource?.status !== 'resolved') {
-    const issue: BattenLayoutIssueCode =
+    return empty('incomplete', ['invalid-layout-geometry']);
+  if (
+    !planeIds.length ||
+    planeIds.some((id) => !knownPlanes.includes(id)) ||
+    new Set(planeIds).size !== planeIds.length
+  )
+    return empty('incomplete', ['roof-plane-not-found']);
+  if (mode === 'auto-from-covering' && args.autoSource?.status !== 'resolved')
+    return empty('incomplete', [
       args.autoSource?.status === 'conflict'
         ? 'auto-source-conflict'
-        : 'auto-source-missing';
-    return {
-      status: 'incomplete',
-      mode,
-      battens: [],
-      totalLengthMm: 0,
-      planes: [],
-      issues: [issue],
-    };
-  }
+        : 'auto-source-missing',
+    ]);
   const autoConstraint =
     args.autoSource?.status === 'resolved' ? args.autoSource : undefined;
   const planes: BattenPlaneLayoutResult[] = [];
@@ -916,27 +924,33 @@ export function resolveBattenLayout(args: {
     const basis = resolveRoofPlaneBasis(args.template, roofPlaneId);
     const minV = Math.min(...basis.polygon.map((item) => item.vMm));
     const maxV = Math.max(...basis.polygon.map((item) => item.vMm));
+    const slopeLengthMm = maxV - minV;
     const firstStationMm = minV + args.layout.eaveOffsetMm;
     const lastStationMm = maxV - (args.layout.ridgeOffsetMm ?? 0);
+    const unresolved = (issue: BattenLayoutIssueCode): ResolvedBatten[] => {
+      planes.push({
+        roofPlaneId,
+        status: 'unresolved',
+        slopeLengthMm,
+        firstStationMm,
+        lastStationMm,
+        regularSpanMm: lastStationMm - firstStationMm,
+        courseCount: 0,
+        totalRowLengthMm: 0,
+        openingDeductionMm: 0,
+        stations: [],
+        issues: [issue],
+      });
+      return [];
+    };
     if (
       firstStationMm < minV ||
       firstStationMm >= maxV ||
       lastStationMm > maxV ||
       lastStationMm <= minV ||
       lastStationMm <= firstStationMm
-    ) {
-      planes.push({
-        roofPlaneId,
-        status: 'unresolved',
-        firstStationMm,
-        lastStationMm,
-        regularSpanMm: lastStationMm - firstStationMm,
-        courseCount: 0,
-        stations: [],
-        issues: ['invalid-regular-span'],
-      });
-      return [];
-    }
+    )
+      return unresolved('invalid-regular-span');
     const spacing =
       mode === 'auto-from-covering'
         ? resolveAutoBattenSpacing({
@@ -950,66 +964,40 @@ export function resolveBattenLayout(args: {
     if (
       mode === 'manual' &&
       (lastStationMm - firstStationMm) / args.layout.gaugeMm > 100_000
-    ) {
-      planes.push({
-        roofPlaneId,
-        status: 'unresolved',
-        firstStationMm,
-        lastStationMm,
-        regularSpanMm: lastStationMm - firstStationMm,
-        courseCount: 0,
-        stations: [],
-        issues: ['layout-capacity-exceeded'],
-      });
-      return [];
-    }
+    )
+      return unresolved('layout-capacity-exceeded');
+    // Manual stations are exact multiples of the gauge from the first station
+    // rather than repeated float additions, so row n carries no drift.
     const stations = spacing
       ? spacing.status === 'resolved'
         ? spacing.stations
         : []
-      : (() => {
-          const result: number[] = [];
-          for (
-            let stationMm = firstStationMm;
-            stationMm <= lastStationMm + EPSILON;
-            stationMm += args.layout.gaugeMm
-          )
-            result.push(stationMm);
-          return result;
-        })();
+      : Array.from(
+          {
+            length:
+              Math.floor(
+                (lastStationMm - firstStationMm) / args.layout.gaugeMm +
+                  EPSILON,
+              ) + 1,
+          },
+          (_, index) => firstStationMm + index * args.layout.gaugeMm,
+        );
     const planeIssues: BattenLayoutIssueCode[] =
       spacing?.issues ??
       (stations.length < 2 ? ['batten-course-spacing-required'] : []);
-    planes.push({
-      roofPlaneId,
-      status:
-        spacing?.status ?? (planeIssues.length ? 'unresolved' : 'resolved'),
-      firstStationMm,
-      lastStationMm,
-      regularSpanMm: lastStationMm - firstStationMm,
-      intervalCount:
-        spacing?.status === 'resolved'
-          ? spacing.intervalCount
-          : Math.max(0, stations.length - 1),
-      courseCount: stations.length,
-      actualGaugeMm:
-        spacing?.status === 'resolved'
-          ? spacing.actualGaugeMm
-          : mode === 'manual' && stations.length > 1
-            ? args.layout.gaugeMm
-            : undefined,
-      stations,
-      issues: planeIssues,
-      ...(spacing?.status === 'resolved' ? { autoPlan: spacing } : {}),
-    });
     const windows = (args.features ?? []).filter(
       (feature): feature is RoofWindowFeature =>
         feature.kind === 'roof-window' && feature.roofPlaneId === roofPlaneId,
     );
-    const rows: ResolvedBatten[] = [];
-    stations.forEach((stationMm, stationIndex) => {
+    let unclippedLengthMm = 0;
+    const rows = stations.map((stationMm, stationIndex): ResolvedBatten => {
+      const planeIntervals = intervalsAtV(basis.polygon, stationMm);
+      unclippedLengthMm += planeIntervals.reduce(
+        (total, segment) => total + segment.toUMm - segment.fromUMm,
+        0,
+      );
       const segments = subtractIntervals(
-        intervalsAtV(basis.polygon, stationMm),
+        planeIntervals,
         windows
           .filter(
             (window) =>
@@ -1020,17 +1008,47 @@ export function resolveBattenLayout(args: {
             fromUMm: window.position.uMm,
             toUMm: window.position.uMm + window.widthMm,
           })),
-      );
-      rows.push({
+      ).filter((segment) => segment.toUMm - segment.fromUMm > EPSILON);
+      return {
         id: `batten:${roofPlaneId}:${stationIndex + 1}`,
         roofPlaneId,
+        rowNumber: stationIndex + 1,
         stationMm,
         segments,
         usableLengthMm: segments.reduce(
           (total, segment) => total + segment.toUMm - segment.fromUMm,
           0,
         ),
-      });
+      };
+    });
+    const totalRowLengthMm = rows.reduce(
+      (total, row) => total + row.usableLengthMm,
+      0,
+    );
+    planes.push({
+      roofPlaneId,
+      status:
+        spacing?.status ?? (planeIssues.length ? 'unresolved' : 'resolved'),
+      slopeLengthMm,
+      firstStationMm,
+      lastStationMm,
+      regularSpanMm: lastStationMm - firstStationMm,
+      intervalCount:
+        spacing?.status === 'resolved'
+          ? spacing.intervalCount
+          : Math.max(0, stations.length - 1),
+      courseCount: stations.length,
+      totalRowLengthMm,
+      openingDeductionMm: Math.max(0, unclippedLengthMm - totalRowLengthMm),
+      actualGaugeMm:
+        spacing?.status === 'resolved'
+          ? spacing.actualGaugeMm
+          : mode === 'manual' && stations.length > 1
+            ? args.layout.gaugeMm
+            : undefined,
+      stations,
+      issues: planeIssues,
+      ...(spacing?.status === 'resolved' ? { autoPlan: spacing } : {}),
     });
     return rows;
   });
@@ -1047,12 +1065,14 @@ export function resolveBattenLayout(args: {
           : 'incomplete',
     mode,
     battens,
-    totalLengthMm: battens.reduce(
-      (total, batten) => total + batten.usableLengthMm,
+    // The aggregate is literally the per-plane sum; there is no second formula.
+    totalLengthMm: planes.reduce(
+      (total, plane) => total + plane.totalRowLengthMm,
       0,
     ),
     planes,
     issues,
+    scope,
   };
 }
 

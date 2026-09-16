@@ -330,7 +330,7 @@ it('keeps the covering drawing separate from exact product parameters and repair
   expect(useAssembly.getState().historyPast).toHaveLength(1);
   fireEvent.click(within(sheet).getByRole('button', { name: 'Zamknij' }));
   fireEvent.click(
-    screen.getByRole('button', { name: /Dopasuj łaty automatycznie/ }),
+    screen.getByRole('button', { name: /Rozmieść łaty automatycznie/ }),
   );
   expect(
     useAssembly.getState().projectDocument.project.buildUp.battenLayout?.mode,
@@ -338,7 +338,7 @@ it('keeps the covering drawing separate from exact product parameters and repair
   expect(useAssembly.getState().workbench.viewPreset).toBe('covering');
   expect(useAssembly.getState().historyPast).toHaveLength(2);
   expect(
-    screen.queryByRole('button', { name: /Dopasuj łaty automatycznie/ }),
+    screen.queryByRole('button', { name: /Rozmieść łaty automatycznie/ }),
   ).toBeNull();
 });
 

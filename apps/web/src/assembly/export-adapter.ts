@@ -44,6 +44,7 @@ import type {
 import type { K1CuttingRequirement } from './k1-cutting-adapter';
 import type { K1SessionPlan } from './K1CuttingPlan';
 import type { BattenInstallationDecision } from './batten-installation';
+import type { BattenWorkflow, CounterBattenWorkflow } from './batten-workflow';
 import { uniformBattenGauge } from './batten-installation';
 import {
   createMaterialPlanRows,
@@ -76,6 +77,9 @@ export type ExportFacts = {
   battens: BattenLayoutResult;
   battenAutoSource: BattenAutoSource;
   battenInstallationDecision?: BattenInstallationDecision;
+  /** V43B workflow projections; consumed as facts, never recalculated. */
+  battenWorkflow?: BattenWorkflow;
+  counterBattenWorkflow?: CounterBattenWorkflow;
   coverings: CoveringAssignmentSpec[];
   counterBattens: CounterBattenLayoutResult;
   coveringStatuses: {
@@ -409,6 +413,20 @@ export function createExportCandidates(facts: ExportFacts): SectionCandidate[] {
                   (sum, plane) => sum + plane.courseCount,
                   0,
                 ),
+                ...(facts.battenWorkflow
+                  ? {
+                      workflowState: facts.battenWorkflow.state,
+                      ...(facts.battenWorkflow.productLabel
+                        ? { coveringProduct: facts.battenWorkflow.productLabel }
+                        : {}),
+                      ...(facts.battenWorkflow.installationModeId
+                        ? {
+                            installationModeId:
+                              facts.battenWorkflow.installationModeId,
+                          }
+                        : {}),
+                    }
+                  : {}),
               },
             }
           : row.familyKey === 'KL'
@@ -418,6 +436,21 @@ export function createExportCandidates(facts: ExportFacts): SectionCandidate[] {
                   planeCount: facts.counterBattens.roofPlaneIds.length,
                   axisCount: facts.counterBattens.resolvedAxisCount,
                   segmentCount: facts.counterBattens.visibleSegmentCount,
+                  ...(facts.counterBattenWorkflow
+                    ? {
+                        workflowState: facts.counterBattenWorkflow.state,
+                        ...(facts.counterBattenWorkflow.hipBoundaryCount > 0
+                          ? {
+                              hipDetail: facts.counterBattenWorkflow.hipDetail,
+                              hipBoundaryCount:
+                                facts.counterBattenWorkflow.hipBoundaryCount,
+                              unresolvedHipBoundaryCount:
+                                facts.counterBattenWorkflow
+                                  .unresolvedHipBoundaryCount,
+                            }
+                          : {}),
+                      }
+                    : {}),
                 },
               }
             : {}),

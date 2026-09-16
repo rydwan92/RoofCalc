@@ -23,6 +23,11 @@ import type { Calculation } from './Inputs';
 import { entityLabel } from './Canvas';
 import { useAssembly } from './store';
 import {
+  disabledCounterBattenLayer,
+  newBattenLayer,
+  newCounterBattenLayer,
+} from './build-up-defaults';
+import {
   createWorkbenchToolRegistry,
   type ToolIconKey,
   type WorkbenchToolDescriptor,
@@ -62,23 +67,9 @@ export function Toolbox({
     (activeTask === 'cuts' && section === 'active') ||
     (activeTask === 'materials' && section === 'quantity');
   const buildUp = state.projectDocument.project.buildUp;
-  const tileAssignments = state.projectDocument.project.coverings.filter(
-    (assignment) =>
-      assignment.product.technicalSpecSnapshot.kind === 'roof-tile',
-  );
   const membrane = buildUp.membrane ?? { enabled: false };
-  const counterBattens = buildUp.counterBattens ?? {
-    enabled: false,
-    widthMm: 40,
-    heightMm: 60,
-  };
-  const battens = buildUp.battenLayout ?? {
-    enabled: false,
-    battenHeightMm: 40,
-    battenWidthMm: 60,
-    gaugeMm: 350,
-    eaveOffsetMm: 250,
-  };
+  const counterBattens = buildUp.counterBattens ?? disabledCounterBattenLayer();
+  const battens = buildUp.battenLayout;
   const tools = createWorkbenchToolRegistry({
     template: state.template,
     spec: state.spec,
@@ -442,30 +433,29 @@ export function Toolbox({
                 state.setBuildUpView('counterBattens');
               },
               toggle: () =>
-                state.setCounterBattenLayout({
-                  ...counterBattens,
-                  enabled: !counterBattens.enabled,
-                }),
+                state.setCounterBattenLayout(
+                  buildUp.counterBattens
+                    ? { ...counterBattens, enabled: !counterBattens.enabled }
+                    : newCounterBattenLayer(),
+                ),
             },
             {
               id: 'battens',
               label: 'battens',
-              enabled: battens.enabled,
+              enabled: !!battens?.enabled,
               select: () => {
                 state.select('layer:battens');
                 state.setBuildUpView('battens');
               },
+              // V43B: a new layer is Auto and follows the whole roof. It never
+              // copies a covering's current plane list (that froze the layer
+              // on one plane) and never starts from an unverified 350 mm gauge.
               toggle: () =>
-                state.setBattenLayout({
-                  ...battens,
-                  enabled: !battens.enabled,
-                  ...(!buildUp.battenLayout && tileAssignments.length === 1
-                    ? {
-                        mode: 'auto-from-covering' as const,
-                        roofPlaneIds: [...tileAssignments[0]!.roofPlaneIds],
-                      }
-                    : {}),
-                }),
+                state.setBattenLayout(
+                  battens
+                    ? { ...battens, enabled: !battens.enabled }
+                    : newBattenLayer(),
+                ),
             },
           ] as const
         ).map((layer) => (

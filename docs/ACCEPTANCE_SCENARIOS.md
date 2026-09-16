@@ -513,6 +513,27 @@ Covered by `packages/roof-math/src/finished-rafter-solid.test.ts` and
 
 ---
 
+## INSTALL-001 — Covering-first batten workflow · `AUTOMATED` `BROWSER`
+
+1. Hip roof → Pokrycie → catalogue roof tile (KODA seed). The tile takes all
+   four planes; mode is sole and shown as Standardowy; pitch ✓.
+2. **Rozmieść łaty automatycznie** → AUTO, gauge within 39–43 cm, rows per
+   plane, whole-roof geometric length (= sum of per-plane solver totals).
+3. **Dodaj kontrłaty z konstrukcji** → "Częściowo · 4 grzbiety H1 wymagają
+   wyboru detalu" → **Szczegóły montażu** opens the composite plan.
+4. Choose the hip detail → counter-battens Gotowe; Material Plan shows the same
+   batten and counter-batten lengths as geometry.
+
+Tests: `e2e/v43b-installation.spec.ts`, `batten-workflow.test.ts`,
+`Page.test.tsx` (V43B), `batten-layout-audit.test.ts`.
+
+## INSTALL-002 — Expert manual gauge · `AUTOMATED` `BROWSER`
+
+Manual gauge before or after a covering is validated (unverified / compatible /
+mismatch with range), retained across product change, and **Dopasuj
+automatycznie** is one undoable history step. No covering + Auto never shows a
+350 mm ready layout. Covering removal keeps Auto intent with zero rows.
+
 ## COMPOUND-001 — Higher house + lower garage · `PLANNED`
 
 **Not implemented.** No multi-structure document, transform, connection graph or

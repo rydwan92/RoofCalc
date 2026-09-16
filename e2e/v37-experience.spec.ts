@@ -46,7 +46,7 @@ async function addManualTile(page: Page) {
   await expect(page.getByTestId('tile-layout-drawing')).toBeVisible();
   const fit = page
     .locator('button:visible')
-    .filter({ hasText: /Dopasuj łaty automatycznie/ })
+    .filter({ hasText: /Rozmieść łaty automatycznie/ })
     .first();
   await fit.click();
   await expect(fit).toBeHidden();

@@ -13,6 +13,8 @@ export type TileInstallationIssueCode =
   | 'installation-mode-required'
   | 'installation-mode-not-found'
   | 'gauge-data-missing'
+  | 'pitch-rule-data-missing'
+  | 'pitch-rule-ambiguous'
   | 'invalid-product-data'
   | 'invalid-roof-pitch'
   | 'below-minimum-pitch'
@@ -41,9 +43,45 @@ export function resolveInstallationMode<T extends { id: string }>(
       : undefined;
 }
 
+/**
+ * V43B: which pitch-dependent rule of a mode applies, if the snapshot has any.
+ * Absent rules keep the mode's own values unconditional (V35 semantics).
+ */
+export function resolveTilePitchRule(
+  mode: RoofTileInstallationMode,
+  roofPitchDeg: number,
+):
+  | { status: 'unconditional' }
+  | {
+      status: 'resolved';
+      rule: NonNullable<RoofTileInstallationMode['installationRules']>[number];
+    }
+  | { status: 'missing' | 'ambiguous' } {
+  const rules = mode.installationRules ?? [];
+  if (!rules.length) return { status: 'unconditional' };
+  if (!Number.isFinite(roofPitchDeg)) return { status: 'missing' };
+  // Inclusive on both ends: a pitch sitting on a shared published boundary
+  // matches two rules and is reported as ambiguous instead of picking one.
+  const matches = rules.filter(
+    (rule) =>
+      roofPitchDeg >= rule.pitchRangeDeg.min &&
+      (rule.pitchRangeDeg.max === undefined ||
+        roofPitchDeg <= rule.pitchRangeDeg.max),
+  );
+  if (matches.length === 1) return { status: 'resolved', rule: matches[0]! };
+  return { status: matches.length ? 'ambiguous' : 'missing' };
+}
+
 export interface RoofTileInstallationEvaluation {
   source: DecisionSource;
   mode?: RoofTileInstallationMode;
+  /**
+   * V43B: the regular gauge range that actually applies at this pitch — the
+   * matching pitch rule's range, else the mode's own. Absent when a pitch rule
+   * exists but none applies unambiguously.
+   */
+  gaugeRangeMm?: { min: number; max: number };
+  pitchRuleId?: string;
   modeSelection: 'explicit' | 'sole-mode' | 'required';
   dataQuality: 'complete' | 'partial' | 'manual-unverified';
   capability: {
@@ -136,7 +174,32 @@ export function evaluateRoofTileInstallation(args: {
       category: 'information',
       source: 'unavailable',
     });
-  if (mode?.technicalConditionId)
+  const pitchRule = mode
+    ? resolveTilePitchRule(mode, args.roofPitchDeg)
+    : undefined;
+  if (pitchRule?.status === 'missing' || pitchRule?.status === 'ambiguous')
+    issues.push({
+      code:
+        pitchRule.status === 'missing'
+          ? 'pitch-rule-data-missing'
+          : 'pitch-rule-ambiguous',
+      category: 'hard-constraint',
+      source: 'unavailable',
+      actual: Number.isFinite(args.roofPitchDeg)
+        ? args.roofPitchDeg
+        : undefined,
+    });
+  const gaugeRangeMm = !mode
+    ? undefined
+    : pitchRule?.status === 'resolved'
+      ? (pitchRule.rule.gaugeRangeMm ?? mode.gaugeRangeMm)
+      : pitchRule?.status === 'unconditional'
+        ? mode.gaugeRangeMm
+        : undefined;
+  if (
+    mode?.technicalConditionId ||
+    (pitchRule?.status === 'resolved' && pitchRule.rule.technicalConditionId)
+  )
     issues.push({
       code: 'installation-condition-unverified',
       category: 'information',
@@ -157,6 +220,10 @@ export function evaluateRoofTileInstallation(args: {
   return {
     source,
     mode,
+    ...(gaugeRangeMm ? { gaugeRangeMm } : {}),
+    ...(pitchRule?.status === 'resolved'
+      ? { pitchRuleId: pitchRule.rule.id }
+      : {}),
     modeSelection: rawMode
       ? args.selectedInstallationModeId
         ? 'explicit'
@@ -166,7 +233,7 @@ export function evaluateRoofTileInstallation(args: {
     dataQuality:
       source === 'project-user-input' ? 'manual-unverified' : 'partial',
     capability: {
-      regularGauge: mode ? 'available' : 'unavailable',
+      regularGauge: gaugeRangeMm ? 'available' : 'unavailable',
       eaveReference: 'manual-required',
       ridgeReference: 'manual-required',
       pitchCompatibility:

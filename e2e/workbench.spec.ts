@@ -81,7 +81,7 @@ async function openResolvedTileSchedule(page: Page) {
   await addTile(page);
   const automaticFit = page
     .locator('button:visible')
-    .filter({ hasText: /Dopasuj łaty automatycznie/ })
+    .filter({ hasText: /Rozmieść łaty automatycznie/ })
     .first();
   await expect(automaticFit).toBeVisible();
   await automaticFit.click();
@@ -769,7 +769,7 @@ test.describe('V33 — build-up closeout', () => {
     await inspector
       .getByRole('button', { name: 'Ręcznie', exact: true })
       .click();
-    const gauge = inspector.getByLabel('Moduł łat', { exact: true });
+    const gauge = inspector.getByLabel('Rozstaw łat', { exact: true });
     await gauge.fill('40');
     await gauge.blur();
     await expect(inspector.getByTestId('batten-layout-status')).toHaveText(
@@ -818,9 +818,11 @@ test.describe('V34A — installation decisions', () => {
     const mobile = testInfo.project.name === 'mobile';
     await openBuilder(page);
     await addTile(page, '33', '36');
-    await page
-      .getByRole('button', { name: /Przypisz wszystkie połacie/ })
-      .click();
+    // V43B: a new covering already takes every free plane.
+    const assignAll = page.getByRole('button', {
+      name: /Przypisz wszystkie połacie/,
+    });
+    if (await assignAll.count()) await assignAll.click();
     let inspector = await layerInspector(page, 'Łaty', mobile);
     await inspector
       .getByRole('button', { name: 'Automatycznie z pokrycia' })
@@ -899,14 +901,16 @@ test.describe('V34A — installation decisions', () => {
     );
     await openBuilder(page);
     await addTile(page, '33', '36');
-    await page
-      .getByRole('button', { name: /Przypisz wszystkie połacie/ })
-      .click();
+    // V43B: a new covering already takes every free plane.
+    const assignAll = page.getByRole('button', {
+      name: /Przypisz wszystkie połacie/,
+    });
+    if (await assignAll.count()) await assignAll.click();
     const inspector = await layerInspector(page, 'Łaty', false);
     await inspector
       .getByRole('button', { name: 'Ręcznie', exact: true })
       .click();
-    const gauge = inspector.getByLabel('Moduł łat', { exact: true });
+    const gauge = inspector.getByLabel('Rozstaw łat', { exact: true });
     await gauge.fill('39');
     await gauge.blur();
     await expect(inspector.getByTestId('batten-layout-status')).toHaveAttribute(
@@ -958,14 +962,16 @@ test.describe('V34A — installation decisions', () => {
     );
     await openBuilder(page);
     await addTile(page, '33', '36');
-    await page
-      .getByRole('button', { name: /Przypisz wszystkie połacie/ })
-      .click();
+    // V43B: a new covering already takes every free plane.
+    const assignAll = page.getByRole('button', {
+      name: /Przypisz wszystkie połacie/,
+    });
+    if (await assignAll.count()) await assignAll.click();
     let inspector = await layerInspector(page, 'Łaty', false);
     await inspector
       .getByRole('button', { name: 'Ręcznie', exact: true })
       .click();
-    const gauge = inspector.getByLabel('Moduł łat', { exact: true });
+    const gauge = inspector.getByLabel('Rozstaw łat', { exact: true });
     await gauge.fill('34.5');
     await gauge.blur();
     await expect(inspector.getByTestId('batten-layout-status')).toHaveAttribute(
@@ -996,7 +1002,7 @@ test.describe('V34A — installation decisions', () => {
     ).toHaveCount(1);
     inspector = await layerInspector(page, 'Łaty', false);
     await expect(
-      inspector.getByLabel('Moduł łat', { exact: true }),
+      inspector.getByLabel('Rozstaw łat', { exact: true }),
     ).toHaveValue('34.5');
     await expect(inspector.getByTestId('batten-layout-status')).toHaveAttribute(
       'data-status',

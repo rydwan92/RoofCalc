@@ -51,6 +51,10 @@ import { HipBoundaryDetailChooser } from './HipBoundaryDetail';
 import { MemberInstanceInspector } from './MemberInstanceInspector';
 import type { WorkbenchSelectionContext } from './selection';
 import { useAssembly } from './store';
+import {
+  disabledBattenLayer,
+  disabledCounterBattenLayer,
+} from './build-up-defaults';
 import { SpacingSummary } from './Summary';
 import { memberInstanceCode } from './workbench';
 import {
@@ -62,6 +66,17 @@ import {
   uniformBattenGauge,
 } from './batten-installation';
 import type { BattenAutoComposition } from './batten-composition';
+import type { BattenWorkflow } from './batten-workflow';
+import {
+  BattenReferences,
+  BattenRowDetail,
+  BattenWorkflowPanel,
+  CounterBattenAxisDetail,
+  CounterBattenExplanation,
+  CounterBattenStatusLine,
+  WorkflowActions,
+  type InstallationWorkflowFacts,
+} from './InstallationWorkflow';
 
 const MembraneProductPicker = lazy(() =>
   import('../catalog/MembraneProductPicker').then((module) => ({
@@ -82,6 +97,7 @@ export function Inspector({
   battens,
   battenAutoComposition,
   counterBattens,
+  installation,
 }: {
   result: Calculation | null;
   hip?: ResolvedHipRafter;
@@ -99,6 +115,7 @@ export function Inspector({
   battens: BattenLayoutResult;
   battenAutoComposition: BattenAutoComposition;
   counterBattens: CounterBattenLayoutResult;
+  installation: InstallationWorkflowFacts;
 }) {
   const state = useAssembly();
   const { t } = useTranslation();
@@ -230,13 +247,25 @@ export function Inspector({
             )}
           {workbench.viewPreset === 'layers' &&
             workbench.buildUpView === 'counterBattens' && (
-              <CounterBattenInspector result={counterBattens} />
+              <CounterBattenInspector
+                result={counterBattens}
+                installation={installation}
+              />
             )}
           {workbench.viewPreset === 'layers' &&
             workbench.buildUpView === 'battens' && (
               <BattenLayoutInspector
                 result={battens}
                 composition={battenAutoComposition}
+                workflow={installation.battens}
+              />
+            )}
+          {workbench.viewPreset === 'layers' &&
+            workbench.buildUpView === 'installation' && (
+              <InstallationInspector
+                battens={battens}
+                counterBattens={counterBattens}
+                installation={installation}
               />
             )}
           {(isRafter || isJack || workbench.selectedId === 'cut:eave') && (
@@ -590,23 +619,73 @@ function MembraneProductForm() {
   );
 }
 
+/** V43B composite installation plan: both systems and their relationship. */
+function InstallationInspector({
+  battens,
+  counterBattens,
+  installation,
+}: {
+  battens: BattenLayoutResult;
+  counterBattens: CounterBattenLayoutResult;
+  installation: InstallationWorkflowFacts;
+}) {
+  const state = useAssembly();
+  const { t } = useTranslation();
+  const selectedId = state.workbench.selectedId;
+  return (
+    <section
+      className="a-layer-inspector a-installation-inspector"
+      data-testid="installation-inspector"
+    >
+      <h3>{t('assembly.install.title')}</h3>
+      <h4>{t('assembly.install.battens')}</h4>
+      <BattenWorkflowPanel workflow={installation.battens} />
+      <BattenReferences workflow={installation.battens} />
+      <h4>{t('assembly.install.counterBattens')}</h4>
+      <CounterBattenStatusLine workflow={installation.counterBattens} />
+      <CounterBattenExplanation
+        workflow={installation.counterBattens}
+        hipPairedRunsPreviewMm={installation.hipPairedRunsPreviewMm}
+      />
+      <WorkflowActions
+        actions={
+          installation.counterBattens.state === 'layer-off'
+            ? ['enable-counter-battens']
+            : installation.counterBattens.state === 'needs-hip-detail'
+              ? ['choose-hip-detail']
+              : []
+        }
+      />
+      {selectedId.startsWith('batten:') && (
+        <BattenRowDetail
+          result={battens}
+          rowId={selectedId}
+          workflow={installation.battens}
+        />
+      )}
+      {selectedId.startsWith('counter-batten:') && (
+        <CounterBattenAxisDetail result={counterBattens} rowId={selectedId} />
+      )}
+      <p className="a-limit-note">{t('assembly.install.notPurchase')}</p>
+    </section>
+  );
+}
+
 function CounterBattenInspector({
   result,
+  installation,
 }: {
   result: CounterBattenLayoutResult;
+  installation: InstallationWorkflowFacts;
 }) {
   const state = useAssembly();
   const { t, i18n } = useTranslation();
-  const layout = state.projectDocument.project.buildUp.counterBattens ?? {
-    enabled: false,
-    widthMm: 40,
-    heightMm: 60,
-  };
+  const layout =
+    state.projectDocument.project.buildUp.counterBattens ??
+    disabledCounterBattenLayer();
   const selected = result.rows.find(
     (row) => row.id === state.workbench.selectedId,
   );
-  const length = (value: number) =>
-    `${formatLength(value, state.unit, i18n.language)} ${state.unit}`;
   const planeIds = roofPlaneIds(state.template);
   const activePlaneIds = layout.roofPlaneIds ?? planeIds;
   const update = (field: 'widthMm' | 'heightMm', value: number) =>
@@ -628,6 +707,14 @@ function CounterBattenInspector({
       data-testid="counter-batten-inspector"
     >
       <h3>{t('assembly.counterBattens')}</h3>
+      <CounterBattenStatusLine workflow={installation.counterBattens} />
+      <CounterBattenExplanation
+        workflow={installation.counterBattens}
+        hipPairedRunsPreviewMm={installation.hipPairedRunsPreviewMm}
+      />
+      {installation.counterBattens.state === 'layer-off' && (
+        <WorkflowActions actions={['enable-counter-battens']} />
+      )}
       <p>{t('assembly.counterBattenPlacement')}</p>
       <p className="a-installation-authority">
         {t('assembly.decisionSource.derived-geometry')}
@@ -714,11 +801,7 @@ function CounterBattenInspector({
         )}
       </p>
       {selected && (
-        <p className="a-layer-selection-detail">
-          {memberInstanceCode(selected.sourceMemberId)} ·{' '}
-          {length(selected.visibleLengthMm)} · {selected.segments.length}{' '}
-          {t('assembly.segments').toLowerCase()}
-        </p>
+        <CounterBattenAxisDetail result={result} rowId={selected.id} />
       )}
       <HipBoundaryDetailChooser result={result} />
       {result.warnings
@@ -735,20 +818,16 @@ function CounterBattenInspector({
 function BattenLayoutInspector({
   result,
   composition,
+  workflow,
 }: {
   result: BattenLayoutResult;
   composition: BattenAutoComposition;
+  workflow: BattenWorkflow;
 }) {
   const state = useAssembly();
   const { t, i18n } = useTranslation();
-  const layout = state.projectDocument.project.buildUp.battenLayout ?? {
-    enabled: true,
-    battenHeightMm: 40,
-    battenWidthMm: 60,
-    gaugeMm: 350,
-    eaveOffsetMm: 250,
-    ridgeOffsetMm: 0,
-  };
+  const layout =
+    state.projectDocument.project.buildUp.battenLayout ?? disabledBattenLayer();
   const update = (field: keyof typeof layout, value: number) => {
     state.setBattenLayout({ ...layout, [field]: value, enabled: true });
   };
@@ -781,6 +860,7 @@ function BattenLayoutInspector({
       data-decision-status={decision.status}
     >
       <h3>{t('assembly.battens')}</h3>
+      <BattenWorkflowPanel workflow={workflow} />
       <div
         className="a-segmented"
         role="group"
@@ -828,32 +908,15 @@ function BattenLayoutInspector({
         />
       )}
       <BattenAutoRepair layout={layout} />
-      <h4>{t('assembly.battenResult')}</h4>
+      <BattenReferences workflow={workflow} />
       <dl className="a-batten-results">
-        <div className="a-batten-primary-gauge">
-          <dt>
-            {t('assembly.actualBattenGauge')} ·{' '}
-            {t(
-              mode === 'auto-from-covering'
-                ? 'assembly.autoOwnership'
-                : 'assembly.manualOwnership',
-            )}
-          </dt>
-          <dd>
-            {actualGaugeMm
-              ? length(actualGaugeMm)
-              : result.planes.some((plane) => plane.actualGaugeMm !== undefined)
-                ? t('assembly.perPlaneResults')
-                : '—'}
-          </dd>
-        </div>
         <div>
           <dt>{t('assembly.battenRows')}</dt>
-          <dd>{result.battens.length}</dd>
+          <dd data-batten-rows>{result.battens.length}</dd>
         </div>
         <div>
           <dt>{t('assembly.battenTotalLength')}</dt>
-          <dd>
+          <dd data-batten-total>
             {new Intl.NumberFormat(i18n.language, {
               maximumFractionDigits: 1,
             }).format(result.totalLengthMm / 1000)}{' '}
@@ -912,55 +975,48 @@ function BattenLayoutInspector({
       {result.status === 'incomplete' && (
         <p className="a-limit-note">{t('assembly.battenAutoIncomplete')}</p>
       )}
-      {result.planes.length > 1 && (
-        <details className="a-layer-help">
+      {result.planes.length > 0 && (
+        <details className="a-layer-help" data-testid="batten-plane-evidence">
           <summary>{t('assembly.perPlaneResults')}</summary>
-          <ul>
-            {result.planes.map((plane) => (
-              <li key={plane.roofPlaneId}>
-                {planeName(plane.roofPlaneId)} · {plane.courseCount}{' '}
-                {t('assembly.battenRows').toLowerCase()} ·{' '}
-                {plane.actualGaugeMm ? length(plane.actualGaugeMm) : '—'}
-              </li>
-            ))}
-          </ul>
+          <table className="a-plane-evidence">
+            <tbody>
+              {result.planes.map((plane) => (
+                <tr
+                  key={plane.roofPlaneId}
+                  data-plane-evidence={plane.roofPlaneId}
+                >
+                  <th scope="row">{planeName(plane.roofPlaneId)}</th>
+                  <td>
+                    {plane.courseCount} {t('assembly.battenRows').toLowerCase()}
+                  </td>
+                  <td>
+                    {plane.actualGaugeMm ? length(plane.actualGaugeMm) : '—'}
+                  </td>
+                  <td data-plane-length={plane.totalRowLengthMm}>
+                    {new Intl.NumberFormat(i18n.language, {
+                      maximumFractionDigits: 1,
+                    }).format(plane.totalRowLengthMm / 1000)}{' '}
+                    m
+                  </td>
+                  <td>
+                    {plane.openingDeductionMm > 0
+                      ? `−${new Intl.NumberFormat(i18n.language, {
+                          maximumFractionDigits: 2,
+                        }).format(plane.openingDeductionMm / 1000)} m`
+                      : ''}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </details>
       )}
       {selectedRow && (
-        <section
-          className="a-batten-row-detail"
-          data-testid="batten-row-detail"
-        >
-          <h4>
-            {t('assembly.battenRow')} {selectedRow.id.split(':').at(-1)}
-          </h4>
-          <dl>
-            <div>
-              <dt>{t('assembly.roofPlane')}</dt>
-              <dd>{planeName(selectedRow.roofPlaneId)}</dd>
-            </div>
-            <div>
-              <dt>{t('assembly.battenPosition')}</dt>
-              <dd>{length(selectedRow.stationMm)}</dd>
-            </div>
-            <div>
-              <dt>{t('assembly.battenLength')}</dt>
-              <dd>{length(selectedRow.usableLengthMm)}</dd>
-            </div>
-            <div>
-              <dt>{t('assembly.battenSegments')}</dt>
-              <dd>{selectedRow.segments.length}</dd>
-            </div>
-          </dl>
-          <ol>
-            {selectedRow.segments.map((segment, index) => (
-              <li key={`${segment.fromUMm}:${segment.toUMm}`}>
-                {t('assembly.segment')} {index + 1}:{' '}
-                {length(segment.toUMm - segment.fromUMm)}
-              </li>
-            ))}
-          </ol>
-        </section>
+        <BattenRowDetail
+          result={result}
+          rowId={selectedRow.id}
+          workflow={workflow}
+        />
       )}
     </section>
   );

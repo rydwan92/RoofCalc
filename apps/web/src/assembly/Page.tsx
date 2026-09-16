@@ -60,6 +60,14 @@ import {
 } from '@cieslacalc/roof-math';
 import { useAssembly } from './store';
 import {
+  deriveBattenWorkflow,
+  deriveCounterBattenWorkflow,
+} from './batten-workflow';
+import {
+  disabledBattenLayer,
+  disabledCounterBattenLayer,
+} from './build-up-defaults';
+import {
   GeometryInputs,
   HipTimberInputs,
   NumberField,
@@ -460,11 +468,7 @@ function AssemblyPageContent() {
       resolveCounterBattenLayout({
         template: state.template,
         skeleton: framingProjection.composedSkeleton,
-        layout: counterBattens ?? {
-          enabled: false,
-          widthMm: 40,
-          heightMm: 60,
-        },
+        layout: counterBattens ?? disabledCounterBattenLayer(),
         features: state.projectDocument.project.features,
       }),
     [
@@ -500,15 +504,7 @@ function AssemblyPageContent() {
       : []),
   ]);
   const effectiveBattenLayout = useMemo(
-    () =>
-      battenLayout ?? {
-        enabled: false,
-        battenHeightMm: 40,
-        battenWidthMm: 60,
-        gaugeMm: 350,
-        eaveOffsetMm: 250,
-        ridgeOffsetMm: 0,
-      },
+    () => battenLayout ?? disabledBattenLayer(),
     [battenLayout],
   );
   const battenAutoComposition = useMemo(
@@ -619,6 +615,68 @@ function AssemblyPageContent() {
         composition: battenAutoComposition,
       }),
     [effectiveBattenLayout, battenProjection, battenAutoComposition],
+  );
+  // V43B: one derived workflow projection shared by every batten surface.
+  const battenWorkflow = useMemo(
+    () =>
+      deriveBattenWorkflow({
+        layout: battenLayout,
+        result: battenProjection,
+        composition: battenAutoComposition,
+        decision: battenInstallationDecision,
+        assignments: coveringAssignments,
+        roofPitchDeg: state.template.pitchDeg,
+      }),
+    [
+      battenLayout,
+      battenProjection,
+      battenAutoComposition,
+      battenInstallationDecision,
+      coveringAssignments,
+      state.template.pitchDeg,
+    ],
+  );
+  const counterBattenWorkflow = useMemo(
+    () =>
+      deriveCounterBattenWorkflow({
+        layout: counterBattens,
+        result: counterBattenProjection,
+      }),
+    [counterBattens, counterBattenProjection],
+  );
+  // What the `paired-plane-runs` hip detail would add, from the same resolver.
+  const hipPairedRunsPreviewMm = useMemo(() => {
+    if (
+      !counterBattens?.enabled ||
+      counterBattenProjection.unresolvedHipBoundaryCount === 0
+    )
+      return undefined;
+    const paired = resolveCounterBattenLayout({
+      template: state.template,
+      skeleton: framingProjection.composedSkeleton,
+      layout: { ...counterBattens, hipBoundaryDetail: 'paired-plane-runs' },
+      features: state.projectDocument.project.features,
+    });
+    return paired.hipBoundaries.reduce(
+      (sum, boundary) => sum + boundary.addedLengthMm,
+      0,
+    );
+  }, [
+    counterBattens,
+    counterBattenProjection.unresolvedHipBoundaryCount,
+    framingProjection.composedSkeleton,
+    state.projectDocument.project.features,
+    state.template,
+  ]);
+  const installationFacts = useMemo(
+    () => ({
+      battens: battenWorkflow,
+      counterBattens: counterBattenWorkflow,
+      ...(hipPairedRunsPreviewMm !== undefined
+        ? { hipPairedRunsPreviewMm }
+        : {}),
+    }),
+    [battenWorkflow, counterBattenWorkflow, hipPairedRunsPreviewMm],
   );
   const resolvedCoveringLayouts = useMemo(
     () =>
@@ -909,6 +967,8 @@ function AssemblyPageContent() {
     battens: battenProjection,
     battenAutoSource: battenAutoComposition.source,
     battenInstallationDecision,
+    battenWorkflow,
+    counterBattenWorkflow,
     counterBattens: counterBattenProjection,
     coverings: coveringAssignments,
     coveringStatuses: resolvedCoveringLayouts.map((layout) => ({
@@ -947,12 +1007,13 @@ function AssemblyPageContent() {
         counterBattens?.enabled,
         battenLayout?.enabled,
       ].filter(Boolean).length,
+      // V43B: batten and hip-detail decisions are their own guided steps;
+      // a layer warning is reserved for genuinely invalid layer data.
       layerWarnings:
-        (battenLayout?.enabled &&
-          ['incompatible', 'no-data', 'decision-required'].includes(
-            battenInstallationDecision.status,
-          )) ||
-        counterBattenProjection.status === 'partial' ||
+        battenWorkflow.state === 'geometry-invalid' ||
+        battenWorkflow.state === 'manual-incompatible' ||
+        battenWorkflow.state === 'auto-incompatible' ||
+        counterBattenWorkflow.state === 'invalid' ||
         memberSchedule.buildUpRows.some((row) => row.warningKeys.length > 0) ||
         memberSchedule.surfaceBuildUpRows.some(
           (row) => row.warningKeys.length > 0,
@@ -965,12 +1026,7 @@ function AssemblyPageContent() {
       ).length,
       coveringWarnings:
         coveringOwnership.conflicts.length +
-        (battenLayout?.enabled &&
-        ['incompatible', 'no-data', 'decision-required'].includes(
-          battenInstallationDecision.status,
-        )
-          ? 1
-          : 0),
+        (battenWorkflow.pitch.status === 'below-minimum' ? 1 : 0),
       k1Ready: k1Requirement.status === 'resolved',
       hasResults: memberSchedule.timberRows.length > 0,
     }),
@@ -982,11 +1038,12 @@ function AssemblyPageContent() {
       membrane?.enabled,
       counterBattens?.enabled,
       battenLayout?.enabled,
-      counterBattenProjection.status,
+      battenWorkflow.state,
+      battenWorkflow.pitch.status,
+      counterBattenWorkflow.state,
       coveringAssignments.length,
       resolvedCoveringLayouts,
       coveringOwnership.conflicts.length,
-      battenInstallationDecision.status,
       k1Requirement.status,
       memberSchedule.timberRows.length,
       memberSchedule.buildUpRows,
@@ -1003,6 +1060,7 @@ function AssemblyPageContent() {
         projectWorkflowFacts,
         projectWorkflowFacts.hasResults,
         battenLayout?.enabled ? battenInstallationDecision : undefined,
+        { battens: battenWorkflow, counterBattens: counterBattenWorkflow },
       ).filter(
         (item) =>
           item.targetTask !== workbench.viewPreset ||
@@ -1013,6 +1071,8 @@ function AssemblyPageContent() {
       workbench.viewPreset,
       battenLayout?.enabled,
       battenInstallationDecision,
+      battenWorkflow,
+      counterBattenWorkflow,
     ],
   );
   const projectSummary = useMemo(() => {
@@ -1307,6 +1367,19 @@ function AssemblyPageContent() {
       state.navigateTo(workbenchLocation('materials', 'summary'));
       return;
     }
+    if (action === 'reviewBattens' || action === 'reviewHipDetail') {
+      state.navigateTo(workbenchLocation('layers'));
+      const view = action === 'reviewBattens' ? 'battens' : 'counterBattens';
+      state.setBuildUpView(view);
+      state.select(
+        view === 'battens' ? 'layer:battens' : 'layer:counter-battens',
+      );
+      if (mobile) {
+        state.setInspectorOpen(true);
+        state.setMobilePanel('inspector');
+      }
+      return;
+    }
     state.navigateTo(
       workbenchLocation(
         action === 'completeGeometry'
@@ -1480,6 +1553,7 @@ function AssemblyPageContent() {
         battens={battenProjection}
         battenAutoComposition={battenAutoComposition}
         counterBattens={counterBattenProjection}
+        installation={installationFacts}
       />
     );
   return (
@@ -1882,17 +1956,11 @@ function AssemblyPageContent() {
                   <BuildUpSummaryBar
                     membraneEnabled={!!membrane?.enabled}
                     membraneAreaMm2={membraneAreaMm2}
-                    counterBattensEnabled={!!counterBattens?.enabled}
-                    counterBattenLengthMm={
-                      counterBattenProjection.totalVisibleLengthMm
-                    }
-                    battensEnabled={!!battenLayout?.enabled}
-                    battenLengthMm={battenProjection.totalLengthMm}
-                    partial={counterBattenProjection.status === 'partial'}
+                    installation={installationFacts}
                     selectedView={workbench.buildUpView}
                     onSelect={(view) => {
                       state.setBuildUpView(view);
-                      if (view !== 'overview')
+                      if (view !== 'overview' && view !== 'installation')
                         state.select(
                           `layer:${view === 'counterBattens' ? 'counter-battens' : view}`,
                         );
@@ -2083,6 +2151,7 @@ function AssemblyPageContent() {
                       surfaceGeometry={surfaceProjection}
                       battens={battenProjection}
                       counterBattens={counterBattenProjection}
+                      installation={installationFacts}
                     />
                   </Suspense>
                 ) : workbench.viewPreset === 'costing' ? (

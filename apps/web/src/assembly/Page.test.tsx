@@ -21,6 +21,7 @@ import { createAssemblyDrawing } from '@cieslacalc/calculator-core';
 import { fitDimensionedDrawing } from '@cieslacalc/drawing-engine';
 import { formatLength } from '../format';
 import { useAssembly } from './store';
+import { newBattenLayer } from './build-up-defaults';
 
 beforeEach(async () => {
   localStorage.clear();
@@ -1203,11 +1204,36 @@ describe('dual-mode parametric workbench', () => {
         .getAttribute('aria-checked'),
     ).toBe('true');
     expect(screen.getByTestId('batten-inspector')).toBeTruthy();
+    // V43B: a new layer is Auto. Without a covering it must not render a
+    // fake 350 mm "ready" layout — it asks for a covering or manual intent.
+    const panel = screen.getByTestId('batten-workflow-panel');
+    expect(
+      within(panel)
+        .getByTestId('batten-workflow-status')
+        .getAttribute('data-workflow-state'),
+    ).toBe('awaiting-covering');
+    expect(panel.textContent).toContain('Najpierw wybierz pokrycie');
+    expect(panel.textContent).not.toContain('350');
+    expect(container.querySelectorAll('.a-batten-segment')).toHaveLength(0);
+    expect(within(panel).getByRole('button', { name: 'Wybierz pokrycie' }));
+    fireEvent.click(
+      within(panel).getByRole('button', { name: 'Ustaw ręcznie' }),
+    );
+    expect(
+      screen
+        .getByTestId('batten-workflow-panel')
+        .querySelector('[data-workflow-state]')
+        ?.getAttribute('data-workflow-state'),
+    ).toBe('manual-unverified');
     expect(
       container.querySelectorAll('.a-batten-segment').length,
     ).toBeGreaterThan(0);
     fireEvent.click(container.querySelector('[data-batten-row]')!);
     expect(screen.getByTestId('batten-row-detail')).toBeTruthy();
+    expect(
+      screen.getByTestId('batten-row-detail').querySelector('[data-row-number]')
+        ?.textContent,
+    ).toMatch(/^1 \//);
   });
   it('duplicates by keyboard and exposes accessible group-selection alignment tools', async () => {
     render(<App />);
@@ -2184,18 +2210,37 @@ describe('dual-mode parametric workbench', () => {
       layoutIntent: { horizontalAlignment: 'centered' },
       product: { technicalSpecSnapshot: { kind: 'roof-tile' } },
     });
-    expect(screen.getAllByText(/Włącz i skonfiguruj łaty/)).toHaveLength(2);
+    // V43B: a new covering takes the whole roof, and the installation block
+    // proposes Auto battens instead of a manual raw gauge.
+    expect(
+      useAssembly.getState().projectDocument.project.coverings[0]!.roofPlaneIds,
+    ).toEqual(['roof-plane:left', 'roof-plane:right']);
+    const block = screen.getByTestId('covering-installation-block');
+    expect(
+      block
+        .querySelector('[data-testid="batten-workflow-status"]')
+        ?.getAttribute('data-workflow-state'),
+    ).toBe('layer-off');
     const historyBeforeFit = useAssembly.getState().historyPast.length;
     fireEvent.click(
-      screen.getByRole('button', { name: 'Dopasuj łaty automatycznie' }),
+      within(block).getByRole('button', {
+        name: 'Rozmieść łaty automatycznie',
+      }),
     );
-    expect(
-      useAssembly.getState().projectDocument.project.buildUp.battenLayout,
-    ).toMatchObject({
+    const autoLayout =
+      useAssembly.getState().projectDocument.project.buildUp.battenLayout;
+    expect(autoLayout).toMatchObject({
       enabled: true,
       mode: 'auto-from-covering',
-      roofPlaneIds: ['roof-plane:left'],
     });
+    // Root-cause regression: Auto never narrows the layer to covering planes.
+    expect(autoLayout?.roofPlaneIds).toBeUndefined();
+    expect(
+      screen
+        .getByTestId('covering-installation-block')
+        .querySelector('[data-testid="batten-workflow-status"]')
+        ?.getAttribute('data-workflow-state'),
+    ).toBe('auto-ready');
     expect(useAssembly.getState().historyPast).toHaveLength(
       historyBeforeFit + 1,
     );
@@ -2251,6 +2296,239 @@ describe('dual-mode parametric workbench', () => {
       useAssembly.getState().projectDocument.project.buildUp.battenLayout!
         .gaugeMm,
     ).toBe(automaticGauge);
+  });
+
+  it('V43B: hip covering-first workflow — Auto battens, hip detail, composite plan and removal', async () => {
+    const { container } = render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Krokiew narożna' }));
+    builder();
+    fireEvent.click(screen.getByRole('tab', { name: 'Pokrycie' }));
+    await addManualCovering('roof-tile');
+    const block = await screen.findByTestId('covering-installation-block');
+    expect(
+      useAssembly.getState().projectDocument.project.coverings[0]!.roofPlaneIds,
+    ).toHaveLength(4);
+    fireEvent.click(
+      within(block).getByRole('button', {
+        name: 'Rozmieść łaty automatycznie',
+      }),
+    );
+    fireEvent.click(
+      within(screen.getByTestId('covering-installation-block')).getByRole(
+        'button',
+        { name: 'Dodaj kontrłaty z konstrukcji' },
+      ),
+    );
+    const status = () =>
+      screen
+        .getByTestId('covering-installation-block')
+        .querySelector('[data-testid="batten-workflow-status"]')!;
+    expect(status().getAttribute('data-workflow-state')).toBe('auto-ready');
+    expect(status().textContent).toContain('AUTO');
+    expect(
+      screen
+        .getByTestId('covering-installation-block')
+        .querySelector('[data-testid="counter-batten-workflow-status"]')
+        ?.getAttribute('data-workflow-state'),
+    ).toBe('needs-hip-detail');
+
+    // The batten total shown to the user is the whole-roof solver total.
+    const state = useAssembly.getState();
+    const auto = resolveBattenLayout({
+      template: state.template,
+      layout: state.projectDocument.project.buildUp.battenLayout!,
+      autoSource: {
+        status: 'resolved',
+        minimumGaugeMm: 300,
+        maximumGaugeMm: 380,
+      },
+    });
+    expect(auto.planes).toHaveLength(4);
+    expect(
+      Number(
+        status()
+          .querySelector('[data-batten-total-length]')
+          ?.getAttribute('data-batten-total-length'),
+      ),
+    ).toBeCloseTo(auto.totalLengthMm, 6);
+
+    // Composite installation plan.
+    fireEvent.click(
+      within(screen.getByTestId('covering-installation-block')).getByRole(
+        'button',
+        { name: 'Szczegóły montażu' },
+      ),
+    );
+    expect(useAssembly.getState().workbench.viewPreset).toBe('layers');
+    expect(useAssembly.getState().workbench.buildUpView).toBe('installation');
+    expect(screen.getByTestId('installation-legend')).toBeTruthy();
+    expect(screen.getByTestId('installation-inspector')).toBeTruthy();
+    expect(
+      container.querySelectorAll(
+        '[data-testid="installation-covering-underlay"] polygon',
+      ),
+    ).toHaveLength(4);
+    expect(
+      container.querySelectorAll('.a-batten-segment').length,
+    ).toBeGreaterThan(0);
+    expect(
+      container.querySelectorAll('.a-counter-batten-segment').length,
+    ).toBeGreaterThan(0);
+    fireEvent.click(
+      within(screen.getByTestId('installation-legend')).getByLabelText(
+        'Pokrycie',
+      ),
+    );
+    expect(
+      container.querySelector('[data-testid="installation-covering-underlay"]'),
+    ).toBeNull();
+    fireEvent.click(container.querySelector('[data-batten-row]')!);
+    expect(useAssembly.getState().workbench.buildUpView).toBe('installation');
+    expect(screen.getByTestId('batten-row-detail').textContent).toContain(
+      'Odległość od okapu',
+    );
+    fireEvent.click(container.querySelector('[data-counter-batten-row]')!);
+    expect(screen.getByTestId('counter-batten-axis-detail')).toBeTruthy();
+
+    // Hip detail: the partial state explains itself and routes to the choice.
+    const inspector = screen.getByTestId('installation-inspector');
+    expect(
+      within(inspector).getByTestId('hip-detail-quantity-preview').textContent,
+    ).toMatch(/\+\d/);
+    fireEvent.click(
+      within(inspector).getByRole('button', {
+        name: 'Uzupełnij detal grzbietu',
+      }),
+    );
+    expect(useAssembly.getState().workbench.buildUpView).toBe('counterBattens');
+    const history = useAssembly.getState().historyPast.length;
+    fireEvent.click(
+      screen
+        .getByTestId('hip-boundary-detail')
+        .querySelector<HTMLInputElement>(
+          '[data-hip-detail-option="paired-plane-runs"] input',
+        )!,
+    );
+    expect(useAssembly.getState().historyPast).toHaveLength(history + 1);
+    expect(
+      within(screen.getByTestId('counter-batten-inspector'))
+        .getByTestId('counter-batten-workflow-status')
+        .getAttribute('data-workflow-state'),
+    ).toBe('complete');
+
+    // Product removal: no fake Auto result, Auto intent retained.
+    act(() => useAssembly.getState().setCoveringAssignments([]));
+    expect(
+      useAssembly.getState().projectDocument.project.buildUp.battenLayout?.mode,
+    ).toBe('auto-from-covering');
+    fireEvent.click(screen.getByRole('button', { name: 'Łaty' }));
+    const panel = screen.getByTestId('batten-workflow-panel');
+    expect(
+      panel
+        .querySelector('[data-workflow-state]')
+        ?.getAttribute('data-workflow-state'),
+    ).toBe('awaiting-covering');
+    expect(container.querySelectorAll('.a-batten-segment')).toHaveLength(0);
+  });
+
+  it('V43B: installation mode choice is plain language and recomputes Auto', async () => {
+    render(<App />);
+    builder();
+    fireEvent.click(screen.getByRole('tab', { name: 'Pokrycie' }));
+    await addManualCovering('roof-tile');
+    act(() => {
+      const coverings = structuredClone(
+        useAssembly.getState().projectDocument.project.coverings,
+      );
+      const spec = coverings[0]!.product.technicalSpecSnapshot;
+      if (spec.kind !== 'roof-tile') throw Error('expected tile');
+      spec.installationModes.push({
+        ...spec.installationModes[0]!,
+        id: 'low-pitch',
+        gaugeRangeMm: { min: 250, max: 270 },
+      });
+      coverings[0]!.selectedInstallationModeId = undefined;
+      useAssembly.getState().setCoveringAssignments(coverings);
+      useAssembly.getState().setBattenLayout(newBattenLayer());
+    });
+    const block = screen.getByTestId('covering-installation-block');
+    expect(
+      block
+        .querySelector('[data-testid="batten-workflow-status"]')
+        ?.getAttribute('data-workflow-state'),
+    ).toBe('awaiting-installation-mode');
+    const select = within(block).getByTestId(
+      'installation-mode-select',
+    ) as HTMLSelectElement;
+    expect(block.textContent).not.toContain('installationModeId');
+    expect([...select.options].map((option) => option.textContent)).toContain(
+      'Standardowy',
+    );
+    fireEvent.change(select, { target: { value: 'low-pitch' } });
+    const next = screen.getByTestId('covering-installation-block');
+    expect(
+      next
+        .querySelector('[data-testid="batten-workflow-status"]')
+        ?.getAttribute('data-workflow-state'),
+    ).toBe('auto-ready');
+    expect(
+      Number(
+        next
+          .querySelector('[data-batten-gauge]')
+          ?.textContent?.replace(',', '.')
+          .replace(/[^\d.]/g, ''),
+      ),
+    ).toBeGreaterThan(0);
+  });
+
+  it('V43B: manual gauge before covering is unverified, then validated and repairable', async () => {
+    render(<App />);
+    builder();
+    act(() =>
+      useAssembly
+        .getState()
+        .setBattenLayout({ ...newBattenLayer(), mode: 'manual', gaugeMm: 400 }),
+    );
+    fireEvent.click(screen.getByRole('tab', { name: 'Warstwy' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Łaty' }));
+    expect(
+      screen
+        .getByTestId('batten-workflow-panel')
+        .querySelector('[data-workflow-state]')
+        ?.getAttribute('data-workflow-state'),
+    ).toBe('manual-unverified');
+    expect(
+      screen
+        .getByTestId('batten-references')
+        .querySelector('[data-owner="manual"]'),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole('tab', { name: 'Pokrycie' }));
+    await addManualCovering('roof-tile');
+    const block = screen.getByTestId('covering-installation-block');
+    expect(
+      block
+        .querySelector('[data-testid="batten-workflow-status"]')
+        ?.getAttribute('data-workflow-state'),
+    ).toBe('manual-incompatible');
+    expect(
+      within(block).getByTestId('manual-gauge-mismatch').textContent,
+    ).toMatch(/poza zakresem/);
+    // Never silently overwritten.
+    expect(
+      useAssembly.getState().projectDocument.project.buildUp.battenLayout!
+        .gaugeMm,
+    ).toBe(400);
+    const history = useAssembly.getState().historyPast.length;
+    fireEvent.click(
+      within(block).getByRole('button', { name: 'Dopasuj automatycznie' }),
+    );
+    expect(useAssembly.getState().historyPast).toHaveLength(history + 1);
+    expect(
+      screen
+        .getByTestId('covering-installation-block')
+        .querySelector('[data-testid="batten-workflow-status"]')
+        ?.getAttribute('data-workflow-state'),
+    ).toBe('auto-ready');
   });
 
   it('keeps an incomplete manual covering form outside canonical state and history', async () => {

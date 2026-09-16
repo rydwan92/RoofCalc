@@ -797,6 +797,55 @@ function SectionBody({
                       {row.layoutFacts.status === 'partial'
                         ? ` · ${m.partial}`
                         : ''}
+                      {row.layoutFacts.coveringProduct && (
+                        <span data-export-fact="covering-product">
+                          {' · '}
+                          {t('assembly.install.product')}:{' '}
+                          {row.layoutFacts.coveringProduct}
+                          {row.layoutFacts.installationModeId
+                            ? ` (${t('assembly.install.installationMode')}: ${
+                                row.layoutFacts.installationModeId ===
+                                  'standard' ||
+                                row.layoutFacts.installationModeId ===
+                                  'manual-standard'
+                                  ? t('assembly.install.modeStandard')
+                                  : row.layoutFacts.installationModeId
+                              })`
+                            : ''}
+                        </span>
+                      )}
+                      {row.layoutFacts.mode && row.code === 'L' && (
+                        <span data-export-fact="batten-owner">
+                          {' · '}
+                          {t('assembly.install.regularGauge')}:{' '}
+                          {t(
+                            `assembly.install.owner.${row.layoutFacts.mode === 'auto-from-covering' ? 'auto' : 'manual'}`,
+                          )}
+                        </span>
+                      )}
+                      {row.layoutFacts.workflowState && row.code === 'L' && (
+                        <span data-export-fact="batten-state">
+                          {' · '}
+                          {t(
+                            `assembly.install.state.${row.layoutFacts.workflowState}`,
+                          )}
+                        </span>
+                      )}
+                      {row.layoutFacts.hipDetail && (
+                        <span data-export-fact="hip-detail">
+                          {' · '}
+                          {t('assembly.hipBoundary.title')}:{' '}
+                          {row.layoutFacts.hipDetail === 'not-decided'
+                            ? t('assembly.hipBoundary.needsChoice', {
+                                count:
+                                  row.layoutFacts.unresolvedHipBoundaryCount ??
+                                  0,
+                              })
+                            : t(
+                                `assembly.hipBoundary.option.${row.layoutFacts.hipDetail}.label`,
+                              )}
+                        </span>
+                      )}
                       {row.layoutFacts.decisionStatus && (
                         <span>
                           {' · '}

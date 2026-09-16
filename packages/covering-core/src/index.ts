@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { resolveInstallationMode } from './roof-tile-installation';
 export * from './roof-tile-installation';
+export * from './covering-support-capability';
 
 export const COVERING_TECHNICAL_SCHEMA_VERSION = 1 as const;
 

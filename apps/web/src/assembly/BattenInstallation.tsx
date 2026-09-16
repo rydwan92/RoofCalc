@@ -195,20 +195,21 @@ export function BattenInstallationDetails({
   );
 }
 
-/** Preview and apply the same layer intent, including any explicitly shown scope. */
-export function BattenAutoRepair({
-  layout,
-  targetPlaneIds,
-}: {
-  layout: BattenLayoutSpec;
-  targetPlaneIds?: string[];
-}) {
+/**
+ * Preview and apply Auto on the layer's own scope.
+ *
+ * V43B root-cause fix: this action used to copy the covering assignment's
+ * current plane list into the batten layer. A tile first added to one plane
+ * then froze the batten layer on that plane even after the tile was assigned
+ * to the whole roof (a hip showed ~27 % of its real batten length). Repair
+ * changes only the gauge owner; plane scope is the layer's own intent.
+ */
+export function BattenAutoRepair({ layout }: { layout: BattenLayoutSpec }) {
   const state = useAssembly();
   const { t, i18n } = useTranslation();
   const preview = useMemo(() => {
     const next = {
       ...layout,
-      ...(targetPlaneIds ? { roofPlaneIds: targetPlaneIds } : {}),
       enabled: true,
       mode: 'auto-from-covering' as const,
     };
@@ -234,7 +235,6 @@ export function BattenAutoRepair({
     return { next, result, decision };
   }, [
     layout,
-    targetPlaneIds,
     state.projectDocument.project.coverings,
     state.projectDocument.project.features,
     state.template,

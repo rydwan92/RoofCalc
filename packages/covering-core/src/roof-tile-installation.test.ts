@@ -205,3 +205,89 @@ describe('tile installation authority and capability', () => {
     expect(evaluate(product).capability.regularGauge).toBe('available');
   });
 });
+
+describe('V43B pitch-dependent installation rules', () => {
+  const withRules = (): RoofTileTechnicalSpec => {
+    const spec = tile();
+    spec.installationModes[0]!.installationRules = [
+      {
+        id: 'low',
+        pitchRangeDeg: { min: 19, max: 30 },
+        gaugeRangeMm: { min: 330, max: 340 },
+      },
+      {
+        id: 'steep',
+        pitchRangeDeg: { min: 30, max: 60 },
+        gaugeRangeMm: { min: 340, max: 360 },
+        technicalConditionId: 'condition:clips',
+      },
+    ];
+    return spec;
+  };
+
+  it('keeps the mode range unconditional without rules', () => {
+    const result = evaluate();
+    expect(result.gaugeRangeMm).toEqual({ min: 330, max: 360 });
+    expect(result.pitchRuleId).toBeUndefined();
+  });
+
+  it('resolves the rule matching the project pitch', () => {
+    const low = evaluate(withRules(), 25);
+    expect(low.gaugeRangeMm).toEqual({ min: 330, max: 340 });
+    expect(low.pitchRuleId).toBe('low');
+    const steep = evaluate(withRules(), 45);
+    expect(steep.gaugeRangeMm).toEqual({ min: 340, max: 360 });
+    expect(steep.issues.map((issue) => issue.code)).toContain(
+      'installation-condition-unverified',
+    );
+  });
+
+  it('never guesses outside or on an ambiguous rule boundary', () => {
+    const outside = evaluate(withRules(), 65);
+    expect(outside.gaugeRangeMm).toBeUndefined();
+    expect(outside.capability.regularGauge).toBe('unavailable');
+    expect(outside.issues.map((issue) => issue.code)).toContain(
+      'pitch-rule-data-missing',
+    );
+    const boundary = evaluate(withRules(), 30);
+    expect(boundary.gaugeRangeMm).toBeUndefined();
+    expect(boundary.issues.map((issue) => issue.code)).toContain(
+      'pitch-rule-ambiguous',
+    );
+  });
+});
+
+describe('V43B covering support capability', () => {
+  it('derives honest support workflows per covering kind', async () => {
+    const { deriveCoveringSupportCapability } = await import('./index');
+    expect(deriveCoveringSupportCapability(tile())).toMatchObject({
+      requiresBattens: true,
+      supportsAutoBattenGauge: true,
+      supportModelKnown: true,
+    });
+    expect(
+      deriveCoveringSupportCapability({
+        schemaVersion: 1,
+        kind: 'modular-sheet',
+        effectiveWidthMm: 1100,
+        lengthModel: { kind: 'fixed-sheet', effectiveLengthMm: 700 },
+        moduleLengthMm: 350,
+      }),
+    ).toMatchObject({
+      requiresBattens: true,
+      supportsAutoBattenGauge: false,
+      fixedSupportGaugeMm: 350,
+    });
+    expect(
+      deriveCoveringSupportCapability({
+        schemaVersion: 1,
+        kind: 'standing-seam',
+        installationModes: [{ id: 'standard', effectiveWidthMm: 500 }],
+      } as never),
+    ).toMatchObject({
+      requiresBattens: false,
+      supportsAutoBattenGauge: false,
+      supportModelKnown: false,
+    });
+  });
+});

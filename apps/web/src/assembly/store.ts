@@ -2172,13 +2172,21 @@ export const useAssembly = create<AssemblyState>((set) => ({
           activeOperationId: undefined,
           focusId: undefined,
           viewPreset: contextualPreset,
-          buildUpView: selectedId.startsWith('surface:')
-            ? 'membrane'
-            : selectedId.startsWith('counter-batten:')
-              ? 'counterBattens'
-              : selectedId.startsWith('batten:')
-                ? 'battens'
-                : state.workbench.buildUpView,
+          // V43B: picking a row or axis inside the installation plan keeps
+          // the composite view instead of jumping to a single layer.
+          buildUpView:
+            state.workbench.buildUpView === 'installation' &&
+            (selectedId.startsWith('batten:') ||
+              selectedId.startsWith('counter-batten:') ||
+              selectedId.startsWith('layer:'))
+              ? 'installation'
+              : selectedId.startsWith('surface:')
+                ? 'membrane'
+                : selectedId.startsWith('counter-batten:')
+                  ? 'counterBattens'
+                  : selectedId.startsWith('batten:')
+                    ? 'battens'
+                    : state.workbench.buildUpView,
           placementTool: undefined,
           placementFeedback: selectedId.startsWith('feature:')
             ? state.workbench.placementFeedback

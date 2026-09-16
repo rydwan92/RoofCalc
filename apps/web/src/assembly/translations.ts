@@ -228,6 +228,12 @@ export const assemblyPl = {
   battenMidpointReason:
     'Wybrano rozstaw najbliższy środkowi dopuszczalnego zakresu. Środek jest deterministycznym celem obliczenia, a nie zaleceniem producenta.',
   installationIssue: {
+    'pitch-rule-data-missing':
+      'Brak jednoznacznych danych automatycznych dla tego kąta.',
+    'pitch-rule-ambiguous':
+      'Kąt leży na granicy dwóch reguł producenta — brak jednoznacznych danych automatycznych.',
+    'pitch-rule-unavailable':
+      'Brak jednoznacznych danych automatycznych dla tego kąta.',
     'installation-condition-unverified':
       'Wybrany sposób montażu ma dodatkowy warunek techniczny. Sprawdź jego spełnienie według instrukcji produktu.',
     'layout-capacity-exceeded':
@@ -436,6 +442,24 @@ export const assemblyPl = {
         title: 'Pokrycie wymaga uwagi',
         description: 'Sprawdź parametry produktu, kąt i przypisanie połaci.',
         action: 'Sprawdź pokrycie',
+      },
+      'battens-check': {
+        title: 'Sprawdź automatyczne rozmieszczenie łat',
+        description:
+          'Rozstaw łat wynika z wybranego pokrycia. Potwierdź, że jest ustalony i zgodny.',
+        action: 'Otwórz łaty',
+      },
+      'hip-detail-required': {
+        title: 'Uzupełnij detal grzbietu kontrłat',
+        description:
+          'Wnętrze połaci jest policzone. Przy grzbietach H1 wybierz sposób oparcia.',
+        action: 'Wybierz detal',
+      },
+      'layers-ready': {
+        title: 'Warstwy gotowe',
+        description:
+          'Łaty są zgodne z pokryciem, a kontrłaty kompletne. Długości są geometryczne.',
+        action: 'Otwórz warstwy',
       },
       'k1-ready': {
         title: 'K1 jest gotowa do rozkroju',
@@ -1086,6 +1110,150 @@ export const assemblyPl = {
     'Wybierz z katalogu lub wprowadź ręcznie. Po ustawieniu ilość membrany liczona jest z rzędów rolki (z zakładem), nie z powierzchni netto. Szerokość rzędu przyjmuje szerokość przy okapie — na połaciach koszowych jest to zawyżenie; otwory dachowe nie są odejmowane.',
   axisSegmentCount: 'Liczba osi / odcinków',
   segments: 'Odcinki',
+  installationLayerView: 'Montaż pokrycia',
+  install: {
+    title: 'Montaż pokrycia',
+    product: 'Produkt',
+    noProduct: 'Nie wybrano pokrycia',
+    installationMode: 'Sposób montażu',
+    modeStandard: 'Standardowy',
+    modeLabel: 'Wariant {{index}}',
+    modeChoose: 'Wybierz sposób montażu',
+    pitch: 'Kąt dachu',
+    pitchMinimum: 'min. {{value}}°',
+    pitchUnknown: 'brak minimum w danych produktu',
+    pitchBelow: 'poniżej minimum {{value}}°',
+    battens: 'Łaty',
+    counterBattens: 'Kontrłaty',
+    rows_one: '{{count}} rząd',
+    rows_few: '{{count}} rzędy',
+    rows_many: '{{count}} rzędów',
+    rows_other: '{{count}} rzędu',
+    axes_one: '{{count}} oś',
+    axes_few: '{{count}} osie',
+    axes_many: '{{count}} osi',
+    axes_other: '{{count}} osi',
+    geometricLength: 'długość geometryczna',
+    perPlaneSuffix: 'na połać',
+    totalSuffix: 'łącznie',
+    details: 'Szczegóły montażu',
+    regularGauge: 'Rozstaw regularny',
+    eaveDetail: 'Detal okapu',
+    ridgeDetail: 'Detal kalenicy',
+    eaveDetailHint:
+      'Pierwsza łata: odległość od okapu do osi pierwszej łaty. Zależy od detalu okapu — ustala ją wykonawca.',
+    ridgeDetailHint:
+      'Ostatnia łata: odległość od kalenicy do osi ostatniej łaty. Zależy od gąsiorów i systemu kalenicy.',
+    regularGaugeHint:
+      'Łaty regularne: równe odstępy między pierwszą a ostatnią łatą. Ten rozstaw wyznacza rzędy dachówek.',
+    allowedRange: 'Zakres produktu {{min}}–{{max}}',
+    fixedModule: 'Moduł blachy {{value}}',
+    owner: {
+      auto: 'AUTO',
+      manual: 'RĘCZNIE',
+      none: '—',
+    },
+    ownerLong: {
+      auto: 'Automatycznie z pokrycia',
+      manual: 'Ręcznie',
+    },
+    perPlane: 'różny na połaciach',
+    scopeSubset: 'Tylko {{count}} z {{total}} połaci',
+    state: {
+      'layer-off': 'Łaty wyłączone',
+      'awaiting-covering': 'Najpierw wybierz pokrycie',
+      'awaiting-covering-scope': 'Pokrycie nie obejmuje wszystkich połaci',
+      'awaiting-installation-mode': 'Wybierz sposób montażu',
+      'auto-data-unavailable':
+        'Brak danych do automatycznego rozmieszczenia łat.',
+      'unsupported-support-model':
+        'Ten sposób podparcia wymaga osobnej konfiguracji.',
+      'auto-ready': 'Zgodne z pokryciem',
+      'auto-incompatible': 'Niezgodne z pokryciem',
+      'manual-unverified': 'Rozstaw ręczny · niezweryfikowany z pokryciem',
+      'manual-compatible': 'Zgodne z pokryciem',
+      'manual-incompatible': 'Niezgodne z pokryciem',
+      'geometry-invalid': 'Nieprawidłowe dane łat',
+    },
+    stateHelp: {
+      'awaiting-covering':
+        'Automatyczny rozstaw wynika z danych dachówki. Wybierz pokrycie albo ustaw rozstaw ręcznie.',
+      'awaiting-covering-scope':
+        'Łaty obejmują cały dach, a pokrycie tylko część połaci.',
+      'awaiting-installation-mode':
+        'Produkt ma kilka sposobów montażu z różnymi zakresami łatowania.',
+      'unsupported-support-model':
+        'Dane tego pokrycia nie opisują łat w układzie dachówkowym.',
+      'manual-unverified':
+        'Możesz pracować wstępnie. Po wyborze pokrycia RoofCalc sprawdzi ten rozstaw.',
+      'manual-incompatible':
+        'Rozstaw {{gauge}} jest poza zakresem produktu {{min}}–{{max}}.',
+      'auto-incompatible':
+        'Pokrycie nie pasuje do tego dachu — zmiana rozstawu tego nie naprawi.',
+    },
+    action: {
+      'enable-auto': 'Rozmieść łaty automatycznie',
+      'choose-covering': 'Wybierz pokrycie',
+      'set-manual': 'Ustaw ręcznie',
+      'choose-installation-mode': 'Wybierz sposób montażu',
+      'fit-auto': 'Dopasuj automatycznie',
+      'assign-covering-to-roof': 'Przypisz pokrycie do całego dachu',
+      'extend-scope-to-roof': 'Rozszerz łaty na cały dach',
+      'enable-counter-battens': 'Dodaj kontrłaty z konstrukcji',
+      'choose-hip-detail': 'Uzupełnij detal grzbietu',
+    },
+    counter: {
+      'layer-off': 'Kontrłaty wyłączone',
+      complete: 'Gotowe',
+      'needs-hip-detail': 'Częściowo',
+      invalid: 'Nieprawidłowe dane kontrłat',
+      'no-axes': 'Brak osi konstrukcyjnych',
+      interior: 'Wnętrze połaci',
+      interiorReady: 'policzone',
+      hips_one: '{{count}} grzbiet H1',
+      hips_few: '{{count}} grzbiety H1',
+      hips_many: '{{count}} grzbietów H1',
+      hips_other: '{{count}} grzbietu H1',
+      hipsNeedChoice: 'wymagają wyboru detalu',
+      hipsDecided: 'detal wybrany',
+      source:
+        'Kontrłaty leżą na osiach krokwi (K1, J1) wzdłuż spadku dachu. Ich położenie wynika z konstrukcji, nie z rozstawu.',
+      preview: '+{{value}} m',
+      previewNone: '+0 m',
+    },
+    legend: {
+      title: 'Warstwy montażu',
+      covering: 'Pokrycie',
+      battens: 'Łaty · poprzecznie',
+      counterBattens: 'Kontrłaty · wzdłuż spadku',
+      unresolvedHip: 'Grzbiet bez wybranego detalu',
+    },
+    row: {
+      title: 'Rząd łat {{number}}',
+      plane: 'Połać',
+      number: 'Numer rzędu',
+      fromEave: 'Odległość od okapu',
+      previous: 'Rozstaw do poprzedniej',
+      next: 'Rozstaw do następnej',
+      visible: 'Długość widoczna',
+      source: 'Źródło',
+      openings: 'Przerwy na otwory',
+      firstRow: 'pierwsza łata (detal okapu)',
+      lastRow: 'ostatnia łata (detal kalenicy)',
+    },
+    axis: {
+      title: 'Kontrłata {{code}}',
+      sourceMember: 'Oś konstrukcji',
+      plane: 'Połać',
+      visible: 'Długość widoczna',
+      interruptions: 'Przerwy na otwory',
+      type: 'Rodzaj',
+      interior: 'oś krokwi we wnętrzu połaci',
+      boundary: 'ciąg przy grzbiecie',
+    },
+    notPurchase:
+      'Długości geometryczne montażu — bez zapasu i bez podziału na handlowe długości.',
+  },
   hipBoundary: {
     title: 'Detal grzbietu H1',
     needsChoice_one: '{{count}} grzbiet wymaga wyboru detalu',
@@ -1149,6 +1317,8 @@ export const assemblyPl = {
       'Pokrycie nie obejmuje wszystkich połaci wybranych dla łat.',
     'covering-source-conflict':
       'Więcej niż jedno pokrycie przypisano do tej samej połaci.',
+    'pitch-rule-unavailable':
+      'Brak jednoznacznych danych automatycznych dla tego kąta.',
   },
   windowCollision: 'Kolizja geometryczna z krokwią',
   windowClear: 'Otwór znajduje się geometrycznie między krokwiami.',
@@ -1594,6 +1764,9 @@ export const assemblyPl = {
       'net-area-no-overlap-no-rolls':
         'Powierzchnia netto — bez zakładów i przeliczenia na rolki.',
       'partial-counter-battens': 'Wynik częściowy — sprawdź granicę H1.',
+      'batten-gauge-unverified':
+        'Rozstaw ręczny, niezweryfikowany z pokryciem.',
+      'batten-gauge-incompatible': 'Rozstaw łat niezgodny z pokryciem.',
       'covering-not-a-purchase-count':
         'To wynik geometryczny, nie liczba do zakupu.',
       'declared-consumption-not-a-resolved-purchase-count':
@@ -1867,6 +2040,10 @@ export const assemblyEn: typeof assemblyPl = {
   battenMidpointReason:
     'The gauge nearest the permitted range midpoint was selected. The midpoint is a deterministic calculation target, not a manufacturer recommendation.',
   installationIssue: {
+    'pitch-rule-data-missing': 'No unambiguous automatic data for this pitch.',
+    'pitch-rule-ambiguous':
+      'The pitch sits on the boundary of two manufacturer rules — no unambiguous automatic data.',
+    'pitch-rule-unavailable': 'No unambiguous automatic data for this pitch.',
     'installation-condition-unverified':
       'The selected mode has an additional technical condition. Check it against the product instructions.',
     'layout-capacity-exceeded':
@@ -2074,6 +2251,24 @@ export const assemblyEn: typeof assemblyPl = {
         description:
           'Review the product data, roof pitch and plane assignment.',
         action: 'Review covering',
+      },
+      'battens-check': {
+        title: 'Check the automatic batten layout',
+        description:
+          'The batten gauge follows the chosen covering. Confirm it is set and compatible.',
+        action: 'Open battens',
+      },
+      'hip-detail-required': {
+        title: 'Complete the counter-batten hip detail',
+        description:
+          'Plane interiors are calculated. Choose how battens are supported at the H1 hips.',
+        action: 'Choose detail',
+      },
+      'layers-ready': {
+        title: 'Layers ready',
+        description:
+          'Battens match the covering and counter-battens are complete. Lengths are geometric.',
+        action: 'Open layers',
       },
       'k1-ready': {
         title: 'K1 is ready for cutting',
@@ -2719,6 +2914,149 @@ export const assemblyEn: typeof assemblyPl = {
     'Choose from the catalogue or enter manually. Once set, membrane quantity is computed from roll courses (laps included), not net area. Course width uses the eave width — over-estimated on hip planes; roof windows are not subtracted.',
   axisSegmentCount: 'Axis / segment count',
   segments: 'Segments',
+  installationLayerView: 'Covering installation',
+  install: {
+    title: 'Covering installation',
+    product: 'Product',
+    noProduct: 'No covering selected',
+    installationMode: 'Installation mode',
+    modeStandard: 'Standard',
+    modeLabel: 'Variant {{index}}',
+    modeChoose: 'Choose installation mode',
+    pitch: 'Roof pitch',
+    pitchMinimum: 'min. {{value}}°',
+    pitchUnknown: 'no minimum in product data',
+    pitchBelow: 'below minimum {{value}}°',
+    battens: 'Battens',
+    counterBattens: 'Counter-battens',
+    rows_one: '{{count}} row',
+    rows_few: '{{count}} rows',
+    rows_many: '{{count}} rows',
+    rows_other: '{{count}} rows',
+    axes_one: '{{count}} axis',
+    axes_few: '{{count}} axes',
+    axes_many: '{{count}} axes',
+    axes_other: '{{count}} axes',
+    geometricLength: 'geometric length',
+    perPlaneSuffix: 'per plane',
+    totalSuffix: 'in total',
+    details: 'Installation details',
+    regularGauge: 'Regular gauge',
+    eaveDetail: 'Eave detail',
+    ridgeDetail: 'Ridge detail',
+    eaveDetailHint:
+      'First batten: distance from the eave to the first batten axis. Depends on the eave detail and is owned by the installer.',
+    ridgeDetailHint:
+      'Last batten: distance from the ridge to the last batten axis. Depends on ridge tiles and the ridge system.',
+    regularGaugeHint:
+      'Regular battens: equal intervals between the first and last batten. This gauge sets the tile courses.',
+    allowedRange: 'Product range {{min}}–{{max}}',
+    fixedModule: 'Sheet module {{value}}',
+    owner: {
+      auto: 'AUTO',
+      manual: 'MANUAL',
+      none: '—',
+    },
+    ownerLong: {
+      auto: 'Automatic from covering',
+      manual: 'Manual',
+    },
+    perPlane: 'differs by plane',
+    scopeSubset: 'Only {{count}} of {{total}} planes',
+    state: {
+      'layer-off': 'Battens off',
+      'awaiting-covering': 'Choose a covering first',
+      'awaiting-covering-scope': 'The covering does not cover every plane',
+      'awaiting-installation-mode': 'Choose an installation mode',
+      'auto-data-unavailable': 'No data for automatic batten layout.',
+      'unsupported-support-model':
+        'This support system needs a separate configuration.',
+      'auto-ready': 'Matches the covering',
+      'auto-incompatible': 'Does not match the covering',
+      'manual-unverified': 'Manual gauge · not verified against a covering',
+      'manual-compatible': 'Matches the covering',
+      'manual-incompatible': 'Does not match the covering',
+      'geometry-invalid': 'Invalid batten data',
+    },
+    stateHelp: {
+      'awaiting-covering':
+        'The automatic gauge comes from tile data. Choose a covering or set the gauge manually.',
+      'awaiting-covering-scope':
+        'Battens cover the whole roof but the covering only some planes.',
+      'awaiting-installation-mode':
+        'The product has several installation modes with different gauge ranges.',
+      'unsupported-support-model':
+        'This covering does not describe tile-style battens.',
+      'manual-unverified':
+        'You can work preliminarily. RoofCalc checks this gauge once a covering is chosen.',
+      'manual-incompatible':
+        'Gauge {{gauge}} is outside the product range {{min}}–{{max}}.',
+      'auto-incompatible':
+        'The covering does not suit this roof — changing the gauge will not fix it.',
+    },
+    action: {
+      'enable-auto': 'Lay out battens automatically',
+      'choose-covering': 'Choose covering',
+      'set-manual': 'Set manually',
+      'choose-installation-mode': 'Choose installation mode',
+      'fit-auto': 'Fit automatically',
+      'assign-covering-to-roof': 'Assign covering to the whole roof',
+      'extend-scope-to-roof': 'Extend battens to the whole roof',
+      'enable-counter-battens': 'Add structure-derived counter-battens',
+      'choose-hip-detail': 'Complete the hip detail',
+    },
+    counter: {
+      'layer-off': 'Counter-battens off',
+      complete: 'Ready',
+      'needs-hip-detail': 'Partial',
+      invalid: 'Invalid counter-batten data',
+      'no-axes': 'No structural axes',
+      interior: 'Plane interior',
+      interiorReady: 'calculated',
+      hips_one: '{{count}} H1 hip',
+      hips_few: '{{count}} H1 hips',
+      hips_many: '{{count}} H1 hips',
+      hips_other: '{{count}} H1 hips',
+      hipsNeedChoice: 'need a detail choice',
+      hipsDecided: 'detail chosen',
+      source:
+        'Counter-battens sit on rafter axes (K1, J1) along the roof fall. Their position comes from the structure, not from a spacing.',
+      preview: '+{{value}} m',
+      previewNone: '+0 m',
+    },
+    legend: {
+      title: 'Installation layers',
+      covering: 'Covering',
+      battens: 'Battens · across slope',
+      counterBattens: 'Counter-battens · along fall',
+      unresolvedHip: 'Hip without a chosen detail',
+    },
+    row: {
+      title: 'Batten row {{number}}',
+      plane: 'Plane',
+      number: 'Row number',
+      fromEave: 'Distance from eave',
+      previous: 'Gauge to previous',
+      next: 'Gauge to next',
+      visible: 'Visible length',
+      source: 'Source',
+      openings: 'Opening breaks',
+      firstRow: 'first batten (eave detail)',
+      lastRow: 'last batten (ridge detail)',
+    },
+    axis: {
+      title: 'Counter-batten {{code}}',
+      sourceMember: 'Structural axis',
+      plane: 'Plane',
+      visible: 'Visible length',
+      interruptions: 'Opening breaks',
+      type: 'Type',
+      interior: 'rafter axis inside the plane',
+      boundary: 'run along a hip',
+    },
+    notPurchase:
+      'Geometric installation lengths — no allowance and no split into commercial lengths.',
+  },
   hipBoundary: {
     title: 'H1 hip detail',
     needsChoice_one: '{{count}} hip needs a detail',
@@ -2783,6 +3121,7 @@ export const assemblyEn: typeof assemblyPl = {
       'The covering does not own every plane selected for battens.',
     'covering-source-conflict':
       'More than one covering is assigned to the same roof plane.',
+    'pitch-rule-unavailable': 'No unambiguous automatic data for this pitch.',
   },
   windowCollision: 'Geometric collision with a rafter',
   windowClear: 'The opening is geometrically between rafters.',
@@ -3229,6 +3568,9 @@ export const assemblyEn: typeof assemblyPl = {
       'net-area-no-overlap-no-rolls':
         'Net area — excludes laps and roll conversion.',
       'partial-counter-battens': 'Partial result — review the H1 boundary.',
+      'batten-gauge-unverified':
+        'Manual gauge not verified against a covering.',
+      'batten-gauge-incompatible': 'Batten gauge does not match the covering.',
       'covering-not-a-purchase-count':
         'This is a geometric result, not a purchase count.',
       'declared-consumption-not-a-resolved-purchase-count':

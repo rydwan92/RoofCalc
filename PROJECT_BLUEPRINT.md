@@ -1297,7 +1297,17 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
-**Iteration:** `043A — membrane material truth (first commercial vertical slice)`
+**Iteration:** `043B — roof covering installation workflow (tiles → battens → counter-battens)`
+
+**Status:** `IMPLEMENTED — not committed (user did not request commit)`
+
+**Completed:** batten quantity audit with an independent area invariant; root cause of low batten totals was silent plane-scope narrowing (covering auto-repair and first Toolbox layer copied a one-plane covering scope into `battenLayout.roofPlaneIds`) — fixed at the source, new coverings take all free planes, resolver reports `scope`, per-plane evidence (`slopeLengthMm`, `totalRowLengthMm`, `openingDeductionMm`, `rowNumber`), drift-free manual stations. Centralised layer defaults (`build-up-defaults.ts`, new layers are Auto). Derived `batten-workflow.ts` projection drives the Montaż pokrycia block, Warstwy summary, composite installation plan (`buildUpView: 'installation'`), row/axis details, sequential guidance, Material Plan note and export facts. `covering-core`: pitch-rule resolution and `deriveCoveringSupportCapability`. Batten HUD no longer shows the retained manual gauge in Auto. See `docs/ARCHITECTURE_V43B_COVERING_AND_BATTEN_WORKFLOW.md`.
+
+**NEXT ACTION:** V44 — commercial batten/counter-batten stock planning from per-row evidence (documented joining-over-support rule first), after committing V43B.
+
+---
+
+**Previous iteration:** `043A — membrane material truth (first commercial vertical slice)`
 
 **Status:** `IMPLEMENTED — committed and pushed on main after e2657b0`
 

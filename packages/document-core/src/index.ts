@@ -179,6 +179,13 @@ export interface LayersSection {
         'manufacturer-product-data' | 'project-user-input' | 'unavailable';
       eaveOffsetMm?: number;
       ridgeOffsetMm?: number;
+      /** V43B workflow facts copied from the app projection, never recomputed. */
+      workflowState?: string;
+      coveringProduct?: string;
+      installationModeId?: string;
+      hipDetail?: 'not-decided' | 'no-dedicated-run' | 'paired-plane-runs';
+      hipBoundaryCount?: number;
+      unresolvedHipBoundaryCount?: number;
       // Per-plane solver evidence: never infer one gauge for unequal planes.
       autoPlans?: {
         planeId: string;

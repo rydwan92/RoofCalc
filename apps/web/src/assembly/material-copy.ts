@@ -97,6 +97,10 @@ const pl = {
   'no-allowance-no-stock-length': 'Bez zapasu i rozkroju handlowego.',
   'partial-counter-battens':
     'Częściowo policzone: osie K1/J1 i przerwy przy otworach; detal przy narożnych H1 pozostaje nierozwiązany.',
+  'batten-gauge-unverified':
+    'Rozstaw ręczny, niezweryfikowany z pokryciem — długość geometryczna wstępna.',
+  'batten-gauge-incompatible':
+    'Rozstaw łat jest niezgodny z pokryciem — długość geometryczna do poprawy.',
   'gross-area-no-roll-reuse':
     'Pozostałe odcinki rolki nie są ponownie układane między pasami.',
   'hip-course-width-approximated':
@@ -210,6 +214,10 @@ const en: typeof pl = {
   'no-allowance-no-stock-length': 'Without allowances or commercial cutting.',
   'partial-counter-battens':
     'Partial: K1/J1 axes and opening interruptions; H1 boundary detail remains unresolved.',
+  'batten-gauge-unverified':
+    'Manual gauge not verified against a covering — preliminary geometric length.',
+  'batten-gauge-incompatible':
+    'The batten gauge does not match the covering — geometric length needs correction.',
   'gross-area-no-roll-reuse':
     'Leftover roll pieces are not re-laid between courses.',
   'hip-course-width-approximated':

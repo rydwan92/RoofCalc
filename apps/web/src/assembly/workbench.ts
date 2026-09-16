@@ -142,8 +142,12 @@ export const WORKBENCH_PERSPECTIVES: readonly WorkbenchPerspective[] = [
   'costing',
   'documents',
 ];
+/**
+ * `installation` (V43B) is the composite covering / battens / counter-battens
+ * plan reached from "Szczegóły montażu". It is a view, never a perspective.
+ */
 export type BuildUpView =
-  'overview' | 'membrane' | 'counterBattens' | 'battens';
+  'overview' | 'membrane' | 'counterBattens' | 'battens' | 'installation';
 export type MaterialsView =
   'plan' | 'cutting' | 'summary' | 'schedule' | 'drawing';
 export type MobilePanel = 'none' | 'tools' | 'inspector' | 'view';
@@ -259,6 +263,8 @@ export interface WorkbenchViewState {
     membrane: boolean;
     counterBattens: boolean;
     battens: boolean;
+    /** V43B: subtle covering underlay in the installation view. */
+    covering: boolean;
   };
 }
 
@@ -309,11 +315,14 @@ export const initialWorkbenchViewState: WorkbenchViewState = {
     membrane: true,
     counterBattens: true,
     battens: true,
+    covering: true,
   },
 };
 
 export interface WorkbenchProjectionPolicy {
   showRoofPlanes: boolean;
+  /** V43B: covering underlay drawn only in the installation view. */
+  showCoveringUnderlay: boolean;
   showPrimaryMembers: boolean;
   showSecondaryMembers: boolean;
   showSupports: boolean;
@@ -344,12 +353,16 @@ export function deriveWorkbenchProjectionPolicy(
   const membrane =
     layers &&
     (view.buildUpView === 'overview' || view.buildUpView === 'membrane');
+  const installation = layers && view.buildUpView === 'installation';
   const counterBattens =
     layers &&
-    (view.buildUpView === 'overview' || view.buildUpView === 'counterBattens');
+    (view.buildUpView === 'overview' ||
+      view.buildUpView === 'counterBattens' ||
+      installation);
   const materials = view.viewPreset === 'materials';
   return {
     showRoofPlanes: true,
+    showCoveringUnderlay: installation && view.layerVisibility.covering,
     showPrimaryMembers: view.layerVisibility.structure,
     showSecondaryMembers:
       view.layerVisibility.structure &&
@@ -365,7 +378,9 @@ export function deriveWorkbenchProjectionPolicy(
     showCounterBattens: counterBattens && view.layerVisibility.counterBattens,
     showBattens:
       ((layers &&
-        (view.buildUpView === 'overview' || view.buildUpView === 'battens')) ||
+        (view.buildUpView === 'overview' ||
+          view.buildUpView === 'battens' ||
+          installation)) ||
         materials ||
         covering) &&
       view.layerVisibility.battens,

@@ -99,6 +99,9 @@ export function evaluateBattenInstallation(args: {
     'gauge-data-missing',
     'target-planes-not-covered',
     'auto-source-missing',
+    'pitch-rule-data-missing',
+    'pitch-rule-ambiguous',
+    'pitch-rule-unavailable',
   ]);
   const hard = issues.filter((issue) => issue.category === 'hard-constraint');
   const incompatible = hard.some((issue) => !missingCodes.has(issue.code));

@@ -212,6 +212,18 @@ mutable family is inactive for new selections. See
 `docs/ARCHITECTURE_V42_SHARED_DEV_AND_METAL.md` and
 `docs/CLOUDFLARE_SEOHOST_V42.md`.
 
+V43B turns covering → battens → counter-battens into one workflow. The batten
+quantity audit found no solver error but a silent application defect: repair
+and first-layer creation copied a one-plane covering scope into the batten
+layer, so a hip showed ~27 % of its battens. Layers now follow the whole roof,
+the resolver reports scope and per-plane evidence, dangerous 350/250 fallbacks
+are centralised in `build-up-defaults.ts`, and one derived `batten-workflow.ts`
+projection (Auto/Manual ownership, covering validation, hip-detail state)
+feeds the covering block, Warstwy summary, composite installation plan,
+guidance, Material Plan note and export. Tile pitch rules and a derived
+covering support capability live in `covering-core`. See
+`docs/ARCHITECTURE_V43B_COVERING_AND_BATTEN_WORKFLOW.md`.
+
 V38 adds the pure `packages/technical-scene` package and a second renderer for
 the same resolved project. One adapter turns the already-resolved
 `RoofSkeleton` into renderer-neutral `TechnicalScene` DTOs in canonical
@@ -519,6 +531,7 @@ pnpm e2e      # real-browser smoke, desktop 1440x900 and mobile 390x844 (pnpm e2
 | `ARCHITECTURE_V38_TECHNICAL_3D_MVP` | the technical scene contract, coordinate convention, roof→scene adapter, Three.js viewport, 2D/3D selection identity and renderer boundary |
 | `ARCHITECTURE_V39_EXECUTION_GEOMETRY_AND_HIP_BOUNDARY` | hip-boundary counter-batten detail, J1→H1 finished termination, finished K1 3D solid, hip execution intent |
 | `ARCHITECTURE_V42_SHARED_DEV_AND_METAL` | shared DEV SQL, Cloudflare Worker/Hyperdrive boundary, additive metal seed, batten/module semantics |
+| `ARCHITECTURE_V43B_COVERING_AND_BATTEN_WORKFLOW` | covering-first batten workflow, Auto/Manual ownership, batten scope audit, installation plan, hip-detail guidance |
 | `domain/ROOF_TILE_EDGE_PLACEMENT` | eave/verge evidence; why no physical tile edge projection is modelled |
 | `PROJECT_BLUEPRINT.md` | always first; holds the work checkpoint |
 | `docs/ARCHITECTURE_INDEX.md` | always second; this file |
