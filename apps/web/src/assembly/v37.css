@@ -1897,3 +1897,112 @@
     padding: 8px 10px;
   }
 }
+
+/* ============================================================
+   V39 — hip boundary execution detail
+   ============================================================ */
+
+.a-hip-boundary-detail {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid var(--a-line);
+  border-radius: 10px;
+  background: var(--a-surface);
+}
+.a-hip-boundary-detail[data-hip-boundary-status='needs-choice'] {
+  border-color: var(--a-warning);
+  background: var(--a-warning-fill);
+}
+.a-hip-boundary-detail h4 {
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.a-hip-boundary-state {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+.a-hip-boundary-detail[data-hip-boundary-status='needs-choice']
+  .a-hip-boundary-state {
+  color: var(--a-warning);
+}
+.a-hip-boundary-detail[data-hip-boundary-status='resolved']
+  .a-hip-boundary-state {
+  color: var(--a-accent);
+}
+.a-hip-boundary-why {
+  margin: 0;
+  color: var(--a-text-muted);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.a-hip-detail-options {
+  display: grid;
+  gap: 8px;
+}
+.a-hip-detail-options label {
+  /* The Inspector column is narrow, so the sketch sits under its title rather
+     than beside it; a side-by-side variant would squeeze the hint to one word
+     per line. */
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  grid-template-areas:
+    'radio title'
+    'radio sketch'
+    'radio hint';
+  gap: 5px 9px;
+  align-items: start;
+  padding: 9px;
+  border: 1px solid var(--a-line);
+  border-radius: 9px;
+  background: var(--a-panel);
+  cursor: pointer;
+}
+.a-hip-detail-options label:hover {
+  border-color: var(--a-related);
+}
+.a-hip-detail-options label:has(input:checked) {
+  border-color: var(--a-selection);
+  outline: 2px solid var(--a-selection-soft);
+}
+.a-hip-detail-options input {
+  grid-area: radio;
+  margin-top: 3px;
+}
+.a-hip-detail-sketch {
+  grid-area: sketch;
+  width: 100%;
+  max-width: 210px;
+  height: auto;
+  border-radius: 6px;
+  background: var(--a-canvas);
+}
+.a-hip-detail-options strong {
+  grid-area: title;
+  font-size: 13px;
+}
+.a-hip-detail-options span {
+  grid-area: hint;
+  color: var(--a-text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.a-hip-boundary-facts {
+  margin: 0;
+}
+
+.a-unresolved-hip-boundary {
+  stroke: var(--a-warning);
+  stroke-width: 3px;
+  stroke-dasharray: 10 7;
+  stroke-linecap: round;
+  fill: none;
+  pointer-events: none;
+}

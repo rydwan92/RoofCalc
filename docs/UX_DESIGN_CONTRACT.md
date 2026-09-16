@@ -205,6 +205,38 @@ and their totals are never added together.
 - Every 3D control is a real labelled button with `aria-pressed` where it
   toggles; returning to 2D never requires touching the canvas.
 
+## 7.2 Execution decisions that unblock a partial result (V39)
+
+- A result that is **permanently** partial with no way to finish it is a defect,
+  not honesty. When a partial status has exactly one cause and that cause is a
+  decision only the expert can make, the surface that shows the status must also
+  offer the decision.
+- V39's case: hip counter-battens. The status row now reads the real numbers
+  (`46 osi K1-J1 · 0 ciągów grzbietowych`, total length) and states what is
+  missing (`4 grzbiety wymagają wyboru detalu`), with the choice immediately
+  below and the affected hips drawn as dashed amber references in the 2D layer
+  view — never simply absent.
+- **Offer a choice, never a default.** Where research shows two legitimate
+  details that produce different quantities, neither may be pre-selected or
+  labelled "recommended". The panel says why in one sentence.
+- Spatially meaningful alternatives get **small schematic SVG sketches**, a
+  plain Polish name and a one-line explanation, as radio cards — not an enum
+  dropdown and never an internal identifier.
+- After the choice the same row states completion in the same vocabulary
+  (`✓ Gotowe`, `4 grzbiety — układ kompletny`) with the added length broken out,
+  so the user can see what their decision cost.
+- Choosing an execution detail is **canonical project intent**: one normal
+  Undo/Redo entry. Display-only toggles around it (3D build-up visibility,
+  finished vs reference geometry, camera) stay transient and create no history.
+- Downstream surfaces must not be told the news twice. Material Plan, Cost and
+  Export read the resolver's own status, so the row upgrades from *CZĘŚCIOWE* to
+  *GEOMETRIA* by itself; an accepted cost line still goes through the existing
+  "Projekt zmienił tę wartość" workflow and is never silently rewritten.
+- Truthfulness does not relax when a detail resolves. A resolved counter-batten
+  total is still a *geometric visible length*, never a purchase length, and
+  V39's finished K1 solid is labelled so that H1/J1 are still stated as
+  reference geometry.
+
 ## 8. Language and identity
 
 - All user-facing text is translatable; the app ships Polish and English.

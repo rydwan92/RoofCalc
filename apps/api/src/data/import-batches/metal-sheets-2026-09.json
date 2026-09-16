@@ -1,0 +1,150 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "id": "metal-sheet-research-2026-09",
+    "label": "V39: first real metal roofing products (Pruszynski FIORD, TIGRA, T18 Dach). Dimensions from the manufacturer product/dimension pages, retrieved 2026-09. Minimum pitches are Pruszynski figures per covering family.",
+    "sourceRevision": "2026-09"
+  },
+  "manufacturers": [
+    {
+      "id": "manufacturer:pruszynski",
+      "slug": "pruszynski",
+      "name": "Pruszyński",
+      "countryCode": "PL",
+      "websiteUrl": "https://pruszynski.com.pl",
+      "active": true
+    }
+  ],
+  "products": [
+    {
+      "id": "product:pruszynski:fiord",
+      "manufacturerId": "manufacturer:pruszynski",
+      "slug": "fiord",
+      "name": "FIORD",
+      "coveringKind": "modular-sheet",
+      "active": true
+    },
+    {
+      "id": "product:pruszynski:tigra",
+      "manufacturerId": "manufacturer:pruszynski",
+      "slug": "tigra",
+      "name": "TIGRA",
+      "coveringKind": "modular-sheet",
+      "active": true
+    },
+    {
+      "id": "product:pruszynski:t18-dach",
+      "manufacturerId": "manufacturer:pruszynski",
+      "slug": "t18-dach",
+      "name": "T18 Dach",
+      "coveringKind": "modular-sheet",
+      "active": true
+    }
+  ],
+  "revisions": [
+    {
+      "id": "revision:pruszynski:fiord:2026-09",
+      "productId": "product:pruszynski:fiord",
+      "revisionCode": "2026-09",
+      "validFrom": "2026-09-16",
+      "source": {
+        "label": "pruszynski.com.pl blachodachowka dimensions page, 2026-09: module 350 mm, cover width 1110 mm, total ~1165 mm, profile 17 mm, 0.5 mm steel. Minimum pitch 15 deg is the manufacturer figure for a modular profiled blachodachowka.",
+        "url": "https://pruszynski.com.pl/warto-wiedziec/jakie-sa-wymiary-blachodachowek-pruszynski/",
+        "revision": "2026-09"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "modular-sheet",
+        "effectiveWidthMm": 1110,
+        "totalWidthMm": 1165,
+        "lengthModel": {
+          "kind": "fixed-sheet",
+          "effectiveLengthMm": 350
+        },
+        "moduleLengthMm": 350,
+        "moduleWidthMm": 1110,
+        "profileHeightMm": 17,
+        "minPitchDeg": 15,
+        "physicalThicknessMm": 0.5,
+        "material": "steel",
+        "salesUnit": "piece"
+      }
+    },
+    {
+      "id": "revision:pruszynski:tigra:2026-09",
+      "productId": "product:pruszynski:tigra",
+      "revisionCode": "2026-09",
+      "validFrom": "2026-09-16",
+      "source": {
+        "label": "pruszynski.com.pl blachodachowka dimensions page, 2026-09: module 350 mm, cover width 1147 mm, total ~1186 mm, profile 11.5 mm, 0.5 mm steel. Minimum pitch 15 deg is the manufacturer figure for a modular profiled blachodachowka.",
+        "url": "https://pruszynski.com.pl/warto-wiedziec/jakie-sa-wymiary-blachodachowek-pruszynski/",
+        "revision": "2026-09"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "modular-sheet",
+        "effectiveWidthMm": 1147,
+        "totalWidthMm": 1186,
+        "lengthModel": {
+          "kind": "fixed-sheet",
+          "effectiveLengthMm": 350
+        },
+        "moduleLengthMm": 350,
+        "moduleWidthMm": 1147,
+        "profileHeightMm": 11.5,
+        "minPitchDeg": 15,
+        "physicalThicknessMm": 0.5,
+        "material": "steel",
+        "salesUnit": "piece"
+      }
+    },
+    {
+      "id": "revision:pruszynski:t18-dach:2026-09",
+      "productId": "product:pruszynski:t18-dach",
+      "revisionCode": "2026-09",
+      "validFrom": "2026-09-16",
+      "source": {
+        "label": "pruszynski.com.pl T18 Dach page, 2026-09: cover width 1128 mm, total 1173 mm, profile 18 mm, 0.5-0.7 mm (0.5 modelled), pitch from 6 deg. Cut to order 0.5-9 m, so modelled cut-to-length. Overlap accessories not modelled.",
+        "url": "https://pruszynski.com.pl/produkt/blachy-trapezowe/blacha-trapezowa-na-dach/t18-dach/",
+        "revision": "2026-09"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "modular-sheet",
+        "effectiveWidthMm": 1128,
+        "totalWidthMm": 1173,
+        "lengthModel": {
+          "kind": "cut-to-length",
+          "minPanelLengthMm": 500,
+          "maxPanelLengthMm": 9000
+        },
+        "moduleLengthMm": 500,
+        "profileHeightMm": 18,
+        "minPitchDeg": 6,
+        "physicalThicknessMm": 0.5,
+        "material": "steel",
+        "salesUnit": "square-metre"
+      }
+    }
+  ],
+  "variants": [
+    {
+      "id": "variant:pruszynski:fiord:mat-0-5",
+      "productId": "product:pruszynski:fiord",
+      "name": "FIORD 0,5 mm",
+      "active": true
+    },
+    {
+      "id": "variant:pruszynski:tigra:mat-0-5",
+      "productId": "product:pruszynski:tigra",
+      "name": "TIGRA 0,5 mm",
+      "active": true
+    },
+    {
+      "id": "variant:pruszynski:t18-dach:0-5",
+      "productId": "product:pruszynski:t18-dach",
+      "name": "T18 Dach 0,5 mm",
+      "active": true
+    }
+  ]
+}

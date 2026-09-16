@@ -6,10 +6,12 @@ import {
   Color,
   DirectionalLight,
   DoubleSide,
+  ExtrudeGeometry,
   Group,
   HemisphereLight,
   InstancedMesh,
   LineBasicMaterial,
+  LineDashedMaterial,
   LineLoop,
   LineSegments,
   Matrix4,
@@ -73,6 +75,28 @@ const BOX_EDGE_PAIRS: readonly [number, number][] = (() => {
   return pairs;
 })();
 
+/**
+ * Which corner pairs form an entity's visible edges.
+ *
+ * `sceneGeometryCorners` emits an extruded profile as two corners per profile
+ * point (near face, far face, in profile order), so its wireframe is the two
+ * caps plus one edge per profile vertex.
+ */
+function entityEdgePairs(
+  entity: TechnicalSceneEntity,
+): readonly [number, number][] {
+  if (entity.geometry.kind !== 'extruded-profile') return BOX_EDGE_PAIRS;
+  const count = entity.geometry.profile.length;
+  const pairs: [number, number][] = [];
+  for (let index = 0; index < count; index += 1) {
+    const next = (index + 1) % count;
+    pairs.push([index * 2, next * 2]);
+    pairs.push([index * 2 + 1, next * 2 + 1]);
+    pairs.push([index * 2, index * 2 + 1]);
+  }
+  return pairs;
+}
+
 export interface EntityPresentation {
   emphasis: SceneEmphasis;
   visibility: SceneEntityVisibility;
@@ -90,6 +114,29 @@ interface InstanceBucket {
 }
 
 function matrixOf(entity: TechnicalSceneEntity): Matrix4 {
+  if (entity.geometry.kind === 'extruded-profile') {
+    // Local (x, y, z) = (along, up, width), matching how the extruded profile
+    // geometry below is built and centred.
+    const { basis, origin } = entity.geometry;
+    return new Matrix4().set(
+      basis.along.x,
+      basis.up.x,
+      basis.width.x,
+      origin.x,
+      basis.along.y,
+      basis.up.y,
+      basis.width.y,
+      origin.y,
+      basis.along.z,
+      basis.up.z,
+      basis.width.z,
+      origin.z,
+      0,
+      0,
+      0,
+      1,
+    );
+  }
   if (entity.geometry.kind !== 'oriented-box') return new Matrix4();
   const { basis, center } = entity.geometry;
   // Columns are the declared right-handed order (width, along, depth), which
@@ -128,8 +175,13 @@ export class TechnicalViewport {
   private readonly hoverEdges: LineSegments;
   private readonly raycaster = new Raycaster();
   private readonly pointer = new Vector2();
-  private readonly geometryCache = new Map<string, BoxGeometry>();
+  private readonly geometryCache = new Map<
+    string,
+    BoxGeometry | ExtrudeGeometry
+  >();
   private readonly buckets = new Map<string, InstanceBucket>();
+  /** Entities that are their own object rather than an instanced bucket. */
+  private readonly meshes = new Map<string, Mesh | LineSegments>();
   private readonly materials: Material[] = [];
   private controls: OrbitControls;
   private projection: SceneProjection = 'perspective';
@@ -311,7 +363,15 @@ export class TechnicalViewport {
         this.addPlane(entity);
         continue;
       }
-      if (entity.geometry.kind !== 'oriented-box') continue;
+      if (entity.geometry.kind === 'line') {
+        this.addReferenceLine(entity);
+        continue;
+      }
+      if (
+        entity.geometry.kind !== 'oriented-box' &&
+        entity.geometry.kind !== 'extruded-profile'
+      )
+        continue;
       const key = sceneInstanceKey(entity);
       const list = byKey.get(key);
       if (list) list.push(entity);
@@ -377,13 +437,56 @@ export class TechnicalViewport {
     this.planes.add(outline);
   }
 
+  /** A reference line, such as a hip boundary whose detail is undecided. */
+  private addReferenceLine(entity: TechnicalSceneEntity) {
+    if (entity.geometry.kind !== 'line') return;
+    const { from, to } = entity.geometry;
+    const geometry = new BufferGeometry();
+    geometry.setAttribute(
+      'position',
+      new BufferAttribute(
+        new Float32Array([from.x, from.y, from.z, to.x, to.y, to.z]),
+        3,
+      ),
+    );
+    const line = new LineSegments(
+      geometry,
+      this.track(
+        new LineDashedMaterial({
+          color: SCENE_GROUP_COLOR[entity.semanticGroup].shade,
+          dashSize: 120,
+          gapSize: 90,
+          linewidth: 2,
+        }),
+      ),
+    );
+    line.computeLineDistances();
+    line.renderOrder = 2;
+    line.userData.entityId = entity.id;
+    line.frustumCulled = false;
+    this.solids.add(line);
+    this.meshes.set(entity.id, line);
+  }
+
   private addBucket(key: string, entities: TechnicalSceneEntity[]) {
     const first = entities[0]!;
-    if (first.geometry.kind !== 'oriented-box') return;
-    const { widthMm, alongMm, depthMm } = first.geometry.size;
     let geometry = this.geometryCache.get(key);
     if (!geometry) {
-      geometry = new BoxGeometry(widthMm, alongMm, depthMm);
+      if (first.geometry.kind === 'oriented-box') {
+        const { widthMm, alongMm, depthMm } = first.geometry.size;
+        geometry = new BoxGeometry(widthMm, alongMm, depthMm);
+      } else if (first.geometry.kind === 'extruded-profile') {
+        // Every K1 sharing a prototype shares this profile, so the finished
+        // solid stays instanced exactly like the reference prism it replaces.
+        const { profile, thicknessMm } = first.geometry;
+        if (profile.length < 3) return;
+        const extruded = new ExtrudeGeometry(
+          new Shape(profile.map((point) => new Vector2(point.x, point.y))),
+          { depth: thicknessMm, bevelEnabled: false, steps: 1 },
+        );
+        extruded.translate(0, 0, -thicknessMm / 2);
+        geometry = extruded;
+      } else return;
       this.geometryCache.set(key, geometry);
     }
     const solid = new InstancedMesh(
@@ -424,6 +527,11 @@ export class TechnicalViewport {
       this.solids.remove(bucket.solid, bucket.ghost);
     }
     this.buckets.clear();
+    for (const object of this.meshes.values()) {
+      object.geometry.dispose();
+      this.solids.remove(object);
+    }
+    this.meshes.clear();
     for (const child of [...this.planes.children]) {
       if (child instanceof Mesh || child instanceof LineLoop)
         child.geometry.dispose();
@@ -482,9 +590,12 @@ export class TechnicalViewport {
             : state.emphasis === 'related'
               ? relatedPositions
               : edgePositions;
-        for (const [a, b] of BOX_EDGE_PAIRS) {
-          target.push(corners[a]!.x, corners[a]!.y, corners[a]!.z);
-          target.push(corners[b]!.x, corners[b]!.y, corners[b]!.z);
+        for (const [a, b] of entityEdgePairs(entity)) {
+          const start = corners[a];
+          const end = corners[b];
+          if (!start || !end) continue;
+          target.push(start.x, start.y, start.z);
+          target.push(end.x, end.y, end.z);
         }
       }
       bucket.solid.count = solidCount;
@@ -500,6 +611,33 @@ export class TechnicalViewport {
       // The bounding sphere is cached per instance count, so picking would
       // silently miss members after a filter change without this.
       if (solidCount > 0) bucket.solid.computeBoundingSphere();
+    }
+    // Standalone objects (finished solids, reference lines) follow the same
+    // policy as instanced members, without joining a bucket.
+    for (const [entityId, object] of this.meshes) {
+      const state = presentation.get(entityId);
+      const visible = !!state && state.visibility !== 'hidden';
+      object.visible = visible;
+      const material = object.material as Material & {
+        color?: Color;
+        opacity?: number;
+        transparent?: boolean;
+      };
+      if (visible && material.color) {
+        const entity = this.technicalScene?.entities.find(
+          (candidate) => candidate.id === entityId,
+        );
+        const group = entity?.semanticGroup;
+        if (group) {
+          material.color.set(SCENE_GROUP_COLOR[group].base);
+          if (state!.emphasis === 'selected') material.color.lerp(WHITE, 0.14);
+          else if (state!.emphasis === 'related')
+            material.color.lerp(FADE, 0.4);
+        }
+        material.transparent = state!.visibility === 'ghosted';
+        material.opacity = state!.visibility === 'ghosted' ? 0.18 : 1;
+        material.needsUpdate = true;
+      }
     }
     this.planes.visible = showRoofPlanes;
     this.hoveredEntityId = undefined;
@@ -619,13 +757,20 @@ export class TechnicalViewport {
       -((clientY - rect.top) / rect.height) * 2 + 1,
     );
     this.raycaster.setFromCamera(this.pointer, this.camera);
-    const meshes = [...this.buckets.values()]
-      .filter((bucket) => bucket.solid.count > 0)
-      .map((bucket) => bucket.solid);
+    const meshes = [
+      ...[...this.buckets.values()]
+        .filter((bucket) => bucket.solid.count > 0)
+        .map((bucket) => bucket.solid),
+      ...[...this.meshes.values()].filter(
+        (object): object is Mesh => object instanceof Mesh && object.visible,
+      ),
+    ];
     for (const hit of this.raycaster.intersectObjects(meshes, false)) {
       const ids = hit.object.userData.entityIds as string[] | undefined;
       const entityId =
-        typeof hit.instanceId === 'number' ? ids?.[hit.instanceId] : undefined;
+        typeof hit.instanceId === 'number'
+          ? ids?.[hit.instanceId]
+          : (hit.object.userData.entityId as string | undefined);
       if (entityId) return { entityId };
     }
     return undefined;

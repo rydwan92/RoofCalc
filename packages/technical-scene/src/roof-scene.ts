@@ -11,6 +11,8 @@ import type {
 import {
   SCENE_COORDINATE_SYSTEM,
   sceneBoundsOf,
+  type ScenePoint3,
+  type SceneVector3,
   type SceneEntityLabel,
   type SceneGeometryLimitation,
   type SceneOrientedBox,
@@ -55,6 +57,8 @@ const FAMILY_LABEL: Record<SceneSemanticGroup, SceneEntityLabel> = {
   ridge: { nameKey: 'ridge' },
   'opening-framing': { nameKey: 'opening-header' },
   'roof-plane': { nameKey: 'roofPlane' },
+  'counter-batten': { nameKey: 'counterBattens' },
+  'unresolved-hip-boundary': { nameKey: 'scene3d.unresolvedHipBoundary' },
 };
 
 /**
@@ -84,6 +88,32 @@ function prismOrientation(kind: SkeletonMemberKind): TimberPrismOrientation {
     : 'along-building';
 }
 
+/**
+ * Replaces a member's reference prism with its resolved finished solid.
+ *
+ * The entity keeps its identity, family and section; only the drawn geometry
+ * changes, and `no-cut-solids` is dropped because the cuts are now present.
+ */
+function withFinishedGeometry(
+  entity: TechnicalSceneEntity,
+  finished: SceneFinishedMemberInput,
+): TechnicalSceneEntity {
+  return {
+    ...entity,
+    geometry: {
+      kind: 'extruded-profile',
+      profile: finished.profile.map((point) => ({ ...point })),
+      thicknessMm: finished.thicknessMm,
+      origin: { ...finished.origin },
+      basis: { ...finished.basis },
+    },
+    geometryStatus: 'finished',
+    limitations: entity.limitations.filter(
+      (limitation) => limitation !== 'no-cut-solids',
+    ),
+  };
+}
+
 /** Builds the oriented timber solid centred exactly on the resolved axis. */
 export function orientedBoxForMember(
   member: Pick<SkeletonMember3D, 'from' | 'to' | 'section' | 'kind'>,
@@ -109,10 +139,53 @@ export function orientedBoxForMember(
   };
 }
 
+/**
+ * One already-resolved counter-batten run, in scene coordinates (V39).
+ *
+ * The application composes this from `roof-math`'s resolver; the scene package
+ * never runs a solver and never derives a position of its own.
+ */
+export interface SceneCounterBattenInput {
+  rowId: string;
+  roofPlaneId: string;
+  sourceMemberId: string;
+  section: { widthMm: number; depthMm: number };
+  segments: { from: ScenePoint3; to: ScenePoint3 }[];
+}
+
+/** A hip boundary still waiting for an execution decision (V39). */
+export interface SceneUnresolvedHipBoundaryInput {
+  hipMemberId: string;
+  roofPlaneIds: string[];
+  from: ScenePoint3;
+  to: ScenePoint3;
+}
+
+/**
+ * A resolved finished timber solid (V39), already machined by the solver.
+ * Only members whose fabrication actually resolved may appear here.
+ */
+export interface SceneFinishedMemberInput {
+  memberId: string;
+  profile: { x: number; y: number }[];
+  thicknessMm: number;
+  origin: ScenePoint3;
+  basis: { along: SceneVector3; width: SceneVector3; up: SceneVector3 };
+}
+
 export interface RoofTechnicalSceneInput {
   skeleton: RoofSkeleton;
   /** Include translucent roof-plane context entities. Presentation only. */
   includeRoofPlanes?: boolean;
+  /** Resolved counter-batten runs to draw as build-up context. */
+  counterBattens?: readonly SceneCounterBattenInput[];
+  /** Hip boundaries whose detail is not chosen, drawn as reference lines. */
+  unresolvedHipBoundaries?: readonly SceneUnresolvedHipBoundaryInput[];
+  /**
+   * Finished fabrication solids, keyed by member ID. A member listed here is
+   * drawn as its machined profile instead of a reference prism.
+   */
+  finishedMembers?: readonly SceneFinishedMemberInput[];
 }
 
 /**
@@ -202,11 +275,76 @@ export function createRoofTechnicalScene(
   input: RoofTechnicalSceneInput,
 ): TechnicalScene {
   const entities: TechnicalSceneEntity[] = [];
+  const finished = new Map(
+    (input.finishedMembers ?? []).map((item) => [item.memberId, item]),
+  );
   let ordinal = 0;
   for (const member of input.skeleton.members) {
     const entity = memberEntity(member, ordinal);
     if (!entity) continue;
-    entities.push(entity);
+    const machined = finished.get(member.id);
+    entities.push(machined ? withFinishedGeometry(entity, machined) : entity);
+    ordinal += 1;
+  }
+  for (const run of input.counterBattens ?? []) {
+    for (const [index, segment] of run.segments.entries()) {
+      let box: SceneOrientedBox;
+      try {
+        box = orientedBoxForMember({
+          from: segment.from,
+          to: segment.to,
+          section: run.section,
+          // A counter-batten follows the fall line or a hip, so it uses the
+          // same width convention as the rafters it sits on.
+          kind: 'rafter',
+        });
+      } catch {
+        // A degenerate segment is a resolver limitation, not something to
+        // draw a fabricated solid for.
+        continue;
+      }
+      entities.push({
+        id: sceneEntityId(ordinal),
+        kind: 'counter-batten',
+        semanticGroup: 'counter-batten',
+        label: FAMILY_LABEL['counter-batten'],
+        geometry: box,
+        // V39 keeps counter-battens as context. The canonical selection for a
+        // build-up row stays with the 2D layer view.
+        selectable: false,
+        sourceRef: {
+          kind: 'counter-batten-row',
+          counterBattenRowId: `${run.rowId}:${index}`,
+          memberId: run.sourceMemberId,
+          roofPlaneId: run.roofPlaneId,
+        },
+        geometryStatus: 'reference',
+        limitations: ['no-cut-solids'],
+        section: run.section,
+        lengthMm: box.size.alongMm,
+      });
+      ordinal += 1;
+    }
+  }
+  for (const boundary of input.unresolvedHipBoundaries ?? []) {
+    entities.push({
+      id: sceneEntityId(ordinal),
+      kind: 'unresolved-boundary',
+      semanticGroup: 'unresolved-hip-boundary',
+      label: FAMILY_LABEL['unresolved-hip-boundary'],
+      geometry: {
+        kind: 'line',
+        from: { ...boundary.from },
+        to: { ...boundary.to },
+      },
+      selectable: false,
+      sourceRef: {
+        kind: 'hip-boundary',
+        memberId: boundary.hipMemberId,
+      },
+      geometryStatus: 'reference',
+      limitations: ['hip-boundary-detail-not-selected'],
+    });
     ordinal += 1;
   }
   if (input.includeRoofPlanes !== false)

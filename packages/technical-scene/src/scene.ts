@@ -81,9 +81,30 @@ export interface SceneLine {
   to: ScenePoint3;
 }
 
-export type SceneGeometry = SceneOrientedBox | ScenePolygon | SceneLine;
+/**
+ * A closed profile extruded across a member's width (V39).
+ *
+ * This is how a *finished* timber is carried: the profile already has its
+ * resolved notches and end cuts taken out of it by the solver, so a renderer
+ * only has to triangulate and extrude a polygon. No boolean operation is
+ * implied, requested or permitted here.
+ *
+ * `profile` is in the member's own plane — `x` along the axis, `y` from the
+ * bottom edge — and `origin`/`basis` place local `(0, 0)` in the scene.
+ */
+export interface SceneExtrudedProfile {
+  kind: 'extruded-profile';
+  profile: { x: number; y: number }[];
+  thicknessMm: number;
+  origin: ScenePoint3;
+  basis: { along: SceneVector3; width: SceneVector3; up: SceneVector3 };
+}
 
-export type SceneEntityKind = 'timber-member' | 'roof-plane';
+export type SceneGeometry =
+  SceneOrientedBox | ScenePolygon | SceneLine | SceneExtrudedProfile;
+
+export type SceneEntityKind =
+  'timber-member' | 'roof-plane' | 'counter-batten' | 'unresolved-boundary';
 
 /**
  * The semantic family a renderer colours and filters by. It mirrors the
@@ -99,7 +120,11 @@ export type SceneSemanticGroup =
   | 'purlin'
   | 'ridge'
   | 'opening-framing'
-  | 'roof-plane';
+  | 'roof-plane'
+  /** V39 build-up context: a resolved counter-batten run. */
+  | 'counter-batten'
+  /** V39: a hip boundary still waiting for an execution decision. */
+  | 'unresolved-hip-boundary';
 
 /**
  * How physically complete the drawn solid is.
@@ -120,7 +145,10 @@ export type SceneGeometryStatus = 'reference' | 'finished';
  *   face (deductions, backing/drop, compound cut solid) is not modelled.
  */
 export type SceneGeometryLimitation =
-  'no-cut-solids' | 'compound-connection-not-resolved';
+  | 'no-cut-solids'
+  | 'compound-connection-not-resolved'
+  /** V39: a hip boundary detail is not chosen, so nothing is drawn solid. */
+  | 'hip-boundary-detail-not-selected';
 
 /**
  * The canonical identity behind a scene entity.
@@ -130,7 +158,8 @@ export type SceneGeometryLimitation =
  * 2D workbench already uses (ADR-007).
  */
 export interface SceneSourceRef {
-  kind: 'skeleton-member' | 'roof-plane';
+  kind:
+    'skeleton-member' | 'roof-plane' | 'counter-batten-row' | 'hip-boundary';
   /** Stable physical placement identity of a skeleton member. */
   memberId?: string;
   /** The identity the workbench selection actually carries. */
@@ -139,6 +168,8 @@ export interface SceneSourceRef {
   prototypeId?: string;
   /** Roof-plane identity, for plane context entities. */
   roofPlaneId?: string;
+  /** V39: the resolved counter-batten row this entity draws. */
+  counterBattenRowId?: string;
 }
 
 /**
@@ -207,6 +238,28 @@ export const EMPTY_SCENE_BOUNDS: SceneBounds = {
 export function sceneGeometryCorners(geometry: SceneGeometry): ScenePoint3[] {
   if (geometry.kind === 'line') return [geometry.from, geometry.to];
   if (geometry.kind === 'polygon') return geometry.points;
+  if (geometry.kind === 'extruded-profile') {
+    const { origin, basis, profile, thicknessMm } = geometry;
+    return profile.flatMap((point) =>
+      [-thicknessMm / 2, thicknessMm / 2].map((offset) => ({
+        x:
+          origin.x +
+          basis.along.x * point.x +
+          basis.up.x * point.y +
+          basis.width.x * offset,
+        y:
+          origin.y +
+          basis.along.y * point.x +
+          basis.up.y * point.y +
+          basis.width.y * offset,
+        z:
+          origin.z +
+          basis.along.z * point.x +
+          basis.up.z * point.y +
+          basis.width.z * offset,
+      })),
+    );
+  }
   const { center, basis, size } = geometry;
   const corners: ScenePoint3[] = [];
   for (const widthSign of [-1, 1] as const)

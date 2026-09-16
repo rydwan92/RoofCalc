@@ -1,6 +1,6 @@
 # RoofCalc / CieślaCalc — Architecture Index
 
-**This is the current-state map, after V38.** Read it after `PROJECT_BLUEPRINT.md`
+**This is the current-state map, after V39.** Read it after `PROJECT_BLUEPRINT.md`
 and before touching code. It describes what exists today, not the history of how
 it got here. Historical `ARCHITECTURE_V*.md` documents stay authoritative for the
 subsystem they introduced and should be opened only when changing that subsystem.
@@ -50,7 +50,7 @@ Dependency direction is **downward only**.
 | `timber-model` | Pure type vocabulary: sections, members, skeletons, templates, build-up, features. No logic, no dependencies. | — |
 | `roof-math` | The geometry engine. Templates → resolved roofs, skeletons, rafters, hips, jacks, cuts, plane bases, roof surfaces, battens, counter-battens, opening framing. **Generates and owns roof-plane IDs.** **V34C** adds the membrane build-up layer's course-fit solver (`resolveMembraneCourseFit`, `resolveMembraneLayout`), mirroring the batten solver's own shape and home — a membrane never enters `covering-core`'s layout engines, since it is a build-up layer, not a primary covering. | `timber-model`, `zod` |
 | `drawing-engine` | Renderer-neutral projection: lanes, dimensions, interaction hit-testing, measurement. Produces view models, not DOM. **V38** extracts `createTimberPrismBasis` so the 2D faces and the 3D solid share one orientation formula. | — |
-| `technical-scene` | **V38.** The renderer-neutral technical scene: `TechnicalScene`/`TechnicalSceneEntity` DTOs, the roof→scene adapter, pure camera framing and the visibility policy. Consumes resolved geometry; runs no solver and knows no renderer. | `timber-model`, `drawing-engine` |
+| `technical-scene` | **V38.** The renderer-neutral technical scene: `TechnicalScene`/`TechnicalSceneEntity` DTOs, the roof→scene adapter, pure camera framing and the visibility policy. Consumes resolved geometry; runs no solver and knows no renderer. **V39** adds the `extruded-profile` primitive (a finished, already-machined timber) plus optional counter-batten, unresolved-hip-boundary and finished-member inputs. | `timber-model`, `drawing-engine` |
 | `covering-core` | Covering technical product schemas and the four family layout solvers (tile, fixed modular sheet, standing seam, cut-to-length), plane-ownership resolution, and the quantity bridge. **V34C** adds `membraneTechnicalSpecSchema`/`MembraneTechnicalSpec` — a schema **sibling** to `coveringTechnicalSpecSchema`, deliberately never joined into its union. | `zod` |
 | `calculator-core` | Composition layer: assembly resolution, member instances, fabrication packages, detail previews, and the canonical `RoofProjectDocumentV1`. **V34C** adds the additive optional `project.membraneProduct?: MembraneTechnicalSpec` field. | `roof-math`, `timber-model`, `covering-core`, `drawing-engine`, `shared` |
 | `quantity-core` | Aggregates neutral quantity sources into the member/material schedule. Knows nothing about products, procurement or prices. **V34C** adds optional gross build-up fields (`grossAreaMm2`, `courseCount`, `rollCount`, `semantic: 'gross-installed'`) alongside the always-present net area — exposed only once every contributing plane resolves a roll product, never blended from a partial mix. | `timber-model` |
@@ -185,6 +185,24 @@ fully seeded, price-joinable database with one command, working against
 either a bundled Docker MariaDB or an existing local XAMPP instance. See
 `docs/ARCHITECTURE_V35_MATERIAL_CATALOG_AND_DB_BOOTSTRAP.md`.
 
+V39 closes three execution gaps. (1) The hip counter-batten boundary stops
+being a permanent `partial`: research found two well-evidenced, mutually
+exclusive details and no basis for a default, so `CounterBattenLayoutSpec`
+gains an additive-optional `hipBoundaryDetail` and the resolver either adds two
+runs per hip or none — never a guessed one. Its result now separates
+`interiorAxisCount` from `hipBoundaryRunCount` and reports every
+`hipBoundaries[]` entry, decided or not. (2) `JackToHipConnection`
+`hip-face-butt` resolves J1's finished end against the hip's vertical side face
+(`hipWidthMm / √2`, then along the jack axis) **without overwriting** the
+reference centre-plane geometry; `executionStatus` distinguishes
+`reference-only` from `fabrication-resolved`, and neither becomes a procurement
+blank. (3) A new `roof-math/finished-rafter-solid.ts` places the already-machined
+K1 profile in 3D — extruded, never boolean-subtracted — so the technical scene
+can show the real birdsmouth and ridge cut while H1/J1 stay honestly
+reference-only. Material Plan, Cost and Export needed no change: they already
+consume the resolver's own status. See
+`docs/ARCHITECTURE_V39_EXECUTION_GEOMETRY_AND_HIP_BOUNDARY.md`.
+
 V38 adds the pure `packages/technical-scene` package and a second renderer for
 the same resolved project. One adapter turns the already-resolved
 `RoofSkeleton` into renderer-neutral `TechnicalScene` DTOs in canonical
@@ -237,7 +255,8 @@ API `environment.ts` initializes root `.env` once for server, CLI and Drizzle;
 | **Transient view/session** | `AssemblyState.workbench`, component `useState` (camera, hover, pointer maps) | no | no |
 | **Remote/server** | TanStack Query cache (catalogue only) | no | no |
 
-Transient means: mode, task/view preset, workspace renderer (2D/3D), selection,
+Transient means: mode, task/view preset, workspace renderer (2D/3D), 3D
+build-up visibility and finished/reference display, selection,
 hover, isolation, dimension level, layer visibility, panel and sheet state,
 `mobilePanel`, `selectedCoveringAssignmentId`, drawing detail level,
 camera/pan/zoom, 3D projection, view preset and family filters, measurement,
@@ -489,6 +508,7 @@ pnpm e2e      # real-browser smoke, desktop 1440x900 and mobile 390x844 (pnpm e2
 | `ARCHITECTURE_V36_MATERIAL_PLAN` | Materials plan, price selection/provenance, BOM/CSV and DB runtime diagnostics |
 | `ARCHITECTURE_V37_PRODUCT_EXPERIENCE_AND_COVERING_STUDIO` | perspective navigation and return trail, Document Hub, guided Creator and examples, Covering Studio technical/visual views |
 | `ARCHITECTURE_V38_TECHNICAL_3D_MVP` | the technical scene contract, coordinate convention, roof→scene adapter, Three.js viewport, 2D/3D selection identity and renderer boundary |
+| `ARCHITECTURE_V39_EXECUTION_GEOMETRY_AND_HIP_BOUNDARY` | hip-boundary counter-batten detail, J1→H1 finished termination, finished K1 3D solid, hip execution intent |
 | `domain/ROOF_TILE_EDGE_PLACEMENT` | eave/verge evidence; why no physical tile edge projection is modelled |
 | `PROJECT_BLUEPRINT.md` | always first; holds the work checkpoint |
 | `docs/ARCHITECTURE_INDEX.md` | always second; this file |
@@ -510,6 +530,7 @@ pnpm e2e      # real-browser smoke, desktop 1440x900 and mobile 390x844 (pnpm e2
 | `docs/ARCHITECTURE_V34C_MATERIAL_TRUTHFULNESS_AND_CATALOGUE.md` | `pricing-core`, real tile catalogue/pricing data, membrane course-fit engine |
 | `docs/ARCHITECTURE_V35_MATERIAL_CATALOG_AND_DB_BOOTSTRAP.md` | generalized catalogue (membrane/timber-stock), timber procurement/pricing, first-run DB bootstrap |
 | `docs/domain/ROOF_TILE_INSTALLATION_RULES.md` | manufacturer evidence for regular gauge, pitch and manual boundary references |
+| `docs/domain/HIP_BOUNDARY_EXECUTION_RESEARCH.md` | hip counter-batten detail, hip-batten support, J1→H1 face deduction |
 | `docs/FUTURE_EXECUTION_SEMANTICS_AUDIT.md` + `docs/domain/*` | touching coverage, overlap or connection semantics |
 | `docs/ARCHITECTURE_FUTURE_COMPOUND_ROOF_SCENE.md` | touching IDs, planes or document shape |
 | `docs/ARCHITECTURE_FUTURE_3D_BIM_IFC.md` | long-term 3D/BIM/IFC direction; V38 implemented its stages 1–3 |

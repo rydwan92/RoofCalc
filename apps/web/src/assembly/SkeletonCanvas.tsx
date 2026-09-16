@@ -697,6 +697,30 @@ function SkeletonCanvasComponent({
           })),
         )
       : [];
+  /**
+   * V39: a hip whose counter-batten detail is still undecided is drawn as an
+   * explicit dashed reference rather than simply being absent, so the partial
+   * status is visible where the work is.
+   */
+  const unresolvedHipBoundaries =
+    policy.showCounterBattens && selectedStore.counterBattenLayout?.enabled
+      ? counterBattens.hipBoundaries
+          .filter((boundary) => boundary.status === 'unresolved')
+          .flatMap((boundary) => {
+            const member = skeleton.members.find(
+              (candidate) => candidate.id === boundary.hipMemberId,
+            );
+            return member
+              ? [
+                  {
+                    id: boundary.hipMemberId,
+                    from: worldPoint(member.from),
+                    to: worldPoint(member.to),
+                  },
+                ]
+              : [];
+          })
+      : [];
   const selectedMember = skeleton.members.find(
     (member) =>
       member.id === state.workbench.selectedInstanceId ||
@@ -1585,6 +1609,24 @@ function SkeletonCanvasComponent({
                 </g>
               );
             })}
+          </g>
+        )}
+        {unresolvedHipBoundaries.length > 0 && (
+          <g
+            className="a-unresolved-hip-layer"
+            aria-label={t('assembly.hipBoundary.title')}
+          >
+            {unresolvedHipBoundaries.map((boundary) => (
+              <line
+                key={boundary.id}
+                data-testid="unresolved-hip-boundary"
+                className="a-unresolved-hip-boundary"
+                x1={boundary.from.x}
+                y1={boundary.from.y}
+                x2={boundary.to.x}
+                y2={boundary.to.y}
+              />
+            ))}
           </g>
         )}
         {spacingStationAxes.length > 0 && (

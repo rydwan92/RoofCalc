@@ -1086,6 +1086,32 @@ export const assemblyPl = {
     'Wybierz z katalogu lub wprowadź ręcznie. Po ustawieniu ilość membrany liczona jest z rzędów rolki (z zakładem), nie z powierzchni netto. Szerokość rzędu przyjmuje szerokość przy okapie — na połaciach koszowych jest to zawyżenie; otwory dachowe nie są odejmowane.',
   axisSegmentCount: 'Liczba osi / odcinków',
   segments: 'Odcinki',
+  hipBoundary: {
+    title: 'Detal grzbietu H1',
+    needsChoice_one: '{{count}} grzbiet wymaga wyboru detalu',
+    needsChoice_few: '{{count}} grzbiety wymagają wyboru detalu',
+    needsChoice_many: '{{count}} grzbietów wymaga wyboru detalu',
+    needsChoice_other: '{{count}} grzbietów wymaga wyboru detalu',
+    complete_one: '{{count}} grzbiet — układ kompletny',
+    complete_few: '{{count}} grzbiety — układ kompletny',
+    complete_many: '{{count}} grzbietów — układ kompletny',
+    complete_other: '{{count}} grzbietów — układ kompletny',
+    why: 'Sposób oparcia łaty narożnej zależy od systemu pokrycia. RoofCalc nie zgaduje go za Ciebie — obie wersje poniżej są poprawne wykonawczo i dają inną ilość kontrłat.',
+    runs: 'Ciągi przy grzbietach',
+    added: 'Długość z grzbietów',
+    breakdown: 'Osie / grzbiety',
+    breakdownValue: '{{interior}} osi K1-J1 · {{hip}} ciągów grzbietowych',
+    option: {
+      'no-dedicated-run': {
+        label: 'Uchwyty w krokwi narożnej',
+        hint: 'Łata narożna na regulowanych uchwytach wkręcanych w krokiew narożną. Kontrłaty połaci kończą się przy grzbiecie — brak dodatkowych ciągów.',
+      },
+      'paired-plane-runs': {
+        label: 'Kontrłaty po obu stronach',
+        hint: 'Po jednym ciągu na każdej przylegającej połaci, wzdłuż grzbietu. Daje oparcie końcom łat i kanał wentylacyjny — dwa ciągi na każdy grzbiet.',
+      },
+    },
+  },
   counterBattenLimited:
     'Ci\u0105gi kontr\u0142at na K1/J1 zosta\u0142y policzone. Detal wzd\u0142u\u017c grzbietu H1 nie jest jeszcze modelowany.',
   geometryHelp: 'Wyjaśnienie geometrii',
@@ -1386,6 +1412,13 @@ export const assemblyPl = {
       'Techniczna scena 3D więźby. Obracaj lewym przyciskiem, przesuwaj prawym, przybliżaj kółkiem.',
     hint: 'Kliknij element, aby go wybrać. Ten sam element pozostaje wybrany po powrocie do 2D.',
     referenceGeometry: 'Geometria referencyjna — bez detalu cięć',
+    referenceGeometryShort: 'Referencyjny',
+    executionGeometry: 'Wykonawczy',
+    finishedHint:
+      'Przełącz między belką referencyjną a geometrią wykonawczą K1 (zacios i cięcie kalenicowe).',
+    mixedGeometryNote:
+      'K1 — geometria wykonawcza. H1/J1 pozostają referencyjne.',
+    unresolvedHipBoundary: 'Grzbiet bez wybranego detalu',
     viewPresets: 'Widoki techniczne',
     preset: {
       isometric: 'Izometria',
@@ -1468,6 +1501,8 @@ export const assemblyPl = {
   j1StepPlumb: 'Na boku wytrasuj pion {{value}} względem osi J1.',
   j1StepTopFace:
     'Na górnym licu wytrasuj linię spotkania z H1: {{value}} do osi J1.',
+  j1StepHipFace:
+    'Odejmij lico krokwi narożnej: {{deduction}}. Długość wykonawcza {{finished}}.',
   fabrication: 'Trasowanie krok po kroku',
   member: 'KROKIEW K1',
   cutAngle: 'Kąt linii do osi krokwi',
@@ -2684,6 +2719,32 @@ export const assemblyEn: typeof assemblyPl = {
     'Choose from the catalogue or enter manually. Once set, membrane quantity is computed from roll courses (laps included), not net area. Course width uses the eave width — over-estimated on hip planes; roof windows are not subtracted.',
   axisSegmentCount: 'Axis / segment count',
   segments: 'Segments',
+  hipBoundary: {
+    title: 'H1 hip detail',
+    needsChoice_one: '{{count}} hip needs a detail',
+    needsChoice_few: '{{count}} hips need a detail',
+    needsChoice_many: '{{count}} hips need a detail',
+    needsChoice_other: '{{count}} hips need a detail',
+    complete_one: '{{count}} hip — layout complete',
+    complete_few: '{{count}} hips — layout complete',
+    complete_many: '{{count}} hips — layout complete',
+    complete_other: '{{count}} hips — layout complete',
+    why: 'How the hip batten is supported depends on the roofing system. RoofCalc does not guess it for you — both options below are valid execution details and they give different counter-batten quantities.',
+    runs: 'Hip-boundary runs',
+    added: 'Length from hips',
+    breakdown: 'Axes / hips',
+    breakdownValue: '{{interior}} K1-J1 axes · {{hip}} hip runs',
+    option: {
+      'no-dedicated-run': {
+        label: 'Holders in the hip rafter',
+        hint: 'The hip batten rides on adjustable holders screwed into the hip rafter. Plane counter-battens stop at the hip — no extra runs.',
+      },
+      'paired-plane-runs': {
+        label: 'Counter-battens on both sides',
+        hint: 'One run on each adjoining plane, parallel to the hip. Gives the batten ends a bearing and keeps the ventilation channel — two runs per hip.',
+      },
+    },
+  },
   counterBattenLimited:
     'K1/J1 counter-batten runs have been calculated. The detail along the H1 hip boundary is not modeled yet.',
   geometryHelp: 'Geometry explanation',
@@ -2987,6 +3048,12 @@ export const assemblyEn: typeof assemblyPl = {
       'Technical 3D roof scene. Orbit with the left button, pan with the right, zoom with the wheel.',
     hint: 'Click an element to select it. The same element stays selected when you return to 2D.',
     referenceGeometry: 'Reference geometry — no cut detail',
+    referenceGeometryShort: 'Reference',
+    executionGeometry: 'Execution',
+    finishedHint:
+      'Switch between the reference blank and the finished K1 geometry (birdsmouth and ridge cut).',
+    mixedGeometryNote: 'K1 — finished geometry. H1/J1 stay reference.',
+    unresolvedHipBoundary: 'Hip without a selected detail',
     viewPresets: 'Technical views',
     preset: {
       isometric: 'Isometric',
@@ -3069,6 +3136,8 @@ export const assemblyEn: typeof assemblyPl = {
   j1StepPlumb: 'On the side face, mark plumb at {{value}} to the J1 axis.',
   j1StepTopFace:
     'On the top face, mark the H1 meeting line at {{value}} to the J1 axis.',
+  j1StepHipFace:
+    'Deduct the hip side face: {{deduction}}. Finished length {{finished}}.',
   fabrication: 'Step-by-step marking',
   member: 'RAFTER K1',
   cutAngle: 'Line angle to member axis',

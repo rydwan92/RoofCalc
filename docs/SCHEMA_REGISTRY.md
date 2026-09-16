@@ -58,6 +58,29 @@ free; changing meaning, type or required-ness is not.
   Automatic station rows, actual gauge, per-plane course counts, counter-batten
   axes and compatibility messages are derived and are never serialized. No
   `schemaVersion` bump.
+- V39 note: two additive-optional **execution intents**, both absent on every
+  pre-V39 document, where absence means exactly the pre-V39 behaviour.
+  (a) `RoofBuildUp.counterBattens.hipBoundaryDetail?: HipCounterBattenDetail`
+  (`'not-decided' | 'no-dedicated-run' | 'paired-plane-runs'`) — which hip
+  counter-batten detail the project uses. Absence reads as `not-decided`, so an
+  older hip project still loads with its truthful *partial* counter-batten
+  status instead of silently gaining runs. Research
+  (`docs/domain/HIP_BOUNDARY_EXECUTION_RESEARCH.md`) found two well-evidenced,
+  mutually exclusive details and no basis for a default, so there is no
+  fallback value that would be safe to invent.
+  (b) `HipRoofTemplateSpec.hipExecution?: HipExecutionIntent`
+  (`{ hipTop?: 'not-decided' | 'backed' | 'dropped'; jackConnection?:
+  'theoretical-centre-plane' | 'hip-face-butt' }`) — the hip's top treatment and
+  the J1→H1 connection. Absence keeps H1's `back-or-drop-not-decided` and J1's
+  theoretical centre-plane termination. `hipExecution` is only meaningful for
+  `type: 'hip'`; gable templates never carry it.
+  Everything the two intents *produce* is derived and never serialized:
+  hip-boundary runs and their segments, `interiorAxisCount` /
+  `hipBoundaryRunCount` / `hipBoundaries[]`, J1 finished lengths, cut planes and
+  face deductions, and the finished K1 solid (`resolveFinishedRafterSolid`).
+  No `schemaVersion` bump. Covered by
+  `apps/web/src/assembly/hip-execution.test.ts`, which asserts a save/load round
+  trip and that a document with the fields deleted returns to *partial*.
 - V34C note: `project.membraneProduct?: MembraneTechnicalSpec`
   (`@cieslacalc/covering-core`) is additive and optional — the single roll
   product used across every plane `buildUp.membrane` assigns (manual entry

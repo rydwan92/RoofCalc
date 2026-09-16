@@ -45,6 +45,8 @@ import type {
   AssemblySpec,
   BattenLayoutSpec,
   CounterBattenLayoutSpec,
+  HipCounterBattenDetail,
+  HipExecutionIntent,
   EndStationPolicy,
   RafterSpacingMode,
   RidgeConnectionType,
@@ -447,6 +449,13 @@ export interface AssemblyState {
   setMembraneLayer: (layer?: MembraneLayerSpec) => void;
   setMembraneProduct: (product?: MembraneProductSelection) => void;
   setCounterBattenLayout: (layout?: CounterBattenLayoutSpec) => void;
+  /**
+   * V39 hip-boundary counter-batten detail. Canonical execution intent, so it
+   * is a normal undoable edit — unlike the transient 3D display toggles.
+   */
+  setHipCounterBattenDetail: (detail: HipCounterBattenDetail) => void;
+  /** V39 hip execution intent (top treatment, jack connection). Canonical. */
+  setHipExecution: (intent: HipExecutionIntent) => void;
   setCoveringAssignments: (assignments: CoveringAssignmentSpec[]) => void;
   add: () => void;
   remove: (id: string) => void;
@@ -1967,6 +1976,44 @@ export const useAssembly = create<AssemblyState>((set) => ({
       return withHistory(
         state,
         committedDocument(document, state.drafts, state.invalidFields),
+      );
+    }),
+  setHipCounterBattenDetail: (hipBoundaryDetail) =>
+    set((state) => {
+      const current = state.projectDocument.project.buildUp.counterBattens;
+      if (!current) return state;
+      const document = createRoofProjectDocument(state.template, {
+        features: state.projectDocument.project.features,
+        openingFraming: state.projectDocument.project.openingFraming,
+        buildUp: {
+          ...state.projectDocument.project.buildUp,
+          counterBattens: { ...current, hipBoundaryDetail },
+        },
+        coverings: state.projectDocument.project.coverings,
+        membraneProduct: state.projectDocument.project.membraneProduct,
+      });
+      return withHistory(
+        state,
+        committedDocument(document, state.drafts, state.invalidFields),
+      );
+    }),
+  setHipExecution: (intent) =>
+    set((state) => {
+      if (state.template.type !== 'hip') return state;
+      const next = {
+        ...state.template,
+        hipExecution: { ...state.template.hipExecution, ...intent },
+      };
+      // The current document must be passed through, or features, build-up
+      // and coverings would silently reset to empty.
+      return withHistory(
+        state,
+        committedTemplate(
+          next,
+          state.drafts,
+          state.invalidFields,
+          state.projectDocument,
+        ),
       );
     }),
   setCoveringAssignments: (coverings) =>

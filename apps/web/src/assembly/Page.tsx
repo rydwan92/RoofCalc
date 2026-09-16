@@ -53,6 +53,7 @@ import {
   resolveOpeningFramingSet,
   resolveBattenLayout,
   resolveCounterBattenLayout,
+  resolveFinishedRafterSolid,
   resolveMembraneLayout,
   resolveRoofFeatureCollisions,
   resolveRoofSurfaceGeometry,
@@ -529,6 +530,72 @@ function AssemblyPageContent() {
       state.template.pitchDeg,
     ],
   );
+  /**
+   * V39 build-up and fabrication context for the technical 3D scene.
+   *
+   * Everything here is already resolved by `roof-math`; the scene adapter and
+   * the renderer only transport and draw it. Memoized separately so camera,
+   * selection and filter changes never rerun a solver.
+   */
+  const scene3dContext = useMemo(() => {
+    const counterBattenRuns = counterBattenProjection.rows.map((row) => ({
+      rowId: row.id,
+      roofPlaneId: row.roofPlaneId,
+      sourceMemberId: row.sourceMemberId,
+      section: row.section,
+      segments: row.segments.map((segment) => ({
+        from: segment.from,
+        to: segment.to,
+      })),
+    }));
+    const hipMembers = new Map(
+      skeleton.members
+        .filter((member) => member.kind === 'hip-rafter')
+        .map((member) => [member.id, member]),
+    );
+    const unresolvedHipBoundaries = counterBattenProjection.hipBoundaries
+      .filter((boundary) => boundary.status === 'unresolved')
+      .flatMap((boundary) => {
+        const member = hipMembers.get(boundary.hipMemberId);
+        return member
+          ? [
+              {
+                hipMemberId: boundary.hipMemberId,
+                roofPlaneIds: boundary.roofPlaneIds,
+                from: member.from,
+                to: member.to,
+              },
+            ]
+          : [];
+      });
+    // Finished K1 solids, only where the fabrication actually resolved.
+    const finishedMembers = skeleton.members.flatMap((member) => {
+      if (member.kind !== 'rafter') return [];
+      const solid = resolveFinishedRafterSolid({
+        assembly: templateResult.calculation.assembly,
+        member,
+        pitchDeg: state.template.pitchDeg,
+      });
+      return solid.status === 'resolved'
+        ? [
+            {
+              memberId: member.id,
+              profile: solid.solid.profile,
+              thicknessMm: solid.solid.section.widthMm,
+              origin: solid.solid.origin,
+              basis: solid.solid.frame,
+            },
+          ]
+        : [];
+    });
+    return { counterBattenRuns, unresolvedHipBoundaries, finishedMembers };
+  }, [
+    counterBattenProjection.hipBoundaries,
+    counterBattenProjection.rows,
+    skeleton.members,
+    state.template.pitchDeg,
+    templateResult.calculation.assembly,
+  ]);
   const battenProjection = useMemo(
     () =>
       resolveBattenLayout({
@@ -1776,6 +1843,7 @@ function AssemblyPageContent() {
                     {workbench.viewPreset === 'layers' && (
                       <button
                         className="a-button"
+                        data-testid="mobile-open-inspector"
                         onClick={() => {
                           state.setInspectorOpen(true);
                           state.setMobilePanel('inspector');
@@ -2110,6 +2178,11 @@ function AssemblyPageContent() {
                     <TechnicalScene3D
                       skeleton={skeleton}
                       relatedIds={relatedSelectionIds}
+                      counterBattens={scene3dContext.counterBattenRuns}
+                      unresolvedHipBoundaries={
+                        scene3dContext.unresolvedHipBoundaries
+                      }
+                      finishedMembers={scene3dContext.finishedMembers}
                       onReturnTo2D={() => state.setWorkspaceRenderer('2d')}
                       onOpenPreparation={openInstancePreparation}
                     />

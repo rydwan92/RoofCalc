@@ -12,6 +12,7 @@ import {
   Boxes,
   Eye,
   EyeOff,
+  Hammer,
   Layers,
   Maximize,
   ScanSearch,
@@ -24,8 +25,11 @@ import {
   boundsOfEntities,
   createRoofTechnicalScene,
   resolveSceneEntityVisibility,
+  type SceneCounterBattenInput,
+  type SceneFinishedMemberInput,
   type SceneProjection,
   type SceneSemanticGroup,
+  type SceneUnresolvedHipBoundaryInput,
   type SceneViewPreset,
 } from '@cieslacalc/technical-scene';
 import { formatLength } from '../../format';
@@ -50,11 +54,17 @@ import { TechnicalViewport, type EntityPresentation } from './viewport';
 export function TechnicalScene3D({
   skeleton,
   relatedIds,
+  counterBattens,
+  unresolvedHipBoundaries,
+  finishedMembers,
   onReturnTo2D,
   onOpenPreparation,
 }: {
   skeleton: RoofSkeleton;
   relatedIds?: ReadonlySet<string>;
+  counterBattens?: readonly SceneCounterBattenInput[];
+  unresolvedHipBoundaries?: readonly SceneUnresolvedHipBoundaryInput[];
+  finishedMembers?: readonly SceneFinishedMemberInput[];
   onReturnTo2D: () => void;
   onOpenPreparation?: (instanceId: string, prototypeId: string) => void;
 }) {
@@ -71,6 +81,10 @@ export function TechnicalScene3D({
   const [preset, setPreset] = useState<SceneViewPreset>('isometric');
   const [xray, setXray] = useState(false);
   const [showPlanes, setShowPlanes] = useState(true);
+  // V39: build-up context is off by default so the structure stays the
+  // subject; the finished/reference toggle is a transient display choice.
+  const [showBuildUp, setShowBuildUp] = useState(false);
+  const [finishedGeometry, setFinishedGeometry] = useState(true);
   const [hiddenGroups, setHiddenGroups] = useState<SceneSemanticGroup[]>([]);
 
   const workbench = state.workbench;
@@ -79,8 +93,21 @@ export function TechnicalScene3D({
   // The scene is rebuilt only when the resolved roof geometry changes. Camera
   // moves, hover, selection, filters and task switches all reuse this result.
   const scene = useMemo(
-    () => createRoofTechnicalScene({ skeleton }),
-    [skeleton],
+    () =>
+      createRoofTechnicalScene({
+        skeleton,
+        counterBattens: showBuildUp ? counterBattens : [],
+        unresolvedHipBoundaries: showBuildUp ? unresolvedHipBoundaries : [],
+        finishedMembers: finishedGeometry ? finishedMembers : [],
+      }),
+    [
+      counterBattens,
+      finishedGeometry,
+      finishedMembers,
+      showBuildUp,
+      skeleton,
+      unresolvedHipBoundaries,
+    ],
   );
   const families = useMemo(() => sceneFamilyFacets(scene), [scene]);
   // Only hip skeletons carry roof-plane guides today, so the toggle appears
@@ -266,8 +293,19 @@ export function TechnicalScene3D({
     <div className="a-canvas a-scene3d" data-testid="technical-scene-3d">
       <div className="a-canvas-toolbar a-scene3d-toolbar">
         <span>{t('assembly.scene3d.title')}</span>
-        <span className="a-scene3d-reference">
-          {t('assembly.scene3d.referenceGeometry')}
+        <span
+          className="a-scene3d-reference"
+          data-scene-geometry-mode={
+            finishedGeometry && finishedMembers?.length
+              ? 'finished'
+              : 'reference'
+          }
+        >
+          {t(
+            finishedGeometry && finishedMembers?.length
+              ? 'assembly.scene3d.mixedGeometryNote'
+              : 'assembly.scene3d.referenceGeometry',
+          )}
         </span>
       </div>
       <div className="a-scene3d-controls">
@@ -338,6 +376,28 @@ export function TechnicalScene3D({
               <EyeOff size={15} aria-hidden="true" />
             )}
             {t(`assembly.${isolate ? 'showWholeRoof' : 'isolateElement'}`)}
+          </button>
+          <button
+            className="a-button a-ghost"
+            data-scene-action="build-up"
+            aria-pressed={showBuildUp}
+            onClick={() => setShowBuildUp((current) => !current)}
+          >
+            <Layers size={15} aria-hidden="true" />
+            {t('assembly.counterBattens')}
+          </button>
+          <button
+            className="a-button a-ghost"
+            data-scene-action="finished"
+            aria-pressed={finishedGeometry}
+            disabled={!finishedMembers?.length}
+            title={t('assembly.scene3d.finishedHint')}
+            onClick={() => setFinishedGeometry((current) => !current)}
+          >
+            <Hammer size={15} aria-hidden="true" />
+            {t(
+              `assembly.scene3d.${finishedGeometry ? 'executionGeometry' : 'referenceGeometryShort'}`,
+            )}
           </button>
           <button
             className="a-button a-ghost"

@@ -35,6 +35,11 @@ const roofBuildUpSchema: z.ZodType<RoofBuildUp> = z.object({
       roofPlaneIds: z.array(z.string().min(1)).optional(),
       widthMm: z.number().positive(),
       heightMm: z.number().positive(),
+      // V39. Additive-optional: absent means `not-decided`, so an older
+      // project still loads with its truthful partial hip result.
+      hipBoundaryDetail: z
+        .enum(['not-decided', 'no-dedicated-run', 'paired-plane-runs'])
+        .optional(),
     })
     .optional(),
   battenLayout: z

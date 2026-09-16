@@ -920,9 +920,14 @@ export function ContextualFabrication({
                         ? t('assembly.j1StepPlumb', {
                             value: angle(step.angleDeg),
                           })
-                        : t('assembly.j1StepTopFace', {
-                            value: angle(step.angleDeg),
-                          })}
+                        : step.action === 'mark-hip-top-face-line'
+                          ? t('assembly.j1StepTopFace', {
+                              value: angle(step.angleDeg),
+                            })
+                          : t('assembly.j1StepHipFace', {
+                              deduction: length(step.deductionMm),
+                              finished: length(step.finishedLengthMm),
+                            })}
                 </li>
               ))}
             </ol>

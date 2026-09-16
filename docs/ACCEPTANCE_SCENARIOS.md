@@ -460,6 +460,59 @@ where WebGL genuinely does not exist.
 
 ---
 
+## HIP-001 — The hip counter-batten dead end becomes a decision · `AUTOMATED`
+
+1. Open the hip example and enable the counter-batten layer.
+2. Read the counter-batten status and the 2D layer view.
+3. Choose one of the two offered hip details.
+4. Open the Material Plan.
+
+**Holds:** before the choice the result is *partial*, names the real split
+(`interiorAxisCount` axes, zero hip runs) and draws each undecided hip as a
+dashed reference — it is never silently absent. Both offered details carry a
+sketch and an explanation, and neither is pre-selected. Choosing
+`paired-plane-runs` adds exactly two runs per hip, once each, and the total grows
+by exactly the reported added length; choosing `no-dedicated-run` resolves the
+layout and adds nothing. Interior K1/J1 axes are identical either way. The
+Material Plan upgrades from *CZĘŚCIOWE* to *GEOMETRIA* with the new total without
+recomputing any geometry, and the figure stays labelled a geometric visible
+length. The choice is one Undo/Redo entry.
+Covered by `e2e/hip-execution.spec.ts` and
+`packages/roof-math/src/hip-execution.test.ts`.
+
+---
+
+## HIP-002 — J1 terminates against a physical hip face · `AUTOMATED`
+
+1. Resolve a hip roof with no hip execution intent.
+2. Select `hip-face-butt` as the J1 connection.
+
+**Holds:** without the intent every J1 is `reference-only` with the structured
+reason `hip-connection-not-selected`, and no finished length is reported. With
+it, the finished end is `referenceLengthMm − hipWidthMm / √2 / cos(pitch)`, every
+cut angle is unchanged (the face is parallel to the centre plane), and the
+reference geometry is preserved untouched alongside it. A physical termination
+without the hip section width is rejected, not guessed. J1 does **not** become
+procurement-ready: no fabrication allowance has been declared (ADR-009).
+
+---
+
+## HIP-003 — K1 shows its finished cuts in 3D · `AUTOMATED`
+
+1. Open a project in the technical 3D view.
+2. Toggle between *Wykonawczy* and *Referencyjny*.
+
+**Holds:** the finished solid is the solver's own machined profile extruded by
+the section width — no boolean operation, no new dependency — and its roof-plane
+reference line coincides with the skeleton axis to within 1e-6 mm across pitches,
+overhangs and both roof sides. Without a resolved seat reference the solid stays
+unresolved rather than being guessed. The scene states that K1 is finished while
+H1/J1 remain reference geometry. The toggle is transient and creates no history.
+Covered by `packages/roof-math/src/finished-rafter-solid.test.ts` and
+`e2e/hip-execution.spec.ts`.
+
+---
+
 ## COMPOUND-001 — Higher house + lower garage · `PLANNED`
 
 **Not implemented.** No multi-structure document, transform, connection graph or

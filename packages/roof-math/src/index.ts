@@ -19,4 +19,5 @@ export * from './batten-spacing';
 export * from './membrane-layout';
 export * from './roof-surface';
 export * from './counter-battens';
+export * from './finished-rafter-solid';
 export * from './opening-framing';

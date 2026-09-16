@@ -34,6 +34,8 @@ export const SCENE_GROUP_COLOR: Record<
   ridge: { base: '#8397aa', shade: '#4d657d' },
   'opening-framing': { base: '#d8c9ef', shade: '#8b6ab8' },
   'roof-plane': { base: '#91b5a5', shade: '#78968a' },
+  'counter-batten': { base: '#6f9a72', shade: '#4e7551' },
+  'unresolved-hip-boundary': { base: '#c98a3a', shade: '#a8691c' },
 };
 
 /**
@@ -160,6 +162,20 @@ export function sceneSelectionFacts(
  * while every instance keeps its own canonical identity.
  */
 export function sceneInstanceKey(entity: TechnicalSceneEntity): string {
+  if (entity.geometry.kind === 'extruded-profile') {
+    // Every rafter resolved from the same prototype shares one machined
+    // profile, so a finished solid stays as instanced as the prism it
+    // replaced. The profile itself is the key.
+    const { profile, thicknessMm } = entity.geometry;
+    return [
+      entity.semanticGroup,
+      'profile',
+      thicknessMm.toFixed(3),
+      profile
+        .map((point) => `${point.x.toFixed(3)},${point.y.toFixed(3)}`)
+        .join(';'),
+    ].join('|');
+  }
   if (entity.geometry.kind !== 'oriented-box') return entity.id;
   const { widthMm, depthMm, alongMm } = entity.geometry.size;
   return [

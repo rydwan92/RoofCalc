@@ -51,6 +51,16 @@ export const hipRoofTemplateSchema: z.ZodType<HipRoofTemplateSpec> = z
         .optional(),
     }),
     intermediateSupports: z.array(supportSpecSchema),
+    // V39 execution intent. Additive-optional: absent means undecided, which
+    // is exactly how every project saved before V39 must keep behaving.
+    hipExecution: z
+      .object({
+        hipTop: z.enum(['not-decided', 'backed', 'dropped']).optional(),
+        jackConnection: z
+          .enum(['theoretical-centre-plane', 'hip-face-butt'])
+          .optional(),
+      })
+      .optional(),
   })
   .superRefine((template, ctx) => {
     if (template.buildingLengthMm < template.halfRunMm * 2)
@@ -320,6 +330,10 @@ function createResolvedJackRafters(
         overhangMm: overhang,
         wallJoint,
         hasIntermediateSupports: template.intermediateSupports.length > 0,
+        // V39: the jack's end is finished only when the project explicitly
+        // selects the connection. Absent intent keeps the reference result.
+        hipConnection: template.hipExecution?.jackConnection,
+        hipSectionWidthMm: template.hipRafterSection.widthMm,
       }),
       from,
       to,

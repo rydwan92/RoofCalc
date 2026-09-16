@@ -47,6 +47,7 @@ import {
   TimberInputs,
   type Calculation,
 } from './Inputs';
+import { HipBoundaryDetailChooser } from './HipBoundaryDetail';
 import { MemberInstanceInspector } from './MemberInstanceInspector';
 import type { WorkbenchSelectionContext } from './selection';
 import { useAssembly } from './store';
@@ -672,14 +673,25 @@ function CounterBattenInspector({
       <dl className="a-facts">
         <div>
           <dt>{t('assembly.axisSegmentCount')}</dt>
-          <dd>
+          <dd data-counter-batten-axes>
             {result.rows.length} /{' '}
             {result.rows.reduce((sum, row) => sum + row.segments.length, 0)}
           </dd>
         </div>
+        {!!result.hipBoundaries.length && (
+          <div>
+            <dt>{t('assembly.hipBoundary.breakdown')}</dt>
+            <dd data-counter-batten-breakdown>
+              {t('assembly.hipBoundary.breakdownValue', {
+                interior: result.interiorAxisCount,
+                hip: result.hipBoundaryRunCount,
+              })}
+            </dd>
+          </div>
+        )}
         <div>
           <dt>{t('assembly.totalVisibleGeometricLength')}</dt>
-          <dd>
+          <dd data-counter-batten-total>
             {new Intl.NumberFormat(i18n.language, {
               maximumFractionDigits: 2,
             }).format(result.totalVisibleLengthMm / 1000)}{' '}
@@ -708,9 +720,7 @@ function CounterBattenInspector({
           {t('assembly.segments').toLowerCase()}
         </p>
       )}
-      {result.warnings.includes('hip-boundary-detail-unresolved') && (
-        <p className="a-limit-note">{t('assembly.counterBattenLimited')}</p>
-      )}
+      <HipBoundaryDetailChooser result={result} />
       {result.warnings
         .filter((code) => code !== 'hip-boundary-detail-unresolved')
         .map((code) => (

@@ -27,6 +27,10 @@ const CATALOG_BATCHES = [
   'tiles-2026-09-v35.json',
   'membranes-2026-09.json',
   'timber-stock-2026-09.json',
+  // V39: the first real metal roofing products. The modular-sheet catalogue
+  // was empty before this, so the covering picker could only offer manual
+  // entry for blachodachówka and blacha trapezowa.
+  'metal-sheets-2026-09.json',
 ] as const;
 const PRICING_BATCHES = [
   'prices-2026-09.json',

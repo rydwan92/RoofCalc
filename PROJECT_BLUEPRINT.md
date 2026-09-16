@@ -1297,7 +1297,122 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
-**Iteration:** `038 — Technical 3D MVP`
+**Iteration:** `039 — Execution geometry and the hip boundary`
+
+**Status:** `IMPLEMENTED — committed and pushed on main after 1705e89 (V38)`
+
+**Completed:** three real execution gaps closed.
+(1) **Hip counter-batten boundary.** Root cause: the resolver pushed one
+`hip-boundary-detail-unresolved` issue per H1 and set
+`status = warnings.length ? 'partial' : 'resolved'`, so a hip roof could never
+resolve — and no input existed to change that. Research
+(`docs/domain/HIP_BOUNDARY_EXECUTION_RESEARCH.md`) found two well-evidenced,
+mutually exclusive details and no basis for a default: the hip batten on
+adjustable holders screwed into the hip rafter (no run), or paired runs on both
+adjoining planes. `CounterBattenLayoutSpec.hipBoundaryDetail?` now drives it;
+the result separates `interiorAxisCount` / `hipBoundaryRunCount` and reports
+every `hipBoundaries[]` entry, decided or not. A single centred hip run stays
+unsupported by design (its seat differs between a backed and a dropped hip).
+(2) **J1 physical termination.** `JackToHipConnection = 'hip-face-butt'`
+resolves the finished end against the hip's near vertical side face —
+`hipWidthMm / √2`, then along the jack axis, the same form as the H1 ridge
+deduction. Every cut angle is unchanged because the face is parallel to the
+centre plane. Reference geometry is never overwritten; `executionStatus`
+distinguishes `reference-only` (with `unresolvedReason`) from
+`fabrication-resolved`. Deliberately **not** procurement-ready.
+(3) **Finished K1 solid in 3D.** New `roof-math/finished-rafter-solid.ts`
+places the solver's already-machined `TimberMember2D.profile` in 3D as an
+extruded polygon — no boolean/CSG, no new dependency. The anchor (the skeleton
+axis is the roof-plane reference line through the seat notch, entering the plumb
+eave face at `normalDepthMm · tan θ`) is proved, not assumed.
+Plus: `HipExecutionIntent` makes backing/drop explicit; the 2D layer view draws
+undecided hips as dashed amber references; 3D gains transient **Kontrłaty** and
+**Wykonawczy/Referencyjny** toggles; instancing is preserved because every K1
+from one prototype shares one profile.
+
+**UX:** the dead end became a workflow. `174,57 m · Częściowo · 46 osi K1-J1 ·
+0 ciągów grzbietowych · 4 grzbiety wymagają wyboru detalu` → two radio cards
+with section sketches and one-line explanations, no default → `231,38 m ·
+✓ Gotowe · 46 osi · 8 ciągów · Długość z grzbietów 56,81 m`. Material Plan
+upgraded *CZĘŚCIOWE* → *GEOMETRIA* with the new total automatically, because it
+already consumes the resolver's own status — no downstream change was needed.
+
+**Also fixed:** the long-standing full-suite flake. Measured per-file cost
+(`Page.test.tsx` 66 tests / 140.7 s ≈ 2.1 s each; `MobilePage` 1.8 s;
+`ProjectManager` 2.6 s) showed nothing hangs — vitest's 5000 ms *unit* default
+was failing a different healthy test on each run under 20-way fork contention.
+`vitest.config.ts` now sets `testTimeout: 20000` (~10× the slowest healthy
+test), documented in place. The suite is deterministic again for the first time
+in several iterations.
+
+**Also delivered (user request):** the catalogue could not serve metal roofing —
+`?kind=modular-sheet` and `?kind=standing-seam` both returned empty, which is
+why sheet products needed manual entry. `metal-sheets-2026-09.json` seeds three
+real Pruszyński products (FIORD, TIGRA, T18 Dach cut-to-length) with
+per-revision source citations. Catalogue 12 → 15 products.
+
+**Also diagnosed (user request):** "baza przestała pobierać dane" was not the
+database. `pnpm db:doctor` reported connected / migrations current / 12 products;
+nothing was listening on port 3001. The web app reaches the catalogue through
+the loopback Node API, so the API process simply was not running. `pnpm dev`
+(or `pnpm dev:full`) starts it; verified by hitting `/api/health`,
+`/api/catalog/manufacturers` and `/api/catalog/products?kind=roof-tile`.
+
+**Files:** `packages/timber-model/src/index.ts` (HipTopTreatment,
+JackToHipConnection, HipExecutionIntent, HipCounterBattenDetail,
+JackRafterFinishedEnd, executionStatus, deduct-hip-side-face step);
+`packages/roof-math/src/{counter-battens,jack-rafter,hip-roof}.ts`, new
+`finished-rafter-solid.ts`, new `hip-execution.test.ts`,
+`finished-rafter-solid.test.ts`, barrel; `packages/calculator-core/src/
+project-document.ts`; `packages/technical-scene/src/{scene,roof-scene}.ts`;
+web assembly `store.ts`, `Inspector.tsx`, `SkeletonCanvas.tsx`, `Toolbox.tsx`,
+`Summary.tsx`, `Page.tsx`, `translations.ts`, `v37.css`, `scene3d/
+{viewport,scene-presentation,TechnicalScene3D}.tsx`, new `HipBoundaryDetail.tsx`,
+new `hip-execution.test.ts`, four updated test fixtures; new
+`e2e/hip-execution.spec.ts`; `vitest.config.ts`; `apps/api/src/cli/seed-all.ts`
+and new `apps/api/src/data/import-batches/metal-sheets-2026-09.json`; docs — new
+`ARCHITECTURE_V39_EXECUTION_GEOMETRY_AND_HIP_BOUNDARY.md`, new
+`domain/HIP_BOUNDARY_EXECUTION_RESEARCH.md`, updated `ARCHITECTURE_INDEX.md`,
+`SCHEMA_REGISTRY.md`, `UX_DESIGN_CONTRACT.md` (§7.2),
+`ACCEPTANCE_SCENARIOS.md` (HIP-001…003),
+`domain/EXECUTION_SEMANTICS_MATRIX.md`.
+
+**Schema:** two additive-optional intents, no `schemaVersion` bump —
+`buildUp.counterBattens.hipBoundaryDetail?` and `roof.hipExecution?`. Absence
+means exactly the pre-V39 behaviour; a project with the fields deleted returns
+to *partial*, asserted by test.
+
+**Assumptions/limitations:** H1 backing/drop is intent only — no hip top surface
+is modelled, so H1 keeps a reference prism; only one J1 connection is modelled
+(no hardware variant); J1 and H1 stay outside procurement (no declared
+allowance, ADR-009/ADR-010); the finished solid exists for K1 only; a single
+centred hip run is unsupported; no structural claim anywhere.
+
+**Validation:** baseline `pnpm verify` reproduced the known flake (1009/1010),
+then fixed as above. Final: typecheck, lint and format clean; **1010 unit tests
+across 102 files, all passing, deterministic**; architecture 29/29; both builds
+pass; `git diff --check` clean. Playwright full suite **65 passed, 10 skipped**
+(the skips are the 6 pre-existing deliberate ones plus 4 explicit
+desktop/phone-scoped V39 cases), including the new `e2e/hip-execution.spec.ts`
+on desktop 1440×900 and mobile 390×844. Browser QA on the running dev server at
+1440×900: hip example → Warstwy → Kontrłaty showed *Częściowo* with 4 dashed
+hips and `46 osi · 0 ciągów`; choosing *Kontrłaty po obu stronach* gave
+*Gotowe*, `8 ciągów`, `231,38 m`, no dashed hips, and the Material Plan showed
+*GEOMETRIA 231,38 m*; 3D showed finished K1 geometry with the correct note,
+build-up context and top/side/front presets; zero horizontal overflow; no
+console errors beyond Vite's own HMR websocket. Chooser layout was reworked
+after QA showed the 3-column grid squeezing the hint in the narrow Inspector.
+
+**NEXT ACTION:** user review of V39 in the browser (hip example → Warstwy →
+Kontrłaty, then Konstrukcja → 3D). Recommended V40: give the selected hip
+top treatment real geometry (a backed hip's bevelled top surface), which is the
+last thing blocking an H1 finished solid and an H1 fabrication blank; then
+declare the J1 machining allowance so the resolved finished end can become a
+real procurement blank.
+
+---
+
+**Previous iteration:** `038 — Technical 3D MVP`
 
 **Status:** `IMPLEMENTED — uncommitted on main after 2041971 (V37); no commit/push by request`
 

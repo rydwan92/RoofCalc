@@ -182,8 +182,37 @@ export interface HipRoofTemplateSpec {
   wallPlate: SupportSpec;
   ridge: AssemblySpec['ridge'];
   intermediateSupports: SupportSpec[];
+  /** V39 execution intent. Absent means undecided, as on every older project. */
+  hipExecution?: HipExecutionIntent;
 }
 export type RoofTemplateSpec = GableRoofTemplateSpec | HipRoofTemplateSpec;
+
+/**
+ * V39 execution intent for the hip rafter's top treatment.
+ *
+ * Both real operations place the hip's upper arrises on the two roof planes,
+ * so neither changes a plan position; they differ in the bearing surface the
+ * hip presents. `not-decided` is the honest default for every project saved
+ * before V39 and must never be silently replaced by a guess.
+ */
+export type HipTopTreatment = 'not-decided' | 'backed' | 'dropped';
+
+/**
+ * V39 execution intent for the jack-to-hip end.
+ *
+ * `theoretical-centre-plane` is the pre-V39 behaviour: the jack stops at the
+ * vertical plane through the hip axis, which is layout geometry and not a
+ * finished end. `hip-face-butt` is the one discriminated detail V39 resolves
+ * physically — a square butt against the hip's vertical side face.
+ * Hardware-assisted variants need a connector snapshot and are absent.
+ */
+export type JackToHipConnection = 'theoretical-centre-plane' | 'hip-face-butt';
+
+/** Explicit hip execution choices. Absent means every choice is undecided. */
+export interface HipExecutionIntent {
+  hipTop?: HipTopTreatment;
+  jackConnection?: JackToHipConnection;
+}
 
 export interface HipRafterSpec {
   id: EntityId;
@@ -270,6 +299,13 @@ export interface JackRafterSpec {
   overhangMm: number;
   wallJoint?: JackRafterWallJoint;
   hasIntermediateSupports: boolean;
+  /**
+   * V39. Absent means `theoretical-centre-plane`, the pre-V39 behaviour.
+   * `hip-face-butt` additionally needs `hipSectionWidthMm`.
+   */
+  hipConnection?: JackToHipConnection;
+  /** Hip section width, required to resolve a physical hip-face termination. */
+  hipSectionWidthMm?: number;
 }
 export interface JackRafterResult {
   wallToHipCenterHorizontalRunMm: number;
@@ -283,6 +319,15 @@ export interface JackRafterResult {
   planCutLineToMemberAxisDeg: 45;
   topFaceCutLineToMemberAxisDeg: number;
 }
+/**
+ * The jack's end against the hip.
+ *
+ * V39 keeps the theoretical centre-plane cut and adds, when the project
+ * explicitly selects `hip-face-butt`, the finished square butt against the
+ * hip's vertical side face. Both are reported: the reference geometry never
+ * disappears, because 3D, dimension explanations and future connection
+ * variants all need it.
+ */
 export interface JackRafterMeetingCut {
   kind: 'jack-to-hip-center-plane';
   id: EntityId;
@@ -292,7 +337,37 @@ export interface JackRafterMeetingCut {
   plumbLineToMemberAxisDeg: number;
   planCutLineToMemberAxisDeg: 45;
   topFaceCutLineToMemberAxisDeg: number;
-  hipFaceDeduction: 'not-applied';
+  /**
+   * `not-applied` is the reference result. `applied-to-hip-side-face` means
+   * the finished end below was resolved from an explicit connection intent.
+   */
+  hipFaceDeduction: 'not-applied' | 'applied-to-hip-side-face';
+  /** Present only when the deduction was applied. */
+  finished?: JackRafterFinishedEnd;
+}
+
+/**
+ * The resolved finished jack end for the `hip-face-butt` connection.
+ *
+ * The cut plane is the hip's near vertical side face, which is parallel to the
+ * centre plane the reference cut uses — so every angle is unchanged and only
+ * the station moves. Backing or drop remove material from the hip's top only
+ * and therefore never move this face
+ * (`docs/domain/HIP_BOUNDARY_EXECUTION_RESEARCH.md` §7).
+ */
+export interface JackRafterFinishedEnd {
+  connection: 'hip-face-butt';
+  cutPlane: 'hip-near-vertical-side-face';
+  /** Horizontal deduction from the hip centre plane to its near side face. */
+  hipFacePlanDeductionMm: number;
+  /** The same deduction measured along the sloping jack axis. */
+  hipFaceAxisDeductionMm: number;
+  /** Outer-eave axis to the finished end, in millimetres. */
+  finishedLengthMm: number;
+  /** The hip section width the deduction was derived from. */
+  hipWidthMm: number;
+  /** No machining or kerf allowance is included — ADR-009/ADR-010. */
+  allowance: 'not-included';
 }
 export type JackRafterFabricationStep =
   | {
@@ -313,6 +388,13 @@ export type JackRafterFabricationStep =
       action: 'mark-hip-top-face-line';
       angleDeg: number;
       reference: 'member-axis-on-top-face';
+    }
+  | {
+      /** V39, only for the resolved `hip-face-butt` connection. */
+      action: 'deduct-hip-side-face';
+      deductionMm: number;
+      finishedLengthMm: number;
+      reference: 'hip-near-vertical-side-face';
     };
 export interface JackRafterFabricationPlan {
   memberId: EntityId;
@@ -325,6 +407,17 @@ export interface JackRafterFabricationPlan {
   intermediateSupportJoinery: 'resolved-none' | 'not-resolved';
   allowanceAndKerf: 'not-included';
   steps: JackRafterFabricationStep[];
+  /**
+   * V39 execution readiness. `reference-only` keeps the pre-V39 meaning:
+   * useful layout geometry that is not a finished end and must never become a
+   * procurement blank. `fabrication-resolved` is reached only when an explicit
+   * connection intent resolved a physical finished end.
+   */
+  executionStatus: 'reference-only' | 'fabrication-resolved';
+  /** Why the plan is still reference-only. Absent once resolved. */
+  unresolvedReason?: 'hip-connection-not-selected';
+  /** Finished axis length, present only when `fabrication-resolved`. */
+  finishedLengthMm?: number;
 }
 export interface ResolvedJackRafter {
   spec: JackRafterSpec;
@@ -424,11 +517,29 @@ export interface MembraneLayerSpec {
   enabled: boolean;
   roofPlaneIds?: string[];
 }
+/**
+ * V39 hip-boundary counter-batten detail.
+ *
+ * Research (`docs/domain/HIP_BOUNDARY_EXECUTION_RESEARCH.md`) found two
+ * well-evidenced, mutually exclusive arrangements and no basis for a default:
+ *
+ * - `no-dedicated-run` — the hip batten rides on adjustable holders fixed into
+ *   the hip rafter, so no counter-batten runs at the hip. Adds no length.
+ * - `paired-plane-runs` — one run on each adjoining plane, parallel to the hip,
+ *   its inner face on the plane's hip boundary. Adds two runs per hip.
+ *
+ * `not-decided` keeps the honest partial result rather than inventing either.
+ */
+export type HipCounterBattenDetail =
+  'not-decided' | 'no-dedicated-run' | 'paired-plane-runs';
+
 export interface CounterBattenLayoutSpec {
   enabled: boolean;
   roofPlaneIds?: string[];
   widthMm: number;
   heightMm: number;
+  /** Absent means `not-decided`, matching every project saved before V39. */
+  hipBoundaryDetail?: HipCounterBattenDetail;
 }
 export interface RoofBuildUp {
   membrane?: MembraneLayerSpec;
