@@ -25,31 +25,49 @@ Consequences enforced in review:
 - **Every value editable by dragging must also have an exact numeric input**, on
   desktop *and* mobile. A product rule, not a preference.
 
-## 2. Task ribbon and dock
+## 2. Perspectives, contextual tasks and dock
 
-V36: Materials opens the material plan first. K1 cutting and technical schedule
-are secondary local tools; project/drawing auxiliary views live in a disclosure.
-Commerce inputs in the material plan belong to its downstream pricing workflow,
-not the geometry Inspector. Price drafts never edit technical construction state.
-
-Seven tasks, one vocabulary, same order everywhere:
+V37 replaces the permanent seven-task ribbon. Perspective is primary; tasks are
+contextual:
 
 ```text
-construction · openings · layers · covering · cuts · materials · costing
+Projekt    → construction · openings · layers · covering
+Wykonanie  → cuts
+Materiały  → Plan materiałów · Rozkrój K1 · Zestawienie techniczne
+Kosztorys  → costing
+Dokumenty  → Centrum dokumentów
 ```
 
-- Desktop: a horizontal ribbon of `role="tab"` buttons above the workspace.
-- Mobile (`≤800px`): a fixed seven-item bottom dock, short visible label plus a
-  full `aria-label`, with bottom safe-area padding.
-- Each button carries `data-task="<task>"` so browser QA does not depend on copy.
+- Desktop: one perspective row (`data-perspective`) plus a compact
+  **Przejdź do** jump menu (`data-nav-shortcut`) as the expert escape; below it
+  only the active perspective's tabs (`data-task`, or `data-materials-view`).
+- Drawing tools (Miarka, Skup widok, Izoluj, Widok, legend) appear only on
+  drawing tasks.
+- Mobile (`≤800px`): a five-perspective bottom dock and contextual tabs above
+  the workspace. Never all tasks at once.
+- V36 rule kept: commerce inputs in the material plan belong to its downstream
+  pricing workflow; price drafts never edit technical construction state.
 - Changing task is transient view state: it closes the active mobile panel and
   any irrelevant detail, preserves canonical selection, and creates **no** history
   entry.
 - The Toolbox filters its sections by the active task and always offers
   *Wszystkie narzędzia* as the explicit escape to the full model.
-- V34B adds a **perspective bar** above the ribbon (§13). It groups tasks and
-  jumps; it never hides a task from the ribbon, so direct one-click navigation
-  between any two tasks is unchanged.
+
+### 2.1 Return model (V37)
+
+- A cross-context jump (guidance action, material-plan link, Documents → K1,
+  summary CTA) uses `navigateTo` and remembers the current location in a
+  transient, deduplicated trail of at most six entries.
+- When a return target exists the context bar shows **← {target}** with the
+  target's human name ("← Plan materiałów", "← Pokrycie", "← Centrum
+  dokumentów"). Alt+← does the same. A switch of perspective clears the trail.
+- The breadcrumb reads `Perspektywa › Zadanie › Produkt/element`; parents are
+  actionable; no raw ID ever appears.
+- Navigation Back is not Undo. Undo/Redo carry the labels **Cofnij zmianę** /
+  **Ponów zmianę** with their shortcuts. Navigation never creates history and
+  is never persisted.
+- K1 cutting is the Materials › Rozkrój K1 tab, not a modal. Document preview
+  returns with **← Centrum dokumentów**.
 
 ## 3. Selection semantics
 
@@ -172,15 +190,25 @@ and their totals are never added together.
 
 ## 10. Creator start and covering studio
 
-- A first Creator entry starts with one friendly building form and a small roof
-  preview. Full building width maps to the existing symmetric `halfRunMm`; the
-  preview is not a second geometry engine.
-- Quick Calc hands its known width, pitch and eave into the project assistant and
-  asks only for missing project data. A deliberate new-project action creates a
-  separate project record rather than silently replacing the active project.
-- Project guidance is derived, prioritised and quiet: at most two primary items
-  are visible, while the rest stays behind disclosure. It never enters project
-  history or persistence.
+- V37: a Creator start offers **Szybki start**, **Projekt przykładowy** and
+  **Od razu do edycji**. The guided path has four steps (Budynek, Geometria
+  dachu, Konstrukcja, Sprawdź i utwórz), never all advanced fields at once.
+- Every non-obvious input shows a short sentence, an explanatory sketch with a
+  `role="img"` label and, where needed, one "Dowiedz się więcej" disclosure.
+  Sketches are schematic and never a source of dimensions.
+- The live preview draws the resolved skeleton of the draft; validation names
+  the field and the rule; the last step shows readiness (geometry,
+  construction, K1 cutting) and explicit limitations. No structural safety
+  claim.
+- Examples are fixture-backed and always open as a new project labelled
+  "Projekt przykładowy — nie projekt konstrukcyjny."
+- Full building width maps to the existing symmetric `halfRunMm`.
+- Quick Calc hands its known width, pitch and eave into the Creator as confirmed
+  values with **Zmień**, and asks only for missing project data. A deliberate
+  new-project action creates a separate project record rather than silently
+  replacing the active project.
+- Project guidance is one quiet row: progress, one primary item, `+N więcej`,
+  and one next action. It never enters project history or persistence.
 - Adding covering is always family → source → product. A family click is not a
   canonical edit; incomplete manual data remains a transient draft.
 - The covering centre surface is titled **Schemat krycia**. Family-specific
@@ -189,6 +217,27 @@ and their totals are never added together.
 - Roof-plane assignment uses cards with name, area and assigned state. Colour is
   reinforced by text and outline, and the legend contains only states present in
   the current drawing.
+- V37 covering views: **Techniczny** (default) draws the effective coverage
+  truth — clipped fragments, dashed nominal cells for edge cuts, plane outline —
+  and **Pogląd materiału** instances one generic tile glyph. The preview never
+  changes a count and is labelled as illustration. The eave is drawn at the
+  bottom. The UI states that physical tile projection beyond the edge is not
+  modelled (`docs/domain/ROOF_TILE_EDGE_PLACEMENT.md`).
+- Horizontal layout uses human choices (Wyśrodkuj docinki / Zacznij od lewej
+  krawędzi / Ustaw ręcznie) with an exact offset; the enum never shows. Each
+  plane explains its full, edge-cut and opening-cut positions.
+- The selected covering is a product card: source badge, manufacturer, variant,
+  revision, type, technical facts and a price-list state for catalogue variants
+  only.
+
+## 10.1 Visual system (V37)
+
+- Button roles: `a-primary` (one per local context), default secondary,
+  `a-ghost` for utility and navigation, `a-danger` for destruction.
+- States have distinct hues plus a non-colour cue: brand, selected (outline),
+  related, ready, manual, warning, error, partial (dashed/pill text), disabled.
+- The work surface dominates: compact builder header, no builder page heading,
+  no empty Inspector, full-width costing and documents.
 
 ## 11. Structural system and ridge connection
 
@@ -247,13 +296,11 @@ and their totals are never added together.
 
 ## 13. Perspective navigation and Cost Workspace (V34B)
 
-- Five perspectives group the seven-task ribbon: **Projekt** (construction,
-  openings, layers, covering), **Wykonanie** (cuts), **Materiały** (materials),
-  **Kosztorys** (costing) and **Dokumenty** (opens the existing execution-export
-  flow; it owns no `ViewPreset` of its own). `PerspectiveBar.tsx` derives the
-  active perspective from the current task — no new persisted or canonical
-  state — and clicking a perspective jumps to its first task, or opens export
-  for Dokumenty. It is real navigation, not a decorative label: see §2.
+- Five perspectives are the primary navigation (§2): **Projekt**,
+  **Wykonanie**, **Materiały**, **Kosztorys** and **Dokumenty**. Since V37
+  Dokumenty is a real `documents` view (Centrum dokumentów) reusing the V30
+  engine. `PerspectiveBar.tsx` derives the active perspective from the current
+  task — no new persisted or canonical state.
 - Each perspective carries one small, restrained accent used only for the
   active nav marker, its icon colour and a thin selected-tab underline: blue-teal
   (Projekt, `--a-feature`), warm amber (Wykonanie, `--a-warning`), green-teal

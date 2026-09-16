@@ -458,12 +458,15 @@ export function K1CuttingPlan({
   onClose,
   initialPlan,
   onPlanChange,
+  presentation = 'dialog',
 }: {
   requirement: ResolvedRequirement;
   projectName?: string;
   unit: LengthUnit;
   mobile: boolean;
   onClose: () => void;
+  /** V37: `inline` renders as the Materials › Rozkrój K1 tab. */
+  presentation?: 'dialog' | 'inline';
   initialPlan?: K1SessionPlan;
   onPlanChange?: (plan: K1SessionPlan | undefined) => void;
 }) {
@@ -860,6 +863,15 @@ export function K1CuttingPlan({
     </div>
   );
 
+  if (presentation === 'inline')
+    return (
+      <section
+        className="a-k1-inline"
+        aria-label={t('assembly.k1Cutting.title')}
+      >
+        {content}
+      </section>
+    );
   return mobile ? (
     <MobileSheet
       title={t('assembly.k1Cutting.title')}

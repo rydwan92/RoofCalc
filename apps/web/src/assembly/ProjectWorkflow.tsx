@@ -15,32 +15,103 @@ export function ProjectWorkflowStrip({
   onAction: (action: ProjectWorkflowAction | 'openExport') => void;
 }) {
   const { t } = useTranslation();
+  // V37: one important item inline; everything else behind "+N więcej".
+  const primary = guidance[0];
+  const rest = guidance.slice(1);
   return (
     <section
-      className="a-project-workflow"
+      className="a-project-workflow is-quiet"
       aria-label={t('assembly.workflow.title')}
     >
-      <div className="a-project-workflow-heading">
-        <strong>{t('assembly.workflow.title')}</strong>
-        <span>
-          {t('assembly.workflow.progress', {
-            count: workflow.completeCount,
-            total: workflow.stages.length,
-          })}
-        </span>
+      <details className="a-project-progress">
+        <summary>
+          <span className="a-project-progress-dots" aria-hidden="true">
+            {workflow.stages.map((stage) => (
+              <i key={stage.id} data-status={stage.status} />
+            ))}
+          </span>
+          <span>
+            {t('assembly.workflow.progress', {
+              count: workflow.completeCount,
+              total: workflow.stages.length,
+            })}
+          </span>
+        </summary>
+        <ol className="a-project-stages" data-testid="project-workflow">
+          {workflow.stages.map((stage, index) => (
+            <li key={stage.id} data-stage={stage.id} data-status={stage.status}>
+              <span className="a-project-stage-index">{index + 1}</span>
+              <span>{t(`assembly.workflow.stage.${stage.id}`)}</span>
+              <small>
+                {stage.count !== undefined && `${stage.count} · `}
+                {t(`assembly.workflow.status.${stage.status}`)}
+              </small>
+            </li>
+          ))}
+        </ol>
+      </details>
+      <div className="a-project-guidance" data-testid="project-guidance">
+        {primary && (
+          <article
+            data-severity={primary.severity}
+            data-guidance={primary.kind}
+          >
+            <strong>{t(`assembly.guidance.item.${primary.kind}.title`)}</strong>
+            <p>
+              {t(
+                primary.detailIssue
+                  ? `assembly.installationIssue.${primary.detailIssue}`
+                  : `assembly.guidance.item.${primary.kind}.description`,
+              )}
+            </p>
+            {primary.action && primary.action !== workflow.nextAction && (
+              <button
+                className="a-link-button"
+                onClick={() => onAction(primary.action!)}
+              >
+                {t(`assembly.guidance.item.${primary.kind}.action`)}
+              </button>
+            )}
+          </article>
+        )}
+        {rest.length > 0 && (
+          <details className="a-project-guidance-more">
+            <summary>
+              {t('assembly.guidance.more', { count: rest.length })}
+            </summary>
+            <div className="a-project-guidance-popover">
+              {rest.map((item) => (
+                <article
+                  key={item.kind}
+                  data-severity={item.severity}
+                  data-guidance={item.kind}
+                >
+                  <div>
+                    <strong>
+                      {t(`assembly.guidance.item.${item.kind}.title`)}
+                    </strong>
+                    <p>
+                      {t(
+                        item.detailIssue
+                          ? `assembly.installationIssue.${item.detailIssue}`
+                          : `assembly.guidance.item.${item.kind}.description`,
+                      )}
+                    </p>
+                  </div>
+                  {item.action && (
+                    <button
+                      className="a-link-button"
+                      onClick={() => onAction(item.action!)}
+                    >
+                      {t(`assembly.guidance.item.${item.kind}.action`)}
+                    </button>
+                  )}
+                </article>
+              ))}
+            </div>
+          </details>
+        )}
       </div>
-      <ol className="a-project-stages" data-testid="project-workflow">
-        {workflow.stages.map((stage, index) => (
-          <li key={stage.id} data-stage={stage.id} data-status={stage.status}>
-            <span className="a-project-stage-index">{index + 1}</span>
-            <span>{t(`assembly.workflow.stage.${stage.id}`)}</span>
-            <small>
-              {stage.count !== undefined && `${stage.count} · `}
-              {t(`assembly.workflow.status.${stage.status}`)}
-            </small>
-          </li>
-        ))}
-      </ol>
       <button
         type="button"
         className="a-button a-primary a-project-next"
@@ -50,75 +121,6 @@ export function ProjectWorkflowStrip({
         {t(`assembly.workflow.action.${workflow.nextAction}`)}
         <span aria-hidden="true">→</span>
       </button>
-      <div className="a-project-guidance" data-testid="project-guidance">
-        <div className="a-project-guidance-heading">
-          <strong>{t('assembly.guidance.title')}</strong>
-          {guidance.length > 2 && (
-            <small>
-              {t('assembly.guidance.more', { count: guidance.length - 2 })}
-            </small>
-          )}
-        </div>
-        {guidance.slice(0, 2).map((item) => (
-          <article
-            key={item.kind}
-            data-severity={item.severity}
-            data-guidance={item.kind}
-          >
-            <div>
-              <strong>{t(`assembly.guidance.item.${item.kind}.title`)}</strong>
-              <p>
-                {t(
-                  item.detailIssue
-                    ? `assembly.installationIssue.${item.detailIssue}`
-                    : `assembly.guidance.item.${item.kind}.description`,
-                )}
-              </p>
-            </div>
-            {item.action && (
-              <button
-                className="a-link-button"
-                onClick={() => onAction(item.action!)}
-              >
-                {t(`assembly.guidance.item.${item.kind}.action`)}
-              </button>
-            )}
-          </article>
-        ))}
-        {guidance.length > 2 && (
-          <details>
-            <summary>{t('assembly.guidance.showAll')}</summary>
-            {guidance.slice(2).map((item) => (
-              <article
-                key={item.kind}
-                data-severity={item.severity}
-                data-guidance={item.kind}
-              >
-                <div>
-                  <strong>
-                    {t(`assembly.guidance.item.${item.kind}.title`)}
-                  </strong>
-                  <p>
-                    {t(
-                      item.detailIssue
-                        ? `assembly.installationIssue.${item.detailIssue}`
-                        : `assembly.guidance.item.${item.kind}.description`,
-                    )}
-                  </p>
-                </div>
-                {item.action && (
-                  <button
-                    className="a-link-button"
-                    onClick={() => onAction(item.action!)}
-                  >
-                    {t(`assembly.guidance.item.${item.kind}.action`)}
-                  </button>
-                )}
-              </article>
-            ))}
-          </details>
-        )}
-      </div>
     </section>
   );
 }

@@ -252,16 +252,62 @@ task is reachable at 1440×900, 1024×768, 390×844 and 360×800.
 ## START-001 — Guided Creator start and Quick handoff · `AUTOMATED` `BROWSER`
 
 1. With no saved project, open Creator at 1440×900 and 390×844.
-2. Enter building length, full width, pitch, horizontal eave and rafter spacing,
-   then create the project.
-3. Separately, enter exact Quick Calc geometry and choose **Utwórz z tego
-   projekt**.
+2. Choose **Szybki start**; enter building length and width, then pitch and
+   eave, then rafter spacing; review and create.
+3. Separately, enter exact Quick Calc geometry and choose **Otwórz w
+   Kreatorze**.
 
-**Holds:** the assistant is one coherent form with an immediate roof preview;
-full width maps to `halfRunMm = width / 2`; Quick preserves its known width,
-pitch and eave and asks only for missing project values; first creation starts
-with empty history; a deliberate later creation produces a separate project
+**Holds:** the start offers guided, example and advanced paths; each step shows
+only its fields with a sketch and short help; the plan preview comes from the
+resolved skeleton; validation names the field; the final step shows geometry,
+construction and K1 cutting readiness and any limitation; full width maps to
+`halfRunMm = width / 2`; Quick width, pitch and eave appear as confirmed values
+with **Zmień** and an unchanged hand-off yields the identical assembly; first
+creation starts with empty history; a later creation produces a separate
 record; no supported viewport scrolls horizontally.
+
+---
+
+## START-002 — Example project never overwrites · `AUTOMATED` `BROWSER`
+
+1. Have an active project. Open **Projekty → Nowy projekt → Projekt
+   przykładowy** and choose the hip example.
+
+**Holds:** the card is labelled "Projekt przykładowy — nie projekt
+konstrukcyjny."; exactly one new record is created from fixture 02; the
+previously active record is unchanged; the hip roof is visible and Materials
+is reachable.
+
+---
+
+## NAV-001 — Perspectives and contextual return · `AUTOMATED` `BROWSER`
+
+1. In Projekt › Pokrycie jump to Materiały › Plan materiałów, then follow a
+   link back to Pokrycie.
+2. Open Materiały › Rozkrój K1 from Dokumenty; open a document preview.
+3. Press **Cofnij zmianę** after a geometry edit.
+
+**Holds:** only the active perspective's tasks are shown (plus a jump menu);
+the context bar names the location and offers **← {target}** with a human
+label; Back returns to the remembered location; document preview returns with
+**← Centrum dokumentów**; navigation creates no history and is not persisted;
+Undo still reverts the canonical edit.
+
+---
+
+## COVER-STUDIO-001 — Technical coverage versus material preview · `AUTOMATED` `BROWSER`
+
+1. Add a roof tile whose centred effective grid produces edge cuts; run the
+   automatic batten fit.
+2. Inspect the technical view, then switch to **Pogląd materiału**; change
+   **Układ w poziomie** to "Zacznij od lewej krawędzi".
+
+**Holds:** visible fragments stay clipped to the plane with the outline on top;
+edge-cut positions show dashed nominal cells whose count equals the edge-cut
+count; the legend names the nominal cell; the note says physical projection
+beyond the edge is not modelled; the preview renders tile glyphs without
+changing any count; the per-plane summary explains the alignment; switching
+views creates no history.
 
 ---
 

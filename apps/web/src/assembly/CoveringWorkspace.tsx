@@ -1,6 +1,15 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, Trash2 } from 'lucide-react';
+import { AlertTriangle, Info, Trash2 } from 'lucide-react';
+import { usePriceOptions } from '../pricing/use-prices';
 import {
   resolveInstallationMode,
   type CoveringAssignmentSpec,
@@ -349,6 +358,8 @@ export function CoveringWorkspace({
   const [showCovering, setShowCovering] = useState(true);
   const [showBattens, setShowBattens] = useState(true);
   const [showCounterBattens, setShowCounterBattens] = useState(false);
+  // V37: presentation only. Never feeds a calculation, never enters history.
+  const [viewMode, setViewMode] = useState<'technical' | 'visual'>('technical');
   const issueSummaries = useMemo(() => groupedCoveringIssues(layout), [layout]);
   const planeIds = surfaceGeometry.planes.map((plane) => plane.roofPlaneId);
   useEffect(() => {
@@ -401,6 +412,51 @@ export function CoveringWorkspace({
   const simplified =
     drawingDetail === 'simplified' ||
     (drawingDetail === 'auto' && fragments.length > 1200);
+  const coveragePositions = useMemo(
+    () =>
+      (selectedLayout && 'courses' in selectedLayout
+        ? selectedLayout.courses.flatMap((course) => course.positions)
+        : selectedLayout && 'rows' in selectedLayout
+          ? selectedLayout.rows.flatMap((row) => row.positions)
+          : []
+      ).flatMap((position) =>
+        'nominalFromUMm' in position
+          ? [
+              {
+                id: position.id,
+                classification: String(position.classification),
+                fromU: position.nominalFromUMm,
+                toU: position.nominalToUMm,
+                fromV: position.nominalFromVMm,
+                toV: position.nominalToVMm,
+              },
+            ]
+          : [],
+      ),
+    [selectedLayout],
+  );
+  const edgeSummary = useMemo(
+    () => ({
+      full: coveragePositions.filter((p) => p.classification === 'full').length,
+      edge: coveragePositions.filter(
+        (p) => p.classification === 'cut-roof-edge',
+      ).length,
+      opening: coveragePositions.filter(
+        (p) =>
+          p.classification === 'cut-opening' ||
+          p.classification === 'split-by-opening',
+      ).length,
+    }),
+    [coveragePositions],
+  );
+  // Nominal effective cells of edge-cut positions: presentation evidence of
+  // why a position is cut. The clipped fragment stays the counted truth.
+  const ghostCells = useMemo(
+    () => coveragePositions.filter((p) => p.classification === 'cut-roof-edge'),
+    [coveragePositions],
+  );
+  const visualAvailable = layout?.kind === 'roof-tile';
+  const visual = viewMode === 'visual' && visualAvailable;
   const hasFullFragments = fragments.some(
     (fragment) => fragment.classification === 'full',
   );
@@ -583,33 +639,10 @@ export function CoveringWorkspace({
         </div>
       </div>
       <header>
-        <div>
-          <small>
-            {assignment.product.catalogRef
-              ? t('assembly.catalogSource')
-              : t('assembly.manualParameters')}
-          </small>
-          <strong>
-            {assignment.product.displaySnapshot?.familyName ??
-              t(coveringKindLabelKey(assignment))}
-          </strong>
-          {assignment.product.catalogRef && (
-            <small>
-              {assignment.product.displaySnapshot?.manufacturer}
-              {assignment.product.displaySnapshot?.variantName
-                ? ` · ${assignment.product.displaySnapshot.variantName}`
-                : ''}
-              {assignment.product.displaySnapshot?.revisionCode
-                ? ` · ${t('assembly.catalogRevision')} ${assignment.product.displaySnapshot.revisionCode}`
-                : ''}
-            </small>
-          )}
-          {catalogDetached && (
-            <small className="a-catalog-detached" role="status">
-              {t('assembly.coveringAdd.catalogDetached')}
-            </small>
-          )}
-        </div>
+        <CoveringProductCard
+          assignment={assignment}
+          catalogDetached={catalogDetached}
+        />
         <button
           className="a-button a-covering-parameters"
           onClick={() => {
@@ -875,6 +908,25 @@ export function CoveringWorkspace({
                 </button>
               )}
           </div>
+          {visualAvailable && (
+            <div
+              className="a-covering-view-mode"
+              role="group"
+              aria-label={t('assembly.studio.viewMode')}
+            >
+              {(['technical', 'visual'] as const).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  data-covering-view={mode}
+                  aria-pressed={viewMode === mode}
+                  onClick={() => setViewMode(mode)}
+                >
+                  {t(`assembly.studio.view.${mode}`)}
+                </button>
+              ))}
+            </div>
+          )}
           <div
             className="a-covering-detail-controls"
             aria-label={t('assembly.drawingDetail')}
@@ -1055,9 +1107,40 @@ export function CoveringWorkspace({
               )}
             </p>
           )}
+          {coveragePositions.length > 0 && (
+            <div
+              className="a-covering-edge-summary"
+              data-testid="covering-edge-summary"
+            >
+              <span data-edge="full">
+                <b>{edgeSummary.full}</b>
+                {t('assembly.studio.fullPositions')}
+              </span>
+              <span data-edge="edge">
+                <b>{edgeSummary.edge}</b>
+                {t('assembly.studio.edgeCut')}
+              </span>
+              <span data-edge="opening">
+                <b>{edgeSummary.opening}</b>
+                {t('assembly.studio.openingCut')}
+              </span>
+              <small>
+                {t(
+                  `assembly.studio.alignmentExplain.${assignment.layoutIntent?.horizontalAlignment ?? 'centered'}`,
+                )}
+              </small>
+            </div>
+          )}
+          {selectedSurface && bounds && (
+            <div className="a-covering-orientation" aria-hidden="true">
+              <span>↑ {t('assembly.studio.ridge')}</span>
+              <span>↓ {t('assembly.studio.eave')}</span>
+            </div>
+          )}
           {selectedSurface && bounds && (
             <svg
-              className={`a-covering-scheme is-${layout?.kind ?? assignment.product.technicalSpecSnapshot.kind}`}
+              className={`a-covering-scheme is-${layout?.kind ?? assignment.product.technicalSpecSnapshot.kind} ${visual ? 'is-visual' : 'is-technical'}`}
+              data-covering-mode={visual ? 'visual' : 'technical'}
               data-covering-visual={
                 layout?.kind ?? assignment.product.technicalSpecSnapshot.kind
               }
@@ -1072,100 +1155,196 @@ export function CoveringWorkspace({
                 <clipPath id="covering-plane-detail-clip">
                   <polygon points={polygonPoints(selectedSurface.polygon)} />
                 </clipPath>
+                {/* Neutral generic tile glyph; y=0 is the exposed eave-side
+                    edge. Illustrative only — no manufacturer profile. */}
+                <symbol
+                  id="covering-tile-glyph"
+                  viewBox="0 0 100 100"
+                  preserveAspectRatio="none"
+                >
+                  {/* Body with a rounded exposed head (y≈0). */}
+                  <path
+                    d="M1 100V30C1 10 8 2 22 2H78C92 2 99 10 99 30V100Z"
+                    fill="currentColor"
+                  />
+                  {/* Upper band is lapped by the next course: darker. */}
+                  <path d="M1 70H99V100H1Z" fill="#2b140a" fillOpacity="0.28" />
+                  {/* Soft cast shadow under the head of the course above. */}
+                  <path d="M1 92H99V100H1Z" fill="#1b0c05" fillOpacity="0.35" />
+                  {/* Side interlock rib. */}
+                  <path
+                    d="M86 94V16"
+                    fill="none"
+                    stroke="#2b140a"
+                    strokeOpacity="0.35"
+                    strokeWidth="1.5"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                  {/* Light catching the rounded head. */}
+                  <path
+                    d="M12 12C30 5 70 5 88 12"
+                    fill="none"
+                    stroke="#fff"
+                    strokeOpacity="0.45"
+                    strokeWidth="1.5"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                  <path
+                    d="M1 100V30C1 10 8 2 22 2H78C92 2 99 10 99 30V100"
+                    fill="none"
+                    stroke="#3b1f10"
+                    strokeOpacity="0.55"
+                    strokeWidth="1"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                </symbol>
               </defs>
-              <polygon
-                className="a-covering-plane"
-                points={polygonPoints(selectedSurface.polygon)}
-              />
-              {showCovering &&
-                !simplified &&
-                fragments.map((fragment) => (
-                  <polygon
-                    key={fragment.id}
-                    className={`a-covering-fragment ${layout?.kind === 'standing-seam' || layout?.kind === 'modular-sheet-cut-to-length' ? 'a-panel-fragment' : 'a-tile-fragment'} is-${fragment.classification}`}
-                    points={polygonPoints(fragment.polygon)}
-                  />
-                ))}
-              {showCovering &&
-                simplified &&
-                selectedLayout &&
-                'columns' in selectedLayout &&
-                selectedLayout.columns.flatMap((column) =>
-                  column.runs.map((run) => (
-                    <line
-                      key={run.id}
-                      className="a-panel-simplified-line"
-                      clipPath="url(#covering-plane-detail-clip)"
-                      x1={(column.nominalFromUMm + column.nominalToUMm) / 2}
-                      x2={(column.nominalFromUMm + column.nominalToUMm) / 2}
-                      y1={run.fromVMm}
-                      y2={run.toVMm}
-                    />
-                  )),
-                )}
-              {showCovering &&
-                simplified &&
-                (selectedLayout && 'courses' in selectedLayout
-                  ? selectedLayout.courses.map((course) => ({
-                      id: course.id,
-                      stationVMm: course.stationVMm,
-                    }))
-                  : selectedLayout && 'rows' in selectedLayout
-                    ? selectedLayout.rows.map((row) => ({
-                        id: row.id,
-                        stationVMm: row.nominalFromVMm,
-                      }))
-                    : []
-                )?.map((course) => (
-                  <line
-                    key={course.id}
-                    className="a-tile-course-line"
-                    clipPath="url(#covering-plane-detail-clip)"
-                    x1={bounds.minU}
-                    x2={bounds.maxU}
-                    y1={course.stationVMm}
-                    y2={course.stationVMm}
-                  />
-                ))}
-              {layout?.kind !== 'standing-seam' &&
-                layout?.kind !== 'modular-sheet-cut-to-length' &&
-                showBattens &&
-                battens.battens
-                  .filter((row) => row.roofPlaneId === selectedPlaneId)
-                  .flatMap((row) =>
-                    row.segments.map((segment, index) => (
-                      <line
-                        key={`${row.id}:${index}`}
-                        className="a-covering-batten"
-                        x1={segment.fromUMm}
-                        x2={segment.toUMm}
-                        y1={row.stationMm}
-                        y2={row.stationMm}
-                      />
-                    )),
-                  )}
-              {showCounterBattens &&
-                counterBattens.rows
-                  .filter((row) => row.roofPlaneId === selectedPlaneId)
-                  .flatMap((row) =>
-                    row.segments.map((segment, index) => (
-                      <line
-                        key={`${row.id}:counter:${index}`}
-                        className="a-covering-counter-batten"
-                        x1={segment.fromLocal.uMm}
-                        x2={segment.toLocal.uMm}
-                        y1={segment.fromLocal.vMm}
-                        y2={segment.toLocal.vMm}
-                      />
-                    )),
-                  )}
-              {selectedSurface.openingPolygons.map((opening) => (
+              {/* v runs uphill: mirror so the eave is at the bottom. */}
+              <g transform={`matrix(1 0 0 -1 0 ${bounds.minV + bounds.maxV})`}>
                 <polygon
-                  key={opening.featureId}
-                  className="a-covering-opening"
-                  points={polygonPoints(opening.polygon)}
+                  className="a-covering-plane"
+                  points={polygonPoints(selectedSurface.polygon)}
                 />
-              ))}
+                {visual && showCovering && (
+                  <g
+                    className="a-tile-visual"
+                    data-testid="covering-visual-layer"
+                    clipPath="url(#covering-plane-detail-clip)"
+                  >
+                    {simplified
+                      ? coveragePositions.map((position) => (
+                          <rect
+                            key={position.id}
+                            className="a-tile-visual-simple"
+                            x={position.fromU}
+                            y={position.fromV}
+                            width={position.toU - position.fromU}
+                            height={position.toV - position.fromV}
+                          />
+                        ))
+                      : coveragePositions.map((position) => (
+                          <use
+                            key={position.id}
+                            href="#covering-tile-glyph"
+                            className={`a-tile-glyph is-${position.classification}`}
+                            x={position.fromU}
+                            y={position.fromV}
+                            width={position.toU - position.fromU}
+                            height={position.toV - position.fromV}
+                          />
+                        ))}
+                  </g>
+                )}
+                {!visual &&
+                  showCovering &&
+                  !simplified &&
+                  ghostCells.map((cell) => (
+                    <rect
+                      key={`ghost:${cell.id}`}
+                      className="a-covering-nominal-ghost"
+                      data-nominal-cell={cell.id}
+                      x={cell.fromU}
+                      y={cell.fromV}
+                      width={cell.toU - cell.fromU}
+                      height={cell.toV - cell.fromV}
+                    />
+                  ))}
+                {showCovering &&
+                  !simplified &&
+                  !visual &&
+                  fragments.map((fragment) => (
+                    <polygon
+                      key={fragment.id}
+                      className={`a-covering-fragment ${layout?.kind === 'standing-seam' || layout?.kind === 'modular-sheet-cut-to-length' ? 'a-panel-fragment' : 'a-tile-fragment'} is-${fragment.classification}`}
+                      points={polygonPoints(fragment.polygon)}
+                    />
+                  ))}
+                {showCovering &&
+                  simplified &&
+                  selectedLayout &&
+                  'columns' in selectedLayout &&
+                  selectedLayout.columns.flatMap((column) =>
+                    column.runs.map((run) => (
+                      <line
+                        key={run.id}
+                        className="a-panel-simplified-line"
+                        clipPath="url(#covering-plane-detail-clip)"
+                        x1={(column.nominalFromUMm + column.nominalToUMm) / 2}
+                        x2={(column.nominalFromUMm + column.nominalToUMm) / 2}
+                        y1={run.fromVMm}
+                        y2={run.toVMm}
+                      />
+                    )),
+                  )}
+                {showCovering &&
+                  simplified &&
+                  !visual &&
+                  (selectedLayout && 'courses' in selectedLayout
+                    ? selectedLayout.courses.map((course) => ({
+                        id: course.id,
+                        stationVMm: course.stationVMm,
+                      }))
+                    : selectedLayout && 'rows' in selectedLayout
+                      ? selectedLayout.rows.map((row) => ({
+                          id: row.id,
+                          stationVMm: row.nominalFromVMm,
+                        }))
+                      : []
+                  )?.map((course) => (
+                    <line
+                      key={course.id}
+                      className="a-tile-course-line"
+                      clipPath="url(#covering-plane-detail-clip)"
+                      x1={bounds.minU}
+                      x2={bounds.maxU}
+                      y1={course.stationVMm}
+                      y2={course.stationVMm}
+                    />
+                  ))}
+                {layout?.kind !== 'standing-seam' &&
+                  layout?.kind !== 'modular-sheet-cut-to-length' &&
+                  showBattens &&
+                  battens.battens
+                    .filter((row) => row.roofPlaneId === selectedPlaneId)
+                    .flatMap((row) =>
+                      row.segments.map((segment, index) => (
+                        <line
+                          key={`${row.id}:${index}`}
+                          className="a-covering-batten"
+                          x1={segment.fromUMm}
+                          x2={segment.toUMm}
+                          y1={row.stationMm}
+                          y2={row.stationMm}
+                        />
+                      )),
+                    )}
+                {showCounterBattens &&
+                  counterBattens.rows
+                    .filter((row) => row.roofPlaneId === selectedPlaneId)
+                    .flatMap((row) =>
+                      row.segments.map((segment, index) => (
+                        <line
+                          key={`${row.id}:counter:${index}`}
+                          className="a-covering-counter-batten"
+                          x1={segment.fromLocal.uMm}
+                          x2={segment.toLocal.uMm}
+                          y1={segment.fromLocal.vMm}
+                          y2={segment.toLocal.vMm}
+                        />
+                      )),
+                    )}
+                {selectedSurface.openingPolygons.map((opening) => (
+                  <polygon
+                    key={opening.featureId}
+                    className="a-covering-opening"
+                    points={polygonPoints(opening.polygon)}
+                  />
+                ))}
+                <polygon
+                  className="a-covering-plane-outline"
+                  points={polygonPoints(selectedSurface.polygon)}
+                />
+              </g>
             </svg>
           )}
           {simplified && (
@@ -1204,8 +1383,24 @@ export function CoveringWorkspace({
                 {t('assembly.coveringAdd.problem')}
               </span>
             )}
+            {!visual && !simplified && ghostCells.length > 0 && (
+              <span className="ghost">{t('assembly.studio.nominalGhost')}</span>
+            )}
             <span className="selected">{t('assembly.selectedPlane')}</span>
           </div>
+          {(layout?.kind === 'roof-tile' ||
+            layout?.kind === 'modular-sheet') && (
+            <p
+              className="a-covering-edge-note"
+              data-testid="covering-edge-note"
+            >
+              <Info size={14} aria-hidden="true" />
+              {visual
+                ? t('assembly.studio.visualBoundary')
+                : t('assembly.studio.technicalBoundary')}{' '}
+              {t('assembly.studio.physicalEdgeUnmodelled')}
+            </p>
+          )}
           {(layout?.kind === 'standing-seam' ||
             layout?.kind === 'modular-sheet-cut-to-length') && (
             <details className="a-panel-secondary-stats">
@@ -1261,6 +1456,172 @@ export function CoveringWorkspace({
         </div>
       </div>
     </section>
+  );
+}
+
+type HorizontalAlignment = 'centered' | 'from-u-min' | 'manual';
+
+/** V37 human wording for layout intent; the canonical enum never shows. */
+function HorizontalAlignmentControl({
+  value,
+  onChange,
+}: {
+  value: HorizontalAlignment;
+  onChange: (value: HorizontalAlignment) => void;
+}) {
+  const { t } = useTranslation();
+  const name = useId();
+  return (
+    <fieldset
+      className="a-alignment-control"
+      data-testid="horizontal-alignment"
+    >
+      <legend>{t('assembly.studio.alignmentTitle')}</legend>
+      {(['centered', 'from-u-min', 'manual'] as const).map((option) => (
+        <label key={option} data-alignment={option}>
+          <input
+            type="radio"
+            name={name}
+            checked={value === option}
+            onChange={() => onChange(option)}
+          />
+          <span>
+            <strong>{t(`assembly.studio.alignment.${option}`)}</strong>
+            <small>{t(`assembly.studio.alignmentHint.${option}`)}</small>
+          </span>
+        </label>
+      ))}
+    </fieldset>
+  );
+}
+
+/** Selected covering as a technical product card (V37 §27). */
+function CoveringProductCard({
+  assignment,
+  catalogDetached,
+}: {
+  assignment: CoveringAssignmentSpec;
+  catalogDetached: boolean;
+}) {
+  const state = useAssembly();
+  const { t, i18n } = useTranslation();
+  const display = assignment.product.displaySnapshot;
+  const spec = assignment.product.technicalSpecSnapshot;
+  const variantId = assignment.product.catalogRef?.variantId;
+  const prices = usePriceOptions(variantId ? [variantId] : []);
+  const length = (value: number) =>
+    `${new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 1 }).format(fromMillimetres(value, state.unit))} ${state.unit}`;
+  const facts: Array<[string, string]> = [];
+  if (spec.kind === 'roof-tile') {
+    const mode =
+      resolveInstallationMode(
+        spec.installationModes,
+        assignment.selectedInstallationModeId,
+      ) ?? spec.installationModes[0];
+    if (spec.physicalWidthMm && spec.physicalLengthMm)
+      facts.push([
+        t('assembly.studio.fact.physical'),
+        `${length(spec.physicalWidthMm)} × ${length(spec.physicalLengthMm)}`,
+      ]);
+    if (mode) {
+      facts.push([t('assembly.coverWidth'), length(mode.coverWidthMm)]);
+      facts.push([
+        t('assembly.studio.fact.gauge'),
+        `${length(mode.gaugeRangeMm.min)}–${length(mode.gaugeRangeMm.max)}`,
+      ]);
+      if (mode.minPitchDeg)
+        facts.push([t('assembly.studio.fact.pitch'), `≥ ${mode.minPitchDeg}°`]);
+      if (mode.declaredUnitsPerM2) {
+        const count = new Intl.NumberFormat(i18n.language, {
+          maximumFractionDigits: 1,
+        });
+        facts.push([
+          t('assembly.studio.fact.consumption'),
+          `${count.format(mode.declaredUnitsPerM2.min)}–${count.format(mode.declaredUnitsPerM2.max)} ${t('assembly.studio.fact.perM2')}`,
+        ]);
+      }
+    }
+  } else if (spec.kind === 'modular-sheet') {
+    facts.push([t('assembly.coverWidth'), length(spec.effectiveWidthMm)]);
+    if (spec.minPitchDeg)
+      facts.push([t('assembly.studio.fact.pitch'), `≥ ${spec.minPitchDeg}°`]);
+  } else {
+    const mode = spec.installationModes[0];
+    if (mode)
+      facts.push([t('assembly.coverWidth'), length(mode.effectiveWidthMm)]);
+    facts.push([
+      t('assembly.studio.fact.panelLength'),
+      `${length(spec.minPanelLengthMm)}–${length(spec.maxPanelLengthMm)}`,
+    ]);
+    if (spec.minPitchDeg)
+      facts.push([t('assembly.studio.fact.pitch'), `≥ ${spec.minPitchDeg}°`]);
+  }
+  const priceState = !variantId
+    ? 'none'
+    : prices.length > 1
+      ? 'multiple'
+      : prices.length === 1
+        ? 'available'
+        : 'missing';
+  return (
+    <div
+      className="a-covering-product-card"
+      data-testid="covering-product-card"
+    >
+      <div className="a-covering-product-title">
+        <span
+          className="a-source-badge"
+          data-source={assignment.product.catalogRef ? 'catalog' : 'manual'}
+        >
+          {assignment.product.catalogRef
+            ? t('assembly.catalogSource')
+            : t('assembly.manualParameters')}
+        </span>
+        <strong>
+          {display?.familyName ?? t(coveringKindLabelKey(assignment))}
+        </strong>
+        <small>
+          {[
+            display?.manufacturer,
+            display?.variantName,
+            display?.revisionCode
+              ? `${t('assembly.catalogRevision')} ${display.revisionCode}`
+              : undefined,
+            t(
+              `assembly.studio.kind.${
+                spec.kind === 'modular-sheet' &&
+                spec.lengthModel.kind === 'cut-to-length'
+                  ? 'cut-to-length'
+                  : spec.kind
+              }`,
+            ),
+          ]
+            .filter(Boolean)
+            .join(' · ')}
+        </small>
+        {catalogDetached && (
+          <small className="a-catalog-detached" role="status">
+            {t('assembly.coveringAdd.catalogDetached')}
+          </small>
+        )}
+      </div>
+      <dl className="a-covering-product-facts">
+        {facts.map(([label, value]) => (
+          <div key={label}>
+            <dt>{label}</dt>
+            <dd>{value}</dd>
+          </div>
+        ))}
+        {/* Commerce stays downstream: only a catalogue variant can have a
+            price-list state; manual technical parameters show none. */}
+        {priceState !== 'none' && (
+          <div data-price-state={priceState}>
+            <dt>{t('assembly.studio.fact.price')}</dt>
+            <dd>{t(`assembly.studio.price.${priceState}`)}</dd>
+          </div>
+        )}
+      </dl>
+    </div>
   );
 }
 
@@ -1472,36 +1833,27 @@ function TileCoveringEditor({
           <option value="crown">{t('assembly.patternCrown')}</option>
         </select>
       </label>
-      <label className="a-field">
-        <span>{t('assembly.horizontalAlignment')}</span>
-        <select
-          value={assignment.layoutIntent?.horizontalAlignment ?? 'centered'}
-          onChange={(event) =>
-            update((draft) => {
-              const alignment = event.currentTarget.value as
-                'centered' | 'from-u-min' | 'manual';
-              draft.layoutIntent = {
-                kind: 'roof-tile',
-                horizontalAlignment: alignment,
-                ...(alignment === 'manual'
-                  ? {
-                      planeOffsetsMm: Object.fromEntries(
-                        draft.roofPlaneIds.map((id) => [
-                          id,
-                          draft.layoutIntent?.planeOffsetsMm?.[id] ?? 0,
-                        ]),
-                      ),
-                    }
-                  : {}),
-              };
-            })
-          }
-        >
-          <option value="centered">{t('assembly.alignmentCentered')}</option>
-          <option value="from-u-min">{t('assembly.alignmentFromEdge')}</option>
-          <option value="manual">{t('assembly.alignmentManual')}</option>
-        </select>
-      </label>
+      <HorizontalAlignmentControl
+        value={assignment.layoutIntent?.horizontalAlignment ?? 'centered'}
+        onChange={(alignment) =>
+          update((draft) => {
+            draft.layoutIntent = {
+              kind: 'roof-tile',
+              horizontalAlignment: alignment,
+              ...(alignment === 'manual'
+                ? {
+                    planeOffsetsMm: Object.fromEntries(
+                      draft.roofPlaneIds.map((id) => [
+                        id,
+                        draft.layoutIntent?.planeOffsetsMm?.[id] ?? 0,
+                      ]),
+                    ),
+                  }
+                : {}),
+            };
+          })
+        }
+      />
       {assignment.layoutIntent?.horizontalAlignment === 'manual' &&
         selectedPlaneId && (
           <NumericField
@@ -1834,33 +2186,24 @@ function ModularSheetEditor({
         }
       />
       <h3>{t('assembly.layoutSection')}</h3>
-      <label className="a-field">
-        <span>{t('assembly.horizontalAlignment')}</span>
-        <select
-          value={intent.horizontalAlignment}
-          onChange={(event) =>
-            update((draft) => {
-              const horizontalAlignment = event.currentTarget.value as
-                'centered' | 'from-u-min' | 'manual';
-              draft.layoutIntent = {
-                kind: intentKind,
-                horizontalAlignment,
-                ...(horizontalAlignment === 'manual'
-                  ? {
-                      planeOffsetsMm: Object.fromEntries(
-                        draft.roofPlaneIds.map((id) => [id, 0]),
-                      ),
-                    }
-                  : {}),
-              };
-            })
-          }
-        >
-          <option value="centered">{t('assembly.alignmentCentered')}</option>
-          <option value="from-u-min">{t('assembly.alignmentFromEdge')}</option>
-          <option value="manual">{t('assembly.alignmentManual')}</option>
-        </select>
-      </label>
+      <HorizontalAlignmentControl
+        value={intent.horizontalAlignment}
+        onChange={(horizontalAlignment) =>
+          update((draft) => {
+            draft.layoutIntent = {
+              kind: intentKind,
+              horizontalAlignment,
+              ...(horizontalAlignment === 'manual'
+                ? {
+                    planeOffsetsMm: Object.fromEntries(
+                      draft.roofPlaneIds.map((id) => [id, 0]),
+                    ),
+                  }
+                : {}),
+            };
+          })
+        }
+      />
       {intent.horizontalAlignment === 'manual' && selectedPlaneId && (
         <NumericField
           label={t('assembly.planeOffset')}
@@ -2123,36 +2466,27 @@ function StandingSeamEditor({
         }
       />
       <h3>{t('assembly.layoutSection')}</h3>
-      <label className="a-field">
-        <span>{t('assembly.horizontalAlignment')}</span>
-        <select
-          value={intent.horizontalAlignment}
-          onChange={(event) =>
-            update((draft) => {
-              const horizontalAlignment = event.currentTarget.value as
-                'centered' | 'from-u-min' | 'manual';
-              draft.layoutIntent = {
-                kind: 'standing-seam',
-                horizontalAlignment,
-                ...(horizontalAlignment === 'manual'
-                  ? {
-                      planeOffsetsMm: Object.fromEntries(
-                        draft.roofPlaneIds.map((id) => [
-                          id,
-                          draft.layoutIntent?.planeOffsetsMm?.[id] ?? 0,
-                        ]),
-                      ),
-                    }
-                  : {}),
-              };
-            })
-          }
-        >
-          <option value="centered">{t('assembly.alignmentCentered')}</option>
-          <option value="from-u-min">{t('assembly.alignmentFromEdge')}</option>
-          <option value="manual">{t('assembly.alignmentManual')}</option>
-        </select>
-      </label>
+      <HorizontalAlignmentControl
+        value={intent.horizontalAlignment}
+        onChange={(horizontalAlignment) =>
+          update((draft) => {
+            draft.layoutIntent = {
+              kind: 'standing-seam',
+              horizontalAlignment,
+              ...(horizontalAlignment === 'manual'
+                ? {
+                    planeOffsetsMm: Object.fromEntries(
+                      draft.roofPlaneIds.map((id) => [
+                        id,
+                        draft.layoutIntent?.planeOffsetsMm?.[id] ?? 0,
+                      ]),
+                    ),
+                  }
+                : {}),
+            };
+          })
+        }
+      />
       {intent.horizontalAlignment === 'manual' && selectedPlaneId && (
         <NumericField
           label={t('assembly.planeOffset')}

@@ -22,24 +22,39 @@ async function openBuilder(page: Page) {
   await page.locator(BUILDER).click();
   const assistant = page.getByTestId('project-start-assistant');
   await expect(assistant).toBeVisible();
-  await assistant.getByTestId('project-start-submit').click();
+  // V37: "Od razu do edycji" is the expert path with template defaults.
+  await assistant.getByTestId('project-start-advanced').click();
   await expect(assistant).toBeHidden();
   await expect(page.getByTestId('skeleton-drawing')).toBeVisible();
 }
 
+const PERSPECTIVE_OF: Record<string, string> = {
+  construction: 'project',
+  openings: 'project',
+  layers: 'project',
+  covering: 'project',
+  cuts: 'execution',
+  materials: 'materials',
+  costing: 'costing',
+  documents: 'documents',
+};
+
 async function openTask(page: Page, task: string) {
-  // Desktop controls and the mobile dock coexist in the DOM. Target the
-  // currently rendered control so the click also proves that route is
-  // physically reachable at the active viewport.
-  const taskControl = page.locator(`[data-task="${task}"]:visible`).first();
-  await taskControl.click();
+  // V37: a perspective first, then its contextual task. Desktop bar and the
+  // mobile dock coexist in the DOM; target the rendered control so the click
+  // also proves the route is reachable at the active viewport.
+  await page
+    .locator(`[data-perspective="${PERSPECTIVE_OF[task]}"]:visible`)
+    .first()
+    .click();
+  if (task === 'materials') {
+    await page.locator('[data-materials-view="schedule"]:visible').click();
+    return;
+  }
+  await page.locator(`[data-task="${task}"]:visible`).first().click();
   await expect(
     page.locator(`[data-task="${task}"][aria-selected="true"]:visible`).first(),
   ).toBeVisible();
-  if (task === 'materials')
-    await page
-      .getByRole('tab', { name: 'Zestawienie techniczne', exact: true })
-      .click();
 }
 
 async function addTile(page: Page, gaugeMin = '30', gaugeMax = '38') {
@@ -142,17 +157,20 @@ test.describe('V31 — guided Creator start', () => {
     await page.locator(BUILDER).click();
     const assistant = page.getByTestId('project-start-assistant');
     await expect(assistant).toBeVisible();
-    const values = {
-      buildingLength: '1200',
-      buildingWidth: '900',
-      pitch: '35',
-      eave: '50',
-      spacing: '80',
-    };
-    for (const [field, value] of Object.entries(values))
-      await assistant
-        .locator(`[data-project-start-field="${field}"]`)
-        .fill(value);
+    await assistant.getByTestId('project-start-guided').click();
+    const steps = [
+      { buildingLength: '1200', buildingWidth: '900' },
+      { pitch: '35', eave: '50' },
+      { spacing: '80' },
+    ];
+    for (const values of steps) {
+      for (const [field, value] of Object.entries(values))
+        await assistant
+          .locator(`[data-project-start-field="${field}"]`)
+          .fill(value);
+      await assistant.getByTestId('project-start-next').click();
+    }
+    await expect(assistant.getByTestId('project-start-review')).toBeVisible();
     await assistant.getByTestId('project-start-submit').click();
     await expect(assistant).toBeHidden();
     await expect(page.getByTestId('skeleton-drawing')).toBeVisible();
@@ -223,6 +241,7 @@ test.describe('G — guided project workflow', () => {
       'data-status',
       'complete',
     );
+    await page.locator('[data-materials-view="plan"]:visible').click();
     await page.locator('.mp-secondary-views summary').click();
     await page
       .locator('.a-material-local-switch')
@@ -248,6 +267,8 @@ test.describe('H — execution package', () => {
   }, testInfo) => {
     await openBuilder(page);
     await page.getByTestId('project-execution-export').click();
+    await expect(page.getByTestId('document-hub')).toBeVisible();
+    await page.getByTestId('document-configure-execution').click();
     const config = page.getByTestId('execution-config');
     await expect(config).toBeVisible();
     await expect(
@@ -294,6 +315,7 @@ test.describe('H — execution package', () => {
   }) => {
     await openBuilder(page);
     await page.getByTestId('project-execution-export').click();
+    await page.getByTestId('document-configure-execution').click();
     await page
       .getByTestId('execution-config')
       .getByRole('button', { name: /Zaplanuj rozkrój K1/ })
@@ -303,11 +325,12 @@ test.describe('H — execution package', () => {
     await panel.getByTestId('k1-stock-length').fill('700');
     await panel.getByTestId('k1-run-plan').click();
     await expect(panel.getByTestId('k1-cutting-result')).toBeVisible();
-    await page
-      .getByRole('dialog')
-      .getByRole('button', { name: 'Zamknij' })
-      .click();
-    await page.getByTestId('project-execution-export').click();
+    // V37: K1 cutting is a Materials tab; contextual Back returns to Documents.
+    const back = page.getByTestId('workbench-back');
+    await expect(back).toContainText('Centrum dokumentów');
+    await back.click();
+    await expect(page.getByTestId('document-hub')).toBeVisible();
+    await page.getByTestId('document-configure-execution').click();
     const config = page.getByTestId('execution-config');
     await expect(
       config.getByRole('checkbox', { name: /Rozkrój K1/ }),
@@ -562,7 +585,7 @@ test.describe('F — K1 physical blank to cutting plan', () => {
     await page.locator(BUILDER).click();
     const assistant = page.getByTestId('project-start-assistant');
     await expect(assistant).toBeVisible();
-    await assistant.getByTestId('project-start-submit').click();
+    await assistant.getByTestId('project-start-advanced').click();
     await expect(assistant).toBeHidden();
     await openTask(page, 'materials');
     await expect(page.getByTestId('k1-cutting-cta')).toHaveCount(1);
@@ -586,7 +609,7 @@ test.describe('F — K1 physical blank to cutting plan', () => {
     await page.getByRole('button', { name: 'Krokiew narożna' }).click();
     await page.locator(BUILDER).click();
     const assistant = page.getByTestId('project-start-assistant');
-    await assistant.getByTestId('project-start-submit').click();
+    await assistant.getByTestId('project-start-advanced').click();
     await openTask(page, 'layers');
     const tools =
       testInfo.project.name === 'mobile'
@@ -668,7 +691,7 @@ test.describe('V33 — build-up closeout', () => {
     await page.goto('/#/calculators/common-rafter');
     await page.getByRole('button', { name: 'Krokiew narożna' }).click();
     await page.locator(BUILDER).click();
-    await page.getByTestId('project-start-submit').click();
+    await page.getByTestId('project-start-advanced').click();
     await addTile(page, '33', '36');
     // The project starts with one selected plane. Explicitly apply the tile to the roof.
     const assignAll = page.getByRole('button', {

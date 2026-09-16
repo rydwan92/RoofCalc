@@ -19,13 +19,13 @@ export type ViewPreset =
   | 'covering'
   | 'cuts'
   | 'materials'
-  | 'costing';
+  | 'costing'
+  | 'documents';
 
 /**
- * Perspective grouping over the existing task ribbon (V34B). Purely a
- * presentation grouping — no new persisted or canonical state. `documents`
- * has no `ViewPreset` of its own; it opens the existing execution-export
- * flow instead of switching the workspace.
+ * Primary workbench navigation (V37). Perspectives own the contextual
+ * secondary tasks; no new persisted or canonical state. `documents` is a real
+ * transient destination (Centrum dokumentów), not an export shortcut.
  */
 export type WorkbenchPerspective =
   'project' | 'execution' | 'materials' | 'costing' | 'documents';
@@ -35,8 +35,78 @@ const PERSPECTIVE_TASKS: Record<WorkbenchPerspective, readonly ViewPreset[]> = {
   execution: ['cuts'],
   materials: ['materials'],
   costing: ['costing'],
-  documents: [],
+  documents: ['documents'],
 };
+
+/** Local view inside a task; only views with their own return meaning. */
+export type WorkbenchLocalView = MaterialsView | 'document-preview';
+
+/**
+ * Transient in-workbench location (V37). Never serialized, never history.
+ * Used for the breadcrumb and the contextual "Wróć" target.
+ */
+export interface WorkbenchLocation {
+  perspective: WorkbenchPerspective;
+  task: ViewPreset;
+  localView?: WorkbenchLocalView;
+}
+
+export const NAVIGATION_TRAIL_LIMIT = 6;
+
+export function workbenchLocation(
+  task: ViewPreset,
+  localView?: WorkbenchLocalView,
+): WorkbenchLocation {
+  return {
+    perspective: perspectiveForTask(task),
+    task,
+    ...(localView ? { localView } : {}),
+  };
+}
+
+export function currentWorkbenchLocation(
+  view: Pick<WorkbenchViewState, 'viewPreset' | 'materialsView'>,
+): WorkbenchLocation {
+  return workbenchLocation(
+    view.viewPreset,
+    view.viewPreset === 'materials' ? view.materialsView : undefined,
+  );
+}
+
+export function sameWorkbenchLocation(
+  a: WorkbenchLocation,
+  b: WorkbenchLocation,
+): boolean {
+  return (
+    a.task === b.task &&
+    (a.localView ?? undefined) === (b.localView ?? undefined)
+  );
+}
+
+/** Deduplicated, bounded return trail: revisiting a location truncates it. */
+export function pushNavigationTrail(
+  trail: readonly WorkbenchLocation[],
+  location: WorkbenchLocation,
+  limit = NAVIGATION_TRAIL_LIMIT,
+): WorkbenchLocation[] {
+  const existing = trail.findIndex((entry) =>
+    sameWorkbenchLocation(entry, location),
+  );
+  const next = existing >= 0 ? trail.slice(0, existing) : [...trail];
+  next.push(location);
+  return next.slice(-limit);
+}
+
+/** Translation key naming a location for "← {label}" and breadcrumbs. */
+export function workbenchLocationLabelKey(location: WorkbenchLocation): string {
+  if (location.task === 'materials')
+    return `assembly.nav.materials.${location.localView ?? 'plan'}`;
+  if (location.task === 'documents')
+    return location.localView === 'document-preview'
+      ? 'assembly.nav.documentPreview'
+      : 'assembly.nav.documentHub';
+  return `assembly.${location.task}Preset`;
+}
 
 export function perspectiveForTask(preset: ViewPreset): WorkbenchPerspective {
   for (const perspective of Object.keys(
@@ -61,7 +131,8 @@ export const WORKBENCH_PERSPECTIVES: readonly WorkbenchPerspective[] = [
 ];
 export type BuildUpView =
   'overview' | 'membrane' | 'counterBattens' | 'battens';
-export type MaterialsView = 'plan' | 'summary' | 'schedule' | 'drawing';
+export type MaterialsView =
+  'plan' | 'cutting' | 'summary' | 'schedule' | 'drawing';
 export type MobilePanel = 'none' | 'tools' | 'inspector' | 'view';
 export type DimensionLevel = 'minimal' | 'working' | 'full';
 export type DetailDockMode = 'collapsed' | 'working' | 'focus';
@@ -131,6 +202,8 @@ export interface WorkbenchViewState {
   mobilePanel: MobilePanel;
   /** View restored when a contextual cut detail is closed. */
   returnViewPreset?: ViewPreset;
+  /** V37 transient return trail for cross-context jumps; never persisted. */
+  navigationTrail: WorkbenchLocation[];
   isolateSelection: boolean;
   dimensionLevel: DimensionLevel;
   toolboxCollapsed: boolean;
@@ -189,6 +262,7 @@ export const initialWorkbenchViewState: WorkbenchViewState = {
   materialsView: 'plan',
   mobilePanel: 'none',
   returnViewPreset: undefined,
+  navigationTrail: [],
   isolateSelection: false,
   dimensionLevel: 'working',
   toolboxCollapsed: false,

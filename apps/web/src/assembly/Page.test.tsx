@@ -109,12 +109,25 @@ async function addManualCovering(kind: keyof typeof coveringValues) {
   fireEvent.click(within(draft).getByTestId('confirm-manual-covering'));
 }
 
+/** V37 Creator: advance through the guided steps and create the project. */
+async function finishStartAssistant() {
+  const assistant = await screen.findByTestId('project-start-assistant');
+  for (
+    let step = 0;
+    step < 4 && !within(assistant).queryByTestId('project-start-submit');
+    step += 1
+  )
+    fireEvent.click(within(assistant).getByTestId('project-start-next'));
+  fireEvent.click(await within(assistant).findByTestId('project-start-submit'));
+}
+
 describe('dual-mode parametric workbench', () => {
   it('guides the first Creator entry and maps the full building width to halfRun', async () => {
     localStorage.removeItem('cieslacalc.creatorStartSeen.v1');
     render(<App />);
     builder();
     const assistant = await screen.findByTestId('project-start-assistant');
+    fireEvent.click(within(assistant).getByTestId('project-start-guided'));
     const setStartField = (name: string, value: string) =>
       fireEvent.change(
         assistant.querySelector<HTMLInputElement>(
@@ -122,11 +135,27 @@ describe('dual-mode parametric workbench', () => {
         )!,
         { target: { value } },
       );
+    const next = () =>
+      fireEvent.click(within(assistant).getByTestId('project-start-next'));
+    expect(
+      within(assistant).getByRole('img', {
+        name: /Rzut budynku ze strzałką wymiaru wzdłużnego/,
+      }),
+    ).toBeTruthy();
     setStartField('buildingLength', '12000');
     setStartField('buildingWidth', '9000');
+    next();
     setStartField('pitch', '35');
     setStartField('eave', '500');
+    next();
     setStartField('spacing', '800');
+    next();
+    expect(
+      within(assistant)
+        .getByTestId('project-start-review')
+        .querySelector('[data-readiness="k1Cutting"]')
+        ?.getAttribute('data-state'),
+    ).toBe('ready');
     fireEvent.click(within(assistant).getByTestId('project-start-submit'));
     await waitFor(() =>
       expect(screen.queryByTestId('project-start-assistant')).toBeNull(),
@@ -151,6 +180,8 @@ describe('dual-mode parametric workbench', () => {
       expect((trigger as HTMLButtonElement).disabled).toBe(false),
     );
     fireEvent.click(trigger);
+    expect(useAssembly.getState().workbench.viewPreset).toBe('documents');
+    fireEvent.click(await screen.findByTestId('document-configure-execution'));
     const config = await screen.findByTestId(
       'execution-config',
       {},
@@ -286,13 +317,18 @@ describe('dual-mode parametric workbench', () => {
     expect(
       document.querySelector('[data-project-start-field="buildingWidth"]'),
     ).toBeNull();
-    fireEvent.click(screen.getByTestId('project-start-submit'));
+    expect(
+      document.querySelector('[data-confirmed-field="buildingWidth"]'),
+    ).toBeTruthy();
+    await finishStartAssistant();
     await waitFor(() =>
       expect(screen.queryByTestId('project-start-assistant')).toBeNull(),
     );
     expect(useAssembly.getState().spec).toEqual(spec);
     expect(screen.getByTestId('stock-length').textContent).toBe(stock);
-    expect(screen.getByTestId('skeleton-drawing')).toBeTruthy();
+    expect(
+      await screen.findByTestId('skeleton-drawing', {}, { timeout: 5000 }),
+    ).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Detal' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Element' })).toBeNull();
   });
@@ -440,7 +476,9 @@ describe('dual-mode parametric workbench', () => {
         .querySelector('[data-profile="member:rafter-1"]')!
         .getAttribute('points'),
     ).not.toBe(before);
-    fireEvent.click(screen.getByRole('tab', { name: 'Cięcia' }));
+    fireEvent.click(
+      screen.getByRole('tab', { name: 'Perspektywa: Wykonanie' }),
+    );
     expect(
       container.querySelector('[data-datum="datum:purlin-1-heel"]'),
     ).toBeTruthy();
@@ -641,7 +679,9 @@ describe('dual-mode parametric workbench', () => {
       await screen.findByRole('heading', { name: 'Roof workbench' }),
     ).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Add purlin' })).toBeTruthy();
-    fireEvent.click(screen.getByRole('tab', { name: 'Schedule' }));
+    fireEvent.click(
+      screen.getByRole('tab', { name: 'Perspective: Materials' }),
+    );
     expect(
       await screen.findByRole('heading', { name: 'Member schedule' }),
     ).toBeTruthy();
@@ -918,12 +958,15 @@ describe('dual-mode parametric workbench', () => {
     expect(useAssembly.getState().template.pitchDeg).toBe(35.5);
     expect(drawing.getAttribute('data-fit-scale')).toBe(fitScaleBeforeEdit);
     expect(
-      (screen.getByRole('button', { name: 'Cofnij' }) as HTMLButtonElement)
-        .disabled,
+      (
+        screen.getByRole('button', {
+          name: 'Cofnij zmianę',
+        }) as HTMLButtonElement
+      ).disabled,
     ).toBe(false);
-    fireEvent.click(screen.getByRole('button', { name: 'Cofnij' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cofnij zmianę' }));
     expect(useAssembly.getState().template).toEqual(before);
-    fireEvent.click(screen.getByRole('button', { name: 'Ponów' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ponów zmianę' }));
     expect(useAssembly.getState().template.pitchDeg).toBe(35.5);
     fireEvent.keyDown(
       screen.getByRole('slider', {
@@ -1461,7 +1504,7 @@ describe('dual-mode parametric workbench', () => {
     );
     fireEvent.click(screen.getByTestId('quick-create-project'));
     expect(await screen.findByTestId('project-start-assistant')).toBeTruthy();
-    fireEvent.click(screen.getByTestId('project-start-submit'));
+    await finishStartAssistant();
     await waitFor(() =>
       expect(screen.queryByTestId('project-start-assistant')).toBeNull(),
     );
@@ -1668,7 +1711,9 @@ describe('dual-mode parametric workbench', () => {
     expect(useAssembly.getState().projectDocument).toEqual(before);
     expect(useAssembly.getState().historyPast).toHaveLength(0);
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Zestawienie' }));
+    fireEvent.click(
+      screen.getByRole('tab', { name: 'Perspektywa: Materiały' }),
+    );
     expect(await screen.findByTestId('material-schedule')).toBeTruthy();
     expect(container.querySelectorAll('[data-build-up-quantity]')).toHaveLength(
       1,
@@ -1740,7 +1785,9 @@ describe('dual-mode parametric workbench', () => {
 
   it('opens the geometry-based material schedule and highlights its source members without editing the project', async () => {
     const { container } = render(<App />);
-    expect(screen.queryByRole('tab', { name: 'Zestawienie' })).toBeNull();
+    expect(
+      screen.queryByRole('tab', { name: 'Perspektywa: Materiały' }),
+    ).toBeNull();
     expect(useAssembly.getState().unit).toBe('mm');
     builder();
     act(() => {
@@ -1756,7 +1803,9 @@ describe('dual-mode parametric workbench', () => {
     const before = structuredClone(useAssembly.getState().projectDocument);
     const historyLength = useAssembly.getState().historyPast.length;
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Zestawienie' }));
+    fireEvent.click(
+      screen.getByRole('tab', { name: 'Perspektywa: Materiały' }),
+    );
     expect(await screen.findByTestId('material-schedule')).toBeTruthy();
     expect(screen.getByTestId('batten-quantity')).toBeTruthy();
     expect(
@@ -1813,7 +1862,9 @@ describe('dual-mode parametric workbench', () => {
     builder();
     const before = structuredClone(useAssembly.getState().projectDocument);
     const history = useAssembly.getState().historyPast.length;
-    fireEvent.click(screen.getByRole('tab', { name: 'Zestawienie' }));
+    fireEvent.click(
+      screen.getByRole('tab', { name: 'Perspektywa: Materiały' }),
+    );
     await screen.findByTestId('material-schedule');
     expect(screen.getByTestId('k1-cutting-cta')).toBeTruthy();
     fireEvent.click(screen.getByTestId('k1-cutting-cta'));
@@ -1854,7 +1905,9 @@ describe('dual-mode parametric workbench', () => {
     render(<App />);
     builder();
     act(() => useAssembly.getState().setCanonicalField('ridge.thicknessMm', 0));
-    fireEvent.click(screen.getByRole('tab', { name: 'Zestawienie' }));
+    fireEvent.click(
+      screen.getByRole('tab', { name: 'Perspektywa: Materiały' }),
+    );
     await screen.findByTestId('material-schedule');
     expect(screen.queryByTestId('k1-cutting-cta')).toBeNull();
     expect(screen.getByText(/Brak fizycznej deski kalenicowej/)).toBeTruthy();
@@ -1864,7 +1917,9 @@ describe('dual-mode parametric workbench', () => {
     render(<App />);
     builder();
     act(() => useAssembly.getState().setRidgeConnection('half-lap'));
-    fireEvent.click(screen.getByRole('tab', { name: 'Zestawienie' }));
+    fireEvent.click(
+      screen.getByRole('tab', { name: 'Perspektywa: Materiały' }),
+    );
     await screen.findByTestId('material-schedule');
     expect(screen.queryByTestId('k1-cutting-cta')).toBeNull();
     expect(
@@ -1876,7 +1931,9 @@ describe('dual-mode parametric workbench', () => {
     render(<App />);
     builder();
     act(() => useAssembly.getState().setRidgeConnection('direct-meeting'));
-    fireEvent.click(screen.getByRole('tab', { name: 'Zestawienie' }));
+    fireEvent.click(
+      screen.getByRole('tab', { name: 'Perspektywa: Materiały' }),
+    );
     await screen.findByTestId('material-schedule');
     expect(screen.getByTestId('k1-cutting-cta')).toBeTruthy();
   });
@@ -1889,7 +1946,9 @@ describe('dual-mode parametric workbench', () => {
       useAssembly.getState().setRoofStructureSystem('rafter-collar-tie'),
     );
     expect(useAssembly.getState().historyPast.length).toBeGreaterThan(history);
-    fireEvent.click(screen.getByRole('tab', { name: 'Zestawienie' }));
+    fireEvent.click(
+      screen.getByRole('tab', { name: 'Perspektywa: Materiały' }),
+    );
     await screen.findByTestId('material-schedule');
     expect(screen.getAllByText('C1', { exact: false }).length).toBeGreaterThan(
       0,
@@ -1902,7 +1961,9 @@ describe('dual-mode parametric workbench', () => {
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: 'Krokiew narożna' }));
     builder();
-    fireEvent.click(screen.getByRole('tab', { name: 'Zestawienie' }));
+    fireEvent.click(
+      screen.getByRole('tab', { name: 'Perspektywa: Materiały' }),
+    );
     await screen.findByTestId('material-schedule');
     const jackRows = screen
       .getAllByTestId('material-schedule-row')
@@ -1931,7 +1992,9 @@ describe('dual-mode parametric workbench', () => {
       useAssembly.getState().projectDocument,
     );
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Zestawienie' }));
+    fireEvent.click(
+      screen.getByRole('tab', { name: 'Perspektywa: Materiały' }),
+    );
     await screen.findByTestId('material-schedule');
     const summaries = screen.getAllByTestId('material-build-up-summary');
     expect(summaries).toHaveLength(1);
@@ -2022,7 +2085,7 @@ describe('dual-mode parametric workbench', () => {
     vi.stubGlobal('ResizeObserver', NarrowResizeObserver);
     const { container } = render(<App />);
     builder();
-    const preset = screen.getByRole('tab', { name: 'Zestawienie' });
+    const preset = screen.getByRole('tab', { name: 'Perspektywa: Materiały' });
     fireEvent.click(preset);
     expect(preset.getAttribute('aria-selected')).toBe('true');
     expect(await screen.findByTestId('material-schedule')).toBeTruthy();
@@ -2501,7 +2564,13 @@ describe('dual-mode parametric workbench', () => {
       useAssembly.getState().projectDocument.project.coverings[0]!.product
         .technicalSpecSnapshot,
     ).toMatchObject({ kind: 'standing-seam', installationModes: [{}, {}] });
-    expect(within(inspector).getAllByRole('radio')).toHaveLength(2);
+    expect(
+      within(inspector)
+        .getAllByRole('radio')
+        .filter(
+          (radio) => !radio.closest('[data-testid="horizontal-alignment"]'),
+        ),
+    ).toHaveLength(2);
     const widthInput = within(inspector).getByLabelText(
       /Szerokość efektywna/,
     ) as HTMLInputElement;

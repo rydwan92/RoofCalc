@@ -76,7 +76,16 @@ import {
 import { ContextualResults, HipResults, Results } from './Summary';
 import { Toolbox } from './Toolbox';
 import { WorkbenchControls, MobileViewSettings } from './WorkbenchControls';
-import { PerspectiveBar } from './PerspectiveBar';
+import { ContextualTaskTabs, PerspectiveBar } from './PerspectiveBar';
+import {
+  DocumentHub,
+  HUB_DOCUMENT_SECTIONS,
+  type HubDocumentKind,
+} from './DocumentHub';
+import { downloadMaterialCsv } from './material-csv';
+import { downloadCostEstimateCsv } from './cost-csv';
+import { workbenchLocation } from './workbench';
+import { projectExampleDocument } from './project-examples';
 import { PreparationPlan } from './PreparationPlan';
 import { Inspector } from './Inspector';
 import { WorkbenchContextBar } from './WorkbenchContextBar';
@@ -113,6 +122,7 @@ import { evaluateBattenInstallation } from './batten-installation';
 import { deriveProjectGuidance } from './project-guidance';
 import { resolveBattenAutoComposition } from './batten-composition';
 import './styles.css';
+import './v37.css';
 
 const creatorStartSeenKey = 'cieslacalc.creatorStartSeen.v1';
 
@@ -255,7 +265,10 @@ function AssemblyPageContent() {
   const [quickDetail, setQuickDetail] = useState<
     (typeof allDetailPreviews)[number] | undefined
   >();
-  const [cuttingOpen, setCuttingOpen] = useState(false);
+  const [documentRequest, setDocumentRequest] = useState<{
+    kind: HubDocumentKind;
+    mode: 'preview' | 'configure';
+  }>();
   const [materialPrices, setMaterialPrices] = useState<
     Record<string, MaterialPriceSelection>
   >({});
@@ -793,9 +806,6 @@ function AssemblyPageContent() {
     currentCuttingPlan?.plan.signature === k1RequirementSignature(k1Requirement)
       ? currentCuttingPlan.plan
       : undefined;
-  useEffect(() => {
-    if (k1Requirement.status !== 'resolved') setCuttingOpen(false);
-  }, [k1Requirement.status]);
   const materialFacts: ExportFacts = {
     source: {
       projectId: projectSessionState.active?.id ?? 'unsaved',
@@ -831,12 +841,16 @@ function AssemblyPageContent() {
     variantPrices,
     cost: costScenario,
   };
+  const materialRows = createMaterialPlanRows(materialFacts, membraneProduct);
   const effectiveMaterialPrices = {
-    ...materialScenarioPrices(
-      costScenario,
-      createMaterialPlanRows(materialFacts, membraneProduct),
-    ),
+    ...materialScenarioPrices(costScenario, materialRows),
     ...materialPrices,
+  };
+  const documentFacts: ExportFacts = {
+    ...materialFacts,
+    membraneProduct,
+    materialRows,
+    materialPrices: effectiveMaterialPrices,
   };
   const projectWorkflowFacts = useMemo(
     () => ({
@@ -1149,16 +1163,21 @@ function AssemblyPageContent() {
   };
   const openCutting = () => {
     if (k1Requirement.status !== 'resolved') return;
-    state.setViewPreset('materials');
-    setCuttingOpen(true);
+    state.navigateTo(workbenchLocation('materials', 'cutting'));
   };
-  const openExecutionExport = () => {
+  const openExecutionExport = () =>
+    state.navigateTo(workbenchLocation('documents'));
+  const openDocument = (
+    kind: HubDocumentKind,
+    mode: 'preview' | 'configure',
+  ) => {
     setExportError('');
     void projectSession
       .persistNow()
       .then(() => {
         const active = projectSession.snapshot().active;
         if (!active) return;
+        setDocumentRequest({ kind, mode });
         setExportSource({
           projectId: active.id,
           projectName: active.name,
@@ -1170,10 +1189,14 @@ function AssemblyPageContent() {
       .catch(() =>
         setExportError(
           i18n.language.startsWith('pl')
-            ? 'Nie moĹĽna zapisaÄ‡ aktualnego stanu projektu do eksportu.'
-            : 'Could not save the current project state for export.',
+            ? 'Nie można zapisać aktualnego stanu projektu do dokumentu.'
+            : 'Could not save the current project state for the document.',
         ),
       );
+  };
+  const closeDocument = () => {
+    setExportSource(undefined);
+    setDocumentRequest(undefined);
   };
   const runProjectAction = (action: ProjectWorkflowAction | 'openExport') => {
     if (action === 'openExport') {
@@ -1185,18 +1208,19 @@ function AssemblyPageContent() {
       return;
     }
     if (action === 'openSummary') {
-      state.setViewPreset('materials');
-      state.setMaterialsView('summary');
+      state.navigateTo(workbenchLocation('materials', 'summary'));
       return;
     }
-    state.setViewPreset(
-      action === 'completeGeometry'
-        ? 'construction'
-        : action === 'reviewOpenings'
-          ? 'openings'
-          : action === 'reviewLayers'
-            ? 'layers'
-            : 'covering',
+    state.navigateTo(
+      workbenchLocation(
+        action === 'completeGeometry'
+          ? 'construction'
+          : action === 'reviewOpenings'
+            ? 'openings'
+            : action === 'reviewLayers'
+              ? 'layers'
+              : 'covering',
+      ),
     );
     if (mobile && action === 'completeGeometry') {
       state.setInspectorOpen(true);
@@ -1204,6 +1228,12 @@ function AssemblyPageContent() {
     }
     if (mobile && action === 'reviewLayers') state.setMobilePanel('tools');
   };
+  const wideWorkspace =
+    workbench.viewPreset === 'costing' || workbench.viewPreset === 'documents';
+  // An empty covering task has nothing to edit: give the space to the
+  // "Dodaj pokrycie" empty state instead of a blank Inspector.
+  const coveringWithoutProduct =
+    workbench.viewPreset === 'covering' && !activeCoveringAssignment;
   const drawerPreviews = drawer.pinned
     ? allDetailPreviews
     : selectionDetailPreviews;
@@ -1377,6 +1407,15 @@ function AssemblyPageContent() {
           else state.stepBackContext();
           return;
         }
+        if (
+          e.altKey &&
+          e.key === 'ArrowLeft' &&
+          workbench.navigationTrail.length > 0
+        ) {
+          e.preventDefault();
+          state.navigateBack();
+          return;
+        }
         if (e.key.toLowerCase() === 'm' && workbench.mode === 'builder') {
           e.preventDefault();
           state.toggleMeasurement();
@@ -1438,10 +1477,9 @@ function AssemblyPageContent() {
             type="button"
             className="a-export-trigger"
             data-testid="project-execution-export"
-            disabled={!projectSessionState.active}
             onClick={openExecutionExport}
           >
-            {i18n.language.startsWith('pl') ? 'Eksport' : 'Export'}
+            {t('assembly.perspective.documents')}
           </button>
         )}
         {exportError && <span role="alert">{exportError}</span>}
@@ -1465,8 +1503,8 @@ function AssemblyPageContent() {
             >
               <button
                 className="a-icon"
-                aria-label={t('assembly.undo')}
-                title={t('assembly.undo')}
+                aria-label={t('assembly.undoChange')}
+                title={`${t('assembly.undoChange')} (Ctrl+Z)`}
                 disabled={!state.historyPast.length}
                 onClick={state.undo}
               >
@@ -1474,8 +1512,8 @@ function AssemblyPageContent() {
               </button>
               <button
                 className="a-icon"
-                aria-label={t('assembly.redo')}
-                title={t('assembly.redo')}
+                aria-label={t('assembly.redoChange')}
+                title={`${t('assembly.redoChange')} (Ctrl+Y)`}
                 disabled={!state.historyFuture.length}
                 onClick={state.redo}
               >
@@ -1652,19 +1690,23 @@ function AssemblyPageContent() {
               onAction={runProjectAction}
             />
             <div
-              className={`a-builder-layout ${workbench.toolboxCollapsed ? 'tools-collapsed' : ''} ${workbench.workspaceFocus.active ? 'is-workspace-focus' : ''} ${workbench.viewPreset === 'materials' && !selectedScheduleRow ? 'material-inspector-empty' : ''}`}
+              className={`a-builder-layout ${workbench.toolboxCollapsed ? 'tools-collapsed' : ''} ${workbench.workspaceFocus.active ? 'is-workspace-focus' : ''} ${workbench.viewPreset === 'materials' && !selectedScheduleRow ? 'material-inspector-empty' : ''} ${wideWorkspace ? 'is-wide-workspace' : ''} ${coveringWithoutProduct ? 'no-inspector' : ''}`}
+              data-view-preset={workbench.viewPreset}
             >
-              {!mobile && (
+              {!mobile && !wideWorkspace && (
                 <Toolbox
                   result={result}
                   detailPreviews={selectionDetailPreviews}
                 />
               )}
               <section className="a-canvas-column">
+                {!mobile && <PerspectiveBar />}
                 {!mobile && (
-                  <PerspectiveBar onOpenDocuments={openExecutionExport} />
+                  <WorkbenchControls
+                    skeleton={skeleton}
+                    k1Ready={k1Requirement.status === 'resolved'}
+                  />
                 )}
-                {!mobile && <WorkbenchControls skeleton={skeleton} />}
                 <WorkbenchContextBar
                   instances={memberInstances}
                   activeInstance={activeInstance}
@@ -1674,6 +1716,11 @@ function AssemblyPageContent() {
                   openingSummary={openingSummary}
                 />
                 {mobile && (
+                  <ContextualTaskTabs
+                    k1Ready={k1Requirement.status === 'resolved'}
+                  />
+                )}
+                {mobile && !wideWorkspace && (
                   <div className="a-mobile-workspace-actions">
                     <button
                       className="a-button"
@@ -1711,7 +1758,6 @@ function AssemblyPageContent() {
                       </button>
                     )}
                     {workbench.viewPreset !== 'covering' &&
-                      workbench.viewPreset !== 'costing' &&
                       (workbench.viewPreset !== 'materials' ||
                         workbench.materialsView === 'drawing') && (
                         <button className="a-button" onClick={state.requestFit}>
@@ -1720,8 +1766,7 @@ function AssemblyPageContent() {
                         </button>
                       )}
                     {workbench.viewPreset !== 'covering' &&
-                      workbench.viewPreset !== 'materials' &&
-                      workbench.viewPreset !== 'costing' && (
+                      workbench.viewPreset !== 'materials' && (
                         <button
                           className="a-button"
                           aria-pressed={!!workbench.measurement}
@@ -1762,15 +1807,18 @@ function AssemblyPageContent() {
                     {t('assembly.back')}
                   </button>
                 )}
-                {!workbench.focusId && workbench.canvasView === 'rafter' && (
-                  <button
-                    className="a-button a-back"
-                    onClick={() => state.setView('skeleton')}
-                  >
-                    <ArrowLeft size={16} />
-                    {t('assembly.backToSkeleton')}
-                  </button>
-                )}
+                {!workbench.focusId &&
+                  workbench.canvasView === 'rafter' &&
+                  (workbench.viewPreset === 'construction' ||
+                    workbench.viewPreset === 'cuts') && (
+                    <button
+                      className="a-button a-back"
+                      onClick={() => state.setView('skeleton')}
+                    >
+                      <ArrowLeft size={16} />
+                      {t('assembly.backToSkeleton')}
+                    </button>
+                  )}
                 {workbench.viewPreset === 'materials' ? (
                   <div
                     className={`a-material-workspace material-view-${workbench.materialsView}`}
@@ -1780,26 +1828,6 @@ function AssemblyPageContent() {
                       role="tablist"
                       aria-label={t('assembly.materialWorkspaceView')}
                     >
-                      {(['plan'] as const).map((view) => (
-                        <button
-                          key={view}
-                          role="tab"
-                          aria-selected={workbench.materialsView === view}
-                          onClick={() => state.setMaterialsView(view)}
-                        >
-                          {t(`assembly.${view}MaterialView`)}
-                        </button>
-                      ))}
-                      <button onClick={openCutting}>
-                        {t('assembly.k1Cutting.title')}
-                      </button>
-                      <button
-                        role="tab"
-                        aria-selected={workbench.materialsView === 'schedule'}
-                        onClick={() => state.setMaterialsView('schedule')}
-                      >
-                        {t('assembly.scheduleMaterialView')}
-                      </button>
                       <details className="mp-secondary-views">
                         <summary>{t('assembly.materialDetailViews')}</summary>
                         {(['summary', 'drawing'] as const).map((view) => (
@@ -1825,18 +1853,81 @@ function AssemblyPageContent() {
                           onPricesChange={setMaterialPrices}
                           onScenarioChange={setCostScenario}
                           onOpenCutting={openCutting}
-                          onOpenLayers={() => state.setViewPreset('layers')}
-                          onOpenCovering={() => state.setViewPreset('covering')}
-                          onOpenCosting={() => state.setViewPreset('costing')}
+                          onOpenLayers={() =>
+                            state.navigateTo(workbenchLocation('layers'))
+                          }
+                          onOpenCovering={() =>
+                            state.navigateTo(workbenchLocation('covering'))
+                          }
+                          onOpenCosting={() =>
+                            state.navigateTo(workbenchLocation('costing'))
+                          }
                           onOpenExport={openExecutionExport}
                         />
                       </Suspense>
+                    </div>
+                    <div
+                      data-material-surface="cutting"
+                      data-testid="k1-cutting-surface"
+                    >
+                      {workbench.materialsView === 'cutting' &&
+                        (k1Requirement.status === 'resolved' ? (
+                          <Suspense
+                            fallback={<div className="a-loading-panel" />}
+                          >
+                            <K1CuttingPlan
+                              presentation="inline"
+                              requirement={k1Requirement}
+                              projectName={projectSessionState.active?.name}
+                              unit={state.unit}
+                              mobile={mobile}
+                              onClose={() => state.navigateBack()}
+                              initialPlan={activeCuttingPlan}
+                              onPlanChange={(plan) =>
+                                setCurrentCuttingPlan(
+                                  plan && projectSessionState.active
+                                    ? {
+                                        projectId:
+                                          projectSessionState.active.id,
+                                        plan,
+                                      }
+                                    : undefined,
+                                )
+                              }
+                            />
+                          </Suspense>
+                        ) : (
+                          <div
+                            className="a-empty-state"
+                            data-testid="k1-cutting-unavailable"
+                          >
+                            <strong>
+                              {t('assembly.workflow.k1Unavailable')}
+                            </strong>
+                            <p>
+                              {t('assembly.workflow.k1UnavailableDescription')}
+                            </p>
+                            <button
+                              type="button"
+                              className="a-button a-primary"
+                              onClick={() =>
+                                state.navigateTo(
+                                  workbenchLocation('construction'),
+                                )
+                              }
+                            >
+                              {t('assembly.workflow.action.completeGeometry')}
+                            </button>
+                          </div>
+                        ))}
                     </div>
                     <div data-material-surface="summary">
                       <ProjectSummary
                         facts={projectSummary}
                         onOpenCutting={openCutting}
-                        onOpenCovering={() => state.setViewPreset('covering')}
+                        onOpenCovering={() =>
+                          state.navigateTo(workbenchLocation('covering'))
+                        }
                       />
                     </div>
                     <div
@@ -1945,6 +2036,29 @@ function AssemblyPageContent() {
                       <div className="a-loading-panel" />
                     )}
                   </Suspense>
+                ) : workbench.viewPreset === 'documents' ? (
+                  <DocumentHub
+                    facts={documentFacts}
+                    onOpen={openDocument}
+                    onMaterialCsv={() =>
+                      downloadMaterialCsv(
+                        materialRows,
+                        effectiveMaterialPrices,
+                        projectSessionState.active?.name ?? brand,
+                        i18n.language,
+                      )
+                    }
+                    onCostCsv={
+                      costScenario?.lines.length
+                        ? () =>
+                            downloadCostEstimateCsv(
+                              costScenario,
+                              projectSessionState.active?.name ?? brand,
+                              i18n.language,
+                            )
+                        : undefined
+                    }
+                  />
                 ) : workbench.focusId ? (
                   <AssemblyCanvas result={result} focusId={workbench.focusId} />
                 ) : workbench.canvasView === 'hip' && hip ? (
@@ -1975,78 +2089,31 @@ function AssemblyPageContent() {
                 )}
               </section>
               {!mobile &&
-                workbench.viewPreset !== 'costing' &&
+                !wideWorkspace &&
+                !coveringWithoutProduct &&
                 (workbench.viewPreset !== 'materials' || selectedScheduleRow) &&
                 inspectorContent}
             </div>
-            {cuttingOpen && k1Requirement.status === 'resolved' && (
-              <Suspense fallback={<div className="a-loading-panel" />}>
-                <K1CuttingPlan
-                  requirement={k1Requirement}
-                  projectName={projectSessionState.active?.name}
-                  unit={state.unit}
-                  mobile={mobile}
-                  onClose={() => setCuttingOpen(false)}
-                  initialPlan={activeCuttingPlan}
-                  onPlanChange={(plan) =>
-                    setCurrentCuttingPlan(
-                      plan && projectSessionState.active
-                        ? { projectId: projectSessionState.active.id, plan }
-                        : undefined,
-                    )
-                  }
-                />
-              </Suspense>
-            )}
             {exportSource && (
               <Suspense fallback={<div className="a-loading-panel" />}>
                 <ExecutionExport
+                  key={`${documentRequest?.kind}:${documentRequest?.mode}`}
                   source={exportSource}
-                  facts={
-                    {
-                      source: exportSource,
-                      template: state.template,
-                      resolved: templateResult,
-                      skeleton: framingProjection.composedSkeleton,
-                      surface: surfaceProjection,
-                      windows: roofWindows,
-                      schedule: memberSchedule,
-                      details: allDetailPreviews,
-                      k1: k1Requirement,
-                      cutting: activeCuttingPlan,
-                      membraneEnabled: !!membrane?.enabled,
-                      counterBattensEnabled: !!counterBattens?.enabled,
-                      battensEnabled: !!battenLayout?.enabled,
-                      battens: battenProjection,
-                      battenAutoSource: battenAutoComposition.source,
-                      battenInstallationDecision,
-                      counterBattens: counterBattenProjection,
-                      coverings: coveringAssignments,
-                      coveringStatuses: resolvedCoveringLayouts.map(
-                        (layout) => ({
-                          assignmentId: layout.assignmentId,
-                          status: layout.status,
-                          warnings: [...layout.issueCodes],
-                        }),
-                      ),
-                      coveringLayouts: resolvedCoveringLayouts,
-                      variantPrices,
-                      cost: costScenario,
-                      membraneProduct,
-                      materialRows: createMaterialPlanRows(
-                        materialFacts,
-                        membraneProduct,
-                      ),
-                      materialPrices: effectiveMaterialPrices,
-                    } satisfies ExportFacts
-                  }
+                  facts={{ ...documentFacts, source: exportSource }}
                   unit={state.unit}
                   mobile={mobile}
-                  onClose={() => setExportSource(undefined)}
+                  onClose={closeDocument}
                   onPlanK1={() => {
-                    setExportSource(undefined);
-                    setCuttingOpen(true);
+                    closeDocument();
+                    openCutting();
                   }}
+                  initialSelection={
+                    documentRequest?.mode === 'preview'
+                      ? HUB_DOCUMENT_SECTIONS[documentRequest.kind]
+                      : undefined
+                  }
+                  startInPreview={documentRequest?.mode === 'preview'}
+                  backLabel={t('assembly.nav.documentHub')}
                 />
               </Suspense>
             )}
@@ -2185,6 +2252,31 @@ function AssemblyPageContent() {
             projectSession.acknowledgeFreshProject();
             setReuseFreshProject(false);
             setProjectStartMode(undefined);
+            state.navigatePerspective('project');
+            state.setViewPreset('construction');
+          }}
+          onAdvanced={async () => {
+            // A fresh, untouched session project is reused; otherwise a new
+            // record is created so an existing project is never replaced.
+            if (!reuseFreshProject) await projectSession.create();
+            rememberCreatorStart();
+            projectSession.acknowledgeFreshProject();
+            setReuseFreshProject(false);
+            setProjectStartMode(undefined);
+            state.navigatePerspective('project');
+            state.setViewPreset('construction');
+          }}
+          onExample={async (id) => {
+            const title = t(`assembly.creator.examples.item.${id}.title`);
+            await projectSession.createFromDocument(
+              projectExampleDocument(id),
+              t('assembly.creator.examples.name', { title }),
+            );
+            rememberCreatorStart();
+            setReuseFreshProject(false);
+            setProjectStartMode(undefined);
+            state.navigatePerspective('project');
+            state.setViewPreset('construction');
           }}
         />
       )}

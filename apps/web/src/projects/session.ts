@@ -360,6 +360,33 @@ export class ProjectSession {
     });
   }
 
+  /**
+   * V37: an example (or any prepared document) always becomes a new record.
+   * The active project is flushed first and never overwritten.
+   */
+  async createFromDocument(
+    document: RoofProjectDocumentV1,
+    name: string,
+  ): Promise<void> {
+    await this.flushBeforeChange();
+    const projects = await this.repository.list();
+    const unique = projects.some((project) => project.name === name)
+      ? nextProjectName(projects, name)
+      : name;
+    const record = createProjectRecord(
+      structuredClone(document),
+      unique,
+      await this.uniqueId(),
+    );
+    await this.repository.save(record);
+    await this.activate(record);
+    this.update({
+      projects: await this.repository.list(),
+      initialized: true,
+      freshProject: false,
+    });
+  }
+
   async rename(name: string): Promise<void> {
     if (!this.record) return;
     await this.flushBeforeChange();

@@ -1,4 +1,5 @@
 import {
+  ArrowLeft,
   ChevronLeft,
   ChevronRight,
   Crosshair,
@@ -17,7 +18,11 @@ import type { RoofMemberScheduleRow } from '@cieslacalc/quantity-core';
 import { formatLength } from '../format';
 import { roofPlaneShortLabelKey } from './covering-presentation';
 import { useAssembly } from './store';
-import { memberInstanceCode } from './workbench';
+import {
+  currentWorkbenchLocation,
+  memberInstanceCode,
+  workbenchLocationLabelKey,
+} from './workbench';
 
 function familyName(
   code: MemberInstanceContext['familyCode'],
@@ -84,6 +89,25 @@ export function WorkbenchContextBar({
   };
   const length = (value: number) =>
     `${formatLength(value, state.unit, i18n.language)} ${state.unit}`;
+  const location = currentWorkbenchLocation(state.workbench);
+  const taskLabelKey = workbenchLocationLabelKey(location);
+  const trailTarget = state.workbench.navigationTrail.at(-1);
+  const backLabel = trailTarget
+    ? t(workbenchLocationLabelKey(trailTarget))
+    : activeOperation && state.workbench.returnViewPreset
+      ? t(`assembly.${state.workbench.returnViewPreset}Preset`)
+      : undefined;
+  const coveringName =
+    state.workbench.viewPreset === 'covering'
+      ? (() => {
+          const assignment =
+            state.projectDocument.project.coverings.find(
+              (item) =>
+                item.id === state.workbench.selectedCoveringAssignmentId,
+            ) ?? state.projectDocument.project.coverings[0];
+          return assignment?.product.displaySnapshot?.familyName;
+        })()
+      : undefined;
   const selectedId = state.workbench.selectedId;
   const selectedWindow = state.projectDocument.project.features.find(
     (feature) => feature.id === selectedId && feature.kind === 'roof-window',
@@ -133,13 +157,42 @@ export function WorkbenchContextBar({
       aria-label={t('assembly.workbenchContext')}
       data-testid="workbench-context-bar"
     >
+      {backLabel && (
+        <button
+          type="button"
+          className="a-context-back"
+          data-testid="workbench-back"
+          aria-label={t('assembly.nav.backTo', { target: backLabel })}
+          onClick={() =>
+            trailTarget ? state.navigateBack() : state.stepBackContext()
+          }
+        >
+          <ArrowLeft size={16} aria-hidden="true" />
+          <span>{backLabel}</span>
+        </button>
+      )}
       <nav
         className="a-context-breadcrumb"
         aria-label={t('assembly.breadcrumb')}
       >
-        <strong className="a-context-task">
-          {t(`assembly.${state.workbench.viewPreset}Preset`)}
+        <button
+          type="button"
+          className="a-context-root"
+          data-crumb="perspective"
+          onClick={() => state.navigatePerspective(location.perspective)}
+        >
+          {t(`assembly.perspective.${location.perspective}`)}
+        </button>
+        <span aria-hidden="true">›</span>
+        <strong className="a-context-task" data-crumb="task">
+          {t(taskLabelKey)}
         </strong>
+        {coveringName && (
+          <>
+            <span aria-hidden="true">›</span>
+            <strong data-crumb="product">{coveringName}</strong>
+          </>
+        )}
         {state.workbench.viewPreset === 'layers' && (
           <>
             <span aria-hidden="true">·</span>
@@ -148,19 +201,24 @@ export function WorkbenchContextBar({
             </strong>
           </>
         )}
-        {!activeInstance && !simpleSelection && !activeOperation && (
-          <>
-            <span aria-hidden="true">·</span>
-            <button
-              onClick={() => state.select('roof')}
-              aria-current={
-                state.workbench.selectedId === 'roof' ? 'page' : undefined
-              }
-            >
-              {t(`assembly.${roofPackage.roofType}Roof`)}
-            </button>
-          </>
-        )}
+        {!activeInstance &&
+          !simpleSelection &&
+          !activeOperation &&
+          ['construction', 'openings', 'layers', 'cuts'].includes(
+            state.workbench.viewPreset,
+          ) && (
+            <>
+              <span aria-hidden="true">·</span>
+              <button
+                onClick={() => state.select('roof')}
+                aria-current={
+                  state.workbench.selectedId === 'roof' ? 'page' : undefined
+                }
+              >
+                {t(`assembly.${roofPackage.roofType}Roof`)}
+              </button>
+            </>
+          )}
         {simpleSelection && (
           <>
             <span aria-hidden="true">·</span>

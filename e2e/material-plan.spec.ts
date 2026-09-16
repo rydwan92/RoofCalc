@@ -64,7 +64,7 @@ async function openMaterialProject(
   }, record);
   await page.goto(url);
   await page.locator('[data-mode="builder"]').click();
-  await page.locator('[data-task="materials"]:visible').first().click();
+  await page.locator('[data-perspective="materials"]:visible').first().click();
   await expect(page.getByTestId('material-plan')).toBeVisible();
 }
 
@@ -171,10 +171,8 @@ test('V36 live catalogue → timber procurement/price → membrane → estimate 
   await page.getByRole('button', { name: 'Użyj tej długości' }).click();
   await page.getByTestId('k1-run-plan').click();
   await expect(page.getByTestId('k1-cutting-result')).toBeVisible();
-  await page
-    .getByRole('dialog', { name: 'Rozkrój krokwi K1', exact: true })
-    .getByRole('button', { name: 'Zamknij', exact: true })
-    .click();
+  // V37: the K1 plan is a Materials tab; Back returns to the material plan.
+  await page.getByTestId('workbench-back').click();
   const timber = page.getByTestId('material-row-k1');
   await expect(timber).toContainText('PLAN ZAKUPU');
   const select = timber.getByRole('combobox');
@@ -207,19 +205,9 @@ test('V36 live catalogue → timber procurement/price → membrane → estimate 
     .getByTestId('material-plan')
     .getByRole('button', { name: 'Lista materiałów / druk' })
     .click();
-  for (const input of await page
-    .getByTestId('execution-config')
-    .locator('input[type="checkbox"]:enabled')
-    .all())
-    await input.uncheck();
-  await page
-    .getByTestId('execution-config')
-    .getByRole('checkbox', { name: /Lista materiałów/ })
-    .check();
-  await page
-    .getByTestId('execution-config')
-    .getByRole('button', { name: 'Podgląd dokumentu' })
-    .click();
+  // V37: the material list is one card in the Document Hub.
+  await expect(page.getByTestId('document-hub')).toBeVisible();
+  await page.getByTestId('document-preview-materials').click();
   await expect(page.locator('[data-section="material-list"]')).toContainText(
     'Lista materiałów',
   );

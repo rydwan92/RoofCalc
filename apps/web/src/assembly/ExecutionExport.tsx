@@ -1094,7 +1094,9 @@ function DocumentPreview({
   unit,
   onBack,
   onClose,
+  backLabel,
 }: {
+  backLabel?: string;
   execution: ExecutionDocument;
   unit: LengthUnit;
   onBack: () => void;
@@ -1141,8 +1143,12 @@ function DocumentPreview({
           <small>{execution.source.projectName}</small>
         </div>
         <div>
-          <button type="button" onClick={onBack}>
-            {m.back}
+          <button
+            type="button"
+            data-testid="document-preview-back"
+            onClick={onBack}
+          >
+            ← {backLabel ?? m.back}
           </button>
           <button
             ref={printButton}
@@ -1210,6 +1216,9 @@ export function ExecutionExport({
   mobile,
   onClose,
   onPlanK1,
+  initialSelection,
+  startInPreview = false,
+  backLabel,
 }: {
   source: DocumentSource;
   facts: ExportFacts;
@@ -1217,6 +1226,11 @@ export function ExecutionExport({
   mobile: boolean;
   onClose: () => void;
   onPlanK1: () => void;
+  /** V37 Document Hub: preselected sections for one document type. */
+  initialSelection?: readonly SectionKind[];
+  /** V37 Document Hub: open the preview directly; Back returns to the hub. */
+  startInPreview?: boolean;
+  backLabel?: string;
 }) {
   const { i18n } = useTranslation();
   const m = copy[i18n.language.startsWith('pl') ? 'pl' : 'en'];
@@ -1224,9 +1238,36 @@ export function ExecutionExport({
     createExportCandidates(facts),
   );
   const [selected, setSelected] = useState<SectionKind[]>(() =>
-    defaultSectionSelection(candidates),
+    initialSelection
+      ? initialSelection.filter((kind) =>
+          candidates.some(
+            (candidate) =>
+              candidate.kind === kind &&
+              candidate.readiness !== 'unavailable' &&
+              !!candidate.section,
+          ),
+        )
+      : defaultSectionSelection(candidates),
   );
-  const [preview, setPreview] = useState<ExecutionDocument>();
+  const [preview, setPreview] = useState<ExecutionDocument | undefined>(() =>
+    startInPreview
+      ? buildExecutionDocument({
+          source,
+          candidates,
+          selected: initialSelection
+            ? initialSelection.filter((kind) =>
+                candidates.some(
+                  (candidate) =>
+                    candidate.kind === kind &&
+                    candidate.readiness !== 'unavailable' &&
+                    !!candidate.section,
+                ),
+              )
+            : defaultSectionSelection(candidates),
+          generatedAt: new Date().toISOString(),
+        })
+      : undefined,
+  );
   const dialog = useRef<HTMLElement>(null);
   useEffect(() => {
     if (mobile) return;
@@ -1309,7 +1350,7 @@ export function ExecutionExport({
   );
   return (
     <>
-      {mobile ? (
+      {startInPreview ? null : mobile ? (
         <MobileSheet title={m.export} onClose={onClose} expanded>
           {content}
         </MobileSheet>
@@ -1365,8 +1406,9 @@ export function ExecutionExport({
         <DocumentPreview
           execution={preview}
           unit={unit}
-          onBack={() => setPreview(undefined)}
+          onBack={() => (startInPreview ? onClose() : setPreview(undefined))}
           onClose={onClose}
+          backLabel={startInPreview ? backLabel : undefined}
         />
       )}
     </>

@@ -1,6 +1,6 @@
 # RoofCalc / CieślaCalc — Architecture Index
 
-**This is the current-state map, after V36.** Read it after `PROJECT_BLUEPRINT.md`
+**This is the current-state map, after V37.** Read it after `PROJECT_BLUEPRINT.md`
 and before touching code. It describes what exists today, not the history of how
 it got here. Historical `ARCHITECTURE_V*.md` documents stay authoritative for the
 subsystem they introduced and should be opened only when changing that subsystem.
@@ -184,6 +184,17 @@ either a bundled Docker MariaDB or an existing local XAMPP instance. See
 ---
 
 ## 3. State classification
+
+V37 adds only transient application state. `WorkbenchViewState` gains a
+`documents` view preset, a `cutting` materials view and a bounded
+`navigationTrail` of `WorkbenchLocation`s used for the breadcrumb and the
+contextual **← Wróć**; none of it is serialized or recorded in history. The
+guided Creator (`ProjectStartAssistant`, `project-start.ts`) validates drafts
+and derives readiness from the existing resolver, schedule and K1 adapter;
+example projects are imported fixture documents saved as new records through
+`ProjectSession.createFromDocument`. Covering Studio view mode and nominal
+ghost cells are presentation of existing `TilePosition` data and never feed
+quantities.
 
 V36 makes the application-level material plan the default Materials surface.
 `apps/web/src/assembly/material-plan.ts` composes existing K1 procurement,
@@ -443,6 +454,8 @@ pnpm e2e      # real-browser smoke, desktop 1440x900 and mobile 390x844 (pnpm e2
 | Document | Read when |
 | --- | --- |
 | `ARCHITECTURE_V36_MATERIAL_PLAN` | Materials plan, price selection/provenance, BOM/CSV and DB runtime diagnostics |
+| `ARCHITECTURE_V37_PRODUCT_EXPERIENCE_AND_COVERING_STUDIO` | perspective navigation and return trail, Document Hub, guided Creator and examples, Covering Studio technical/visual views |
+| `domain/ROOF_TILE_EDGE_PLACEMENT` | eave/verge evidence; why no physical tile edge projection is modelled |
 | `PROJECT_BLUEPRINT.md` | always first; holds the work checkpoint |
 | `docs/ARCHITECTURE_INDEX.md` | always second; this file |
 | `docs/ROOFCALC_PRODUCT_NORTH_STAR.md` | always third; long-term constraints |

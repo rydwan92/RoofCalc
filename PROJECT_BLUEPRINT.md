@@ -1297,7 +1297,60 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
-**Iteration:** `036 runtime follow-up — XAMPP catalogue and repeated dev startup`
+**Iteration:** `037 — Product experience, Creator 2.0, Covering Studio 2.0`
+
+**Status:** `IMPLEMENTED — uncommitted on main after e510bdf (V36); no commit/push by request`
+
+**Completed:** perspective-first navigation (Projekt/Wykonanie/Materiały/
+Kosztorys/Dokumenty) with contextual tasks and a "Przejdź do" jump menu; the
+seven-task ribbon and 7-item mobile dock are gone. Transient return trail
+(`navigateTo`/`navigateBack`/`navigatePerspective`, ≤6 locations, Alt+←),
+breadcrumb with actionable parents and "← {target}". Undo/Redo relabelled
+"Cofnij zmianę"/"Ponów zmianę". Document Hub as a real `documents` view
+reusing the V30 engine (preview with "← Centrum dokumentów", section chooser,
+CSV). K1 cutting is the Materiały › Rozkrój K1 tab. Quiet one-row guidance.
+Creator 2.0: start choice, four illustrated steps, model-derived plan
+preview, field validation, truthful readiness, Quick confirmed values,
+fixture-backed examples via `ProjectSession.createFromDocument`. Covering
+Studio: Techniczny/Pogląd materiału, eave-down orientation, nominal ghost
+cells for edge cuts, `<symbol>/<use>` tile glyph, per-plane edge explanation,
+human horizontal-alignment radios, product card. Targeted tile edge research.
+`v37.css` visual layer (button roles, state tokens, compact chrome).
+
+**Files:** web assembly — workbench.ts, store.ts, PerspectiveBar.tsx,
+MobileTaskDock.tsx, WorkbenchControls.tsx, WorkbenchContextBar.tsx, Page.tsx,
+ProjectWorkflow.tsx, ProjectStartAssistant.tsx, project-start.ts,
+ExecutionExport.tsx, K1CuttingPlan.tsx, CoveringWorkspace.tsx,
+translations.ts; new DocumentHub.tsx, ParameterIllustration.tsx,
+project-examples.ts, v37.css, navigation.test.ts; projects/session.ts; tests
+Page/MobilePage/ProjectManager/project-start/workbench; e2e workbench and
+material-plan specs, new v37-experience.spec.ts; docs V37 architecture,
+domain/ROOF_TILE_EDGE_PLACEMENT, ARCHITECTURE_INDEX, UX_DESIGN_CONTRACT,
+ACCEPTANCE_SCENARIOS; `.claude/launch.json` web preview entry.
+
+**Validation:** baseline verify passed (948/948 with 2 forks). After V37:
+typecheck clean; lint clean; Prettier applied to all changed files; web unit
+suite 36 files / 339 tests pass; architecture 25/25 pass; `git diff --check`
+clean. Final `pnpm verify` (2 forks): typecheck, lint, format, 97 files /
+960 tests, both builds pass. Full Playwright: 43 passed, 6 deliberate skips,
+1 V37 mobile test fixed (explicit Inspector-sheet branch) and then the V37
+spec passed 6/6 on desktop and mobile. Browser QA on the running dev server at
+1440×900 and 390×844: Quick, Creator steps 1–4, workbench shell, Pokrycie with
+live catalogue KODA (434 positions, 28 edge cuts, 28 ghost cells, visual
+preview with identical counts), Materiały › Rozkrój K1 inline, Document Hub;
+zero horizontal-overflow offenders after fixes; no console errors.
+
+**Assumptions/limitations:** no physical tile body, eave projection or verge
+accessory is modelled (no manufacturer rule is universal); visual glyph is
+generic; hip Creator omits ridge-connection/collar-tie choices; trail resets
+on reload by design; no schema or domain-package change.
+
+**NEXT ACTION:** user review of V37 in the browser; then decide V38 scope. No
+commit/push without an explicit request.
+
+---
+
+**Previous iteration:** `036 runtime follow-up — XAMPP catalogue and repeated dev startup`
 
 **Status:** `COMPLETE — runtime and desktop/mobile browser regressions verified; full unit suite has a machine timeout`
 

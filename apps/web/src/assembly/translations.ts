@@ -367,7 +367,7 @@ export const assemblyPl = {
   projectStart: {
     title: 'Nowy projekt',
     close: 'Pomiń na razie',
-    createFromQuick: 'Utwórz z tego projekt',
+    createFromQuick: 'Otwórz w Kreatorze',
     mode: {
       new: 'Szybki start',
       quick: 'Na podstawie szybkiego obliczenia',
@@ -527,6 +527,250 @@ export const assemblyPl = {
   'perspective.materials': 'Materiały',
   'perspective.costing': 'Kosztorys',
   'perspective.documents': 'Dokumenty',
+  documentsPreset: 'Centrum dokumentów',
+  studio: {
+    viewMode: 'Rodzaj widoku krycia',
+    kind: {
+      'roof-tile': 'Dachówka',
+      'modular-sheet': 'Blachodachówka modułowa',
+      'cut-to-length': 'Blacha cięta na długość',
+      'standing-seam': 'Rąbek stojący',
+    },
+    view: { technical: 'Techniczny', visual: 'Pogląd materiału' },
+    ridge: 'Kalenica',
+    eave: 'Okap',
+    fullPositions: 'pełne pozycje',
+    edgeCut: 'docinane na krawędzi',
+    openingCut: 'docinane przy otworach',
+    nominalGhost: 'Nominalna komórka krycia (poza połacią)',
+    technicalBoundary:
+      'Widok techniczny: efektywne pola krycia przycięte do obrysu połaci — to one są liczone.',
+    visualBoundary:
+      'Pogląd materiału: ilustracja rytmu dachówek, nie dokładny kształt produktu. Nie wpływa na obliczenia.',
+    physicalEdgeUnmodelled:
+      'Detal fizycznego wysunięcia dachówki poza krawędź nie jest modelowany.',
+    alignmentTitle: 'Układ w poziomie',
+    alignment: {
+      centered: 'Wyśrodkuj docinki',
+      'from-u-min': 'Zacznij od lewej krawędzi',
+      manual: 'Ustaw ręcznie',
+    },
+    alignmentHint: {
+      centered: 'Docinki po obu stronach połaci są równe.',
+      'from-u-min': 'Pełny rząd przy lewej krawędzi, docinki po prawej.',
+      manual: 'Podaj przesunięcie układu dla wybranej połaci.',
+    },
+    alignmentExplain: {
+      centered: 'RoofCalc rozkłada docinki symetrycznie względem połaci.',
+      'from-u-min':
+        'Układ zaczyna się pełną pozycją od lewej krawędzi połaci; docinki zbierają się po prawej.',
+      manual: 'Układ przesunięty ręcznie o podaną wartość na tej połaci.',
+    },
+    fact: {
+      physical: 'Wymiar fizyczny',
+      gauge: 'Rozstaw łat',
+      pitch: 'Minimalny kąt',
+      consumption: 'Zużycie deklarowane',
+      perM2: 'szt./m²',
+      panelLength: 'Zakres długości',
+      price: 'Cena',
+    },
+    price: {
+      none: 'Produkt ręczny — cenę podasz w kosztorysie',
+      available: 'Jest w cenniku',
+      multiple: 'Kilka ofert — wybierz w planie materiałów',
+      missing: 'Brak ceny w cenniku',
+    },
+  },
+  creator: {
+    progress: 'Krok {{step}} z 4',
+    next: 'Dalej',
+    back: 'Wstecz',
+    backToStart: 'Zmień sposób startu',
+    change: 'Zmień',
+    fromQuick: 'z Szybkiego',
+    learnMore: 'Dowiedz się więcej',
+    start: {
+      title: 'Jak chcesz zacząć?',
+      guided: {
+        title: 'Szybki start',
+        text: 'Cztery krótkie kroki z rysunkami. Program zapyta tylko o to, co potrzebne.',
+      },
+      example: {
+        title: 'Projekt przykładowy',
+        text: 'Otwórz gotowy dach i zobacz, jak pracuje program.',
+      },
+      advanced: {
+        title: 'Od razu do edycji',
+        text: 'Utwórz projekt z wartościami domyślnymi i edytuj wszystko w warsztacie.',
+      },
+    },
+    step: {
+      1: 'Budynek',
+      2: 'Geometria dachu',
+      3: 'Konstrukcja',
+      4: 'Sprawdź i utwórz',
+    },
+    field: {
+      buildingLength: 'Długość budynku',
+      buildingWidth: 'Szerokość budynku',
+      pitch: 'Kąt połaci',
+      eave: 'Okap',
+      spacing: 'Rozstaw krokwi',
+      rafterWidth: 'Szerokość krokwi b',
+      rafterDepth: 'Wysokość krokwi h',
+      structure: 'Układ konstrukcji',
+    },
+    help: {
+      buildingLength: 'Wymiar wzdłuż kalenicy, po zewnętrznym obrysie ścian.',
+      buildingWidth: 'Wymiar w poprzek budynku, od ściany do ściany.',
+      pitch: 'Kąt pomiędzy połacią a poziomem.',
+      eave: 'Poziomy wysięg dachu poza lico ściany.',
+      spacing: 'Największa odległość między osiami sąsiednich krokwi.',
+      rafterWidth: 'Grubość krokwi widoczna od czoła.',
+      rafterDepth: 'Wysokość przekroju krokwi.',
+    },
+    illustration: {
+      buildingLength: 'Rzut budynku ze strzałką wymiaru wzdłużnego',
+      buildingWidth: 'Rzut budynku ze strzałką wymiaru poprzecznego',
+      pitch: 'Przekrój połaci z kątem α względem poziomu',
+      eave: 'Ściana, połać i wymiar wysięgu okapu',
+      spacing: 'Osie krokwi z wymiarem rozstawu',
+      rafterWidth: 'Przekrój krokwi b × h',
+      rafterDepth: 'Przekrój krokwi b × h',
+    },
+    more: {
+      geometry:
+        'Kąt i okap wyznaczają długość krokwi i położenie kalenicy. Wysokość kalenicy wyliczy model — nie trzeba jej podawać. Wszystkie wartości zmienisz później w warsztacie.',
+    },
+    issue: {
+      required: 'Podaj wartość.',
+      range: 'Wartość musi być pomiędzy {{min}} a {{max}} {{unit}}.',
+      'hip-length-below-width':
+        'Dach kopertowy wymaga długości nie mniejszej niż szerokość w obecnym modelu.',
+      'spacing-exceeds-length':
+        'Rozstaw krokwi nie może być większy od długości budynku.',
+    },
+    summary: {
+      roofType: 'Dach',
+      buildingLength: 'Budynek',
+      pitch: 'Kąt połaci',
+      eave: 'Okap',
+      spacing: 'Rozstaw krokwi',
+      rafterWidth: 'Przekrój krokwi',
+    },
+    review: {
+      readiness: 'Gotowość projektu',
+      geometry: 'Geometria',
+      construction: 'Konstrukcja',
+      k1Cutting: 'Cięcia K1',
+      state: {
+        ready: 'gotowe',
+        limited: 'ograniczone',
+        unavailable: 'niedostępne',
+      },
+      note: {
+        'half-lap-unmodelled':
+          'Nakładka w kalenicy — geometria wykonawcza tego połączenia nie jest jeszcze modelowana.',
+        'collar-tie-gable-only':
+          'Jętki są dostępne tylko dla dachu dwuspadowego.',
+        'geometry-invalid':
+          'Geometria nie daje się rozwiązać dla tych wartości.',
+      },
+      assumptions: 'Założenia, które trafią do projektu',
+      wallPlate: 'Murłata {{value}} z zaciosem jak w szablonie.',
+      ridgeBoard: 'Deska kalenicowa grubości {{value}}.',
+      spacingMode:
+        'Krokwie rozłożone równomiernie, nie rzadziej niż podany rozstaw.',
+      editLater: 'Każdą wartość zmienisz później w warsztacie.',
+    },
+    preview: {
+      title: 'Podgląd z modelu',
+      label: 'Rzut dachu z góry wyliczony z podanych wartości',
+      invalid: 'Uzupełnij poprawne wymiary, aby zobaczyć rzut dachu.',
+      hint: 'Rzut z góry pochodzi z tego samego modelu geometrii co warsztat.',
+    },
+    examples: {
+      title: 'Projekty przykładowe',
+      disclaimer: 'Projekt przykładowy — nie projekt konstrukcyjny.',
+      createsNew: 'Otwarcie tworzy nowy projekt; obecny pozostaje bez zmian.',
+      open: 'Otwórz przykład',
+      name: 'Przykład — {{title}}',
+      item: {
+        'basic-gable': {
+          title: 'Prosty dach dwuspadowy',
+          shows:
+            'Podstawowa konstrukcja K1, przygotowanie elementów i rozkrój.',
+        },
+        hip: {
+          title: 'Dach kopertowy',
+          shows: 'Krokwie K1, narożne H1 i kulawki J1 z detalami cięć.',
+        },
+        'collar-tie': {
+          title: 'Dach z jętkami',
+          shows:
+            'Więźba krokwiowo-jętkowa z połączeniem bezpośrednim w kalenicy.',
+        },
+      },
+    },
+  },
+  undoChange: 'Cofnij zmianę',
+  redoChange: 'Ponów zmianę',
+  nav: {
+    jump: 'Przejdź do',
+    jumpHint: 'Szybkie przejście do dowolnego miejsca projektu',
+    contextTasks: 'Zadania w tej części projektu',
+    backTo: 'Wróć: {{target}}',
+    k1Unavailable: 'Rozkrój K1 wymaga rozwiązanej krokwi K1.',
+    documentHub: 'Centrum dokumentów',
+    documentPreview: 'Podgląd dokumentu',
+    materials: {
+      plan: 'Plan materiałów',
+      cutting: 'Rozkrój K1',
+      schedule: 'Zestawienie techniczne',
+      summary: 'Podsumowanie projektu',
+      drawing: 'Rysunek',
+    },
+    mobile: {
+      project: 'Projekt',
+      execution: 'Wykonanie',
+      materials: 'Materiały',
+      costing: 'Koszt',
+      documents: 'Dokumenty',
+    },
+  },
+  docs: {
+    eyebrow: 'Dokumenty',
+    title: 'Centrum dokumentów',
+    description:
+      'Wybierz dokument, sprawdź jego stan i otwórz podgląd do wydruku lub PDF.',
+    sections: '{{ready}} z {{total}} sekcji gotowych',
+    preview: 'Podgląd',
+    configure: 'Wybierz sekcje',
+    csv: 'Pobierz CSV',
+    status: {
+      ready: 'Gotowy',
+      partial: 'Częściowy',
+      unavailable: 'Niedostępny',
+    },
+    execution: {
+      title: 'Pakiet wykonawczy',
+      summary:
+        'Przegląd dachu, elementy, przygotowanie elementów, warstwy, pokrycie i założenia.',
+    },
+    cost: {
+      title: 'Kosztorys',
+      summary: 'Pozycje kosztorysu z ilościami, cenami i stanem kompletności.',
+      empty: 'Najpierw dodaj pozycje w kosztorysie.',
+    },
+    materials: {
+      title: 'Lista materiałów',
+      summary:
+        'Plan materiałów z podstawą ilości, wybranymi produktami i znanymi cenami.',
+    },
+    boundary:
+      'Dokumenty opisują stan projektu. Nie są zamówieniem, ofertą ani oceną bezpieczeństwa konstrukcji.',
+  },
   memberSchedule: 'Zestawienie elementów',
   summaryMaterialView: 'Projekt',
   planMaterialView: 'Plan materiałów',
@@ -1853,6 +2097,248 @@ export const assemblyEn: typeof assemblyPl = {
   'perspective.materials': 'Materials',
   'perspective.costing': 'Cost estimate',
   'perspective.documents': 'Documents',
+  documentsPreset: 'Document hub',
+  studio: {
+    viewMode: 'Covering view',
+    kind: {
+      'roof-tile': 'Roof tile',
+      'modular-sheet': 'Modular metal sheet',
+      'cut-to-length': 'Cut-to-length sheet',
+      'standing-seam': 'Standing seam',
+    },
+    view: { technical: 'Technical', visual: 'Material preview' },
+    ridge: 'Ridge',
+    eave: 'Eave',
+    fullPositions: 'full positions',
+    edgeCut: 'cut at edge',
+    openingCut: 'cut at openings',
+    nominalGhost: 'Nominal coverage cell (outside plane)',
+    technicalBoundary:
+      'Technical view: effective coverage cells clipped to the roof plane — these are counted.',
+    visualBoundary:
+      'Material preview: illustrates tile rhythm, not the exact product shape. It does not affect calculations.',
+    physicalEdgeUnmodelled:
+      'The physical projection of a tile beyond the edge is not modelled.',
+    alignmentTitle: 'Horizontal layout',
+    alignment: {
+      centered: 'Centre edge cuts',
+      'from-u-min': 'Start at the left edge',
+      manual: 'Set manually',
+    },
+    alignmentHint: {
+      centered: 'Cuts on both sides of the plane are equal.',
+      'from-u-min': 'Full position at the left edge, cuts on the right.',
+      manual: 'Enter a layout offset for the selected plane.',
+    },
+    alignmentExplain: {
+      centered: 'RoofCalc distributes edge cuts symmetrically on the plane.',
+      'from-u-min':
+        'The layout starts with a full position at the left edge; cuts collect on the right.',
+      manual:
+        'The layout is shifted manually by the given offset on this plane.',
+    },
+    fact: {
+      physical: 'Physical size',
+      gauge: 'Batten gauge',
+      pitch: 'Minimum pitch',
+      consumption: 'Declared consumption',
+      perM2: 'pcs/m²',
+      panelLength: 'Length range',
+      price: 'Price',
+    },
+    price: {
+      none: 'Manual product — enter the price in the estimate',
+      available: 'In the price list',
+      multiple: 'Several offers — choose in the material plan',
+      missing: 'No price in the price list',
+    },
+  },
+  creator: {
+    progress: 'Step {{step}} of 4',
+    next: 'Next',
+    back: 'Back',
+    backToStart: 'Change how to start',
+    change: 'Change',
+    fromQuick: 'from Quick',
+    learnMore: 'Learn more',
+    start: {
+      title: 'How do you want to start?',
+      guided: {
+        title: 'Quick start',
+        text: 'Four short steps with drawings. Only what is needed is asked.',
+      },
+      example: {
+        title: 'Example project',
+        text: 'Open a prepared roof and see how the program works.',
+      },
+      advanced: {
+        title: 'Straight to editing',
+        text: 'Create a project with default values and edit everything in the workbench.',
+      },
+    },
+    step: {
+      1: 'Building',
+      2: 'Roof geometry',
+      3: 'Construction',
+      4: 'Review and create',
+    },
+    field: {
+      buildingLength: 'Building length',
+      buildingWidth: 'Building width',
+      pitch: 'Roof pitch',
+      eave: 'Eave overhang',
+      spacing: 'Rafter spacing',
+      rafterWidth: 'Rafter width b',
+      rafterDepth: 'Rafter depth h',
+      structure: 'Structural system',
+    },
+    help: {
+      buildingLength: 'Along the ridge, outer wall line.',
+      buildingWidth: 'Across the building, wall to wall.',
+      pitch: 'Angle between the roof plane and horizontal.',
+      eave: 'Horizontal projection of the roof beyond the wall face.',
+      spacing: 'Largest distance between neighbouring rafter axes.',
+      rafterWidth: 'Rafter thickness seen from its end.',
+      rafterDepth: 'Height of the rafter section.',
+    },
+    illustration: {
+      buildingLength: 'Building plan with a longitudinal dimension arrow',
+      buildingWidth: 'Building plan with a transverse dimension arrow',
+      pitch: 'Roof section with angle α to horizontal',
+      eave: 'Wall, roof plane and eave projection dimension',
+      spacing: 'Rafter axes with spacing dimension',
+      rafterWidth: 'Rafter section b × h',
+      rafterDepth: 'Rafter section b × h',
+    },
+    more: {
+      geometry:
+        'Pitch and eave define rafter length and ridge position. The model derives ridge height — you do not enter it. Every value can be changed later.',
+    },
+    issue: {
+      required: 'Enter a value.',
+      range: 'The value must be between {{min}} and {{max}} {{unit}}.',
+      'hip-length-below-width':
+        'A hip roof needs a length not smaller than its width in the current model.',
+      'spacing-exceeds-length':
+        'Rafter spacing cannot exceed the building length.',
+    },
+    summary: {
+      roofType: 'Roof',
+      buildingLength: 'Building',
+      pitch: 'Roof pitch',
+      eave: 'Eave',
+      spacing: 'Rafter spacing',
+      rafterWidth: 'Rafter section',
+    },
+    review: {
+      readiness: 'Project readiness',
+      geometry: 'Geometry',
+      construction: 'Construction',
+      k1Cutting: 'K1 cutting',
+      state: {
+        ready: 'ready',
+        limited: 'limited',
+        unavailable: 'unavailable',
+      },
+      note: {
+        'half-lap-unmodelled':
+          'Half-lap ridge — execution geometry of this connection is not modelled yet.',
+        'collar-tie-gable-only':
+          'Collar ties are available for gable roofs only.',
+        'geometry-invalid': 'The geometry cannot be resolved for these values.',
+      },
+      assumptions: 'Assumptions that enter the project',
+      wallPlate: 'Wall plate {{value}} with the template seat notch.',
+      ridgeBoard: 'Ridge board thickness {{value}}.',
+      spacingMode: 'Rafters spread evenly, never wider than the given spacing.',
+      editLater: 'Every value can be changed later in the workbench.',
+    },
+    preview: {
+      title: 'Preview from the model',
+      label: 'Roof plan resolved from the entered values',
+      invalid: 'Enter valid dimensions to see the roof plan.',
+      hint: 'The plan comes from the same geometry model as the workbench.',
+    },
+    examples: {
+      title: 'Example projects',
+      disclaimer: 'Example project — not a structural design.',
+      createsNew: 'Opening creates a new project; the current one is kept.',
+      open: 'Open example',
+      name: 'Example — {{title}}',
+      item: {
+        'basic-gable': {
+          title: 'Simple gable roof',
+          shows: 'Basic K1 construction, member preparation and cutting.',
+        },
+        hip: {
+          title: 'Hip roof',
+          shows:
+            'K1 rafters, H1 hip rafters and J1 jack rafters with cut details.',
+        },
+        'collar-tie': {
+          title: 'Roof with collar ties',
+          shows: 'Rafter and collar-tie system with a direct ridge meeting.',
+        },
+      },
+    },
+  },
+  undoChange: 'Undo change',
+  redoChange: 'Redo change',
+  nav: {
+    jump: 'Go to',
+    jumpHint: 'Jump to any place in the project',
+    contextTasks: 'Tasks in this part of the project',
+    backTo: 'Back: {{target}}',
+    k1Unavailable: 'K1 cutting needs a resolved K1 rafter.',
+    documentHub: 'Document hub',
+    documentPreview: 'Document preview',
+    materials: {
+      plan: 'Material plan',
+      cutting: 'K1 cutting',
+      schedule: 'Technical schedule',
+      summary: 'Project summary',
+      drawing: 'Drawing',
+    },
+    mobile: {
+      project: 'Project',
+      execution: 'Execution',
+      materials: 'Materials',
+      costing: 'Cost',
+      documents: 'Documents',
+    },
+  },
+  docs: {
+    eyebrow: 'Documents',
+    title: 'Document hub',
+    description:
+      'Choose a document, check its state and open a preview for print or PDF.',
+    sections: '{{ready}} of {{total}} sections ready',
+    preview: 'Preview',
+    configure: 'Choose sections',
+    csv: 'Download CSV',
+    status: {
+      ready: 'Ready',
+      partial: 'Partial',
+      unavailable: 'Unavailable',
+    },
+    execution: {
+      title: 'Execution package',
+      summary:
+        'Roof overview, members, member preparation, layers, covering and assumptions.',
+    },
+    cost: {
+      title: 'Cost estimate',
+      summary: 'Estimate lines with quantities, prices and completeness.',
+      empty: 'Add lines in the cost estimate first.',
+    },
+    materials: {
+      title: 'Material list',
+      summary:
+        'Material plan with quantity basis, selected products and known prices.',
+    },
+    boundary:
+      'Documents describe the project state. They are not an order, a quotation or a structural safety assessment.',
+  },
   memberSchedule: 'Member schedule',
   summaryMaterialView: 'Project',
   planMaterialView: 'Material plan',

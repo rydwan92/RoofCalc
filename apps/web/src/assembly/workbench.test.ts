@@ -209,8 +209,8 @@ describe('workbench perspective grouping', () => {
     }
   });
 
-  it('documents has no task of its own — it opens the export flow instead', () => {
-    expect(tasksForPerspective('documents')).toEqual([]);
+  it('documents is a real destination (V37 Document Hub), not an export shortcut', () => {
+    expect(tasksForPerspective('documents')).toEqual(['documents']);
   });
 
   it('lists every perspective exactly once', () => {

@@ -46,7 +46,8 @@ it('manages named local projects without recording roof history', async () => {
   let dialog = screen.getByRole('dialog', { name: 'Projekty' });
   fireEvent.click(within(dialog).getByRole('button', { name: 'Nowy projekt' }));
   const start = await screen.findByTestId('project-start-assistant');
-  fireEvent.click(within(start).getByTestId('project-start-submit'));
+  // V37: "Od razu do edycji" creates a separate project with defaults.
+  fireEvent.click(within(start).getByTestId('project-start-advanced'));
   await waitFor(() =>
     expect(screen.queryByTestId('project-start-assistant')).toBeNull(),
   );

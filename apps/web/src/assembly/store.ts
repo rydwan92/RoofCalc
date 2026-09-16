@@ -57,7 +57,13 @@ import type {
 import { editableLength, parseDecimal } from '../format';
 import { loadDisplayUnit, saveDisplayUnit } from '../unit-preference';
 import {
+  currentWorkbenchLocation,
   initialWorkbenchViewState,
+  pushNavigationTrail,
+  sameWorkbenchLocation,
+  tasksForPerspective,
+  type WorkbenchLocation,
+  type WorkbenchPerspective,
   type BuildUpView,
   type DimensionLevel,
   type ViewPreset,
@@ -385,6 +391,15 @@ export interface AssemblyState {
     operationIds: string[];
   }) => void;
   stepBackContext: () => void;
+  /** V37 top-level perspective switch; clears the transient return trail. */
+  navigatePerspective: (perspective: WorkbenchPerspective) => void;
+  /** Cross-context jump; remembers the current location for "Wróć". */
+  navigateTo: (
+    location: WorkbenchLocation,
+    options?: { remember?: boolean },
+  ) => void;
+  /** Returns to the last remembered location. Never touches edit history. */
+  navigateBack: () => void;
   beginRoofWindowPlacement: () => void;
   beginRoofWindowDuplicatePlacement: (sourceFeatureId: string) => boolean;
   setRoofWindowPlacementPlane: (roofPlaneId?: string) => void;
@@ -463,6 +478,57 @@ function withHistory(
     ),
     historyFuture: [],
   };
+}
+/** Transient cleanup shared by every task switch. Creates no history. */
+function withViewPreset(
+  workbench: WorkbenchViewState,
+  viewPreset: ViewPreset,
+): WorkbenchViewState {
+  return {
+    ...workbench,
+    viewPreset,
+    mobilePanel: 'none',
+    measurement: undefined,
+    returnViewPreset:
+      viewPreset === 'cuts' ? workbench.returnViewPreset : undefined,
+    placementTool:
+      viewPreset === 'openings' ? workbench.placementTool : undefined,
+    selectedFeatureIds:
+      viewPreset === 'openings' ? workbench.selectedFeatureIds : [],
+    placementFeedback:
+      viewPreset === 'openings' ? workbench.placementFeedback : undefined,
+    selectedScheduleRowId:
+      viewPreset === 'materials' ? workbench.selectedScheduleRowId : undefined,
+    selectedScheduleInstanceId:
+      viewPreset === 'materials'
+        ? workbench.selectedScheduleInstanceId
+        : undefined,
+    openingFramingProposalFeatureId:
+      viewPreset === 'openings'
+        ? workbench.openingFramingProposalFeatureId
+        : undefined,
+    activeOperationId:
+      viewPreset === 'cuts' ? workbench.activeOperationId : undefined,
+    focusId: viewPreset === 'cuts' ? workbench.focusId : undefined,
+    detailDrawer:
+      viewPreset === 'cuts'
+        ? workbench.detailDrawer
+        : {
+            ...workbench.detailDrawer,
+            open: false,
+            mode: 'collapsed',
+            activePreviewId: undefined,
+          },
+  };
+}
+function materialsViewFor(
+  location: WorkbenchLocation,
+  current: MaterialsView,
+): MaterialsView {
+  if (location.task !== 'materials') return current;
+  return location.localView && location.localView !== 'document-preview'
+    ? location.localView
+    : 'plan';
 }
 function restoredSnapshot(snapshotToRestore: DomainSnapshot) {
   return committedTemplate(
@@ -591,47 +657,53 @@ export const useAssembly = create<AssemblyState>((set) => ({
     set((state) => ({ workbench: { ...state.workbench, canvasView } })),
   setViewPreset: (viewPreset) =>
     set((state) => ({
-      workbench: {
-        ...state.workbench,
-        viewPreset,
-        mobilePanel: 'none',
-        measurement: undefined,
-        returnViewPreset:
-          viewPreset === 'cuts' ? state.workbench.returnViewPreset : undefined,
-        placementTool:
-          viewPreset === 'openings' ? state.workbench.placementTool : undefined,
-        selectedFeatureIds:
-          viewPreset === 'openings' ? state.workbench.selectedFeatureIds : [],
-        placementFeedback:
-          viewPreset === 'openings'
-            ? state.workbench.placementFeedback
-            : undefined,
-        selectedScheduleRowId:
-          viewPreset === 'materials'
-            ? state.workbench.selectedScheduleRowId
-            : undefined,
-        selectedScheduleInstanceId:
-          viewPreset === 'materials'
-            ? state.workbench.selectedScheduleInstanceId
-            : undefined,
-        openingFramingProposalFeatureId:
-          viewPreset === 'openings'
-            ? state.workbench.openingFramingProposalFeatureId
-            : undefined,
-        activeOperationId:
-          viewPreset === 'cuts' ? state.workbench.activeOperationId : undefined,
-        focusId: viewPreset === 'cuts' ? state.workbench.focusId : undefined,
-        detailDrawer:
-          viewPreset === 'cuts'
-            ? state.workbench.detailDrawer
-            : {
-                ...state.workbench.detailDrawer,
-                open: false,
-                mode: 'collapsed',
-                activePreviewId: undefined,
-              },
-      },
+      workbench: withViewPreset(state.workbench, viewPreset),
     })),
+  navigatePerspective: (perspective) =>
+    set((state) => {
+      const tasks = tasksForPerspective(perspective);
+      const stay = tasks.includes(state.workbench.viewPreset);
+      const task = stay ? state.workbench.viewPreset : tasks[0]!;
+      const next = withViewPreset(state.workbench, task);
+      return {
+        workbench: {
+          ...next,
+          materialsView:
+            perspective === 'materials' && !stay ? 'plan' : next.materialsView,
+          navigationTrail: [],
+        },
+      };
+    }),
+  navigateTo: (location, options) =>
+    set((state) => {
+      const current = currentWorkbenchLocation(state.workbench);
+      if (sameWorkbenchLocation(current, location)) return state;
+      const next = withViewPreset(state.workbench, location.task);
+      return {
+        workbench: {
+          ...next,
+          materialsView: materialsViewFor(location, next.materialsView),
+          navigationTrail:
+            options?.remember === false
+              ? state.workbench.navigationTrail
+              : pushNavigationTrail(state.workbench.navigationTrail, current),
+        },
+      };
+    }),
+  navigateBack: () =>
+    set((state) => {
+      const trail = state.workbench.navigationTrail;
+      const target = trail.at(-1);
+      if (!target) return state;
+      const next = withViewPreset(state.workbench, target.task);
+      return {
+        workbench: {
+          ...next,
+          materialsView: materialsViewFor(target, next.materialsView),
+          navigationTrail: trail.slice(0, -1),
+        },
+      };
+    }),
   setBuildUpView: (buildUpView) =>
     set((state) => ({
       workbench: {
