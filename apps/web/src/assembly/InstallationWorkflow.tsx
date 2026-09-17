@@ -107,6 +107,9 @@ export function useInstallationActions() {
         openLayer('battens');
         return;
       }
+      case 'fit-roof':
+        state.fitInstallationToRoof();
+        return;
       case 'extend-scope-to-roof':
         if (layout) state.setBattenLayout(battenLayerForWholeRoof(layout));
         return;

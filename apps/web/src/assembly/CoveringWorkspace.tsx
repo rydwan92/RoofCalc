@@ -33,8 +33,15 @@ import { SourceBadge } from './SourceBadge';
 import { newBattenLayer } from './build-up-defaults';
 import {
   CoveringInstallationBlock,
+  WorkflowActions,
   type InstallationWorkflowFacts,
 } from './InstallationWorkflow';
+
+/** V46: covering issues that one scope repair resolves. */
+const SCOPE_REPAIR_ISSUES = new Set([
+  'roof-plane-not-found',
+  'batten-layout-required',
+]);
 import {
   coveringKindLabelKey,
   installationModeLabelKey,
@@ -43,6 +50,15 @@ import {
 import { ResultBasis, ResultLayerProgress } from './ResultBasis';
 import { BattenAutoRepair } from './BattenInstallation';
 import { CoveringAddAssistant } from './CoveringAddAssistant';
+import {
+  classifyPlaneEdges,
+  regularCourseGauge,
+  tileToneIndex,
+} from './covering-scheme-geometry';
+
+/** Illustrative ridge/hip cap band and piece length (view only, mm). */
+const CAP_WIDTH_MM = 240;
+const CAP_PIECE_MM = 420;
 
 const CatalogProductPicker = lazy(() =>
   import('../catalog/CatalogProductPicker').then((module) => ({
@@ -491,20 +507,35 @@ export function CoveringWorkspace({
         );
         const width = Math.max(1, maxU - minU);
         const height = Math.max(1, maxV - minV);
-        const padding = Math.max(width, height) * 0.025;
+        const padding = Math.max(width, height) * 0.035;
+        // V46: room for course numbers left of the plane in technical view.
+        const labelMargin =
+          viewMode === 'technical' ? Math.max(width, height) * 0.05 : 0;
         return {
           minU,
           maxU,
           minV,
           maxV,
-          viewMinU: minU - padding,
+          labelSizeMm: Math.max(width, height * 1.5) / 70,
+          viewMinU: minU - padding - labelMargin,
           viewMinV: minV - padding,
-          viewWidth: width + padding * 2,
+          viewWidth: width + padding * 2 + labelMargin,
           viewHeight: height + padding * 2,
         };
       })()
     : undefined;
 
+  const planeEdges = selectedSurface
+    ? classifyPlaneEdges(selectedSurface.polygon)
+    : [];
+  const courseStations =
+    selectedLayout && 'courses' in selectedLayout
+      ? selectedLayout.courses
+          .filter((course) => course.layerIndex === 0)
+          .map((course) => course.stationVMm)
+          .sort((a, b) => a - b)
+      : [];
+  const courseGaugeMm = regularCourseGauge(courseStations.slice(1));
   const tileMode =
     assignment && isTileAssignment(assignment)
       ? assignment.product.technicalSpecSnapshot.installationModes.find(
@@ -881,7 +912,13 @@ export function CoveringWorkspace({
               </p>
             ))}
           </div>
+          {layout.issueCodes.some((code) => SCOPE_REPAIR_ISSUES.has(code)) && (
+            <WorkflowActions actions={['fit-roof']} />
+          )}
           {layout.issueCodes.some((code) => code.startsWith('batten-')) &&
+            !(layout.issueCodes as readonly string[]).includes(
+              'batten-layout-required',
+            ) &&
             isTileAssignment(assignment) && (
               <BattenAutoRepair
                 layout={
@@ -1074,6 +1111,40 @@ export function CoveringWorkspace({
                 </>
               ) : (
                 <>
+                  {layout?.kind === 'roof-tile' &&
+                    courseStations.length > 0 && (
+                      <span data-testid="covering-course-facts">
+                        {t('assembly.tileCourses')}{' '}
+                        <b>{courseStations.length}</b>
+                        {courseGaugeMm !== undefined &&
+                          tileMode?.coverWidthMm !== undefined && (
+                            <>
+                              {' · '}
+                              {t('assembly.studio.courseGauge')}{' '}
+                              <b>
+                                {fromMillimetres(
+                                  courseGaugeMm,
+                                  state.unit,
+                                ).toLocaleString(i18n.language, {
+                                  maximumFractionDigits: 1,
+                                })}{' '}
+                                {state.unit}
+                              </b>
+                              {' · '}
+                              {t('assembly.studio.coverWidth')}{' '}
+                              <b>
+                                {fromMillimetres(
+                                  tileMode.coverWidthMm,
+                                  state.unit,
+                                ).toLocaleString(i18n.language, {
+                                  maximumFractionDigits: 1,
+                                })}{' '}
+                                {state.unit}
+                              </b>
+                            </>
+                          )}
+                      </span>
+                    )}
                   <span>
                     {t(
                       layout?.kind === 'modular-sheet'
@@ -1241,7 +1312,7 @@ export function CoveringWorkspace({
                           <use
                             key={position.id}
                             href="#covering-tile-glyph"
-                            className={`a-tile-glyph is-${position.classification}`}
+                            className={`a-tile-glyph is-${position.classification} is-tone-${tileToneIndex(position.id)}`}
                             x={position.fromU}
                             y={position.fromV}
                             width={position.toU - position.fromU}
@@ -1250,6 +1321,69 @@ export function CoveringWorkspace({
                         ))}
                   </g>
                 )}
+                {visual &&
+                  planeEdges.map((edge, index) =>
+                    edge.kind === 'eave' ? (
+                      <g key={`edge:${index}`} className="a-roof-eave">
+                        <line
+                          className="a-roof-gutter"
+                          x1={edge.from.uMm}
+                          x2={edge.to.uMm}
+                          y1={edge.from.vMm - CAP_WIDTH_MM * 0.35}
+                          y2={edge.to.vMm - CAP_WIDTH_MM * 0.35}
+                          strokeWidth={CAP_WIDTH_MM * 0.45}
+                        />
+                        <line
+                          className="a-roof-eave-line"
+                          x1={edge.from.uMm}
+                          x2={edge.to.uMm}
+                          y1={edge.from.vMm}
+                          y2={edge.to.vMm}
+                        />
+                      </g>
+                    ) : edge.kind === 'verge' ? (
+                      <line
+                        key={`edge:${index}`}
+                        className="a-roof-verge"
+                        x1={edge.from.uMm}
+                        x2={edge.to.uMm}
+                        y1={edge.from.vMm}
+                        y2={edge.to.vMm}
+                        strokeWidth={CAP_WIDTH_MM * 0.35}
+                      />
+                    ) : (
+                      <g
+                        key={`edge:${index}`}
+                        className={`a-roof-cap is-${edge.kind}`}
+                        data-roof-edge={edge.kind}
+                      >
+                        <line
+                          className="a-roof-cap-body"
+                          x1={edge.from.uMm}
+                          x2={edge.to.uMm}
+                          y1={edge.from.vMm}
+                          y2={edge.to.vMm}
+                          strokeWidth={CAP_WIDTH_MM}
+                        />
+                        <line
+                          className="a-roof-cap-joints"
+                          x1={edge.from.uMm}
+                          x2={edge.to.uMm}
+                          y1={edge.from.vMm}
+                          y2={edge.to.vMm}
+                          strokeWidth={CAP_WIDTH_MM}
+                          strokeDasharray={`${CAP_PIECE_MM - 40} 40`}
+                        />
+                        <line
+                          className="a-roof-cap-crest"
+                          x1={edge.from.uMm}
+                          x2={edge.to.uMm}
+                          y1={edge.from.vMm}
+                          y2={edge.to.vMm}
+                        />
+                      </g>
+                    ),
+                  )}
                 {!visual &&
                   showCovering &&
                   !simplified &&
@@ -1360,6 +1494,30 @@ export function CoveringWorkspace({
                   points={polygonPoints(selectedSurface.polygon)}
                 />
               </g>
+              {!visual && showCovering && courseStations.length > 0 && (
+                <g
+                  className="a-covering-course-labels"
+                  data-testid="covering-course-labels"
+                  aria-hidden="true"
+                >
+                  {courseStations.map((station, index) =>
+                    courseStations.length <= 30 ||
+                    index === 0 ||
+                    (index + 1) % 5 === 0 ? (
+                      <text
+                        key={`course-label:${index}`}
+                        x={bounds.minU - bounds.labelSizeMm * 0.6}
+                        y={bounds.minV + bounds.maxV - station}
+                        fontSize={bounds.labelSizeMm}
+                        textAnchor="end"
+                        dominantBaseline="middle"
+                      >
+                        {index + 1}
+                      </text>
+                    ) : null,
+                  )}
+                </g>
+              )}
             </svg>
           )}
           {simplified && (
@@ -2684,6 +2842,9 @@ export function CoveringInspector({
                 ` · ${t('assembly.affectedRoofPlanes', { count: issue.roofPlaneIds.length })}`}
             </p>
           ))}
+          {issueSummaries.some((issue) =>
+            SCOPE_REPAIR_ISSUES.has(issue.code),
+          ) && <WorkflowActions actions={['fit-roof']} compact />}
           {assignment && isTileAssignment(assignment) && (
             <TileCoveringEditor
               assignment={assignment}

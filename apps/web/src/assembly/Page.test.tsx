@@ -261,6 +261,13 @@ describe('dual-mode parametric workbench', () => {
     builder();
     act(() => useAssembly.getState().setViewPreset('covering'));
     await addManualCovering('roof-tile');
+    // V46 creates Auto battens with the first covering; a user who switches
+    // them off leaves the covering assigned but unresolved.
+    act(() => {
+      const layout =
+        useAssembly.getState().projectDocument.project.buildUp.battenLayout!;
+      useAssembly.getState().setBattenLayout({ ...layout, enabled: false });
+    });
     const coveringStage = screen
       .getByTestId('project-workflow')
       .querySelector('[data-stage="covering"]')!;
@@ -2208,8 +2215,8 @@ describe('dual-mode parametric workbench', () => {
       layoutIntent: { horizontalAlignment: 'centered' },
       product: { technicalSpecSnapshot: { kind: 'roof-tile' } },
     });
-    // V43B: a new covering takes the whole roof, and the installation block
-    // proposes Auto battens instead of a manual raw gauge.
+    // V43B: a new covering takes the whole roof. V46: the first covering
+    // also creates Auto battens in the same history entry.
     expect(
       useAssembly.getState().projectDocument.project.coverings[0]!.roofPlaneIds,
     ).toEqual(['roof-plane:left', 'roof-plane:right']);
@@ -2218,13 +2225,8 @@ describe('dual-mode parametric workbench', () => {
       block
         .querySelector('[data-testid="batten-workflow-status"]')
         ?.getAttribute('data-workflow-state'),
-    ).toBe('layer-off');
-    const historyBeforeFit = useAssembly.getState().historyPast.length;
-    fireEvent.click(
-      within(block).getByRole('button', {
-        name: 'Rozmieść łaty automatycznie',
-      }),
-    );
+    ).toBe('auto-ready');
+    const historyBeforeFit = useAssembly.getState().historyPast.length - 1;
     const autoLayout =
       useAssembly.getState().projectDocument.project.buildUp.battenLayout;
     expect(autoLayout).toMatchObject({
@@ -2308,11 +2310,11 @@ describe('dual-mode parametric workbench', () => {
     expect(
       useAssembly.getState().projectDocument.project.coverings[0]!.roofPlaneIds,
     ).toHaveLength(4);
-    fireEvent.click(
-      within(block).getByRole('button', {
+    expect(
+      within(block).queryByRole('button', {
         name: 'Rozmieść łaty automatycznie',
       }),
-    );
+    ).toBeNull();
     fireEvent.click(
       within(screen.getByTestId('covering-installation-block')).getByRole(
         'button',

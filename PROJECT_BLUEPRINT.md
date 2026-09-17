@@ -1297,7 +1297,21 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
-**Iteration:** `045 — shared remote DEV database and Cloudflare Hyperdrive integration`
+**Iteration:** `046 — covering/batten sync, one-step repair and roof-aware covering scheme`
+
+**Status:** `IMPLEMENTED — committed on main`
+
+**Completed:** root cause of "Nie znaleziono przypisanej połaci" / "Nieprawidłowe dane łat" after Kopertowy ↔ Dwuspadowy: plane IDs are template-owned but coverings and build-up layers kept old lists. New pure `calculator-core/plane-scope.ts` (`reconcilePlaneScopes`, `uncoveredRoofPlaneIds`, `staleRoofPlaneReferences`) applied in `setRoofType` within the same history entry. New `installation-repair.ts` + store `fitInstallationToRoof` ("Dopasuj pokrycie i łaty do dachu", one history entry, idempotent) and workflow action `fit-roof` for every former dead end; covering warning and inspector show it. The first batten-supported covering creates the batten layer (Auto for tile, fixed manual gauge for sheet) when the layer was never configured. Independent `overlap-audit.test.ts` (gable + hip, KODA) found no solver defect; reference numbers locked. Covering scheme: 18 px plane stroke → 1,5 px, tile tones, ridge/hip caps, eave + gutter, verges, technical course numbers and course/gauge/cover facts. See `docs/ARCHITECTURE_V46_COVERING_SYNC_REPAIR_AND_SCHEME.md`.
+
+**Validation:** typecheck, lint, 1165 unit tests, Playwright 66 passed / 14 skipped (desktop + mobile, incl. new V46 hip ↔ gable sync e2e), `pnpm build` with edge bundle check.
+
+**Known / not done:** roof windows placed on hip-only planes (front/rear) are not re-homed when switching to gable. The ridge reference default 0 puts the top batten on the ridge line; a product-specific ridge batten distance needs manufacturer data. Local `wrangler dev` cannot authenticate to the REQUIRE SSL MariaDB (Miniflare limitation, see V45).
+
+**NEXT ACTION:** (1) user: put the rotated alwaysdata password into the private root `.env`, then `pnpm db:doctor`. (2) code: re-home roof windows on a roof-type switch; commercial batten/counter-batten stock lengths from per-row evidence; ridge/hip accessory quantities (gąsiory) from the classified edges once product data exists.
+
+---
+
+**Previous iteration:** `045 — shared remote DEV database and Cloudflare Hyperdrive integration`
 
 **Status:** `IMPLEMENTED — committed and pushed on main; Hyperdrive ID is the one manual step`
 

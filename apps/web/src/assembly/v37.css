@@ -2006,3 +2006,57 @@
   fill: none;
   pointer-events: none;
 }
+
+/* V46 covering scheme: roof context and legible technical annotations. */
+.a-tile-glyph.is-tone-1 {
+  color: #a9573a;
+}
+.a-tile-glyph.is-tone-2 {
+  color: #bf6b43;
+}
+.a-covering-scheme.is-visual .a-covering-plane {
+  fill: #5b2f1c;
+  stroke: none;
+}
+.a-covering-scheme.is-visual .a-covering-plane-outline {
+  stroke: #3a2016;
+  stroke-width: 1;
+}
+.a-roof-cap-body {
+  stroke: #7a3b24;
+  stroke-linecap: butt;
+}
+.a-roof-cap-joints {
+  stroke: #9a4c2e;
+  stroke-linecap: butt;
+}
+.a-roof-cap-crest {
+  stroke: #f2c3a4;
+  stroke-opacity: 0.55;
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+.a-roof-gutter {
+  stroke: #8a9690;
+  stroke-linecap: round;
+}
+.a-roof-eave-line {
+  stroke: #2b1a12;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+.a-roof-verge {
+  stroke: #4a2819;
+  stroke-opacity: 0.85;
+}
+.a-covering-scheme.is-technical .a-covering-batten {
+  stroke: #8a5a2b;
+  stroke-opacity: 0.75;
+  stroke-width: 1.25;
+}
+.a-covering-course-labels text {
+  fill: var(--a-text-muted, #5f6d66);
+  font-family: inherit;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}

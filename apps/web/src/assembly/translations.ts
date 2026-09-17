@@ -568,6 +568,8 @@ export const assemblyPl = {
     edgeCut: 'docinane na krawędzi',
     openingCut: 'docinane przy otworach',
     nominalGhost: 'Nominalna komórka krycia (poza połacią)',
+    courseGauge: 'Rozstaw łat',
+    coverWidth: 'Szerokość krycia',
     technicalBoundary:
       'Widok techniczny: efektywne pola krycia przycięte do obrysu połaci — to one są liczone.',
     visualBoundary:
@@ -1247,6 +1249,7 @@ export const assemblyPl = {
       'fit-auto': 'Dopasuj automatycznie',
       'assign-covering-to-roof': 'Przypisz pokrycie do całego dachu',
       'extend-scope-to-roof': 'Rozszerz łaty na cały dach',
+      'fit-roof': 'Dopasuj pokrycie i łaty do dachu',
       'enable-counter-battens': 'Dodaj kontrłaty z konstrukcji',
       'choose-hip-detail': 'Uzupełnij detal grzbietu',
     },
@@ -2425,6 +2428,8 @@ export const assemblyEn: typeof assemblyPl = {
     edgeCut: 'cut at edge',
     openingCut: 'cut at openings',
     nominalGhost: 'Nominal coverage cell (outside plane)',
+    courseGauge: 'Batten gauge',
+    coverWidth: 'Cover width',
     technicalBoundary:
       'Technical view: effective coverage cells clipped to the roof plane — these are counted.',
     visualBoundary:
@@ -3097,6 +3102,7 @@ export const assemblyEn: typeof assemblyPl = {
       'fit-auto': 'Fit automatically',
       'assign-covering-to-roof': 'Assign covering to the whole roof',
       'extend-scope-to-roof': 'Extend battens to the whole roof',
+      'fit-roof': 'Fit covering and battens to this roof',
       'enable-counter-battens': 'Add structure-derived counter-battens',
       'choose-hip-detail': 'Complete the hip detail',
     },

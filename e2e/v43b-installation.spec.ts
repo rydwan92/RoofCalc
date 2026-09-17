@@ -168,9 +168,6 @@ async function capture(page: Page, testInfo: TestInfo, name: string) {
   );
 }
 
-const state = (locator: ReturnType<Page['locator']>) =>
-  locator.getAttribute('data-workflow-state');
-
 test.describe('V43B — covering installation workflow', () => {
   test('normal user: catalogue tile → Auto battens → hip detail → Material Plan', async ({
     page,
@@ -181,12 +178,11 @@ test.describe('V43B — covering installation workflow', () => {
     );
     const block = await createHipWithCatalogueTile(page);
     const battenStatus = block.getByTestId('batten-workflow-status');
-    // Nothing is laid out from a placeholder before the user accepts Auto.
-    expect(await state(battenStatus)).toBe('layer-off');
+    // V46: the first covering creates Auto battens from its own data.
     await expect(block.locator('[data-row="pitch"]')).toContainText('✓');
-    await block
-      .getByRole('button', { name: 'Rozmieść łaty automatycznie' })
-      .click();
+    await expect(
+      block.getByRole('button', { name: 'Rozmieść łaty automatycznie' }),
+    ).toHaveCount(0);
     await expect(battenStatus).toHaveAttribute(
       'data-workflow-state',
       'auto-ready',
@@ -340,9 +336,10 @@ test.describe('V43B — covering installation workflow', () => {
     await assistant.locator('[data-covering-source="manual"]').click();
     await fillTile('Dachówka 33–36', '33', '36');
     const block = page.getByTestId('covering-installation-block');
-    await block
-      .getByRole('button', { name: 'Rozmieść łaty automatycznie' })
-      .click();
+    await expect(block.getByTestId('batten-workflow-status')).toHaveAttribute(
+      'data-workflow-state',
+      'auto-ready',
+    );
 
     await openTask(page, 'layers');
     await page
@@ -411,9 +408,6 @@ test.describe('V43B — covering installation workflow', () => {
   }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile', 'One 390×844 smoke only.');
     const block = await createHipWithCatalogueTile(page);
-    await block
-      .getByRole('button', { name: 'Rozmieść łaty automatycznie' })
-      .click();
     await expect(block.getByTestId('batten-workflow-status')).toHaveAttribute(
       'data-workflow-state',
       'auto-ready',
@@ -425,4 +419,27 @@ test.describe('V43B — covering installation workflow', () => {
     await expectNoHorizontalOverflow(page);
     await capture(page, testInfo, 'v43b-phone-plan');
   });
+});
+
+test('V46: switching hip ↔ gable keeps the tile covering and Auto battens in sync', async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'Desktop flow.');
+  const block = await createHipWithCatalogueTile(page);
+  const status = () =>
+    page
+      .getByTestId('covering-installation-block')
+      .getByTestId('batten-workflow-status');
+  await expect(status()).toHaveAttribute('data-workflow-state', 'auto-ready');
+  for (const roofType of ['Dwuspadowy', 'Kopertowy']) {
+    await page.getByRole('tab', { name: 'Konstrukcja' }).first().click();
+    await page.getByRole('button', { name: roofType }).first().click();
+    await page.getByRole('tab', { name: 'Pokrycie' }).first().click();
+    await expect(status()).toHaveAttribute('data-workflow-state', 'auto-ready');
+    await expect(page.locator('.a-covering-warning')).toHaveCount(0);
+    await expect(
+      page.getByTestId('tile-layout-drawing').locator('.a-covering-batten'),
+    ).not.toHaveCount(0);
+  }
+  await expect(block).toContainText('KODA');
 });

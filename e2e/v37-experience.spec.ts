@@ -44,12 +44,10 @@ async function addManualTile(page: Page) {
     await assistant.locator(`[data-manual-field="${field}"]`).fill(value);
   await assistant.getByTestId('confirm-manual-covering').click();
   await expect(page.getByTestId('tile-layout-drawing')).toBeVisible();
-  const fit = page
-    .locator('button:visible')
-    .filter({ hasText: /Rozmieść łaty automatycznie/ })
-    .first();
-  await fit.click();
-  await expect(fit).toBeHidden();
+  // V46: Auto battens arrive with the first covering.
+  await expect(
+    page.getByTestId('tile-layout-drawing').locator('.a-covering-batten'),
+  ).not.toHaveCount(0);
 }
 
 test.describe('V37 — new user', () => {

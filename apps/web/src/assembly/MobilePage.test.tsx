@@ -329,14 +329,12 @@ it('keeps the covering drawing separate from exact product parameters and repair
   expect(await within(sheet).findByLabelText('Nazwa produktu')).toBeTruthy();
   expect(useAssembly.getState().historyPast).toHaveLength(1);
   fireEvent.click(within(sheet).getByRole('button', { name: 'Zamknij' }));
-  fireEvent.click(
-    screen.getByRole('button', { name: /Rozmieść łaty automatycznie/ }),
-  );
+  // V46: the first covering already created Auto battens (same entry).
   expect(
     useAssembly.getState().projectDocument.project.buildUp.battenLayout?.mode,
   ).toBe('auto-from-covering');
   expect(useAssembly.getState().workbench.viewPreset).toBe('covering');
-  expect(useAssembly.getState().historyPast).toHaveLength(2);
+  expect(useAssembly.getState().historyPast).toHaveLength(1);
   expect(
     screen.queryByRole('button', { name: /Rozmieść łaty automatycznie/ }),
   ).toBeNull();

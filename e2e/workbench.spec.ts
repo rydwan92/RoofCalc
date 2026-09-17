@@ -79,13 +79,7 @@ async function addTile(page: Page, gaugeMin = '30', gaugeMax = '38') {
 
 async function openResolvedTileSchedule(page: Page) {
   await addTile(page);
-  const automaticFit = page
-    .locator('button:visible')
-    .filter({ hasText: /Rozmieść łaty automatycznie/ })
-    .first();
-  await expect(automaticFit).toBeVisible();
-  await automaticFit.click();
-  await expect(automaticFit).toBeHidden();
+  // V46: Auto battens arrive with the first covering, no extra click.
   await expect(
     page.getByTestId('tile-layout-drawing').locator('.a-covering-batten'),
   ).not.toHaveCount(0);

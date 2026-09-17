@@ -57,7 +57,9 @@ export type BattenWorkflowAction =
   | 'choose-installation-mode'
   | 'fit-auto'
   | 'assign-covering-to-roof'
-  | 'extend-scope-to-roof';
+  | 'extend-scope-to-roof'
+  /** V46: covering + battens + layers follow every plane of this roof. */
+  | 'fit-roof';
 
 export interface BattenWorkflow {
   state: BattenWorkflowState;
@@ -233,6 +235,18 @@ export function deriveBattenWorkflow(args: {
       'batten-course-spacing-required',
     ].includes(code),
   );
+  // V46: a stale plane reference is a scope problem with a one-step repair,
+  // not a dead end. Numeric layer data is repaired by Auto when available.
+  const staleScope =
+    result.issues.includes('roof-plane-not-found') ||
+    result.scope.roofPlaneIds.some(
+      (id) => !result.scope.knownRoofPlaneIds.includes(id),
+    );
+  const geometryActions: BattenWorkflowAction[] = staleScope
+    ? ['fit-roof']
+    : capability?.supportsAutoBattenGauge && !auto
+      ? ['fit-auto']
+      : [];
   const noTile = composition.reason === 'tile-covering-missing';
   const modeRequired =
     composition.reason === 'installation-mode-missing' ||
@@ -253,7 +267,7 @@ export function deriveBattenWorkflow(args: {
           ]);
     if (composition.reason === 'target-planes-not-covered')
       return build('awaiting-covering-scope', 'blocked', [
-        'assign-covering-to-roof',
+        args.assignments.length > 1 ? 'assign-covering-to-roof' : 'fit-roof',
         'set-manual',
       ]);
     if (modeRequired)
@@ -263,7 +277,8 @@ export function deriveBattenWorkflow(args: {
       ]);
     if (composition.source.status !== 'resolved')
       return build('auto-data-unavailable', 'blocked', ['set-manual']);
-    if (geometryIssue) return build('geometry-invalid', 'blocked', []);
+    if (geometryIssue)
+      return build('geometry-invalid', 'blocked', geometryActions);
     if (belowMinimum || result.status !== 'resolved')
       return build('auto-incompatible', 'blocked', ['set-manual']);
     return build(
@@ -276,7 +291,8 @@ export function deriveBattenWorkflow(args: {
   }
 
   const manual = { manualGaugeMm: layout.gaugeMm };
-  if (geometryIssue) return build('geometry-invalid', 'blocked', [], manual);
+  if (geometryIssue)
+    return build('geometry-invalid', 'blocked', geometryActions, manual);
   if (range) {
     const inRange =
       Number.isFinite(layout.gaugeMm) &&
@@ -289,7 +305,7 @@ export function deriveBattenWorkflow(args: {
   if (capability?.fixedSupportGaugeMm !== undefined)
     return Math.abs(layout.gaugeMm - capability.fixedSupportGaugeMm) <= 0.5
       ? build('manual-compatible', 'ready', [], manual)
-      : build('manual-incompatible', 'blocked', [], manual);
+      : build('manual-incompatible', 'blocked', ['fit-roof'], manual);
   return build(
     'manual-unverified',
     'attention',
@@ -298,7 +314,11 @@ export function deriveBattenWorkflow(args: {
       : modeRequired
         ? ['choose-installation-mode']
         : composition.reason === 'target-planes-not-covered'
-          ? ['assign-covering-to-roof']
+          ? [
+              args.assignments.length > 1
+                ? 'assign-covering-to-roof'
+                : 'fit-roof',
+            ]
           : [],
     manual,
   );

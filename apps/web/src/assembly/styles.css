@@ -5058,7 +5058,7 @@
   fill: #edf4f0;
   fill: color-mix(in srgb, var(--a-covering-full, #5b8f7c) 8%, #fff);
   stroke: var(--a-line-strong, #80978c);
-  stroke-width: 18;
+  stroke-width: 1.5;
   vector-effect: non-scaling-stroke;
 }
 .a-covering-batten {

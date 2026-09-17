@@ -1,4 +1,8 @@
 import { create } from 'zustand';
+import {
+  fitInstallationToRoof,
+  withBattensForNewCovering,
+} from './installation-repair';
 import type {
   CoveringAssignmentSpec,
   MembraneProductSelection,
@@ -6,6 +10,7 @@ import type {
 import {
   createRoofProjectDocument,
   parseRoofProjectDocument,
+  reconcilePlaneScopes,
   type RoofProjectDocumentV1,
 } from '@cieslacalc/calculator-core';
 import {
@@ -446,6 +451,8 @@ export interface AssemblyState {
   applyOpeningFraming: (featureId: string) => boolean;
   removeOpeningFraming: (featureId: string) => void;
   setBattenLayout: (layout?: BattenLayoutSpec) => void;
+  /** V46: one undoable repair of covering/batten/layer scope for this roof. */
+  fitInstallationToRoof: () => void;
   setMembraneLayer: (layer?: MembraneLayerSpec) => void;
   setMembraneProduct: (product?: MembraneProductSelection) => void;
   setCounterBattenLayout: (layout?: CounterBattenLayoutSpec) => void;
@@ -580,15 +587,26 @@ export const useAssembly = create<AssemblyState>((set) => ({
   setRoofType: (type) =>
     set((state) => {
       const template = convertRoofTemplate(state.template, type);
+      // V46: plane IDs belong to the template, so coverings and build-up
+      // layers follow the new roof in the same undoable edit.
+      const project = state.projectDocument.project;
+      const scopes = reconcilePlaneScopes({
+        previousTemplate: state.template,
+        nextTemplate: template,
+        coverings: project.coverings,
+        buildUp: project.buildUp,
+      });
       return {
         ...withHistory(
           state,
-          committedTemplate(
-            template,
-            state.drafts,
-            state.invalidFields,
-            state.projectDocument,
-          ),
+          committedTemplate(template, state.drafts, state.invalidFields, {
+            ...state.projectDocument,
+            project: {
+              ...project,
+              coverings: scopes.coverings,
+              buildUp: scopes.buildUp,
+            },
+          }),
         ),
         workbench: {
           ...state.workbench,
@@ -1936,6 +1954,27 @@ export const useAssembly = create<AssemblyState>((set) => ({
         committedDocument(document, state.drafts, state.invalidFields),
       );
     }),
+  fitInstallationToRoof: () =>
+    set((state) => {
+      const project = state.projectDocument.project;
+      const repair = fitInstallationToRoof({
+        template: state.template,
+        coverings: project.coverings,
+        buildUp: project.buildUp,
+      });
+      if (!repair.changed) return state;
+      const document = createRoofProjectDocument(state.template, {
+        features: project.features,
+        openingFraming: project.openingFraming,
+        buildUp: repair.buildUp,
+        coverings: repair.coverings,
+        membraneProduct: project.membraneProduct,
+      });
+      return withHistory(
+        state,
+        committedDocument(document, state.drafts, state.invalidFields),
+      );
+    }),
   setMembraneLayer: (membrane) =>
     set((state) => {
       const document = createRoofProjectDocument(state.template, {
@@ -2021,7 +2060,12 @@ export const useAssembly = create<AssemblyState>((set) => ({
       const document = createRoofProjectDocument(state.template, {
         features: state.projectDocument.project.features,
         openingFraming: state.projectDocument.project.openingFraming,
-        buildUp: state.projectDocument.project.buildUp,
+        buildUp: withBattensForNewCovering(
+          state.projectDocument.project.buildUp,
+          state.projectDocument.project.coverings,
+          coverings,
+          state.template,
+        ),
         coverings,
         membraneProduct: state.projectDocument.project.membraneProduct,
       });
