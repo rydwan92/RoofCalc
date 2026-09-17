@@ -24,10 +24,9 @@
     {
       "binding": "HYPERDRIVE",
       "id": "2d7f0a9beaee47219f9e7a6a0aeabeaf",
-      
-      // Optional. Can be used to connect to a local database for local development with `wrangler dev`
-      "localConnectionString": "<LOCAL_CONNECTION_STRING_FOR_LOCAL_DEVELOPMENT_HERE>"
-    }
-  ]
-}
 
+      // Optional. Can be used to connect to a local database for local development with `wrangler dev`
+      "localConnectionString": "<LOCAL_CONNECTION_STRING_FOR_LOCAL_DEVELOPMENT_HERE>",
+    },
+  ],
+}
