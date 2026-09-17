@@ -66,27 +66,41 @@ tarcica konstrukcyjna z realnych obserwacji rynkowych) i na końcu
 weryfikuje wynik (`apps/api/src/cli/smoke-check.ts`). Działa identycznie w
 obu wariantach — różni je tylko `DATABASE_URL`.
 
-**Wariant C — wspólna baza DEV na SEOHost:** prywatny root `.env` może wskazywać
-`srv118516_roofcalc_dev` na `h86.seohost.pl:3306`. W panelu SEOHost trzeba
-dopuścić aktualny publiczny adres IP komputera. Uruchom `pnpm db:doctor`,
-sprawdź stan, a następnie świadomie `pnpm db:bootstrap`. Drugi bootstrap
-sprawdza powtarzalność seedów. Do zwykłej pracy używaj `pnpm dev:remote`:
-diagnostyka i start bez migracji ani seedowania przy każdym uruchomieniu.
-Lokalne `.env` nigdy nie trafia do Git. Przykładowy URL bez hasła jest w
-`.env.example`.
+**Wariant C — wspólna baza DEV na alwaysdata (V45):** ta sama baza, z której
+czyta wersja na Cloudflare. Prywatny root `.env` zawiera jedną linię
+`DATABASE_URL=mysql://<user>:<hasło>@mysql-<konto>.alwaysdata.net:3306/<baza>`
+(`@` w haśle jako `%40`; host z myślnikiem). Konto wymaga TLS — dla hostów
+innych niż loopback aplikacja zawsze łączy się po TLS z weryfikacją
+certyfikatu. Kolejność:
+
+```bash
+pnpm db:doctor        # tylko odczyt: DNS, TCP, TLS, logowanie, uprawnienia, migracje
+pnpm db:bootstrap     # raz dla świeżej bazy; ponowne uruchomienie jest bezpieczne
+pnpm dev:remote       # doctor + dev
+pnpm test:shared-db   # opcjonalnie: Node API i handler Workera zwracają te same dane
+```
+
+Lokalne `.env` nigdy nie trafia do Git. Szczegóły:
+[`docs/ARCHITECTURE_V45_SHARED_DEV_DATABASE_AND_HYPERDRIVE.md`](docs/ARCHITECTURE_V45_SHARED_DEV_DATABASE_AND_HYPERDRIVE.md).
 
 ## Publiczne DEV na Cloudflare
 
 Repo zawiera adapter Worker + Static Assets, ponieważ istniejący publiczny
 adres jest w domenie `workers.dev`. `/api` pozostaje na tym samym originie co
 frontend. Worker korzysta z bindingu `HYPERDRIVE`, `mysql2` i tych samych
-repozytoriów Drizzle oraz usług co Node. `pnpm build:edge` wykonuje lokalny
-dry-run pakowania. Konfiguracja bez sekretów jest w `wrangler.example.jsonc`.
-Przed wdrożeniem skopiuj ją do ignorowanego `wrangler.jsonc`, wpisz prawdziwe
-ID Hyperdrive i wykonaj bramkę TLS/ACL opisaną w
-[`docs/CLOUDFLARE_SEOHOST_V42.md`](docs/CLOUDFLARE_SEOHOST_V42.md).
-Nie publikuj Workera z przykładowym ID. Hasło bazy zapisuje się tylko w
-konfiguracji Hyperdrive po stronie Cloudflare, nigdy jako `VITE_*`.
+repozytoriów Drizzle oraz usług co Node. Przepływ:
+Browser → Worker → Hyperdrive → MariaDB (alwaysdata), lokalnie:
+Web → Node API → MariaDB — ta sama baza.
+
+`wrangler.jsonc` jest w repo (bez sekretów) i Cloudflare Workers Builds
+wdraża go po każdym pushu na `main`: `/api/*` trafia do Workera, pozostałe
+ścieżki do SPA. `pnpm build:edge` wykonuje lokalny dry-run pakowania i
+sprawdza granice bundli. Blok `hyperdrive` jest zakomentowany, dopóki nie
+wkleisz prawdziwego ID konfiguracji Hyperdrive — do tego czasu
+`/api/health` zwraca `"database": "not-configured"`, a kalkulator działa
+bez katalogu. Hasło bazy zapisuje się tylko w konfiguracji Hyperdrive po
+stronie Cloudflare, nigdy jako `VITE_*`. Instrukcja:
+[`docs/ARCHITECTURE_V45_SHARED_DEV_DATABASE_AND_HYPERDRIVE.md`](docs/ARCHITECTURE_V45_SHARED_DEV_DATABASE_AND_HYPERDRIVE.md).
 Dodany cennik Ruukki z 28.04.2026 jest archiwalny: producent ogłosił
 cennik od 28.08.2026, więc domyślny lookup nie podaje dawnej ceny jako
 aktualnej. Dla kontroli zapisu historycznego API przyjmuje `&at=2026-07-01`.

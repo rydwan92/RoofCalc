@@ -1,5 +1,5 @@
 import { ZodError, z } from 'zod';
-import type { HealthResponse } from '@cieslacalc/shared';
+import type { DatabaseHealth, HealthResponse } from '@cieslacalc/shared';
 import {
   catalogIdSchema,
   catalogManufacturersResponseSchema,
@@ -37,23 +37,61 @@ const pricingVariantsResponseSchema = z.object({
 });
 
 /** Shared endpoint semantics for Express and Cloudflare Fetch transports. */
+export interface HealthContext {
+  runtime: HealthResponse['runtime'];
+  /** Runs a trivial read; must never throw driver details to the caller. */
+  probeDatabase?: () => Promise<void>;
+}
+
+const HEALTH_PROBE_TIMEOUT_MS = 5000;
+
+export async function databaseHealth(
+  probe: HealthContext['probeDatabase'],
+): Promise<DatabaseHealth> {
+  if (!probe) return 'not-configured';
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      probe(),
+      new Promise((_, reject) => {
+        timer = setTimeout(reject, HEALTH_PROBE_TIMEOUT_MS);
+      }),
+    ]);
+    return 'connected';
+  } catch {
+    return 'unavailable';
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Health stays HTTP 200 whenever the API process answers: the calculator
+ * core does not need the database, so a DB outage is `degraded`, not down.
+ */
+export async function healthResult(context: HealthContext): Promise<ApiResult> {
+  const database = await databaseHealth(context.probeDatabase);
+  const body: HealthResponse = {
+    status: database === 'connected' ? 'ok' : 'degraded',
+    service: 'cieslacalc-api',
+    version: '0.1.0',
+    runtime: context.runtime,
+    database,
+  };
+  return json(body);
+}
+
 export async function handleApiRequest(
   method: string,
   pathname: string,
   search: URLSearchParams,
   catalog?: CatalogService,
   pricing?: PricingService,
+  health: HealthContext = { runtime: 'node' },
 ): Promise<ApiResult> {
   if (method !== 'GET' && method !== 'HEAD')
     return errorResult(404, 'not-found');
-  if (pathname === '/api/health') {
-    const body: HealthResponse = {
-      status: 'ok',
-      service: 'cieslacalc-api',
-      version: '0.1.0',
-    };
-    return json(body);
-  }
+  if (pathname === '/api/health') return healthResult(health);
   const catalogPath = pathname.startsWith('/api/catalog/');
   const pricingPath = pathname.startsWith('/api/pricing/');
   if (catalogPath && !catalog) return errorResult(503, 'catalog-unavailable');

@@ -1,5 +1,9 @@
 # V42 — SEOHost / Cloudflare manual acceptance
 
+> **Historical (superseded by V45).** The shared DEV database moved to
+> alwaysdata, whose publicly trusted TLS certificate satisfies Hyperdrive.
+> Current instructions: `ARCHITECTURE_V45_SHARED_DEV_DATABASE_AND_HYPERDRIVE.md`.
+
 ## Local shared DEV
 
 The developer's root `.env` alone holds a private `DATABASE_URL` for

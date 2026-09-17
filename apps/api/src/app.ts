@@ -1,12 +1,13 @@
 import express from 'express';
 import type { CatalogService } from './catalog/service';
 import type { PricingService } from './pricing/service';
-import { handleApiRequest } from './http/handler';
+import { handleApiRequest, type HealthContext } from './http/handler';
 
 export function createApp(
   webDirectory?: string,
   catalogService?: CatalogService,
   pricingService?: PricingService,
+  health: HealthContext = { runtime: 'node' },
 ) {
   const app = express();
   app.disable('x-powered-by');
@@ -38,6 +39,7 @@ export function createApp(
       url.searchParams,
       catalogService,
       pricingService,
+      health,
     );
     res.status(result.status).json(result.body);
   });

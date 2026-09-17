@@ -1,0 +1,29 @@
+// RoofCalc on Cloudflare Workers (deployed by Workers Builds on push).
+//   /api/*      -> Worker (apps/api/src/edge/worker.ts) -> HYPERDRIVE -> MariaDB
+//   everything  -> static SPA from apps/web/dist (SPA fallback)
+// No credentials live here: the database password is stored only inside the
+// Hyperdrive configuration in the Cloudflare dashboard. See
+// docs/ARCHITECTURE_V45_SHARED_DEV_DATABASE_AND_HYPERDRIVE.md.
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "roofcalc",
+  "main": "./apps/api/src/edge/worker.ts",
+  "compatibility_date": "2026-09-16",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./apps/web/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"],
+  },
+  "observability": { "enabled": true },
+  // HYPERDRIVE_BINDING — paste the Hyperdrive configuration ID and uncomment.
+  // Until then /api/health reports "database": "not-configured" and the
+  // calculator keeps working without the online catalogue.
+  // "hyperdrive": [
+  //   {
+  //     "binding": "HYPERDRIVE",
+  //     "id": "PASTE_HYPERDRIVE_ID_HERE",
+  //   },
+  // ],
+}

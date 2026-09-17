@@ -20,6 +20,19 @@
         "dev"
       ],
       "port": 5173
+    },
+    {
+      "name": "api",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "pnpm@10.15.1",
+        "--filter",
+        "@cieslacalc/api",
+        "exec",
+        "tsx",
+        "src/server.ts"
+      ],
+      "port": 3001
     }
   ]
 }

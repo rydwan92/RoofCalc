@@ -1297,7 +1297,19 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
-**Iteration:** `044 — calculator trust and UX hardening`
+**Iteration:** `045 — shared remote DEV database and Cloudflare Hyperdrive integration`
+
+**Status:** `IMPLEMENTED — committed and pushed on main; Hyperdrive ID is the one manual step`
+
+**Completed:** local Node and the Cloudflare Worker now target one alwaysdata MariaDB 11.4 DEV database. Verified provider facts: host is `mysql-<account>.alwaysdata.net` (hyphen), account is `REQUIRE SSL`, WebPKI certificate, `mysql_native_password` — all Hyperdrive-compatible (unlike the SEOHost self-signed candidate). New `apps/api/src/db/config.ts` is the single `DATABASE_URL` parser for API, CLIs, doctor and `drizzle.config.ts` (verified TLS for non-loopback hosts, `?ssl=required|disabled`, credential-free errors). Doctor is read-only and reports DNS, TCP, TLS, auth, server, grants (hashes stripped), tables, migrations and counts. `/api/health` reports `status ok|degraded`, `runtime`, `database connected|unavailable|not-configured` for both transports. Worker refactored into `createWorker(connect)`; health probes Hyperdrive; driver errors never leak; `Cache-Control: no-store`. `wrangler.example.jsonc` → committed `wrangler.jsonc` (Workers Builds deploys on push; hyperdrive block commented until a real ID exists). Fresh DB bootstrapped: 3 migrations, 11 manufacturers, 52 families/revisions (50 active), 40 variants, 4 price lists, 30 entries; replay 0 new / 0 conflicts. `pnpm test:shared-db` proves Node and Worker handler return identical records from the real DB (read-only). See `docs/ARCHITECTURE_V45_SHARED_DEV_DATABASE_AND_HYPERDRIVE.md`.
+
+**Known limitation:** `wrangler dev` local Hyperdrive emulation (Miniflare MySQL TLS proxy) cannot log in to a `REQUIRE SSL` MariaDB (`ER_NOT_SUPPORTED_AUTH_MODE`); production Hyperdrive is unaffected.
+
+**NEXT ACTION:** (1) user: create the Hyperdrive configuration, paste its ID into `wrangler.jsonc`, uncomment the block, push; then verify `https://roofcalc.michal-rydwanski.workers.dev/api/health` shows `"database":"connected"` and compare `/api/catalog/manufacturers` with local. (2) code: V45+ cut preview drawing pass (see V44 next action). (3) CI Browser QA job was already failing on 2a5d526 — investigate separately.
+
+---
+
+**Previous iteration:** `044 — calculator trust and UX hardening`
 
 **Status:** `IMPLEMENTED — committed and pushed on main`
 

@@ -1,6 +1,6 @@
 # RoofCalc / CieślaCalc — Architecture Index
 
-**This is the current-state map, after V42.** Read it after `PROJECT_BLUEPRINT.md`
+**This is the current-state map, after V45.** Read it after `PROJECT_BLUEPRINT.md`
 and before touching code. It describes what exists today, not the history of how
 it got here. Historical `ARCHITECTURE_V*.md` documents stay authoritative for the
 subsystem they introduced and should be opened only when changing that subsystem.
@@ -219,6 +219,14 @@ shared angle/metre/area formatters; a Quick result panel with drawing
 highlight and reusable "Jak policzono?" evidence; one source vocabulary
 (`SourceBadge`), one status vocabulary and a reference/execution geometry
 badge. See `docs/ARCHITECTURE_V44_CALCULATOR_TRUST_AND_UX.md`.
+
+V45 connects local Node and the Cloudflare Worker to one shared alwaysdata
+MariaDB DEV database (the SEOHost candidate is historical): a single
+`DATABASE_URL` parser with verified TLS for remote hosts, a read-only
+network/auth/grants doctor, health reporting
+`connected | unavailable | not-configured`, a committed `wrangler.jsonc` for
+Workers Builds and a read-only Node-vs-Worker parity test. See
+`docs/ARCHITECTURE_V45_SHARED_DEV_DATABASE_AND_HYPERDRIVE.md`.
 
 V43B turns covering → battens → counter-battens into one workflow. The batten
 quantity audit found no solver error but a silent application defect: repair
@@ -541,6 +549,7 @@ pnpm e2e      # real-browser smoke, desktop 1440x900 and mobile 390x844 (pnpm e2
 | `ARCHITECTURE_V42_SHARED_DEV_AND_METAL` | shared DEV SQL, Cloudflare Worker/Hyperdrive boundary, additive metal seed, batten/module semantics |
 | `ARCHITECTURE_V43B_COVERING_AND_BATTEN_WORKFLOW` | covering-first batten workflow, Auto/Manual ownership, batten scope audit, installation plan, hip-detail guidance |
 | `ARCHITECTURE_V44_CALCULATOR_TRUST_AND_UX` | calculator oracles, reference acceptance numbers, display precision, Quick result/evidence, source and status vocabulary |
+| `ARCHITECTURE_V45_SHARED_DEV_DATABASE_AND_HYPERDRIVE` | one alwaysdata DEV database for Node and Worker, DATABASE_URL/TLS policy, doctor, health, Hyperdrive setup |
 | `domain/ROOF_TILE_EDGE_PLACEMENT` | eave/verge evidence; why no physical tile edge projection is modelled |
 | `PROJECT_BLUEPRINT.md` | always first; holds the work checkpoint |
 | `docs/ARCHITECTURE_INDEX.md` | always second; this file |

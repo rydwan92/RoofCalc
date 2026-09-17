@@ -30,14 +30,41 @@ describe('API', () => {
       .set('Origin', 'http://localhost');
     expect(write.headers['access-control-allow-origin']).toBeUndefined();
   });
-  it('reports health without a database', async () => {
+  it('reports health as degraded without a database', async () => {
     const response = await request(createApp()).get('/api/health');
     expect(response.status).toBe(200);
     expect(response.body).toEqual({
-      status: 'ok',
+      status: 'degraded',
       service: 'cieslacalc-api',
       version: '0.1.0',
+      runtime: 'node',
+      database: 'not-configured',
     });
+  });
+  it('distinguishes a connected database from an unavailable one', async () => {
+    const connected = await request(
+      createApp(undefined, undefined, undefined, {
+        runtime: 'node',
+        probeDatabase: async () => undefined,
+      }),
+    ).get('/api/health');
+    expect(connected.body).toMatchObject({
+      status: 'ok',
+      database: 'connected',
+    });
+    const unavailable = await request(
+      createApp(undefined, undefined, undefined, {
+        runtime: 'node',
+        probeDatabase: () =>
+          Promise.reject(new Error('mysql://user:secret@host/db')),
+      }),
+    ).get('/api/health');
+    expect(unavailable.status).toBe(200);
+    expect(unavailable.body).toMatchObject({
+      status: 'degraded',
+      database: 'unavailable',
+    });
+    expect(JSON.stringify(unavailable.body)).not.toContain('secret');
   });
   it('reports catalogue routes unavailable without a database, and never 500s', async () => {
     // ADR-006: the calculator works offline. Without DATABASE_URL the server
