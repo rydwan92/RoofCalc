@@ -17,6 +17,9 @@ importers:
       '@cieslacalc/document-core':
         specifier: workspace:*
         version: link:packages/document-core
+      '@cieslacalc/linear-procurement':
+        specifier: workspace:*
+        version: link:packages/linear-procurement
       '@cieslacalc/procurement-core':
         specifier: workspace:*
         version: link:packages/procurement-core
@@ -153,6 +156,9 @@ importers:
       '@cieslacalc/drawing-engine':
         specifier: workspace:*
         version: link:../../packages/drawing-engine
+      '@cieslacalc/linear-procurement':
+        specifier: workspace:*
+        version: link:../../packages/linear-procurement
       '@cieslacalc/pricing-core':
         specifier: workspace:*
         version: link:../../packages/pricing-core
@@ -266,6 +272,12 @@ importers:
   packages/document-core: {}
 
   packages/drawing-engine: {}
+
+  packages/linear-procurement:
+    dependencies:
+      '@cieslacalc/procurement-core':
+        specifier: workspace:*
+        version: link:../procurement-core
 
   packages/pricing-core:
     dependencies:

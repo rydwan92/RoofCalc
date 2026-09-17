@@ -97,6 +97,32 @@ describe('package dependency direction', () => {
     );
   });
 
+  /**
+   * V48: `linear-procurement` is the layer that turns a resolved installation
+   * run into indivisible pieces. It sits directly above `procurement-core` and
+   * below the application. If geometry, catalogue or UI ever enters it, the
+   * commercial planner has started to become a second geometry engine.
+   */
+  it('linear-procurement stays free of React, DOM, apps, catalogue, API and database', () => {
+    expect(
+      forbiddenImports('packages/linear-procurement', [
+        ...PURE_DOMAIN,
+        ...CATALOGUE,
+      ]),
+    ).toEqual([]);
+    expect(
+      forbiddenText('packages/linear-procurement', BROWSER_GLOBALS),
+    ).toEqual([]);
+  });
+
+  it('linear-procurement depends on procurement-core and nothing else in the workspace', () => {
+    expect(
+      forbiddenImports('packages/linear-procurement', [
+        /^@cieslacalc\/(?!procurement-core$)/,
+      ]),
+    ).toEqual([]);
+  });
+
   it('procurement-core depends on no workspace package at all', () => {
     expect(
       forbiddenImports('packages/procurement-core', [/^@cieslacalc\//]),

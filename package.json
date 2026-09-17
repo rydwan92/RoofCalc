@@ -36,6 +36,7 @@
     "@cieslacalc/calculator-core": "workspace:*",
     "@cieslacalc/covering-core": "workspace:*",
     "@cieslacalc/document-core": "workspace:*",
+    "@cieslacalc/linear-procurement": "workspace:*",
     "@cieslacalc/procurement-core": "workspace:*",
     "@cieslacalc/project-core": "workspace:*",
     "@cieslacalc/quantity-core": "workspace:*",

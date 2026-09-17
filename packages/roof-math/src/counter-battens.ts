@@ -13,6 +13,7 @@ import {
   projectPlaneLocalToWorld,
   projectPlaneWorldToLocal,
   resolveRoofPlaneBasis,
+  type RoofPlaneBasis,
 } from './roof-features';
 import { roofPlaneIds, roofPlaneSide } from './roof-surface';
 import { roofTemplateSchema } from './roof-template';
@@ -152,6 +153,79 @@ function verticalIntervalAtU(
   return ordered.length >= 2
     ? { fromVMm: ordered[0]!, toVMm: ordered.at(-1)! }
     : undefined;
+}
+
+/**
+ * One resolved rafter axis on a plane: the line a counter-batten sits on, and
+ * the line a tile batten may be jointed over (V48, research §2.1).
+ */
+export interface PlaneRafterAxis {
+  sourceMemberId: string;
+  /** Plane-local cross-slope position of the axis. */
+  uMm: number;
+  /** Plane extent along the fall line at this `uMm`, before openings. */
+  interval: { fromVMm: number; toVMm: number };
+}
+
+export interface PlaneRafterAxes {
+  axes: PlaneRafterAxis[];
+  /** Axes whose members do not form a single fall-line, in resolver order. */
+  invalidSourceMemberIds: string[];
+}
+
+/**
+ * Collapses a plane's rafter/jack-rafter members into their supporting axes.
+ *
+ * Shared by the counter-batten layout (each axis carries one run) and the V48
+ * commercial batten planner (each axis is a legal joint position), so both read
+ * the same resolved structure instead of re-deriving it or, worse, guessing
+ * from a nominal rafter spacing.
+ */
+export function planeRafterAxes(
+  skeleton: RoofSkeleton,
+  basis: RoofPlaneBasis,
+  side: SkeletonMember3D['side'],
+): PlaneRafterAxes {
+  const candidates = skeleton.members.filter(
+    (member) =>
+      (member.kind === 'rafter' ||
+        member.kind === 'rafter-segment' ||
+        member.kind === 'jack-rafter') &&
+      member.side === side,
+  );
+  const grouped = new Map<string, SkeletonMember3D[]>();
+  for (const member of candidates) {
+    const sourceId = originalRafterId(member);
+    grouped.set(sourceId, [...(grouped.get(sourceId) ?? []), member]);
+  }
+  const axes: PlaneRafterAxis[] = [];
+  const invalidSourceMemberIds: string[] = [];
+  for (const [sourceMemberId, members] of [...grouped.entries()].sort((a, b) =>
+    a[0].localeCompare(b[0], undefined, { numeric: true }),
+  )) {
+    const localPoints = members.flatMap((member) => [
+      projectPlaneWorldToLocal(basis, member.from),
+      projectPlaneWorldToLocal(basis, member.to),
+    ]);
+    const uMm =
+      localPoints.reduce((sum, point) => sum + point.uMm, 0) /
+      localPoints.length;
+    const interval = verticalIntervalAtU(basis.polygon, uMm);
+    const uSpread =
+      Math.max(...localPoints.map((point) => point.uMm)) -
+      Math.min(...localPoints.map((point) => point.uMm));
+    if (
+      !interval ||
+      !Number.isFinite(uMm) ||
+      !Number.isFinite(uSpread) ||
+      uSpread > EPSILON
+    ) {
+      invalidSourceMemberIds.push(sourceMemberId);
+      continue;
+    }
+    axes.push({ sourceMemberId, uMm, interval });
+  }
+  return { axes, invalidSourceMemberIds };
 }
 
 function subtractOpenings(
@@ -439,45 +513,9 @@ export function resolveCounterBattenLayout(args: {
       (feature): feature is RoofWindowFeature =>
         feature.kind === 'roof-window' && feature.roofPlaneId === roofPlaneId,
     );
-    const candidates = args.skeleton.members.filter(
-      (member) =>
-        (member.kind === 'rafter' ||
-          member.kind === 'rafter-segment' ||
-          member.kind === 'jack-rafter') &&
-        member.side === side,
-    );
-    const axes = new Map<string, SkeletonMember3D[]>();
-    for (const member of candidates) {
-      const sourceId = originalRafterId(member);
-      axes.set(sourceId, [...(axes.get(sourceId) ?? []), member]);
-    }
-    for (const [sourceMemberId, members] of [...axes.entries()].sort((a, b) =>
-      a[0].localeCompare(b[0], undefined, { numeric: true }),
-    )) {
-      const localPoints = members.flatMap((member) => [
-        projectPlaneWorldToLocal(basis, member.from),
-        projectPlaneWorldToLocal(basis, member.to),
-      ]);
-      const uMm =
-        localPoints.reduce((sum, point) => sum + point.uMm, 0) /
-        localPoints.length;
-      const interval = verticalIntervalAtU(basis.polygon, uMm);
-      const uSpread =
-        Math.max(...localPoints.map((point) => point.uMm)) -
-        Math.min(...localPoints.map((point) => point.uMm));
-      if (
-        !interval ||
-        !Number.isFinite(uMm) ||
-        !Number.isFinite(uSpread) ||
-        uSpread > EPSILON
-      ) {
-        issues.push({
-          code: 'invalid-source-axis',
-          roofPlaneId,
-          sourceMemberId,
-        });
-        continue;
-      }
+    const resolvedAxes = planeRafterAxes(args.skeleton, basis, side);
+    for (const axis of resolvedAxes.axes) {
+      const { sourceMemberId, uMm, interval } = axis;
       const segments = subtractOpenings(interval, uMm, openings).map(
         ({ fromVMm, toVMm }) => {
           const fromLocal = { uMm, vMm: fromVMm };
@@ -510,6 +548,8 @@ export function resolveCounterBattenLayout(args: {
         reference: 'rafter-axis',
       });
     }
+    for (const sourceMemberId of resolvedAxes.invalidSourceMemberIds)
+      issues.push({ code: 'invalid-source-axis', roofPlaneId, sourceMemberId });
   }
   // V39: the hip boundary is now an explicit execution decision rather than a
   // permanent dead end. `not-decided` still refuses to invent a run.
