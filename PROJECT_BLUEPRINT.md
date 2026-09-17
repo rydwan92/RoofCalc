@@ -1297,7 +1297,19 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
-**Iteration:** `047 — project readiness, guided guardrails, document truth and two-axis laps`
+**Iteration:** `048 — commercial planning for battens and counter-battens`
+
+**Status:** `IMPLEMENTED — committed on main`
+
+**Completed:** new pure `packages/linear-procurement` — the layer V48 needed above `procurement-core`, because a batten row may legitimately be several commercial pieces and `RequiredPiece` means one indivisible blank. `resolved run → join policy → installable pieces → RequiredPiece[]`. `joint-at-support` (tile battens) places joints only on resolved rafter axes via the new exported `planeRafterAxes` (extracted from the counter-batten layout, so both read one structure — never a nominal rafter spacing); `joint-along-supporting-member` (counter-battens) reflects continuous support. A DP over support stations minimises pieces, staggers joints across courses, prefers an even division so pieces fill commercial lengths, and reports `staggerRelaxed` instead of buying extra timber when the geometry admits only one split. Raking (hip/valley) ends are never guessed: unplanned without an explicit allowance, and the allowance is always visible as `fabricationAllowanceMm`, never folded into procurement kerf. Openings already split rows, so no piece bridges one. Canonical `RoofBuildUp.linearStock` (additive-optional, one undoable edit, no migration). UI: Material Plan `816 m · GEOMETRIA` → `[Zaplanuj zakup]` → `Łaty 40×60 · 44 szt. · PLAN ZAKUPU`, purchase panel with lengths (labelled `SUGESTIA`), purchased/installed/waste/reusable/utilisation/joints, grouped cut patterns and an advanced kerf/end-trim/remnant/objective block. Cost gains one `linear-stock` line per commercial length priced per piece and drops the geometric-length suggestion; the material list states the same plan; readiness gains `linear-plan-missing` (info) and `linear-plan-partial` (warning). V47 closeout: `Gotowy do podglądu` + `Zakres: X z Y sekcji` instead of a contradictory `Gotowy · 1/6`, and the phone readiness bar keeps the consequence line (clamped) instead of hiding it. See `docs/ARCHITECTURE_V48_LINEAR_MATERIAL_PROCUREMENT.md` and `docs/domain/BATTEN_STOCK_AND_JOINING_RESEARCH.md`.
+
+**Known / not done:** piece lengths are chosen before stock is packed, so an even split can be beaten by a stock-aware split (a 5,5 m run becomes 2 × 2,75 m where 4,0 m + 1,5 m would pack better) — the plan is valid and truthful but not jointly optimal. No batten products in the catalogue yet, so the offered lengths stay an explicit suggestion. Sheet (modular / cut-to-length) purchase areas and ridge/hip/verge accessory counts are still untouched.
+
+**NEXT ACTION:** V49 — joint optimisation of piece length and stock packing for linear materials (feed the available commercial lengths into the assembly step so the split is chosen against real stock), plus verified batten/counter-batten catalogue products with provenance so the suggested lengths and prices stop being manual-only.
+
+---
+
+**Previous iteration:** `047 — project readiness, guided guardrails, document truth and two-axis laps`
 
 **Status:** `IMPLEMENTED — committed on main`
 

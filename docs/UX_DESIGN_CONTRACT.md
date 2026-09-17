@@ -475,3 +475,35 @@ and their totals are never added together.
 - **Readiness actions land on the exact editor** (layer, section, focused
   field), not on a generic tab.
 - **Invalid input stays local**: mark the field, explain, never commit.
+
+## V48 — Commercial planning for linear materials
+
+**A geometric length is never shown as a purchase quantity.** A batten row
+reads `816,4 m · GEOMETRIA` until a plan exists, then `Łaty 40×60 · 44 szt. ·
+PLAN ZAKUPU` with the installation requirement still visible as its own number.
+The Material Plan's status counts move with the badge, so the summary and the
+row can never disagree.
+
+**Hierarchy:** WYMAGANIE → DŁUGOŚCI HANDLOWE → PLAN → KOSZT. Solver vocabulary
+(`RequiredPiece`, `StockUsage`, branch and bound) never reaches the user. The
+optimisation goal is phrased as *Najmniej odpadu* / *Najmniej kupionych metrów*
+/ *Najmniej sztuk*, and a plan whose optimality was not proven says "Plan
+znaleziony, nie potwierdzono optymalności" rather than "optymalny".
+
+**Normal screen stays small:** requirement, lengths, and five plan numbers.
+Kerf, end trim, smallest reusable offcut and the objective live behind
+*Ustawienia rozkroju*. Cut patterns are grouped and repeated
+(`3,00 m × 44 szt.`), never one row per length, with an explicit
+"show the rest" affordance.
+
+**Vocabulary is kept distinct:** rzaz, obcięcie końców, odpad and resztka
+użytkowa are four different things. An unused centimetre is not automatically
+waste.
+
+**Blocked is never zero.** A layer that cannot be planned says why and offers
+the fix — an undecided H1 hip detail shows "Najpierw uzupełnij detal grzbietów
+H1" with a button that lands on that detail. Commercial planning itself is
+never mandatory: readiness raises it as *info*, never as a blocker.
+
+**Suggestions are labelled.** The offered 3 / 4 / 5 m lengths carry a
+`SUGESTIA` chip because no verified batten product backs them yet.

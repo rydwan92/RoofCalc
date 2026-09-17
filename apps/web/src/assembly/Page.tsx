@@ -139,6 +139,14 @@ import {
   type ReadinessDocumentKind,
 } from './project-readiness';
 import { documentStatusFor } from './readiness-copy';
+import {
+  battenRequirement,
+  counterBattenRequirement,
+  planLinearPurchase,
+  type LinearMaterialKind,
+  type LinearPurchasePlan,
+} from './linear-material-plan';
+import type { LinearPlanSurface } from './MaterialPlan';
 import { useInstallationActions } from './InstallationWorkflow';
 import { summarizeCostScenario } from '@cieslacalc/cost-core';
 import { ProjectManager, projectStatusLabel } from '../projects/ProjectManager';
@@ -1094,6 +1102,90 @@ function AssemblyPageContent() {
     () => deriveProjectWorkflow(projectWorkflowFacts),
     [projectWorkflowFacts],
   );
+  /**
+   * V48: the commercial planning surface. Requirements come from the resolved
+   * batten/counter-batten layouts, and the plan is only computed once the user
+   * has actually chosen commercial lengths — geometry never depends on it.
+   */
+  const linearStock = state.projectDocument.project.buildUp.linearStock;
+  const linearRequirements = useMemo(
+    () => ({
+      batten: battenRequirement({
+        template: state.template,
+        skeleton: framingProjection.composedSkeleton,
+        result: battenProjection,
+        section: battenLayout
+          ? {
+              widthMm: battenLayout.battenWidthMm,
+              depthMm: battenLayout.battenHeightMm,
+            }
+          : undefined,
+      }),
+      'counter-batten': counterBattenRequirement({
+        template: state.template,
+        result: counterBattenProjection,
+      }),
+    }),
+    [
+      battenLayout,
+      battenProjection,
+      counterBattenProjection,
+      framingProjection.composedSkeleton,
+      state.template,
+    ],
+  );
+  const linearSelections = useMemo(
+    () => ({
+      batten: linearStock?.battens,
+      'counter-batten': linearStock?.counterBattens,
+    }),
+    [linearStock],
+  );
+  const linearPlans = useMemo(() => {
+    const plans: Partial<Record<LinearMaterialKind, LinearPurchasePlan>> = {};
+    for (const kind of ['batten', 'counter-batten'] as const) {
+      const selection = linearSelections[kind];
+      if (!selection?.lengths.length) continue;
+      const plan = planLinearPurchase(linearRequirements[kind], {
+        stockLengths: selection.lengths.map((item, index) => ({
+          id: `stock-${item.lengthMm}-${index}`,
+          lengthMm: item.lengthMm,
+          ...(item.availability === undefined
+            ? {}
+            : { availability: item.availability }),
+        })),
+        cutting: {
+          kerfMm: selection.kerfMm ?? 3,
+          endTrimMm: selection.endTrimMm ?? 0,
+          minimumReusableRemnantMm: selection.minimumReusableRemnantMm ?? 300,
+        },
+        ...(selection.objective ? { objective: selection.objective } : {}),
+        ...(selection.angledEndAllowanceMm === undefined
+          ? {}
+          : { angledEndAllowanceMm: selection.angledEndAllowanceMm }),
+      });
+      if (plan) plans[kind] = plan;
+    }
+    return plans;
+  }, [linearRequirements, linearSelections]);
+  const linearSurface: LinearPlanSurface = useMemo(
+    () => ({
+      requirements: linearRequirements,
+      selections: linearSelections,
+      plans: linearPlans,
+      onSelectionChange: (kind, selection) =>
+        state.setLinearStockSelection(
+          kind === 'batten' ? 'battens' : 'counterBattens',
+          selection,
+        ),
+      onFixBlocker: (_kind, blocker) => {
+        if (blocker === 'hip-detail-unresolved')
+          runReadinessAction('choose-hip-detail');
+      },
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [linearPlans, linearRequirements, linearSelections],
+  );
   // V47: one readiness projection over already-resolved facts.
   const readinessCandidates = useMemo(
     () => createExportCandidates(documentFacts),
@@ -1138,6 +1230,27 @@ function AssemblyPageContent() {
             ? summarizeCostScenario(costScenario)
             : undefined,
         candidates: readinessCandidates,
+        // V48: commercial planning is optional, so only plannable materials
+        // are ever mentioned, and never as a blocker.
+        linearPlannable: (['batten', 'counter-batten'] as const).filter(
+          (kind) => linearRequirements[kind].status === 'ready',
+        ),
+        linearPlans: Object.fromEntries(
+          (['batten', 'counter-batten'] as const).flatMap((kind) => {
+            const plan = linearPlans[kind];
+            return plan
+              ? [
+                  [
+                    kind,
+                    {
+                      status: plan.status,
+                      unresolvedRuns: plan.assembly.unresolved.length,
+                    },
+                  ],
+                ]
+              : [];
+          }),
+        ),
       }),
     [
       state.template,
@@ -1157,11 +1270,15 @@ function AssemblyPageContent() {
       materialRows,
       costScenario,
       readinessCandidates,
+      linearRequirements,
+      linearPlans,
     ],
   );
   const documentFactsWithLimits: ExportFacts = {
     ...documentFacts,
     limitations: projectReadiness.limitations,
+    // V48: cost and documents read the one resolved plan; neither re-solves.
+    linearPlans,
   };
   const projectSummary = useMemo(() => {
     const timberFamilies = new Map<string, number>();
@@ -2270,6 +2387,7 @@ function AssemblyPageContent() {
                           prices={effectiveMaterialPrices}
                           readiness={projectReadiness}
                           onReadinessAction={runReadinessAction}
+                          linear={linearSurface}
                           onPricesChange={setMaterialPrices}
                           onScenarioChange={setCostScenario}
                           onOpenCutting={openCutting}
@@ -2447,6 +2565,8 @@ function AssemblyPageContent() {
                             ),
                             coveringLayouts: resolvedCoveringLayouts,
                             variantPrices,
+                            // V48: price the commercial pieces, not metres.
+                            linearPlans,
                           } satisfies Omit<ExportFacts, 'cost'>
                         }
                         scenario={costScenario}

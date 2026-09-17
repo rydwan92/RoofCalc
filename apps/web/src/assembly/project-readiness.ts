@@ -90,6 +90,8 @@ export type ReadinessIssueCode =
   | 'membrane-layout-incomplete'
   | 'k1-unresolved'
   | 'k1-cutting-plan-missing'
+  | 'linear-plan-missing'
+  | 'linear-plan-partial'
   | 'cost-not-started'
   | 'cost-prices-missing'
   | 'cost-quantities-missing';
@@ -207,6 +209,19 @@ export interface ReadinessFacts {
   k1: K1CuttingRequirement;
   hasCuttingPlan: boolean;
   materialRows: readonly MaterialPlanRow[];
+  /**
+   * V48: how far the commercial purchase plan for each linear build-up
+   * material got. Absent entries simply mean no plan was prepared — a purchase
+   * plan is never required to use the geometry.
+   */
+  linearPlans?: Partial<
+    Record<
+      'batten' | 'counter-batten',
+      { status: 'complete' | 'partial' | 'unfulfilled'; unresolvedRuns: number }
+    >
+  >;
+  /** Linear materials whose layer is on and whose requirement is plannable. */
+  linearPlannable?: readonly ('batten' | 'counter-batten')[];
   cost?: CostScenarioSummary;
   candidates: readonly SectionCandidate[];
 }
@@ -655,6 +670,32 @@ export function deriveProjectReadiness(
       affects: [],
       source: 'k1-cutting-plan',
     });
+
+  // ── Commercial plan for linear build-up materials (V48) ──────────────
+  for (const material of facts.linearPlannable ?? []) {
+    const plan = facts.linearPlans?.[material];
+    if (!plan)
+      add({
+        code: 'linear-plan-missing',
+        severity: 'info',
+        area: 'materials',
+        params: { material },
+        action: 'open-materials',
+        affects: [],
+        source: `linear-plan:${material}`,
+      });
+    else if (plan.status !== 'complete')
+      add({
+        code: 'linear-plan-partial',
+        severity: 'warning',
+        area: 'materials',
+        params: { material, count: plan.unresolvedRuns },
+        action: 'open-materials',
+        // A partial plan changes what the purchase quantities mean.
+        affects: ['materials', 'cost'],
+        source: `linear-plan:${material}`,
+      });
+  }
 
   // ── Cost ─────────────────────────────────────────────────────────────
   const costStarted = !!facts.cost && facts.cost.includedLineCount > 0;

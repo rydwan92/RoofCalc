@@ -133,6 +133,9 @@ export function createMaterialPlanRows(
   for (const suggestion of createCostSuggestions(facts)) {
     if (
       suggestion.kind === 'k1-stock' ||
+      // V48: commercial pieces are shown by the purchase panel on the
+      // material's own row, never as extra rows in the plan.
+      suggestion.kind === 'linear-stock' ||
       suggestion.kind.startsWith('covering-')
     )
       continue;

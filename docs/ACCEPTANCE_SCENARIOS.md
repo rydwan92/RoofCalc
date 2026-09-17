@@ -602,3 +602,31 @@ Intended flow once ProjectDocument V2 lands (ADR-008):
 Blocked on the research in `docs/ARCHITECTURE_FUTURE_COMPOUND_ROOF_SCENE.md`:
 transform convention, identity scheme, contact anchors, connection classes,
 prototype coalescing and the V1→V2 migration.
+
+## V48 — battens and counter-battens become buyable
+
+**Gable, tile, automatic battens → purchase plan.** In Materiały the batten row
+shows `WYMAGANIE MONTAŻOWE` and a geometric basis. `Zaplanuj zakup` offers
+3 / 4 / 5 m (labelled a suggestion) and produces `PLAN ZAKUPU`: pieces per
+commercial length, purchased length, installed length, waste, reusable offcuts,
+utilisation and the joint count, plus grouped cut patterns. The row headline
+becomes `szt.` with the `PLAN ZAKUPU` badge, and the estimate gains one
+material line per commercial length priced per piece
+(`e2e/v48-commercial-planning.spec.ts`).
+
+**The choice is a project edit.** Choosing lengths is one undoable change;
+Cofnij returns the row to its geometric requirement.
+
+**Hip counter-battens with an undecided H1 detail.** The purchase panel refuses
+to plan and says "Najpierw uzupełnij detal grzbietów H1"; its button lands on
+that detail, and once a detail is chosen the same panel plans the purchase.
+
+**A raking end is never guessed.** On a hip roof the batten runs end on a rake,
+so the plan reports them as unplanned and asks for an allowance. Entering one
+resolves them, and the allowance stays visible in the blank rather than being
+folded into the saw kerf (`linear-material-plan.test.ts`,
+`packages/linear-procurement/src/index.test.ts`).
+
+**No joint floats.** Every joint the planner creates sits on a resolved rafter
+axis; a run with no interior support is reported unplanned instead of being
+spliced.

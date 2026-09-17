@@ -51,6 +51,7 @@ import type {
   BattenLayoutSpec,
   CounterBattenLayoutSpec,
   HipCounterBattenDetail,
+  LinearStockSelectionSpec,
   HipExecutionIntent,
   EndStationPolicy,
   RafterSpacingMode,
@@ -461,6 +462,15 @@ export interface AssemblyState {
    * is a normal undoable edit — unlike the transient 3D display toggles.
    */
   setHipCounterBattenDetail: (detail: HipCounterBattenDetail) => void;
+  /**
+   * V48 commercial decision: which stock lengths to buy a linear build-up
+   * material from, and how to cut them. Canonical project intent with normal
+   * Undo, and it never changes any geometry.
+   */
+  setLinearStockSelection: (
+    kind: 'battens' | 'counterBattens',
+    selection?: LinearStockSelectionSpec,
+  ) => void;
   /** V39 hip execution intent (top treatment, jack connection). Canonical. */
   setHipExecution: (intent: HipExecutionIntent) => void;
   setCoveringAssignments: (assignments: CoveringAssignmentSpec[]) => void;
@@ -1939,6 +1949,22 @@ export const useAssembly = create<AssemblyState>((set) => ({
           openingFramingProposalFeatureId: undefined,
         },
       };
+    }),
+  setLinearStockSelection: (kind, selection) =>
+    set((state) => {
+      const buildUp = state.projectDocument.project.buildUp;
+      const linearStock = { ...buildUp.linearStock, [kind]: selection };
+      const document = createRoofProjectDocument(state.template, {
+        features: state.projectDocument.project.features,
+        openingFraming: state.projectDocument.project.openingFraming,
+        buildUp: { ...buildUp, linearStock },
+        coverings: state.projectDocument.project.coverings,
+        membraneProduct: state.projectDocument.project.membraneProduct,
+      });
+      return withHistory(
+        state,
+        committedDocument(document, state.drafts, state.invalidFields),
+      );
     }),
   setBattenLayout: (battenLayout) =>
     set((state) => {

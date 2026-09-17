@@ -82,6 +82,8 @@ export interface LinearStockLength {
 export interface LinearPurchasePlan {
   kind: LinearMaterialKind;
   status: 'complete' | 'partial' | 'unfulfilled';
+  /** The section the stock class was formed from, for pricing and documents. */
+  section?: { widthMm: number; depthMm: number };
   assembly: LinearAssemblyResult;
   plan: CuttingPlan;
   stock: StockRequirement[];
@@ -377,6 +379,7 @@ export function planLinearPurchase(
   const purchasedLengthMm = plan.summary.purchasedStockLengthMm;
   return {
     kind: requirement.kind,
+    ...(requirement.section ? { section: requirement.section } : {}),
     status:
       assembly.status === 'resolved' && plan.status === 'complete'
         ? 'complete'

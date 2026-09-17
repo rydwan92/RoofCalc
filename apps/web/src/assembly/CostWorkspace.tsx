@@ -54,6 +54,9 @@ function suggestionLabelKey(suggestion: CostSuggestion): string {
   switch (suggestion.kind) {
     case 'k1-stock':
       return 'k1Stock';
+    // V48: one row per commercial length, so the label names the material.
+    case 'linear-stock':
+      return suggestion.material === 'batten' ? 'battens' : 'counterBattens';
     case 'battens':
       return 'battens';
     case 'counter-battens':

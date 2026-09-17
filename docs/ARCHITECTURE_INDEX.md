@@ -1,6 +1,6 @@
 # RoofCalc / CieślaCalc — Architecture Index
 
-**This is the current-state map, after V47.** Read it after `PROJECT_BLUEPRINT.md`
+**This is the current-state map, after V48.** Read it after `PROJECT_BLUEPRINT.md`
 and before touching code. It describes what exists today, not the history of how
 it got here. Historical `ARCHITECTURE_V*.md` documents stay authoritative for the
 subsystem they introduced and should be opened only when changing that subsystem.
@@ -245,6 +245,19 @@ group, and the single source of document limitations. Documents carry a
 printable status and a structured assumptions page. `roof-math` membrane roll
 planning includes end laps along the roll; `covering-core` tile layouts report
 eave projection. See `docs/ARCHITECTURE_V47_PROJECT_READINESS_AND_GUARDRAILS.md`.
+
+V48 adds the layer that makes a linear build-up material buyable:
+`packages/linear-procurement` turns a resolved installation run into
+*indivisible* installable pieces under an explicit join policy, and only those
+pieces reach `procurement-core`. A tile-batten joint may sit only on a resolved
+rafter axis (`planeRafterAxes`, shared with the counter-batten layout); a
+counter-batten is carried continuously by the rafter below. A raking end has no
+proven blank, so it stays unplanned unless the user sets an explicit
+allowance. The user's commercial choice is canonical
+(`RoofBuildUp.linearStock`); the plan is derived and feeds the Material Plan,
+the estimate and the material list. See
+`docs/ARCHITECTURE_V48_LINEAR_MATERIAL_PROCUREMENT.md` and
+`docs/domain/BATTEN_STOCK_AND_JOINING_RESEARCH.md`.
 
 V43B turns covering → battens → counter-battens into one workflow. The batten
 quantity audit found no solver error but a silent application defect: repair
@@ -570,6 +583,8 @@ pnpm e2e      # real-browser smoke, desktop 1440x900 and mobile 390x844 (pnpm e2
 | `ARCHITECTURE_V45_SHARED_DEV_DATABASE_AND_HYPERDRIVE` | one alwaysdata DEV database for Node and Worker, DATABASE_URL/TLS policy, doctor, health, Hyperdrive setup |
 | `ARCHITECTURE_V46_COVERING_SYNC_REPAIR_AND_SCHEME` | plane-scope reconciliation on roof-type switch, fit-roof repair, automatic battens with first covering, overlap audit, roof-aware covering scheme |
 | `ARCHITECTURE_V47_PROJECT_READINESS_AND_GUARDRAILS` | project readiness projection, severity semantics, safe repair vs expert decisions, document preflight/status, structured assumptions, membrane end laps, tile eave projection |
+| `ARCHITECTURE_V48_LINEAR_MATERIAL_PROCUREMENT` | join policy, installable pieces, batten/counter-batten purchase plans, cutting settings, cost and material-list integration |
+| `domain/BATTEN_STOCK_AND_JOINING_RESEARCH` | where a batten joint may be made, minimum piece and span, stagger, evidence strength per claim |
 | `domain/ROOF_TILE_EDGE_PLACEMENT` | eave/verge evidence; why no physical tile edge projection is modelled |
 | `PROJECT_BLUEPRINT.md` | always first; holds the work checkpoint |
 | `docs/ARCHITECTURE_INDEX.md` | always second; this file |

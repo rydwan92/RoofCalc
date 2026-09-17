@@ -1762,6 +1762,77 @@ export const assemblyPl = {
   hipAssumptionsText:
     'Regularny prostokątny dach kopertowy ma równe kąty czterech połaci i naroża 90°. H1 biegnie pod 45° w planie. Odjęcie do fizycznego lica kalenicy wynosi t/√2 w planie, następnie jest przeliczane wzdłuż pochylonej osi.',
   structural: 'Geometria nie jest weryfikacją nośności konstrukcji.',
+  // V48 commercial planning for linear build-up timber.
+  linear: {
+    installationRequirement: 'Wymaganie montażowe',
+    planPurchase: 'Zaplanuj zakup',
+    commercialLengths: 'Długości handlowe',
+    suggestion: 'sugestia',
+    purchasePlan: 'Plan zakupu',
+    purchased: 'Kupiona długość',
+    installed: 'Wykorzystane',
+    waste: 'Odpad',
+    reusable: 'Resztki użytkowe',
+    utilization: 'Wykorzystanie',
+    joints: 'Łączenia',
+    cutPlan: 'Plan rozkroju',
+    chooseLength: 'Wybierz przynajmniej jedną długość handlową.',
+    clearPlan: 'Usuń plan zakupu',
+    cuttingSettings: 'Ustawienia rozkroju',
+    objective: 'Cel optymalizacji',
+    objectiveOption: {
+      'minimum-waste': 'Najmniej odpadu',
+      'minimum-purchased-length': 'Najmniej kupionych metrów',
+      'minimum-stock-count': 'Najmniej sztuk',
+    },
+    setting: {
+      kerfMm: 'Rzaz piły',
+      endTrimMm: 'Obcięcie końców',
+      minimumReusableRemnantMm: 'Minimalna resztka użytkowa',
+    },
+    pieces_one: '{{count}} szt.',
+    pieces_few: '{{count}} szt.',
+    pieces_many: '{{count}} szt.',
+    pieces_other: '{{count}} szt.',
+    showAllPatterns_one: 'Pokaż jeszcze {{count}} układ',
+    showAllPatterns_few: 'Pokaż jeszcze {{count}} układy',
+    showAllPatterns_many: 'Pokaż jeszcze {{count}} układów',
+    showAllPatterns_other: 'Pokaż jeszcze {{count}} układu',
+    angledAllowance_one:
+      'Naddatek na {{count}} odcinek z ukosem (grzbiet / kosz)',
+    angledAllowance_few:
+      'Naddatek na {{count}} odcinki z ukosem (grzbiet / kosz)',
+    angledAllowance_many:
+      'Naddatek na {{count}} odcinków z ukosem (grzbiet / kosz)',
+    angledAllowance_other:
+      'Naddatek na {{count}} odcinka z ukosem (grzbiet / kosz)',
+    unresolvedRuns_one:
+      '{{count}} odcinek bez rozwiązania — podaj naddatek dla ukosów.',
+    unresolvedRuns_few:
+      '{{count}} odcinki bez rozwiązania — podaj naddatek dla ukosów.',
+    unresolvedRuns_many:
+      '{{count}} odcinków bez rozwiązania — podaj naddatek dla ukosów.',
+    unresolvedRuns_other:
+      '{{count}} odcinka bez rozwiązania — podaj naddatek dla ukosów.',
+    unassigned_one: '{{count}} sztuka bez materiału — dodaj długość handlową.',
+    unassigned_few: '{{count}} sztuki bez materiału — dodaj długość handlową.',
+    unassigned_many: '{{count}} sztuk bez materiału — dodaj długość handlową.',
+    unassigned_other:
+      '{{count}} sztuki bez materiału — dodaj długość handlową.',
+    staggerRelaxed:
+      'Nie wszystkie styki udało się rozłożyć mijankowo bez dokupienia materiału.',
+    approximate: 'Plan znaleziony, nie potwierdzono optymalności.',
+    fixHipDetail: 'Uzupełnij detal',
+    blocker: {
+      'layout-unresolved':
+        'Najpierw ustal rozmieszczenie — plan zakupu wymaga rozwiązanej geometrii.',
+      'hip-detail-unresolved':
+        'Najpierw uzupełnij detal grzbietów H1 — bez niego długość jest częściowa.',
+      'no-runs': 'Ta warstwa nie ma jeszcze żadnych odcinków.',
+      'section-unknown': 'Podaj przekrój, żeby dobrać materiał handlowy.',
+      'layer-off': 'Warstwa jest wyłączona.',
+    },
+  },
   // V47 project readiness: problem → consequence → action.
   readiness: {
     panelTitle: 'Sprawdzenie projektu',
@@ -1987,6 +2058,16 @@ export const assemblyPl = {
       'cost-not-started': {
         title: 'Przygotuj kosztorys',
         description: 'Opcjonalnie: wycena pozycji z planu materiałów.',
+      },
+      'linear-plan-missing': {
+        title: 'Przygotuj plan zakupu',
+        description:
+          'Zamień długość geometryczną na sztuki w handlowych długościach.',
+      },
+      'linear-plan-partial': {
+        title: 'Plan zakupu jest częściowy',
+        description:
+          '{{count}} odcinków nie zostało rozplanowanych — ilości nie są pełne.',
       },
       'cost-prices-missing': {
         title: '{{count}} pozycje wymagają ceny',
@@ -3873,6 +3954,70 @@ export const assemblyEn: typeof assemblyPl = {
   hipAssumptionsText:
     'The regular rectangular hip roof has equal pitch on four planes and square corners. H1 runs at 45° in plan. Ridge-face deduction is t/√2 in plan and is then converted along the sloping hip axis.',
   structural: 'Geometry is not a structural capacity check.',
+  // V48 commercial planning for linear build-up timber.
+  linear: {
+    installationRequirement: 'Installation requirement',
+    planPurchase: 'Plan the purchase',
+    commercialLengths: 'Commercial lengths',
+    suggestion: 'suggestion',
+    purchasePlan: 'Purchase plan',
+    purchased: 'Purchased length',
+    installed: 'Installed',
+    waste: 'Waste',
+    reusable: 'Reusable offcuts',
+    utilization: 'Utilisation',
+    joints: 'Joints',
+    cutPlan: 'Cutting plan',
+    chooseLength: 'Choose at least one commercial length.',
+    clearPlan: 'Remove the purchase plan',
+    cuttingSettings: 'Cutting settings',
+    objective: 'Optimisation goal',
+    objectiveOption: {
+      'minimum-waste': 'Least waste',
+      'minimum-purchased-length': 'Fewest metres bought',
+      'minimum-stock-count': 'Fewest lengths',
+    },
+    setting: {
+      kerfMm: 'Saw kerf',
+      endTrimMm: 'End trim',
+      minimumReusableRemnantMm: 'Smallest reusable offcut',
+    },
+    pieces_one: '{{count}} pc',
+    pieces_few: '{{count}} pcs',
+    pieces_many: '{{count}} pcs',
+    pieces_other: '{{count}} pcs',
+    showAllPatterns_one: 'Show {{count}} more pattern',
+    showAllPatterns_few: 'Show {{count}} more patterns',
+    showAllPatterns_many: 'Show {{count}} more patterns',
+    showAllPatterns_other: 'Show {{count}} more patterns',
+    angledAllowance_one: 'Allowance for {{count}} raking run (hip / valley)',
+    angledAllowance_few: 'Allowance for {{count}} raking runs (hip / valley)',
+    angledAllowance_many: 'Allowance for {{count}} raking runs (hip / valley)',
+    angledAllowance_other: 'Allowance for {{count}} raking runs (hip / valley)',
+    unresolvedRuns_one: '{{count}} run unplanned — set a raking allowance.',
+    unresolvedRuns_few: '{{count}} runs unplanned — set a raking allowance.',
+    unresolvedRuns_many: '{{count}} runs unplanned — set a raking allowance.',
+    unresolvedRuns_other: '{{count}} runs unplanned — set a raking allowance.',
+    unassigned_one: '{{count}} piece has no stock — add a commercial length.',
+    unassigned_few: '{{count}} pieces have no stock — add a commercial length.',
+    unassigned_many:
+      '{{count}} pieces have no stock — add a commercial length.',
+    unassigned_other:
+      '{{count}} pieces have no stock — add a commercial length.',
+    staggerRelaxed:
+      'Not every joint could be staggered without buying more material.',
+    approximate: 'Plan found; optimality not proven.',
+    fixHipDetail: 'Complete the detail',
+    blocker: {
+      'layout-unresolved':
+        'Resolve the layout first — a purchase plan needs resolved geometry.',
+      'hip-detail-unresolved':
+        'Complete the H1 hip detail first — the length is partial without it.',
+      'no-runs': 'This layer has no runs yet.',
+      'section-unknown': 'Enter a section so a commercial item can be matched.',
+      'layer-off': 'The layer is switched off.',
+    },
+  },
   // V47 project readiness: problem → consequence → action.
   readiness: {
     panelTitle: 'Project check',
@@ -4099,6 +4244,15 @@ export const assemblyEn: typeof assemblyPl = {
       'cost-not-started': {
         title: 'Prepare a cost estimate',
         description: 'Optional: price items from the material plan.',
+      },
+      'linear-plan-missing': {
+        title: 'Prepare a purchase plan',
+        description: 'Turn the geometric length into commercial lengths.',
+      },
+      'linear-plan-partial': {
+        title: 'The purchase plan is partial',
+        description:
+          '{{count}} runs are not planned yet, so the quantities are incomplete.',
       },
       'cost-prices-missing': {
         title: '{{count}} items need a price',

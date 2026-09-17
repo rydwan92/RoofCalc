@@ -13,6 +13,11 @@ const pl = {
   blankLength: 'Długość blanku',
   consumption: 'Deklarowane zużycie producenta',
   netArea: 'Powierzchnia netto',
+  // V48 purchase-plan metrics.
+  installationRequirement: 'Wymaganie montażowe',
+  purchasedLength: 'Kupiona długość',
+  wasteLength: 'Odpad',
+  reusableLength: 'Resztki użytkowe',
   grossArea: 'Z uwzględnieniem zakładów',
   rollCount: 'Plan rolek (wg obecnego układu)',
   overlapArea: 'Zakłady między pasami',
@@ -96,6 +101,9 @@ const pl = {
   'k1-execution-unresolved':
     'Geometria osi nie określa blanków. Przygotowanie K1 jest nierozwiązane w tej konfiguracji.',
   'no-allowance-no-stock-length': 'Bez zapasu i rozkroju handlowego.',
+  // V48: the pieces are exact, but the plan does not yet cover every run.
+  'linear-plan-partial':
+    'Plan zakupu jest częściowy — część odcinków nie została rozplanowana.',
   'partial-counter-battens':
     'Częściowo policzone: osie K1/J1 i przerwy przy otworach; detal przy narożnych H1 pozostaje nierozwiązany.',
   'batten-gauge-unverified':
@@ -132,6 +140,11 @@ const en: typeof pl = {
   blankLength: 'Blank length',
   consumption: 'Declared manufacturer consumption',
   netArea: 'Net area',
+  // V48 purchase-plan metrics.
+  installationRequirement: 'Installation requirement',
+  purchasedLength: 'Purchased length',
+  wasteLength: 'Waste',
+  reusableLength: 'Reusable offcuts',
   grossArea: 'Including overlaps',
   rollCount: 'Roll plan (current layout)',
   overlapArea: 'Laps between courses',
@@ -214,6 +227,9 @@ const en: typeof pl = {
   'k1-execution-unresolved':
     'Axis geometry does not define blanks. K1 fabrication is unresolved for this configuration.',
   'no-allowance-no-stock-length': 'Without allowances or commercial cutting.',
+  // V48: the pieces are exact, but the plan does not yet cover every run.
+  'linear-plan-partial':
+    'The purchase plan is partial — some runs are not planned yet.',
   'partial-counter-battens':
     'Partial: K1/J1 axes and opening interruptions; H1 boundary detail remains unresolved.',
   'batten-gauge-unverified':

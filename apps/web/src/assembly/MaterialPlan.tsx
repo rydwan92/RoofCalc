@@ -25,6 +25,35 @@ import type {
   ReadinessIssue,
 } from './project-readiness';
 import { readinessIssueText } from './readiness-copy';
+import { LinearPurchasePanel } from './LinearPurchase';
+import type {
+  LinearMaterialKind,
+  LinearMaterialRequirement,
+  LinearPurchasePlan,
+} from './linear-material-plan';
+import type { LinearStockSelectionSpec } from '@cieslacalc/timber-model';
+
+/**
+ * V48: everything the Material Plan needs to turn a geometric requirement into
+ * a purchase plan. Supplied by the workbench, which owns the resolved facts.
+ */
+export interface LinearPlanSurface {
+  requirements: Partial<Record<LinearMaterialKind, LinearMaterialRequirement>>;
+  selections: Partial<Record<LinearMaterialKind, LinearStockSelectionSpec>>;
+  plans: Partial<Record<LinearMaterialKind, LinearPurchasePlan>>;
+  onSelectionChange: (
+    kind: LinearMaterialKind,
+    selection?: LinearStockSelectionSpec,
+  ) => void;
+  onFixBlocker?: (kind: LinearMaterialKind, blocker: string) => void;
+}
+
+/** Which linear material a Material Plan row is, if any. */
+function linearKindOf(labelKey: string): LinearMaterialKind | undefined {
+  if (labelKey === 'battens') return 'batten';
+  if (labelKey === 'counterBattens') return 'counter-batten';
+  return undefined;
+}
 
 /** V47: which readiness issues explain a material row. */
 function rowIssues(
@@ -107,10 +136,13 @@ export function MaterialPlan({
   onOpenExport,
   readiness,
   onReadinessAction,
+  linear,
 }: {
   facts: ExportFacts;
   readiness?: ProjectReadiness;
   onReadinessAction?: (action: ReadinessAction) => void;
+  /** V48: resolved commercial planning surface for battens/counter-battens. */
+  linear?: LinearPlanSurface;
   membrane?: MembraneProductSelection;
   scenario?: CostScenario;
   prices: Record<string, MaterialPriceSelection>;
@@ -181,11 +213,19 @@ export function MaterialPlan({
         : row.basis === 'fabrication-requirement'
           ? m.fabrication
           : m.geometry;
-  // One status per row, so the four summary counts always add up to the rows.
+  /**
+   * One status per row, so the four summary counts always add up to the rows.
+   * V48: a resolved commercial plan makes the row a purchase row, exactly as
+   * the badge says — the counts and the badge can never disagree.
+   */
+  const hasPurchasePlan = (row: MaterialPlanRow) => {
+    const kind = linearKindOf(row.labelKey);
+    return kind !== undefined && linear?.plans[kind] !== undefined;
+  };
   const statusOf = (row: MaterialPlanRow) =>
     row.partial || row.suitability === 'manual-required'
       ? 'needs-data'
-      : row.basis === 'procurement-stock'
+      : row.basis === 'procurement-stock' || hasPurchasePlan(row)
         ? 'purchase'
         : row.range
           ? 'estimate'
@@ -304,7 +344,26 @@ export function MaterialPlan({
                 (existing.quantity.value !== row.quantity ||
                   existing.quantityBasis !== row.basis ||
                   existing.unitPriceMinor !== price?.amountMinor);
-              const label = `${materialText(locale, row.labelKey)}${row.description ? ` · ${row.description}` : ''}`;
+              const linearKind = linearKindOf(row.labelKey);
+              const linearRequirement = linearKind
+                ? linear?.requirements[linearKind]
+                : undefined;
+              const linearPlan = linearKind
+                ? linear?.plans[linearKind]
+                : undefined;
+              const section = linearRequirement?.section;
+              /**
+               * V48 §27: once a purchase plan exists the row headline is the
+               * commercial quantity. The geometric requirement stays visible
+               * as its own metric, so a geometric length is never mislabelled
+               * as a purchase length.
+               */
+              const purchaseCount = linearPlan
+                ? linearPlan.stock.reduce((sum, item) => sum + item.quantity, 0)
+                : undefined;
+              const label = `${materialText(locale, row.labelKey)}${
+                section ? ` ${section.widthMm}×${section.depthMm}` : ''
+              }${row.description ? ` · ${row.description}` : ''}`;
               return (
                 <article
                   key={row.id}
@@ -325,12 +384,16 @@ export function MaterialPlan({
                           <span
                             className="mp-badge"
                             data-status={
+                              purchaseCount !== undefined ||
                               row.basis === 'procurement-stock'
                                 ? 'success'
                                 : 'neutral'
                             }
+                            data-testid={`material-basis-${row.labelKey}`}
                           >
-                            {basis(row)}
+                            {purchaseCount !== undefined
+                              ? m.procurement
+                              : basis(row)}
                           </span>
                           {row.partial && (
                             <span className="mp-badge" data-status="warning">
@@ -351,8 +414,18 @@ export function MaterialPlan({
                             </p>
                           )}
                         </div>
-                        <strong className="mp-quantity">
-                          {displayQuantity(row)} <small>{unit(row.unit)}</small>
+                        <strong
+                          className="mp-quantity"
+                          data-testid={`material-quantity-${row.labelKey}`}
+                        >
+                          {purchaseCount !== undefined
+                            ? number(purchaseCount)
+                            : displayQuantity(row)}{' '}
+                          <small>
+                            {purchaseCount !== undefined
+                              ? unit('piece')
+                              : unit(row.unit)}
+                          </small>
                         </strong>
                       </div>
                       {row.metrics.length > 0 && (
@@ -372,6 +445,24 @@ export function MaterialPlan({
                         </dl>
                       )}
                     </>
+                  )}
+                  {linearKind && linearRequirement && linear && (
+                    <LinearPurchasePanel
+                      kind={linearKind}
+                      requirement={linearRequirement}
+                      selection={linear.selections[linearKind]}
+                      plan={linearPlan}
+                      locale={locale}
+                      onChange={(selection) =>
+                        linear.onSelectionChange(linearKind, selection)
+                      }
+                      {...(linear.onFixBlocker
+                        ? {
+                            onFixBlocker: (blocker: string) =>
+                              linear.onFixBlocker?.(linearKind, blocker),
+                          }
+                        : {})}
+                    />
                   )}
                   {row.range && <p className="mp-note">{m.rangeNote}</p>}
                   <div className="mp-price">

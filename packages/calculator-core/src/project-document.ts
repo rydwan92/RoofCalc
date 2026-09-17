@@ -7,6 +7,7 @@ import {
 } from '@cieslacalc/covering-core';
 import { roofTemplateSchema } from '@cieslacalc/roof-math';
 import type {
+  LinearStockSelectionSpec,
   RoofBuildUp,
   RoofFeature,
   RoofOpeningFramingSpec,
@@ -22,6 +23,26 @@ const roofFeatureSchema: z.ZodType<RoofFeature> = z.object({
   position: z.object({ uMm: z.number().finite(), vMm: z.number().finite() }),
   clearanceMm: z.number().nonnegative().optional(),
 });
+const linearStockSelectionSchema: z.ZodType<LinearStockSelectionSpec> =
+  z.object({
+    lengths: z.array(
+      z.object({
+        lengthMm: z.number().positive(),
+        availability: z.number().int().nonnegative().optional(),
+      }),
+    ),
+    objective: z
+      .enum([
+        'minimum-waste',
+        'minimum-purchased-length',
+        'minimum-stock-count',
+      ])
+      .optional(),
+    kerfMm: z.number().nonnegative().optional(),
+    endTrimMm: z.number().nonnegative().optional(),
+    minimumReusableRemnantMm: z.number().nonnegative().optional(),
+    angledEndAllowanceMm: z.number().nonnegative().optional(),
+  });
 const roofBuildUpSchema: z.ZodType<RoofBuildUp> = z.object({
   membrane: z
     .object({
@@ -52,6 +73,14 @@ const roofBuildUpSchema: z.ZodType<RoofBuildUp> = z.object({
       gaugeMm: z.number().positive(),
       eaveOffsetMm: z.number().nonnegative(),
       ridgeOffsetMm: z.number().nonnegative().optional(),
+    })
+    .optional(),
+  // V48. Additive-optional: absent means no purchase plan was prepared, and
+  // the project keeps its geometric-only batten quantities exactly as before.
+  linearStock: z
+    .object({
+      battens: linearStockSelectionSchema.optional(),
+      counterBattens: linearStockSelectionSchema.optional(),
     })
     .optional(),
 });

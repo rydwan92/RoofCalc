@@ -5,6 +5,7 @@ import type {
   QuantityUnit,
 } from '@cieslacalc/cost-core';
 import type { ExportFacts } from './export-adapter';
+import type { LinearMaterialKind } from './linear-material-plan';
 
 /**
  * Truthful, safe-to-price suggestions derived from already-resolved project
@@ -35,6 +36,25 @@ export interface K1StockSuggestion extends CostSuggestionBase {
   stockLengthMm: number;
   sectionWidthMm: number;
   sectionDepthMm: number;
+}
+
+/**
+ * V48: one commercial length of a linear build-up material, priced per piece.
+ *
+ * It replaces the geometric-length suggestion for that material as soon as a
+ * purchase plan exists, so an estimate never multiplies a geometric metre by a
+ * price that is quoted per length.
+ */
+export interface LinearStockSuggestion extends CostSuggestionBase {
+  kind: 'linear-stock';
+  category: 'material';
+  quantityBasis: 'procurement-stock';
+  suitability: 'exact-purchase';
+  quantity: { value: number; unit: 'piece' };
+  material: LinearMaterialKind;
+  stockLengthMm: number;
+  sectionWidthMm?: number;
+  sectionDepthMm?: number;
 }
 
 export interface BattensSuggestion extends CostSuggestionBase {
@@ -113,7 +133,8 @@ export type CostSuggestion =
   | MembraneSuggestion
   | CoveringPositionsSuggestion
   | CoveringRunsSuggestion
-  | CoveringConsumptionSuggestion;
+  | CoveringConsumptionSuggestion
+  | LinearStockSuggestion;
 
 const MM_PER_M = 1000;
 const MM2_PER_M2 = 1_000_000;
@@ -148,7 +169,39 @@ function k1StockSuggestions(facts: ExportFacts): K1StockSuggestion[] {
     }));
 }
 
+function linearStockSuggestions(facts: ExportFacts): LinearStockSuggestion[] {
+  const suggestions: LinearStockSuggestion[] = [];
+  for (const material of ['batten', 'counter-batten'] as const) {
+    const plan = facts.linearPlans?.[material];
+    if (!plan || plan.stock.length === 0) continue;
+    const section = plan.section;
+    for (const item of [...plan.stock].sort((a, b) => a.lengthMm - b.lengthMm))
+      suggestions.push({
+        kind: 'linear-stock',
+        key: `linear-stock:${material}:${item.lengthMm}`,
+        category: 'material',
+        quantityBasis: 'procurement-stock',
+        suitability: 'exact-purchase',
+        quantity: { value: item.quantity, unit: 'piece' },
+        material,
+        stockLengthMm: item.lengthMm,
+        ...(section
+          ? {
+              sectionWidthMm: section.widthMm,
+              sectionDepthMm: section.depthMm,
+            }
+          : {}),
+        // The plan itself may still be partial; say so rather than implying
+        // that buying these pieces completes the layer.
+        noteKeys: plan.status === 'complete' ? [] : ['linear-plan-partial'],
+      });
+  }
+  return suggestions;
+}
+
 function battensSuggestion(facts: ExportFacts): BattensSuggestion[] {
+  // V48: a resolved purchase plan supersedes the geometric-length estimate.
+  if (facts.linearPlans?.batten) return [];
   if (!facts.battensEnabled) return [];
   const rows = facts.schedule.buildUpRows.filter(
     (row) => row.memberKind === 'batten',
@@ -181,6 +234,7 @@ function battensSuggestion(facts: ExportFacts): BattensSuggestion[] {
 function counterBattensSuggestion(
   facts: ExportFacts,
 ): CounterBattensSuggestion[] {
+  if (facts.linearPlans?.['counter-batten']) return [];
   if (!facts.counterBattensEnabled) return [];
   const rows = facts.schedule.buildUpRows.filter(
     (row) => row.memberKind === 'counter-batten',
@@ -412,6 +466,7 @@ function coveringSuggestions(
 export function createCostSuggestions(facts: ExportFacts): CostSuggestion[] {
   return [
     ...k1StockSuggestions(facts),
+    ...linearStockSuggestions(facts),
     ...battensSuggestion(facts),
     ...counterBattensSuggestion(facts),
     ...membraneSuggestion(facts),

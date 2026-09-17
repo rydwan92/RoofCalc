@@ -1,0 +1,210 @@
+/* V48 — commercial planning for battens and counter-battens. */
+
+.lp-panel {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid var(--a-line, #dde5e0);
+  border-radius: 10px;
+  background: var(--a-surface-2, #f7faf8);
+}
+
+.lp-requirement {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.lp-requirement span {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--a-muted, #5f6d66);
+}
+.lp-requirement strong {
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+.lp-requirement small {
+  color: var(--a-muted, #5f6d66);
+}
+
+.lp-blocked {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  color: var(--a-warning-text, #7a5200);
+}
+.lp-blocked > svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.lp-lengths {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.lp-lengths legend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--a-muted, #5f6d66);
+}
+.lp-hint {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--a-surface-3, #eaf0ec);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+.lp-lengths label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-allowance,
+.lp-settings label {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 13px;
+}
+.lp-allowance input,
+.lp-settings input,
+.lp-settings select {
+  width: 92px;
+  padding: 4px 6px;
+  border: 1px solid var(--a-line, #dde5e0);
+  border-radius: 6px;
+  font-variant-numeric: tabular-nums;
+}
+.lp-settings select {
+  width: auto;
+}
+
+.lp-plan h5,
+.lp-patterns h5 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 8px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--a-muted, #5f6d66);
+}
+
+.lp-stock {
+  display: grid;
+  gap: 4px;
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+}
+.lp-stock li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--a-surface, #fff);
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+.lp-metrics dt {
+  font-size: 11px;
+  color: var(--a-muted, #5f6d66);
+}
+.lp-metrics dd {
+  margin: 0;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+.lp-metrics dd small {
+  font-size: 11px;
+  color: var(--a-muted, #5f6d66);
+}
+
+.lp-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  font-size: 12px;
+  color: var(--a-warning-text, #7a5200);
+}
+.lp-note > svg {
+  flex: none;
+  margin-top: 2px;
+}
+.lp-muted {
+  color: var(--a-muted, #5f6d66);
+}
+
+.lp-patterns {
+  margin-top: 10px;
+}
+.lp-pattern {
+  margin-bottom: 8px;
+  font-variant-numeric: tabular-nums;
+}
+.lp-pattern strong {
+  font-size: 12px;
+}
+/* Each cut is proportional to its length, so the offcut is visible at a glance. */
+.lp-bar {
+  display: flex;
+  gap: 2px;
+  margin-top: 3px;
+  height: 22px;
+}
+.lp-bar span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  min-width: 0;
+  border-radius: 4px;
+  background: var(--a-accent-soft, #dbeae1);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.lp-advanced summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--a-muted, #5f6d66);
+}
+.lp-settings {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+@media (max-width: 760px) {
+  .lp-metrics {
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  }
+  .lp-panel {
+    padding: 10px;
+  }
+}

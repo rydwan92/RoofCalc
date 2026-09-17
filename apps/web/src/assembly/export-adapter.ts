@@ -52,6 +52,10 @@ import {
   type MaterialPlanRow,
   type MaterialPriceSelection,
 } from './material-plan';
+import type {
+  LinearMaterialKind,
+  LinearPurchasePlan,
+} from './linear-material-plan';
 import type { MembraneProductSelection } from '@cieslacalc/covering-core';
 import {
   structuralLimitations,
@@ -105,6 +109,12 @@ export type ExportFacts = {
    * Absent (older callers) → only structural limitations are known.
    */
   limitations?: ProjectLimitation[];
+  /**
+   * V48: resolved commercial plans for the linear build-up materials. Absent
+   * means the user has not prepared one, and the quantities stay geometric.
+   * Cost and documents consume this plan; neither re-runs a solver.
+   */
+  linearPlans?: Partial<Record<LinearMaterialKind, LinearPurchasePlan>>;
 };
 
 function drawing(model: DrawingModel): DocumentDrawing {
@@ -768,6 +778,21 @@ export function createExportCandidates(facts: ExportFacts): SectionCandidate[] {
           ? {
               kind: 'material-list' as const,
               rows: rows.map((row) => {
+                /**
+                 * V48 §30: the material list states the commercial plan the
+                 * workbench already resolved — never a second solver run, and
+                 * never hundreds of individual cuts (those belong in the
+                 * execution annex).
+                 */
+                const linearKind =
+                  row.labelKey === 'battens'
+                    ? ('batten' as const)
+                    : row.labelKey === 'counterBattens'
+                      ? ('counter-batten' as const)
+                      : undefined;
+                const linearPlan = linearKind
+                  ? facts.linearPlans?.[linearKind]
+                  : undefined;
                 const chosen = facts.materialPrices?.[row.id];
                 const price =
                   chosen &&
@@ -778,19 +803,64 @@ export function createExportCandidates(facts: ExportFacts): SectionCandidate[] {
                     ? chosen
                     : undefined;
                 const value = materialValue(row, price);
+                const linearPieces = linearPlan
+                  ? linearPlan.stock.reduce(
+                      (sum, item) => sum + item.quantity,
+                      0,
+                    )
+                  : undefined;
+                const linearBreakdown = linearPlan
+                  ? [...linearPlan.stock]
+                      .sort((a, b) => a.lengthMm - b.lengthMm)
+                      .map(
+                        (item) =>
+                          `${item.lengthMm / 1000} m × ${item.quantity}`,
+                      )
+                      .join(' · ')
+                  : undefined;
+                const linearMetrics = linearPlan
+                  ? [
+                      {
+                        labelKey: 'installationRequirement',
+                        value: linearPlan.installedLengthMm / 1000,
+                        unit: 'm',
+                      },
+                      {
+                        labelKey: 'purchasedLength',
+                        value: linearPlan.purchasedLengthMm / 1000,
+                        unit: 'm',
+                      },
+                      {
+                        labelKey: 'wasteLength',
+                        value: linearPlan.plan.summary.wasteLengthMm / 1000,
+                        unit: 'm',
+                      },
+                      {
+                        labelKey: 'reusableLength',
+                        value:
+                          linearPlan.plan.summary.reusableRemnantLengthMm /
+                          1000,
+                        unit: 'm',
+                      },
+                    ]
+                  : [];
                 return {
                   category: row.category,
                   labelKey: row.labelKey,
-                  description: row.description,
+                  description: linearBreakdown ?? row.description,
                   product: row.product?.name,
-                  basis: row.range ? 'manufacturer' : row.basis,
-                  quantity: row.quantity,
+                  basis: linearPlan
+                    ? 'procurement-stock'
+                    : row.range
+                      ? 'manufacturer'
+                      : row.basis,
+                  quantity: linearPieces ?? row.quantity,
                   minimumQuantity: row.range?.min,
                   maximumQuantity: row.range?.max,
-                  unit: row.unit,
+                  unit: linearPlan ? 'piece' : row.unit,
                   partial: row.partial,
                   warnings: row.warnings,
-                  metrics: row.metrics,
+                  metrics: [...linearMetrics, ...row.metrics],
                   priceProvenance: price?.provenance,
                   unitPriceMinor: price?.amountMinor,
                   minimumValueMinor: value?.min,

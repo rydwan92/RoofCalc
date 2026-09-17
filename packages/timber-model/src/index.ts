@@ -541,10 +541,49 @@ export interface CounterBattenLayoutSpec {
   /** Absent means `not-decided`, matching every project saved before V39. */
   hipBoundaryDetail?: HipCounterBattenDetail;
 }
+/** V48: one commercial length the user can buy, and how many are available. */
+export interface CommercialLengthSpec {
+  lengthMm: number;
+  /** Absent means unlimited. */
+  availability?: number;
+}
+
+/**
+ * V48: the user's commercial decision for one linear build-up material.
+ *
+ * Geometry never depends on this — it only turns a resolved installation
+ * requirement into a purchase plan. Cutting settings are optional so a project
+ * that never opened the advanced panel keeps the application defaults.
+ */
+export interface LinearStockSelectionSpec {
+  lengths: CommercialLengthSpec[];
+  objective?:
+    'minimum-waste' | 'minimum-purchased-length' | 'minimum-stock-count';
+  kerfMm?: number;
+  endTrimMm?: number;
+  minimumReusableRemnantMm?: number;
+  /**
+   * Explicit fabrication allowance for a raking (hip/valley) end. Absent
+   * means the user has not decided one, and such runs stay unplanned rather
+   * than receiving a hidden guess.
+   */
+  angledEndAllowanceMm?: number;
+}
+
+export interface LinearStockPlanSpec {
+  battens?: LinearStockSelectionSpec;
+  counterBattens?: LinearStockSelectionSpec;
+}
+
 export interface RoofBuildUp {
   membrane?: MembraneLayerSpec;
   counterBattens?: CounterBattenLayoutSpec;
   battenLayout?: BattenLayoutSpec;
+  /**
+   * V48. Additive-optional: absent on every pre-V48 project, which simply
+   * means no purchase plan has been prepared yet.
+   */
+  linearStock?: LinearStockPlanSpec;
 }
 /** Renderer-neutral canonical roof composition, ready for future attachments/subassemblies. */
 export interface RoofAssembly {
