@@ -309,9 +309,7 @@ describe('dual-mode parametric workbench', () => {
     enter('Kąt połaci', '30');
     const spec = useAssembly.getState().spec,
       stock = screen.getByTestId('stock-length').textContent;
-    expect(screen.getAllByText('Minimalna długość geometryczna').length).toBe(
-      1,
-    );
+    expect(screen.getAllByText('Długość krokwi (geometryczna)').length).toBe(1);
     expect(stock).toMatch(/\smm$/);
     fireEvent.click(screen.getByTestId('quick-create-project'));
     expect(await screen.findByTestId('project-start-assistant')).toBeTruthy();
@@ -2261,7 +2259,9 @@ describe('dual-mode parametric workbench', () => {
         minimumGaugeMm: 300,
         maximumGaugeMm: 380,
       },
-    }).planes[0]!.actualGaugeMm;
+    }).planes[0]!.actualGaugeMm!;
+    // V44: Auto → Manual seeds a tape-measurable value (0.1 mm).
+    const seededGauge = Math.round(automaticGauge * 10) / 10;
     fireEvent.click(screen.getByRole('button', { name: 'Ręcznie' }));
     expect(
       useAssembly.getState().projectDocument.project.buildUp.battenLayout,
@@ -2269,7 +2269,7 @@ describe('dual-mode parametric workbench', () => {
     expect(
       useAssembly.getState().projectDocument.project.buildUp.battenLayout!
         .gaugeMm,
-    ).toBe(automaticGauge);
+    ).toBe(seededGauge);
     act(() => {
       const coverings = structuredClone(
         useAssembly.getState().projectDocument.project.coverings,
@@ -2282,7 +2282,7 @@ describe('dual-mode parametric workbench', () => {
     expect(
       useAssembly.getState().projectDocument.project.buildUp.battenLayout!
         .gaugeMm,
-    ).toBe(automaticGauge);
+    ).toBe(seededGauge);
     expect(screen.getByTestId('batten-layout-status').textContent).toBe(
       'Niezgodne',
     );
@@ -2295,7 +2295,7 @@ describe('dual-mode parametric workbench', () => {
     expect(
       useAssembly.getState().projectDocument.project.buildUp.battenLayout!
         .gaugeMm,
-    ).toBe(automaticGauge);
+    ).toBe(seededGauge);
   });
 
   it('V43B: hip covering-first workflow — Auto battens, hip detail, composite plan and removal', async () => {

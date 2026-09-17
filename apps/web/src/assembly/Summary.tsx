@@ -762,6 +762,29 @@ function K1Steps({ result }: { result: Calculation }) {
   );
 }
 
+/**
+ * V44: says whether a member's numbers are reference geometry (axis/layout,
+ * joint not chosen — not an error) or execution geometry (a resolved finished
+ * connection). Presentation of the resolver's own execution status only.
+ */
+export function GeometryKindBadge({
+  kind,
+}: {
+  kind: 'reference' | 'execution';
+}) {
+  const { t } = useTranslation();
+  return (
+    <p
+      className={`a-geometry-kind is-${kind}`}
+      data-geometry-kind={kind}
+      data-testid="geometry-kind"
+    >
+      <b>{t(`assembly.geometryKind.${kind}`)}</b>
+      <span>{t(`assembly.geometryKind.${kind}Note`)}</span>
+    </p>
+  );
+}
+
 export function ContextualFabrication({
   context,
   resolved,
@@ -855,6 +878,7 @@ export function ContextualFabrication({
         <div className="a-fabrication-summary">
           <strong>H1 · {t('assembly.hipRafter')}</strong>
           <span>{length(hip.result.outerEaveToRidgeFaceMm)}</span>
+          <GeometryKindBadge kind="reference" />
           <p>{t('assembly.h1PreparationSummary')}</p>
           {expanded && (
             <ol>
@@ -897,6 +921,14 @@ export function ContextualFabrication({
                   max: length(contextPrototype.lengthRangeMm.max),
                 })}
           </span>
+          <GeometryKindBadge
+            kind={
+              representativeJack.fabrication.executionStatus ===
+              'fabrication-resolved'
+                ? 'execution'
+                : 'reference'
+            }
+          />
           <p>{t('assembly.j1PreparationSummary')}</p>
           <div className="a-fabrication-notes">
             <p>{t('assembly.hipFaceDeductionNote')}</p>

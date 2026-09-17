@@ -17,6 +17,7 @@ import type {
 import { roofPlaneIds as resolveRoofPlaneIds } from '@cieslacalc/roof-math';
 import { formatLength } from '../format';
 import { useAssembly } from './store';
+import { SourceBadge } from './SourceBadge';
 import { workbenchLocation, memberInstanceCode } from './workbench';
 import type {
   BattenWorkflow,
@@ -96,7 +97,12 @@ export function useInstallationActions() {
           ...base,
           enabled: true,
           mode: 'manual',
-          gaugeMm: seedGaugeMm ?? base.gaugeMm,
+          // A manual value is a tape-measurable intent: seed it at 0.1 mm,
+          // never as 349.636363… from the whole-interval fit (V44).
+          gaugeMm:
+            seedGaugeMm !== undefined
+              ? Math.round(seedGaugeMm * 10) / 10
+              : base.gaugeMm,
         });
         openLayer('battens');
         return;
@@ -151,12 +157,7 @@ function StateIcon({ tone }: { tone: BattenWorkflow['tone'] }) {
 
 /** Owner badge: AUTO / RĘCZNIE. Never shown without a value next to it. */
 export function OwnerBadge({ owner }: { owner: 'auto' | 'manual' }) {
-  const { t } = useTranslation();
-  return (
-    <span className={`a-owner-badge is-${owner}`} data-owner={owner}>
-      {t(`assembly.install.owner.${owner}`)}
-    </span>
-  );
+  return <SourceBadge source={owner} />;
 }
 
 export function WorkflowActions({
@@ -203,18 +204,27 @@ export function BattenStatusLine({ workflow }: { workflow: BattenWorkflow }) {
     >
       {hasRows && (
         <p className="a-workflow-figures">
-          <strong data-batten-gauge>
-            {workflow.gaugeMm !== undefined
-              ? length(workflow.gaugeMm)
-              : t('assembly.install.perPlane')}
-          </strong>
-          <span data-batten-rows={workflow.rowCount}>
-            {workflow.rowsPerPlane !== undefined && workflow.planeCount > 1
-              ? `${t('assembly.install.rows', { count: workflow.rowsPerPlane })} ${t('assembly.install.perPlaneSuffix')}`
-              : `${t('assembly.install.rows', { count: workflow.rowCount })}${workflow.planeCount > 1 ? ` ${t('assembly.install.totalSuffix')}` : ''}`}
+          <span className="a-figure is-lead">
+            <strong data-batten-gauge>
+              {workflow.gaugeMm !== undefined
+                ? length(workflow.gaugeMm)
+                : t('assembly.install.perPlane')}
+            </strong>
+            <small>{t('assembly.install.actualGauge')}</small>
           </span>
-          <span data-batten-total-length={workflow.totalLengthMm}>
-            {metres(workflow.totalLengthMm)}
+          <span className="a-figure" data-batten-rows={workflow.rowCount}>
+            <b>
+              {workflow.rowsPerPlane !== undefined && workflow.planeCount > 1
+                ? `${t('assembly.install.rows', { count: workflow.rowsPerPlane })} ${t('assembly.install.perPlaneSuffix')}`
+                : `${t('assembly.install.rows', { count: workflow.rowCount })}${workflow.planeCount > 1 ? ` ${t('assembly.install.totalSuffix')}` : ''}`}
+            </b>
+          </span>
+          <span
+            className="a-figure"
+            data-batten-total-length={workflow.totalLengthMm}
+          >
+            <b>{metres(workflow.totalLengthMm)}</b>
+            <small>{t('assembly.install.geometricLength')}</small>
           </span>
         </p>
       )}
@@ -252,11 +262,14 @@ export function CounterBattenStatusLine({
     >
       {workflow.runCount > 0 && (
         <p className="a-workflow-figures">
-          <strong data-counter-batten-total-length={workflow.totalLengthMm}>
-            {metres(workflow.totalLengthMm)}
-          </strong>
-          <span>
-            {t('assembly.install.axes', { count: workflow.runCount })}
+          <span className="a-figure is-lead">
+            <strong data-counter-batten-total-length={workflow.totalLengthMm}>
+              {metres(workflow.totalLengthMm)}
+            </strong>
+            <small>{t('assembly.install.geometricLength')}</small>
+          </span>
+          <span className="a-figure">
+            <b>{t('assembly.install.axes', { count: workflow.runCount })}</b>
           </span>
         </p>
       )}

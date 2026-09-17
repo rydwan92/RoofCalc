@@ -323,7 +323,19 @@ export function CostWorkspace({
 
       <section className="cw-lines">
         {scenario.lines.length === 0 ? (
-          <p className="cw-empty">{t('assembly.cost.noLines')}</p>
+          <div className="cw-empty-state" data-testid="cost-empty-state">
+            <strong>{t('assembly.cost.noLinesTitle')}</strong>
+            <p className="cw-empty">{t('assembly.cost.noLines')}</p>
+            {!addingManual && (
+              <button
+                type="button"
+                className="a-button a-primary"
+                onClick={() => setAddingManual(true)}
+              >
+                + {t('assembly.cost.addManualLine')}
+              </button>
+            )}
+          </div>
         ) : (
           CATEGORIES.filter((category) => grouped.has(category)).map(
             (category) => (
@@ -564,7 +576,7 @@ export function CostWorkspace({
             setAddingManual(false);
           }}
         />
-      ) : (
+      ) : scenario.lines.length === 0 ? null : (
         <button
           type="button"
           className="cw-add-manual"

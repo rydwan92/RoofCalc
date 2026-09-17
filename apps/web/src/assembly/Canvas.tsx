@@ -86,11 +86,16 @@ export function AssemblyCanvas({
   compact = false,
   focusId,
   readOnly = false,
+  highlight,
+  heightPx,
 }: {
   result: Calculation;
   compact?: boolean;
   focusId?: string;
   readOnly?: boolean;
+  /** V44 transient Quick highlight of a result on the drawing. */
+  highlight?: 'length' | 'ridge' | 'birdsmouth' | 'eave';
+  heightPx?: number;
 }) {
   const state = useAssembly(),
     { t, i18n } = useTranslation();
@@ -125,7 +130,30 @@ export function AssemblyCanvas({
     setZoom(1);
   }, [focusId]);
   const model = createAssemblyDrawing(result.assembly, focusId);
-  const height = compact ? (focusId ? 245 : 250) : width < 550 ? 400 : 570;
+  const height =
+    heightPx !== undefined
+      ? Math.min(heightPx, Math.max(200, Math.round(width * 0.62)))
+      : compact
+        ? focusId
+          ? 245
+          : 250
+        : width < 550
+          ? 400
+          : 570;
+  const wallJointId = result.assembly.joints.find((joint) =>
+    result.assembly.supports.some(
+      (support) =>
+        support.id === joint.supportId && support.kind === 'wall-plate',
+    ),
+  )?.id;
+  const highlighted = (entityId?: string) =>
+    !!highlight &&
+    !!entityId &&
+    ((highlight === 'ridge' &&
+      (entityId === 'cut:ridge' || entityId === state.spec.ridge.id)) ||
+      (highlight === 'eave' && entityId === 'cut:eave') ||
+      (highlight === 'birdsmouth' && entityId === wallJointId) ||
+      (highlight === 'length' && entityId === 'member-length'));
   const policy = deriveWorkbenchProjectionPolicy(state.workbench, width < 550);
   const length = (n: number) => formatLength(n, state.unit, i18n.language);
   const label = (d: DrawingDimension) =>
@@ -321,7 +349,10 @@ export function AssemblyCanvas({
     ? result.assembly.supports.find((s) => s.id === preview.id)?.topReference[0]
     : null;
   return (
-    <div className={`a-canvas ${compact ? 'a-mini' : ''}`} ref={container}>
+    <div
+      className={`a-canvas ${compact ? 'a-mini' : ''} ${highlight ? `has-highlight hl-${highlight}` : ''}`}
+      ref={container}
+    >
       {!compact && (
         <div className="a-canvas-toolbar">
           <span>{focusId ? t('assembly.detail') : t('assembly.drawing')}</span>
@@ -356,6 +387,7 @@ export function AssemblyCanvas({
           <g
             key={shape.id}
             data-entity={shape.id}
+            data-highlighted={highlighted(shape.selectionId) || undefined}
             data-selection-state={visualState(shape.selectionId)}
             {...interaction(shape.selectionId)}
             className={shape.id.includes('purlin') ? 'a-draggable' : ''}
@@ -390,6 +422,7 @@ export function AssemblyCanvas({
           <g
             key={id}
             data-entity={id}
+            data-highlighted={highlighted(id) || undefined}
             data-selection-state={
               state.workbench.selectedId === id
                 ? 'selected'
@@ -445,7 +478,11 @@ export function AssemblyCanvas({
                   rotationDeg,
                 },
               }) => (
-                <g key={dimension.id} className="technical-dimension">
+                <g
+                  key={dimension.id}
+                  className="technical-dimension"
+                  data-highlighted={highlighted(dimension.id) || undefined}
+                >
                   <path
                     d={`M${extensionA.x} ${extensionA.y} L${a.x} ${a.y} L${b.x} ${b.y} L${extensionB.x} ${extensionB.y}`}
                   />
@@ -462,6 +499,42 @@ export function AssemblyCanvas({
             )}
           </g>
         )}
+        {highlight &&
+          (() => {
+            // V44: a halo makes a small highlighted cut findable at any zoom.
+            const targets = [
+              ...model.lines
+                .filter((line) => highlighted(line.selectionId ?? line.id))
+                .flatMap((line) => [line.from, line.to]),
+              ...(model.polygons ?? [])
+                .filter((shape) => highlighted(shape.selectionId))
+                .flatMap((shape) => shape.points),
+            ].map(project);
+            if (!targets.length || highlight === 'length') return null;
+            const xs = targets.map((p) => p.x);
+            const ys = targets.map((p) => p.y);
+            const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
+            const cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+            const r = Math.max(
+              16,
+              Math.hypot(
+                Math.max(...xs) - Math.min(...xs),
+                Math.max(...ys) - Math.min(...ys),
+              ) /
+                2 +
+                10,
+            );
+            return (
+              <circle
+                className="a-highlight-halo"
+                data-testid="drawing-highlight"
+                cx={cx}
+                cy={cy}
+                r={r}
+                pointerEvents="none"
+              />
+            );
+          })()}
         {!focusId && (compact || policy.showDatums) && (
           <g className="a-markers" pointerEvents="none">
             {model.markers

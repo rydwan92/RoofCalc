@@ -60,6 +60,11 @@ import {
 } from '@cieslacalc/roof-math';
 import { useAssembly } from './store';
 import {
+  QuickH1Result,
+  QuickK1Result,
+  type QuickHighlight,
+} from './QuickResults';
+import {
   deriveBattenWorkflow,
   deriveCounterBattenWorkflow,
 } from './batten-workflow';
@@ -82,7 +87,7 @@ import {
   QuickCutPreviews,
   QuickDetailDialog,
 } from './DetailPreview';
-import { ContextualResults, HipResults, Results } from './Summary';
+import { ContextualResults } from './Summary';
 import { Toolbox } from './Toolbox';
 import { WorkbenchControls, MobileViewSettings } from './WorkbenchControls';
 import { ContextualTaskTabs, PerspectiveBar } from './PerspectiveBar';
@@ -281,6 +286,8 @@ function AssemblyPageContent() {
     projectSession.subscribe,
     projectSession.snapshot,
   );
+  // V44: transient Quick result ↔ drawing highlight; never history.
+  const [quickHighlight, setQuickHighlight] = useState<QuickHighlight>();
   const [quickDetail, setQuickDetail] = useState<
     (typeof allDetailPreviews)[number] | undefined
   >();
@@ -533,7 +540,16 @@ function AssemblyPageContent() {
    * the renderer only transport and draw it. Memoized separately so camera,
    * selection and filter changes never rerun a solver.
    */
+  const scene3dOpen = workbench.workspaceRenderer === '3d';
   const scene3dContext = useMemo(() => {
+    // V44: finished K1 solids are only for the open 3D viewport; a 2D geometry
+    // edit must not re-resolve them.
+    if (!scene3dOpen)
+      return {
+        counterBattenRuns: [],
+        unresolvedHipBoundaries: [],
+        finishedMembers: [],
+      };
     const counterBattenRuns = counterBattenProjection.rows.map((row) => ({
       rowId: row.id,
       roofPlaneId: row.roofPlaneId,
@@ -588,6 +604,7 @@ function AssemblyPageContent() {
   }, [
     counterBattenProjection.hipBoundaries,
     counterBattenProjection.rows,
+    scene3dOpen,
     skeleton.members,
     state.template.pitchDeg,
     templateResult.calculation.assembly,
@@ -1773,9 +1790,13 @@ function AssemblyPageContent() {
             </span>
             <h1>{t('assembly.title')}</h1>
             <strong className="a-member-subtitle">
-              {state.template.type === 'hip'
-                ? `${t('assembly.hipRoof')} · ${workbench.selectedPrototypeId === JACK_RAFTER_PROTOTYPE_ID || workbench.selectedId === JACK_RAFTER_PROTOTYPE_ID ? `J1 ${t('assembly.jackRafter')}` : workbench.selectedPrototypeId === HIP_RAFTER_PROTOTYPE_ID || workbench.selectedId === HIP_RAFTER_PROTOTYPE_ID ? `H1 ${t('assembly.hipRafter')}` : workbench.selectedPrototypeId === state.spec.member.id || workbench.selectedId === state.spec.member.id ? `K1 ${t('assembly.commonRafter')}` : t('assembly.skeleton')}`
-                : `K1 ${t('assembly.commonRafter')}`}
+              {workbench.mode === 'quick'
+                ? state.template.type === 'hip'
+                  ? `H1 ${t('assembly.hipRafter')}`
+                  : `K1 ${t('assembly.commonRafter')}`
+                : state.template.type === 'hip'
+                  ? `${t('assembly.hipRoof')} · ${workbench.selectedPrototypeId === JACK_RAFTER_PROTOTYPE_ID || workbench.selectedId === JACK_RAFTER_PROTOTYPE_ID ? `J1 ${t('assembly.jackRafter')}` : workbench.selectedPrototypeId === HIP_RAFTER_PROTOTYPE_ID || workbench.selectedId === HIP_RAFTER_PROTOTYPE_ID ? `H1 ${t('assembly.hipRafter')}` : workbench.selectedPrototypeId === state.spec.member.id || workbench.selectedId === state.spec.member.id ? `K1 ${t('assembly.commonRafter')}` : t('assembly.skeleton')}`
+                  : `K1 ${t('assembly.commonRafter')}`}
             </strong>
             <p>
               {t(
@@ -1840,11 +1861,34 @@ function AssemblyPageContent() {
               </button>
             </section>
             <section className="a-quick-output">
-              {hip ? <HipResults hip={hip} /> : <Results result={result} />}
+              {hip ? (
+                <QuickH1Result hip={hip} />
+              ) : (
+                result && (
+                  <QuickK1Result
+                    result={result}
+                    highlight={quickHighlight}
+                    onHighlight={setQuickHighlight}
+                  />
+                )
+              )}
               {hip ? (
                 <HipFabricationSheet hip={hip} compact />
               ) : (
-                result && <AssemblyCanvas result={result} compact readOnly />
+                result && (
+                  <div className="a-quick-drawing">
+                    <AssemblyCanvas
+                      result={result}
+                      compact
+                      readOnly
+                      highlight={quickHighlight}
+                      heightPx={330}
+                    />
+                    <p className="a-help">
+                      {t('assembly.quickResult.drawingHint')}
+                    </p>
+                  </div>
+                )
               )}
               <QuickCutPreviews
                 previews={quickDetailPreviews}

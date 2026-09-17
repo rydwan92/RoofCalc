@@ -389,6 +389,22 @@ and their totals are never added together.
   wide translucent counter-battens underneath, thin dark battens on top.
 - Installation lengths are "geometric", never "do zakupu".
 
+## 12.2 Calculator trust (V44)
+
+- One dominant result per calculator; secondary facts are smaller and point at
+  their part of the drawing on hover/focus (transient, never history).
+- Important results offer **Jak policzono?**: inputs, the relation used and the
+  result, built from resolved values only.
+- Display precision: member/building lengths 0.1 cm, small cuts 0.1 mm, angles
+  0.1°, linear totals 0.1 m, areas 0.1 m², money 0.01 PLN. Inputs keep the
+  exact canonical value; a value seeded for the user is tape-measurable.
+- Source vocabulary: AUTO · RĘCZNIE · KATALOG · Z PROJEKTU (`SourceBadge`).
+- Status vocabulary: Gotowe · Częściowo policzone · Wymaga decyzji · Wymaga
+  danych · Niezgodne · Niedostępne. Raw codes never reach the user.
+- Reference geometry is labelled *Geometria referencyjna* with a one-line
+  reason; only a resolved connection is *Geometria wykonawcza*.
+- On desktop the context breadcrumb is a quiet caption, not a third header card.
+
 ## 13. Perspective navigation and Cost Workspace (V34B)
 
 - Five perspectives are the primary navigation (§2): **Projekt**,

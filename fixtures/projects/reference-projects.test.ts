@@ -8,6 +8,7 @@ import {
   resolveCounterBattenLayout,
   resolveOpeningFramingSet,
   resolveRoofSurfaceGeometry,
+  resolveRoofTemplate,
   roofPlaneIds,
 } from '@cieslacalc/roof-math';
 import {
@@ -40,6 +41,63 @@ import type { RoofWindowFeature } from '@cieslacalc/timber-model';
  */
 
 const directory = fileURLToPath(new URL('.', import.meta.url));
+
+const ACCEPTANCE: [string, Record<string, number>][] = [
+  [
+    '01-basic-gable.cieslacalc.json',
+    { roofAreaM2: 87.9, k1StockCm: 560.9, k1: 22, j1: 0, battenM: 0 },
+  ],
+  [
+    '02-basic-hip.cieslacalc.json',
+    {
+      roofAreaM2: 142.8,
+      k1StockCm: 560.9,
+      h1LengthCm: 707,
+      k1: 14,
+      j1: 32,
+      battenM: 0,
+    },
+  ],
+  [
+    '04-hip-opening-framing.cieslacalc.json',
+    {
+      roofAreaM2: 141.2,
+      k1StockCm: 560.9,
+      h1LengthCm: 707,
+      k1: 14,
+      j1: 32,
+      battenM: 0,
+    },
+  ],
+  [
+    '05-gable-roof-tile.cieslacalc.json',
+    {
+      roofAreaM2: 87.9,
+      k1StockCm: 560.9,
+      k1: 22,
+      j1: 0,
+      battenM: 272,
+      counterBattenM: 120.9,
+    },
+  ],
+  [
+    '09-hip-catalogue-snapshot.cieslacalc.json',
+    {
+      roofAreaM2: 142.8,
+      k1StockCm: 560.9,
+      h1LengthCm: 707,
+      k1: 14,
+      j1: 32,
+      battenM: 439.4,
+      counterBattenM: 174.6,
+    },
+  ],
+  [
+    // Direct meeting: no ridge board to deduct, so K1 is longer than 01.
+    '10-gable-collar-tie-direct-meeting.cieslacalc.json',
+    { roofAreaM2: 87.9, k1StockCm: 563.4, k1: 22, j1: 0, battenM: 0 },
+  ],
+];
 
 function loadRecord(file: string) {
   return projectRecordV1Schema.parse(
@@ -423,5 +481,40 @@ describe('covering invariants', () => {
       { ...project.coverings[0]!, id: 'covering:duplicate' },
     ]);
     expect(ownership.conflicts.length).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * V44 reference acceptance numbers. A handful of facts a roofer would check by
+ * hand, rounded to the display precision (0.1 cm, 0.1 m, 0.1 m²). A change here
+ * must be a deliberate, explained domain change — never a side effect.
+ */
+function acceptanceEvidence(file: string) {
+  const project = resolveProject(file);
+  const resolved = resolveRoofTemplate(project.roof);
+  const round = (value: number, digits = 1) =>
+    Math.round(value * 10 ** digits) / 10 ** digits;
+  const count = (code: string) =>
+    resolved.memberPrototypes.find((prototype) => prototype.code === code)
+      ?.count ?? 0;
+  return {
+    roofAreaM2: round(project.surface.netAreaMm2 / 1_000_000),
+    k1StockCm: round(resolved.calculation.plan.minimumStockLengthMm / 10),
+    h1LengthCm:
+      'hipRafter' in resolved
+        ? round(resolved.hipRafter.result.outerEaveToRidgeFaceMm / 10)
+        : undefined,
+    k1: count('K1'),
+    j1: count('J1'),
+    battenM: round(project.battens.totalLengthMm / 1000),
+    counterBattenM: project.counterBattens
+      ? round(project.counterBattens.totalVisibleLengthMm / 1000)
+      : undefined,
+  };
+}
+
+describe('V44 reference acceptance numbers', () => {
+  it.each(ACCEPTANCE)('%s', (file, expected) => {
+    expect(acceptanceEvidence(file)).toEqual(expected);
   });
 });

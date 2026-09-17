@@ -212,6 +212,14 @@ mutable family is inactive for new selections. See
 `docs/ARCHITECTURE_V42_SHARED_DEV_AND_METAL.md` and
 `docs/CLOUDFLARE_SEOHOST_V42.md`.
 
+V44 hardens trust rather than adding modules: independent oracle,
+metamorphic and symmetry tests for K1, H1, roof areas, membrane and battens;
+reference acceptance numbers for six fixtures; 0.1 cm display precision with
+shared angle/metre/area formatters; a Quick result panel with drawing
+highlight and reusable "Jak policzono?" evidence; one source vocabulary
+(`SourceBadge`), one status vocabulary and a reference/execution geometry
+badge. See `docs/ARCHITECTURE_V44_CALCULATOR_TRUST_AND_UX.md`.
+
 V43B turns covering → battens → counter-battens into one workflow. The batten
 quantity audit found no solver error but a silent application defect: repair
 and first-layer creation copied a one-plane covering scope into the batten
@@ -532,6 +540,7 @@ pnpm e2e      # real-browser smoke, desktop 1440x900 and mobile 390x844 (pnpm e2
 | `ARCHITECTURE_V39_EXECUTION_GEOMETRY_AND_HIP_BOUNDARY` | hip-boundary counter-batten detail, J1→H1 finished termination, finished K1 3D solid, hip execution intent |
 | `ARCHITECTURE_V42_SHARED_DEV_AND_METAL` | shared DEV SQL, Cloudflare Worker/Hyperdrive boundary, additive metal seed, batten/module semantics |
 | `ARCHITECTURE_V43B_COVERING_AND_BATTEN_WORKFLOW` | covering-first batten workflow, Auto/Manual ownership, batten scope audit, installation plan, hip-detail guidance |
+| `ARCHITECTURE_V44_CALCULATOR_TRUST_AND_UX` | calculator oracles, reference acceptance numbers, display precision, Quick result/evidence, source and status vocabulary |
 | `domain/ROOF_TILE_EDGE_PLACEMENT` | eave/verge evidence; why no physical tile edge projection is modelled |
 | `PROJECT_BLUEPRINT.md` | always first; holds the work checkpoint |
 | `docs/ARCHITECTURE_INDEX.md` | always second; this file |

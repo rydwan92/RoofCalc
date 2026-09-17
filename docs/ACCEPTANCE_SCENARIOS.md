@@ -534,6 +534,21 @@ mismatch with range), retained across product change, and **Dopasuj
 automatycznie** is one undoable history step. No covering + Auto never shows a
 350 mm ready layout. Covering removal keeps Auto intent with zero rows.
 
+## TRUST-001 — Calculator oracles and reference numbers · `AUTOMATED`
+
+Independent K1/H1 trigonometry, roof-area formulas, metamorphic (run, pitch,
+eave, overlap, gauge) and symmetry checks pass
+(`calculator-oracles.test.ts`). Fixtures 01, 02, 04, 05, 09, 10 keep their
+roof area, K1/H1 length, K1/J1 counts and batten/counter-batten totals
+(`reference-projects.test.ts`).
+
+## TRUST-002 — Quick explains itself · `AUTOMATED` `BROWSER`
+
+Quick K1 shows one dominant length; hovering the birdsmouth fact highlights it
+in the drawing without history; "Jak policzono?" ends with the same length.
+Invalid inputs are flagged at the field and never change the project; switching
+covering Technical/Visual changes no counted position (`input-guards.test.tsx`).
+
 ## COMPOUND-001 — Higher house + lower garage · `PLANNED`
 
 **Not implemented.** No multi-structure document, transform, connection graph or

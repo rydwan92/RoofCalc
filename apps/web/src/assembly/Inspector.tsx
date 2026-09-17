@@ -364,6 +364,12 @@ function DraftLengthField({
       restore();
       return;
     }
+    // Unchanged text is the rounded display of the exact canonical value:
+    // committing it would silently round the project (V44).
+    if (raw === editableLength(value, state.unit)) {
+      state.cancelTransaction();
+      return;
+    }
     onCommit(canonicalValue);
     state.commitTransaction();
   };
@@ -842,7 +848,7 @@ function BattenLayoutInspector({
         mode === 'auto-from-covering' &&
         actualGaugeMm &&
         result.planes.every((plane) => plane.actualGaugeMm === actualGaugeMm)
-          ? actualGaugeMm
+          ? Math.round(actualGaugeMm * 10) / 10
           : layout.gaugeMm,
       enabled: true,
     });

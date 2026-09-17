@@ -22,12 +22,20 @@ describe('decimal editing and presentation', () => {
     expect(formatLength(5249.374921, 'm', 'pl')).toBe('5,249');
     expect(formatLength(5249.374921, 'm', 'en')).toBe('5.249');
   });
+  it('keeps inputs free of float noise and totals at 0.1', async () => {
+    const { editableLength, formatAngle, formatMetres, formatSquareMetres } =
+      await import('./format');
+    expect(editableLength(7538.92736, 'cm')).toBe('753.892736');
+    expect(formatAngle(34.99, 'pl')).toBe('35°');
+    expect(formatMetres(1_030_449, 'pl')).toBe('1030,4 m');
+    expect(formatSquareMetres(87_895_770, 'pl')).toBe('87,9 m²');
+  });
   it('uses the shared precision policy without meaningless trailing zeros', () => {
     expect(formatLength(800, 'mm', 'en')).toBe('800');
     expect(formatLength(800, 'cm', 'en')).toBe('80');
     expect(formatLength(800, 'm', 'en')).toBe('0.8');
     expect(formatLength(774.7, 'mm', 'en')).toBe('774.7');
-    expect(formatLength(774.7, 'cm', 'en')).toBe('77.47');
+    expect(formatLength(774.7, 'cm', 'en')).toBe('77.5');
     expect(formatLength(774.7, 'm', 'en')).toBe('0.775');
   });
 });

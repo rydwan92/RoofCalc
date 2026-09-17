@@ -8118,3 +8118,406 @@
     margin: 0 12px 6px;
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* V44 Quick: one dominant answer, larger drawing, quieter chrome      */
+/* ------------------------------------------------------------------ */
+@media (min-width: 801px) {
+  .assembly-app.mode-quick .a-main {
+    padding-top: 10px;
+  }
+  .assembly-app.mode-quick .a-page-heading {
+    margin-bottom: 10px;
+  }
+  .assembly-app.mode-quick .a-page-heading h1 {
+    margin: 3px 0 1px;
+    font-size: 23px;
+  }
+  .assembly-app.mode-quick .a-page-heading p {
+    display: none;
+  }
+  .a-quick-layout {
+    grid-template-columns: minmax(300px, 340px) minmax(0, 1fr);
+    gap: 18px;
+  }
+}
+.a-quick-output {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+}
+.a-quick-result {
+  display: grid;
+  grid-template-columns: minmax(210px, 0.8fr) minmax(0, 2fr);
+  gap: 0;
+  border: 1px solid var(--a-line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.a-quick-primary {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 18px 20px;
+  border: 0;
+  border-right: 1px solid var(--a-line);
+  background: #eef4eb;
+  color: var(--a-text);
+  text-align: left;
+  font: inherit;
+}
+button.a-quick-primary {
+  cursor: default;
+}
+.a-quick-primary strong {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  color: #143e34;
+  font-size: 44px;
+  font-weight: 850;
+  letter-spacing: -1.5px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.a-quick-primary strong small {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.a-quick-primary > span {
+  color: #244a3d;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+.a-quick-primary > small {
+  color: var(--a-muted);
+  font-size: 11px;
+}
+.a-quick-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  min-width: 0;
+}
+.a-quick-fact {
+  display: block;
+  min-width: 0;
+  padding: 11px 14px;
+  border: 0;
+  border-bottom: 1px solid var(--a-line);
+  border-left: 1px solid var(--a-line);
+  background: #fff;
+  color: var(--a-text);
+  text-align: left;
+  font: inherit;
+}
+button.a-quick-fact {
+  cursor: pointer;
+}
+button.a-quick-fact:hover,
+button.a-quick-fact:focus-visible,
+button.a-quick-fact[aria-pressed='true'] {
+  outline: none;
+  background: var(--a-selection-soft);
+}
+.a-quick-fact > span {
+  display: block;
+  color: var(--a-muted);
+  font-size: 10px;
+  font-weight: 650;
+}
+.a-quick-fact > strong {
+  display: block;
+  margin-top: 3px;
+  font-size: 18px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.a-quick-result > .a-evidence {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--a-line);
+}
+.a-evidence > summary {
+  padding: 8px 14px;
+  color: var(--a-selection);
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.a-evidence > dl {
+  display: grid;
+  gap: 0;
+  margin: 0 14px 8px;
+}
+.a-evidence > dl > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 12px;
+  padding: 5px 0;
+  border-bottom: 1px dashed var(--a-line);
+  font-size: 12px;
+}
+.a-evidence dt {
+  color: var(--a-text-muted);
+}
+.a-evidence dd {
+  margin: 0;
+  text-align: right;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.a-evidence dd small {
+  display: block;
+  color: var(--a-muted);
+  font-size: 10px;
+  font-weight: 500;
+}
+.a-evidence > dl > div.is-result {
+  border-bottom: 0;
+  color: #143e34;
+  font-size: 13px;
+}
+.a-evidence > dl > div.is-result dd {
+  font-weight: 850;
+}
+.a-evidence > p {
+  margin: 0 14px 10px;
+  color: var(--a-muted);
+  font-size: 11px;
+}
+.a-quick-drawing .a-canvas {
+  border-radius: 10px;
+}
+.a-quick-drawing > .a-help {
+  margin: 4px 2px 0;
+  font-size: 11px;
+}
+.a-quick-output .a-quick-cut-previews {
+  margin: 0;
+}
+@media (min-width: 1200px) {
+  .a-quick-output .a-quick-cut-previews > div {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+/* Result ↔ drawing highlight: the pointed part wins, the rest recedes. */
+.a-canvas.has-highlight [data-entity] {
+  opacity: 0.45;
+  transition: opacity 120ms ease;
+}
+.a-canvas.has-highlight [data-highlighted='true'],
+.a-canvas.hl-length [data-entity^='member:'],
+.a-canvas.hl-birdsmouth [data-entity^='member:'],
+.a-canvas.hl-ridge [data-entity^='member:'],
+.a-canvas.hl-eave [data-entity^='member:'] {
+  opacity: 1;
+}
+.a-canvas [data-highlighted='true'] .technical-line,
+.a-canvas [data-highlighted='true'] polygon {
+  stroke: var(--a-state-selected) !important;
+  stroke-width: 4px;
+}
+.a-canvas .technical-dimension[data-highlighted='true'] path {
+  stroke: var(--a-state-selected);
+  stroke-width: 2.5px;
+}
+.a-canvas .technical-dimension[data-highlighted='true'] text {
+  fill: var(--a-state-selected);
+  font-weight: 800;
+}
+@media (max-width: 800px) {
+  .a-quick-result {
+    grid-template-columns: 1fr;
+  }
+  .a-quick-primary {
+    border-right: 0;
+    border-bottom: 1px solid var(--a-line);
+  }
+  .a-quick-primary strong {
+    font-size: 36px;
+  }
+  .a-quick-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.a-highlight-halo {
+  fill: color-mix(in srgb, var(--a-state-selected) 12%, transparent);
+  stroke: var(--a-state-selected);
+  stroke-width: 2.5px;
+  stroke-dasharray: 5 4;
+}
+
+/* ------------------------------------------------------------------ */
+/* V44 control consistency: Materials and Cost use the workbench       */
+/* control height, font and button hierarchy instead of UA defaults.   */
+/* ------------------------------------------------------------------ */
+.assembly-app select,
+.assembly-app textarea {
+  font: inherit;
+}
+.mp-workspace button:not(.a-primary):not(.a-button),
+.cw-workspace button:not(.a-primary):not(.a-button) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 6px 12px;
+  border: 1px solid var(--a-line);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--a-text);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.2;
+}
+.mp-workspace button:not(.a-primary):not(.a-button):hover:not(:disabled),
+.cw-workspace button:not(.a-primary):not(.a-button):hover:not(:disabled) {
+  border-color: var(--a-line-strong);
+  background: #eaf0e9;
+}
+.mp-workspace select,
+.cw-workspace select,
+.cw-workspace input[type='text'],
+.cw-workspace input[type='number'] {
+  min-height: 34px;
+  padding: 5px 9px;
+  border: 1px solid var(--a-line);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--a-text);
+  font-size: 12px;
+}
+.mp-workspace .a-primary,
+.cw-workspace .a-primary {
+  width: auto;
+}
+.cw-empty-state {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 36px 16px;
+  color: var(--a-text-muted);
+  text-align: center;
+}
+.cw-empty-state strong {
+  color: var(--a-text);
+  font-size: 16px;
+}
+
+/* V44: the context line is a quiet caption under the task tabs, not a
+   third header card competing with perspective and task navigation. */
+@media (min-width: 801px) {
+  .a-context-bar {
+    margin-bottom: 4px;
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
+  }
+  .a-context-bar:has(.a-instance-navigator),
+  .a-context-bar:has(.a-opening-context-facts) {
+    border-color: var(--a-line);
+    background: #fff;
+  }
+  .a-context-breadcrumb {
+    padding: 0 4px;
+    border-bottom: 0;
+  }
+  .a-context-breadcrumb button {
+    min-height: 24px;
+  }
+}
+
+/* V44 reference vs execution geometry. */
+.a-geometry-kind {
+  display: grid;
+  gap: 2px;
+  margin: 6px 0;
+  padding: 6px 9px;
+  border-left: 3px solid var(--a-line-strong);
+  border-radius: 6px;
+  background: var(--a-background);
+  font-size: 11px;
+}
+.a-geometry-kind b {
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+.a-geometry-kind span {
+  color: var(--a-text-muted);
+}
+.a-geometry-kind.is-reference {
+  border-left-style: dashed;
+  border-left-color: #8a7a52;
+}
+.a-geometry-kind.is-execution {
+  border-left-color: var(--a-selection);
+}
+
+/* V44 one source vocabulary: AUTO / RĘCZNIE / KATALOG / Z PROJEKTU. */
+.a-source-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: 0.5px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+.a-source-tag small {
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.a-source-tag.is-auto {
+  background: var(--a-selection-soft);
+  color: #0b5c52;
+}
+.a-source-tag.is-manual {
+  background: #f2e7da;
+  color: #7a4a22;
+}
+.a-source-tag.is-catalogue {
+  background: #e3ecf8;
+  color: #28538a;
+}
+.a-source-tag.is-project {
+  background: #eceee9;
+  color: #3d4f47;
+}
+
+/* V44 batten/counter-batten figures: value first, meaning underneath. */
+.a-workflow-figures .a-figure {
+  display: inline-grid;
+  gap: 0;
+  line-height: 1.15;
+}
+.a-workflow-figures .a-figure b {
+  font-size: 13px;
+  font-weight: 800;
+}
+.a-workflow-figures .a-figure small {
+  color: var(--a-muted);
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+/* V44: installation block uses its width instead of a sparse auto grid. */
+@media (min-width: 1000px) {
+  .a-installation-rows {
+    grid-template-columns:
+      minmax(110px, 0.6fr) minmax(110px, 0.6fr) minmax(0, 1.2fr)
+      minmax(0, 1.2fr);
+  }
+}

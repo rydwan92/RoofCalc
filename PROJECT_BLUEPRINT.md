@@ -1297,7 +1297,17 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
-**Iteration:** `043B — roof covering installation workflow (tiles → battens → counter-battens)`
+**Iteration:** `044 — calculator trust and UX hardening`
+
+**Status:** `IMPLEMENTED — committed and pushed on main`
+
+**Completed:** independent oracle/metamorphic/symmetry tests (K1, H1, areas, membrane, battens) and fixture acceptance numbers — no solver defect found; Quick/Creator K1 label unified. Fixed: 0.01 cm display precision → 0.1 cm with shared formatters; float-noise manual gauge seed; silent rounding commit on blur; Quick H1 subtitle; unstyled Materials/Cost controls; stacked context header; 3D solids recomputed while 3D closed. New Quick result panel (dominant length, drawing highlight + halo, "Jak policzono?"), `SourceBadge`, human status vocabulary, reference/execution geometry badge, build-up figure captions, cost empty state. See `docs/ARCHITECTURE_V44_CALCULATOR_TRUST_AND_UX.md`.
+
+**NEXT ACTION:** V45 — cut preview drawing pass (birdsmouth/ridge framing, removed vs remaining wood, dimension arrows) and selected-member dimensions in the 2D roof view; then membrane per-course strip geometry in roof-math if a truthful resolver is added.
+
+---
+
+**Previous iteration:** `043B — roof covering installation workflow (tiles → battens → counter-battens)`
 
 **Status:** `IMPLEMENTED — not committed (user did not request commit)`
 

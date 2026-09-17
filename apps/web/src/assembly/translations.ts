@@ -185,7 +185,7 @@ export const assemblyPl = {
     'partially-automatic': 'Częściowo automatyczne',
     'decision-required': 'Wymaga decyzji',
     incompatible: 'Niezgodne',
-    'no-data': 'Brak danych',
+    'no-data': 'Wymaga danych',
   },
   decisionSource: {
     'manufacturer-product-data': 'Dane producenta — zapisany snapshot',
@@ -307,12 +307,13 @@ export const assemblyPl = {
   coveringQuantityBoundary:
     'Pozycje i odcinki geometryczne bez zapasu, akcesoriów i ponownego użycia odcięć. To nie jest oferta ani liczba do zamówienia.',
   coveragePositionCountShort: '{{count}} pozycji krycia',
+  // V44: one human status vocabulary across modules.
   coveringStatus: {
-    limited: 'Układ z ograniczeniami',
-    resolved: 'Układ rozwiązany',
-    incomplete: 'Układ niekompletny',
-    incompatible: 'Parametry niezgodne',
-    invalid: 'Nieprawidłowa geometria',
+    limited: 'Częściowo policzone',
+    resolved: 'Gotowe',
+    incomplete: 'Wymaga danych',
+    incompatible: 'Niezgodne',
+    invalid: 'Niedostępne',
   },
   coveringIssue: {
     'invalid-product-data':
@@ -1111,6 +1112,52 @@ export const assemblyPl = {
   axisSegmentCount: 'Liczba osi / odcinków',
   segments: 'Odcinki',
   installationLayerView: 'Montaż pokrycia',
+  quickResult: {
+    k1Length: 'Długość krokwi',
+    h1Length: 'Długość krokwi narożnej',
+    birdsmouth: 'Zacios',
+    birdsmouthSize: 'Zacios · siedzisko × głębokość',
+    eave: 'Okap w poziomie',
+    drawingHint: 'Najedź na wynik, aby wskazać go na rysunku.',
+  },
+  evidence: {
+    title: 'Jak policzono?',
+    run: 'Rzut do osi kalenicy',
+    pitch: 'Kąt połaci',
+    eave: 'Okap w poziomie',
+    ridgeDeduction: 'Odliczenie przy kalenicy',
+    ridgeDeductionNote: 'połowa grubości kalenicy w poziomie',
+    topEdgeFormula: '(rzut − odliczenie + okap) ÷ cos(kąt)',
+    plumbOffset: 'Przesunięcie cięcia pionowego',
+    plumbOffsetFormula: 'wysokość {{depth}} × tg(kąt)',
+    k1Footnote:
+      'Wymiar geometryczny: bez zapasu, rzazu i tolerancji. Te same dane liczą K1 w Kreatorze.',
+    hipPlanFormula: 'rzut × √2',
+    hipSlopeFormula: 'tg(nachylenie H1) = tg(kąt) ÷ √2',
+    h1Footnote:
+      'Narożnik 45° w rzucie, połacie o równym kącie. Bez zapasu i rzazu.',
+  },
+  sourceLabel: {
+    auto: 'AUTO',
+    manual: 'RĘCZNIE',
+    catalogue: 'KATALOG',
+    project: 'Z PROJEKTU',
+  },
+  statusLabel: {
+    ready: 'Gotowe',
+    partial: 'Częściowo policzone',
+    decision: 'Wymaga decyzji',
+    data: 'Wymaga danych',
+    incompatible: 'Niezgodne',
+    unavailable: 'Niedostępne',
+  },
+  geometryKind: {
+    reference: 'Geometria referencyjna',
+    execution: 'Geometria wykonawcza',
+    referenceNote:
+      'Oś i długość są policzone. Połączenie w węźle nie jest jeszcze wybrane — to nie jest błąd.',
+    executionNote: 'Wymiary uwzględniają rozwiązane połączenie.',
+  },
   install: {
     title: 'Montaż pokrycia',
     product: 'Produkt',
@@ -1134,6 +1181,7 @@ export const assemblyPl = {
     axes_many: '{{count}} osi',
     axes_other: '{{count}} osi',
     geometricLength: 'długość geometryczna',
+    actualGauge: 'rozstaw rzeczywisty',
     perPlaneSuffix: 'na połać',
     totalSuffix: 'łącznie',
     details: 'Szczegóły montażu',
@@ -1493,7 +1541,7 @@ export const assemblyPl = {
   controlDepth: 'Głębokość',
   range:
     'Zakres: {{min}}–{{max}} {{unit}}. Pomiar w poziomie do lewego lica podpory.',
-  stock: 'Minimalna długość geometryczna',
+  stock: 'Długość krokwi (geometryczna)',
   reference: 'Górna krawędź',
   toNotch: 'Od okapu do zaciosu',
   ridgeAngle: 'Cięcie kalenicy',
@@ -1800,6 +1848,7 @@ export const assemblyPl = {
     restoreFromProject: 'Przywróć z projektu',
     exportCsv: 'Pobierz CSV',
     openInDocuments: 'Otwórz w eksporcie',
+    noLinesTitle: 'Brak pozycji w kosztorysie',
     noLines: 'Kosztorys jest pusty. Dodaj pozycję z projektu lub ręcznie.',
     unitLabel: {
       piece: 'szt.',
@@ -2115,11 +2164,11 @@ export const assemblyEn: typeof assemblyPl = {
     'Geometric positions and runs only: no waste, accessories, or offcut reuse. This is not a quote or order quantity.',
   coveragePositionCountShort: '{{count}} coverage positions',
   coveringStatus: {
-    limited: 'Layout limited',
-    resolved: 'Layout resolved',
-    incomplete: 'Layout incomplete',
-    incompatible: 'Parameters incompatible',
-    invalid: 'Invalid geometry',
+    limited: 'Partially calculated',
+    resolved: 'Ready',
+    incomplete: 'Needs data',
+    incompatible: 'Incompatible',
+    invalid: 'Unavailable',
   },
   coveringIssue: {
     'invalid-product-data':
@@ -2915,6 +2964,51 @@ export const assemblyEn: typeof assemblyPl = {
   axisSegmentCount: 'Axis / segment count',
   segments: 'Segments',
   installationLayerView: 'Covering installation',
+  quickResult: {
+    k1Length: 'Rafter length',
+    h1Length: 'Hip rafter length',
+    birdsmouth: 'Birdsmouth',
+    birdsmouthSize: 'Birdsmouth · seat × depth',
+    eave: 'Horizontal eave',
+    drawingHint: 'Hover a result to point at it in the drawing.',
+  },
+  evidence: {
+    title: 'How was this calculated?',
+    run: 'Run to ridge axis',
+    pitch: 'Roof pitch',
+    eave: 'Horizontal eave',
+    ridgeDeduction: 'Ridge deduction',
+    ridgeDeductionNote: 'half the ridge thickness, horizontally',
+    topEdgeFormula: '(run − deduction + eave) ÷ cos(pitch)',
+    plumbOffset: 'Plumb cut offset',
+    plumbOffsetFormula: 'depth {{depth}} × tan(pitch)',
+    k1Footnote:
+      'Geometric size: no allowance, kerf or tolerance. The same data drives K1 in the Creator.',
+    hipPlanFormula: 'run × √2',
+    hipSlopeFormula: 'tan(hip slope) = tan(pitch) ÷ √2',
+    h1Footnote: '45° corner in plan, equal-pitch planes. No allowance or kerf.',
+  },
+  sourceLabel: {
+    auto: 'AUTO',
+    manual: 'MANUAL',
+    catalogue: 'CATALOGUE',
+    project: 'FROM PROJECT',
+  },
+  statusLabel: {
+    ready: 'Ready',
+    partial: 'Partially calculated',
+    decision: 'Needs a decision',
+    data: 'Needs data',
+    incompatible: 'Incompatible',
+    unavailable: 'Unavailable',
+  },
+  geometryKind: {
+    reference: 'Reference geometry',
+    execution: 'Execution geometry',
+    referenceNote:
+      'Axis and length are calculated. The joint connection is not chosen yet — this is not an error.',
+    executionNote: 'Dimensions include the resolved connection.',
+  },
   install: {
     title: 'Covering installation',
     product: 'Product',
@@ -2938,6 +3032,7 @@ export const assemblyEn: typeof assemblyPl = {
     axes_many: '{{count}} axes',
     axes_other: '{{count}} axes',
     geometricLength: 'geometric length',
+    actualGauge: 'actual gauge',
     perPlaneSuffix: 'per plane',
     totalSuffix: 'in total',
     details: 'Installation details',
@@ -3296,7 +3391,7 @@ export const assemblyEn: typeof assemblyPl = {
   controlDepth: 'Depth',
   range:
     'Range: {{min}}–{{max}} {{unit}}. Horizontal measurement to the left support face.',
-  stock: 'Minimum geometric length',
+  stock: 'Rafter length (geometric)',
   reference: 'Top edge',
   toNotch: 'Eave to notch',
   ridgeAngle: 'Ridge cut',
@@ -3605,6 +3700,7 @@ export const assemblyEn: typeof assemblyPl = {
     restoreFromProject: 'Restore from project',
     exportCsv: 'Download CSV',
     openInDocuments: 'Open in export',
+    noLinesTitle: 'No estimate lines yet',
     noLines: 'The estimate is empty. Add a suggested or manual line.',
     unitLabel: {
       piece: 'pc',

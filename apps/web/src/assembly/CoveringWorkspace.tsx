@@ -29,6 +29,7 @@ import type {
 } from '@cieslacalc/roof-math';
 import { parseDecimal } from '../format';
 import { useAssembly } from './store';
+import { SourceBadge } from './SourceBadge';
 import { newBattenLayer } from './build-up-defaults';
 import {
   CoveringInstallationBlock,
@@ -1583,14 +1584,9 @@ function CoveringProductCard({
       data-testid="covering-product-card"
     >
       <div className="a-covering-product-title">
-        <span
-          className="a-source-badge"
-          data-source={assignment.product.catalogRef ? 'catalog' : 'manual'}
-        >
-          {assignment.product.catalogRef
-            ? t('assembly.catalogSource')
-            : t('assembly.manualParameters')}
-        </span>
+        <SourceBadge
+          source={assignment.product.catalogRef ? 'catalogue' : 'manual'}
+        />
         <strong>
           {display?.familyName ?? t(coveringKindLabelKey(assignment))}
         </strong>
