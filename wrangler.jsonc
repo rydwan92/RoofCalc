@@ -20,10 +20,14 @@
   // HYPERDRIVE_BINDING — paste the Hyperdrive configuration ID and uncomment.
   // Until then /api/health reports "database": "not-configured" and the
   // calculator keeps working without the online catalogue.
-  // "hyperdrive": [
-  //   {
-  //     "binding": "HYPERDRIVE",
-  //     "id": "PASTE_HYPERDRIVE_ID_HERE",
-  //   },
-  // ],
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "2d7f0a9beaee47219f9e7a6a0aeabeaf",
+      
+      // Optional. Can be used to connect to a local database for local development with `wrangler dev`
+      "localConnectionString": "<LOCAL_CONNECTION_STRING_FOR_LOCAL_DEVELOPMENT_HERE>"
+    }
+  ]
 }
+
