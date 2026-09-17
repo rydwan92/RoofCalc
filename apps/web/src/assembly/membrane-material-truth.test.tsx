@@ -188,7 +188,7 @@ it('marks manual technical data as user-owned, not a catalogue revision', () => 
   expect(within(card).getByTestId('membrane-plan-kind').textContent).toBe(
     'PLAN KONSERWATYWNY',
   );
-  expect(card.textContent).toContain('Wpływ zakładów');
+  expect(card.textContent).toContain('Zakłady między pasami');
   expect(card.textContent).toContain('10 cm');
   expect(card.textContent).toContain(
     'Pozostałe odcinki rolki nie są ponownie układane między pasami.',
@@ -223,6 +223,6 @@ it('material document and CSV carry the same membrane facts without recalculatio
   expect(exported.metrics).toEqual(row.metrics);
   expect(exported.warnings).toEqual(row.warnings);
   const csv = materialCsv(rows, {});
-  expect(csv).toContain('Wpływ zakładów');
+  expect(csv).toContain('Zakłady między pasami');
   expect(csv).toContain('Plan rolek (wg obecnego układu)');
 });

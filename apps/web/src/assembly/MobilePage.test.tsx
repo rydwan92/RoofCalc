@@ -131,9 +131,7 @@ it('opens mobile Builder on drawing with five perspectives, contextual tasks and
 it('shows mobile project status and reaches summary and K1 planning through the task flow', async () => {
   render(<App />);
   fireEvent.click(screen.getByRole('button', { name: 'Kreator' }));
-  expect(
-    screen.getByTestId('project-workflow').querySelectorAll('li'),
-  ).toHaveLength(6);
+  expect(screen.getByTestId('project-progress')).toBeTruthy();
   fireEvent.click(screen.getByTestId('project-next-action'));
   expect(useAssembly.getState().workbench.viewPreset).toBe('covering');
   const dock = screen.getByRole('tablist', { name: 'Perspektywa' });

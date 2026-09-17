@@ -130,15 +130,17 @@ describe('V46 fit covering and battens to the roof', () => {
     expect(after.projectDocument.project.coverings[0]!.roofPlaneIds).toEqual(
       roofPlaneIds(after.template),
     );
+    // V47: the repair never replaces a user-owned manual gauge.
     expect(after.projectDocument.project.buildUp.battenLayout).toMatchObject({
       enabled: true,
-      mode: 'auto-from-covering',
+      mode: 'manual',
+      gaugeMm: 350,
     });
     expect(
       after.projectDocument.project.buildUp.battenLayout?.roofPlaneIds,
     ).toBeUndefined();
     expect(workflowFor()).toMatchObject({
-      state: 'auto-ready',
+      state: 'manual-compatible',
       complete: true,
     });
 

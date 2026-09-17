@@ -203,6 +203,10 @@ describe.each([
     expect(rows[1]! - rows[0]!).toBeCloseTo(reference.gaugeMm, 1);
     expect(tiles.totalPositions).toBe(reference.positions);
     expect(tiles.cutPositions).toBe(reference.cut);
+    // V47 eave evidence: KODA 503 mm hangs from the first batten at 250 mm,
+    // so it reaches 253 mm past the eave edge on every plane.
+    for (const plane of tiles.planes)
+      expect(plane.eaveProjectionMm).toBeCloseTo(503 - 250, 6);
     // Cut positions at verges/hips may lift the count above the declared
     // consumption, but never by more than 10 % on these roofs.
     expect(tiles.totalPositions).toBeLessThanOrEqual(

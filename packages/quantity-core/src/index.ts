@@ -53,6 +53,9 @@ export interface SurfaceBuildUpSource {
   /** Lap and ridge-overrun parts of `grossAreaMm2`, from the course solver. */
   overlapAreaMm2?: number;
   ridgeOverrunAreaMm2?: number;
+  /** V47: end laps along the roll length (second lap axis). */
+  endOverlapAreaMm2?: number;
+  endLapCount?: number;
   courseCount?: number;
   rollCount?: number;
 }
@@ -151,6 +154,8 @@ export interface RoofSurfaceQuantityRow {
   /** Lap and ridge-overrun parts of `grossAreaMm2`, from the course solver. */
   overlapAreaMm2?: number;
   ridgeOverrunAreaMm2?: number;
+  endOverlapAreaMm2?: number;
+  endLapCount?: number;
   courseCount?: number;
   rollCount?: number;
 }
@@ -547,6 +552,18 @@ function createSurfaceBuildUpRows(
                     ),
                     ridgeOverrunAreaMm2: items.reduce(
                       (sum, item) => sum + (item.ridgeOverrunAreaMm2 ?? 0),
+                      0,
+                    ),
+                  }
+                : {}),
+              ...(items.every((item) => item.endOverlapAreaMm2 !== undefined)
+                ? {
+                    endOverlapAreaMm2: items.reduce(
+                      (sum, item) => sum + (item.endOverlapAreaMm2 ?? 0),
+                      0,
+                    ),
+                    endLapCount: items.reduce(
+                      (sum, item) => sum + (item.endLapCount ?? 0),
                       0,
                     ),
                   }

@@ -132,3 +132,46 @@ describe('V44 presentation never changes quantities', () => {
     );
   });
 });
+
+describe('V47 covering input guardrails', () => {
+  beforeEach(async () => {
+    localStorage.clear();
+    useAssembly.getState().reset();
+    useAssembly.getState().setUnit('cm');
+    localStorage.setItem('cieslacalc.creatorStartSeen.v1', '1');
+    await i18n.changeLanguage('pl');
+  });
+  afterEach(cleanup);
+
+  it('never commits a zero, negative or unparsable covering dimension and says why', async () => {
+    const { createManualTileAssignment } = await import('./CoveringWorkspace');
+    const { roofPlaneIds } = await import('@cieslacalc/roof-math');
+    await i18n.changeLanguage('pl');
+    useAssembly.getState().setMode('builder');
+    render(<App />);
+    act(() => {
+      useAssembly.getState().setCoveringAssignments([
+        createManualTileAssignment({
+          existing: [],
+          roofPlaneIds: roofPlaneIds(useAssembly.getState().template),
+        }),
+      ]);
+    });
+    fireEvent.click(screen.getByRole('tab', { name: 'Pokrycie' }));
+    const field = (
+      await screen.findAllByLabelText(/Szerokość krycia/)
+    )[0] as HTMLInputElement;
+    const before = JSON.stringify(useAssembly.getState().projectDocument);
+    for (const value of ['0', '-5', 'abc']) {
+      fireEvent.change(field, { target: { value } });
+      fireEvent.blur(field);
+      expect(field.getAttribute('aria-invalid')).toBe('true');
+      expect(JSON.stringify(useAssembly.getState().projectDocument)).toBe(
+        before,
+      );
+    }
+    expect(screen.getAllByRole('alert')[0]!.textContent).toContain(
+      'Wpisz poprawną liczbę',
+    );
+  });
+});

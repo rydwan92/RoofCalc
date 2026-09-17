@@ -19,6 +19,73 @@ import {
 import { downloadMaterialCsv } from './material-csv';
 import { MembraneMaterialCard } from './MembraneMaterialCard';
 import type { ExportFacts } from './export-adapter';
+import type {
+  ProjectReadiness,
+  ReadinessAction,
+  ReadinessIssue,
+} from './project-readiness';
+import { readinessIssueText } from './readiness-copy';
+
+/** V47: which readiness issues explain a material row. */
+function rowIssues(
+  row: MaterialPlanRow,
+  readiness: ProjectReadiness | undefined,
+): ReadinessIssue[] {
+  if (!readiness) return [];
+  const matches = (issue: ReadinessIssue) =>
+    row.labelKey === 'counterBattens'
+      ? issue.code === 'hip-detail-required' ||
+        issue.code === 'counter-battens-invalid'
+      : row.labelKey === 'battens'
+        ? issue.code.startsWith('battens')
+        : row.labelKey === 'membrane'
+          ? issue.code.startsWith('membrane')
+          : row.category === 'covering'
+            ? issue.code.startsWith('covering') ||
+              issue.code === 'plane-scope-stale' ||
+              issue.code === 'tile-eave-projection'
+            : false;
+  return readiness.issues.filter(
+    (issue) => issue.severity !== 'info' && matches(issue),
+  );
+}
+
+function RowReadiness({
+  issues,
+  onAction,
+}: {
+  issues: ReadinessIssue[];
+  onAction?: (action: ReadinessAction) => void;
+}) {
+  const { t, i18n } = useTranslation();
+  const unit = useAssembly((state) => state.unit);
+  const issue = issues[0];
+  if (!issue) return null;
+  const text = readinessIssueText(t, issue, unit, i18n.language);
+  return (
+    <div
+      className="mp-readiness"
+      data-severity={issue.severity}
+      data-testid="material-row-readiness"
+    >
+      <span aria-hidden="true">{issue.severity === 'blocker' ? '✕' : '⚠'}</span>
+      <div>
+        <strong>{text.title}</strong>
+        <small>{text.description}</small>
+      </div>
+      {issue.action && onAction && (
+        <button
+          type="button"
+          className="a-primary"
+          data-readiness-action={issue.action}
+          onClick={() => onAction(issue.action!)}
+        >
+          {t(`assembly.readiness.action.${issue.action}`)}
+        </button>
+      )}
+    </div>
+  );
+}
 
 const MembraneProductPicker = lazy(() =>
   import('../catalog/MembraneProductPicker').then((module) => ({
@@ -38,8 +105,12 @@ export function MaterialPlan({
   onOpenCovering,
   onOpenCosting,
   onOpenExport,
+  readiness,
+  onReadinessAction,
 }: {
   facts: ExportFacts;
+  readiness?: ProjectReadiness;
+  onReadinessAction?: (action: ReadinessAction) => void;
   membrane?: MembraneProductSelection;
   scenario?: CostScenario;
   prices: Record<string, MaterialPriceSelection>;
@@ -240,6 +311,10 @@ export function MaterialPlan({
                   className="mp-row"
                   data-testid={`material-row-${row.labelKey}`}
                 >
+                  <RowReadiness
+                    issues={rowIssues(row, readiness)}
+                    onAction={onReadinessAction}
+                  />
                   {row.labelKey === 'membrane' ? (
                     <MembraneMaterialCard row={row} locale={locale} />
                   ) : (

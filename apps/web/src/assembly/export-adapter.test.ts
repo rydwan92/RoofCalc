@@ -301,7 +301,9 @@ describe('execution export adapter', () => {
     )?.section;
     expect(assumptions?.kind).toBe('assumptions');
     if (assumptions?.kind === 'assumptions')
-      expect(assumptions.codes).toContain('ridge-half-lap-unresolved');
+      expect(assumptions.limitations.map((fact) => fact.code)).toContain(
+        'ridge-half-lap-unresolved',
+      );
   });
 
   it('labels a direct ridge meeting distinctly from the ridge-board default', () => {
@@ -319,8 +321,9 @@ describe('execution export adapter', () => {
       (row) => row.kind === 'assumptions',
     )?.section;
     if (assumptions?.kind === 'assumptions') {
-      expect(assumptions.codes).toContain('ridge-direct-meeting');
-      expect(assumptions.codes).not.toContain('ridge-board');
+      const scope = assumptions.scope.map((fact) => fact.code);
+      expect(scope).toContain('k1-direct-meeting');
+      expect(scope).not.toContain('k1-ridge-board');
     }
   });
 
@@ -367,7 +370,9 @@ describe('execution export adapter', () => {
       (row) => row.kind === 'assumptions',
     )?.section;
     if (assumptions?.kind === 'assumptions')
-      expect(assumptions.codes).toContain('collar-tie-geometric');
+      expect(assumptions.limitations.map((fact) => fact.code)).toContain(
+        'collar-tie-geometric',
+      );
   });
 
   it('exports automatic batten and partial counter-batten facts without inventing purchase data', () => {

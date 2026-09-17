@@ -448,3 +448,30 @@ and their totals are never added together.
   *included* line has both a valid quantity and price
   (`CostScenarioSummary.complete`); an unpriced or quantity-less included line
   contributes zero to the total but still blocks that claim.
+
+## V47 — Readiness, guardrails and document truth
+
+- **No dead ends.** Every unresolved state answers: what is wrong, why it
+  matters, whether RoofCalc can fix it safely, which decision the user owns and
+  where to go. A blocker always carries an action.
+- **Severity is semantic.** BLOCKER = a dependent result would mislead (gates
+  only the affected document's final print); WARNING = useful with a known
+  limitation (printable, and printed); INFO = optional next step. Optional or
+  not-applicable work is never styled as an error.
+- **Calm by default.** One primary item in the project bar; everything else in
+  the on-demand "Sprawdzenie projektu" panel. Success is quiet, blockers strong,
+  warnings moderate, info muted. Icons plus text, never colour alone.
+- **Safe repair is explicit.** Only deterministic, non-controversial changes
+  join "Napraw bezpiecznie N problemy", always previewed, one history entry,
+  confirmed with "[Cofnij]". Expert decisions (H1 detail, installation mode,
+  manual gauge, product or structure) are never included.
+- **Consequential changes explain themselves first** (roof type with dependent
+  data); ordinary numeric edits never ask.
+- **Recalculated execution values show where they came from** briefly
+  ("40,3 cm → 39,6 cm · przeliczono po zmianie"); no toast for derived numbers.
+- **Documents state their readiness before opening** (hub card and preflight),
+  in the preview header, and on the printed page. A working document never
+  looks final.
+- **Readiness actions land on the exact editor** (layer, section, focused
+  field), not on a generic tab.
+- **Invalid input stays local**: mark the field, explain, never commit.

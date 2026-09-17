@@ -28,7 +28,6 @@ import {
   newBattenLayer,
   newCounterBattenLayer,
 } from './build-up-defaults';
-import { deriveProjectGuidance } from './project-guidance';
 
 const gable = gableTemplateFromAssembly(assemblyDefaults);
 const hip: RoofTemplateSpec = {
@@ -414,57 +413,5 @@ describe('V43B counter-batten workflow and guidance', () => {
     expect(paired.state).toBe('complete');
     expect(paired.hipBoundaryRunCount).toBe(8);
     expect(paired.totalLengthMm).toBeGreaterThan(none.totalLengthMm);
-  });
-
-  it('guides covering → battens → hip detail → layers ready in order', () => {
-    const facts = {
-      constructionReady: true,
-      openingCount: 0,
-      openingWarnings: 0,
-      enabledLayerCount: 2,
-      layerWarnings: 0,
-      coveringCount: 0,
-      resolvedCoveringCount: 0,
-      coveringWarnings: 0,
-      k1Ready: false,
-      hasResults: true,
-    };
-    const noCovering = run({ template: hip, layout: newBattenLayer() });
-    expect(
-      deriveProjectGuidance(facts, false, undefined, {
-        battens: noCovering.workflow,
-        counterBattens: counter(),
-      }).map((item) => item.kind),
-    ).toEqual(['covering-missing', 'hip-detail-required']);
-    const withTile = { ...facts, coveringCount: 1, resolvedCoveringCount: 1 };
-    const offLayer = run({
-      template: hip,
-      assignments: [tile(SEEDED.narrow!, hip)],
-    });
-    expect(
-      deriveProjectGuidance(withTile, false, undefined, {
-        battens: offLayer.workflow,
-        counterBattens: counter(),
-      }).map((item) => item.kind),
-    ).toEqual(['battens-check', 'hip-detail-required']);
-    const ready = run({
-      template: hip,
-      layout: newBattenLayer(),
-      assignments: [tile(SEEDED.narrow!, hip)],
-    });
-    expect(
-      deriveProjectGuidance(withTile, false, undefined, {
-        battens: ready.workflow,
-        counterBattens: counter('no-dedicated-run'),
-      }).map((item) => item.kind),
-    ).toEqual(['layers-ready']);
-    // A placeholder manual gauge never yields "layers ready".
-    const preliminary = run({ template: hip, layout: manual(350) });
-    expect(
-      deriveProjectGuidance(withTile, false, undefined, {
-        battens: preliminary.workflow,
-        counterBattens: counter('no-dedicated-run'),
-      }).map((item) => item.kind),
-    ).not.toContain('layers-ready');
   });
 });

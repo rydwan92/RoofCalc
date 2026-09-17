@@ -549,6 +549,39 @@ in the drawing without history; "Jak policzono?" ends with the same length.
 Invalid inputs are flagged at the field and never change the project; switching
 covering Technical/Visual changes no counted position (`input-guards.test.tsx`).
 
+## READY-001 — Guided new project · `AUTOMATED` `BROWSER`
+
+New hip project: the bar shows "Wybierz pokrycie" as an info step (not an
+error). A catalogue tile creates Auto battens; adding counter-battens surfaces
+"Uzupełnij detal kontrłat przy H1"; its action lands on the hip detail;
+choosing a detail removes the issue immediately; the Document Hub shows the
+execution package state before opening (`e2e/v47-readiness.spec.ts`,
+`readiness-ui.test.tsx`).
+
+## READY-002 — Broken saved project · `AUTOMATED` `BROWSER`
+
+A project whose covering and battens reference planes the roof does not have
+loads unchanged; readiness names "Pokrycie wskazuje nieistniejące połacie" as
+a blocker; "Dopasuj pokrycie i łaty do dachu" fixes it in one history entry;
+"Cofnij" restores the saved state. The safe repair preview lists every change
+and never includes an expert decision.
+
+## READY-003 — Export preflight and document truth · `AUTOMATED` `BROWSER`
+
+KODA on the default first batten (250 mm) projects ≈ 25,3 cm past the eave:
+the hub shows the limitation, the preview is "Dokument roboczy" with the issue
+printed on page 1 and printing stays available. The readiness action focuses
+"Pierwsza łata od okapu"; after the fix the document is "Gotowy" without a
+banner. A blocker replaces the main print action with "Napraw problemy". The
+assumptions page never states "netto nie obejmuje zakładów" for a resolved
+roll plan (`execution-export-truth.test.tsx`).
+
+## LAPS-001 — Membrane laps in both axes · `AUTOMATED`
+
+8 courses × 8 m on 1,5 × 50 m rolls with a 10 cm lap: 2 rolls, 1 end lap,
+64,1 m of roll length; gross area includes laps between courses and at roll
+joins (`membrane-layout.test.ts`).
+
 ## COMPOUND-001 — Higher house + lower garage · `PLANNED`
 
 **Not implemented.** No multi-structure document, transform, connection graph or

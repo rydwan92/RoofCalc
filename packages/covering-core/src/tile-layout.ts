@@ -78,6 +78,16 @@ export interface TilePlaneLayout {
   fullPositions: number;
   cutPositions: number;
   splitPositions: number;
+  /**
+   * V47 eave detail evidence: how far the first course's physical tile
+   * reaches past the plane's eave edge,
+   * `physicalLengthMm − (first batten station − eave v)`. A tile hangs from
+   * its batten, so its lower edge sits one physical length below it. The nib
+   * offset is not in the product data, so this is an approximation to within
+   * a few centimetres. Negative: the first course stops short of the eave.
+   * Absent without a physical tile length or battens.
+   */
+  eaveProjectionMm?: number;
   issues: RoofTileLayoutIssue[];
 }
 
@@ -583,9 +593,17 @@ export const roofTileLayoutStrategy = {
           });
         });
         const positions = courses.flatMap((course) => course.positions);
+        const eaveV = Math.min(...plane.localPolygon.map((point) => point.vMm));
+        const physicalLength = input.productSpec.physicalLengthMm;
         planes.push({
           roofPlaneId,
           horizontalOriginUMm: baseOrigin,
+          ...(physicalLength !== undefined && rows.length > 0
+            ? {
+                eaveProjectionMm:
+                  physicalLength - (rows[0]!.stationVMm - eaveV),
+              }
+            : {}),
           actualGaugeRangeMm,
           courses,
           totalPositions: positions.length,

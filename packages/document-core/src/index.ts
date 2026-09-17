@@ -220,18 +220,32 @@ export interface CoveringSection {
     warnings: string[];
   }[];
 }
+/**
+ * A translated-by-code fact. Numbers stay canonical (mm, mm², m² where the
+ * code says so); the renderer owns wording and formatting.
+ */
+export interface DocumentFact {
+  code: string;
+  params?: Record<string, string | number>;
+}
+/**
+ * V47: what the document covers (scope), what this project's result does not
+ * yet resolve (limitations, read from resolver facts) and what RoofCalc does
+ * not model at all. No generic disclaimer lives here.
+ */
 export interface AssumptionsSection {
   kind: 'assumptions';
-  codes: (
-    | 'ridge-board'
-    | 'ridge-direct-meeting'
-    | 'ridge-half-lap-unresolved'
-    | 'collar-tie-geometric'
-    | 'geometric-covering'
-    | 'net-membrane'
-    | 'no-structural-check'
-    | 'unresolved-execution'
-  )[];
+  scope: DocumentFact[];
+  limitations: DocumentFact[];
+  notModelled: DocumentFact[];
+}
+/**
+ * V47 document readiness as printed: a working document carries its open
+ * warnings/blockers visibly, never only in the application UI.
+ */
+export interface DocumentStatus {
+  state: 'ready' | 'warning' | 'blocked';
+  issues: (DocumentFact & { severity: 'blocker' | 'warning' })[];
 }
 /**
  * Renderer-neutral cost estimate evidence (V34B). Numbers only — no
@@ -324,6 +338,8 @@ export interface ExecutionDocument {
   generatedAt: string;
   sections: ExecutionSection[];
   warnings: string[];
+  /** Absent on documents built before V47 readiness existed. */
+  status?: DocumentStatus;
 }
 
 export function buildExecutionDocument(input: {
@@ -331,6 +347,7 @@ export function buildExecutionDocument(input: {
   candidates: readonly SectionCandidate[];
   selected: readonly SectionKind[];
   generatedAt: string;
+  status?: DocumentStatus;
 }): ExecutionDocument {
   const selected = new Set(input.selected);
   const byKind = new Map(
@@ -354,6 +371,7 @@ export function buildExecutionDocument(input: {
     warnings: included.flatMap((candidate) =>
       candidate.reason ? [candidate.reason] : [],
     ),
+    ...(input.status ? { status: input.status } : {}),
   };
 }
 

@@ -53,6 +53,10 @@ import {
   type MaterialPriceSelection,
 } from './material-plan';
 import type { MembraneProductSelection } from '@cieslacalc/covering-core';
+import {
+  structuralLimitations,
+  type ProjectLimitation,
+} from './project-readiness';
 
 type ResolvedK1 = Extract<K1CuttingRequirement, { status: 'resolved' }>;
 export type ResolvedCoveringLayout =
@@ -96,6 +100,11 @@ export type ExportFacts = {
   membraneProduct?: MembraneProductSelection;
   materialRows?: MaterialPlanRow[];
   materialPrices?: Record<string, MaterialPriceSelection>;
+  /**
+   * V47: limitation facts from project readiness — the single decision point.
+   * Absent (older callers) → only structural limitations are known.
+   */
+  limitations?: ProjectLimitation[];
 };
 
 function drawing(model: DrawingModel): DocumentDrawing {
@@ -575,29 +584,104 @@ export function createExportCandidates(facts: ExportFacts): SectionCandidate[] {
             facts.cutting.value.summary.reusableRemnantLengthMm,
         }
       : undefined;
+  const limitations = facts.limitations ?? structuralLimitations(facts);
+  const membranePlan = limitations.find(
+    (item) => item.code === 'membrane-roll-plan',
+  );
+  const resolvedCoverings = coveringRows.filter(
+    (row) => row.status === 'resolved',
+  );
   const assumptions: ExecutionSection = {
     kind: 'assumptions',
-    codes: [
+    scope: [
+      {
+        code: 'roof-geometry',
+        params: {
+          roofType: facts.template.type,
+          pitchDeg: facts.template.pitchDeg,
+        },
+      },
       ...(facts.k1.status === 'resolved'
         ? [
-            facts.k1.blank.ridgeConnection ===
-            'direct-opposing-rafter-plumb-meeting'
-              ? ('ridge-direct-meeting' as const)
-              : ('ridge-board' as const),
+            {
+              code:
+                facts.k1.blank.ridgeConnection ===
+                'direct-opposing-rafter-plumb-meeting'
+                  ? 'k1-direct-meeting'
+                  : 'k1-ridge-board',
+              params: { count: facts.k1.requiredPieces.length },
+            },
           ]
-        : facts.k1.status === 'unresolved' &&
-            facts.k1.reason === 'ridge-connection-not-modeled'
-          ? ['ridge-half-lap-unresolved' as const]
-          : []),
-      ...(roofStructureSystem(facts.template) === 'rafter-collar-tie'
-        ? ['collar-tie-geometric' as const]
         : []),
-      ...(coveringRows.length ? ['geometric-covering' as const] : []),
-      ...(facts.membraneEnabled ? ['net-membrane' as const] : []),
-      'no-structural-check',
-      ...(facts.template.type === 'hip' || facts.surface.status !== 'resolved'
-        ? ['unresolved-execution' as const]
+      ...(cutting
+        ? [
+            {
+              code: 'k1-cutting-plan',
+              params: { stockCount: cutting.usages.length },
+            },
+          ]
         : []),
+      ...(resolvedCoverings.length
+        ? [
+            {
+              code: 'covering-layout',
+              params: {
+                count: resolvedCoverings.reduce(
+                  (sum, row) => sum + (row.measure?.count ?? 0),
+                  0,
+                ),
+              },
+            },
+          ]
+        : []),
+      ...(facts.battensEnabled && facts.battens.battens.length
+        ? [
+            {
+              code: 'battens-layout',
+              params: {
+                rows: facts.battens.battens.length,
+                lengthMm: facts.battens.totalLengthMm,
+              },
+            },
+          ]
+        : []),
+      ...(facts.counterBattensEnabled &&
+      facts.counterBattens.totalVisibleLengthMm > 0
+        ? [
+            {
+              code: 'counter-battens-layout',
+              params: { lengthMm: facts.counterBattens.totalVisibleLengthMm },
+            },
+          ]
+        : []),
+      ...(membranePlan && 'params' in membranePlan
+        ? [
+            {
+              code: 'membrane-roll-plan',
+              params: Object.fromEntries(
+                Object.entries(membranePlan.params).filter(
+                  (entry): entry is [string, number] =>
+                    typeof entry[1] === 'number',
+                ),
+              ),
+            },
+          ]
+        : []),
+    ],
+    limitations: limitations
+      .filter((item) => item.code !== 'membrane-roll-plan')
+      .map((item) =>
+        'params' in item
+          ? {
+              code: item.code,
+              params: item.params as Record<string, number>,
+            }
+          : { code: item.code },
+      ),
+    notModelled: [
+      { code: 'structural-check' },
+      { code: 'connector-sizing' },
+      { code: 'waste-and-stock' },
     ],
   };
   return [

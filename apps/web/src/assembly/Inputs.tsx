@@ -1,6 +1,12 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Minus, Plus } from 'lucide-react';
-import { purlinRange, type calculateAssembly } from '@cieslacalc/roof-math';
+import {
+  convertRoofTemplate,
+  purlinRange,
+  roofPlaneIds,
+  type calculateAssembly,
+} from '@cieslacalc/roof-math';
 import type { SupportSpec } from '@cieslacalc/timber-model';
 import { editableLength, formatLength, formatNumber } from '../format';
 import { editValue, supportField, useAssembly, type EditField } from './store';
@@ -205,9 +211,55 @@ export function CollarTieInputs() {
     </>
   );
 }
+/**
+ * V47 consequence preview: a roof-type change remaps covering and build-up
+ * scopes (V46), so the Creator explains what will be updated before it
+ * happens. Nothing is asked when no dependent data exists.
+ */
+function roofTypeConsequences(
+  state: ReturnType<typeof useAssembly.getState>,
+  next: 'gable' | 'hip',
+) {
+  const project = state.projectDocument.project;
+  // Plane IDs belong to the template resolver (ADR-007).
+  const nextPlanes = roofPlaneIds(convertRoofTemplate(state.template, next));
+  const windowsOnRemovedPlanes = project.features.filter(
+    (feature) => !nextPlanes.includes(feature.roofPlaneId),
+  ).length;
+  const items = [
+    ...(project.coverings.length
+      ? [{ key: 'coverings', count: project.coverings.length }]
+      : []),
+    ...(project.buildUp.battenLayout?.enabled ? [{ key: 'battens' }] : []),
+    ...(project.buildUp.counterBattens?.enabled
+      ? [{ key: 'counterBattens' }]
+      : []),
+    ...(project.buildUp.membrane?.enabled ? [{ key: 'membrane' }] : []),
+    ...(windowsOnRemovedPlanes
+      ? [{ key: 'openings', count: windowsOnRemovedPlanes }]
+      : []),
+  ];
+  return items;
+}
 export function RoofTypeSelector({ context }: { context: 'roof' | 'member' }) {
   const state = useAssembly(),
     { t } = useTranslation();
+  const [pending, setPending] = useState<'gable' | 'hip'>();
+  const consequences = pending ? roofTypeConsequences(state, pending) : [];
+  const typeLabel = (type: 'gable' | 'hip') =>
+    t(`assembly.${type === 'gable' ? 'gableRoof' : 'hipRoof'}`);
+  const choose = (type: 'gable' | 'hip') => {
+    if (type === state.template.type) return;
+    if (
+      context === 'roof' &&
+      state.workbench.mode === 'builder' &&
+      roofTypeConsequences(state, type).length > 0
+    ) {
+      setPending(type);
+      return;
+    }
+    state.setRoofType(type);
+  };
   return (
     <div className="a-roof-type">
       <span>
@@ -224,7 +276,7 @@ export function RoofTypeSelector({ context }: { context: 'roof' | 'member' }) {
             key={type}
             type="button"
             aria-pressed={state.template.type === type}
-            onClick={() => state.setRoofType(type)}
+            onClick={() => choose(type)}
           >
             {t(
               `assembly.${context === 'roof' ? (type === 'gable' ? 'gableRoof' : 'hipRoof') : type === 'gable' ? 'commonRafter' : 'hipRafter'}`,
@@ -232,6 +284,55 @@ export function RoofTypeSelector({ context }: { context: 'roof' | 'member' }) {
           </button>
         ))}
       </div>
+      {pending && consequences.length > 0 && (
+        <div
+          className="a-consequence"
+          role="alertdialog"
+          aria-label={t('assembly.readiness.consequence.title', {
+            from: typeLabel(state.template.type),
+            to: typeLabel(pending),
+          })}
+          data-testid="roof-type-consequence"
+        >
+          <strong>
+            {t('assembly.readiness.consequence.title', {
+              from: typeLabel(state.template.type),
+              to: typeLabel(pending),
+            })}
+          </strong>
+          <span>{t('assembly.readiness.consequence.intro')}</span>
+          <ul>
+            {consequences.map((item) => (
+              <li key={item.key}>
+                {t(`assembly.readiness.consequence.${item.key}`, {
+                  count: 'count' in item ? item.count : 0,
+                })}
+              </li>
+            ))}
+          </ul>
+          <small>{t('assembly.readiness.consequence.undoHint')}</small>
+          <div className="a-readiness-issue-actions">
+            <button
+              type="button"
+              className="a-button a-primary"
+              data-testid="roof-type-consequence-confirm"
+              onClick={() => {
+                state.setRoofType(pending);
+                setPending(undefined);
+              }}
+            >
+              {t('assembly.readiness.consequence.confirm')}
+            </button>
+            <button
+              type="button"
+              className="a-button"
+              onClick={() => setPending(undefined)}
+            >
+              {t('assembly.readiness.consequence.cancel')}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

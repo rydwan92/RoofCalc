@@ -220,21 +220,20 @@ test.describe('G — guided project workflow', () => {
     page,
   }, testInfo) => {
     await openBuilder(page);
-    const workflow = page.getByTestId('project-workflow');
-    await expect(workflow.locator('li')).toHaveCount(6);
-    await expect(workflow.locator('[data-stage="covering"]')).toHaveAttribute(
-      'data-status',
-      'incomplete',
-    );
+    // V47: the readiness bar names the next step instead of six stages.
+    const primary = page.getByTestId('project-primary-issue');
+    await expect(primary).toHaveAttribute('data-issue', 'covering-missing');
+    await expect(primary).toHaveAttribute('data-severity', 'info');
     await page.getByTestId('project-next-action').click();
     await expect(
       page.locator('[data-task="covering"][aria-selected="true"]:visible'),
     ).toBeVisible();
     await openResolvedTileSchedule(page);
-    await expect(workflow.locator('[data-stage="covering"]')).toHaveAttribute(
-      'data-status',
-      'complete',
-    );
+    await expect(
+      page.locator(
+        '[data-testid="project-primary-issue"][data-issue="covering-missing"]',
+      ),
+    ).toHaveCount(0);
     await page.locator('[data-materials-view="plan"]:visible').click();
     await page.locator('.mp-secondary-views summary').click();
     await page
@@ -914,9 +913,14 @@ test.describe('V34A — installation decisions', () => {
     await expect(inspector.getByTestId('batten-decision-issues')).toContainText(
       'poza dopuszczalnym zakresem',
     );
-    await expect(
-      page.getByTestId('project-workflow').locator('[data-stage="layers"]'),
-    ).toHaveAttribute('data-status', 'warning');
+    // V47: the exact problem, its consequence and one action.
+    const primary = page.getByTestId('project-primary-issue');
+    await expect(primary).toHaveAttribute('data-issue', 'battens-incompatible');
+    await expect(primary).toHaveAttribute('data-severity', 'blocker');
+    await expect(primary).toContainText('39 cm');
+    await expect(page.getByTestId('project-next-action')).toHaveText(
+      'Dopasuj automatycznie',
+    );
     await expect(inspector.getByTestId('batten-repair-preview')).toContainText(
       '39 cm →',
     );

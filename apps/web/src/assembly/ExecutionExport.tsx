@@ -22,6 +22,53 @@ import { roofPlaneShortLabelKey } from './covering-presentation';
 import { createExportCandidates, type ExportFacts } from './export-adapter';
 import './execution-export.css';
 import { materialCopy, materialText } from './material-copy';
+import type { DocumentStatus } from '@cieslacalc/document-core';
+import type { ReadinessDocumentKind } from './project-readiness';
+import { readinessIssueText } from './readiness-copy';
+
+type Params = Record<string, string | number | undefined>;
+/** The document follows the application language (set on <html lang>). */
+const documentLocale = () =>
+  (typeof document !== 'undefined' && document.documentElement.lang) || 'pl';
+const num = (value: string | number | undefined) =>
+  typeof value === 'number'
+    ? new Intl.NumberFormat(documentLocale(), {
+        maximumFractionDigits: 2,
+      }).format(value)
+    : (value ?? '—');
+const metres = (mm: string | number | undefined) =>
+  typeof mm === 'number' ? num(mm / 1000) : '—';
+/** Membrane net → gross with both lap axes, only the parts that exist. */
+const membraneSentence = (
+  p: Params,
+  l: Record<
+    | 'lead'
+    | 'net'
+    | 'gross'
+    | 'courses'
+    | 'ends'
+    | 'ridge'
+    | 'plan'
+    | 'courseUnit'
+    | 'rollUnit',
+    string
+  >,
+) => {
+  const parts = [
+    p.overlapAreaM2 !== undefined
+      ? `${l.courses} +${num(p.overlapAreaM2)} m²`
+      : '',
+    p.endOverlapAreaM2 ? `${l.ends} +${num(p.endOverlapAreaM2)} m²` : '',
+    p.ridgeOverrunAreaM2 ? `${l.ridge} +${num(p.ridgeOverrunAreaM2)} m²` : '',
+  ].filter(Boolean);
+  return `${l.lead}: ${num(p.netAreaM2)} m² ${l.net} → ${num(p.grossAreaM2)} m² ${l.gross}${
+    parts.length ? ` (${parts.join(', ')})` : ''
+  }${
+    p.rollCount !== undefined
+      ? `; ${l.plan}: ${p.courseCount ?? '—'} ${l.courseUnit}, ${p.rollCount} ${l.rollUnit}`
+      : ''
+  }.`;
+};
 
 const copy = {
   pl: {
@@ -51,7 +98,7 @@ const copy = {
     schema: 'Schemat',
     roof: 'Dach',
     gable: 'dwuspadowy',
-    hip: 'czterospadowy',
+    hip: 'kopertowy',
     length: 'Długość budynku',
     halfRun: 'Połowa rozpiętości',
     pitch: 'Nachylenie',
@@ -159,23 +206,81 @@ const copy = {
         flat: 'kpl.',
       },
     },
-    assumptionsText: {
-      'ridge-board':
-        'K1: zamodelowano połączenie z centralną deską kalenicową; brak wariantu belki konstrukcyjnej, wieszaka i nakładki.',
-      'ridge-direct-meeting':
-        'K1: zamodelowano bezpośredni styk przeciwległych krokwi w osi kalenicy, bez deski kalenicowej.',
-      'ridge-half-lap-unresolved':
-        'K1: wybrano połączenie na nakładkę w kalenicy; geometria tego połączenia nie jest jeszcze opracowana, więc przygotowanie elementu i rozkrój K1 są niedostępne.',
-      'collar-tie-geometric':
-        'Jętka: długość i położenie to wynik geometryczny względem osi krokwi, bez cięć wykonawczych ani doboru przekroju konstrukcyjnego.',
-      'geometric-covering':
-        'Pokrycie: pozycje krycia i przebiegi są wynikami geometrycznymi, bez liczby do zakupu.',
-      'net-membrane':
-        'Membrana: podana powierzchnia netto nie obejmuje zakładów, wywinięć ani odpadu.',
-      'no-structural-check':
-        'Geometria i cięcia nie stanowią weryfikacji nośności ani doboru łączników.',
-      'unresolved-execution':
-        'Nieopracowane szczegóły wykonawcze, w tym H1/J1, pominięto w instrukcjach cięcia.',
+    assumptionsHeading: {
+      scope: 'Zakres dokumentu',
+      limitations: 'Ograniczenia tego projektu',
+      notModelled: 'Poza zakresem RoofCalc',
+      noLimitations: 'Brak nierozstrzygniętych ograniczeń w tym projekcie.',
+    },
+    scopeText: {
+      'roof-geometry': (p: Params) =>
+        `Geometria dachu ${p.roofType === 'hip' ? 'kopertowego' : 'dwuspadowego'}, nachylenie ${num(p.pitchDeg)}°.`,
+      'k1-ridge-board': (p: Params) =>
+        `K1 (${p.count} szt.): przygotowanie i trasowanie z centralną deską kalenicową.`,
+      'k1-direct-meeting': (p: Params) =>
+        `K1 (${p.count} szt.): bezpośredni styk przeciwległych krokwi w osi kalenicy.`,
+      'k1-cutting-plan': (p: Params) =>
+        `Rozkrój K1 na ${p.stockCount} sztukach długości handlowych.`,
+      'covering-layout': (p: Params) =>
+        `Pokrycie: ${p.count} pozycji krycia w efektywnym układzie.`,
+      'battens-layout': (p: Params) =>
+        `Łaty: ${p.rows} rzędów, ${metres(p.lengthMm)} m długości montażowej.`,
+      'counter-battens-layout': (p: Params) =>
+        `Kontrłaty: ${metres(p.lengthMm)} m długości montażowej.`,
+      'membrane-roll-plan': (p: Params) =>
+        membraneSentence(p, {
+          lead: 'Membrana',
+          net: 'netto',
+          gross: 'z zakładami',
+          courses: 'zakłady między pasami',
+          ends: 'zakłady na łączeniach rolek',
+          ridge: 'nadmiar przy kalenicy',
+          plan: 'plan',
+          courseUnit: 'pasów',
+          rollUnit: 'rol.',
+        }),
+    },
+    limitationText: {
+      'membrane-net-only': (p: Params) =>
+        `Membrana: znana tylko powierzchnia netto ${num(p.netAreaM2)} m² — bez produktu rolkowego zakłady i plan rolek nie są policzone.`,
+      'hip-detail-not-decided': (p: Params) =>
+        `Kontrłaty: detal ${p.count} grzbietów H1 nierozstrzygnięty — długość bez przebiegów przy grzbietach.`,
+      'batten-gauge-manual-unverified': () =>
+        'Łaty: ręczny rozstaw nie został sprawdzony z danymi pokrycia.',
+      'batten-no-stock-lengths': () =>
+        'Łaty i kontrłaty: długości montażowe, bez podziału na długości handlowe.',
+      'covering-coverage-positions': () =>
+        'Pokrycie: pozycje krycia to wynik geometryczny, nie liczba do zakupu.',
+      'covering-declared-consumption': () =>
+        'Pokrycie: ilość wg deklarowanego zużycia producenta — szacunek, nie plan zakupu.',
+      'hip-execution-reference-only': () =>
+        'Dach kopertowy: H1 i J1 mają geometrię referencyjną; instrukcje cięcia obejmują tylko opracowane elementy.',
+      'ridge-half-lap-unresolved': () =>
+        'K1: połączenie na nakładkę w kalenicy nie jest jeszcze opracowane, więc przygotowanie elementu i rozkrój K1 są niedostępne.',
+      'collar-tie-geometric': () =>
+        'Jętka: długość i położenie to wynik geometryczny względem osi krokwi, bez cięć wykonawczych i doboru przekroju.',
+      'cost-incomplete': (p: Params) =>
+        `Kosztorys: ${p.missingPrices} pozycji bez ceny nie wchodzi do sumy.`,
+    },
+    notModelledText: {
+      'structural-check': 'Weryfikacja nośności, ugięć i stateczności',
+      'connector-sizing': 'Dobór łączników i mocowań',
+      'waste-and-stock': 'Zapas, odpad i długości handlowe poza rozkrojem K1',
+    },
+    status: {
+      ready: 'Gotowy dokument',
+      warning: 'Dokument roboczy',
+      blocked: 'Wymaga poprawy — nie do wykonania',
+      warningIntro: 'Dokument zawiera ograniczenia opisane poniżej.',
+      blockedIntro:
+        'Część wyników byłaby myląca. Popraw poniższe problemy przed użyciem dokumentu na budowie.',
+    },
+    printAnyway: 'Drukuj wersję roboczą',
+    fixProblems: 'Napraw problemy',
+    documentTitle: {
+      execution: 'Pakiet wykonawczy',
+      materials: 'Lista materiałów',
+      cost: 'Kosztorys',
     },
     reason: {
       'plan-k1-first': 'Najpierw zaplanuj rozkrój K1.',
@@ -323,22 +428,83 @@ const copy = {
         flat: 'set',
       },
     },
-    assumptionsText: {
-      'ridge-board':
-        'K1: modeled against a centered ridge board; structural beam, hanger and half-lap variants are absent.',
-      'ridge-direct-meeting':
-        'K1: modeled as a direct meeting of opposing rafters on the ridge axis, with no ridge board.',
-      'ridge-half-lap-unresolved':
-        'K1: a half-lap ridge connection is selected; its cut geometry is not modeled yet, so member preparation and K1 cutting are unavailable.',
-      'collar-tie-geometric':
-        'Collar tie: length and position are a geometric result referenced to the rafter axis, with no fabrication cuts or structural section sizing.',
-      'geometric-covering':
-        'Covering: positions and runs are geometric results, not quantities to purchase.',
-      'net-membrane': 'Membrane: net area excludes laps, upstands and waste.',
-      'no-structural-check':
-        'Geometry and cuts are not a structural capacity or connector check.',
-      'unresolved-execution':
-        'Unresolved fabrication details, including H1/J1, are omitted from cutting instructions.',
+    assumptionsHeading: {
+      scope: 'Document scope',
+      limitations: 'Limitations of this project',
+      notModelled: 'Outside RoofCalc scope',
+      noLimitations: 'No unresolved limitations in this project.',
+    },
+    scopeText: {
+      'roof-geometry': (p: Params) =>
+        `${p.roofType === 'hip' ? 'Hip' : 'Gable'} roof geometry, pitch ${num(p.pitchDeg)}°.`,
+      'k1-ridge-board': (p: Params) =>
+        `K1 (${p.count} pcs): preparation and marking against a centred ridge board.`,
+      'k1-direct-meeting': (p: Params) =>
+        `K1 (${p.count} pcs): direct meeting of opposing rafters on the ridge axis.`,
+      'k1-cutting-plan': (p: Params) =>
+        `K1 cutting plan on ${p.stockCount} commercial lengths.`,
+      'covering-layout': (p: Params) =>
+        `Covering: ${p.count} coverage positions in the effective layout.`,
+      'battens-layout': (p: Params) =>
+        `Battens: ${p.rows} rows, ${metres(p.lengthMm)} m installation length.`,
+      'counter-battens-layout': (p: Params) =>
+        `Counter-battens: ${metres(p.lengthMm)} m installation length.`,
+      'membrane-roll-plan': (p: Params) =>
+        membraneSentence(p, {
+          lead: 'Membrane',
+          net: 'net',
+          gross: 'including laps',
+          courses: 'laps between courses',
+          ends: 'laps at roll joins',
+          ridge: 'ridge overrun',
+          plan: 'plan',
+          courseUnit: 'courses',
+          rollUnit: 'rolls',
+        }),
+    },
+    limitationText: {
+      'membrane-net-only': (p: Params) =>
+        `Membrane: only the net area ${num(p.netAreaM2)} m² is known — without a roll product laps and a roll plan are not calculated.`,
+      'hip-detail-not-decided': (p: Params) =>
+        `Counter-battens: the detail at ${p.count} H1 hips is undecided — length excludes runs at hips.`,
+      'batten-gauge-manual-unverified': () =>
+        'Battens: the manual gauge was not verified against covering data.',
+      'batten-no-stock-lengths': () =>
+        'Battens and counter-battens: installation lengths, not split into commercial lengths.',
+      'covering-coverage-positions': () =>
+        'Covering: coverage positions are a geometric result, not a purchase count.',
+      'covering-declared-consumption': () =>
+        "Covering: quantity from the manufacturer's declared consumption — an estimate, not a purchase plan.",
+      'hip-execution-reference-only': () =>
+        'Hip roof: H1 and J1 are reference geometry; cutting instructions cover only resolved members.',
+      'ridge-half-lap-unresolved': () =>
+        'K1: the half-lap ridge connection is not modelled yet, so K1 preparation and cutting are unavailable.',
+      'collar-tie-geometric': () =>
+        'Collar tie: length and position are geometric, referenced to the rafter axis, without fabrication cuts or section sizing.',
+      'cost-incomplete': (p: Params) =>
+        `Cost estimate: ${p.missingPrices} items without a price are excluded from the total.`,
+    },
+    notModelledText: {
+      'structural-check':
+        'Structural capacity, deflection and stability checks',
+      'connector-sizing': 'Connector and fixing sizing',
+      'waste-and-stock':
+        'Allowance, waste and commercial lengths beyond K1 cutting',
+    },
+    status: {
+      ready: 'Final document',
+      warning: 'Working document',
+      blocked: 'Needs fixing — not for execution',
+      warningIntro: 'This document carries the limitations listed below.',
+      blockedIntro:
+        'Some results would be misleading. Fix the problems below before using this document on site.',
+    },
+    printAnyway: 'Print working copy',
+    fixProblems: 'Fix problems',
+    documentTitle: {
+      execution: 'Execution package',
+      materials: 'Material list',
+      cost: 'Cost estimate',
     },
     reason: {
       'plan-k1-first': 'Plan K1 cutting first.',
@@ -945,14 +1111,63 @@ function SectionBody({
           <p className="doc-note">{m.notPurchase}</p>
         </>
       );
-    case 'assumptions':
+    case 'assumptions': {
+      const membraneText = (code: string) =>
+        materialText(locale, code) !== code
+          ? materialText(locale, code)
+          : undefined;
+      const limitationLine = (code: string, params?: Params) =>
+        (m.limitationText as Record<string, (p: Params) => string>)[code]?.(
+          params ?? {},
+        ) ??
+        (membraneText(code)
+          ? `${locale.startsWith('pl') ? 'Membrana' : 'Membrane'}: ${membraneText(code)}`
+          : code);
       return (
-        <ol className="doc-assumptions">
-          {section.codes.map((code) => (
-            <li key={code}>{m.assumptionsText[code]}</li>
-          ))}
-        </ol>
+        <div className="doc-assumptions" data-testid="doc-assumptions">
+          <section data-group="scope">
+            <h3>{m.assumptionsHeading.scope}</h3>
+            <ul>
+              {section.scope.map((fact) => (
+                <li key={fact.code} data-fact={fact.code}>
+                  <span aria-hidden="true">✓</span>
+                  {(m.scopeText as Record<string, (p: Params) => string>)[
+                    fact.code
+                  ]?.(fact.params ?? {}) ?? fact.code}
+                </li>
+              ))}
+            </ul>
+          </section>
+          <section data-group="limitations">
+            <h3>{m.assumptionsHeading.limitations}</h3>
+            {section.limitations.length ? (
+              <ul>
+                {section.limitations.map((fact) => (
+                  <li key={fact.code} data-fact={fact.code}>
+                    <span aria-hidden="true">⚠</span>
+                    {limitationLine(fact.code, fact.params)}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>{m.assumptionsHeading.noLimitations}</p>
+            )}
+          </section>
+          <section data-group="not-modelled">
+            <h3>{m.assumptionsHeading.notModelled}</h3>
+            <ul>
+              {section.notModelled.map((fact) => (
+                <li key={fact.code} data-fact={fact.code}>
+                  <span aria-hidden="true">—</span>
+                  {(m.notModelledText as Record<string, string>)[fact.code] ??
+                    fact.code}
+                </li>
+              ))}
+            </ul>
+          </section>
+        </div>
       );
+    }
     case 'material-list': {
       const mc = materialCopy(locale);
       const unit = (value: string) =>
@@ -1139,21 +1354,72 @@ function SectionBody({
   }
 }
 
+/** V47: the document's readiness, printed on its first page. */
+function DocumentStatusBanner({
+  status,
+  m,
+  unit,
+}: {
+  status: DocumentStatus;
+  m: Copy;
+  unit: LengthUnit;
+}) {
+  const { t, i18n } = useTranslation();
+  if (status.state === 'ready') return null;
+  return (
+    <section
+      className="doc-status-banner"
+      data-state={status.state}
+      data-testid="document-status-banner"
+      role="note"
+    >
+      <strong>
+        {status.state === 'blocked' ? '✕ ' : '⚠ '}
+        {m.status[status.state]}
+      </strong>
+      <p>
+        {status.state === 'blocked'
+          ? m.status.blockedIntro
+          : m.status.warningIntro}
+      </p>
+      <ul>
+        {status.issues.map((issue) => {
+          const text = readinessIssueText(t, issue, unit, i18n.language);
+          return (
+            <li
+              key={`${issue.severity}:${issue.code}`}
+              data-severity={issue.severity}
+            >
+              <b>{text.title}</b> — {text.description}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
 function DocumentPreview({
   execution,
   unit,
   onBack,
   onClose,
+  onFixProblems,
   backLabel,
+  documentKind = 'execution',
 }: {
   backLabel?: string;
   execution: ExecutionDocument;
   unit: LengthUnit;
   onBack: () => void;
   onClose: () => void;
+  onFixProblems?: () => void;
+  documentKind?: ReadinessDocumentKind;
 }) {
   const { i18n } = useTranslation();
   const m = copy[i18n.language.startsWith('pl') ? 'pl' : 'en'];
+  const state = execution.status?.state ?? 'ready';
+  const title = m.documentTitle[documentKind];
   const printButton = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     const previous = documentBodyOverflow();
@@ -1165,7 +1431,7 @@ function DocumentPreview({
         .replace(/[^a-zA-Z0-9_-]+/g, '_')
         .replace(/^_+|_+$/g, '')
         .slice(0, 70) || 'projekt';
-    document.title = `CieslaCalc_${safeName}_pakiet_wykonawczy`;
+    document.title = `CieslaCalc_${safeName}_${documentKind === 'execution' ? 'pakiet_wykonawczy' : documentKind === 'materials' ? 'lista_materialow' : 'kosztorys'}${state === 'ready' ? '' : '_roboczy'}`;
     const previousFocus = document.activeElement as HTMLElement | null;
     printButton.current?.focus();
     const keydown = (event: KeyboardEvent) => {
@@ -1178,19 +1444,33 @@ function DocumentPreview({
       document.title = previousTitle;
       previousFocus?.focus();
     };
-  }, [execution.source.projectName, onBack]);
+  }, [documentKind, execution.source.projectName, onBack, state]);
   const date = (raw: string) =>
     new Intl.DateTimeFormat(i18n.language, {
       dateStyle: 'short',
       timeStyle: 'short',
     }).format(new Date(raw));
   return createPortal(
-    <div className="doc-preview" data-testid="execution-preview">
+    <div
+      className="doc-preview"
+      data-testid="execution-preview"
+      data-document-state={state}
+    >
       <header className="doc-preview-toolbar">
         <div>
           <span>{m.export}</span>
-          <strong>{m.title}</strong>
-          <small>{execution.source.projectName}</small>
+          <strong>{title}</strong>
+          <small>
+            {execution.source.projectName}
+            <em
+              className="doc-state-pill"
+              data-state={state}
+              data-testid="document-state"
+            >
+              {state === 'ready' ? '✓ ' : state === 'blocked' ? '✕ ' : '⚠ '}
+              {m.status[state]}
+            </em>
+          </small>
         </div>
         <div>
           <button
@@ -1200,14 +1480,26 @@ function DocumentPreview({
           >
             ← {backLabel ?? m.back}
           </button>
+          {state === 'blocked' && onFixProblems && (
+            <button
+              type="button"
+              className="doc-print-button"
+              data-testid="document-fix-problems"
+              onClick={onFixProblems}
+            >
+              {m.fixProblems}
+            </button>
+          )}
           <button
             ref={printButton}
             type="button"
-            className="doc-print-button"
+            className={
+              state === 'blocked' ? 'doc-secondary-print' : 'doc-print-button'
+            }
             data-testid="execution-print"
             onClick={() => window.print()}
           >
-            {m.print}
+            {state === 'blocked' ? m.printAnyway : m.print}
           </button>
           <button type="button" onClick={onClose}>
             {m.close}
@@ -1217,18 +1509,29 @@ function DocumentPreview({
       <main className="doc-preview-pages">
         {execution.sections.map((section, index) => (
           <article
-            className="doc-page"
+            className={`doc-page${section.kind === 'assumptions' ? ' is-compact' : ''}`}
             key={section.kind}
             data-section={section.kind}
+            data-document-state={state}
           >
             <header className="doc-page-header">
               <span>
-                {m.title} / {String(index + 1).padStart(2, '0')}
+                {title} / {String(index + 1).padStart(2, '0')}
+                {state !== 'ready' && (
+                  <b className="doc-page-state"> · {m.status[state]}</b>
+                )}
               </span>
               <h1>{m[section.kind]}</h1>
               <p>{execution.source.projectName}</p>
             </header>
             <div className="doc-page-content">
+              {index === 0 && execution.status && (
+                <DocumentStatusBanner
+                  status={execution.status}
+                  m={m}
+                  unit={unit}
+                />
+              )}
               <SectionBody
                 section={section}
                 m={m}
@@ -1269,9 +1572,17 @@ export function ExecutionExport({
   initialSelection,
   startInPreview = false,
   backLabel,
+  documentKind = 'execution',
+  documentStatus,
+  onFixProblems,
 }: {
   source: DocumentSource;
   facts: ExportFacts;
+  /** V47: which Document Hub document this preview represents. */
+  documentKind?: ReadinessDocumentKind;
+  /** V47: readiness of that document, printed with it. */
+  documentStatus?: DocumentStatus;
+  onFixProblems?: () => void;
   unit: LengthUnit;
   mobile: boolean;
   onClose: () => void;
@@ -1315,6 +1626,7 @@ export function ExecutionExport({
               )
             : defaultSectionSelection(candidates),
           generatedAt: new Date().toISOString(),
+          status: documentStatus,
         })
       : undefined,
   );
@@ -1389,6 +1701,7 @@ export function ExecutionExport({
               candidates,
               selected,
               generatedAt: new Date().toISOString(),
+              status: documentStatus,
             }),
           )
         }
@@ -1458,6 +1771,8 @@ export function ExecutionExport({
           unit={unit}
           onBack={() => (startInPreview ? onClose() : setPreview(undefined))}
           onClose={onClose}
+          onFixProblems={onFixProblems}
+          documentKind={documentKind}
           backLabel={startInPreview ? backLabel : undefined}
         />
       )}

@@ -1297,7 +1297,19 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
-**Iteration:** `046 — covering/batten sync, one-step repair and roof-aware covering scheme`
+**Iteration:** `047 — project readiness, guided guardrails, document truth and two-axis laps`
+
+**Status:** `IMPLEMENTED — committed on main`
+
+**Completed:** pure `project-readiness.ts` (issues with semantic severity, actions, affected documents, required/conditional/optional areas, per-document readiness, previewed safe-repair group, single source of limitations). Readiness bar and "Sprawdzenie projektu" panel replace the six-stage strip and `project-guidance.ts` (removed). Direct navigation (H1 detail, eave detail field, membrane, battens, K1, materials, cost). Safe repair never replaces a manual gauge. Action feedback with Undo; roof-type consequence preview; Auto gauge recalculation hint; covering numeric input guardrails. Document Hub readiness, preflight and direct fix; preview state pill, print gating (blocker → "Napraw problemy" + "Drukuj wersję roboczą"), first-page status banner, per-document title. Structured assumptions page (scope / limitations / not modelled); the stale "netto nie obejmuje zakładów" is removed with a regression test. Material Plan row readiness CTAs; cost status counts filter rows. Domain: membrane end laps along the roll (`planMembraneRolls`, gross area includes them); tile `eaveProjectionMm` drawn in both covering views with an implausibility warning. See `docs/ARCHITECTURE_V47_PROJECT_READINESS_AND_GUARDRAILS.md`.
+
+**Known / not done:** sheet (modular / cut-to-length) purchase areas are still coverage positions/runs without a physical-sheet m² metric; roof windows are not re-homed on a roof-type switch (now warned in the consequence preview); ridge/hip accessory quantities not derived; opening framing decisions are not yet individual readiness issues.
+
+**NEXT ACTION:** V48 — commercial quantities for sheets and battens: physical sheet area vs effective coverage per product, transverse joints for cut-to-length sheets, batten/counter-batten stock lengths with joins over supports, and ridge/hip/verge accessory counts from the classified plane edges, each surfaced through readiness and the Material Plan.
+
+---
+
+**Previous iteration:** `046 — covering/batten sync, one-step repair and roof-aware covering scheme`
 
 **Status:** `IMPLEMENTED — committed on main`
 

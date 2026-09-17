@@ -96,6 +96,10 @@ export function CostWorkspace({
   const locale = i18n.language;
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const [addingManual, setAddingManual] = useState(false);
+  // V47: status counts focus the affected rows instead of a generic verdict.
+  const [focus, setFocus] = useState<
+    'needs-price' | 'needs-quantity' | 'estimate'
+  >();
 
   const suggestions = createCostSuggestions(facts);
   const addedKeys = new Set(scenario.lines.map((line) => line.id));
@@ -104,6 +108,37 @@ export function CostWorkspace({
       !addedKeys.has(suggestion.key) && !dismissed.has(suggestion.key),
   );
   const summary = summarizeCostScenario(scenario);
+  const estimateCount = scenario.lines.filter(
+    (line) => line.included && line.suitability === 'geometric-estimate',
+  ).length;
+  const lineFocus = (line: CostLine) => {
+    if (!focus) return undefined;
+    const computed = calculateLine(line, scenario.taxRateBps);
+    const match =
+      focus === 'needs-price'
+        ? line.included && !computed.priced
+        : focus === 'needs-quantity'
+          ? line.included && !computed.hasQuantity
+          : line.included && line.suitability === 'geometric-estimate';
+    return match ? 'match' : 'dim';
+  };
+  const focusButton = (
+    kind: 'needs-price' | 'needs-quantity' | 'estimate',
+    label: string,
+  ) => (
+    <button
+      type="button"
+      className="cw-status-filter"
+      data-status="warning"
+      data-testid={`cost-focus-${kind}`}
+      aria-pressed={focus === kind}
+      onClick={() =>
+        setFocus((current) => (current === kind ? undefined : kind))
+      }
+    >
+      {label}
+    </button>
+  );
   const grouped = linesByCategory(scenario);
 
   const addSuggestion = (suggestion: CostSuggestion, manual: boolean) => {
@@ -173,20 +208,25 @@ export function CostWorkspace({
               count: summary.pricedLineCount,
             })}
           </span>
-          {summary.needsPriceCount > 0 && (
-            <span data-status="warning">
-              {t('assembly.cost.statusNeedsPrice', {
+          {summary.needsPriceCount > 0 &&
+            focusButton(
+              'needs-price',
+              t('assembly.cost.statusNeedsPrice', {
                 count: summary.needsPriceCount,
-              })}
-            </span>
-          )}
-          {summary.needsQuantityCount > 0 && (
-            <span data-status="warning">
-              {t('assembly.cost.statusNeedsQuantity', {
+              }),
+            )}
+          {summary.needsQuantityCount > 0 &&
+            focusButton(
+              'needs-quantity',
+              t('assembly.cost.statusNeedsQuantity', {
                 count: summary.needsQuantityCount,
-              })}
-            </span>
-          )}
+              }),
+            )}
+          {estimateCount > 0 &&
+            focusButton(
+              'estimate',
+              t('assembly.cost.statusEstimates', { count: estimateCount }),
+            )}
         </div>
         <div className="cw-vat">
           <label>
@@ -369,7 +409,7 @@ export function CostWorkspace({
                         liveValue !== undefined;
                       return (
                         <Fragment key={line.id}>
-                          <tr>
+                          <tr data-focus={lineFocus(line)}>
                             <td>
                               <input
                                 type="checkbox"

@@ -188,13 +188,25 @@ export function createMaterialPlanRows(
         if (surfaces.every((item) => item.overlapAreaMm2 !== undefined)) {
           const overlap = sum((item) => item.overlapAreaMm2 ?? 0);
           const overrun = sum((item) => item.ridgeOverrunAreaMm2 ?? 0);
+          // V47: end laps along the roll length (older snapshots: absent).
+          const endOverlap = sum((item) => item.endOverlapAreaMm2 ?? 0);
           const simplification =
             suggestion.quantity.value -
             overlap -
             overrun -
+            endOverlap -
             (row.metrics[0]?.value ?? 0);
           row.metrics.push(
             { labelKey: 'overlapArea', value: overlap, unit: 'm2' },
+            ...(endOverlap > 1e-6
+              ? [
+                  {
+                    labelKey: 'endOverlapArea',
+                    value: endOverlap,
+                    unit: 'm2',
+                  },
+                ]
+              : []),
             ...(overrun > 1e-6
               ? [{ labelKey: 'ridgeOverrunArea', value: overrun, unit: 'm2' }]
               : []),

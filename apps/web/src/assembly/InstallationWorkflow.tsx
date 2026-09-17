@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   AlertTriangle,
@@ -193,11 +194,41 @@ export function WorkflowActions({
 }
 
 /** "ŁATY 34,2 cm · 22 rzędy / 1 034,6 m / AUTO · zgodne z pokryciem". */
+/**
+ * V47: an AUTO execution value that the resolver recalculated after a
+ * geometry or product change briefly shows its previous value, so a changed
+ * number never looks arbitrary. User edits (Manual) show nothing.
+ */
+function useRecalculatedFrom(value: number | undefined, auto: boolean) {
+  const previous = useRef(value);
+  const [from, setFrom] = useState<number>();
+  useEffect(() => {
+    const last = previous.current;
+    previous.current = value;
+    if (
+      auto &&
+      last !== undefined &&
+      value !== undefined &&
+      Math.abs(last - value) > 0.05
+    ) {
+      setFrom(last);
+      const timer = window.setTimeout(() => setFrom(undefined), 6000);
+      return () => window.clearTimeout(timer);
+    }
+    return undefined;
+  }, [auto, value]);
+  return from;
+}
+
 export function BattenStatusLine({ workflow }: { workflow: BattenWorkflow }) {
   const { t } = useTranslation();
   const length = useLength();
   const metres = useMetres();
   const hasRows = workflow.rowCount > 0;
+  const recalculatedFrom = useRecalculatedFrom(
+    workflow.gaugeMm,
+    workflow.owner === 'auto',
+  );
   return (
     <div
       className={`a-workflow-status is-${workflow.tone}`}
@@ -214,6 +245,19 @@ export function BattenStatusLine({ workflow }: { workflow: BattenWorkflow }) {
                 : t('assembly.install.perPlane')}
             </strong>
             <small>{t('assembly.install.actualGauge')}</small>
+            {recalculatedFrom !== undefined &&
+              workflow.gaugeMm !== undefined && (
+                <small
+                  className="a-change-hint"
+                  role="status"
+                  data-testid="batten-gauge-recalculated"
+                >
+                  {t('assembly.readiness.recalculated', {
+                    from: length(recalculatedFrom),
+                    to: length(workflow.gaugeMm),
+                  })}
+                </small>
+              )}
           </span>
           <span className="a-figure" data-batten-rows={workflow.rowCount}>
             <b>

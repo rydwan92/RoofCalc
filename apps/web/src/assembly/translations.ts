@@ -569,6 +569,9 @@ export const assemblyPl = {
     openingCut: 'docinane przy otworach',
     nominalGhost: 'Nominalna komórka krycia (poza połacią)',
     courseGauge: 'Rozstaw łat',
+    eaveProjection: 'wysunięcie za okap ≈ {{value}}',
+    eaveProjectionFact: 'Wysunięcie za okap ≈',
+    eaveShort: 'Pierwszy rząd nie sięga okapu o ≈',
     coverWidth: 'Szerokość krycia',
     technicalBoundary:
       'Widok techniczny: efektywne pola krycia przycięte do obrysu połaci — to one są liczone.',
@@ -773,6 +776,7 @@ export const assemblyPl = {
       'Wybierz dokument, sprawdź jego stan i otwórz podgląd do wydruku lub PDF.',
     sections: '{{ready}} z {{total}} sekcji gotowych',
     preview: 'Podgląd',
+    previewWorking: 'Podgląd roboczy',
     configure: 'Wybierz sekcje',
     csv: 'Pobierz CSV',
     status: {
@@ -1758,6 +1762,259 @@ export const assemblyPl = {
   hipAssumptionsText:
     'Regularny prostokątny dach kopertowy ma równe kąty czterech połaci i naroża 90°. H1 biegnie pod 45° w planie. Odjęcie do fizycznego lica kalenicy wynosi t/√2 w planie, następnie jest przeliczane wzdłuż pochylonej osi.',
   structural: 'Geometria nie jest weryfikacją nośności konstrukcji.',
+  // V47 project readiness: problem → consequence → action.
+  readiness: {
+    panelTitle: 'Sprawdzenie projektu',
+    panelIntro:
+      'Co jest gotowe, co wymaga uwagi i gdzie to poprawić. Możesz dalej swobodnie edytować projekt.',
+    progress: '{{ready}}/{{total}} gotowe',
+    progressLabel: 'Postęp projektu: {{ready}} z {{total}} obszarów gotowych',
+    allReady: 'Projekt gotowy do dokumentacji',
+    open: 'Sprawdź projekt',
+    close: 'Zamknij',
+    more: '+{{count}}',
+    moreLabel: 'Pokaż {{count}} kolejnych spraw',
+    optional: 'opcjonalne',
+    inherited: 'Wynika z obszarów: {{areas}}. Popraw je powyżej.',
+    severity: {
+      blocker: 'Wymaga poprawy',
+      warning: 'Wymaga uwagi',
+      info: 'Następny krok',
+    },
+    area: {
+      construction: 'Konstrukcja',
+      covering: 'Pokrycie',
+      layers: 'Warstwy',
+      execution: 'Wykonanie',
+      materials: 'Materiały',
+      cost: 'Kosztorys',
+    },
+    areaState: {
+      ready: 'Gotowe',
+      attention: 'Wymaga uwagi',
+      blocked: 'Wymaga poprawy',
+      pending: 'Do zrobienia',
+      'not-applicable': 'Nie dotyczy',
+    },
+    safeRepair: {
+      title: 'Bezpieczna naprawa',
+      button_one: 'Napraw bezpiecznie {{count}} problem',
+      button_few: 'Napraw bezpiecznie {{count}} problemy',
+      button_many: 'Napraw bezpiecznie {{count}} problemów',
+      button_other: 'Napraw bezpiecznie {{count}} problemu',
+      preview: 'RoofCalc wykona jedną zmianę, którą możesz cofnąć:',
+      confirm: 'Zastosuj',
+      cancel: 'Anuluj',
+      excluded:
+        'Decyzje eksperckie (detal H1, sposób montażu, ręczny rozstaw) pozostają do Twojego wyboru.',
+      change: {
+        'covering-planes': 'przypisz pokrycie do {{planeCount}} połaci dachu',
+        'covering-stale-planes-removed':
+          'usuń z pokryć {{planeCount}} nieistniejące połacie',
+        'battens-created-auto': 'dodaj łaty z rozstawem Auto z danych pokrycia',
+        'battens-created-fixed-gauge':
+          'dodaj łaty z rozstawem modułu arkusza {{gauge}}',
+        'battens-enabled': 'włącz łaty (rozstaw bez zmian)',
+        'battens-whole-roof': 'rozszerz łaty na cały dach',
+        'counter-battens-whole-roof': 'rozszerz kontrłaty na cały dach',
+        'membrane-whole-roof': 'rozszerz membranę na cały dach',
+      },
+    },
+    feedback: {
+      repaired: 'Dopasowano pokrycie i warstwy do dachu.',
+      roofTypeChanged: 'Zmieniono typ dachu. Pokrycie i warstwy dopasowano.',
+      autoGauge: 'Łaty ustawiono na rozstaw automatyczny.',
+      undo: 'Cofnij',
+      dismiss: 'Zamknij powiadomienie',
+    },
+    recalculated: '{{from}} → {{to}} · przeliczono po zmianie',
+    eaveShort: 'nie sięga okapu o ≈ {{projection}}',
+    eaveLong: 'wystaje ≈ {{projection}} za okap',
+    consequence: {
+      title: 'Zmieniasz dach: {{from}} → {{to}}',
+      intro: 'RoofCalc zaktualizuje dane, które zależą od połaci:',
+      coverings: 'Pokrycie ({{count}})',
+      battens: 'Łaty',
+      counterBattens: 'Kontrłaty',
+      membrane: 'Membrana',
+      openings: 'Okna dachowe ({{count}}) — sprawdź położenie',
+      undoHint: 'Zmianę możesz cofnąć.',
+      confirm: 'Zmień dach',
+      cancel: 'Anuluj',
+    },
+    action: {
+      'review-geometry': 'Popraw wymiary',
+      'review-structure': 'Sprawdź połączenie kalenicowe',
+      'review-openings': 'Sprawdź otwory',
+      'choose-covering': 'Wybierz pokrycie',
+      'review-covering': 'Popraw pokrycie',
+      'choose-installation-mode': 'Wybierz sposób montażu',
+      'fit-roof': 'Dopasuj pokrycie i łaty do dachu',
+      'fit-auto': 'Dopasuj automatycznie',
+      'set-manual': 'Ustaw ręcznie',
+      'enable-auto-battens': 'Włącz łaty Auto',
+      'review-battens': 'Otwórz łaty',
+      'review-eave-detail': 'Ustaw pierwszą łatę od okapu',
+      'enable-counter-battens': 'Dodaj kontrłaty',
+      'choose-hip-detail': 'Uzupełnij detal H1',
+      'review-counter-battens': 'Otwórz kontrłaty',
+      'choose-membrane-product': 'Wybierz membranę',
+      'review-membrane': 'Otwórz membranę',
+      'plan-k1': 'Zaplanuj rozkrój K1',
+      'open-materials': 'Otwórz materiały',
+      'open-cost': 'Otwórz kosztorys',
+    },
+    issue: {
+      'geometry-invalid': {
+        title: 'Geometria dachu jest nieprawidłowa',
+        description:
+          'Bez poprawnej geometrii nie da się policzyć elementów, pokrycia ani dokumentów.',
+      },
+      'roof-surface-issue': {
+        title: 'Otwór leży poza istniejącą połacią',
+        description:
+          '{{count}} element(y) odwołuje się do połaci, której dach nie ma. Powierzchnie mogą być niedokładne.',
+      },
+      'opening-collision': {
+        title: 'Otwory wymagają sprawdzenia',
+        description:
+          'Kolizje lub nierozstrzygnięte obramowania ({{count}}) zmieniają cięcia i powierzchnie.',
+      },
+      'covering-missing': {
+        title: 'Wybierz pokrycie',
+        description:
+          'Pokrycie decyduje o łatach, zakładach i ilościach materiałów.',
+      },
+      'plane-scope-stale': {
+        title: 'Pokrycie wskazuje nieistniejące połacie',
+        description:
+          'Po zmianie dachu {{count}} połać(ie) nie istnieje. Ilości byłyby niepełne — RoofCalc może to bezpiecznie dopasować.',
+      },
+      'covering-plane-conflict': {
+        title: 'Połać ma dwa pokrycia',
+        description:
+          '{{count}} połać(ie) przypisano do więcej niż jednego pokrycia. Zostaw jedno pokrycie na połać.',
+      },
+      'covering-installation-mode': {
+        title: 'Wybierz sposób montażu pokrycia',
+        description:
+          'Produkt ma kilka sposobów montażu z różnymi zakresami łatowania. RoofCalc nie wybierze go za Ciebie.',
+      },
+      'covering-incompatible': {
+        title: 'Pokrycie nie pasuje do tego dachu',
+        description:
+          'Wynik pokrycia byłby mylący. Sprawdź parametry produktu lub dachu.',
+      },
+      'tile-eave-projection': {
+        title: 'Sprawdź detal okapu',
+        description:
+          'Pierwszy rząd dachówek {{detail}}. Zmień odległość pierwszej łaty od okapu.',
+      },
+      'covering-partial-scope': {
+        title: 'Pokrycie nie obejmuje całego dachu',
+        description:
+          '{{count}} połać(ie) bez pokrycia — ilości dotyczą tylko części dachu.',
+      },
+      'battens-off': {
+        title: 'Łaty są wyłączone',
+        description:
+          'Bez łat nie da się rozmieścić dachówek i policzyć pokrycia.',
+      },
+      'battens-incompatible': {
+        title: 'Rozstaw łat poza zakresem produktu',
+        description:
+          'Rozstaw {{gauge}} jest poza zakresem {{min}}–{{max}}. Dachówki nie ułożą się poprawnie.',
+      },
+      'battens-product-incompatible': {
+        title: 'Produkt nie pasuje do kąta dachu',
+        description:
+          'Kąt dachu {{pitchDeg}}° jest mniejszy niż minimum produktu. Zmiana rozstawu tego nie naprawi.',
+      },
+      'battens-invalid': {
+        title: 'Dane łat są nieprawidłowe',
+        description:
+          'Łaty nie mogą zostać rozmieszczone z obecnymi danymi zakresu lub wymiarów.',
+      },
+      'battens-scope': {
+        title: 'Łaty i pokrycie obejmują różne połacie',
+        description:
+          'Automatyczny rozstaw wymaga pokrycia na każdej połaci z łatami.',
+      },
+      'battens-auto-unavailable': {
+        title: 'Brak danych do automatycznego rozstawu',
+        description:
+          'Dane produktu nie opisują zakresu łatowania dla tego dachu. Podaj rozstaw ręcznie.',
+      },
+      'battens-manual-unverified': {
+        title: 'Ręczny rozstaw łat nie jest sprawdzony',
+        description:
+          'RoofCalc nie może potwierdzić rozstawu z danymi pokrycia.',
+      },
+      'counter-battens-off': {
+        title: 'Dodaj kontrłaty',
+        description:
+          'Kontrłaty wynikają z konstrukcji i tworzą szczelinę wentylacyjną pod łatami.',
+      },
+      'hip-detail-required': {
+        title: 'Uzupełnij detal kontrłat przy H1',
+        description:
+          '{{count}} grzbiety H1 bez wybranego detalu — długość kontrłat jest częściowa.',
+      },
+      'counter-battens-invalid': {
+        title: 'Dane kontrłat są nieprawidłowe',
+        description: 'Kontrłaty nie mogą zostać policzone z obecnymi danymi.',
+      },
+      'membrane-product-missing': {
+        title: 'Wybierz membranę',
+        description:
+          'Bez produktu rolkowego znana jest tylko powierzchnia netto — bez zakładów i planu rolek.',
+      },
+      'membrane-layout-incomplete': {
+        title: 'Plan rolek membrany jest niepełny',
+        description:
+          'Nie wszystkie połacie mają pasy membrany. Sprawdź wymiary rolki i zakład.',
+      },
+      'k1-unresolved': {
+        title: 'K1 nie jest gotowa do cięcia',
+        description:
+          'Przygotowanie elementu i rozkrój K1 nie trafią do pakietu wykonawczego.',
+      },
+      'k1-cutting-plan-missing': {
+        title: 'Zaplanuj rozkrój K1',
+        description:
+          'Rozkrój dobierze długości handlowe i trafi do pakietu wykonawczego.',
+      },
+      'cost-not-started': {
+        title: 'Przygotuj kosztorys',
+        description: 'Opcjonalnie: wycena pozycji z planu materiałów.',
+      },
+      'cost-prices-missing': {
+        title: '{{count}} pozycje wymagają ceny',
+        description: 'Suma kosztorysu nie obejmuje pozycji bez ceny.',
+      },
+      'cost-quantities-missing': {
+        title: '{{count}} pozycje wymagają ilości',
+        description: 'Pozycja bez ilości nie wchodzi do sumy kosztorysu.',
+      },
+    },
+    document: {
+      ready: 'Gotowy',
+      warning_one: '{{count}} ograniczenie',
+      warning_few: '{{count}} ograniczenia',
+      warning_many: '{{count}} ograniczeń',
+      warning_other: '{{count}} ograniczenia',
+      blocked_one: '{{count}} problem do poprawy',
+      blocked_few: '{{count}} problemy do poprawy',
+      blocked_many: '{{count}} problemów do poprawy',
+      blocked_other: '{{count}} problemu do poprawy',
+      unavailable: 'Brak danych',
+      check: 'Sprawdź',
+      fix: 'Napraw',
+      preflightTitle: 'Przed dokumentem',
+      sections: '{{ready}}/{{total}} sekcji',
+      materialsCount: '{{count}} pozycji',
+    },
+  },
   cost: {
     title: 'Kosztorys',
     intro: 'RoofCalc może przygotować część pozycji z projektu.',
@@ -1777,6 +2034,7 @@ export const assemblyPl = {
     statusPriced: '{{count}} pozycji wycenionych',
     statusNeedsPrice: '{{count}} wymaga ceny',
     statusNeedsQuantity: '{{count}} wymaga ilości',
+    statusEstimates: '{{count}} szacunkowe',
     suggestionsHeading: 'Proponowane z projektu',
     add: 'Dodaj',
     skip: 'Pomiń',
@@ -2429,6 +2687,9 @@ export const assemblyEn: typeof assemblyPl = {
     openingCut: 'cut at openings',
     nominalGhost: 'Nominal coverage cell (outside plane)',
     courseGauge: 'Batten gauge',
+    eaveProjection: 'eave projection ≈ {{value}}',
+    eaveProjectionFact: 'Eave projection ≈',
+    eaveShort: 'First course stops short of the eave by ≈',
     coverWidth: 'Cover width',
     technicalBoundary:
       'Technical view: effective coverage cells clipped to the roof plane — these are counted.',
@@ -2631,6 +2892,7 @@ export const assemblyEn: typeof assemblyPl = {
       'Choose a document, check its state and open a preview for print or PDF.',
     sections: '{{ready}} of {{total}} sections ready',
     preview: 'Preview',
+    previewWorking: 'Working preview',
     configure: 'Choose sections',
     csv: 'Download CSV',
     status: {
@@ -3611,6 +3873,260 @@ export const assemblyEn: typeof assemblyPl = {
   hipAssumptionsText:
     'The regular rectangular hip roof has equal pitch on four planes and square corners. H1 runs at 45° in plan. Ridge-face deduction is t/√2 in plan and is then converted along the sloping hip axis.',
   structural: 'Geometry is not a structural capacity check.',
+  // V47 project readiness: problem → consequence → action.
+  readiness: {
+    panelTitle: 'Project check',
+    panelIntro:
+      'What is ready, what needs attention and where to fix it. You can keep editing freely.',
+    progress: '{{ready}}/{{total}} ready',
+    progressLabel: 'Project progress: {{ready}} of {{total}} areas ready',
+    allReady: 'Project ready for documents',
+    open: 'Check project',
+    close: 'Close',
+    more: '+{{count}}',
+    moreLabel: 'Show {{count}} more items',
+    optional: 'optional',
+    inherited: 'Follows from: {{areas}}. Fix them above.',
+    severity: {
+      blocker: 'Needs a fix',
+      warning: 'Needs attention',
+      info: 'Next step',
+    },
+    area: {
+      construction: 'Construction',
+      covering: 'Covering',
+      layers: 'Layers',
+      execution: 'Execution',
+      materials: 'Materials',
+      cost: 'Cost estimate',
+    },
+    areaState: {
+      ready: 'Ready',
+      attention: 'Needs attention',
+      blocked: 'Needs a fix',
+      pending: 'To do',
+      'not-applicable': 'Not applicable',
+    },
+    safeRepair: {
+      title: 'Safe repair',
+      button_one: 'Safely fix {{count}} problem',
+      button_few: 'Safely fix {{count}} problems',
+      button_many: 'Safely fix {{count}} problems',
+      button_other: 'Safely fix {{count}} problems',
+      preview: 'RoofCalc will make one change you can undo:',
+      confirm: 'Apply',
+      cancel: 'Cancel',
+      excluded:
+        'Expert decisions (H1 detail, installation mode, manual gauge) stay your choice.',
+      change: {
+        'covering-planes': 'assign the covering to {{planeCount}} roof planes',
+        'covering-stale-planes-removed':
+          'remove {{planeCount}} missing planes from coverings',
+        'battens-created-auto':
+          'add battens with Auto gauge from covering data',
+        'battens-created-fixed-gauge':
+          'add battens at the sheet module gauge {{gauge}}',
+        'battens-enabled': 'switch battens on (gauge unchanged)',
+        'battens-whole-roof': 'extend battens to the whole roof',
+        'counter-battens-whole-roof':
+          'extend counter-battens to the whole roof',
+        'membrane-whole-roof': 'extend the membrane to the whole roof',
+      },
+    },
+    feedback: {
+      repaired: 'Covering and layers fitted to the roof.',
+      roofTypeChanged: 'Roof type changed. Covering and layers were fitted.',
+      autoGauge: 'Battens set to the automatic gauge.',
+      undo: 'Undo',
+      dismiss: 'Dismiss notification',
+    },
+    recalculated: '{{from}} → {{to}} · recalculated after a change',
+    eaveShort: 'stops ≈ {{projection}} short of the eave',
+    eaveLong: 'projects ≈ {{projection}} past the eave',
+    consequence: {
+      title: 'Changing the roof: {{from}} → {{to}}',
+      intro: 'RoofCalc will update data that depends on roof planes:',
+      coverings: 'Covering ({{count}})',
+      battens: 'Battens',
+      counterBattens: 'Counter-battens',
+      membrane: 'Membrane',
+      openings: 'Roof windows ({{count}}) — check their position',
+      undoHint: 'You can undo this change.',
+      confirm: 'Change roof',
+      cancel: 'Cancel',
+    },
+    action: {
+      'review-geometry': 'Fix dimensions',
+      'review-structure': 'Check ridge connection',
+      'review-openings': 'Check openings',
+      'choose-covering': 'Choose covering',
+      'review-covering': 'Fix covering',
+      'choose-installation-mode': 'Choose installation mode',
+      'fit-roof': 'Fit covering and battens to this roof',
+      'fit-auto': 'Fit automatically',
+      'set-manual': 'Set manually',
+      'enable-auto-battens': 'Switch Auto battens on',
+      'review-battens': 'Open battens',
+      'review-eave-detail': 'Set the first batten from the eave',
+      'enable-counter-battens': 'Add counter-battens',
+      'choose-hip-detail': 'Complete H1 detail',
+      'review-counter-battens': 'Open counter-battens',
+      'choose-membrane-product': 'Choose membrane',
+      'review-membrane': 'Open membrane',
+      'plan-k1': 'Plan K1 cutting',
+      'open-materials': 'Open materials',
+      'open-cost': 'Open cost estimate',
+    },
+    issue: {
+      'geometry-invalid': {
+        title: 'Roof geometry is invalid',
+        description:
+          'Members, covering and documents cannot be calculated without valid geometry.',
+      },
+      'roof-surface-issue': {
+        title: 'An opening is outside an existing plane',
+        description:
+          '{{count}} item(s) refer to a plane this roof does not have. Areas may be inaccurate.',
+      },
+      'opening-collision': {
+        title: 'Openings need a check',
+        description:
+          'Collisions or unresolved framing ({{count}}) change cuts and areas.',
+      },
+      'covering-missing': {
+        title: 'Choose a covering',
+        description:
+          'The covering decides battens, laps and material quantities.',
+      },
+      'plane-scope-stale': {
+        title: 'Covering refers to missing planes',
+        description:
+          'After the roof change {{count}} plane(s) no longer exist. Quantities would be incomplete — RoofCalc can fit this safely.',
+      },
+      'covering-plane-conflict': {
+        title: 'A plane has two coverings',
+        description:
+          '{{count}} plane(s) belong to more than one covering. Keep one covering per plane.',
+      },
+      'covering-installation-mode': {
+        title: 'Choose the installation mode',
+        description:
+          'The product has several installation modes with different batten ranges. RoofCalc will not choose for you.',
+      },
+      'covering-incompatible': {
+        title: 'The covering does not fit this roof',
+        description:
+          'The covering result would be misleading. Check product or roof parameters.',
+      },
+      'tile-eave-projection': {
+        title: 'Check the eave detail',
+        description:
+          'The first tile course {{detail}}. Change the first batten distance from the eave.',
+      },
+      'covering-partial-scope': {
+        title: 'The covering does not cover the whole roof',
+        description:
+          '{{count}} plane(s) without covering — quantities cover only part of the roof.',
+      },
+      'battens-off': {
+        title: 'Battens are switched off',
+        description: 'Tiles cannot be laid out and counted without battens.',
+      },
+      'battens-incompatible': {
+        title: 'Batten gauge outside the product range',
+        description:
+          'Gauge {{gauge}} is outside {{min}}–{{max}}. Tiles will not lay correctly.',
+      },
+      'battens-product-incompatible': {
+        title: 'The product does not suit the roof pitch',
+        description:
+          'Roof pitch {{pitchDeg}}° is below the product minimum. Changing the gauge will not fix it.',
+      },
+      'battens-invalid': {
+        title: 'Batten data is invalid',
+        description:
+          'Battens cannot be laid out with the current range or dimensions.',
+      },
+      'battens-scope': {
+        title: 'Battens and covering span different planes',
+        description:
+          'The automatic gauge needs a covering on every batten plane.',
+      },
+      'battens-auto-unavailable': {
+        title: 'No data for the automatic gauge',
+        description:
+          'The product data does not describe a batten range for this roof. Enter the gauge manually.',
+      },
+      'battens-manual-unverified': {
+        title: 'Manual batten gauge is not verified',
+        description: 'RoofCalc cannot confirm the gauge with covering data.',
+      },
+      'counter-battens-off': {
+        title: 'Add counter-battens',
+        description:
+          'Counter-battens follow the structure and create the ventilation gap under battens.',
+      },
+      'hip-detail-required': {
+        title: 'Complete the H1 counter-batten detail',
+        description:
+          '{{count}} H1 hips without a chosen detail — counter-batten length is partial.',
+      },
+      'counter-battens-invalid': {
+        title: 'Counter-batten data is invalid',
+        description:
+          'Counter-battens cannot be calculated with the current data.',
+      },
+      'membrane-product-missing': {
+        title: 'Choose a membrane',
+        description:
+          'Without a roll product only the net area is known — no laps and no roll plan.',
+      },
+      'membrane-layout-incomplete': {
+        title: 'Membrane roll plan is incomplete',
+        description:
+          'Not every plane has membrane courses. Check roll size and lap.',
+      },
+      'k1-unresolved': {
+        title: 'K1 is not ready for cutting',
+        description:
+          'K1 preparation and cutting will not enter the execution package.',
+      },
+      'k1-cutting-plan-missing': {
+        title: 'Plan K1 cutting',
+        description:
+          'Cutting chooses commercial lengths and enters the execution package.',
+      },
+      'cost-not-started': {
+        title: 'Prepare a cost estimate',
+        description: 'Optional: price items from the material plan.',
+      },
+      'cost-prices-missing': {
+        title: '{{count}} items need a price',
+        description: 'The estimate total excludes items without a price.',
+      },
+      'cost-quantities-missing': {
+        title: '{{count}} items need a quantity',
+        description: 'An item without a quantity is not in the total.',
+      },
+    },
+    document: {
+      ready: 'Ready',
+      warning_one: '{{count}} limitation',
+      warning_few: '{{count}} limitations',
+      warning_many: '{{count}} limitations',
+      warning_other: '{{count}} limitations',
+      blocked_one: '{{count}} problem to fix',
+      blocked_few: '{{count}} problems to fix',
+      blocked_many: '{{count}} problems to fix',
+      blocked_other: '{{count}} problems to fix',
+      unavailable: 'No data',
+      check: 'Check',
+      fix: 'Fix',
+      preflightTitle: 'Before the document',
+      sections: '{{ready}}/{{total}} sections',
+      materialsCount: '{{count}} items',
+    },
+  },
   cost: {
     title: 'Cost estimate',
     intro: 'RoofCalc can prepare some lines from the project.',
@@ -3630,6 +4146,7 @@ export const assemblyEn: typeof assemblyPl = {
     statusPriced: '{{count}} lines priced',
     statusNeedsPrice: '{{count}} need a price',
     statusNeedsQuantity: '{{count}} need a quantity',
+    statusEstimates: '{{count}} estimated',
     suggestionsHeading: 'Suggested from the project',
     add: 'Add',
     skip: 'Skip',

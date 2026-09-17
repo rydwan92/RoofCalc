@@ -16,6 +16,8 @@ import {
 import {
   resolveMembraneCourseFit,
   type MembraneCourseFitIssueCode,
+  planMembraneRolls,
+  type MembraneRollPlanIssueCode,
 } from './membrane-layout';
 import { roofTemplateSchema } from './roof-template';
 
@@ -1084,6 +1086,7 @@ export interface MembraneCourseProduct {
 
 export type MembraneLayoutIssueCode =
   | MembraneCourseFitIssueCode
+  | MembraneRollPlanIssueCode
   | 'invalid-layout-geometry'
   | 'roof-plane-not-found';
 
@@ -1116,6 +1119,13 @@ export interface MembranePlaneLayoutResult {
    * the eave-to-ridge span: `(effectiveSpanMm - spanMm) · courseWidthMm`.
    */
   ridgeOverrunAreaMm2: number;
+  /**
+   * V47 second lap axis: joins along the roll length where one roll ends
+   * inside a course, and the area they consume
+   * (`endLapCount · endOverlapMm · rollWidthMm`). Part of `grossAreaMm2`.
+   */
+  endLapCount: number;
+  endOverlapAreaMm2: number;
   courseLengthTotalMm: number;
   rollCount: number;
   tapers: boolean;
@@ -1129,6 +1139,8 @@ export interface MembraneLayoutResult {
   grossAreaMm2: number;
   overlapAreaMm2: number;
   ridgeOverrunAreaMm2: number;
+  endLapCount: number;
+  endOverlapAreaMm2: number;
   courseCount: number;
   rollCount: number;
   warnings: MembraneLayoutWarningCode[];
@@ -1158,6 +1170,8 @@ export function resolveMembraneLayout(args: {
     grossAreaMm2: 0,
     overlapAreaMm2: 0,
     ridgeOverrunAreaMm2: 0,
+    endLapCount: 0,
+    endOverlapAreaMm2: 0,
     courseCount: 0,
     rollCount: 0,
     warnings: [],
@@ -1224,6 +1238,8 @@ export function resolveMembraneLayout(args: {
         grossAreaMm2: 0,
         overlapAreaMm2: 0,
         ridgeOverrunAreaMm2: 0,
+        endLapCount: 0,
+        endOverlapAreaMm2: 0,
         courseLengthTotalMm: 0,
         rollCount: 0,
         tapers: Math.abs(eaveWidthMm - ridgeWidthMm) > EPSILON,
@@ -1233,21 +1249,54 @@ export function resolveMembraneLayout(args: {
         issues: fit.issues,
       };
     const courseLengthTotalMm = fit.courseCount * eaveWidthMm;
+    // The same product lap is used across courses and along the roll; a
+    // directional overlap rule would replace it here (schema exists, V35).
+    const rolls = planMembraneRolls({
+      courseLengthsMm: Array.from(
+        { length: fit.courseCount },
+        () => eaveWidthMm,
+      ),
+      rollLengthMm: args.product.rollLengthMm,
+      endOverlapMm: fit.minimumOverlapMm,
+    });
+    if (rolls.status !== 'resolved')
+      return {
+        roofPlaneId,
+        status: 'unresolved',
+        spanMm: fit.spanMm,
+        courseWidthMm: eaveWidthMm,
+        courseCount: 0,
+        grossAreaMm2: 0,
+        overlapAreaMm2: 0,
+        ridgeOverrunAreaMm2: 0,
+        endLapCount: 0,
+        endOverlapAreaMm2: 0,
+        courseLengthTotalMm: 0,
+        rollCount: 0,
+        tapers: Math.abs(eaveWidthMm - ridgeWidthMm) > EPSILON,
+        hasOpenings: windows.some(
+          (window) => window.roofPlaneId === roofPlaneId,
+        ),
+        issues: rolls.issues,
+      };
+    const endOverlapAreaMm2 =
+      rolls.endLapCount * fit.minimumOverlapMm * args.product.rollWidthMm;
     return {
       roofPlaneId,
       status: 'resolved',
       spanMm: fit.spanMm,
       courseWidthMm: eaveWidthMm,
       courseCount: fit.courseCount,
-      grossAreaMm2: fit.courseCount * args.product.rollWidthMm * eaveWidthMm,
+      grossAreaMm2:
+        fit.courseCount * args.product.rollWidthMm * eaveWidthMm +
+        endOverlapAreaMm2,
       overlapAreaMm2:
         (fit.courseCount - 1) * fit.minimumOverlapMm * eaveWidthMm,
       ridgeOverrunAreaMm2: (fit.effectiveSpanMm - fit.spanMm) * eaveWidthMm,
+      endLapCount: rolls.endLapCount,
+      endOverlapAreaMm2,
       courseLengthTotalMm,
-      rollCount: Math.max(
-        1,
-        Math.ceil(courseLengthTotalMm / args.product.rollLengthMm - EPSILON),
-      ),
+      rollCount: rolls.rollCount,
       tapers: Math.abs(eaveWidthMm - ridgeWidthMm) > EPSILON,
       hasOpenings: windows.some((window) => window.roofPlaneId === roofPlaneId),
       issues: [],
@@ -1280,6 +1329,11 @@ export function resolveMembraneLayout(args: {
     ),
     ridgeOverrunAreaMm2: planes.reduce(
       (sum, plane) => sum + plane.ridgeOverrunAreaMm2,
+      0,
+    ),
+    endLapCount: planes.reduce((sum, plane) => sum + plane.endLapCount, 0),
+    endOverlapAreaMm2: planes.reduce(
+      (sum, plane) => sum + plane.endOverlapAreaMm2,
       0,
     ),
     courseCount: planes.reduce((sum, plane) => sum + plane.courseCount, 0),

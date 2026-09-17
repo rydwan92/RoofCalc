@@ -16,7 +16,12 @@ const candidates: SectionCandidate[] = [
   {
     kind: 'assumptions',
     readiness: 'available',
-    section: { kind: 'assumptions', codes: ['no-structural-check'] },
+    section: {
+      kind: 'assumptions',
+      scope: [],
+      limitations: [],
+      notModelled: [{ code: 'structural-check' }],
+    },
   },
   { kind: 'cutting-plan', readiness: 'unavailable', reason: 'plan-k1-first' },
   {
@@ -78,4 +83,31 @@ describe('execution document contract', () => {
       generatedAt: later.generatedAt,
     });
   });
+});
+
+it('V47 carries document readiness into the built document', () => {
+  const status = {
+    state: 'warning' as const,
+    issues: [
+      {
+        severity: 'warning' as const,
+        code: 'hip-detail-required',
+        params: { count: 4 },
+      },
+    ],
+  };
+  const document = buildExecutionDocument({
+    source: {
+      projectId: 'p',
+      projectName: 'P',
+      projectCreatedAt: '2026-01-01T00:00:00.000Z',
+      projectUpdatedAt: '2026-01-01T00:00:00.000Z',
+      projectSchemaVersion: 1,
+    },
+    candidates: [],
+    selected: [],
+    generatedAt: '2026-01-01T00:00:00.000Z',
+    status,
+  });
+  expect(document.status).toEqual(status);
 });

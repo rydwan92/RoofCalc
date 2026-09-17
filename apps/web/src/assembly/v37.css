@@ -2060,3 +2060,28 @@
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
+
+/* V47 eave projection: how far the first course reaches past the eave. */
+.a-eave-projection-band {
+  fill: #f6dfb8;
+  fill-opacity: 0.55;
+  stroke: none;
+}
+.a-eave-projection-line {
+  stroke: #b06a14;
+  stroke-width: 1.5;
+  stroke-dasharray: 6 4;
+  vector-effect: non-scaling-stroke;
+}
+.a-eave-projection.is-visual .a-eave-projection-line {
+  stroke: #3a2016;
+  stroke-opacity: 0.6;
+}
+.a-eave-projection-label {
+  fill: #7a4705;
+  font-family: inherit;
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: #ffffffcc;
+  stroke-width: 4px;
+}

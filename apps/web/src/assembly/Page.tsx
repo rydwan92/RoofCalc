@@ -1,6 +1,7 @@
 import {
   lazy,
   Suspense,
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -71,6 +72,7 @@ import {
 import {
   disabledBattenLayer,
   disabledCounterBattenLayer,
+  newBattenLayer,
 } from './build-up-defaults';
 import {
   GeometryInputs,
@@ -111,7 +113,7 @@ import { workbenchProjectResolver } from './workbench-project';
 import { resolveWorkbenchSelectionContext } from './selection';
 import { createK1CuttingRequirement } from './k1-cutting-adapter';
 import { k1RequirementSignature } from './k1-cutting-adapter';
-import type { ExportFacts } from './export-adapter';
+import { createExportCandidates, type ExportFacts } from './export-adapter';
 import { usePriceOptions } from '../pricing/use-prices';
 import {
   createMaterialPlanRows,
@@ -125,7 +127,20 @@ import {
   deriveProjectWorkflow,
   type ProjectWorkflowAction,
 } from './project-workflow';
-import { ProjectSummary, ProjectWorkflowStrip } from './ProjectWorkflow';
+import { ProjectSummary } from './ProjectWorkflow';
+import {
+  ActionFeedback,
+  ProjectReadinessBar,
+  ProjectReadinessPanel,
+} from './ProjectReadiness';
+import {
+  deriveProjectReadiness,
+  type ReadinessAction,
+  type ReadinessDocumentKind,
+} from './project-readiness';
+import { documentStatusFor } from './readiness-copy';
+import { useInstallationActions } from './InstallationWorkflow';
+import { summarizeCostScenario } from '@cieslacalc/cost-core';
 import { ProjectManager, projectStatusLabel } from '../projects/ProjectManager';
 import { ProjectSession } from '../projects/session';
 import {
@@ -133,7 +148,6 @@ import {
   type ProjectStartMode,
 } from './ProjectStartAssistant';
 import { evaluateBattenInstallation } from './batten-installation';
-import { deriveProjectGuidance } from './project-guidance';
 import { resolveBattenAutoComposition } from './batten-composition';
 import './styles.css';
 import './v37.css';
@@ -291,6 +305,13 @@ function AssemblyPageContent() {
   const [quickDetail, setQuickDetail] = useState<
     (typeof allDetailPreviews)[number] | undefined
   >();
+  const [readinessOpen, setReadinessOpen] = useState(false);
+  const [actionFeedback, setActionFeedback] = useState<{
+    message: string;
+    historyLength: number;
+  }>();
+  const dismissFeedback = useCallback(() => setActionFeedback(undefined), []);
+  const runInstallationAction = useInstallationActions();
   const [documentRequest, setDocumentRequest] = useState<{
     kind: HubDocumentKind;
     mode: 'preview' | 'configure';
@@ -918,6 +939,8 @@ function AssemblyPageContent() {
                       grossAreaMm2: course.grossAreaMm2,
                       overlapAreaMm2: course.overlapAreaMm2,
                       ridgeOverrunAreaMm2: course.ridgeOverrunAreaMm2,
+                      endOverlapAreaMm2: course.endOverlapAreaMm2,
+                      endLapCount: course.endLapCount,
                       courseCount: course.courseCount,
                       rollCount: course.rollCount,
                       warningKeys,
@@ -1071,27 +1094,75 @@ function AssemblyPageContent() {
     () => deriveProjectWorkflow(projectWorkflowFacts),
     [projectWorkflowFacts],
   );
-  const projectGuidance = useMemo(
-    () =>
-      deriveProjectGuidance(
-        projectWorkflowFacts,
-        projectWorkflowFacts.hasResults,
-        battenLayout?.enabled ? battenInstallationDecision : undefined,
-        { battens: battenWorkflow, counterBattens: counterBattenWorkflow },
-      ).filter(
-        (item) =>
-          item.targetTask !== workbench.viewPreset ||
-          item.severity === 'blocker',
-      ),
+  // V47: one readiness projection over already-resolved facts.
+  const readinessCandidates = useMemo(
+    () => createExportCandidates(documentFacts),
+    // Section availability only; limitations never change it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
-      projectWorkflowFacts,
-      workbench.viewPreset,
-      battenLayout?.enabled,
-      battenInstallationDecision,
-      battenWorkflow,
-      counterBattenWorkflow,
+      state.projectDocument,
+      activeCuttingPlan,
+      costScenario,
+      membraneProduct,
+      resolvedCoveringLayouts,
     ],
   );
+  const projectReadiness = useMemo(
+    () =>
+      deriveProjectReadiness({
+        template: state.template,
+        constructionReady: projectWorkflowFacts.constructionReady,
+        surfaceIssueCount: surfaceProjection.issues.length,
+        openingWarningCount:
+          openingSummary.collisions + openingSummary.needsReview,
+        coverings: coveringAssignments,
+        coveringLayouts: resolvedCoveringLayouts.map((layout) => ({
+          assignmentId: layout.assignmentId,
+          status: layout.status,
+          issues: layout.issues,
+          ...(layout.kind === 'roof-tile' ? { planes: layout.planes } : {}),
+        })),
+        buildUp: state.projectDocument.project.buildUp,
+        battenWorkflow,
+        counterBattenWorkflow,
+        membrane: {
+          enabled: !!membrane?.enabled,
+          hasProduct: !!membraneProduct,
+          layoutStatus: membraneCourseLayout?.status,
+        },
+        k1: k1Requirement,
+        hasCuttingPlan: !!activeCuttingPlan,
+        materialRows,
+        cost:
+          costScenario && costScenario.lines.length
+            ? summarizeCostScenario(costScenario)
+            : undefined,
+        candidates: readinessCandidates,
+      }),
+    [
+      state.template,
+      state.projectDocument.project.buildUp,
+      projectWorkflowFacts.constructionReady,
+      surfaceProjection.issues.length,
+      openingSummary,
+      coveringAssignments,
+      resolvedCoveringLayouts,
+      battenWorkflow,
+      counterBattenWorkflow,
+      membrane?.enabled,
+      membraneProduct,
+      membraneCourseLayout?.status,
+      k1Requirement,
+      activeCuttingPlan,
+      materialRows,
+      costScenario,
+      readinessCandidates,
+    ],
+  );
+  const documentFactsWithLimits: ExportFacts = {
+    ...documentFacts,
+    limitations: projectReadiness.limitations,
+  };
   const projectSummary = useMemo(() => {
     const timberFamilies = new Map<string, number>();
     memberSchedule.timberRows.forEach((row) =>
@@ -1413,6 +1484,118 @@ function AssemblyPageContent() {
       state.setMobilePanel('inspector');
     }
     if (mobile && action === 'reviewLayers') state.setMobilePanel('tools');
+  };
+  const openLayerView = (
+    view: 'battens' | 'counterBattens' | 'membrane',
+    selection: string,
+  ) => {
+    state.navigateTo(workbenchLocation('layers'));
+    state.setBuildUpView(view);
+    state.select(selection);
+    if (mobile) {
+      state.setInspectorOpen(true);
+      state.setMobilePanel('inspector');
+    }
+  };
+  const showFeedback = (messageKey: string) =>
+    setActionFeedback({
+      message: t(messageKey),
+      historyLength: useAssembly.getState().historyPast.length,
+    });
+  const runReadinessAction = (action: ReadinessAction) => {
+    setReadinessOpen(false);
+    closeDocument();
+    const project = state.projectDocument.project;
+    switch (action) {
+      case 'review-geometry':
+      case 'review-structure':
+        runProjectAction('completeGeometry');
+        return;
+      case 'review-openings':
+        runProjectAction('reviewOpenings');
+        return;
+      case 'choose-covering':
+        runProjectAction('addCovering');
+        return;
+      case 'review-covering':
+      case 'choose-installation-mode':
+        runProjectAction('reviewCovering');
+        return;
+      case 'fit-roof': {
+        const before = useAssembly.getState().historyPast.length;
+        state.fitInstallationToRoof();
+        if (useAssembly.getState().historyPast.length > before)
+          showFeedback('assembly.readiness.feedback.repaired');
+        return;
+      }
+      case 'fit-auto':
+        runInstallationAction('fit-auto');
+        showFeedback('assembly.readiness.feedback.autoGauge');
+        return;
+      case 'set-manual':
+        runInstallationAction('set-manual', battenWorkflow.gaugeMm);
+        return;
+      case 'enable-auto-battens':
+        state.setBattenLayout(
+          project.buildUp.battenLayout
+            ? { ...project.buildUp.battenLayout, enabled: true }
+            : newBattenLayer(),
+        );
+        return;
+      case 'review-battens':
+        openLayerView('battens', 'layer:battens');
+        return;
+      case 'review-eave-detail':
+        openLayerView('battens', 'layer:battens');
+        requestAnimationFrame(() => {
+          const settings = document.querySelector<HTMLDetailsElement>(
+            '[data-testid="batten-advanced-settings"]',
+          );
+          if (!settings) return;
+          settings.open = true;
+          const field = [
+            ...settings.querySelectorAll<HTMLLabelElement>('label'),
+          ].find((label) =>
+            label.textContent?.includes(t('assembly.battenEaveOffset')),
+          );
+          field?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+          field?.querySelector('input')?.focus();
+        });
+        return;
+      case 'enable-counter-battens':
+        runInstallationAction('enable-counter-battens');
+        return;
+      case 'choose-hip-detail':
+        openLayerView('counterBattens', 'layer:counter-battens');
+        requestAnimationFrame(() =>
+          document
+            .querySelector('[data-testid="hip-boundary-detail"]')
+            ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }),
+        );
+        return;
+      case 'review-counter-battens':
+        openLayerView('counterBattens', 'layer:counter-battens');
+        return;
+      case 'choose-membrane-product':
+      case 'review-membrane':
+        openLayerView('membrane', 'layer:membrane');
+        return;
+      case 'plan-k1':
+        openCutting();
+        return;
+      case 'open-materials':
+        state.navigateTo(workbenchLocation('materials'));
+        return;
+      case 'open-cost':
+        state.navigateTo(workbenchLocation('costing'));
+        return;
+    }
+  };
+  const applySafeRepair = () => {
+    const before = useAssembly.getState().historyPast.length;
+    state.fitInstallationToRoof();
+    if (useAssembly.getState().historyPast.length > before)
+      showFeedback('assembly.readiness.feedback.repaired');
   };
   const wideWorkspace =
     workbench.viewPreset === 'costing' || workbench.viewPreset === 'documents';
@@ -1898,11 +2081,33 @@ function AssemblyPageContent() {
           </div>
         ) : (
           <>
-            <ProjectWorkflowStrip
-              workflow={projectWorkflow}
-              guidance={projectGuidance}
-              onAction={runProjectAction}
+            <ProjectReadinessBar
+              readiness={projectReadiness}
+              unit={state.unit}
+              onAction={runReadinessAction}
+              onOpenPanel={() => setReadinessOpen(true)}
             />
+            {readinessOpen && (
+              <ProjectReadinessPanel
+                readiness={projectReadiness}
+                unit={state.unit}
+                onAction={runReadinessAction}
+                onSafeRepair={applySafeRepair}
+                onClose={() => setReadinessOpen(false)}
+              />
+            )}
+            {actionFeedback && (
+              <ActionFeedback
+                message={actionFeedback.message}
+                onUndo={
+                  useAssembly.getState().historyPast.length ===
+                  actionFeedback.historyLength
+                    ? () => state.undo()
+                    : undefined
+                }
+                onDismiss={dismissFeedback}
+              />
+            )}
             <div
               className={`a-builder-layout ${workbench.toolboxCollapsed ? 'tools-collapsed' : ''} ${workbench.workspaceFocus.active ? 'is-workspace-focus' : ''} ${workbench.viewPreset === 'materials' && !selectedScheduleRow ? 'material-inspector-empty' : ''} ${wideWorkspace ? 'is-wide-workspace' : ''} ${coveringWithoutProduct ? 'no-inspector' : ''}`}
               data-view-preset={workbench.viewPreset}
@@ -2063,6 +2268,8 @@ function AssemblyPageContent() {
                           membrane={membraneProduct}
                           scenario={costScenario}
                           prices={effectiveMaterialPrices}
+                          readiness={projectReadiness}
+                          onReadinessAction={runReadinessAction}
                           onPricesChange={setMaterialPrices}
                           onScenarioChange={setCostScenario}
                           onOpenCutting={openCutting}
@@ -2252,7 +2459,10 @@ function AssemblyPageContent() {
                   </Suspense>
                 ) : workbench.viewPreset === 'documents' ? (
                   <DocumentHub
-                    facts={documentFacts}
+                    facts={documentFactsWithLimits}
+                    readiness={projectReadiness}
+                    unit={state.unit}
+                    onAction={runReadinessAction}
                     onOpen={openDocument}
                     onMaterialCsv={() =>
                       downloadMaterialCsv(
@@ -2333,7 +2543,30 @@ function AssemblyPageContent() {
                 <ExecutionExport
                   key={`${documentRequest?.kind}:${documentRequest?.mode}`}
                   source={exportSource}
-                  facts={{ ...documentFacts, source: exportSource }}
+                  facts={{ ...documentFactsWithLimits, source: exportSource }}
+                  documentKind={
+                    (documentRequest?.kind ??
+                      'execution') as ReadinessDocumentKind
+                  }
+                  documentStatus={documentStatusFor(
+                    projectReadiness,
+                    (documentRequest?.kind ??
+                      'execution') as ReadinessDocumentKind,
+                  )}
+                  onFixProblems={() => {
+                    closeDocument();
+                    const kind = (documentRequest?.kind ??
+                      'execution') as ReadinessDocumentKind;
+                    const firstBlocker = projectReadiness.issues.find(
+                      (issue) =>
+                        issue.severity === 'blocker' &&
+                        issue.affects.includes(kind) &&
+                        issue.action,
+                    );
+                    if (firstBlocker?.action)
+                      runReadinessAction(firstBlocker.action);
+                    else setReadinessOpen(true);
+                  }}
                   unit={state.unit}
                   mobile={mobile}
                   onClose={closeDocument}

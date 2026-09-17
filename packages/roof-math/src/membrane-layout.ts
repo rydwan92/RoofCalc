@@ -92,3 +92,76 @@ export function resolveMembraneCourseFit(
     issues: [],
   };
 }
+
+export type MembraneRollPlanIssueCode = 'invalid-roll-length';
+
+export type MembraneRollPlanResult =
+  | {
+      status: 'resolved';
+      rollCount: number;
+      /** Joins where one roll ends inside a course and the next roll laps it. */
+      endLapCount: number;
+      /** Roll length consumed, including every end lap. */
+      materialLengthMm: number;
+      /** Roll remnants too short to start a lap, left unused. */
+      unusedRemnantMm: number;
+      issues: [];
+    }
+  | { status: 'unresolved'; issues: MembraneRollPlanIssueCode[] };
+
+/**
+ * V47 second lap axis. Courses are laid one after another from the current
+ * roll. When a roll runs out inside a course the next roll continues the same
+ * course with an end lap of `endOverlapMm`; a remnant no longer than one lap
+ * cannot form a join and is left unused. Courses are never cut to reuse
+ * offcuts in another order (disclosed as `gross-area-no-roll-reuse`).
+ * Deterministic and conservative — a physical laying plan, not an optimiser.
+ */
+export function planMembraneRolls(input: {
+  courseLengthsMm: readonly number[];
+  rollLengthMm: number;
+  endOverlapMm: number;
+}): MembraneRollPlanResult {
+  const { rollLengthMm, endOverlapMm } = input;
+  if (
+    !Number.isFinite(rollLengthMm) ||
+    !Number.isFinite(endOverlapMm) ||
+    endOverlapMm < 0 ||
+    rollLengthMm <= 2 * endOverlapMm + EPSILON ||
+    input.courseLengthsMm.some(
+      (length) => !Number.isFinite(length) || length < 0,
+    )
+  )
+    return { status: 'unresolved', issues: ['invalid-roll-length'] };
+  let rollCount = 0;
+  let endLapCount = 0;
+  let remaining = 0;
+  let unusedRemnantMm = 0;
+  let materialLengthMm = 0;
+  for (const courseLength of input.courseLengthsMm) {
+    if (courseLength <= EPSILON) continue;
+    if (remaining <= endOverlapMm + EPSILON) {
+      unusedRemnantMm += remaining;
+      remaining = rollLengthMm;
+      rollCount += 1;
+    }
+    let need = courseLength;
+    while (need > remaining + EPSILON) {
+      materialLengthMm += remaining;
+      need = need - remaining + endOverlapMm;
+      remaining = rollLengthMm;
+      rollCount += 1;
+      endLapCount += 1;
+    }
+    materialLengthMm += need;
+    remaining -= need;
+  }
+  return {
+    status: 'resolved',
+    rollCount,
+    endLapCount,
+    materialLengthMm,
+    unusedRemnantMm,
+    issues: [],
+  };
+}

@@ -214,13 +214,17 @@ describe('dual-mode parametric workbench', () => {
     render(<App />);
     builder();
     const before = structuredClone(useAssembly.getState().projectDocument);
-    const workflow = screen.getByTestId('project-workflow');
-    expect(workflow.querySelectorAll('li')).toHaveLength(6);
+    // V47: one readiness bar — progress, one primary item, one action.
+    expect(screen.getByTestId('project-progress').textContent).toMatch(
+      /\d\/\d gotowe/,
+    );
     expect(
-      workflow
-        .querySelector('[data-stage="covering"]')
-        ?.getAttribute('data-status'),
-    ).toBe('incomplete');
+      screen.getByTestId('project-primary-issue').getAttribute('data-issue'),
+    ).toBe('covering-missing');
+    // A missing covering is a next step, never shown as an error.
+    expect(
+      screen.getByTestId('project-primary-issue').getAttribute('data-severity'),
+    ).toBe('info');
     fireEvent.click(screen.getByTestId('project-next-action'));
     expect(useAssembly.getState().workbench.viewPreset).toBe('covering');
     act(() => useAssembly.getState().setViewPreset('materials'));
@@ -268,14 +272,20 @@ describe('dual-mode parametric workbench', () => {
         useAssembly.getState().projectDocument.project.buildUp.battenLayout!;
       useAssembly.getState().setBattenLayout({ ...layout, enabled: false });
     });
-    const coveringStage = screen
-      .getByTestId('project-workflow')
-      .querySelector('[data-stage="covering"]')!;
-    expect(coveringStage.getAttribute('data-status')).toBe('warning');
-    expect(coveringStage.textContent).toContain('Wymaga uwagi');
+    // V47: the bar names the exact problem and its one-step action.
+    const primary = screen.getByTestId('project-primary-issue');
+    expect(primary.getAttribute('data-issue')).toBe('battens-off');
+    expect(primary.getAttribute('data-severity')).toBe('warning');
+    expect(primary.textContent).toContain('Łaty są wyłączone');
     expect(screen.getByTestId('project-next-action').textContent).toContain(
-      'Sprawdź pokrycie',
+      'Włącz łaty Auto',
     );
+    fireEvent.click(screen.getByTestId('project-progress'));
+    const panel = screen.getByTestId('project-readiness-panel');
+    expect(
+      panel.querySelector('[data-area="layers"]')?.getAttribute('data-state'),
+    ).toBe('attention');
+    fireEvent.click(within(panel).getByRole('button', { name: 'Zamknij' }));
     act(() => {
       useAssembly.getState().setViewPreset('materials');
     });

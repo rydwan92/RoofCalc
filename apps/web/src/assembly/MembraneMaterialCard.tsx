@@ -1,12 +1,12 @@
 import { materialCopy, materialText } from './material-copy';
 import type { MaterialPlanRow } from './material-plan';
+import { MEMBRANE_LIMITATION_CODES } from './membrane-limitations';
 
-const BREAKDOWN = ['overlapArea', 'ridgeOverrunArea', 'simplificationArea'];
-const LIMITATIONS = [
-  'gross-area-no-roll-reuse',
-  'hip-course-width-approximated',
-  'openings-not-subtracted',
-  'membrane-sold-per-roll',
+const BREAKDOWN = [
+  'overlapArea',
+  'endOverlapArea',
+  'ridgeOverrunArea',
+  'simplificationArea',
 ];
 
 /**
@@ -41,7 +41,9 @@ export function MembraneMaterialCard({
   const breakdown = row.metrics.filter((item) =>
     BREAKDOWN.includes(item.labelKey),
   );
-  const limitations = row.warnings.filter((key) => LIMITATIONS.includes(key));
+  const limitations = row.warnings.filter((key) =>
+    (MEMBRANE_LIMITATION_CODES as readonly string[]).includes(key),
+  );
   return (
     <div className="mp-membrane" data-testid="membrane-material-card">
       <div className="mp-membrane-head">

@@ -287,6 +287,8 @@ function NumericField({
   minimum?: number;
 }) {
   const state = useAssembly();
+  const { t } = useTranslation();
+  const [invalid, setInvalid] = useState(false);
   const display =
     value === undefined
       ? ''
@@ -302,16 +304,37 @@ function NumericField({
           type="text"
           inputMode="decimal"
           defaultValue={display}
+          aria-invalid={invalid || undefined}
+          onChange={() => invalid && setInvalid(false)}
           onBlur={(event) => {
-            if (!event.currentTarget.value.trim()) return onCommit(undefined);
+            if (!event.currentTarget.value.trim()) {
+              setInvalid(false);
+              return onCommit(undefined);
+            }
             const parsed = parseDecimal(event.currentTarget.value);
-            if (parsed === null) return;
-            const canonical = unit ? toMillimetres(parsed, state.unit) : parsed;
-            if (canonical >= minimum) onCommit(canonical);
+            const canonical =
+              parsed === null
+                ? Number.NaN
+                : unit
+                  ? toMillimetres(parsed, state.unit)
+                  : parsed;
+            // V47 guardrail: a dimension must be a finite positive number;
+            // invalid text never reaches the canonical project.
+            const valid =
+              Number.isFinite(canonical) &&
+              canonical >= minimum &&
+              (!unit || canonical > 0);
+            setInvalid(!valid);
+            if (valid) onCommit(canonical);
           }}
         />
         {unit && <small>{state.unit}</small>}
       </span>
+      {invalid && (
+        <small className="a-field-error" role="alert">
+          {t('assembly.errors.invalid')}
+        </small>
+      )}
     </label>
   );
 }
@@ -511,6 +534,12 @@ export function CoveringWorkspace({
         // V46: room for course numbers left of the plane in technical view.
         const labelMargin =
           viewMode === 'technical' ? Math.max(width, height) * 0.05 : 0;
+        // V47: the drawing reaches below the eave far enough to show how far
+        // the first course projects past it (mirrored: extra view height).
+        const projection =
+          selectedLayout && 'eaveProjectionMm' in selectedLayout
+            ? Math.max(0, selectedLayout.eaveProjectionMm ?? 0)
+            : 0;
         return {
           minU,
           maxU,
@@ -520,7 +549,7 @@ export function CoveringWorkspace({
           viewMinU: minU - padding - labelMargin,
           viewMinV: minV - padding,
           viewWidth: width + padding * 2 + labelMargin,
-          viewHeight: height + padding * 2,
+          viewHeight: height + padding * 2 + projection,
         };
       })()
     : undefined;
@@ -536,6 +565,15 @@ export function CoveringWorkspace({
           .sort((a, b) => a - b)
       : [];
   const courseGaugeMm = regularCourseGauge(courseStations.slice(1));
+  const eaveProjectionMm =
+    selectedLayout && 'eaveProjectionMm' in selectedLayout
+      ? selectedLayout.eaveProjectionMm
+      : undefined;
+  const eaveEdge = planeEdges.find((edge) => edge.kind === 'eave');
+  const firstCoursePositions =
+    selectedLayout && 'courses' in selectedLayout && selectedLayout.courses[0]
+      ? selectedLayout.courses[0].positions
+      : [];
   const tileMode =
     assignment && isTileAssignment(assignment)
       ? assignment.product.technicalSpecSnapshot.installationModes.find(
@@ -1116,6 +1154,30 @@ export function CoveringWorkspace({
                       <span data-testid="covering-course-facts">
                         {t('assembly.tileCourses')}{' '}
                         <b>{courseStations.length}</b>
+                        {eaveProjectionMm !== undefined && (
+                          <span
+                            data-testid="covering-eave-projection"
+                            data-projection-status={
+                              eaveProjectionMm < 0 ? 'short' : 'reaches'
+                            }
+                          >
+                            {' · '}
+                            {t(
+                              eaveProjectionMm < 0
+                                ? 'assembly.studio.eaveShort'
+                                : 'assembly.studio.eaveProjectionFact',
+                            )}{' '}
+                            <b>
+                              {fromMillimetres(
+                                Math.abs(eaveProjectionMm),
+                                state.unit,
+                              ).toLocaleString(i18n.language, {
+                                maximumFractionDigits: 1,
+                              })}{' '}
+                              {state.unit}
+                            </b>
+                          </span>
+                        )}
                         {courseGaugeMm !== undefined &&
                           tileMode?.coverWidthMm !== undefined && (
                             <>
@@ -1384,6 +1446,56 @@ export function CoveringWorkspace({
                       </g>
                     ),
                   )}
+                {showCovering &&
+                  eaveEdge &&
+                  eaveProjectionMm !== undefined &&
+                  eaveProjectionMm > 0 && (
+                    <g
+                      className={`a-eave-projection ${visual ? 'is-visual' : 'is-technical'}`}
+                      data-testid="eave-projection"
+                    >
+                      <clipPath id="covering-eave-strip-clip">
+                        <rect
+                          x={Math.min(eaveEdge.from.uMm, eaveEdge.to.uMm)}
+                          y={eaveEdge.from.vMm - eaveProjectionMm}
+                          width={Math.abs(eaveEdge.to.uMm - eaveEdge.from.uMm)}
+                          height={eaveProjectionMm}
+                        />
+                      </clipPath>
+                      {visual ? (
+                        <g clipPath="url(#covering-eave-strip-clip)">
+                          {firstCoursePositions.map((position) => (
+                            <use
+                              key={`eave:${position.id}`}
+                              href="#covering-tile-glyph"
+                              className={`a-tile-glyph is-full is-tone-${tileToneIndex(position.id)}`}
+                              x={position.nominalFromUMm}
+                              y={eaveEdge.from.vMm - eaveProjectionMm}
+                              width={
+                                position.nominalToUMm - position.nominalFromUMm
+                              }
+                              height={eaveProjectionMm * 1.4}
+                            />
+                          ))}
+                        </g>
+                      ) : (
+                        <rect
+                          className="a-eave-projection-band"
+                          x={Math.min(eaveEdge.from.uMm, eaveEdge.to.uMm)}
+                          y={eaveEdge.from.vMm - eaveProjectionMm}
+                          width={Math.abs(eaveEdge.to.uMm - eaveEdge.from.uMm)}
+                          height={eaveProjectionMm}
+                        />
+                      )}
+                      <line
+                        className="a-eave-projection-line"
+                        x1={Math.min(eaveEdge.from.uMm, eaveEdge.to.uMm)}
+                        x2={Math.max(eaveEdge.from.uMm, eaveEdge.to.uMm)}
+                        y1={eaveEdge.from.vMm - eaveProjectionMm}
+                        y2={eaveEdge.from.vMm - eaveProjectionMm}
+                      />
+                    </g>
+                  )}
                 {!visual &&
                   showCovering &&
                   !simplified &&
@@ -1494,6 +1606,27 @@ export function CoveringWorkspace({
                   points={polygonPoints(selectedSurface.polygon)}
                 />
               </g>
+              {showCovering &&
+                eaveEdge &&
+                eaveProjectionMm !== undefined &&
+                eaveProjectionMm > 0 && (
+                  <text
+                    className="a-eave-projection-label"
+                    x={Math.max(eaveEdge.from.uMm, eaveEdge.to.uMm)}
+                    y={
+                      bounds.minV +
+                      bounds.maxV -
+                      (eaveEdge.from.vMm - eaveProjectionMm / 2)
+                    }
+                    fontSize={bounds.labelSizeMm}
+                    textAnchor="end"
+                    dominantBaseline="middle"
+                  >
+                    {t('assembly.studio.eaveProjection', {
+                      value: `${fromMillimetres(eaveProjectionMm, state.unit).toLocaleString(i18n.language, { maximumFractionDigits: 1 })} ${state.unit}`,
+                    })}
+                  </text>
+                )}
               {!visual && showCovering && courseStations.length > 0 && (
                 <g
                   className="a-covering-course-labels"

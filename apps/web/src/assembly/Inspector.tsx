@@ -939,7 +939,10 @@ function BattenLayoutInspector({
         <summary>{t('assembly.geometryHelp')}</summary>
         <p>{t('assembly.battenGeometricNote')}</p>
       </details>
-      <details className="a-inspector-advanced">
+      <details
+        className="a-inspector-advanced"
+        data-testid="batten-advanced-settings"
+      >
         <summary>{t('assembly.advanced')}</summary>
         <div>
           <h4>{t('assembly.battenGeometry')}</h4>

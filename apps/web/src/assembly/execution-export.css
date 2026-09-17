@@ -479,12 +479,104 @@
 .doc-covering-row h3 {
   margin-top: 0;
 }
+/* V47 assumptions: three compact groups instead of a floating list. */
 .doc-assumptions {
-  padding-left: 6mm;
+  display: grid;
+  gap: 5mm;
+}
+.doc-assumptions section {
+  break-inside: avoid;
+}
+.doc-assumptions h3 {
+  margin: 0 0 2mm;
+  font-size: 9pt;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #3b5446;
+}
+.doc-assumptions ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1.6mm;
 }
 .doc-assumptions li {
-  margin-bottom: 4mm;
+  display: grid;
+  grid-template-columns: 5mm 1fr;
+  align-items: baseline;
   break-inside: avoid;
+}
+.doc-assumptions li > span {
+  font-weight: 700;
+  color: #2f6b4d;
+}
+.doc-assumptions [data-group='limitations'] li > span {
+  color: #9a5b08;
+}
+.doc-assumptions [data-group='not-modelled'] li {
+  color: #4f5e52;
+}
+.doc-assumptions p {
+  margin: 0;
+  color: #4f5e52;
+}
+.doc-page.is-compact {
+  min-height: 0;
+}
+.doc-state-pill {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 700;
+  background: #e3f1e8;
+  color: #1f5a3c;
+}
+.doc-state-pill[data-state='warning'] {
+  background: #fdf0d8;
+  color: #7a4705;
+}
+.doc-state-pill[data-state='blocked'] {
+  background: #fbe0dc;
+  color: #8a1f12;
+}
+.doc-secondary-print {
+  opacity: 0.85;
+}
+.doc-page-state {
+  color: #7a4705;
+  font-weight: 700;
+}
+.doc-page[data-document-state='blocked'] .doc-page-state {
+  color: #8a1f12;
+}
+.doc-status-banner {
+  border: 1px solid #e6c98f;
+  border-left: 4px solid #b7791f;
+  background: #fff8ea;
+  padding: 3mm 4mm;
+  break-inside: avoid;
+}
+.doc-status-banner[data-state='blocked'] {
+  border-color: #e3a79c;
+  border-left-color: #b42318;
+  background: #fff1ef;
+}
+.doc-status-banner strong {
+  display: block;
+  font-size: 10.5pt;
+}
+.doc-status-banner p {
+  margin: 1mm 0 2mm;
+}
+.doc-status-banner ul {
+  margin: 0;
+  padding-left: 5mm;
+  display: grid;
+  gap: 1mm;
 }
 @media (max-width: 800px) {
   .a-export-trigger {
@@ -586,6 +678,21 @@
   .doc-page:last-child {
     break-after: auto;
     page-break-after: auto;
+  }
+  /* V47: a short assumptions page continues after the previous section. */
+  .doc-page:has(+ .doc-page.is-compact) {
+    min-height: 0;
+    break-after: auto;
+    page-break-after: auto;
+  }
+  .doc-page.is-compact {
+    min-height: 0;
+    margin-top: 8mm;
+  }
+  .doc-status-banner,
+  .doc-state-pill {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
   }
   .doc-page-header {
     border-color: #333;
