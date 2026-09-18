@@ -24,3 +24,14 @@ export type {
   LinearUnresolvedReason,
   LinearUnresolvedRun,
 } from './model';
+export {
+  DEFAULT_STOCK_AWARE_LIMITS,
+  planStockAwareAssembly,
+} from './stock-aware';
+export type {
+  StockAwareInput,
+  StockAwareLimits,
+  StockAwareOptimality,
+  StockAwareResult,
+  StockAwareSearch,
+} from './stock-aware';

@@ -47,6 +47,26 @@ async function main() {
     counts.timberPriceEntries = priced.length;
     if (!priced.length) problems.push(`no price entry for ${timberVariantId}`);
 
+    // V49: a batten product round-trips with its source-declared application,
+    // and the one dated BAT batten price is present.
+    const batten = await catalog.getProduct(
+      'product:timber:bat-lata-40x60x4000',
+    );
+    const battenSpec = batten?.currentRevision.technicalSpec;
+    if (
+      battenSpec?.kind !== 'timber-stock' ||
+      !battenSpec.declaredApplications?.includes('batten')
+    )
+      problems.push(
+        'product:timber:bat-lata-40x60x4000 missing or unclassified',
+      );
+    const battenPrices = await pricing.entriesForVariants([
+      'variant:timber:bat-lata-40x60x4000:standard',
+    ]);
+    counts.battenPriceEntries = battenPrices.length;
+    if (!battenPrices.some((entry) => entry.netAmountMinor === 1665))
+      problems.push('expected dated BAT batten price missing');
+
     const ruukkiVariantId = 'variant:ruukki:finnera:qc50-pural-bt-mat';
     const ruukkiPrices = await pricing.entriesForVariants([ruukkiVariantId]);
     counts.ruukkiPriceEntries = ruukkiPrices.length;

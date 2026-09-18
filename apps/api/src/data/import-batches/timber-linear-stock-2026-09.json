@@ -1,0 +1,183 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "id": "timber-linear-stock-2026-09",
+    "label": "V49: batten-sized timber verified on live Castorama and BAT pages, 2026-09-18. Facts and use statements quoted in docs/domain/BATTEN_COMMERCIAL_PRODUCTS_RESEARCH.md; no structural claim.",
+    "sourceRevision": "2026-09-18"
+  },
+  "manufacturers": [
+    {
+      "id": "manufacturer:kingfisher-complex",
+      "slug": "kingfisher-complex",
+      "name": "Kingfisher International Products B.V. (Complex)",
+      "active": true
+    },
+    {
+      "id": "manufacturer:unidentified-mill-bat",
+      "slug": "unidentified-mill-bat",
+      "name": "Producent niepodany (oferta BAT)",
+      "active": true
+    }
+  ],
+  "products": [
+    {
+      "id": "product:timber:complex-lata-40x60x3000",
+      "manufacturerId": "manufacturer:kingfisher-complex",
+      "slug": "complex-lata-40x60x3000",
+      "name": "Łata Complex suszona impregnowana 40×60×3000",
+      "coveringKind": "timber-stock",
+      "active": true
+    },
+    {
+      "id": "product:timber:complex-lata-40x60x4000",
+      "manufacturerId": "manufacturer:kingfisher-complex",
+      "slug": "complex-lata-40x60x4000",
+      "name": "Łata Complex suszona impregnowana 40×60×4000",
+      "coveringKind": "timber-stock",
+      "active": true
+    },
+    {
+      "id": "product:timber:bat-lata-40x60x4000",
+      "manufacturerId": "manufacturer:unidentified-mill-bat",
+      "slug": "bat-lata-40x60x4000",
+      "name": "Tarcica iglasta, łata konstrukcyjna 40×60×4000 (impregnowana)",
+      "coveringKind": "timber-stock",
+      "active": true
+    },
+    {
+      "id": "product:timber:bat-tarcica-25x50x4000",
+      "manufacturerId": "manufacturer:unidentified-mill-bat",
+      "slug": "bat-tarcica-25x50x4000",
+      "name": "Tarcica impregnowana ciśnieniowo 25×50×4000",
+      "coveringKind": "timber-stock",
+      "active": true
+    }
+  ],
+  "revisions": [
+    {
+      "id": "revision:timber:complex-lata-40x60x3000:2026-09-18",
+      "productId": "product:timber:complex-lata-40x60x3000",
+      "revisionCode": "2026-09-18",
+      "validFrom": "2026-09-18",
+      "source": {
+        "label": "Castorama.pl 5063022666635, retrieved 2026-09-18: pine C18, kiln-dried 14–28%, pressure treated UC3, for 'konstrukcje … dachów'. Price has no stated tax basis — not imported.",
+        "url": "https://www.castorama.pl/lata-complex-suszona-impregnowana-40x60x3000-mm/5063022666635_CAPL.prd",
+        "revision": "2026-09-18"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "timber-stock",
+        "widthMm": 40,
+        "depthMm": 60,
+        "lengthMm": 3000,
+        "strengthClass": "C18",
+        "species": "sosna",
+        "kilnDried": true,
+        "treated": true,
+        "moisturePercentRange": {
+          "min": 14,
+          "max": 28
+        },
+        "salesUnit": "piece",
+        "declaredApplications": ["batten"]
+      }
+    },
+    {
+      "id": "revision:timber:complex-lata-40x60x4000:2026-09-18",
+      "productId": "product:timber:complex-lata-40x60x4000",
+      "revisionCode": "2026-09-18",
+      "validFrom": "2026-09-18",
+      "source": {
+        "label": "Castorama.pl 5063022667878, retrieved 2026-09-18: pine C18, kiln-dried 14–28%, pressure treated UC3, for 'konstrukcje … dachów'. Price has no stated tax basis — not imported.",
+        "url": "https://www.castorama.pl/lata-complex-suszona-impregnowana-40x60x4000-mm/5063022667878_CAPL.prd",
+        "revision": "2026-09-18"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "timber-stock",
+        "widthMm": 40,
+        "depthMm": 60,
+        "lengthMm": 4000,
+        "strengthClass": "C18",
+        "species": "sosna",
+        "kilnDried": true,
+        "treated": true,
+        "moisturePercentRange": {
+          "min": 14,
+          "max": 28
+        },
+        "salesUnit": "piece",
+        "declaredApplications": ["batten"]
+      }
+    },
+    {
+      "id": "revision:timber:bat-lata-40x60x4000:2026-09-18",
+      "productId": "product:timber:bat-lata-40x60x4000",
+      "revisionCode": "2026-09-18",
+      "validFrom": "2026-09-18",
+      "source": {
+        "label": "BAT.pl TAR-6040-IMP-4000, retrieved 2026-09-18: softwood 'łata konstrukcyjna', pressure impregnated, for walls, ceilings and 'więźba dachowa'. Grade, drying, planing not stated.",
+        "url": "https://bat.pl/Tarcica-iglasta-lata-konstrukcyjna-40-x-60-mm/TAR-6040-IMP-4000",
+        "revision": "2026-09-18"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "timber-stock",
+        "widthMm": 40,
+        "depthMm": 60,
+        "lengthMm": 4000,
+        "species": "iglaste",
+        "treated": true,
+        "salesUnit": "piece",
+        "declaredApplications": ["batten", "structural-framing"]
+      }
+    },
+    {
+      "id": "revision:timber:bat-tarcica-25x50x4000:2026-09-18",
+      "productId": "product:timber:bat-tarcica-25x50x4000",
+      "revisionCode": "2026-09-18",
+      "validFrom": "2026-09-18",
+      "source": {
+        "label": "BAT.pl TAR-2550-IMP-4000, retrieved 2026-09-18: pressure impregnated, marketed for garden structures only — classified 'general', never offered as a counter-batten.",
+        "url": "https://bat.pl/Tarcica-impregnowana-cisnieniowo-25x50mm-4m/TAR-2550-IMP-4000",
+        "revision": "2026-09-18"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "timber-stock",
+        "widthMm": 25,
+        "depthMm": 50,
+        "lengthMm": 4000,
+        "treated": true,
+        "salesUnit": "piece",
+        "declaredApplications": ["general"]
+      }
+    }
+  ],
+  "variants": [
+    {
+      "id": "variant:timber:complex-lata-40x60x3000:standard",
+      "productId": "product:timber:complex-lata-40x60x3000",
+      "name": "Standard",
+      "active": true
+    },
+    {
+      "id": "variant:timber:complex-lata-40x60x4000:standard",
+      "productId": "product:timber:complex-lata-40x60x4000",
+      "name": "Standard",
+      "active": true
+    },
+    {
+      "id": "variant:timber:bat-lata-40x60x4000:standard",
+      "productId": "product:timber:bat-lata-40x60x4000",
+      "name": "Standard",
+      "active": true
+    },
+    {
+      "id": "variant:timber:bat-tarcica-25x50x4000:standard",
+      "productId": "product:timber:bat-tarcica-25x50x4000",
+      "name": "Standard",
+      "active": true
+    }
+  ]
+}

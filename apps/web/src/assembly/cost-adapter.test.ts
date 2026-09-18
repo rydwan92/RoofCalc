@@ -15,6 +15,7 @@ import {
   k1RequirementSignature,
 } from './k1-cutting-adapter';
 import { createWorkbenchProjectResolver } from './workbench-project';
+import { materialTestFacts } from './material-test-facts';
 import type { ExportFacts, ResolvedCoveringLayout } from './export-adapter';
 import type { RoofTileLayoutResult } from '@cieslacalc/covering-core';
 
@@ -654,5 +655,130 @@ describe('cost suggestion adapter', () => {
       }),
     };
     expect(currentSuggestionQuantityValue(withBattens, 'battens')).toBe(10);
+  });
+});
+
+describe('V49 linear-stock pricing', () => {
+  function plannedFacts(
+    variantPrices: ExportFacts['variantPrices'],
+  ): ExportFacts {
+    const facts = materialTestFacts();
+    return {
+      ...facts,
+      variantPrices,
+      linearPlans: {
+        batten: {
+          kind: 'batten',
+          status: 'complete',
+          section: { widthMm: 60, depthMm: 40 },
+          assembly: {} as never,
+          plan: {} as never,
+          stock: [
+            {
+              stockClassId: 'class',
+              stockOptionId: 'stock-bat-4',
+              lengthMm: 4000,
+              quantity: 60,
+            },
+            {
+              stockClassId: 'class',
+              stockOptionId: 'stock-3000-0',
+              lengthMm: 3000,
+              quantity: 2,
+            },
+          ],
+          stockSources: {
+            'stock-bat-4': {
+              kind: 'catalogue',
+              productId: 'p:bat-4',
+              revisionId: 'p:bat-4:rev',
+              variantId: 'v:bat-4',
+              productName: 'Łata konstrukcyjna 40×60×4000',
+              manufacturerName: 'BAT',
+            },
+            'stock-3000-0': { kind: 'manual' },
+          },
+          purchasedLengthMm: 246000,
+          installedLengthMm: 240000,
+          utilizationRatio: 0.97,
+          search: {} as never,
+          baseline: {
+            purchasedLengthMm: 246000,
+            wasteLengthMm: 0,
+            stockItemCount: 62,
+            utilizationRatio: 0.97,
+          },
+        },
+      },
+    };
+  }
+  const price = (variantId: string, saleUnit: 'piece' | 'm' = 'piece') => ({
+    variantId,
+    currencyCode: 'PLN',
+    ownerLabel: 'BAT.pl (retail, observed 2026-09-18)',
+    entry: {
+      id: `price:${variantId}`,
+      priceListId: 'price-list:bat',
+      commercialVariantId: variantId,
+      saleUnit,
+      netAmountMinor: 1665,
+      validFrom: '2026-09-18',
+    },
+  });
+
+  it('suggests one piece line per commercial length, named by section, length and product', () => {
+    const suggestions = createCostSuggestions(
+      plannedFacts([price('v:bat-4')] as never),
+    ).filter((item) => item.kind === 'linear-stock');
+    expect(suggestions.map((item) => item.quantity)).toEqual([
+      { value: 2, unit: 'piece' },
+      { value: 60, unit: 'piece' },
+    ]);
+    const catalogue = suggestions.find(
+      (item) => item.kind === 'linear-stock' && item.stockLengthMm === 4000,
+    )!;
+    expect(catalogue).toMatchObject({
+      productName: 'Łata konstrukcyjna 40×60×4000',
+      unitPriceMinor: 1665,
+      currencyCode: 'PLN',
+      priceProvenance: { validFrom: '2026-09-18' },
+      quantityBasis: 'procurement-stock',
+    });
+    expect(catalogue.noteKeys).toContain(
+      'catalogue-price-verify-before-purchase',
+    );
+    // The manual length gets no invented price.
+    const manual = suggestions.find(
+      (item) => item.kind === 'linear-stock' && item.stockLengthMm === 3000,
+    )!;
+    expect('unitPriceMinor' in manual && manual.unitPriceMinor).toBeFalsy();
+    // The geometric-length batten suggestion is withdrawn.
+    expect(
+      createCostSuggestions(plannedFacts([])).some(
+        (item) => item.kind === 'battens',
+      ),
+    ).toBe(false);
+  });
+
+  it('never applies a per-metre price to a piece quantity', () => {
+    const suggestion = createCostSuggestions(
+      plannedFacts([price('v:bat-4', 'm')] as never),
+    ).find(
+      (item) => item.kind === 'linear-stock' && item.stockLengthMm === 4000,
+    )!;
+    expect(
+      'unitPriceMinor' in suggestion && suggestion.unitPriceMinor,
+    ).toBeFalsy();
+  });
+
+  it('never guesses between two prices for one variant', () => {
+    const suggestion = createCostSuggestions(
+      plannedFacts([price('v:bat-4'), price('v:bat-4')] as never),
+    ).find(
+      (item) => item.kind === 'linear-stock' && item.stockLengthMm === 4000,
+    )!;
+    expect(
+      'unitPriceMinor' in suggestion && suggestion.unitPriceMinor,
+    ).toBeFalsy();
   });
 });

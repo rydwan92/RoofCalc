@@ -10,16 +10,16 @@ import {
   roofPlaneSide,
 } from '@cieslacalc/roof-math';
 import {
-  installablePiecesToRequiredPieces,
-  planLinearAssembly,
+  planStockAwareAssembly,
   type LinearAssemblyResult,
+  type StockAwareLimits,
+  type StockAwareSearch,
   type LinearAssemblySettings,
   type LinearJoinPolicy,
   type LinearRun,
 } from '@cieslacalc/linear-procurement';
 import {
   aggregateStockRequirements,
-  createCuttingPlan,
   type CuttingPlan,
   type CuttingSettings,
   type OptimizationObjective,
@@ -73,10 +73,28 @@ export interface LinearMaterialRequirement {
   angledRunCount: number;
 }
 
+/**
+ * V49: where a commercial length came from. A catalogue length keeps its
+ * product identity all the way to cost and documents; a manual one says so.
+ */
+export type LinearStockSource =
+  | { kind: 'manual' }
+  | {
+      kind: 'catalogue';
+      productId: string;
+      revisionId: string;
+      /** Absent when the product has no single commercial variant to price. */
+      variantId?: string;
+      productName: string;
+      manufacturerName?: string;
+    };
+
 export interface LinearStockLength {
   id: string;
   lengthMm: number;
+  /** Absent = quantity unknown, planned as unlimited (never invented). */
   availability?: number;
+  source?: LinearStockSource;
 }
 
 export interface LinearPurchasePlan {
@@ -92,6 +110,17 @@ export interface LinearPurchasePlan {
   /** Installed length the pieces cover. */
   installedLengthMm: number;
   utilizationRatio: number;
+  /** Stock option ID → where that commercial length came from. */
+  stockSources: Record<string, LinearStockSource>;
+  /** V49 search evidence: bounds, effort and how far optimality is proven. */
+  search: StockAwareSearch;
+  /** The V48 stock-unaware plan for the same input, for comparison. */
+  baseline: {
+    purchasedLengthMm: number;
+    wasteLengthMm: number;
+    stockItemCount: number;
+    utilizationRatio: number;
+  };
 }
 
 /**
@@ -326,6 +355,7 @@ export interface LinearPlanOptions {
   stagger?: LinearAssemblySettings['stagger'];
   /** Explicit allowance for a raking end. Undefined keeps such runs unplanned. */
   angledEndAllowanceMm?: number;
+  limits?: StockAwareLimits;
 }
 
 /**
@@ -345,7 +375,21 @@ export function planLinearPurchase(
   if (!lengths.length) return undefined;
   const stockClassId = requirement.stockClassId;
   const longest = Math.max(...lengths.map((option) => option.lengthMm));
-  const assembly = planLinearAssembly({
+  const stockOptions: StockOption[] = lengths.map((option) => ({
+    id: option.id,
+    stockClassId,
+    lengthMm: option.lengthMm,
+    ...(option.availability === undefined
+      ? {}
+      : { availability: option.availability }),
+  }));
+  /**
+   * V49: the split of every run is chosen against the commercial lengths by
+   * the final purchase plan; `procurement-core` still does all stock
+   * accounting. The V48 assembly is the search's starting point, so the
+   * result is never worse than it.
+   */
+  const result = planStockAwareAssembly({
     runs: requirement.runs,
     settings: {
       policy: requirement.policy,
@@ -358,25 +402,13 @@ export function planLinearPurchase(
         ? {}
         : { angledEndAllowanceMm: options.angledEndAllowanceMm }),
     },
-  });
-  const stockOptions: StockOption[] = lengths.map((option) => ({
-    id: option.id,
     stockClassId,
-    lengthMm: option.lengthMm,
-    ...(option.availability === undefined
-      ? {}
-      : { availability: option.availability }),
-  }));
-  const plan = createCuttingPlan({
-    requiredPieces: installablePiecesToRequiredPieces(
-      assembly.pieces,
-      stockClassId,
-    ),
     stockOptions,
-    settings: options.cutting,
-    ...(options.objective ? { objective: options.objective } : {}),
+    cutting: options.cutting,
+    objective: options.objective ?? 'minimum-waste',
+    ...(options.limits ? { limits: options.limits } : {}),
   });
-  const purchasedLengthMm = plan.summary.purchasedStockLengthMm;
+  const { assembly, plan } = result;
   return {
     kind: requirement.kind,
     ...(requirement.section ? { section: requirement.section } : {}),
@@ -389,8 +421,18 @@ export function planLinearPurchase(
     assembly,
     plan,
     stock: aggregateStockRequirements(plan),
-    purchasedLengthMm,
+    stockSources: Object.fromEntries(
+      lengths.map((option) => [option.id, option.source ?? { kind: 'manual' }]),
+    ),
+    purchasedLengthMm: plan.summary.purchasedStockLengthMm,
     installedLengthMm: assembly.summary.installedLengthMm,
     utilizationRatio: plan.summary.utilizationRatio,
+    search: result.search,
+    baseline: {
+      purchasedLengthMm: result.baseline.plan.summary.purchasedStockLengthMm,
+      wasteLengthMm: result.baseline.plan.summary.wasteLengthMm,
+      stockItemCount: result.baseline.plan.summary.stockItemCount,
+      utilizationRatio: result.baseline.plan.summary.utilizationRatio,
+    },
   };
 }

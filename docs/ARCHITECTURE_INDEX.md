@@ -1,6 +1,6 @@
 # RoofCalc / CieślaCalc — Architecture Index
 
-**This is the current-state map, after V48.** Read it after `PROJECT_BLUEPRINT.md`
+**This is the current-state map, after V49.** Read it after `PROJECT_BLUEPRINT.md`
 and before touching code. It describes what exists today, not the history of how
 it got here. Historical `ARCHITECTURE_V*.md` documents stay authoritative for the
 subsystem they introduced and should be opened only when changing that subsystem.
@@ -258,6 +258,15 @@ allowance. The user's commercial choice is canonical
 the estimate and the material list. See
 `docs/ARCHITECTURE_V48_LINEAR_MATERIAL_PROCUREMENT.md` and
 `docs/domain/BATTEN_STOCK_AND_JOINING_RESEARCH.md`.
+
+V49 lets `linear-procurement` choose *between legal assemblies* using the
+commercial stock: `planStockAwareAssembly` scores every candidate by packing
+all pieces with `procurement-core` (still the only stock accounting), starts
+from the V48 assembly and never returns anything worse. Timber-stock
+revisions may carry a source-declared `declaredApplications`; batten-sized
+products and their dated prices are seeded as immutable batches. See
+`docs/ARCHITECTURE_V49_STOCK_AWARE_LINEAR_PLANNING.md` and
+`docs/domain/BATTEN_COMMERCIAL_PRODUCTS_RESEARCH.md`.
 
 V43B turns covering → battens → counter-battens into one workflow. The batten
 quantity audit found no solver error but a silent application defect: repair
@@ -584,6 +593,8 @@ pnpm e2e      # real-browser smoke, desktop 1440x900 and mobile 390x844 (pnpm e2
 | `ARCHITECTURE_V46_COVERING_SYNC_REPAIR_AND_SCHEME` | plane-scope reconciliation on roof-type switch, fit-roof repair, automatic battens with first covering, overlap audit, roof-aware covering scheme |
 | `ARCHITECTURE_V47_PROJECT_READINESS_AND_GUARDRAILS` | project readiness projection, severity semantics, safe repair vs expert decisions, document preflight/status, structured assumptions, membrane end laps, tile eave projection |
 | `ARCHITECTURE_V48_LINEAR_MATERIAL_PROCUREMENT` | join policy, installable pieces, batten/counter-batten purchase plans, cutting settings, cost and material-list integration |
+| `ARCHITECTURE_V49_STOCK_AWARE_LINEAR_PLANNING` | stock-aware choice between legal assemblies, search bounds and optimality truth, batten catalogue, price provenance, piece pricing |
+| `domain/BATTEN_COMMERCIAL_PRODUCTS_RESEARCH` | verified Polish-market batten products, what each source states, which prices meet the net-price rule |
 | `domain/BATTEN_STOCK_AND_JOINING_RESEARCH` | where a batten joint may be made, minimum piece and span, stagger, evidence strength per claim |
 | `domain/ROOF_TILE_EDGE_PLACEMENT` | eave/verge evidence; why no physical tile edge projection is modelled |
 | `PROJECT_BLUEPRINT.md` | always first; holds the work checkpoint |

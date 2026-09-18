@@ -546,6 +546,18 @@ export interface CommercialLengthSpec {
   lengthMm: number;
   /** Absent means unlimited. */
   availability?: number;
+  /**
+   * V49: the catalogue item this length is, when it came from the catalogue.
+   * Kept whole so product identity survives into cost and documents; the
+   * display fields are snapshots, the IDs are the reference.
+   */
+  catalogRef?: {
+    productId: string;
+    technicalRevisionId: string;
+    variantId?: string;
+    productName: string;
+    manufacturerName?: string;
+  };
 }
 
 /**
@@ -556,6 +568,11 @@ export interface CommercialLengthSpec {
  * that never opened the advanced panel keeps the application defaults.
  */
 export interface LinearStockSelectionSpec {
+  /**
+   * V49: one source per plan, never an ambiguous mix. Absent on V48 projects,
+   * which were always manual.
+   */
+  source?: 'manual' | 'catalogue';
   lengths: CommercialLengthSpec[];
   objective?:
     'minimum-waste' | 'minimum-purchased-length' | 'minimum-stock-count';

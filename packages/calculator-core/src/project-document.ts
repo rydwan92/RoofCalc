@@ -25,10 +25,20 @@ const roofFeatureSchema: z.ZodType<RoofFeature> = z.object({
 });
 const linearStockSelectionSchema: z.ZodType<LinearStockSelectionSpec> =
   z.object({
+    source: z.enum(['manual', 'catalogue']).optional(),
     lengths: z.array(
       z.object({
         lengthMm: z.number().positive(),
         availability: z.number().int().nonnegative().optional(),
+        catalogRef: z
+          .object({
+            productId: z.string().min(1),
+            technicalRevisionId: z.string().min(1),
+            variantId: z.string().min(1).optional(),
+            productName: z.string().min(1),
+            manufacturerName: z.string().min(1).optional(),
+          })
+          .optional(),
       }),
     ),
     objective: z

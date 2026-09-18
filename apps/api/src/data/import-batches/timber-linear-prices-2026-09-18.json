@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "id": "timber-linear-price-research-2026-09-18",
+    "label": "V49: BAT.pl retail prices, 2026-09-18, source-stated 'Cena zawiera VAT 23%', net = round(gross/1.23). Castorama 40x60 prices have no stated tax basis and are not imported.",
+    "sourceRevision": "2026-09-18"
+  },
+  "priceLists": [
+    {
+      "id": "price-list:bat-retail-2026-09-18",
+      "ownerLabel": "BAT.pl (retail, observed 2026-09-18)",
+      "currencyCode": "PLN",
+      "regionCode": "PL",
+      "taxContext": "gross price as listed, 23% VAT included (source-stated)",
+      "validFrom": "2026-09-18"
+    }
+  ],
+  "entries": [
+    {
+      "id": "price:bat:2026-09-18:bat-lata-40x60x4000",
+      "priceListId": "price-list:bat-retail-2026-09-18",
+      "commercialVariantId": "variant:timber:bat-lata-40x60x4000:standard",
+      "saleUnit": "piece",
+      "netAmountMinor": 1665,
+      "sourceAmountBasis": "gross",
+      "sourceVatRateBps": 2300,
+      "validFrom": "2026-09-18"
+    },
+    {
+      "id": "price:bat:2026-09-18:bat-tarcica-25x50x4000",
+      "priceListId": "price-list:bat-retail-2026-09-18",
+      "commercialVariantId": "variant:timber:bat-tarcica-25x50x4000:standard",
+      "saleUnit": "piece",
+      "netAmountMinor": 899,
+      "sourceAmountBasis": "gross",
+      "sourceVatRateBps": 2300,
+      "validFrom": "2026-09-18"
+    }
+  ]
+}

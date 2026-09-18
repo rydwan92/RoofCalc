@@ -81,6 +81,19 @@ free; changing meaning, type or required-ness is not.
   No `schemaVersion` bump. Covered by
   `apps/web/src/assembly/hip-execution.test.ts`, which asserts a save/load round
   trip and that a document with the fields deleted returns to *partial*.
+- V48/V49 note: `RoofBuildUp.linearStock?: { battens?, counterBattens? }`, each
+  a `LinearStockSelectionSpec` — the user's **commercial decision** (which
+  commercial lengths to buy from, optional cutting settings, objective and an
+  explicit raking-end allowance). Absent on every pre-V48 document, meaning no
+  purchase plan was prepared; the quantities stay geometric. It is a decision,
+  not a procurement result: the installable pieces, the cutting plan and every
+  count are derived on each render and never serialized (ADR-009 holds).
+  V49 adds, additively: `source?: 'manual' | 'catalogue'` (absent reads as
+  manual — every V48 selection was manual) and per length
+  `catalogRef?: { productId, technicalRevisionId, variantId?, productName,
+  manufacturerName? }`. The IDs are the reference; the two names are display
+  snapshots, exactly like a covering's `displaySnapshot`. One source per
+  selection, so provenance is never ambiguous. No `schemaVersion` bump.
 - V34C note: `project.membraneProduct?: MembraneTechnicalSpec`
   (`@cieslacalc/covering-core`) is additive and optional — the single roll
   product used across every plane `buildUp.membrane` assigns (manual entry
@@ -400,6 +413,17 @@ reference and marks the price manual. Quantity ownership remains independent.
   with one revision, never a shared family with size-variants (mirrors how
   a differently-treated same-section item must be a different revision, so
   a purchase can never silently substitute one grade for another).
+- V49: `declaredApplications?: ('batten' | 'counter-batten' |
+  'structural-framing' | 'general')[]` — what the **source** declares or markets
+  the product for, never a RoofCalc structural adequacy claim. Additive and
+  optional under the same `TIMBER_STOCK_TECHNICAL_SCHEMA_VERSION = 1`: every
+  V35 revision stays valid and immutable, and absence means *not declared*,
+  not *general*. The product picker only offers a product for a use its source
+  declares, so a same-section product marketed for something else is never
+  suggested. The exact source wording is kept in the revision's
+  `source.label` and in `docs/domain/BATTEN_COMMERCIAL_PRODUCTS_RESEARCH.md`.
+  `technicalPreview()` also exposes `treated` and `declaredApplications`
+  (additive fields on the strict preview schema).
 - `isCoveringTechnicalSpec(spec)` narrows this wider union back down to the
   §3 subset for consumers that are covering-scoped by construction (e.g.
   `CatalogProductPicker.tsx`).

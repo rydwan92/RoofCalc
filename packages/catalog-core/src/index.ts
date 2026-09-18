@@ -9,7 +9,10 @@ import {
   type CoveringTechnicalSpec,
   type MembraneProductSelection,
 } from '@cieslacalc/covering-core';
-import { timberStockTechnicalSpecSchema } from './timber-stock-spec';
+import {
+  TIMBER_STOCK_APPLICATIONS,
+  timberStockTechnicalSpecSchema,
+} from './timber-stock-spec';
 export * from './timber-stock-spec';
 
 export const CATALOG_IMPORT_SCHEMA_VERSION = 1 as const;
@@ -328,6 +331,9 @@ export const catalogTechnicalPreviewSchema = z
     sectionDepthMm: z.number().finite().positive().optional(),
     lengthMm: z.number().finite().positive().optional(),
     strengthClass: z.string().optional(),
+    // V49: lets a picker filter battens without loading every revision.
+    treated: z.boolean().optional(),
+    declaredApplications: z.array(z.enum(TIMBER_STOCK_APPLICATIONS)).optional(),
   })
   .strict();
 
@@ -436,6 +442,8 @@ export function technicalPreview(
       sectionDepthMm: spec.depthMm,
       lengthMm: spec.lengthMm,
       strengthClass: spec.strengthClass,
+      treated: spec.treated,
+      declaredApplications: spec.declaredApplications,
     };
   return {
     effectiveWidthMm: spec.installationModes[0]?.effectiveWidthMm,

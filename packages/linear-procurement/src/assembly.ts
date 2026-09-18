@@ -526,3 +526,10 @@ export function planLinearAssembly(input: {
     },
   };
 }
+
+/**
+ * Package-internal building blocks for the V49 stock-aware planner. Not part
+ * of the public barrel: callers use `planLinearAssembly` or
+ * `planStockAwareAssembly`, never these.
+ */
+export { endAllowance as runEndAllowance, piece as buildInstallablePiece };

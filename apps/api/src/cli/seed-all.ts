@@ -34,11 +34,16 @@ const CATALOG_BATCHES = [
   // entry for blachodachówka and blacha trapezowa.
   'metal-sheets-2026-09.json',
   'metal-roofing-additions-2026-09-v42.json',
+  // V49: verified batten-sized timber with source-declared applications.
+  // Additive to the V35 timber batch, which it never touches.
+  'timber-linear-stock-2026-09.json',
 ] as const;
 const PRICING_BATCHES = [
   'prices-2026-09.json',
   'timber-prices-2026-09.json',
   'metal-prices-ruukki-2026-04-28.json',
+  // V49: only prices whose source stated the tax basis (BAT, VAT 23%).
+  'timber-linear-prices-2026-09-18.json',
 ] as const;
 
 async function main() {

@@ -72,6 +72,26 @@ function suggestionLabelKey(suggestion: CostSuggestion): string {
   }
 }
 
+/**
+ * V49: a linear-stock line names its section, commercial length and product,
+ * because a roof usually buys several lengths and two lines that both read
+ * "Łaty" could not be told apart or priced correctly.
+ */
+function suggestionLabel(
+  suggestion: CostSuggestion,
+  t: (key: string) => string,
+): string {
+  const base = t(`assembly.cost.suggestion.${suggestionLabelKey(suggestion)}`);
+  if (suggestion.kind !== 'linear-stock') return base;
+  // Smaller dimension first, as catalogues and the purchase panel name it.
+  const section =
+    suggestion.sectionWidthMm && suggestion.sectionDepthMm
+      ? ` ${Math.min(suggestion.sectionWidthMm, suggestion.sectionDepthMm)}×${Math.max(suggestion.sectionWidthMm, suggestion.sectionDepthMm)}`
+      : '';
+  const length = ` × ${(suggestion.stockLengthMm / 1000).toLocaleString('pl-PL')} m`;
+  return `${base}${section}${length}${suggestion.productName ? ` · ${suggestion.productName}` : ''}`;
+}
+
 function money(
   minor: number | undefined,
   currencyCode: string,
@@ -152,7 +172,8 @@ export function CostWorkspace({
           ? suggestion.quantity
           : { value: 0, unit: suggestion.manualUnit };
     const catalogPrice =
-      suggestion.kind === 'covering-consumption' &&
+      (suggestion.kind === 'covering-consumption' ||
+        suggestion.kind === 'linear-stock') &&
       suggestion.unitPriceMinor !== undefined &&
       suggestion.currencyCode === scenario.currencyCode
         ? suggestion.unitPriceMinor
@@ -160,7 +181,7 @@ export function CostWorkspace({
     const line = createCostLine({
       id: suggestion.key,
       category: suggestion.category,
-      label: t(`assembly.cost.suggestion.${suggestionLabelKey(suggestion)}`),
+      label: suggestionLabel(suggestion, t),
       quantity,
       quantityBasis: suggestion.quantityBasis,
       suitability: suggestion.suitability,
@@ -294,14 +315,34 @@ export function CostWorkspace({
                 data-suitability={suggestion.suitability}
               >
                 <div>
-                  <strong>
-                    {t(
-                      `assembly.cost.suggestion.${suggestionLabelKey(suggestion)}`,
-                    )}
-                  </strong>
+                  <strong>{suggestionLabel(suggestion, t)}</strong>
                   <small>
                     {t(`assembly.cost.suitability.${suggestion.suitability}`)}
                   </small>
+                  {/*
+                   * V49 §33: a catalogue price is a dated observation, so its
+                   * source, date and a verification note travel with it.
+                   */}
+                  {suggestion.kind === 'linear-stock' &&
+                    suggestion.unitPriceMinor !== undefined &&
+                    suggestion.priceProvenance && (
+                      <small
+                        className="cw-provenance"
+                        data-testid="cost-price-provenance"
+                      >
+                        {t('assembly.cost.catalogueProvenance', {
+                          price: money(
+                            suggestion.unitPriceMinor,
+                            suggestion.currencyCode ?? scenario.currencyCode,
+                            locale,
+                          ),
+                          source:
+                            suggestion.priceProvenance.ownerLabel ??
+                            t('assembly.cost.catalogueSource'),
+                          date: suggestion.priceProvenance.validFrom,
+                        })}
+                      </small>
+                    )}
                   {suggestion.kind === 'covering-consumption' ? (
                     <span>
                       {t('assembly.cost.consumptionRange', {

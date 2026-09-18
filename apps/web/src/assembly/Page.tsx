@@ -538,6 +538,15 @@ function AssemblyPageContent() {
     ...(membraneProduct?.catalogRef?.variantId
       ? [membraneProduct.catalogRef.variantId]
       : []),
+    // V49: catalogue batten/counter-batten lengths carry their own prices.
+    ...[
+      ...(state.projectDocument.project.buildUp.linearStock?.battens?.lengths ??
+        []),
+      ...(state.projectDocument.project.buildUp.linearStock?.counterBattens
+        ?.lengths ?? []),
+    ].flatMap((item) =>
+      item.catalogRef?.variantId ? [item.catalogRef.variantId] : [],
+    ),
   ]);
   const effectiveBattenLayout = useMemo(
     () => battenLayout ?? disabledBattenLayer(),
@@ -1148,11 +1157,29 @@ function AssemblyPageContent() {
       if (!selection?.lengths.length) continue;
       const plan = planLinearPurchase(linearRequirements[kind], {
         stockLengths: selection.lengths.map((item, index) => ({
-          id: `stock-${item.lengthMm}-${index}`,
+          // A catalogue length is identified by its variant/product, so two
+          // products of the same length stay distinct in the plan.
+          id: item.catalogRef
+            ? `stock-${item.catalogRef.variantId ?? item.catalogRef.productId}`
+            : `stock-${item.lengthMm}-${index}`,
           lengthMm: item.lengthMm,
           ...(item.availability === undefined
             ? {}
             : { availability: item.availability }),
+          source: item.catalogRef
+            ? {
+                kind: 'catalogue' as const,
+                ...(item.catalogRef.variantId
+                  ? { variantId: item.catalogRef.variantId }
+                  : {}),
+                productId: item.catalogRef.productId,
+                revisionId: item.catalogRef.technicalRevisionId,
+                productName: item.catalogRef.productName,
+                ...(item.catalogRef.manufacturerName
+                  ? { manufacturerName: item.catalogRef.manufacturerName }
+                  : {}),
+              }
+            : { kind: 'manual' as const },
         })),
         cutting: {
           kerfMm: selection.kerfMm ?? 3,
@@ -1182,9 +1209,18 @@ function AssemblyPageContent() {
         if (blocker === 'hip-detail-unresolved')
           runReadinessAction('choose-hip-detail');
       },
+      // V49 §26: only ever an explicit click, never a silent substitution.
+      onChangeSection: (kind, section) => {
+        if (kind !== 'batten' || !battenLayout) return;
+        state.setBattenLayout({
+          ...battenLayout,
+          battenWidthMm: section.widthMm,
+          battenHeightMm: section.depthMm,
+        });
+      },
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [linearPlans, linearRequirements, linearSelections],
+    [battenLayout, linearPlans, linearRequirements, linearSelections],
   );
   // V47: one readiness projection over already-resolved facts.
   const readinessCandidates = useMemo(

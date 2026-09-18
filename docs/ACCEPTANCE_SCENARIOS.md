@@ -630,3 +630,27 @@ folded into the saw kerf (`linear-material-plan.test.ts`,
 **No joint floats.** Every joint the planner creates sits on a resolved rafter
 axis; a run with no interior support is reported unplanned instead of being
 spliced.
+
+## V49 — stock-aware plans and catalogue battens
+
+**A: catalogue battens → plan → piece pricing.** Gable, KODA, Materiały,
+Zaplanuj zakup, `Z katalogu`: exactly the three products declared as battens
+in 40×60 are offered (the 25×50 garden timber and 45×145 C24 are not).
+Choosing BAT 40×60×4000 plans with that product named in the breakdown, a
+`KATALOG` badge on the Material Plan row, and a note that pieces are priced in
+the estimate (`e2e/v49-stock-aware.spec.ts`).
+
+**B + F: manual lengths recompute.** A custom 4,8 m is added in metres, and
+removing 4 m changes the plan. Plan quality reads "Plan gotowy" or "Plan
+znaleziony" and never "optymalny".
+
+**E: catalogue unavailable.** The panel says "Katalog chwilowo niedostępny —
+możesz podać długości ręcznie." and manual planning still produces a plan.
+
+**Never worse than V48, and better where it matters.** A 6,2 m counter-batten
+buys 7 m instead of 8 m; four 5,5 m runs buy 23 m instead of 24 m; an already
+optimal 4 + 4 m split is kept (`stock-aware.test.ts`).
+
+**Prices are never invented.** Only BAT prices with a stated 23 % VAT are
+seeded; a per-metre or ambiguous price is never applied to a piece quantity
+(`timber-linear-v49-seed.test.ts`, `cost-adapter.test.ts`).

@@ -809,13 +809,29 @@ export function createExportCandidates(facts: ExportFacts): SectionCandidate[] {
                       0,
                     )
                   : undefined;
+                // V49: each commercial length names its section and source,
+                // so the list says exactly what to buy and where it came from.
+                const linearSection = linearPlan?.section
+                  ? `${Math.min(linearPlan.section.widthMm, linearPlan.section.depthMm)}×${Math.max(linearPlan.section.widthMm, linearPlan.section.depthMm)} × `
+                  : '';
                 const linearBreakdown = linearPlan
                   ? [...linearPlan.stock]
-                      .sort((a, b) => a.lengthMm - b.lengthMm)
-                      .map(
-                        (item) =>
-                          `${item.lengthMm / 1000} m × ${item.quantity}`,
+                      .sort(
+                        (a, b) =>
+                          a.lengthMm - b.lengthMm ||
+                          a.stockOptionId.localeCompare(b.stockOptionId),
                       )
+                      .map((item) => {
+                        const origin =
+                          linearPlan.stockSources[item.stockOptionId];
+                        // Language-neutral: the document renders its own
+                        // labels; a manual length simply has no product name.
+                        return `${item.quantity} × ${linearSection}${item.lengthMm / 1000} m${
+                          origin?.kind === 'catalogue'
+                            ? ` (${origin.manufacturerName ? `${origin.manufacturerName}: ` : ''}${origin.productName})`
+                            : ''
+                        }`;
+                      })
                       .join(' · ')
                   : undefined;
                 const linearMetrics = linearPlan

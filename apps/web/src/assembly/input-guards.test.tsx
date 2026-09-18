@@ -112,7 +112,12 @@ describe('V44 presentation never changes quantities', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Pokrycie' }));
     // Whole-roof counts only; a view may add per-plane detail rows.
     const counts = async () => {
-      await screen.findAllByText(/Pozycje krycia/);
+      // The covering workspace is lazy-loaded; the default 1 s wait was too
+      // tight under a loaded parallel suite and failed intermittently (seen on
+      // untouched V48 HEAD too), without any behaviour being wrong.
+      await screen.findAllByText(/Pozycje krycia/, undefined, {
+        timeout: 5000,
+      });
       return document.querySelector('.a-covering-counts')?.textContent ?? '';
     };
     const before = await counts();

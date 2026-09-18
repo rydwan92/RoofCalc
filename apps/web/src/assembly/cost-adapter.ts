@@ -55,6 +55,16 @@ export interface LinearStockSuggestion extends CostSuggestionBase {
   stockLengthMm: number;
   sectionWidthMm?: number;
   sectionDepthMm?: number;
+  /** V49: the catalogue product this length is, or undefined when manual. */
+  productName?: string;
+  /**
+   * Set only when the length is one catalogue variant with exactly one
+   * per-piece price entry: a suggestion, never a silent update of an accepted
+   * cost line.
+   */
+  unitPriceMinor?: number;
+  currencyCode?: string;
+  priceProvenance?: { ownerLabel?: string; validFrom: string };
 }
 
 export interface BattensSuggestion extends CostSuggestionBase {
@@ -175,10 +185,26 @@ function linearStockSuggestions(facts: ExportFacts): LinearStockSuggestion[] {
     const plan = facts.linearPlans?.[material];
     if (!plan || plan.stock.length === 0) continue;
     const section = plan.section;
-    for (const item of [...plan.stock].sort((a, b) => a.lengthMm - b.lengthMm))
+    for (const item of [...plan.stock].sort(
+      (a, b) =>
+        a.lengthMm - b.lengthMm ||
+        a.stockOptionId.localeCompare(b.stockOptionId),
+    )) {
+      const source = plan.stockSources[item.stockOptionId];
+      const catalogue = source?.kind === 'catalogue' ? source : undefined;
+      // One variant, one per-piece entry: anything else would be a guess.
+      const entries = catalogue?.variantId
+        ? (facts.variantPrices ?? []).filter(
+            (row) => row.variantId === catalogue.variantId,
+          )
+        : [];
+      const price =
+        entries.length === 1 && entries[0]!.entry.saleUnit === 'piece'
+          ? entries[0]!
+          : undefined;
       suggestions.push({
         kind: 'linear-stock',
-        key: `linear-stock:${material}:${item.lengthMm}`,
+        key: `linear-stock:${material}:${item.stockOptionId}`,
         category: 'material',
         quantityBasis: 'procurement-stock',
         suitability: 'exact-purchase',
@@ -191,10 +217,25 @@ function linearStockSuggestions(facts: ExportFacts): LinearStockSuggestion[] {
               sectionDepthMm: section.depthMm,
             }
           : {}),
+        ...(catalogue ? { productName: catalogue.productName } : {}),
+        ...(price
+          ? {
+              unitPriceMinor: price.entry.netAmountMinor,
+              currencyCode: price.currencyCode,
+              priceProvenance: {
+                ...(price.ownerLabel ? { ownerLabel: price.ownerLabel } : {}),
+                validFrom: price.entry.validFrom,
+              },
+            }
+          : {}),
         // The plan itself may still be partial; say so rather than implying
         // that buying these pieces completes the layer.
-        noteKeys: plan.status === 'complete' ? [] : ['linear-plan-partial'],
+        noteKeys: [
+          ...(plan.status === 'complete' ? [] : ['linear-plan-partial']),
+          ...(price ? ['catalogue-price-verify-before-purchase'] : []),
+        ],
       });
+    }
   }
   return suggestions;
 }

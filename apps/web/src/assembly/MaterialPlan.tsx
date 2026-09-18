@@ -46,6 +46,11 @@ export interface LinearPlanSurface {
     selection?: LinearStockSelectionSpec,
   ) => void;
   onFixBlocker?: (kind: LinearMaterialKind, blocker: string) => void;
+  /** V49: an explicit user decision to adopt a catalogue section. */
+  onChangeSection?: (
+    kind: LinearMaterialKind,
+    section: { widthMm: number; depthMm: number },
+  ) => void;
 }
 
 /** Which linear material a Material Plan row is, if any. */
@@ -400,6 +405,32 @@ export function MaterialPlan({
                               {m.partial}
                             </span>
                           )}
+                          {linearPlan && (
+                            <p
+                              className="mp-linear-identity"
+                              data-testid={`material-identity-${row.labelKey}`}
+                            >
+                              <span className="mp-badge">
+                                {Object.values(linearPlan.stockSources).some(
+                                  (origin) => origin.kind === 'catalogue',
+                                )
+                                  ? m.sourceCatalogueBadge
+                                  : m.sourceManualBadge}
+                              </span>{' '}
+                              {[...linearPlan.stock]
+                                .sort((a, b) => a.lengthMm - b.lengthMm)
+                                .map((item) => {
+                                  const origin =
+                                    linearPlan.stockSources[item.stockOptionId];
+                                  return `${item.quantity} × ${number(item.lengthMm / 1000)} m${
+                                    origin?.kind === 'catalogue'
+                                      ? ` (${origin.productName})`
+                                      : ''
+                                  }`;
+                                })
+                                .join(' · ')}
+                            </p>
+                          )}
                           {row.product?.name && (
                             <p>
                               <small>
@@ -462,139 +493,161 @@ export function MaterialPlan({
                               linear.onFixBlocker?.(linearKind, blocker),
                           }
                         : {})}
+                      {...(linear.onChangeSection && linearKind === 'batten'
+                        ? {
+                            onChangeSection: (section: {
+                              widthMm: number;
+                              depthMm: number;
+                            }) => linear.onChangeSection?.(linearKind, section),
+                          }
+                        : {})}
                     />
                   )}
                   {row.range && <p className="mp-note">{m.rangeNote}</p>}
-                  <div className="mp-price">
-                    <label>
-                      {m.selectPrice}
-                      <select
-                        aria-label={`${m.selectPrice} · ${label}`}
-                        value={
-                          price?.source === 'manual'
-                            ? 'manual'
-                            : (price?.entryId ?? '')
-                        }
-                        onChange={(event) => {
-                          const selected = candidates.find(
-                            (candidate) =>
-                              candidate.entry.id === event.target.value,
-                          );
-                          const next = { ...prices };
-                          if (selected)
-                            next[row.id] = {
-                              source: 'price-list',
-                              amountMinor: selected.entry.netAmountMinor,
-                              currencyCode: selected.currencyCode,
-                              entryId: selected.entry.id,
-                              variantId: selected.variantId,
-                              saleUnit: selected.entry.saleUnit,
-                              provenance: [
-                                selected.ownerLabel,
-                                selected.entry.validFrom,
-                                m.net,
-                                selected.entry.sourceAmountBasis === 'gross'
-                                  ? m.gross
-                                  : '',
-                                selected.entry.sourceVatRateBps !== undefined
-                                  ? `VAT ${selected.entry.sourceVatRateBps / 100}%`
-                                  : selected.taxContext,
-                              ]
-                                .filter(Boolean)
-                                .join(' · '),
-                            };
-                          else if (event.target.value === 'manual')
-                            next[row.id] = {
-                              source: 'manual',
-                              amountMinor: 0,
-                              currencyCode: currency,
-                              provenance: m.manual,
-                              valid: false,
-                            };
-                          else delete next[row.id];
-                          onPricesChange(next);
-                        }}
-                      >
-                        <option value="">
-                          {candidates.length ? m.selectPrice : m.noPrice}
-                        </option>
-                        {candidates.map((candidate) => (
-                          <option
-                            key={candidate.entry.id}
-                            value={candidate.entry.id}
-                          >
-                            {candidate.ownerLabel ?? m.catalogue} ·{' '}
-                            {candidate.entry.validFrom} ·{' '}
-                            {money(candidate.entry.netAmountMinor)}/
-                            {unit(candidate.entry.saleUnit)} · {m.net}
-                            {candidate.entry.sourceVatRateBps !== undefined
-                              ? ` · VAT ${candidate.entry.sourceVatRateBps / 100}%`
-                              : ''}
-                          </option>
-                        ))}
-                        {price?.source === 'price-list' &&
-                          !candidates.some(
-                            (candidate) => candidate.entry.id === price.entryId,
-                          ) && (
-                            <option value={price.entryId}>
-                              {price.provenance} · {money(price.amountMinor)}
-                            </option>
-                          )}
-                        <option value="manual">{m.manual}</option>
-                      </select>
-                    </label>
-                    {price?.source === 'manual' && (
+                  {purchaseCount !== undefined ? (
+                    // V49 §34: a planned row is bought per commercial piece, and
+                    // one row can hold several lengths, so a per-metre price
+                    // here would multiply the wrong unit. Pieces are priced
+                    // per length in the estimate.
+                    <p
+                      className="mp-note"
+                      data-testid={`material-piece-pricing-${row.labelKey}`}
+                    >
+                      {m.piecePricingInCost}
+                    </p>
+                  ) : (
+                    <div className="mp-price">
                       <label>
-                        {m.manualPrice}
-                        <input
-                          aria-label={`${m.manualPrice} · ${label}`}
-                          inputMode="decimal"
-                          defaultValue={number(price.amountMinor / 100)}
-                          onChange={() =>
-                            onPricesChange({
-                              ...prices,
-                              [row.id]: { ...price, valid: false },
-                            })
+                        {m.selectPrice}
+                        <select
+                          aria-label={`${m.selectPrice} · ${label}`}
+                          value={
+                            price?.source === 'manual'
+                              ? 'manual'
+                              : (price?.entryId ?? '')
                           }
-                          onBlur={(event) => {
-                            const parsed = parseDecimal(event.target.value);
-                            if (parsed !== null && parsed >= 0)
+                          onChange={(event) => {
+                            const selected = candidates.find(
+                              (candidate) =>
+                                candidate.entry.id === event.target.value,
+                            );
+                            const next = { ...prices };
+                            if (selected)
+                              next[row.id] = {
+                                source: 'price-list',
+                                amountMinor: selected.entry.netAmountMinor,
+                                currencyCode: selected.currencyCode,
+                                entryId: selected.entry.id,
+                                variantId: selected.variantId,
+                                saleUnit: selected.entry.saleUnit,
+                                provenance: [
+                                  selected.ownerLabel,
+                                  selected.entry.validFrom,
+                                  m.net,
+                                  selected.entry.sourceAmountBasis === 'gross'
+                                    ? m.gross
+                                    : '',
+                                  selected.entry.sourceVatRateBps !== undefined
+                                    ? `VAT ${selected.entry.sourceVatRateBps / 100}%`
+                                    : selected.taxContext,
+                                ]
+                                  .filter(Boolean)
+                                  .join(' · '),
+                              };
+                            else if (event.target.value === 'manual')
+                              next[row.id] = {
+                                source: 'manual',
+                                amountMinor: 0,
+                                currencyCode: currency,
+                                provenance: m.manual,
+                                valid: false,
+                              };
+                            else delete next[row.id];
+                            onPricesChange(next);
+                          }}
+                        >
+                          <option value="">
+                            {candidates.length ? m.selectPrice : m.noPrice}
+                          </option>
+                          {candidates.map((candidate) => (
+                            <option
+                              key={candidate.entry.id}
+                              value={candidate.entry.id}
+                            >
+                              {candidate.ownerLabel ?? m.catalogue} ·{' '}
+                              {candidate.entry.validFrom} ·{' '}
+                              {money(candidate.entry.netAmountMinor)}/
+                              {unit(candidate.entry.saleUnit)} · {m.net}
+                              {candidate.entry.sourceVatRateBps !== undefined
+                                ? ` · VAT ${candidate.entry.sourceVatRateBps / 100}%`
+                                : ''}
+                            </option>
+                          ))}
+                          {price?.source === 'price-list' &&
+                            !candidates.some(
+                              (candidate) =>
+                                candidate.entry.id === price.entryId,
+                            ) && (
+                              <option value={price.entryId}>
+                                {price.provenance} · {money(price.amountMinor)}
+                              </option>
+                            )}
+                          <option value="manual">{m.manual}</option>
+                        </select>
+                      </label>
+                      {price?.source === 'manual' && (
+                        <label>
+                          {m.manualPrice}
+                          <input
+                            aria-label={`${m.manualPrice} · ${label}`}
+                            inputMode="decimal"
+                            defaultValue={number(price.amountMinor / 100)}
+                            onChange={() =>
                               onPricesChange({
                                 ...prices,
-                                [row.id]: {
-                                  ...price,
-                                  amountMinor: Math.round(parsed * 100),
-                                  valid: true,
-                                },
-                              });
-                          }}
-                        />
-                      </label>
-                    )}
-                    {price && (
-                      <div>
-                        <strong>
-                          {money(price.amountMinor)}/{unit(row.unit)}
+                                [row.id]: { ...price, valid: false },
+                              })
+                            }
+                            onBlur={(event) => {
+                              const parsed = parseDecimal(event.target.value);
+                              if (parsed !== null && parsed >= 0)
+                                onPricesChange({
+                                  ...prices,
+                                  [row.id]: {
+                                    ...price,
+                                    amountMinor: Math.round(parsed * 100),
+                                    valid: true,
+                                  },
+                                });
+                            }}
+                          />
+                        </label>
+                      )}
+                      {price && (
+                        <div>
+                          <strong>
+                            {money(price.amountMinor)}/{unit(row.unit)}
+                          </strong>
+                          <small>
+                            {price.source === 'manual'
+                              ? m.manual
+                              : price.provenance}
+                          </small>
+                          {price.source === 'price-list' && (
+                            <small>{m.verify}</small>
+                          )}
+                        </div>
+                      )}
+                      {value && (
+                        <strong className="mp-value">
+                          {value.min === value.max
+                            ? money(value.min)
+                            : `${money(value.min)}–${money(value.max)}`}
+                          <small>{row.range ? m.rangeCost : m.value}</small>
                         </strong>
-                        <small>
-                          {price.source === 'manual'
-                            ? m.manual
-                            : price.provenance}
-                        </small>
-                        {price.source === 'price-list' && (
-                          <small>{m.verify}</small>
-                        )}
-                      </div>
-                    )}
-                    {value && (
-                      <strong className="mp-value">
-                        {value.min === value.max
-                          ? money(value.min)
-                          : `${money(value.min)}–${money(value.max)}`}
-                        <small>{row.range ? m.rangeCost : m.value}</small>
-                      </strong>
-                    )}
-                  </div>
+                      )}
+                    </div>
+                  )}
                   <div className="mp-actions">
                     {row.category === 'timber' && (
                       <button onClick={onOpenCutting}>{m.chooseTimber}</button>

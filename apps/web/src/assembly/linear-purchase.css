@@ -208,3 +208,179 @@
     padding: 10px;
   }
 }
+
+/* V49 — length source, catalogue list, plan status, comparison. */
+.lp-source {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.lp-source > span {
+  margin-right: 4px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--a-muted, #5f6d66);
+}
+.lp-source button {
+  padding: 4px 10px;
+  border: 1px solid var(--a-line, #dde5e0);
+  border-radius: 999px;
+  background: var(--a-surface, #fff);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.lp-source button.is-active {
+  border-color: var(--a-accent, #24513f);
+  background: var(--a-accent, #24513f);
+  color: #fff;
+}
+
+.lp-products {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.lp-products label {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--a-surface, #fff);
+}
+.lp-products span {
+  display: grid;
+  min-width: 0;
+}
+.lp-products small,
+.lp-stock small {
+  overflow: hidden;
+  color: var(--a-muted, #5f6d66);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lp-badge {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--a-surface-3, #eaf0ec);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.lp-other-sections {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.lp-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.lp-add input {
+  width: 64px;
+  padding: 4px 6px;
+  border: 1px solid var(--a-line, #dde5e0);
+  border-radius: 6px;
+}
+.lp-add input[aria-invalid='true'] {
+  border-color: var(--a-danger, #a4262c);
+}
+
+.lp-plan-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.lp-plan-head h5 {
+  margin: 0;
+}
+.lp-status {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--a-surface-3, #eaf0ec);
+  font-size: 11px;
+}
+.lp-status[data-proven='true'] {
+  background: var(--a-accent-soft, #dbeae1);
+}
+.lp-headline {
+  margin: 8px 0;
+}
+.lp-headline dd {
+  font-size: 20px;
+  font-weight: 600;
+}
+.lp-stock li {
+  align-items: center;
+}
+.lp-stock li > span:first-child {
+  display: grid;
+  min-width: 0;
+}
+.lp-compare {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 10px;
+}
+.lp-compare > div {
+  display: grid;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--a-surface, #fff);
+  font-variant-numeric: tabular-nums;
+}
+.lp-compare > div:first-child {
+  outline: 1px solid var(--a-accent, #24513f);
+}
+.lp-compare small {
+  color: var(--a-muted, #5f6d66);
+  font-size: 11px;
+}
+.lp-solver {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0;
+  font-size: 12px;
+}
+.lp-solver > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.lp-solver dt {
+  color: var(--a-muted, #5f6d66);
+}
+.lp-solver dd {
+  margin: 0;
+  text-align: right;
+}
+
+@media (max-width: 760px) {
+  .lp-compare {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Badges and counts never break mid-word; only the product name truncates. */
+.lp-stock li > .lp-badge,
+.lp-stock li > strong,
+.lp-products .lp-badge {
+  flex: none;
+  white-space: nowrap;
+}
+.lp-stock li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}

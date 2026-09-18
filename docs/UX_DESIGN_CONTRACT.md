@@ -507,3 +507,33 @@ never mandatory: readiness raises it as *info*, never as a blocker.
 
 **Suggestions are labelled.** The offered 3 / 4 / 5 m lengths carry a
 `SUGESTIA` chip because no verified batten product backs them yet.
+
+## V49 — Stock-aware plans and catalogue lengths
+
+**Order stays simple:** material → available lengths → purchase plan → price.
+The length source is one explicit choice, `[Z katalogu] [Ręcznie]`, and a plan
+never mixes the two.
+
+**The catalogue only offers what the source declares.** A product appears for
+battens only if its source markets it as a batten, and only in the project's
+section, where 40×60 and 60×40 are the same stock. A different catalogue
+section is an explicit "Zmień przekrój projektu na …", never a silent
+substitution. Same-section products not declared for the use are counted, not
+offered. Availability is never invented: "Dostępność ilościowa nieznana."
+
+**Results lead with what a buyer needs:** pieces, purchased, waste; then each
+commercial length with its product and a `KATALOG` / `RĘCZNIE` badge. When the
+stock-aware plan beats fixed joints, a two-column comparison shows both — no
+larger dashboard.
+
+**Plan quality is plain language.** "Plan gotowy" only when it is the best of
+the variants considered; otherwise "Plan znaleziony — wynik przybliżony".
+"Optymalny" is never shown. Joints, effort and quality detail live behind
+*Ustawienia rozkroju*.
+
+**Units stay safe.** A row bought per commercial piece shows no per-metre price
+picker; each length is priced per piece in the estimate, with the catalogue
+date and "zweryfikuj przed zakupem" when the price comes from the catalogue.
+
+**The catalogue is optional.** When it is unavailable the panel says so in one
+line and manual lengths keep working.

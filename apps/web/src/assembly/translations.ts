@@ -1765,6 +1765,58 @@ export const assemblyPl = {
   // V48 commercial planning for linear build-up timber.
   linear: {
     installationRequirement: 'Wymaganie montażowe',
+    // V49: catalogue lengths, plan status and solver evidence.
+    loading: 'Ładowanie katalogu…',
+    catalogueUnavailable:
+      'Katalog chwilowo niedostępny — możesz podać długości ręcznie.',
+    lengthSource: 'Źródło długości',
+    source: { catalogue: 'Z katalogu', manual: 'Ręcznie' },
+    sourceCatalogue: 'Katalog',
+    sourceManual: 'Ręcznie',
+    manualLength: 'długość podana ręcznie',
+    pieceUnit: 'szt.',
+    addLength: 'Dodaj długość',
+    availabilityUnknown: 'Dostępność ilościowa nieznana.',
+    noDeclaredProducts: {
+      batten:
+        'Brak w katalogu produktów deklarowanych przez źródło jako łaty w tym przekroju — podaj długości ręcznie.',
+      'counter-batten':
+        'Brak w katalogu produktów deklarowanych przez źródło jako kontrłaty — podaj długości ręcznie.',
+    },
+    otherSections: 'W katalogu są łaty w innym przekroju:',
+    changeSection: 'Zmień przekrój projektu na {{section}}',
+    undeclaredSameSection_one:
+      '{{count}} produkt w tym przekroju nie jest deklarowany do tego zastosowania, więc nie jest proponowany.',
+    undeclaredSameSection_few:
+      '{{count}} produkty w tym przekroju nie są deklarowane do tego zastosowania, więc nie są proponowane.',
+    undeclaredSameSection_many:
+      '{{count}} produktów w tym przekroju nie jest deklarowanych do tego zastosowania, więc nie są proponowane.',
+    undeclaredSameSection_other:
+      '{{count}} produktu w tym przekroju nie jest deklarowane do tego zastosowania.',
+    planStatus: {
+      ready: 'Plan gotowy',
+      approximate: 'Plan znaleziony — wynik przybliżony',
+      partial: 'Plan częściowy',
+    },
+    compare: {
+      chosen: 'Wybrany plan',
+      fixedJoints: 'Bez dopasowania łączeń do długości',
+      waste: 'odpad {{value}} m',
+    },
+    solver: {
+      joints: 'Łączenia',
+      status: 'Jakość planu',
+      effort: 'Przeliczone warianty',
+      evaluations: '{{used}} z {{budget}}',
+      stagger: 'Mijanie styków',
+      optimality: {
+        'proven-within-search-space':
+          'najlepszy z rozważonych wariantów łączeń',
+        heuristic: 'dobry wariant, bez dowodu, że najlepszy',
+        'search-budget-exhausted':
+          'limit obliczeń osiągnięty — wynik przybliżony',
+      },
+    },
     planPurchase: 'Zaplanuj zakup',
     commercialLengths: 'Długości handlowe',
     suggestion: 'sugestia',
@@ -2100,6 +2152,9 @@ export const assemblyPl = {
     title: 'Kosztorys',
     intro: 'RoofCalc może przygotować część pozycji z projektu.',
     totalNet: 'RAZEM NETTO',
+    catalogueProvenance:
+      '{{price}} netto / szt. · {{source}} · cena z dnia {{date}} — zweryfikuj przed zakupem',
+    catalogueSource: 'katalog',
     totalGross: 'RAZEM BRUTTO',
     category: {
       material: 'Materiały',
@@ -3957,6 +4012,56 @@ export const assemblyEn: typeof assemblyPl = {
   // V48 commercial planning for linear build-up timber.
   linear: {
     installationRequirement: 'Installation requirement',
+    // V49: catalogue lengths, plan status and solver evidence.
+    loading: 'Loading the catalogue…',
+    catalogueUnavailable:
+      'The catalogue is unavailable right now — you can enter lengths manually.',
+    lengthSource: 'Length source',
+    source: { catalogue: 'From the catalogue', manual: 'Manual' },
+    sourceCatalogue: 'Catalogue',
+    sourceManual: 'Manual',
+    manualLength: 'length entered manually',
+    pieceUnit: 'pcs',
+    addLength: 'Add length',
+    availabilityUnknown: 'Available quantity unknown.',
+    noDeclaredProducts: {
+      batten:
+        'No catalogue product in this section is declared by its source as a batten — enter lengths manually.',
+      'counter-batten':
+        'No catalogue product is declared by its source as a counter-batten — enter lengths manually.',
+    },
+    otherSections: 'The catalogue has battens in another section:',
+    changeSection: 'Change the project section to {{section}}',
+    undeclaredSameSection_one:
+      '{{count}} product in this section is not declared for this use, so it is not offered.',
+    undeclaredSameSection_few:
+      '{{count}} products in this section are not declared for this use, so they are not offered.',
+    undeclaredSameSection_many:
+      '{{count}} products in this section are not declared for this use, so they are not offered.',
+    undeclaredSameSection_other:
+      '{{count}} products in this section are not declared for this use.',
+    planStatus: {
+      ready: 'Plan ready',
+      approximate: 'Plan found — approximate result',
+      partial: 'Partial plan',
+    },
+    compare: {
+      chosen: 'Chosen plan',
+      fixedJoints: 'Without fitting joints to lengths',
+      waste: 'waste {{value}} m',
+    },
+    solver: {
+      joints: 'Joints',
+      status: 'Plan quality',
+      effort: 'Variants evaluated',
+      evaluations: '{{used}} of {{budget}}',
+      stagger: 'Joint stagger',
+      optimality: {
+        'proven-within-search-space': 'best of the joint variants considered',
+        heuristic: 'a good variant, not proven best',
+        'search-budget-exhausted': 'calculation limit reached — approximate',
+      },
+    },
     planPurchase: 'Plan the purchase',
     commercialLengths: 'Commercial lengths',
     suggestion: 'suggestion',
@@ -4285,6 +4390,9 @@ export const assemblyEn: typeof assemblyPl = {
     title: 'Cost estimate',
     intro: 'RoofCalc can prepare some lines from the project.',
     totalNet: 'TOTAL NET',
+    catalogueProvenance:
+      '{{price}} net / pc · {{source}} · price as of {{date}} — verify before buying',
+    catalogueSource: 'catalogue',
     totalGross: 'TOTAL GROSS',
     category: {
       material: 'Materials',

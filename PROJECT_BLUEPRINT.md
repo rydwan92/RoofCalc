@@ -1297,7 +1297,19 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
-**Iteration:** `048 — commercial planning for battens and counter-battens`
+**Iteration:** `049 — stock-aware linear planning and the batten catalogue`
+
+**Status:** `IMPLEMENTED — committed on main`
+
+**Completed:** `planStockAwareAssembly` in `packages/linear-procurement` chooses each run's split among *legal* candidates by the final purchase plan, scored by `procurement-core` itself (one stock accounting), with pieces from all runs packed together. It starts from the V48 assembly and re-checks the winner with full packing limits, so it is never worse than V48. Candidates obey the V48 legality (resolved supports, minimum piece and supports, explicit raking allowance); stagger violations may never rise. Comparison: unassigned → user objective (`comparePlanScores`) → joints → stagger → signature. Bounded (`maxCandidatesPerRun` 6, `maxEvaluations` 80, cheap packing budget during search), exhaustive when small, largest-move-first local search otherwise; optimality is reported as "Plan gotowy" / "Plan znaleziony — wynik przybliżony", never "optymalny". Counterexample locked first (6,2 m counter-batten 8 m → 7 m; 4 × 5,5 m 24 → 23 m); on a 16 m gable counter-battens 336 → 252 m (4 m stock) and 252 → 231 m (3/4/5 m) in under 20 ms. Catalogue: additive `TimberStockTechnicalSpec.declaredApplications` (source-declared, never structural); the preview carries it and `treated`; new immutable batches `timber-linear-stock-2026-09.json` (Castorama Complex 40×60×3000/4000 and BAT 40×60×4000 as `batten`; BAT 25×50×4000 garden timber as `general`) and `timber-linear-prices-2026-09-18.json` (only BAT, source-stated VAT 23 %; Castorama prices omitted because no tax basis is stated). Seed-all and smoke-check updated; disposable-DB bootstrap is green and a second seed reports zero new rows and zero conflicts. UI: source toggle `[Z katalogu] [Ręcznie]`, declared-use and normalised-section filter (60×40 = 40×60), section change only as an explicit action, custom manual lengths, product identity with `KATALOG`/`RĘCZNIE` in the panel, Material Plan and material list; per-piece catalogue price suggestions with their date in the estimate, never a per-metre price on pieces. The project decision gains additive `source` and per-length `catalogRef`. See `docs/ARCHITECTURE_V49_STOCK_AWARE_LINEAR_PLANNING.md` and `docs/domain/BATTEN_COMMERCIAL_PRODUCTS_RESEARCH.md`.
+
+**Known / not done:** bounded local search, not a proof over every legal assembly; no price-aware objective (price coverage is incomplete); no reachable source markets a *kontrłata*, so counter-batten lengths stay manual; the remote shared DEV database rejected the configured credentials and was not seeded; XAMPP MariaDB 10.4 in strict mode rejects the importer's ISO `…Z` timestamps (pre-existing, CI uses 10.11); the `input-guards` covering test was timing-flaky under load on V48 too — its lazy-load wait is now 5 s.
+
+**NEXT ACTION:** V50 — make the importer's timestamps MariaDB-10.4 compatible, restore the remote DEV credentials and seed it, then add a price-aware objective once every offered catalogue length carries a trusted net price, together with verified counter-batten (*kontrłata*) products.
+
+---
+
+**Previous iteration:** `048 — commercial planning for battens and counter-battens`
 
 **Status:** `IMPLEMENTED — committed on main`
 
