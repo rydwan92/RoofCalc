@@ -1,7 +1,10 @@
 import { z } from 'zod';
 import {
+  commercialPackagingFactsSchema,
   coveringProductSelectionSchema,
   coveringTechnicalSpecSchema,
+  ROOF_TILE_ACCESSORY_ROLES,
+  roofTileAccessoryTechnicalSpecSchema,
   membraneProductSelectionSchema,
   membraneTechnicalSpecSchema,
   type CoveringKind,
@@ -33,6 +36,8 @@ export const CATALOG_PRODUCT_KINDS = [
   'standing-seam',
   'membrane',
   'timber-stock',
+  // V50: roof-tile system accessories (ridge, verge, …). Never a covering.
+  'roof-tile-accessory',
 ] as const;
 export type CatalogProductKind = (typeof CATALOG_PRODUCT_KINDS)[number];
 
@@ -46,6 +51,7 @@ export const catalogTechnicalSpecSchema = z.union([
   coveringTechnicalSpecSchema,
   membraneTechnicalSpecSchema,
   timberStockTechnicalSpecSchema,
+  roofTileAccessoryTechnicalSpecSchema,
 ]);
 export type CatalogTechnicalSpec = z.infer<typeof catalogTechnicalSpecSchema>;
 
@@ -133,7 +139,14 @@ export const commercialVariantSchema = z
     name: nonBlank,
     color: z.string().trim().min(1).max(160).optional(),
     finish: z.string().trim().min(1).max(160).optional(),
-    metadata: z.record(jsonValueSchema).optional(),
+    /**
+     * Free commercial facts. V50 types one key: `packaging`, the source-backed
+     * pack/pallet sizes (stored in the existing JSON column — no migration).
+     */
+    metadata: z
+      .object({ packaging: commercialPackagingFactsSchema.optional() })
+      .catchall(jsonValueSchema)
+      .optional(),
     active: z.boolean(),
   })
   .strict();
@@ -274,6 +287,13 @@ export function createCatalogProductSelection(args: {
       revisionCode: args.revision.revisionCode,
     },
     technicalSpecSnapshot: structuredClone(args.revision.technicalSpec),
+    ...(args.variant?.metadata?.packaging
+      ? {
+          commercialSnapshot: {
+            packaging: structuredClone(args.variant.metadata.packaging),
+          },
+        }
+      : {}),
   });
 }
 
@@ -334,6 +354,9 @@ export const catalogTechnicalPreviewSchema = z
     // V49: lets a picker filter battens without loading every revision.
     treated: z.boolean().optional(),
     declaredApplications: z.array(z.enum(TIMBER_STOCK_APPLICATIONS)).optional(),
+    // V50: an accessory list is filtered by role and compatibility client-side.
+    accessoryRoles: z.array(z.enum(ROOF_TILE_ACCESSORY_ROLES)).optional(),
+    compatibleProductIds: z.array(catalogIdSchema).optional(),
   })
   .strict();
 
@@ -436,6 +459,11 @@ export function technicalPreview(
       minimumOverlapMm: spec.minimumOverlapMm,
       minPitchDeg: spec.minPitchDeg,
     };
+  if (spec.kind === 'roof-tile-accessory')
+    return {
+      accessoryRoles: spec.roles,
+      compatibleProductIds: spec.compatibleProductIds,
+    };
   if (spec.kind === 'timber-stock')
     return {
       sectionWidthMm: spec.widthMm,
@@ -466,5 +494,9 @@ export function isCoveringKind(value: string): value is CoveringKind {
 export function isCoveringTechnicalSpec(
   spec: CatalogTechnicalSpec,
 ): spec is CoveringTechnicalSpec {
-  return spec.kind !== 'membrane' && spec.kind !== 'timber-stock';
+  return (
+    spec.kind !== 'membrane' &&
+    spec.kind !== 'timber-stock' &&
+    spec.kind !== 'roof-tile-accessory'
+  );
 }

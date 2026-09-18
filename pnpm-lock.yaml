@@ -32,6 +32,9 @@ importers:
       '@cieslacalc/roof-math':
         specifier: workspace:*
         version: link:packages/roof-math
+      '@cieslacalc/tile-procurement':
+        specifier: workspace:*
+        version: link:packages/tile-procurement
       '@cieslacalc/timber-model':
         specifier: workspace:*
         version: link:packages/timber-model
@@ -180,6 +183,9 @@ importers:
       '@cieslacalc/technical-scene':
         specifier: workspace:*
         version: link:../../packages/technical-scene
+      '@cieslacalc/tile-procurement':
+        specifier: workspace:*
+        version: link:../../packages/tile-procurement
       '@cieslacalc/timber-model':
         specifier: workspace:*
         version: link:../../packages/timber-model
@@ -333,6 +339,12 @@ importers:
       '@cieslacalc/roof-math':
         specifier: workspace:*
         version: link:../roof-math
+
+  packages/tile-procurement:
+    dependencies:
+      '@cieslacalc/covering-core':
+        specifier: workspace:*
+        version: link:../covering-core
 
   packages/timber-model: {}
 

@@ -23,6 +23,7 @@
     "@cieslacalc/roof-math": "workspace:*",
     "@cieslacalc/shared": "workspace:*",
     "@cieslacalc/technical-scene": "workspace:*",
+    "@cieslacalc/tile-procurement": "workspace:*",
     "@cieslacalc/timber-model": "workspace:*",
     "@cieslacalc/ui": "workspace:*",
     "@tanstack/react-query": "5.87.0",

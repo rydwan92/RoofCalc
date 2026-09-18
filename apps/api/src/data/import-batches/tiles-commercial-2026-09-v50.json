@@ -1,0 +1,692 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "id": "manufacturer-research-2026-09-v50",
+    "label": "V50: swissporTON packaging per colour variant and system accessories (ridge demand, verge tiles) from official product pages, retrieved 2026-09-18. Turmalin: no packaging stated — nothing added.",
+    "sourceRevision": "2026-09-v50",
+    "sourceUrl": "https://www.swissporton.pl/produkty/dachowka-ceramiczna"
+  },
+  "manufacturers": [
+    {
+      "id": "manufacturer:swissporton",
+      "slug": "swissporton",
+      "name": "swissporTON",
+      "countryCode": "PL",
+      "websiteUrl": "https://www.swissporton.pl",
+      "active": true
+    }
+  ],
+  "products": [
+    {
+      "id": "product:swissporton:koda",
+      "manufacturerId": "manufacturer:swissporton",
+      "slug": "koda",
+      "name": "KODA",
+      "coveringKind": "roof-tile",
+      "active": true
+    },
+    {
+      "id": "product:swissporton:simpla",
+      "manufacturerId": "manufacturer:swissporton",
+      "slug": "simpla",
+      "name": "SIMPLA",
+      "coveringKind": "roof-tile",
+      "active": true
+    },
+    {
+      "id": "product:swissporton:titania",
+      "manufacturerId": "manufacturer:swissporton",
+      "slug": "titania",
+      "name": "TITANIA",
+      "coveringKind": "roof-tile",
+      "active": true
+    },
+    {
+      "id": "product:swissporton:balance",
+      "manufacturerId": "manufacturer:swissporton",
+      "slug": "balance",
+      "name": "BALANCE",
+      "coveringKind": "roof-tile",
+      "active": true
+    },
+    {
+      "id": "product:swissporton:gasior-ps",
+      "manufacturerId": "manufacturer:swissporton",
+      "slug": "gasior-ps",
+      "name": "Gąsior PS",
+      "coveringKind": "roof-tile-accessory",
+      "active": true
+    },
+    {
+      "id": "product:swissporton:gasior-pt",
+      "manufacturerId": "manufacturer:swissporton",
+      "slug": "gasior-pt",
+      "name": "Gąsior PT",
+      "coveringKind": "roof-tile-accessory",
+      "active": true
+    },
+    {
+      "id": "product:swissporton:gasior-pf",
+      "manufacturerId": "manufacturer:swissporton",
+      "slug": "gasior-pf",
+      "name": "Gąsior PF",
+      "coveringKind": "roof-tile-accessory",
+      "active": true
+    },
+    {
+      "id": "product:swissporton:gasior-pr",
+      "manufacturerId": "manufacturer:swissporton",
+      "slug": "gasior-pr",
+      "name": "Gąsior PR",
+      "coveringKind": "roof-tile-accessory",
+      "active": true
+    },
+    {
+      "id": "product:swissporton:koda-dachowka-boczna-lewa",
+      "manufacturerId": "manufacturer:swissporton",
+      "slug": "koda-dachowka-boczna-lewa",
+      "name": "KODA Dachówka boczna Lewa",
+      "coveringKind": "roof-tile-accessory",
+      "active": true
+    },
+    {
+      "id": "product:swissporton:koda-dachowka-boczna-prawa",
+      "manufacturerId": "manufacturer:swissporton",
+      "slug": "koda-dachowka-boczna-prawa",
+      "name": "KODA Dachówka boczna Prawa",
+      "coveringKind": "roof-tile-accessory",
+      "active": true
+    },
+    {
+      "id": "product:swissporton:simpla-dachowka-boczna-lewa",
+      "manufacturerId": "manufacturer:swissporton",
+      "slug": "simpla-dachowka-boczna-lewa",
+      "name": "SIMPLA Dachówka boczna Lewa",
+      "coveringKind": "roof-tile-accessory",
+      "active": true
+    },
+    {
+      "id": "product:swissporton:simpla-dachowka-boczna-prawa",
+      "manufacturerId": "manufacturer:swissporton",
+      "slug": "simpla-dachowka-boczna-prawa",
+      "name": "SIMPLA Dachówka boczna Prawa",
+      "coveringKind": "roof-tile-accessory",
+      "active": true
+    },
+    {
+      "id": "product:swissporton:titania-dachowka-boczna-lewa",
+      "manufacturerId": "manufacturer:swissporton",
+      "slug": "titania-dachowka-boczna-lewa",
+      "name": "TITANIA Dachówka boczna Lewa",
+      "coveringKind": "roof-tile-accessory",
+      "active": true
+    },
+    {
+      "id": "product:swissporton:titania-dachowka-boczna-prawa",
+      "manufacturerId": "manufacturer:swissporton",
+      "slug": "titania-dachowka-boczna-prawa",
+      "name": "TITANIA Dachówka boczna Prawa",
+      "coveringKind": "roof-tile-accessory",
+      "active": true
+    }
+  ],
+  "revisions": [
+    {
+      "id": "revision:swissporton:gasior-ps:2026-09",
+      "productId": "product:swissporton:gasior-ps",
+      "revisionCode": "2026-09",
+      "validFrom": "2026-09-18",
+      "source": {
+        "label": "swissporton.pl SIMPLA: tabela „Zapotrzebowanie na gąsiory (ok.)” — PS „ok. 2,5 szt./mb”; PS wymieniony także na stronie KODA (pobrano 2026-09-18). Tylko kalenica — źródło nie podaje zużycia na narożach.",
+        "url": "https://www.swissporton.pl/produkty/simpla",
+        "revision": "2026-09"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-tile-accessory",
+        "roles": ["ridge"],
+        "compatibleProductIds": [
+          "product:swissporton:simpla",
+          "product:swissporton:koda"
+        ],
+        "declaredUnitsPerMetre": {
+          "value": 2.5,
+          "approximate": true
+        }
+      }
+    },
+    {
+      "id": "revision:swissporton:gasior-pt:2026-09",
+      "productId": "product:swissporton:gasior-pt",
+      "revisionCode": "2026-09",
+      "validFrom": "2026-09-18",
+      "source": {
+        "label": "swissporton.pl TITANIA: tabela „Zapotrzebowanie na gąsiory (ok.)” — PT „ok. 2,5 szt./mb”; PT wymieniony także na stronie KODA (pobrano 2026-09-18). Tylko kalenica.",
+        "url": "https://www.swissporton.pl/produkty/titania",
+        "revision": "2026-09"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-tile-accessory",
+        "roles": ["ridge"],
+        "compatibleProductIds": [
+          "product:swissporton:titania",
+          "product:swissporton:koda"
+        ],
+        "declaredUnitsPerMetre": {
+          "value": 2.5,
+          "approximate": true
+        }
+      }
+    },
+    {
+      "id": "revision:swissporton:gasior-pf:2026-09",
+      "productId": "product:swissporton:gasior-pf",
+      "revisionCode": "2026-09",
+      "validFrom": "2026-09-18",
+      "source": {
+        "label": "swissporton.pl BALANCE: tabela „Zapotrzebowanie na gąsiory (ok.)” — PF „2,5 pcs/m” (pobrano 2026-09-18). Tylko kalenica.",
+        "url": "https://www.swissporton.pl/produkty/balance",
+        "revision": "2026-09"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-tile-accessory",
+        "roles": ["ridge"],
+        "compatibleProductIds": ["product:swissporton:balance"],
+        "declaredUnitsPerMetre": {
+          "value": 2.5,
+          "approximate": true
+        }
+      }
+    },
+    {
+      "id": "revision:swissporton:gasior-pr:2026-09",
+      "productId": "product:swissporton:gasior-pr",
+      "revisionCode": "2026-09",
+      "validFrom": "2026-09-18",
+      "source": {
+        "label": "swissporton.pl BALANCE: tabela „Zapotrzebowanie na gąsiory (ok.)” — PR „2,5 pcs/m” (pobrano 2026-09-18). Tylko kalenica.",
+        "url": "https://www.swissporton.pl/produkty/balance",
+        "revision": "2026-09"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-tile-accessory",
+        "roles": ["ridge"],
+        "compatibleProductIds": ["product:swissporton:balance"],
+        "declaredUnitsPerMetre": {
+          "value": 2.5,
+          "approximate": true
+        }
+      }
+    },
+    {
+      "id": "revision:swissporton:koda-dachowka-boczna-lewa:2026-09",
+      "productId": "product:swissporton:koda-dachowka-boczna-lewa",
+      "revisionCode": "2026-09",
+      "validFrom": "2026-09-18",
+      "source": {
+        "label": "swissporton.pl: strona elementu (waga 6,8 kg, 325 × 505 mm) i lista akcesoriów na stronie KODA (pobrano 2026-09-18). Źródło nie podaje zasady ilości.",
+        "url": "https://www.swissporton.pl/produkty/koda-dachowka-boczna-lewa",
+        "revision": "2026-09"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-tile-accessory",
+        "roles": ["verge-left"],
+        "compatibleProductIds": ["product:swissporton:koda"],
+        "physicalWidthMm": 325,
+        "physicalLengthMm": 505,
+        "weightKgPerPiece": 6.8
+      }
+    },
+    {
+      "id": "revision:swissporton:koda-dachowka-boczna-prawa:2026-09",
+      "productId": "product:swissporton:koda-dachowka-boczna-prawa",
+      "revisionCode": "2026-09",
+      "validFrom": "2026-09-18",
+      "source": {
+        "label": "swissporton.pl: strona elementu (waga 6,5 kg, 320 × 505 mm) i lista akcesoriów na stronie KODA (pobrano 2026-09-18). Źródło nie podaje zasady ilości.",
+        "url": "https://www.swissporton.pl/produkty/koda-dachowka-boczna-prawa",
+        "revision": "2026-09"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-tile-accessory",
+        "roles": ["verge-right"],
+        "compatibleProductIds": ["product:swissporton:koda"],
+        "physicalWidthMm": 320,
+        "physicalLengthMm": 505,
+        "weightKgPerPiece": 6.5
+      }
+    },
+    {
+      "id": "revision:swissporton:simpla-dachowka-boczna-lewa:2026-09",
+      "productId": "product:swissporton:simpla-dachowka-boczna-lewa",
+      "revisionCode": "2026-09",
+      "validFrom": "2026-09-18",
+      "source": {
+        "label": "swissporton.pl: strona elementu (waga 3,5 kg, 306 × 500 mm) i lista akcesoriów na stronie SIMPLA (pobrano 2026-09-18). Źródło nie podaje zasady ilości.",
+        "url": "https://www.swissporton.pl/produkty/simpla-dachowka-boczna-lewa",
+        "revision": "2026-09"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-tile-accessory",
+        "roles": ["verge-left"],
+        "compatibleProductIds": ["product:swissporton:simpla"],
+        "physicalWidthMm": 306,
+        "physicalLengthMm": 500,
+        "weightKgPerPiece": 3.5
+      }
+    },
+    {
+      "id": "revision:swissporton:simpla-dachowka-boczna-prawa:2026-09",
+      "productId": "product:swissporton:simpla-dachowka-boczna-prawa",
+      "revisionCode": "2026-09",
+      "validFrom": "2026-09-18",
+      "source": {
+        "label": "swissporton.pl: strona elementu (waga 3,7 kg, 298 × 500 mm) i lista akcesoriów na stronie SIMPLA (pobrano 2026-09-18). Źródło nie podaje zasady ilości.",
+        "url": "https://www.swissporton.pl/produkty/simpla-dachowka-boczna-prawa",
+        "revision": "2026-09"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-tile-accessory",
+        "roles": ["verge-right"],
+        "compatibleProductIds": ["product:swissporton:simpla"],
+        "physicalWidthMm": 298,
+        "physicalLengthMm": 500,
+        "weightKgPerPiece": 3.7
+      }
+    },
+    {
+      "id": "revision:swissporton:titania-dachowka-boczna-lewa:2026-09",
+      "productId": "product:swissporton:titania-dachowka-boczna-lewa",
+      "revisionCode": "2026-09",
+      "validFrom": "2026-09-18",
+      "source": {
+        "label": "swissporton.pl: strona elementu (waga 7,9 kg, 365 × 515 mm) i lista akcesoriów na stronie TITANIA (pobrano 2026-09-18). Źródło nie podaje zasady ilości.",
+        "url": "https://www.swissporton.pl/produkty/titania-dachowka-boczna-lewa",
+        "revision": "2026-09"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-tile-accessory",
+        "roles": ["verge-left"],
+        "compatibleProductIds": ["product:swissporton:titania"],
+        "physicalWidthMm": 365,
+        "physicalLengthMm": 515,
+        "weightKgPerPiece": 7.9
+      }
+    },
+    {
+      "id": "revision:swissporton:titania-dachowka-boczna-prawa:2026-09",
+      "productId": "product:swissporton:titania-dachowka-boczna-prawa",
+      "revisionCode": "2026-09",
+      "validFrom": "2026-09-18",
+      "source": {
+        "label": "swissporton.pl: strona elementu (waga 7,2 kg, 325 × 515 mm) i lista akcesoriów na stronie TITANIA (pobrano 2026-09-18). Źródło nie podaje zasady ilości.",
+        "url": "https://www.swissporton.pl/produkty/titania-dachowka-boczna-prawa",
+        "revision": "2026-09"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-tile-accessory",
+        "roles": ["verge-right"],
+        "compatibleProductIds": ["product:swissporton:titania"],
+        "physicalWidthMm": 325,
+        "physicalLengthMm": 515,
+        "weightKgPerPiece": 7.2
+      }
+    }
+  ],
+  "variants": [
+    {
+      "id": "variant:swissporton:koda:antracytowa-angoba",
+      "productId": "product:swissporton:koda",
+      "name": "Antracytowa angoba",
+      "color": "Antracytowa angoba",
+      "metadata": {
+        "packaging": {
+          "piecesPerPack": 4,
+          "piecesPerPallet": 168,
+          "sourceLabel": "swissporton.pl KODA: „Minipakiet – szt.: 4”, „Jednostka opakowania – szt.: 168” (pobrano 2026-09-18)",
+          "sourceUrl": "https://www.swissporton.pl/produkty/koda"
+        }
+      },
+      "active": true
+    },
+    {
+      "id": "variant:swissporton:koda:czarna-glazura",
+      "productId": "product:swissporton:koda",
+      "name": "Czarna glazura",
+      "color": "Czarna glazura",
+      "metadata": {
+        "packaging": {
+          "piecesPerPack": 4,
+          "piecesPerPallet": 168,
+          "sourceLabel": "swissporton.pl KODA: „Minipakiet – szt.: 4”, „Jednostka opakowania – szt.: 168” (pobrano 2026-09-18)",
+          "sourceUrl": "https://www.swissporton.pl/produkty/koda"
+        }
+      },
+      "active": true
+    },
+    {
+      "id": "variant:swissporton:koda:miedziana-angoba",
+      "productId": "product:swissporton:koda",
+      "name": "Miedziana angoba",
+      "color": "Miedziana angoba",
+      "metadata": {
+        "packaging": {
+          "piecesPerPack": 4,
+          "piecesPerPallet": 168,
+          "sourceLabel": "swissporton.pl KODA: „Minipakiet – szt.: 4”, „Jednostka opakowania – szt.: 168” (pobrano 2026-09-18)",
+          "sourceUrl": "https://www.swissporton.pl/produkty/koda"
+        }
+      },
+      "active": true
+    },
+    {
+      "id": "variant:swissporton:koda:w-kolorze-lupka-glazura",
+      "productId": "product:swissporton:koda",
+      "name": "W kolorze łupka glazura",
+      "color": "W kolorze łupka glazura",
+      "metadata": {
+        "packaging": {
+          "piecesPerPack": 4,
+          "piecesPerPallet": 168,
+          "sourceLabel": "swissporton.pl KODA: „Minipakiet – szt.: 4”, „Jednostka opakowania – szt.: 168” (pobrano 2026-09-18)",
+          "sourceUrl": "https://www.swissporton.pl/produkty/koda"
+        }
+      },
+      "active": true
+    },
+    {
+      "id": "variant:swissporton:simpla:antracytowa-angoba",
+      "productId": "product:swissporton:simpla",
+      "name": "Antracytowa angoba",
+      "color": "Antracytowa angoba",
+      "metadata": {
+        "packaging": {
+          "piecesPerPack": 4,
+          "piecesPerPallet": 192,
+          "sourceLabel": "swissporton.pl SIMPLA: „Minipakiet – szt.: 4”, „Jednostka opakowania – szt.: 192” (pobrano 2026-09-18)",
+          "sourceUrl": "https://www.swissporton.pl/produkty/simpla"
+        }
+      },
+      "active": true
+    },
+    {
+      "id": "variant:swissporton:simpla:czarna-glazura",
+      "productId": "product:swissporton:simpla",
+      "name": "Czarna glazura",
+      "color": "Czarna glazura",
+      "metadata": {
+        "packaging": {
+          "piecesPerPack": 4,
+          "piecesPerPallet": 192,
+          "sourceLabel": "swissporton.pl SIMPLA: „Minipakiet – szt.: 4”, „Jednostka opakowania – szt.: 192” (pobrano 2026-09-18)",
+          "sourceUrl": "https://www.swissporton.pl/produkty/simpla"
+        }
+      },
+      "active": true
+    },
+    {
+      "id": "variant:swissporton:simpla:w-kolorze-lupka-angoba",
+      "productId": "product:swissporton:simpla",
+      "name": "W kolorze łupka angoba",
+      "color": "W kolorze łupka angoba",
+      "metadata": {
+        "packaging": {
+          "piecesPerPack": 4,
+          "piecesPerPallet": 192,
+          "sourceLabel": "swissporton.pl SIMPLA: „Minipakiet – szt.: 4”, „Jednostka opakowania – szt.: 192” (pobrano 2026-09-18)",
+          "sourceUrl": "https://www.swissporton.pl/produkty/simpla"
+        }
+      },
+      "active": true
+    },
+    {
+      "id": "variant:swissporton:simpla:w-kolorze-lupka-glazura",
+      "productId": "product:swissporton:simpla",
+      "name": "W kolorze łupka glazura",
+      "color": "W kolorze łupka glazura",
+      "metadata": {
+        "packaging": {
+          "piecesPerPack": 4,
+          "piecesPerPallet": 192,
+          "sourceLabel": "swissporton.pl SIMPLA: „Minipakiet – szt.: 4”, „Jednostka opakowania – szt.: 192” (pobrano 2026-09-18)",
+          "sourceUrl": "https://www.swissporton.pl/produkty/simpla"
+        }
+      },
+      "active": true
+    },
+    {
+      "id": "variant:swissporton:titania:antracytowa-angoba",
+      "productId": "product:swissporton:titania",
+      "name": "Antracytowa angoba",
+      "color": "Antracytowa angoba",
+      "metadata": {
+        "packaging": {
+          "piecesPerPack": 4,
+          "piecesPerPallet": 192,
+          "sourceLabel": "swissporton.pl TITANIA: „Minipakiet – szt.: 4”, „Jednostka opakowania – szt.: 192” (pobrano 2026-09-18)",
+          "sourceUrl": "https://www.swissporton.pl/produkty/titania"
+        }
+      },
+      "active": true
+    },
+    {
+      "id": "variant:swissporton:titania:brazowa-glazura-icon",
+      "productId": "product:swissporton:titania",
+      "name": "Brązowa glazura ICON",
+      "color": "Brązowa glazura ICON",
+      "metadata": {
+        "packaging": {
+          "piecesPerPack": 4,
+          "piecesPerPallet": 192,
+          "sourceLabel": "swissporton.pl TITANIA: „Minipakiet – szt.: 4”, „Jednostka opakowania – szt.: 192” (pobrano 2026-09-18)",
+          "sourceUrl": "https://www.swissporton.pl/produkty/titania"
+        }
+      },
+      "active": true
+    },
+    {
+      "id": "variant:swissporton:titania:czarna-glazura",
+      "productId": "product:swissporton:titania",
+      "name": "Czarna glazura",
+      "color": "Czarna glazura",
+      "metadata": {
+        "packaging": {
+          "piecesPerPack": 4,
+          "piecesPerPallet": 192,
+          "sourceLabel": "swissporton.pl TITANIA: „Minipakiet – szt.: 4”, „Jednostka opakowania – szt.: 192” (pobrano 2026-09-18)",
+          "sourceUrl": "https://www.swissporton.pl/produkty/titania"
+        }
+      },
+      "active": true
+    },
+    {
+      "id": "variant:swissporton:titania:kasztanowa-glazura",
+      "productId": "product:swissporton:titania",
+      "name": "Kasztanowa glazura",
+      "color": "Kasztanowa glazura",
+      "metadata": {
+        "packaging": {
+          "piecesPerPack": 4,
+          "piecesPerPallet": 192,
+          "sourceLabel": "swissporton.pl TITANIA: „Minipakiet – szt.: 4”, „Jednostka opakowania – szt.: 192” (pobrano 2026-09-18)",
+          "sourceUrl": "https://www.swissporton.pl/produkty/titania"
+        }
+      },
+      "active": true
+    },
+    {
+      "id": "variant:swissporton:titania:miedziana-angoba",
+      "productId": "product:swissporton:titania",
+      "name": "Miedziana angoba",
+      "color": "Miedziana angoba",
+      "metadata": {
+        "packaging": {
+          "piecesPerPack": 4,
+          "piecesPerPallet": 192,
+          "sourceLabel": "swissporton.pl TITANIA: „Minipakiet – szt.: 4”, „Jednostka opakowania – szt.: 192” (pobrano 2026-09-18)",
+          "sourceUrl": "https://www.swissporton.pl/produkty/titania"
+        }
+      },
+      "active": true
+    },
+    {
+      "id": "variant:swissporton:titania:w-kolorze-lupka-angoba",
+      "productId": "product:swissporton:titania",
+      "name": "W kolorze łupka angoba",
+      "color": "W kolorze łupka angoba",
+      "metadata": {
+        "packaging": {
+          "piecesPerPack": 4,
+          "piecesPerPallet": 192,
+          "sourceLabel": "swissporton.pl TITANIA: „Minipakiet – szt.: 4”, „Jednostka opakowania – szt.: 192” (pobrano 2026-09-18)",
+          "sourceUrl": "https://www.swissporton.pl/produkty/titania"
+        }
+      },
+      "active": true
+    },
+    {
+      "id": "variant:swissporton:titania:w-kolorze-lupka-glazura",
+      "productId": "product:swissporton:titania",
+      "name": "W kolorze łupka glazura",
+      "color": "W kolorze łupka glazura",
+      "metadata": {
+        "packaging": {
+          "piecesPerPack": 4,
+          "piecesPerPallet": 192,
+          "sourceLabel": "swissporton.pl TITANIA: „Minipakiet – szt.: 4”, „Jednostka opakowania – szt.: 192” (pobrano 2026-09-18)",
+          "sourceUrl": "https://www.swissporton.pl/produkty/titania"
+        }
+      },
+      "active": true
+    },
+    {
+      "id": "variant:swissporton:balance:ciemnobrazowa-angoba",
+      "productId": "product:swissporton:balance",
+      "name": "Ciemnobrązowa angoba",
+      "color": "Ciemnobrązowa angoba",
+      "metadata": {
+        "packaging": {
+          "piecesPerPack": 4,
+          "piecesPerPallet": 192,
+          "sourceLabel": "swissporton.pl BALANCE: „Minipakiet – szt.: 4”, „Jednostka opakowania – szt.: 192” (pobrano 2026-09-18)",
+          "sourceUrl": "https://www.swissporton.pl/produkty/balance"
+        }
+      },
+      "active": true
+    },
+    {
+      "id": "variant:swissporton:balance:czarna-angoba",
+      "productId": "product:swissporton:balance",
+      "name": "Czarna angoba",
+      "color": "Czarna angoba",
+      "metadata": {
+        "packaging": {
+          "piecesPerPack": 4,
+          "piecesPerPallet": 192,
+          "sourceLabel": "swissporton.pl BALANCE: „Minipakiet – szt.: 4”, „Jednostka opakowania – szt.: 192” (pobrano 2026-09-18)",
+          "sourceUrl": "https://www.swissporton.pl/produkty/balance"
+        }
+      },
+      "active": true
+    },
+    {
+      "id": "variant:swissporton:balance:czarna-matowa-angoba",
+      "productId": "product:swissporton:balance",
+      "name": "Czarna matowa angoba",
+      "color": "Czarna matowa angoba",
+      "metadata": {
+        "packaging": {
+          "piecesPerPack": 4,
+          "piecesPerPallet": 192,
+          "sourceLabel": "swissporton.pl BALANCE: „Minipakiet – szt.: 4”, „Jednostka opakowania – szt.: 192” (pobrano 2026-09-18)",
+          "sourceUrl": "https://www.swissporton.pl/produkty/balance"
+        }
+      },
+      "active": true
+    },
+    {
+      "id": "variant:swissporton:balance:czerwien-winna-angoba",
+      "productId": "product:swissporton:balance",
+      "name": "Czerwień winna angoba",
+      "color": "Czerwień winna angoba",
+      "metadata": {
+        "packaging": {
+          "piecesPerPack": 4,
+          "piecesPerPallet": 192,
+          "sourceLabel": "swissporton.pl BALANCE: „Minipakiet – szt.: 4”, „Jednostka opakowania – szt.: 192” (pobrano 2026-09-18)",
+          "sourceUrl": "https://www.swissporton.pl/produkty/balance"
+        }
+      },
+      "active": true
+    },
+    {
+      "id": "variant:swissporton:balance:czerwona-angoba",
+      "productId": "product:swissporton:balance",
+      "name": "Czerwona angoba",
+      "color": "Czerwona angoba",
+      "metadata": {
+        "packaging": {
+          "piecesPerPack": 4,
+          "piecesPerPallet": 192,
+          "sourceLabel": "swissporton.pl BALANCE: „Minipakiet – szt.: 4”, „Jednostka opakowania – szt.: 192” (pobrano 2026-09-18)",
+          "sourceUrl": "https://www.swissporton.pl/produkty/balance"
+        }
+      },
+      "active": true
+    },
+    {
+      "id": "variant:swissporton:balance:czerwona-naturalna",
+      "productId": "product:swissporton:balance",
+      "name": "Czerwona naturalna",
+      "color": "Czerwona naturalna",
+      "metadata": {
+        "packaging": {
+          "piecesPerPack": 4,
+          "piecesPerPallet": 192,
+          "sourceLabel": "swissporton.pl BALANCE: „Minipakiet – szt.: 4”, „Jednostka opakowania – szt.: 192” (pobrano 2026-09-18)",
+          "sourceUrl": "https://www.swissporton.pl/produkty/balance"
+        }
+      },
+      "active": true
+    },
+    {
+      "id": "variant:swissporton:balance:miedziana-angoba",
+      "productId": "product:swissporton:balance",
+      "name": "Miedziana angoba",
+      "color": "Miedziana angoba",
+      "metadata": {
+        "packaging": {
+          "piecesPerPack": 4,
+          "piecesPerPallet": 192,
+          "sourceLabel": "swissporton.pl BALANCE: „Minipakiet – szt.: 4”, „Jednostka opakowania – szt.: 192” (pobrano 2026-09-18)",
+          "sourceUrl": "https://www.swissporton.pl/produkty/balance"
+        }
+      },
+      "active": true
+    },
+    {
+      "id": "variant:swissporton:balance:w-kolorze-lupka-angoba",
+      "productId": "product:swissporton:balance",
+      "name": "W kolorze łupka angoba",
+      "color": "W kolorze łupka angoba",
+      "metadata": {
+        "packaging": {
+          "piecesPerPack": 4,
+          "piecesPerPallet": 192,
+          "sourceLabel": "swissporton.pl BALANCE: „Minipakiet – szt.: 4”, „Jednostka opakowania – szt.: 192” (pobrano 2026-09-18)",
+          "sourceUrl": "https://www.swissporton.pl/produkty/balance"
+        }
+      },
+      "active": true
+    }
+  ]
+}

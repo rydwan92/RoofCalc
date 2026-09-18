@@ -1,0 +1,10 @@
+{
+  "name": "@cieslacalc/tile-procurement",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@cieslacalc/covering-core": "workspace:*"
+  }
+}

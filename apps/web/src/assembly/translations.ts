@@ -553,6 +553,52 @@ export const assemblyPl = {
   'perspective.costing': 'Kosztorys',
   'perspective.documents': 'Dokumenty',
   documentsPreset: 'Centrum dokumentów',
+  // V50: number <-> roof connection for roof-tile layouts.
+  tileEvidence: {
+    demand: 'Zapotrzebowanie',
+    full: 'Pełne:',
+    cut: 'Docinane:',
+    toBuy: 'Do zakupu:',
+    planNotPrepared: 'Plan zakupu — nieprzygotowany',
+    openMaterials: 'Otwórz plan materiałów',
+    filters: 'Pokaż pozycje dachówek',
+    clear: 'Wyczyść',
+    filter: {
+      full: 'Pełne',
+      edge: 'Docinane przy krawędzi',
+      opening: 'Docinane przy otworach',
+      split: 'Podzielone przez otwór',
+      cut: 'Docinane',
+    },
+    inspector: 'Pozycja dachówki',
+    close: 'Zamknij',
+    plane: 'Połać',
+    course: 'Rząd (od okapu)',
+    layer: 'warstwa {{layer}}',
+    column: 'Kolumna',
+    type: 'Typ pozycji',
+    openings: 'Otwory',
+    noOpening: 'brak',
+    openingCount_one: '{{count}} otwór',
+    openingCount_few: '{{count}} otwory',
+    openingCount_many: '{{count}} otworów',
+    openingCount_other: '{{count}} otworu',
+    fragments: 'Widoczne fragmenty',
+    class: {
+      full: 'Pełna',
+      'cut-roof-edge': 'Docinana przy krawędzi',
+      'cut-opening': 'Docinana przy otworze',
+      'split-by-opening': 'Podzielona przez otwór',
+    },
+    contribution: {
+      'full-tile': 'Ta pozycja rezerwuje 1 dachówkę — pełna dachówka.',
+      'one-tile-per-cut-position':
+        'Ta pozycja rezerwuje 1 dachówkę przy obecnej polityce docinek (bez ponownego wykorzystania).',
+      'one-tile-per-visible-fragment':
+        'Ta pozycja rezerwuje {{count}} dachówki — po jednej na każdy widoczny fragment.',
+    },
+    onceprepared: '(Liczone po przygotowaniu planu zakupu.)',
+  },
   studio: {
     viewMode: 'Rodzaj widoku krycia',
     kind: {
@@ -2121,6 +2167,26 @@ export const assemblyPl = {
         description:
           '{{count}} odcinków nie zostało rozplanowanych — ilości nie są pełne.',
       },
+      'tile-plan-missing': {
+        title: 'Plan zakupu dachówki — nieprzygotowany',
+        description:
+          'Układ dachówek jest gotowy. Przygotuj plan, aby otrzymać ilość do zakupu.',
+      },
+      'tile-plan-unresolved': {
+        title: 'Plan zakupu dachówki wymaga danych',
+        description:
+          'Układ dachówek nie jest rozwiązany — plan nie podaje ilości do zakupu.',
+      },
+      'tile-plan-openings': {
+        title: '{{count}} pozycji przy otworach',
+        description:
+          'Przyjęto osobną dachówkę na każdą pozycję i każdy fragment przy otworach. Sprawdź na dachu.',
+      },
+      'tile-accessories-undecided': {
+        title: '{{count}} akcesoria wymagają ustalenia',
+        description:
+          'Gąsiory lub dachówki boczne nie mają jeszcze ilości — wybierz element lub zasadę.',
+      },
       'cost-prices-missing': {
         title: '{{count}} pozycje wymagają ceny',
         description: 'Suma kosztorysu nie obejmuje pozycji bez ceny.',
@@ -2200,6 +2266,8 @@ export const assemblyPl = {
       coveringPositions: 'Pokrycie (pozycje krycia)',
       coveringRuns: 'Pokrycie (przebiegi geometryczne)',
       coveringConsumption: 'Pokrycie (wg zużycia producenta)',
+      tilePurchase: 'Dachówka podstawowa — plan zakupu',
+      tileAccessory: 'Akcesorium systemowe',
     },
     notPurchaseFact:
       '{{count}} {{unit}} — wynik geometryczny, nie ilość do zakupu.',
@@ -2243,12 +2311,17 @@ export const assemblyPl = {
     update: 'Aktualizuj',
     keepManual: 'Zachowaj ręczną',
     restoreFromProject: 'Przywróć z projektu',
+    supersededByTilePlan:
+      'Ta pozycja jest zastąpiona przez plan zakupu dachówki. Zachowana — usuń ją, aby nie liczyć dachówek dwa razy.',
+    removeSuperseded: 'Usuń tę pozycję',
     exportCsv: 'Pobierz CSV',
     openInDocuments: 'Otwórz w eksporcie',
     noLinesTitle: 'Brak pozycji w kosztorysie',
     noLines: 'Kosztorys jest pusty. Dodaj pozycję z projektu lub ręcznie.',
     unitLabel: {
       piece: 'szt.',
+      pack: 'opak.',
+      pallet: 'pal.',
       m: 'm',
       m2: 'm²',
       m3: 'm³',
@@ -2807,6 +2880,52 @@ export const assemblyEn: typeof assemblyPl = {
   'perspective.costing': 'Cost estimate',
   'perspective.documents': 'Documents',
   documentsPreset: 'Document hub',
+  // V50: number <-> roof connection for roof-tile layouts.
+  tileEvidence: {
+    demand: 'Demand',
+    full: 'Full:',
+    cut: 'Cut:',
+    toBuy: 'To buy:',
+    planNotPrepared: 'Purchase plan — not prepared',
+    openMaterials: 'Open material plan',
+    filters: 'Show tile positions',
+    clear: 'Clear',
+    filter: {
+      full: 'Full',
+      edge: 'Cut at roof edges',
+      opening: 'Cut at openings',
+      split: 'Split by an opening',
+      cut: 'Cut',
+    },
+    inspector: 'Tile position',
+    close: 'Close',
+    plane: 'Roof plane',
+    course: 'Course (from eave)',
+    layer: 'layer {{layer}}',
+    column: 'Column',
+    type: 'Position type',
+    openings: 'Openings',
+    noOpening: 'none',
+    openingCount_one: '{{count}} opening',
+    openingCount_few: '{{count}} openings',
+    openingCount_many: '{{count}} openings',
+    openingCount_other: '{{count}} openings',
+    fragments: 'Visible fragments',
+    class: {
+      full: 'Full',
+      'cut-roof-edge': 'Cut at a roof edge',
+      'cut-opening': 'Cut at an opening',
+      'split-by-opening': 'Split by an opening',
+    },
+    contribution: {
+      'full-tile': 'This position reserves 1 tile — a full tile.',
+      'one-tile-per-cut-position':
+        'This position reserves 1 tile under the current offcut policy (no reuse).',
+      'one-tile-per-visible-fragment':
+        'This position reserves {{count}} tiles — one per visible fragment.',
+    },
+    onceprepared: '(Counted once a purchase plan is prepared.)',
+  },
   studio: {
     viewMode: 'Covering view',
     kind: {
@@ -4359,6 +4478,26 @@ export const assemblyEn: typeof assemblyPl = {
         description:
           '{{count}} runs are not planned yet, so the quantities are incomplete.',
       },
+      'tile-plan-missing': {
+        title: 'Roof tile purchase plan — not prepared',
+        description:
+          'The tile layout is ready. Prepare a plan to get a purchase quantity.',
+      },
+      'tile-plan-unresolved': {
+        title: 'The roof tile purchase plan needs data',
+        description:
+          'The tile layout is not resolved — the plan states no purchase quantity.',
+      },
+      'tile-plan-openings': {
+        title: '{{count}} positions at openings',
+        description:
+          'A separate tile is reserved for every position and fragment at openings. Check them on the roof.',
+      },
+      'tile-accessories-undecided': {
+        title: '{{count}} accessories need a decision',
+        description:
+          'Ridge or verge tiles have no quantity yet — choose an element or a rule.',
+      },
       'cost-prices-missing': {
         title: '{{count}} items need a price',
         description: 'The estimate total excludes items without a price.',
@@ -4438,6 +4577,8 @@ export const assemblyEn: typeof assemblyPl = {
       coveringPositions: 'Covering (positions)',
       coveringRuns: 'Covering (geometric runs)',
       coveringConsumption: 'Covering (manufacturer consumption)',
+      tilePurchase: 'Base roof tile — purchase plan',
+      tileAccessory: 'System accessory',
     },
     notPurchaseFact:
       '{{count}} {{unit}} — a geometric result, not a purchase quantity.',
@@ -4483,12 +4624,17 @@ export const assemblyEn: typeof assemblyPl = {
     update: 'Update',
     keepManual: 'Keep manual',
     restoreFromProject: 'Restore from project',
+    supersededByTilePlan:
+      'This line is superseded by the roof-tile purchase plan. It is kept — remove it so the tiles are not counted twice.',
+    removeSuperseded: 'Remove this line',
     exportCsv: 'Download CSV',
     openInDocuments: 'Open in export',
     noLinesTitle: 'No estimate lines yet',
     noLines: 'The estimate is empty. Add a suggested or manual line.',
     unitLabel: {
       piece: 'pc',
+      pack: 'pack',
+      pallet: 'pallet',
       m: 'm',
       m2: 'm²',
       m3: 'm³',

@@ -37,6 +37,9 @@ const CATALOG_BATCHES = [
   // V49: verified batten-sized timber with source-declared applications.
   // Additive to the V35 timber batch, which it never touches.
   'timber-linear-stock-2026-09.json',
+  // V50: tile colour variants with source-backed packaging, and system
+  // accessories (ridge demand, verge tiles) as their own catalogue kind.
+  'tiles-commercial-2026-09-v50.json',
 ] as const;
 const PRICING_BATCHES = [
   'prices-2026-09.json',

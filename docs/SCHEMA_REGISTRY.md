@@ -121,6 +121,22 @@ free; changing meaning, type or required-ness is not.
   bump. Covered by `packages/calculator-core/src/project-document.test.ts`
   ("normalizes a V34C raw membrane spec..." / "round-trips a V35
   catalogue-backed membrane selection unchanged").
+- V50 note: two additive-optional fields, no `schemaVersion` bump.
+  `coverings[].purchase?: RoofTilePurchaseDecision` (`covering-core`
+  `roof-tile-purchase-spec.ts`: `cutPolicy: 'no-offcut-reuse'`, integer
+  `reserveBps` 0–5000, optional `packaging {saleUnit, piecesPerUnit,
+  source}`, optional `accessories[]` with a snapshotted
+  `roof-tile-accessory` spec and an explicit `userConfirmedRule`), allowed
+  only on a `roof-tile` assignment; and
+  `coverings[].product.commercialSnapshot?.packaging` (copied from the picked
+  catalogue variant). Absence means "geometry only" — every older project
+  opens unchanged. The purchase requirement itself is derived
+  (`@cieslacalc/tile-procurement`) and never serialized.
+- V50 catalogue: `CATALOG_PRODUCT_KINDS` gains `roof-tile-accessory` (stored
+  in the existing `covering_kind varchar(32)`); `commercialVariant.metadata`
+  types one key, `packaging`, in the existing JSON column. No migration.
+  `QuantityUnit`/`PriceQuantityUnit` gain `pack` and `pallet` (additive enum
+  values in the cost sidecar and price entries).
 
 ---
 

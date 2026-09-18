@@ -2,6 +2,11 @@ import { z } from 'zod';
 import { resolveInstallationMode } from './roof-tile-installation';
 export * from './roof-tile-installation';
 export * from './covering-support-capability';
+export * from './roof-tile-purchase-spec';
+import {
+  commercialPackagingFactsSchema,
+  roofTilePurchaseDecisionSchema,
+} from './roof-tile-purchase-spec';
 
 export const COVERING_TECHNICAL_SCHEMA_VERSION = 1 as const;
 
@@ -308,6 +313,13 @@ export const coveringProductSelectionSchema = z.object({
     })
     .optional(),
   technicalSpecSnapshot: coveringTechnicalSpecSchema,
+  /**
+   * V50: commercial facts copied from the picked catalogue variant (mutable
+   * catalogue data, so a snapshot keeps the project reproducible offline).
+   */
+  commercialSnapshot: z
+    .object({ packaging: commercialPackagingFactsSchema.optional() })
+    .optional(),
 });
 
 export type CoveringProductSelection = z.infer<
@@ -416,6 +428,8 @@ export const coveringAssignmentSpecSchema = z
     product: coveringProductSelectionSchema,
     selectedInstallationModeId: stableId.optional(),
     layoutIntent: coveringLayoutIntentSchema.optional(),
+    /** V50: the user's tile purchase decision; absent = geometry only. */
+    purchase: roofTilePurchaseDecisionSchema.optional(),
   })
   .superRefine((assignment, context) => {
     const selected = assignment.selectedInstallationModeId;
@@ -437,6 +451,12 @@ export const coveringAssignmentSpecSchema = z
         code: z.ZodIssueCode.custom,
         path: ['layoutIntent', 'kind'],
         message: 'layout_intent_kind_mismatch',
+      });
+    if (assignment.purchase && spec.kind !== 'roof-tile')
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['purchase'],
+        message: 'purchase_kind_mismatch',
       });
     if (!selected) return;
     if (

@@ -1743,6 +1743,7 @@
 }
 .a-scene3d-actions {
   gap: 4px;
+  margin-left: auto;
 }
 .assembly-app .a-scene3d-controls button {
   display: inline-flex;
@@ -1768,6 +1769,12 @@
 .assembly-app .a-scene3d-controls button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+/* The family popover opens leftwards from its summary, so the summary is kept
+   at the row's right end: when the controls wrap (wider fonts), it would
+   otherwise start a line at the workspace edge and open under the tool rail. */
+.a-scene3d-families {
+  margin-left: auto;
 }
 .a-scene3d-families > summary {
   display: inline-flex;

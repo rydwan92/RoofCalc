@@ -198,6 +198,9 @@ export interface OperationMarkerLayout extends OperationMarkerLayoutInput {
   compact: boolean;
 }
 
+/** V50 tile-position highlight filters, mapped from `TilePosition` classes. */
+export type TileHighlight = 'full' | 'cut' | 'edge' | 'opening' | 'split';
+
 export interface WorkbenchViewState {
   mode: WorkbenchMode;
   selectedId: string;
@@ -211,6 +214,13 @@ export interface WorkbenchViewState {
   selectedScheduleInstanceId?: string;
   /** Active primary covering editor target; view-only and never serialized. */
   selectedCoveringAssignmentId?: string;
+  /**
+   * V50: which tile positions the covering drawing highlights, and the one
+   * position the tile inspector explains. Presentation of existing
+   * `TilePosition` data only — never serialized, never in history.
+   */
+  tileHighlight?: TileHighlight;
+  selectedTilePositionId?: string;
   canvasView: WorkbenchCanvasView;
   /** V38 transient renderer choice for the central workspace. */
   workspaceRenderer: WorkspaceRenderer;

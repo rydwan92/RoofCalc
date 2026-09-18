@@ -2,7 +2,6 @@ import {
   boolean,
   char,
   date,
-  datetime,
   foreignKey,
   index,
   int,
@@ -13,6 +12,7 @@ import {
   uniqueIndex,
   varchar,
 } from 'drizzle-orm/mysql-core';
+import { utcDateTime } from './sql-datetime';
 
 const timestamps = {
   createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
@@ -141,8 +141,8 @@ export const catalogImportBatches = mysqlTable(
     status: varchar('status', { length: 32 }).notNull(),
     counts: json('counts').$type<unknown>().notNull(),
     errorSummary: text('error_summary'),
-    startedAt: datetime('started_at', { mode: 'string' }).notNull(),
-    completedAt: datetime('completed_at', { mode: 'string' }),
+    startedAt: utcDateTime('started_at').notNull(),
+    completedAt: utcDateTime('completed_at'),
     schemaVersion: int('schema_version').default(1).notNull(),
   },
   (table) => [

@@ -26,6 +26,8 @@ import type {
 } from './project-readiness';
 import { readinessIssueText } from './readiness-copy';
 import { LinearPurchasePanel } from './LinearPurchase';
+import { TilePurchasePanel } from './TilePurchase';
+import type { RoofTileLayoutResult } from '@cieslacalc/covering-core';
 import type {
   LinearMaterialKind,
   LinearMaterialRequirement,
@@ -192,6 +194,10 @@ export function MaterialPlan({
       roll: locale.startsWith('pl') ? 'rol.' : 'rolls',
       course: locale.startsWith('pl') ? 'pas.' : 'courses',
       'piece/m2': locale.startsWith('pl') ? 'szt./m²' : 'pcs/m²',
+      pack: locale.startsWith('pl') ? 'opak.' : 'packs',
+      row: locale.startsWith('pl') ? 'rz.' : 'courses',
+      pallet: locale.startsWith('pl') ? 'pal.' : 'pallets',
+      m: 'm',
     })[value] ?? value;
   const activePrice = (row: MaterialPlanRow) => {
     const price = prices[row.id];
@@ -366,6 +372,22 @@ export function MaterialPlan({
               const purchaseCount = linearPlan
                 ? linearPlan.stock.reduce((sum, item) => sum + item.quantity, 0)
                 : undefined;
+              // V50: the covering row of a roof-tile assignment carries the
+              // tile purchase panel; accessory rows are plain rows.
+              const tileAssignment =
+                row.tileAssignmentId &&
+                (row.labelKey === 'tile' || row.labelKey === 'tileBase')
+                  ? facts.coverings.find(
+                      (item) => item.id === row.tileAssignmentId,
+                    )
+                  : undefined;
+              const tileLayout = tileAssignment
+                ? (facts.coveringLayouts ?? []).find(
+                    (item): item is RoofTileLayoutResult =>
+                      item.kind === 'roof-tile' &&
+                      item.assignmentId === tileAssignment.id,
+                  )
+                : undefined;
               const label = `${materialText(locale, row.labelKey)}${
                 section ? ` ${section.widthMm}×${section.depthMm}` : ''
               }${row.description ? ` · ${row.description}` : ''}`;
@@ -459,23 +481,37 @@ export function MaterialPlan({
                           </small>
                         </strong>
                       </div>
-                      {row.metrics.length > 0 && (
-                        <dl className="mp-metrics">
-                          {row.metrics.map((metric) => (
-                            <div key={metric.labelKey}>
-                              <dt>{materialText(locale, metric.labelKey)}</dt>
-                              <dd>
-                                {number(metric.value)}
-                                {metric.maxValue !== undefined
-                                  ? `–${number(metric.maxValue)}`
-                                  : ''}{' '}
-                                {unit(metric.unit)}
-                              </dd>
-                            </div>
-                          ))}
-                        </dl>
-                      )}
+                      {row.metrics.length > 0 &&
+                        row.labelKey !== 'tileBase' && (
+                          <dl className="mp-metrics">
+                            {row.metrics.map((metric) => (
+                              <div key={metric.labelKey}>
+                                <dt>{materialText(locale, metric.labelKey)}</dt>
+                                <dd>
+                                  {number(metric.value)}
+                                  {metric.maxValue !== undefined
+                                    ? `–${number(metric.maxValue)}`
+                                    : ''}{' '}
+                                  {unit(metric.unit)}
+                                </dd>
+                              </div>
+                            ))}
+                          </dl>
+                        )}
                     </>
+                  )}
+                  {tileAssignment && (
+                    <TilePurchasePanel
+                      assignment={tileAssignment}
+                      layout={tileLayout}
+                      plan={row.tilePlan}
+                      locale={locale}
+                      onShowOnRoof={(highlight) => {
+                        state.setSelectedCoveringAssignment(tileAssignment.id);
+                        state.setTileHighlight(highlight);
+                        onOpenCovering();
+                      }}
+                    />
                   )}
                   {linearKind && linearRequirement && linear && (
                     <LinearPurchasePanel

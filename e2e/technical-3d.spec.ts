@@ -260,3 +260,32 @@ test.describe('V38 — collar ties in 3D', () => {
     expect(errors).toEqual([]);
   });
 });
+
+test.describe('V50 — 3D family filter when the controls wrap', () => {
+  test('keeps the family popover inside the workspace, clear of the tool rail', async ({
+    page,
+  }) => {
+    await openExample(page, 'collar-tie');
+    await switchRenderer(page, '3d');
+    await expect(page.locator(CANVAS)).toBeVisible();
+    // Linux CI fonts are wider than local ones and wrap this control row; the
+    // popover then opened leftwards under the tool rail. Force the wrap here.
+    await page.addStyleTag({
+      content:
+        '.a-scene3d-controls button, .a-scene3d-families > summary { letter-spacing: 1.2px; }',
+    });
+    await page.locator('.a-scene3d-families > summary').click();
+    const popover = page.locator('.a-scene3d-families .a-view-popover');
+    await expect(popover).toBeVisible();
+    const toolbox = page.locator('.a-toolbox');
+    if (await toolbox.isVisible()) {
+      const rail = (await toolbox.boundingBox())!;
+      const box = (await popover.boundingBox())!;
+      expect(box.x).toBeGreaterThanOrEqual(rail.x + rail.width);
+    }
+    await page.locator('[data-scene-family="common-rafter"] input').uncheck();
+    await expect(
+      page.locator('[data-scene-family="common-rafter"] input'),
+    ).not.toBeChecked();
+  });
+});

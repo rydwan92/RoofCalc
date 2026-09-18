@@ -83,6 +83,7 @@ import {
   type WorkbenchToolCategory,
   type WorkbenchViewState,
   type WorkspaceRenderer,
+  type TileHighlight,
 } from './workbench';
 
 export type SupportField = 'xMm' | 'widthMm' | 'heightMm' | 'valueMm';
@@ -367,6 +368,9 @@ export interface AssemblyState {
   setMobilePanel: (panel: MobilePanel) => void;
   setScheduleSelection: (rowId?: string, instanceId?: string) => void;
   setSelectedCoveringAssignment: (assignmentId?: string) => void;
+  /** V50 transient tile highlight and inspected position. */
+  setTileHighlight: (highlight?: TileHighlight) => void;
+  selectTilePosition: (positionId?: string) => void;
   setIsolation: (isolated: boolean) => void;
   setDimensionLevel: (level: DimensionLevel) => void;
   setLayerVisibility: (
@@ -824,6 +828,12 @@ export const useAssembly = create<AssemblyState>((set) => ({
           activePreviewId: undefined,
         },
       },
+    })),
+  setTileHighlight: (tileHighlight) =>
+    set((state) => ({ workbench: { ...state.workbench, tileHighlight } })),
+  selectTilePosition: (selectedTilePositionId) =>
+    set((state) => ({
+      workbench: { ...state.workbench, selectedTilePositionId },
     })),
   setSelectedCoveringAssignment: (selectedCoveringAssignmentId) =>
     set((state) => ({

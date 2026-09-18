@@ -12,6 +12,8 @@ import type { MembraneProductSelection } from '@cieslacalc/covering-core';
 import type { VariantPrice } from '../pricing/client';
 import type { ExportFacts } from './export-adapter';
 import { createCostSuggestions } from './cost-adapter';
+import { purchasedPieces } from '@cieslacalc/tile-procurement';
+import type { TilePurchasePlan } from './tile-purchase';
 
 export type MaterialCategory = 'timber' | 'layers' | 'covering' | 'other';
 export interface MaterialPlanRow {
@@ -44,6 +46,12 @@ export interface MaterialPlanRow {
     overlapMm: number;
     revisionCode?: string;
   };
+  /**
+   * V50: the roof-tile assignment this row represents, and its prepared
+   * purchase plan when there is one. The row never recomputes the plan.
+   */
+  tileAssignmentId?: string;
+  tilePlan?: TilePurchasePlan;
 }
 
 export interface MaterialPriceSelection {
@@ -136,7 +144,9 @@ export function createMaterialPlanRows(
       // V48: commercial pieces are shown by the purchase panel on the
       // material's own row, never as extra rows in the plan.
       suggestion.kind === 'linear-stock' ||
-      suggestion.kind.startsWith('covering-')
+      suggestion.kind.startsWith('covering-') ||
+      // V50: the tile plan owns its own rows (base tile + accessories).
+      suggestion.kind.startsWith('tile-')
     )
       continue;
     if (!('quantity' in suggestion)) continue;
@@ -290,6 +300,13 @@ export function createMaterialPlanRows(
     rows.push(row);
   }
   for (const assignment of facts.coverings) {
+    const tilePlan = facts.tilePurchasePlans?.find(
+      (plan) => plan.assignmentId === assignment.id,
+    );
+    if (tilePlan) {
+      rows.push(...tilePlanRows(assignment.id, tilePlan));
+      continue;
+    }
     const layouts = (facts.coveringLayouts ?? []).filter(
       (item) => item.assignmentId === assignment.id,
     );
@@ -381,6 +398,9 @@ export function createMaterialPlanRows(
           : 'covering-not-a-purchase-count',
       ],
       sourceReferences: assignment.roofPlaneIds,
+      ...(assignment.product.technicalSpecSnapshot.kind === 'roof-tile'
+        ? { tileAssignmentId: assignment.id }
+        : {}),
     });
   }
   for (const [id, enabled, labelKey, unit, basis] of [
@@ -431,6 +451,159 @@ export function createMaterialPlanRows(
     });
   }
   return rows;
+}
+
+/**
+ * V50: a prepared tile plan becomes the covering's purchase row plus one row
+ * per accessory role the roof needs. The declared consumption survives only
+ * as a cross-check metric on the plan, never as the headline quantity.
+ */
+function tilePlanRows(
+  assignmentId: string,
+  plan: TilePurchasePlan,
+): MaterialPlanRow[] {
+  const requirement = plan.requirement;
+  const pieces = purchasedPieces(requirement);
+  const purchase = requirement.purchase;
+  const trusted = pieces !== undefined;
+  const base: MaterialPlanRow = {
+    id: `tile-purchase:${assignmentId}`,
+    costSuggestionKey: `tile-purchase:${assignmentId}`,
+    category: 'covering',
+    labelKey: 'tileBase',
+    quantity: pieces,
+    unit: 'piece',
+    basis: 'procurement-stock',
+    suitability: !trusted
+      ? 'manual-required'
+      : requirement.status === 'exact'
+        ? 'exact-purchase'
+        : 'execution-based',
+    partial: !trusted,
+    product: {
+      name: plan.productName,
+      variantId: plan.variantId,
+      facts: [],
+    },
+    productSource: plan.productId ? 'catalog' : 'manual',
+    metrics: [
+      {
+        labelKey: 'tileFull',
+        value: requirement.fullPositionCount,
+        unit: 'piece',
+      },
+      {
+        labelKey: 'tileCut',
+        value: requirement.cutPositionCount,
+        unit: 'piece',
+      },
+      {
+        labelKey: 'tilePhysical',
+        value: requirement.physicalBaseTileCount,
+        unit: 'piece',
+      },
+      ...(requirement.reservePieces > 0
+        ? [
+            {
+              labelKey: 'tileReserve',
+              value: requirement.reservePieces,
+              unit: 'piece',
+            },
+          ]
+        : []),
+      {
+        labelKey: 'tileRequired',
+        value: requirement.requiredPieces,
+        unit: 'piece',
+      },
+      ...(purchase && purchase.saleUnit !== 'piece'
+        ? [
+            {
+              labelKey:
+                purchase.saleUnit === 'pack' ? 'tilePacks' : 'tilePallets',
+              value: purchase.units,
+              unit: purchase.saleUnit,
+            },
+            {
+              labelKey: 'tilePiecesPerUnit',
+              value: purchase.piecesPerUnit,
+              unit: 'piece',
+            },
+            {
+              labelKey: 'tileCommercialOverage',
+              value: purchase.commercialOveragePieces,
+              unit: 'piece',
+            },
+          ]
+        : []),
+    ],
+    warnings: [
+      ...(requirement.status === 'exact' ? ['tile-plan-exact'] : []),
+      ...(requirement.status === 'conservative'
+        ? ['tile-plan-conservative-no-offcut-reuse']
+        : []),
+      ...(requirement.splitPositionCount > 0
+        ? ['tile-plan-split-fragments']
+        : []),
+      ...(plan.packagingStale ? ['tile-plan-packaging-stale'] : []),
+      ...(!trusted ? ['tile-plan-layout-unresolved'] : []),
+    ],
+    sourceReferences: [assignmentId],
+    tileAssignmentId: assignmentId,
+    tilePlan: plan,
+  };
+  const accessories = plan.accessories.map<MaterialPlanRow>((item) => ({
+    id: `tile-accessory:${assignmentId}:${item.role}`,
+    category: 'covering',
+    labelKey: `tileAccessory.${item.role}`,
+    description: item.selection
+      ? [
+          item.selection.displaySnapshot?.familyName,
+          item.selection.displaySnapshot?.variantName,
+        ]
+          .filter(Boolean)
+          .join(' · ') || undefined
+      : undefined,
+    quantity: item.quantity,
+    unit: 'piece',
+    basis: 'procurement-stock',
+    suitability:
+      item.status === 'resolved'
+        ? 'execution-based'
+        : item.status === 'declared-approximate'
+          ? 'geometric-estimate'
+          : 'manual-required',
+    partial: item.quantity === undefined,
+    metrics: [
+      ...(item.lineLengthMm !== undefined
+        ? [
+            {
+              labelKey: 'lineLength',
+              value: item.lineLengthMm / 1000,
+              unit: 'm',
+            },
+          ]
+        : []),
+      ...(item.courseCount !== undefined
+        ? [
+            {
+              labelKey: 'courseCountTiles',
+              value: item.courseCount,
+              unit: 'row',
+            },
+          ]
+        : []),
+    ],
+    warnings: [
+      ...(item.reason ? [`accessory-${item.reason}`] : []),
+      ...(item.status === 'declared-approximate'
+        ? ['accessory-declared-approximate']
+        : []),
+    ],
+    sourceReferences: [assignmentId],
+    tileAssignmentId: assignmentId,
+  }));
+  return [base, ...accessories];
 }
 
 /** A safe price must join the deliberately selected variant and exact sale unit. */

@@ -8,6 +8,8 @@ const minorUnits = z.number().int().min(0);
 const taxRateBps = z.number().int().min(0).max(10000);
 const quantityUnitSchema = z.enum([
   'piece',
+  'pack',
+  'pallet',
   'm',
   'm2',
   'm3',

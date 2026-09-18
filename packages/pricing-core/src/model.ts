@@ -11,8 +11,9 @@
  * module can price any future product family without change.
  */
 
+/** V50 adds `pack` and `pallet`: a price per pack never joins a piece count. */
 export type PriceQuantityUnit =
-  'piece' | 'm' | 'm2' | 'm3' | 'kg' | 'hour' | 'flat';
+  'piece' | 'pack' | 'pallet' | 'm' | 'm2' | 'm3' | 'kg' | 'hour' | 'flat';
 
 /** A supplier/owner's price list: one currency, one validity window. */
 export interface PriceList {

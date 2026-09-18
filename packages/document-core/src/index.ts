@@ -217,6 +217,23 @@ export interface CoveringSection {
       full?: number;
       cut?: number;
     };
+    /**
+     * V50 execution facts for a roof-tile row, copied from the resolved
+     * layout and the prepared purchase plan. Packaging stays in the material
+     * list; this is what the roofer lays.
+     */
+    tile?: {
+      installationModeId?: string;
+      courseCount?: number;
+      gaugeMinMm?: number;
+      gaugeMaxMm?: number;
+      accessories: {
+        role: string;
+        name?: string;
+        quantity?: number;
+        status: string;
+      }[];
+    };
     warnings: string[];
   }[];
 }
@@ -262,7 +279,8 @@ export interface CostEstimateSection {
     category: 'material' | 'labour' | 'transport' | 'equipment' | 'other';
     label: string;
     quantityValue: number;
-    quantityUnit: 'piece' | 'm' | 'm2' | 'm3' | 'kg' | 'hour' | 'flat';
+    quantityUnit:
+      'piece' | 'pack' | 'pallet' | 'm' | 'm2' | 'm3' | 'kg' | 'hour' | 'flat';
     basis:
       | 'procurement-stock'
       | 'fabrication-requirement'

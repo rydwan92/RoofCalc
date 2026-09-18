@@ -92,6 +92,10 @@ export type ReadinessIssueCode =
   | 'k1-cutting-plan-missing'
   | 'linear-plan-missing'
   | 'linear-plan-partial'
+  | 'tile-plan-missing'
+  | 'tile-plan-unresolved'
+  | 'tile-plan-openings'
+  | 'tile-accessories-undecided'
   | 'cost-not-started'
   | 'cost-prices-missing'
   | 'cost-quantities-missing';
@@ -222,6 +226,18 @@ export interface ReadinessFacts {
   >;
   /** Linear materials whose layer is on and whose requirement is plannable. */
   linearPlannable?: readonly ('batten' | 'counter-batten')[];
+  /**
+   * V50: roof-tile assignments whose layout resolved (a plan could be
+   * prepared) and the state of each prepared plan. Geometry never needs one.
+   */
+  tilePlannable?: readonly string[];
+  tilePlans?: readonly {
+    assignmentId: string;
+    status: 'exact' | 'conservative' | 'partial' | 'unresolved';
+    splitPositions: number;
+    openingPositions: number;
+    undecidedAccessories: number;
+  }[];
   cost?: CostScenarioSummary;
   candidates: readonly SectionCandidate[];
 }
@@ -694,6 +710,54 @@ export function deriveProjectReadiness(
         // A partial plan changes what the purchase quantities mean.
         affects: ['materials', 'cost'],
         source: `linear-plan:${material}`,
+      });
+  }
+
+  // ── Roof-tile purchase plan (V50) ────────────────────────────────────
+  for (const assignmentId of facts.tilePlannable ?? []) {
+    const plan = facts.tilePlans?.find(
+      (item) => item.assignmentId === assignmentId,
+    );
+    const source = `tile-plan:${assignmentId}`;
+    if (!plan) {
+      add({
+        code: 'tile-plan-missing',
+        severity: 'info',
+        area: 'materials',
+        action: 'open-materials',
+        affects: [],
+        source,
+      });
+      continue;
+    }
+    if (plan.status === 'partial' || plan.status === 'unresolved')
+      add({
+        code: 'tile-plan-unresolved',
+        severity: 'warning',
+        area: 'materials',
+        action: 'open-materials',
+        affects: ['materials', 'cost'],
+        source,
+      });
+    if (plan.openingPositions + plan.splitPositions > 0)
+      add({
+        code: 'tile-plan-openings',
+        severity: 'info',
+        area: 'materials',
+        params: { count: plan.openingPositions + plan.splitPositions },
+        action: 'open-materials',
+        affects: [],
+        source,
+      });
+    if (plan.undecidedAccessories > 0)
+      add({
+        code: 'tile-accessories-undecided',
+        severity: 'info',
+        area: 'materials',
+        params: { count: plan.undecidedAccessories },
+        action: 'open-materials',
+        affects: [],
+        source,
       });
   }
 

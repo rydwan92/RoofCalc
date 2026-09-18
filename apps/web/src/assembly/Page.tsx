@@ -115,6 +115,7 @@ import { createK1CuttingRequirement } from './k1-cutting-adapter';
 import { k1RequirementSignature } from './k1-cutting-adapter';
 import { createExportCandidates, type ExportFacts } from './export-adapter';
 import { usePriceOptions } from '../pricing/use-prices';
+import { createTilePurchasePlans } from './tile-purchase';
 import {
   createMaterialPlanRows,
   materialScenarioPrices,
@@ -1000,6 +1001,16 @@ function AssemblyPageContent() {
     currentCuttingPlan?.plan.signature === k1RequirementSignature(k1Requirement)
       ? currentCuttingPlan.plan
       : undefined;
+  // V50: tile purchase plans for every assignment the user prepared one for.
+  const tilePurchasePlans = useMemo(
+    () =>
+      createTilePurchasePlans({
+        coverings: coveringAssignments,
+        layouts: resolvedCoveringLayouts,
+        surface: surfaceProjection,
+      }),
+    [coveringAssignments, resolvedCoveringLayouts, surfaceProjection],
+  );
   const materialFacts: ExportFacts = {
     source: {
       projectId: projectSessionState.active?.id ?? 'unsaved',
@@ -1036,6 +1047,7 @@ function AssemblyPageContent() {
     coveringLayouts: resolvedCoveringLayouts,
     variantPrices,
     cost: costScenario,
+    tilePurchasePlans,
   };
   const materialRows = createMaterialPlanRows(materialFacts, membraneProduct);
   const effectiveMaterialPrices = {
@@ -1268,6 +1280,20 @@ function AssemblyPageContent() {
         candidates: readinessCandidates,
         // V48: commercial planning is optional, so only plannable materials
         // are ever mentioned, and never as a blocker.
+        tilePlannable: resolvedCoveringLayouts.flatMap((layout) =>
+          layout.kind === 'roof-tile' && layout.status === 'resolved'
+            ? [layout.assignmentId]
+            : [],
+        ),
+        tilePlans: tilePurchasePlans.map((plan) => ({
+          assignmentId: plan.assignmentId,
+          status: plan.requirement.status,
+          splitPositions: plan.requirement.splitPositionCount,
+          openingPositions: plan.requirement.openingCutPositionCount,
+          undecidedAccessories: plan.accessories.filter(
+            (item) => item.status === 'requires-decision',
+          ).length,
+        })),
         linearPlannable: (['batten', 'counter-batten'] as const).filter(
           (kind) => linearRequirements[kind].status === 'ready',
         ),
@@ -1308,6 +1334,7 @@ function AssemblyPageContent() {
       readinessCandidates,
       linearRequirements,
       linearPlans,
+      tilePurchasePlans,
     ],
   );
   const documentFactsWithLimits: ExportFacts = {
@@ -2557,6 +2584,16 @@ function AssemblyPageContent() {
                       battens={battenProjection}
                       counterBattens={counterBattenProjection}
                       installation={installationFacts}
+                      tilePlan={tilePurchasePlans.find(
+                        (plan) =>
+                          plan.assignmentId === activeCoveringAssignment?.id,
+                      )}
+                      onOpenMaterials={() =>
+                        state.navigateTo(
+                          workbenchLocation('materials', 'plan'),
+                          { remember: true },
+                        )
+                      }
                     />
                   </Suspense>
                 ) : workbench.viewPreset === 'costing' ? (
@@ -2603,6 +2640,8 @@ function AssemblyPageContent() {
                             variantPrices,
                             // V48: price the commercial pieces, not metres.
                             linearPlans,
+                            // V50: price the tiles to buy, not the area.
+                            tilePurchasePlans,
                           } satisfies Omit<ExportFacts, 'cost'>
                         }
                         scenario={costScenario}

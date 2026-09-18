@@ -41,6 +41,7 @@
     "@cieslacalc/project-core": "workspace:*",
     "@cieslacalc/quantity-core": "workspace:*",
     "@cieslacalc/roof-math": "workspace:*",
+    "@cieslacalc/tile-procurement": "workspace:*",
     "@cieslacalc/timber-model": "workspace:*",
     "@eslint/js": "^9.30.0",
     "@playwright/test": "1.56.1",

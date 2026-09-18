@@ -1,6 +1,6 @@
 # RoofCalc / CieślaCalc — Architecture Index
 
-**This is the current-state map, after V49.** Read it after `PROJECT_BLUEPRINT.md`
+**This is the current-state map, after V50.** Read it after `PROJECT_BLUEPRINT.md`
 and before touching code. It describes what exists today, not the history of how
 it got here. Historical `ARCHITECTURE_V*.md` documents stay authoritative for the
 subsystem they introduced and should be opened only when changing that subsystem.
@@ -51,6 +51,7 @@ Dependency direction is **downward only**.
 | `roof-math` | The geometry engine. Templates → resolved roofs, skeletons, rafters, hips, jacks, cuts, plane bases, roof surfaces, battens, counter-battens, opening framing. **Generates and owns roof-plane IDs.** **V34C** adds the membrane build-up layer's course-fit solver (`resolveMembraneCourseFit`, `resolveMembraneLayout`), mirroring the batten solver's own shape and home — a membrane never enters `covering-core`'s layout engines, since it is a build-up layer, not a primary covering. | `timber-model`, `zod` |
 | `drawing-engine` | Renderer-neutral projection: lanes, dimensions, interaction hit-testing, measurement. Produces view models, not DOM. **V38** extracts `createTimberPrismBasis` so the 2D faces and the 3D solid share one orientation formula. | — |
 | `technical-scene` | **V38.** The renderer-neutral technical scene: `TechnicalScene`/`TechnicalSceneEntity` DTOs, the roof→scene adapter, pure camera framing and the visibility policy. Consumes resolved geometry; runs no solver and knows no renderer. **V39** adds the `extruded-profile` primitive (a finished, already-machined timber) plus optional counter-batten, unresolved-hip-boundary and finished-member inputs. | `timber-model`, `drawing-engine` |
+| `tile-procurement` | **V50.** Pure tile purchase requirement over a resolved `RoofTileLayoutResult`: cut policy, reserve, packaging rounding, manufacturer cross-check, ridge/hip/verge accessory quantities. No price, no geometry solver, no catalogue. | `covering-core` |
 | `covering-core` | Covering technical product schemas and the four family layout solvers (tile, fixed modular sheet, standing seam, cut-to-length), plane-ownership resolution, and the quantity bridge. **V34C** adds `membraneTechnicalSpecSchema`/`MembraneTechnicalSpec` — a schema **sibling** to `coveringTechnicalSpecSchema`, deliberately never joined into its union. | `zod` |
 | `calculator-core` | Composition layer: assembly resolution, member instances, fabrication packages, detail previews, and the canonical `RoofProjectDocumentV1`. **V34C** adds the additive optional `project.membraneProduct?: MembraneTechnicalSpec` field. | `roof-math`, `timber-model`, `covering-core`, `drawing-engine`, `shared` |
 | `quantity-core` | Aggregates neutral quantity sources into the member/material schedule. Knows nothing about products, procurement or prices. **V34C** adds optional gross build-up fields (`grossAreaMm2`, `courseCount`, `rollCount`, `semantic: 'gross-installed'`) alongside the always-present net area — exposed only once every contributing plane resolves a roll product, never blended from a partial mix. | `timber-model` |
@@ -267,6 +268,23 @@ revisions may carry a source-declared `declaredApplications`; batten-sized
 products and their dated prices are seeded as immutable batches. See
 `docs/ARCHITECTURE_V49_STOCK_AWARE_LINEAR_PLANNING.md` and
 `docs/domain/BATTEN_COMMERCIAL_PRODUCTS_RESEARCH.md`.
+
+V50 adds the pure `packages/tile-procurement` (depends only on
+`covering-core`): ROOF TILE LAYOUT → physical requirement (full = 1 tile,
+cut = 1 tile under the explicit `no-offcut-reuse` policy, split-by-opening =
+1 tile per visible fragment) → explicit user reserve (default 0) → sale-unit
+rounding with *commercial overage* (never called waste) → purchase quantity.
+Status is `exact` only when every position is full. The manufacturer's
+declared consumption becomes a cross-check that never changes the count.
+Ridge/hip and verge accessories are a separate catalogue kind
+(`roof-tile-accessory`) with declared roles and explicit
+`compatibleProductIds`; quantities come from `roof-math`'s resolved ridge/hip
+boundary lengths and the layout's own courses, and any role without
+source-backed semantics stays *WYMAGA USTALENIA*. The canonical decision is
+`CoveringAssignmentSpec.purchase`; `apps/web/src/assembly/tile-purchase.ts`
+is the one application adapter, and Material Plan, cost (sale-unit safe,
+supersedes the consumption line), readiness, the material list and the
+covering evidence (filters, highlight, tile inspector) all read its plan.
 
 V43B turns covering → battens → counter-battens into one workflow. The batten
 quantity audit found no solver error but a silent application defect: repair

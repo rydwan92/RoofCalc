@@ -77,7 +77,9 @@ describe('V39/V42 metal catalogue reconciliation', () => {
     for (const entry of prices.entries) {
       const variant = variants.get(entry.commercialVariantId);
       expect(variant).toBeDefined();
-      const salesUnit = specs.get(variant!.productId)?.salesUnit;
+      const spec = specs.get(variant!.productId);
+      const salesUnit =
+        spec && 'salesUnit' in spec ? spec.salesUnit : undefined;
       expect(entry.saleUnit).toBe(
         salesUnit === 'square-metre' ? 'm2' : 'piece',
       );

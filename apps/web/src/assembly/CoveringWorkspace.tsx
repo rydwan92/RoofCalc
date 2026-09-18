@@ -1,3 +1,9 @@
+import type { TilePurchasePlan } from './tile-purchase';
+import {
+  TileDemandSummary,
+  TileInspector,
+  matchesTileHighlight,
+} from './TileEvidence';
 import {
   lazy,
   Suspense,
@@ -380,9 +386,14 @@ export function CoveringWorkspace({
   battens,
   counterBattens,
   installation,
+  tilePlan,
+  onOpenMaterials,
 }: {
   assignments: readonly CoveringAssignmentSpec[];
   assignment?: CoveringAssignmentSpec;
+  /** V50: the prepared purchase plan of the active tile assignment, if any. */
+  tilePlan?: TilePurchasePlan;
+  onOpenMaterials?: () => void;
   layout?: SupportedLayout;
   conflicts: readonly PrimaryCoveringPlaneConflict[];
   surfaceGeometry: RoofSurfaceGeometryResult;
@@ -493,9 +504,47 @@ export function CoveringWorkspace({
           p.classification === 'cut-opening' ||
           p.classification === 'split-by-opening',
       ).length,
+      cutOpening: coveragePositions.filter(
+        (p) => p.classification === 'cut-opening',
+      ).length,
+      split: coveragePositions.filter(
+        (p) => p.classification === 'split-by-opening',
+      ).length,
     }),
     [coveragePositions],
   );
+  // V50: number <-> roof. Highlight and inspection read existing positions only.
+  const tileHighlight = state.workbench.tileHighlight;
+  const selectedTilePositionId = state.workbench.selectedTilePositionId;
+  const highlighted = useMemo(
+    () =>
+      tileHighlight && layout?.kind === 'roof-tile'
+        ? coveragePositions.filter((p) =>
+            matchesTileHighlight(p.classification, tileHighlight),
+          )
+        : [],
+    [coveragePositions, layout?.kind, tileHighlight],
+  );
+  const inspectedTile = useMemo(() => {
+    if (!selectedTilePositionId || !selectedLayout) return undefined;
+    if (!('courses' in selectedLayout)) return undefined;
+    // Course number counts from the eave, as the drawing labels it.
+    const stations = [
+      ...new Set(selectedLayout.courses.map((course) => course.stationVMm)),
+    ].sort((a, b) => a - b);
+    for (const course of selectedLayout.courses) {
+      const position = course.positions.find(
+        (item) => item.id === selectedTilePositionId,
+      );
+      if (position)
+        return {
+          position,
+          courseNumber: stations.indexOf(course.stationVMm) + 1,
+          layerIndex: course.layerIndex,
+        };
+    }
+    return undefined;
+  }, [selectedLayout, selectedTilePositionId]);
   // Nominal effective cells of edge-cut positions: presentation evidence of
   // why a position is cut. The clipped fragment stays the counted truth.
   const ghostCells = useMemo(
@@ -1255,6 +1304,55 @@ export function CoveringWorkspace({
               )}
             </p>
           )}
+          {layout?.kind === 'roof-tile' && assignment && (
+            <TileDemandSummary
+              layout={layout}
+              plan={tilePlan}
+              onOpenMaterials={onOpenMaterials}
+            />
+          )}
+          {coveragePositions.length > 0 && layout?.kind === 'roof-tile' && (
+            <div
+              className="a-tile-filters"
+              role="group"
+              aria-label={t('assembly.tileEvidence.filters')}
+              data-testid="covering-tile-filters"
+            >
+              {(
+                [
+                  ['full', edgeSummary.full],
+                  ['edge', edgeSummary.edge],
+                  ['opening', edgeSummary.cutOpening],
+                  ['split', edgeSummary.split],
+                ] as const
+              ).map(([key, count]) => (
+                <button
+                  key={key}
+                  type="button"
+                  aria-pressed={tileHighlight === key}
+                  data-tile-filter={key}
+                  disabled={count === 0}
+                  onClick={() =>
+                    state.setTileHighlight(
+                      tileHighlight === key ? undefined : key,
+                    )
+                  }
+                >
+                  <b>{count}</b>
+                  {t(`assembly.tileEvidence.filter.${key}`)}
+                </button>
+              ))}
+              {tileHighlight && (
+                <button
+                  type="button"
+                  data-tile-filter="clear"
+                  onClick={() => state.setTileHighlight(undefined)}
+                >
+                  {t('assembly.tileEvidence.clear')}
+                </button>
+              )}
+            </div>
+          )}
           {coveragePositions.length > 0 && (
             <div
               className="a-covering-edge-summary"
@@ -1287,7 +1385,7 @@ export function CoveringWorkspace({
           )}
           {selectedSurface && bounds && (
             <svg
-              className={`a-covering-scheme is-${layout?.kind ?? assignment.product.technicalSpecSnapshot.kind} ${visual ? 'is-visual' : 'is-technical'}`}
+              className={`a-covering-scheme is-${layout?.kind ?? assignment.product.technicalSpecSnapshot.kind} ${visual ? 'is-visual' : 'is-technical'}${highlighted.length ? ' has-tile-highlight' : ''}`}
               data-covering-mode={visual ? 'visual' : 'technical'}
               data-covering-visual={
                 layout?.kind ?? assignment.product.technicalSpecSnapshot.kind
@@ -1601,6 +1699,59 @@ export function CoveringWorkspace({
                     points={polygonPoints(opening.polygon)}
                   />
                 ))}
+                {showCovering && highlighted.length > 0 && (
+                  <g
+                    clipPath="url(#covering-plane-detail-clip)"
+                    data-testid="covering-tile-highlight"
+                    data-count={highlighted.length}
+                  >
+                    {highlighted.map((position) => (
+                      <rect
+                        key={`hl:${position.id}`}
+                        className="a-tile-highlight"
+                        x={position.fromU}
+                        y={position.fromV}
+                        width={position.toU - position.fromU}
+                        height={position.toV - position.fromV}
+                      />
+                    ))}
+                  </g>
+                )}
+                {showCovering && layout?.kind === 'roof-tile' && (
+                  <g
+                    clipPath="url(#covering-plane-detail-clip)"
+                    data-testid="covering-tile-hits"
+                  >
+                    {coveragePositions.map((position) => (
+                      <rect
+                        key={`hit:${position.id}`}
+                        className="a-tile-hit"
+                        data-tile-position={position.id}
+                        data-tile-class={position.classification}
+                        x={position.fromU}
+                        y={position.fromV}
+                        width={position.toU - position.fromU}
+                        height={position.toV - position.fromV}
+                        onClick={() => state.selectTilePosition(position.id)}
+                      />
+                    ))}
+                    {inspectedTile && (
+                      <rect
+                        className="a-tile-selected"
+                        x={inspectedTile.position.nominalFromUMm}
+                        y={inspectedTile.position.nominalFromVMm}
+                        width={
+                          inspectedTile.position.nominalToUMm -
+                          inspectedTile.position.nominalFromUMm
+                        }
+                        height={
+                          inspectedTile.position.nominalToVMm -
+                          inspectedTile.position.nominalFromVMm
+                        }
+                      />
+                    )}
+                  </g>
+                )}
                 <polygon
                   className="a-covering-plane-outline"
                   points={polygonPoints(selectedSurface.polygon)}
@@ -1655,6 +1806,16 @@ export function CoveringWorkspace({
           )}
           {simplified && (
             <p className="a-help">{t('assembly.simplifiedTilePreview')}</p>
+          )}
+          {inspectedTile && selectedPlaneId && (
+            <TileInspector
+              planeId={selectedPlaneId}
+              position={inspectedTile.position}
+              courseNumber={inspectedTile.courseNumber}
+              layerIndex={inspectedTile.layerIndex}
+              planPrepared={!!tilePlan}
+              onClose={() => state.selectTilePosition(undefined)}
+            />
           )}
           <div className="a-covering-legend">
             {hasFullFragments && (

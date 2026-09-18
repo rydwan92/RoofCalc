@@ -9,6 +9,7 @@ const SEEDED_KINDS = [
   'standing-seam',
   'membrane',
   'timber-stock',
+  'roof-tile-accessory',
 ] as const;
 
 async function main() {
@@ -41,6 +42,23 @@ async function main() {
     if (!koda) problems.push('product:swissporton:koda missing');
     else if (koda.currentRevision.technicalSpec.kind !== 'roof-tile')
       problems.push('product:swissporton:koda technical spec kind mismatch');
+    // V50: a tile variant carries its source-backed packaging, and the
+    // SIMPLA ridge tile round-trips with its declared compatibility.
+    else if (
+      !koda.variants.some(
+        (variant) =>
+          variant.metadata?.packaging?.piecesPerPack === 4 &&
+          variant.metadata.packaging.piecesPerPallet === 168,
+      )
+    )
+      problems.push('KODA variants carry no packaging');
+    const ridge = await catalog.getProduct('product:swissporton:gasior-ps');
+    const ridgeSpec = ridge?.currentRevision.technicalSpec;
+    if (
+      ridgeSpec?.kind !== 'roof-tile-accessory' ||
+      !ridgeSpec.compatibleProductIds.includes('product:swissporton:simpla')
+    )
+      problems.push('SIMPLA ridge accessory missing or not compatible');
 
     const timberVariantId = 'variant:timber:c24-45x145x4000-treated:standard';
     const priced = await pricing.entriesForVariants([timberVariantId]);

@@ -1,0 +1,402 @@
+/* V50 — roof-tile purchase plan (Material Plan) and covering tile evidence. */
+
+.tp-panel {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid var(--a-line, #dde5e0);
+  border-radius: 10px;
+  background: var(--a-surface-2, #f7faf8);
+  min-width: 0;
+}
+.tp-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.tp-head > strong {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.tp-panel > button.a-primary {
+  justify-self: start;
+  padding: 0 16px;
+}
+.tp-muted {
+  margin: 0;
+  color: var(--a-muted, #5f6d66);
+  font-size: 12px;
+}
+
+.tp-flow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.mp-workspace .tp-panel .tp-flow .tp-figure {
+  display: grid;
+  gap: 2px;
+  justify-items: start;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--a-line, #dde5e0);
+  border-radius: 8px;
+  background: #fff;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+}
+.mp-workspace .tp-panel .tp-flow button.tp-figure:not(:disabled) {
+  cursor: pointer;
+}
+.mp-workspace .tp-panel .tp-flow button.tp-figure:not(:disabled):hover {
+  border-color: var(--v37-selected, #0b7f73);
+}
+.tp-figure strong {
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.tp-figure small {
+  color: var(--a-muted, #5f6d66);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.mp-workspace .tp-panel .tp-flow .tp-figure.is-key {
+  border-color: var(--v37-ready, #2f7d4f);
+  background: var(--v37-ready-fill, #e8f4ec);
+}
+
+.tp-reserve,
+.tp-packaging {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.tp-reserve legend,
+.tp-packaging legend {
+  width: 100%;
+  margin-bottom: 4px;
+  padding: 0;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--a-muted, #5f6d66);
+}
+.mp-workspace .tp-panel .tp-reserve button,
+.mp-workspace .tp-panel .tp-packaging button:not(.tp-link) {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--a-line, #dde5e0);
+  border-radius: 8px;
+  background: #fff;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.mp-workspace .tp-panel .tp-reserve button[aria-pressed='true'],
+.mp-workspace .tp-panel .tp-packaging button[aria-pressed='true'] {
+  border-color: var(--v37-selected, #0b7f73);
+  background: var(--v37-selected-fill, #e2f3ee);
+  font-weight: 650;
+}
+.tp-reserve label,
+.tp-packaging label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+.tp-reserve input,
+.tp-packaging input {
+  width: 72px;
+  min-height: 34px;
+}
+.tp-packaging > small {
+  width: 100%;
+}
+
+.tp-sum {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+.tp-sum > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.tp-sum dt {
+  color: var(--a-muted, #5f6d66);
+  font-size: 13px;
+}
+.tp-sum dd {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.tp-sum .is-total {
+  padding-top: 4px;
+  border-top: 1px solid var(--a-line, #dde5e0);
+}
+
+.tp-buy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--a-accent, #1f4d3f);
+  color: #fff;
+}
+.tp-buy small {
+  width: 100%;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+.tp-buy strong {
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+}
+.tp-buy span {
+  font-size: 13px;
+}
+
+.tp-accessories h5,
+.tp-details h5 {
+  margin: 8px 0 4px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--a-muted, #5f6d66);
+}
+.tp-accessories ul,
+.tp-breakdown {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tp-accessories li {
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid var(--a-line, #dde5e0);
+  border-radius: 8px;
+  background: #fff;
+}
+.tp-accessory-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.tp-accessory-qty {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+.tp-accessories label {
+  display: grid;
+  gap: 2px;
+  font-size: 12px;
+}
+.tp-accessories select {
+  max-width: 100%;
+  min-height: 34px;
+}
+.tp-breakdown li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.mp-workspace .tp-panel .tp-breakdown button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--v37-selected, #0b7f73);
+  font: inherit;
+  text-align: left;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.mp-workspace .tp-panel .tp-breakdown button:disabled {
+  color: inherit;
+  text-decoration: none;
+  cursor: default;
+}
+.tp-breakdown strong {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+.tp-check [data-verdict='within'] {
+  color: var(--v37-ready, #2f7d4f);
+}
+.tp-check [data-verdict='below'],
+.tp-check [data-verdict='above'] {
+  color: var(--v37-warning, #a4561f);
+}
+.mp-workspace .tp-panel .tp-link,
+.mp-workspace .tp-panel .tp-remove {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--v37-selected, #0b7f73);
+  font: inherit;
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.mp-workspace .tp-panel .tp-remove {
+  color: var(--a-muted, #5f6d66);
+}
+
+@media (max-width: 520px) {
+  .tp-flow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .tp-figure.is-key {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Covering workspace: the number ↔ roof connection. */
+.a-tile-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.a-tile-filters button {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--a-line, #dde5e0);
+  border-radius: 999px;
+  background: #fff;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.a-tile-filters button[aria-pressed='true'] {
+  border-color: var(--v37-selected, #0b7f73);
+  background: var(--v37-selected-fill, #e2f3ee);
+  font-weight: 650;
+}
+.a-tile-filters button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.a-tile-demand {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  padding: 8px 10px;
+  border: 1px solid var(--a-line, #dde5e0);
+  border-radius: 8px;
+  background: var(--a-surface-2, #f7faf8);
+  font-size: 13px;
+}
+.a-tile-demand > strong:first-child {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.a-tile-demand b {
+  font-variant-numeric: tabular-nums;
+}
+.a-tile-demand button {
+  margin-left: auto;
+}
+.a-covering-scheme.has-tile-highlight .a-covering-fragment,
+.a-covering-scheme.has-tile-highlight .a-tile-glyph {
+  opacity: 0.35;
+}
+.a-tile-highlight {
+  fill: #0b7f73;
+  fill-opacity: 0.35;
+  stroke: #0b7f73;
+  stroke-width: 2px;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+.a-tile-hit {
+  fill: transparent;
+  cursor: pointer;
+}
+.a-tile-hit:hover {
+  fill: #0b7f73;
+  fill-opacity: 0.12;
+}
+.a-tile-selected {
+  fill: none;
+  stroke: #0b3d8f;
+  stroke-width: 3px;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+.a-tile-inspector {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--a-line, #dde5e0);
+  border-radius: 8px;
+  background: #fff;
+}
+.a-tile-inspector header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.assembly-app .a-tile-inspector header > button.a-tile-inspector-close {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  min-height: 0;
+  margin-left: auto;
+  padding: 0;
+  border: 1px solid var(--a-line, #dde5e0);
+  border-radius: 8px;
+  background: #fff;
+  aspect-ratio: auto;
+}
+.assembly-app .a-tile-inspector header > button.a-tile-inspector-close span {
+  font-size: 18px;
+  line-height: 1;
+}
+.a-tile-inspector dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 6px 12px;
+  margin: 0;
+}
+.a-tile-inspector dt {
+  color: var(--a-muted, #5f6d66);
+  font-size: 11px;
+}
+.a-tile-inspector dd {
+  margin: 0;
+  font-weight: 600;
+}
+.a-tile-inspector p {
+  margin: 0;
+  font-size: 13px;
+}

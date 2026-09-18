@@ -1297,7 +1297,21 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
-**Iteration:** `049 — stock-aware linear planning and the batten catalogue`
+**Iteration:** `050 — roof tile purchase planning and system BOM`
+
+**Status:** `IMPLEMENTED — committed on main`
+
+**Completed:** Stabilization: the recurring CI Browser QA failure (V48 and V49 runs, `technical-3d.spec.ts` collar-tie test) was a real layout bug, not a flake — with Linux font metrics the 3D control row wraps, the right-anchored family popover opened leftwards under the tool rail and its checkboxes were unclickable; the families control now stays at the row end, and a regression test forces the wrap. MariaDB 10.4 strict mode: one custom Drizzle column (`apps/api/src/db/sql-datetime.ts`, `utcDateTime`) converts ISO UTC to `YYYY-MM-DD HH:MM:SS` at the driver boundary for every audit timestamp; importers are untouched; verified by seeding XAMPP MariaDB 10.4.32 twice. V50: new pure `packages/tile-procurement` (see `docs/ARCHITECTURE_INDEX.md`): full = exact, cut = one tile each (KONSERWATYWNY, no offcut reuse), split-by-opening = one tile per visible fragment (never exact), explicit reserve 0/2/5 %/custom (default 0, integer basis points, rounded up), sale unit piece/pack/pallet with NADWYŻKA HANDLOWA, manufacturer consumption as KONTROLA PRODUCENTA only. Canonical `CoveringAssignmentSpec.purchase` (additive, one undoable edit) and `product.commercialSnapshot.packaging`. Catalogue: `roof-tile-accessory` kind; batch `tiles-commercial-2026-09-v50.json` — 23 swissporTON colour variants (KODA/SIMPLA/TITANIA/BALANCE) with source-stated minipack 4 and packaging unit 168/192, ridge tiles PS/PT/PF/PR (source "ok. 2,5 szt./mb", ridge only, approximate) and KODA/SIMPLA/TITANIA verge tiles (dimensions only; no quantity rule stated, so the user must confirm "1 per course"). Turmalin: nothing stated, nothing added. UI: Material Plan PLAN ZAKUPU DACHÓWKI panel (flow full/cut → physical → reserve → sale unit → DO ZAKUPU → accessories; classification, policy and cross-check collapsed), covering ZAPOTRZEBOWANIE summary, classification filters, highlight and tile inspector; readiness `tile-plan-missing/unresolved/openings`, `tile-accessories-undecided`; cost `tile-purchase` (sale-unit safe: pack price only multiplies packs) and `tile-accessory` lines, the consumption line is superseded and flagged, never double counted; material list and execution document read the same plan.
+
+**Validation:** `pnpm verify`, `pnpm test:architecture`, `pnpm e2e`, `pnpm build:edge`, `git diff --check`; disposable/local DB seed ×2 (second: 0 new, 0 updated, 0 conflicts for the V50 batch) + smoke-check ok; browser QA at 1920×1080, 1440×900, 1024×768, 390×844 (gable, hip, roof window, Materials, Cost, Document Hub/material list).
+
+**Known / not done:** the remote alwaysdata DEV database still rejects the configured credentials (DNS/TCP/TLS ok, *Access denied*) — not seeded; offcut reuse/nesting is not modelled (by design); hip-ridge and half/ventilation quantities need source data; verge left/right is split only when both verges of each plane end the same number of courses; accessory prices are manual.
+
+**NEXT ACTION:** V51 — user: fix the alwaysdata DEV credentials and seed it; code: source-backed hip-ridge semantics and accessory prices, then an offcut-reuse policy with explicit evidence.
+
+---
+
+**Previous iteration:** `049 — stock-aware linear planning and the batten catalogue`
 
 **Status:** `IMPLEMENTED — committed on main`
 

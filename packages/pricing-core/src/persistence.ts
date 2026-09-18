@@ -11,7 +11,17 @@ const nonBlank = z.string().trim().min(1).max(240);
 const currencyCode = z.string().regex(/^[A-Z]{3}$/);
 const dateString = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const minorUnits = z.number().int().min(0);
-const saleUnitSchema = z.enum(['piece', 'm', 'm2', 'm3', 'kg', 'hour', 'flat']);
+const saleUnitSchema = z.enum([
+  'piece',
+  'pack',
+  'pallet',
+  'm',
+  'm2',
+  'm3',
+  'kg',
+  'hour',
+  'flat',
+]);
 
 export const priceListSchema = z
   .object({

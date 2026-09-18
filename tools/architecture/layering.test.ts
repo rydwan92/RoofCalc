@@ -123,6 +123,31 @@ describe('package dependency direction', () => {
     ).toEqual([]);
   });
 
+  /**
+   * V50: `tile-procurement` turns a resolved tile layout into a physical and
+   * commercial requirement. It reads `covering-core` results and nothing else:
+   * no roof geometry solver, no catalogue, no price.
+   */
+  it('tile-procurement stays free of React, DOM, apps, catalogue, API and database', () => {
+    expect(
+      forbiddenImports('packages/tile-procurement', [
+        ...PURE_DOMAIN,
+        ...CATALOGUE,
+      ]),
+    ).toEqual([]);
+    expect(forbiddenText('packages/tile-procurement', BROWSER_GLOBALS)).toEqual(
+      [],
+    );
+  });
+
+  it('tile-procurement depends on covering-core and nothing else in the workspace', () => {
+    expect(
+      forbiddenImports('packages/tile-procurement', [
+        /^@cieslacalc\/(?!covering-core$)/,
+      ]),
+    ).toEqual([]);
+  });
+
   it('procurement-core depends on no workspace package at all', () => {
     expect(
       forbiddenImports('packages/procurement-core', [/^@cieslacalc\//]),
@@ -239,6 +264,7 @@ describe('commercial boundary', () => {
       'packages/covering-core',
       'packages/quantity-core',
       'packages/procurement-core',
+      'packages/tile-procurement',
       'packages/catalog-core',
       'packages/timber-model',
     ])

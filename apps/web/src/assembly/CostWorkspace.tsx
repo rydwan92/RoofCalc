@@ -26,6 +26,7 @@ import { formatNumber, parseDecimal } from '../format';
 import {
   createCostSuggestions,
   currentSuggestionQuantityValue,
+  supersededByTilePlan,
   type CostSuggestion,
 } from './cost-adapter';
 import { downloadCostEstimateCsv } from './cost-csv';
@@ -52,6 +53,10 @@ const VAT_PRESETS = [0, 500, 800, 2300];
 
 function suggestionLabelKey(suggestion: CostSuggestion): string {
   switch (suggestion.kind) {
+    case 'tile-purchase':
+      return 'tilePurchase';
+    case 'tile-accessory':
+      return 'tileAccessory';
     case 'k1-stock':
       return 'k1Stock';
     // V48: one row per commercial length, so the label names the material.
@@ -82,6 +87,11 @@ function suggestionLabel(
   t: (key: string) => string,
 ): string {
   const base = t(`assembly.cost.suggestion.${suggestionLabelKey(suggestion)}`);
+  if (
+    suggestion.kind === 'tile-purchase' ||
+    suggestion.kind === 'tile-accessory'
+  )
+    return `${base} · ${suggestion.productName}`;
   if (suggestion.kind !== 'linear-stock') return base;
   // Smaller dimension first, as catalogues and the purchase panel name it.
   const section =
@@ -173,7 +183,8 @@ export function CostWorkspace({
           : { value: 0, unit: suggestion.manualUnit };
     const catalogPrice =
       (suggestion.kind === 'covering-consumption' ||
-        suggestion.kind === 'linear-stock') &&
+        suggestion.kind === 'linear-stock' ||
+        suggestion.kind === 'tile-purchase') &&
       suggestion.unitPriceMinor !== undefined &&
       suggestion.currencyCode === scenario.currencyCode
         ? suggestion.unitPriceMinor
@@ -323,7 +334,8 @@ export function CostWorkspace({
                    * V49 §33: a catalogue price is a dated observation, so its
                    * source, date and a verification note travel with it.
                    */}
-                  {suggestion.kind === 'linear-stock' &&
+                  {(suggestion.kind === 'linear-stock' ||
+                    suggestion.kind === 'tile-purchase') &&
                     suggestion.unitPriceMinor !== undefined &&
                     suggestion.priceProvenance && (
                       <small
@@ -604,6 +616,27 @@ export function CostWorkspace({
                                   }
                                 >
                                   {t('assembly.cost.keepManual')}
+                                </button>
+                              </td>
+                            </tr>
+                          )}
+                          {supersededByTilePlan(facts, line.id) && (
+                            <tr
+                              className="cw-diff-row"
+                              data-testid="cost-line-superseded"
+                            >
+                              <td />
+                              <td colSpan={8}>
+                                {t('assembly.cost.supersededByTilePlan')}
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    onScenarioChange(
+                                      removeCostLine(scenario, line.id),
+                                    )
+                                  }
+                                >
+                                  {t('assembly.cost.removeSuperseded')}
                                 </button>
                               </td>
                             </tr>

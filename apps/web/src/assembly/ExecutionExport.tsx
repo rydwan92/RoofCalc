@@ -160,6 +160,13 @@ const copy = {
     runs: 'przebiegi geometryczne',
     planes: 'Połacie',
     tile: 'Dachówka',
+    tileMode: 'Tryb montażu',
+    tileCourses: 'Rzędy',
+    tileGauge: 'Rozstaw łat',
+    tileFull: 'Pełne',
+    tileCut: 'Docinane',
+    tileAccessories: 'Akcesoria systemowe',
+    tileNeedsDecision: 'wymaga ustalenia',
     modular: 'Blacha modułowa',
     cutSheet: 'Blacha cięta na długość',
     seam: 'Rąbek stojący',
@@ -204,6 +211,8 @@ const copy = {
         kg: 'kg',
         hour: 'godz.',
         flat: 'kpl.',
+        pack: 'opak.',
+        pallet: 'pal.',
       },
     },
     assumptionsHeading: {
@@ -382,6 +391,13 @@ const copy = {
     runs: 'geometric runs',
     planes: 'Planes',
     tile: 'Roof tile',
+    tileMode: 'Installation mode',
+    tileCourses: 'Courses',
+    tileGauge: 'Batten gauge',
+    tileFull: 'Full',
+    tileCut: 'Cut',
+    tileAccessories: 'System accessories',
+    tileNeedsDecision: 'needs a decision',
     modular: 'Modular sheet',
     cutSheet: 'Cut-to-length sheet',
     seam: 'Standing seam',
@@ -426,6 +442,8 @@ const copy = {
         kg: 'kg',
         hour: 'hr',
         flat: 'set',
+        pack: 'pack',
+        pallet: 'pallet',
       },
     },
     assumptionsHeading: {
@@ -1095,6 +1113,54 @@ function SectionBody({
               ) : (
                 <p className="doc-warning">{m.unresolved}</p>
               )}
+              {row.tile && (
+                <div data-testid="doc-covering-tile">
+                  <p>
+                    {[
+                      row.tile.installationModeId
+                        ? `${m.tileMode}: ${row.tile.installationModeId}`
+                        : undefined,
+                      row.tile.courseCount !== undefined
+                        ? `${m.tileCourses}: ${row.tile.courseCount}`
+                        : undefined,
+                      row.tile.gaugeMinMm !== undefined &&
+                      row.tile.gaugeMaxMm !== undefined
+                        ? `${m.tileGauge}: ${Math.round(row.tile.gaugeMinMm)}${
+                            Math.round(row.tile.gaugeMaxMm) !==
+                            Math.round(row.tile.gaugeMinMm)
+                              ? `–${Math.round(row.tile.gaugeMaxMm)}`
+                              : ''
+                          } mm`
+                        : undefined,
+                      row.measure?.full !== undefined
+                        ? `${m.tileFull}: ${row.measure.full}`
+                        : undefined,
+                      row.measure?.cut !== undefined
+                        ? `${m.tileCut}: ${row.measure.cut}`
+                        : undefined,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </p>
+                  {row.tile.accessories.length > 0 && (
+                    <p>
+                      {m.tileAccessories}:{' '}
+                      {row.tile.accessories
+                        .map(
+                          (item) =>
+                            `${materialText(locale, `tileAccessory.${item.role}`)}${
+                              item.name ? ` (${item.name})` : ''
+                            }: ${
+                              item.quantity !== undefined
+                                ? item.quantity
+                                : m.tileNeedsDecision
+                            }`,
+                        )
+                        .join(' · ')}
+                    </p>
+                  )}
+                </div>
+              )}
               {row.warnings.length > 0 && (
                 <small>
                   {row.warnings
@@ -1173,6 +1239,9 @@ function SectionBody({
       const unit = (value: string) =>
         ({
           piece: locale.startsWith('pl') ? 'szt.' : 'pcs',
+          pack: locale.startsWith('pl') ? 'opak.' : 'packs',
+          row: locale.startsWith('pl') ? 'rz.' : 'courses',
+          pallet: locale.startsWith('pl') ? 'pal.' : 'pallets',
           m2: 'm²',
           roll: locale.startsWith('pl') ? 'rol.' : 'rolls',
           course: locale.startsWith('pl') ? 'pas.' : 'courses',

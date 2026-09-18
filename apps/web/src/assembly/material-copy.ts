@@ -13,6 +13,48 @@ const pl = {
   blankLength: 'Długość blanku',
   consumption: 'Deklarowane zużycie producenta',
   netArea: 'Powierzchnia netto',
+  // V50 roof-tile purchase rows.
+  tileBase: 'Dachówka podstawowa',
+  tileFull: 'Pełne',
+  tileCut: 'Docinane',
+  tilePhysical: 'Wymaganie fizyczne',
+  tileReserve: 'Zapas użytkownika',
+  tileRequired: 'Razem wymagane',
+  tilePacks: 'Opakowania',
+  tilePallets: 'Palety',
+  tilePiecesPerUnit: 'Sztuk w opakowaniu',
+  tileCommercialOverage: 'Nadwyżka handlowa',
+  lineLength: 'Długość linii',
+  courseCountTiles: 'Rzędy przy krawędzi',
+  'tileAccessory.ridge': 'Gąsior kalenicowy',
+  'tileAccessory.hip-ridge': 'Gąsior narożny',
+  'tileAccessory.verge-left': 'Dachówka boczna lewa',
+  'tileAccessory.verge-right': 'Dachówka boczna prawa',
+  'tileAccessory.half': 'Dachówka połówkowa',
+  'tileAccessory.ventilation': 'Dachówka wentylacyjna',
+  'tile-plan-exact':
+    'DOKŁADNY: wszystkie pozycje są pełne — jedna pozycja, jedna dachówka.',
+  'tile-plan-conservative-no-offcut-reuse':
+    'KONSERWATYWNY: osobna dachówka dla każdej pozycji docinanej, bez ponownego wykorzystania docinek.',
+  'tile-plan-split-fragments':
+    'Pozycje podzielone przez otwór: po jednej dachówce na każdy widoczny fragment.',
+  'tile-plan-packaging-stale':
+    'Opakowanie z katalogu nie pasuje już do produktu — wybierz jednostkę sprzedaży ponownie.',
+  'tile-plan-layout-unresolved':
+    'Układ dachówek nie jest rozwiązany — brak ilości do zakupu.',
+  'accessory-no-accessory-selected': 'Wybierz element systemowy.',
+  'accessory-accessory-not-compatible':
+    'Element nie jest deklarowany jako zgodny z tą dachówką.',
+  'accessory-no-quantity-semantics':
+    'Źródło nie podaje długości krycia ani zużycia — WYMAGA USTALENIA.',
+  'accessory-verge-rule-not-declared':
+    'Producent nie podaje zasady ilości dla dachówki bocznej — WYMAGA USTALENIA.',
+  'accessory-verge-sides-unresolved':
+    'Liczba rzędów przy lewym i prawym szczycie różni się — WYMAGA USTALENIA.',
+  'accessory-line-shared-with-another-covering':
+    'Linia jest wspólna z innym pokryciem — ilość wymaga ustalenia.',
+  'accessory-declared-approximate':
+    'Zużycie deklarowane przez producenta jako przybliżone („ok.”).',
   // V49 linear purchase rows.
   piecePricingInCost: 'Cenę za sztukę każdej długości ustalisz w kosztorysie.',
   sourceCatalogueBadge: 'KATALOG',
@@ -146,6 +188,48 @@ const en: typeof pl = {
   blankLength: 'Blank length',
   consumption: 'Declared manufacturer consumption',
   netArea: 'Net area',
+  // V50 roof-tile purchase rows.
+  tileBase: 'Base roof tile',
+  tileFull: 'Full',
+  tileCut: 'Cut',
+  tilePhysical: 'Physical requirement',
+  tileReserve: 'User reserve',
+  tileRequired: 'Total required',
+  tilePacks: 'Packs',
+  tilePallets: 'Pallets',
+  tilePiecesPerUnit: 'Pieces per unit',
+  tileCommercialOverage: 'Commercial overage',
+  lineLength: 'Line length',
+  courseCountTiles: 'Courses at the edge',
+  'tileAccessory.ridge': 'Ridge tile',
+  'tileAccessory.hip-ridge': 'Hip ridge tile',
+  'tileAccessory.verge-left': 'Left verge tile',
+  'tileAccessory.verge-right': 'Right verge tile',
+  'tileAccessory.half': 'Half tile',
+  'tileAccessory.ventilation': 'Ventilation tile',
+  'tile-plan-exact':
+    'EXACT: every position is a full tile — one position, one tile.',
+  'tile-plan-conservative-no-offcut-reuse':
+    'CONSERVATIVE: a separate tile for every cut position, offcuts are not reused.',
+  'tile-plan-split-fragments':
+    'Positions split by an opening: one tile for each visible fragment.',
+  'tile-plan-packaging-stale':
+    'The catalogue packaging no longer matches the product — choose the sale unit again.',
+  'tile-plan-layout-unresolved':
+    'The tile layout is not resolved — no purchase quantity.',
+  'accessory-no-accessory-selected': 'Choose a system accessory.',
+  'accessory-accessory-not-compatible':
+    'This accessory is not declared compatible with this tile.',
+  'accessory-no-quantity-semantics':
+    'The source states no cover length or consumption — NEEDS A DECISION.',
+  'accessory-verge-rule-not-declared':
+    'The manufacturer states no quantity rule for the verge tile — NEEDS A DECISION.',
+  'accessory-verge-sides-unresolved':
+    'Left and right verges end a different number of courses — NEEDS A DECISION.',
+  'accessory-line-shared-with-another-covering':
+    'This line is shared with another covering — its quantity needs a decision.',
+  'accessory-declared-approximate':
+    'Consumption declared by the manufacturer as approximate.',
   // V49 linear purchase rows.
   piecePricingInCost: 'Price each commercial length per piece in the estimate.',
   sourceCatalogueBadge: 'CATALOGUE',

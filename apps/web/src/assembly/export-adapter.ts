@@ -57,6 +57,7 @@ import type {
   LinearPurchasePlan,
 } from './linear-material-plan';
 import type { MembraneProductSelection } from '@cieslacalc/covering-core';
+import type { TilePurchasePlan } from './tile-purchase';
 import {
   structuralLimitations,
   type ProjectLimitation,
@@ -115,6 +116,11 @@ export type ExportFacts = {
    * Cost and documents consume this plan; neither re-runs a solver.
    */
   linearPlans?: Partial<Record<LinearMaterialKind, LinearPurchasePlan>>;
+  /**
+   * V50: roof-tile purchase plans, one per assignment the user prepared.
+   * Cost, the material list and readiness read these; none re-solves them.
+   */
+  tilePurchasePlans?: TilePurchasePlan[];
 };
 
 function drawing(model: DrawingModel): DocumentDrawing {
@@ -506,7 +512,47 @@ export function createExportCandidates(facts: ExportFacts): SectionCandidate[] {
           (candidate) => candidate.assignmentId === assignment.id,
         );
         const spec = assignment.product.technicalSpecSnapshot;
+        const tileLayout = (facts.coveringLayouts ?? []).find(
+          (item): item is RoofTileLayoutResult =>
+            item.kind === 'roof-tile' && item.assignmentId === assignment.id,
+        );
+        const tilePlan = facts.tilePurchasePlans?.find(
+          (plan) => plan.assignmentId === assignment.id,
+        );
+        const gauges = (tileLayout?.planes ?? []).flatMap((plane) =>
+          plane.actualGaugeRangeMm ? [plane.actualGaugeRangeMm] : [],
+        );
         return {
+          ...(tileLayout?.status === 'resolved'
+            ? {
+                tile: {
+                  installationModeId: tileLayout.installationModeId,
+                  courseCount: tileLayout.planes.reduce(
+                    (sum, plane) =>
+                      sum +
+                      plane.courses.filter((course) => course.layerIndex === 0)
+                        .length,
+                    0,
+                  ),
+                  ...(gauges.length
+                    ? {
+                        gaugeMinMm: Math.min(...gauges.map((g) => g.min)),
+                        gaugeMaxMm: Math.max(...gauges.map((g) => g.max)),
+                      }
+                    : {}),
+                  accessories: (tilePlan?.accessories ?? []).map((item) => ({
+                    role: item.role,
+                    ...(item.selection?.displaySnapshot?.familyName
+                      ? { name: item.selection.displaySnapshot.familyName }
+                      : {}),
+                    ...(item.quantity !== undefined
+                      ? { quantity: item.quantity }
+                      : {}),
+                    status: item.status,
+                  })),
+                },
+              }
+            : {}),
           name:
             [
               assignment.product.displaySnapshot?.manufacturer,
