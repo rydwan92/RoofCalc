@@ -65,6 +65,7 @@ export type ReadinessAction =
   | 'open-materials'
   | 'open-drainage'
   | 'open-roof-system'
+  | 'open-documents'
   | 'open-cost';
 
 export type ReadinessIssueCode =

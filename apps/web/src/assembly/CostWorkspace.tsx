@@ -134,16 +134,23 @@ export function CostWorkspace({
   scenario,
   onScenarioChange,
   onOpenDocuments,
+  materialsAttention = 0,
+  onOpenMaterials,
 }: {
   facts: ExportFacts;
   scenario: CostScenario;
   onScenarioChange: (next: CostScenario) => void;
   onOpenDocuments: () => void;
+  /** V53: material rows still needing a decision (guides an empty estimate). */
+  materialsAttention?: number;
+  onOpenMaterials?: () => void;
 }) {
   const { t, i18n } = useTranslation();
   const locale = i18n.language;
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const [addingManual, setAddingManual] = useState(false);
+  // V53: an empty estimate first points at unfinished materials (transient).
+  const [continueAnyway, setContinueAnyway] = useState(false);
   // V47: status counts focus the affected rows instead of a generic verdict.
   const [focus, setFocus] = useState<
     'needs-price' | 'needs-quantity' | 'estimate'
@@ -258,6 +265,18 @@ export function CostWorkspace({
               count: summary.pricedLineCount,
             })}
           </span>
+          {summary.needsPriceCount > 0 && focus !== 'needs-price' && (
+            <button
+              type="button"
+              className="a-button a-primary"
+              data-testid="cost-fill-prices"
+              onClick={() => setFocus('needs-price')}
+            >
+              {t('assembly.cost.fillPrices', {
+                count: summary.needsPriceCount,
+              })}
+            </button>
+          )}
           {summary.needsPriceCount > 0 &&
             focusButton(
               'needs-price',
@@ -435,7 +454,35 @@ export function CostWorkspace({
       )}
 
       <section className="cw-lines">
-        {scenario.lines.length === 0 ? (
+        {scenario.lines.length === 0 &&
+        materialsAttention > 0 &&
+        onOpenMaterials &&
+        !continueAnyway ? (
+          <div className="cw-empty-state" data-testid="cost-materials-first">
+            <strong>{t('assembly.cost.materialsFirstTitle')}</strong>
+            <p className="cw-empty">
+              {t('assembly.cost.materialsFirst', { count: materialsAttention })}
+            </p>
+            <div className="cw-empty-actions">
+              <button
+                type="button"
+                className="a-button a-primary"
+                data-testid="cost-open-materials"
+                onClick={onOpenMaterials}
+              >
+                {t('assembly.cost.openMaterials')}
+              </button>
+              <button
+                type="button"
+                className="a-link-button"
+                data-testid="cost-continue-anyway"
+                onClick={() => setContinueAnyway(true)}
+              >
+                {t('assembly.cost.continueAnyway')}
+              </button>
+            </div>
+          </div>
+        ) : scenario.lines.length === 0 ? (
           <div className="cw-empty-state" data-testid="cost-empty-state">
             <strong>{t('assembly.cost.noLinesTitle')}</strong>
             <p className="cw-empty">{t('assembly.cost.noLines')}</p>

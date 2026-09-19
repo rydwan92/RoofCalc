@@ -17,6 +17,12 @@ import type {
   ReadinessIssue,
 } from './project-readiness';
 import { readinessIssueText, repairChangeText } from './readiness-copy';
+import type {
+  JourneyAction,
+  JourneyStage,
+  JourneyStageKey,
+  ProjectJourney,
+} from './project-journey';
 import './readiness.css';
 
 /**
@@ -43,17 +49,29 @@ function AreaIcon({ state }: { state: ReadinessAreaState }) {
 
 export function ProjectReadinessBar({
   readiness,
+  journey,
   unit,
   onAction,
+  onJourneyAction,
   onOpenPanel,
+  currentStage,
 }: {
   readiness: ProjectReadiness;
+  /** V53: the one recommended next action and stage overview. */
+  journey?: ProjectJourney;
+  /** V53: the stage of the workspace the user is in (for "where am I"). */
+  currentStage?: JourneyStageKey;
   unit: LengthUnit;
   onAction: (action: ReadinessAction) => void;
+  onJourneyAction?: (action: JourneyAction) => void;
   onOpenPanel: () => void;
 }) {
   const { t, i18n } = useTranslation();
-  const primary = readiness.primary;
+  const recommended = journey?.recommended;
+  const here = currentStage
+    ? journey?.stages.find((stage) => stage.key === currentStage)
+    : undefined;
+  const primary = journey ? recommended?.issue : readiness.primary;
   const rest = readiness.issues.filter(
     (issue) => issue.id !== primary?.id && issue.severity !== 'info',
   ).length;
@@ -74,6 +92,17 @@ export function ProjectReadinessBar({
         aria-label={t('assembly.readiness.progressLabel', readiness.progress)}
         onClick={onOpenPanel}
       >
+        {here && (
+          <span
+            className="a-journey-here"
+            data-testid="journey-here"
+            data-state={here.state}
+          >
+            {here.state === 'ready' ? '✓ ' : ''}
+            {t(`assembly.journey.stage.${here.key}`)} ·{' '}
+            {t(`assembly.journey.state.${here.state}`)}
+          </span>
+        )}
         <span className="a-readiness-dots" aria-hidden="true">
           {readiness.areas
             .filter((area) => area.counted)
@@ -92,8 +121,30 @@ export function ProjectReadinessBar({
         >
           <SeverityIcon severity={primary.severity} />
           <div>
+            {journey && (
+              <small className="a-journey-now">
+                {t('assembly.journey.now')}
+              </small>
+            )}
             <strong>{text.title}</strong>
             <span>{text.description}</span>
+          </div>
+        </div>
+      ) : recommended?.reasonKey ? (
+        <div
+          className="a-readiness-primary is-next"
+          data-testid="project-journey-next"
+          data-stage={recommended.stage}
+        >
+          <Circle size={16} aria-hidden="true" />
+          <div>
+            <small className="a-journey-now">{t('assembly.journey.now')}</small>
+            <strong>
+              {t(`assembly.journey.next.${recommended.reasonKey}.title`)}
+            </strong>
+            <span>
+              {t(`assembly.journey.next.${recommended.reasonKey}.description`)}
+            </span>
           </div>
         </div>
       ) : (
@@ -106,16 +157,28 @@ export function ProjectReadinessBar({
         </div>
       )}
       <div className="a-readiness-actions">
-        {primary?.action && (
+        {recommended && onJourneyAction ? (
           <button
             type="button"
             className="a-button a-primary"
             data-testid="project-next-action"
-            data-readiness-action={primary.action}
-            onClick={() => onAction(primary.action!)}
+            data-readiness-action={recommended.action}
+            onClick={() => onJourneyAction(recommended)}
           >
-            {t(`assembly.readiness.action.${primary.action}`)}
+            {t(`assembly.readiness.action.${recommended.action}`)}
           </button>
+        ) : (
+          primary?.action && (
+            <button
+              type="button"
+              className="a-button a-primary"
+              data-testid="project-next-action"
+              data-readiness-action={primary.action}
+              onClick={() => onAction(primary.action!)}
+            >
+              {t(`assembly.readiness.action.${primary.action}`)}
+            </button>
+          )
         )}
         {rest > 0 && (
           <button
@@ -183,14 +246,88 @@ function IssueRow({
   );
 }
 
+function JourneyStages({
+  journey,
+  onJourneyAction,
+}: {
+  journey: ProjectJourney;
+  onJourneyAction: (action: JourneyAction) => void;
+}) {
+  const { t } = useTranslation();
+  const open = (stage: JourneyStage) =>
+    onJourneyAction(
+      journey.recommended?.stage === stage.key
+        ? journey.recommended
+        : {
+            action: stage.action,
+            ...(stage.focus ? { focus: stage.focus } : {}),
+          },
+    );
+  return (
+    <section className="a-journey" data-testid="project-journey">
+      <h3>
+        {t('assembly.journey.title')}
+        <small>{t('assembly.journey.counts', journey.counts)}</small>
+      </h3>
+      <ol>
+        {journey.stages.map((stage) => {
+          const recommended = journey.recommended?.stage === stage.key;
+          return (
+            <li
+              key={stage.key}
+              data-stage={stage.key}
+              data-state={stage.state}
+              data-recommended={recommended || undefined}
+            >
+              <button
+                type="button"
+                data-testid={`journey-stage-${stage.key}`}
+                onClick={() => open(stage)}
+              >
+                <span className="a-journey-name">
+                  {t(`assembly.journey.stage.${stage.key}`)}
+                </span>
+                <span className="a-journey-state">
+                  {t(`assembly.journey.state.${stage.state}`)}
+                </span>
+                {stage.state === 'waiting' && stage.waitingFor ? (
+                  <small>
+                    {journey.stages.find(
+                      (item) =>
+                        item.state === 'waiting' &&
+                        item.waitingFor === stage.waitingFor,
+                    ) === stage
+                      ? t(`assembly.journey.waiting.${stage.waitingFor}`)
+                      : t('assembly.journey.waitingShort', {
+                          stage: t(
+                            `assembly.journey.stage.${stage.waitingFor}`,
+                          ).toLowerCase(),
+                        })}
+                  </small>
+                ) : stage.summary && stage.state === 'ready' ? (
+                  <small>{stage.summary}</small>
+                ) : null}
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+    </section>
+  );
+}
+
 export function ProjectReadinessPanel({
   readiness,
+  journey,
+  onJourneyAction,
   unit,
   onAction,
   onSafeRepair,
   onClose,
 }: {
   readiness: ProjectReadiness;
+  journey?: ProjectJourney;
+  onJourneyAction?: (action: JourneyAction) => void;
   unit: LengthUnit;
   onAction: (action: ReadinessAction) => void;
   onSafeRepair: () => void;
@@ -237,6 +374,9 @@ export function ProjectReadinessPanel({
             {t('assembly.readiness.close')}
           </button>
         </header>
+        {journey && onJourneyAction && (
+          <JourneyStages journey={journey} onJourneyAction={onJourneyAction} />
+        )}
         {safeCount > 0 && (
           <div className="a-readiness-safe" data-testid="readiness-safe-repair">
             <ShieldCheck size={18} aria-hidden="true" />

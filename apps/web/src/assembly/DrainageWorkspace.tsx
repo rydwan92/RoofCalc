@@ -117,6 +117,9 @@ const copy = {
     legendOutlet: 'odpływ',
     legendProposed: 'propozycja',
     selectEave: 'Kliknij okap na rysunku, aby go edytować.',
+    detected: (n: number, total: string) =>
+      `RoofCalc wykrył: ${n} ${n === 1 ? 'okap' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'okapy' : 'okapów'} · ${total}`,
+    advanced: 'Ustawienia wykonawcze',
     route: 'Prowadzenie rury',
     routeStraight: 'PROSTY PION',
     routeOffset: 'Z ODSADZKĄ',
@@ -219,6 +222,9 @@ const copy = {
     legendOutlet: 'outlet',
     legendProposed: 'proposal',
     selectEave: 'Click an eave on the drawing to edit it.',
+    detected: (n: number, total: string) =>
+      `RoofCalc detected: ${n} ${n === 1 ? 'eave' : 'eaves'} · ${total}`,
+    advanced: 'Execution settings',
     route: 'Downpipe route',
     routeStraight: 'STRAIGHT',
     routeOffset: 'WITH OFFSET',
@@ -553,6 +559,18 @@ export function DrainageWorkspace({
       >
         <h2>{c.title}</h2>
         <p>{c.empty}</p>
+        {facts.eaves.length > 0 && (
+          <p data-testid="drainage-detected">
+            <strong>
+              {c.detected(
+                facts.eaves.length,
+                length(
+                  facts.eaves.reduce((sum, eave) => sum + eave.lengthMm, 0),
+                ),
+              )}
+            </strong>
+          </p>
+        )}
         <p className="dw-muted">{c.emptyHelp}</p>
         <button
           type="button"
@@ -1428,12 +1446,15 @@ export function DrainageWorkspace({
           />
         )}
         {plan.hooks.avoidsJoints && (
-          <div className="dw-rule" data-testid="drainage-hook-rules">
-            <small>{c.hookSourceRule}</small>
-            <small>
-              {c.hookStrategyRule(length(plan.hooks.jointClearanceMm ?? 0))}
-            </small>
-          </div>
+          <details className="dw-advanced">
+            <summary>{c.advanced}</summary>
+            <div className="dw-rule" data-testid="drainage-hook-rules">
+              <small>{c.hookSourceRule}</small>
+              <small>
+                {c.hookStrategyRule(length(plan.hooks.jointClearanceMm ?? 0))}
+              </small>
+            </div>
+          </details>
         )}
         <button
           type="button"
@@ -1458,8 +1479,16 @@ export function DrainageWorkspace({
 
   const policy = drainage.purchasePolicy ?? 'no-reuse-between-runs';
   const purchasePanel = system && plan.gutterPurchase && (
-    <div className="dw-step" data-testid="drainage-purchase-policy">
-      <h4>{c.purchase}</h4>
+    <details
+      className="dw-step dw-advanced"
+      data-testid="drainage-purchase-policy"
+    >
+      <summary>
+        {c.advanced} · {c.purchase}:{' '}
+        {policy === 'no-reuse-between-runs'
+          ? c.purchaseNoReuse
+          : c.purchaseReuse}
+      </summary>
       <div className="dw-chips" role="group">
         {(['no-reuse-between-runs', 'reuse-straight-remainders'] as const).map(
           (value) => (
@@ -1490,7 +1519,7 @@ export function DrainageWorkspace({
             {c.purchaseShared(plan.gutterPurchase.sharedStockPieces)}
           </p>
         )}
-    </div>
+    </details>
   );
 
   const bom = system && (

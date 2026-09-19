@@ -177,6 +177,8 @@ export function MaterialPlan({
   const m = materialCopy(locale);
   const state = useAssembly();
   const [picker, setPicker] = useState(false);
+  // V53: transient "what still needs attention" filter (never persisted).
+  const [filter, setFilter] = useState<'all' | 'attention'>('all');
   const [review, setReview] = useState<string>();
   const [kept, setKept] = useState<Record<string, string>>({});
   // V51: the drainage workspace; the first click also switches drainage on.
@@ -346,6 +348,57 @@ export function MaterialPlan({
         </span>
       </div>
       <small>{m.incomplete}</small>
+      {rows.length > 0 &&
+        (() => {
+          const attention = rows.filter((row) => row.partial).length;
+          return (
+            <div
+              className="mp-filter"
+              role="group"
+              aria-label={m.filterLabel}
+              data-testid="material-filter"
+            >
+              <span className="mp-filter-counts">
+                <strong>✓ {rows.length - attention}</strong> {m.filterReady}
+                {attention > 0 && (
+                  <>
+                    {' · '}
+                    <strong className="is-attention">⚠ {attention}</strong>{' '}
+                    {m.filterAttentionCount}
+                  </>
+                )}
+              </span>
+              <span className="mp-filter-tabs">
+                <button
+                  type="button"
+                  aria-pressed={filter === 'all'}
+                  data-testid="material-filter-all"
+                  onClick={() => setFilter('all')}
+                >
+                  {m.filterAll}
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={filter === 'attention'}
+                  data-testid="material-filter-attention"
+                  onClick={() => setFilter('attention')}
+                >
+                  {m.filterAttention} ({attention})
+                </button>
+              </span>
+              {attention > 0 && filter === 'all' && (
+                <button
+                  type="button"
+                  className="a-primary"
+                  data-testid="material-fill-missing"
+                  onClick={() => setFilter('attention')}
+                >
+                  {m.fillMissing} ({attention})
+                </button>
+              )}
+            </div>
+          );
+        })()}
       {!rows.length && <p>{m.empty}</p>}
       <RoofSystemSummary
         facts={facts}
@@ -814,7 +867,16 @@ export function MaterialPlan({
           );
         };
         return MATERIAL_CATEGORY_ORDER.map((category) => {
-          const categoryRows = rows.filter((row) => row.category === category);
+          const categoryRows = rows.filter(
+            (row) =>
+              row.category === category && (filter === 'all' || row.partial),
+          );
+          if (
+            category === 'drainage' &&
+            filter === 'attention' &&
+            !categoryRows.length
+          )
+            return null;
           if (category === 'drainage')
             return (
               <div

@@ -1297,7 +1297,21 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
-**Iteration:** `052 — complete roof detail system and drainage hardening`
+**Iteration:** `053 — guided project experience and UX consolidation`
+
+**Status:** `IMPLEMENTED — committed on main`
+
+**Completed:** `apps/web/src/assembly/project-journey.ts` — pure application projection over V47 `deriveProjectReadiness` + V52 roof-system checklist (no geometry, no network): stages Geometria → Konstrukcja → Pokrycie → Warstwy → System dachu → Materiały → Kosztorys → Dokumenty with human states (Gotowe / W trakcie / Wymaga decyzji / Wymaga poprawy / Opcjonalne / Później / Nie dotyczy), a waiting reason, completed-stage summaries and ONE recommended action (V47 primary when present — blockers and dependency order preserved — otherwise roof-system gaps with exact opening/area focus, then materials, then documents). Readiness bar: "CO TERAZ" + one primary button, stage chip "✓ Pokrycie · Gotowe" for the current workspace; "Sprawdź projekt" starts with the journey list (recommended stage emphasised, first waiting stage explains why, later ones "Czeka na: …"). New action `open-documents`. Material Plan: ✓ ready · ⚠ attention counts, [Wszystko]/[Wymaga uwagi] filter, "Uzupełnij brakujące". Cost: "Uzupełnij ceny (n)" focuses missing prices; an empty estimate with unfinished materials points to materials first (with "Kontynuuj mimo to"). System dachu: per-area item lines (✓ Taśma, ⚠ Okno 1 · wymaga kołnierza), "N rzeczy wymagają decyzji → Uzupełnij brakujące", optional areas read "○ Opcjonalne", detected physical length per area, catalogue cards show "Potrzeba X m · Do zakupu N rolek", opening editor numbered 1–3. Drainage: "RoofCalc wykrył: N okapy · L" first screen; hook rules and offcut policy under "Ustawienia wykonawcze". Guidance is transient view state (no history, no persistence).
+
+**Validation:** `pnpm verify` (1447 tests, new `project-journey.test.ts`), `pnpm test:architecture` 36/36, `pnpm e2e` 98 passed / 24 DB-gated skipped (new `e2e/v53-journey.spec.ts`: new-roof guidance, imperfect project → exact window focus → manual flashing → journey updates; desktop + mobile), `pnpm build:edge`, `git diff --check`; browser QA 1440×900 and 375×812 (bar, journey panel).
+
+**Known / not done:** no covering first-run wizard or product-confirmation panel; no inline "stage completed → next" panel inside each workspace (the bar carries it); Documents header summary not reworked; card-in-card reduction only in System dachu/Material filter; construction summary shows family codes (K1 + M + R).
+
+**NEXT ACTION:** V54 — covering first-run flow (kind → product → confirmation with "Zastosuj Auto"), per-workspace completion panels consuming the journey, Documents readiness header, then commercial variants and verified prices.
+
+---
+
+**Previous iteration:** `052 — complete roof detail system and drainage hardening`
 
 **Status:** `IMPLEMENTED — committed on main`
 

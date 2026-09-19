@@ -1933,6 +1933,94 @@ export const assemblyPl = {
       'layer-off': 'Warstwa jest wyłączona.',
     },
   },
+  // V53 project journey: where am I, what is ready, what next and why.
+  journey: {
+    now: 'Co teraz',
+    title: 'Przygotowanie dachu',
+    counts: '{{ready}} gotowe · {{decisions}} do decyzji',
+    stage: {
+      geometry: 'Geometria',
+      construction: 'Konstrukcja',
+      covering: 'Pokrycie',
+      layers: 'Warstwy',
+      'roof-system': 'System dachu',
+      materials: 'Materiały',
+      cost: 'Kosztorys',
+      documents: 'Dokumenty',
+    },
+    state: {
+      ready: 'Gotowe',
+      'in-progress': 'W trakcie',
+      decision: 'Wymaga decyzji',
+      fix: 'Wymaga poprawy',
+      optional: 'Opcjonalne',
+      waiting: 'Później',
+      'not-applicable': 'Nie dotyczy',
+    },
+    waiting: {
+      geometry: 'Czeka na poprawną geometrię dachu.',
+      construction: 'Czeka na rozwiązaną konstrukcję.',
+      covering:
+        'Czeka na pokrycie — rozstaw łat Auto, system dachu i ilości korzystają z danych wybranego produktu.',
+    },
+    open: 'Otwórz',
+    waitingShort: 'Czeka na: {{stage}}',
+    next: {
+      geometry: {
+        title: 'Sprawdź geometrię dachu',
+        description: 'Wymiary i kąt są podstawą wszystkich dalszych wyników.',
+      },
+      construction: {
+        title: 'Sprawdź konstrukcję',
+        description:
+          'Krokwie i elementy konstrukcji wyznaczają warstwy i materiały.',
+      },
+      covering: {
+        title: 'Dokończ pokrycie',
+        description: 'Z pokrycia RoofCalc liczy układ, łaty i zapotrzebowanie.',
+      },
+      layers: {
+        title: 'Dokończ warstwy dachu',
+        description:
+          'Membrana, łaty i kontrłaty dają ilości do planu materiałów.',
+      },
+      'roof-system-openings': {
+        title: 'Dobierz kołnierz okna',
+        description:
+          'Okno dachowe wymaga kołnierza — dopiero wtedy lista materiałów jest pełna.',
+      },
+      'roof-system-ridge': {
+        title: 'Uzupełnij kalenicę i grzbiety',
+        description: 'Gąsiory i elementy kalenicy dopełniają pokrycie dachu.',
+      },
+      'roof-system-verge': {
+        title: 'Uzupełnij skraje dachu',
+        description: 'Dachówki skrajne lub obróbki zamykają krawędzie połaci.',
+      },
+      'roof-system-eave': {
+        title: 'Uzupełnij okap',
+        description: 'Elementy okapu kończą pokrycie przy rynnie.',
+      },
+      'roof-system-drainage': {
+        title: 'Dokończ odwodnienie',
+        description: 'Rynny są włączone — uzupełnij brakujące dane.',
+      },
+      'roof-system-open': {
+        title: 'Uzupełnij system dachu',
+        description: 'Elementy kalenicy, okapu, otworów i odwodnienia.',
+      },
+      materials: {
+        title: 'Sprawdź plan materiałów',
+        description:
+          'Część pozycji czeka na decyzję zakupową — plan zakupu da ilości do kupienia.',
+      },
+      documents: {
+        title: 'Przygotuj dokumenty',
+        description:
+          'Pakiet wykonawczy, lista materiałów i kosztorys z tych samych danych.',
+      },
+    },
+  },
   // V47 project readiness: problem → consequence → action.
   readiness: {
     panelTitle: 'Sprawdzenie projektu',
@@ -2035,6 +2123,7 @@ export const assemblyPl = {
       'open-materials': 'Otwórz materiały',
       'open-drainage': 'Otwórz odwodnienie',
       'open-roof-system': 'Otwórz system dachu',
+      'open-documents': 'Otwórz dokumenty',
       'open-cost': 'Otwórz kosztorys',
     },
     issue: {
@@ -2362,6 +2451,12 @@ export const assemblyPl = {
     exportCsv: 'Pobierz CSV',
     openInDocuments: 'Otwórz w eksporcie',
     noLinesTitle: 'Brak pozycji w kosztorysie',
+    materialsFirstTitle: 'Najpierw przygotuj brakujące pozycje materiałowe',
+    materialsFirst:
+      '{{count}} pozycje planu materiałów wymagają decyzji — bez nich kosztorys będzie niepełny.',
+    openMaterials: 'Uzupełnij materiały',
+    continueAnyway: 'Kontynuuj mimo to',
+    fillPrices: 'Uzupełnij ceny ({{count}})',
     noLines: 'Kosztorys jest pusty. Dodaj pozycję z projektu lub ręcznie.',
     unitLabel: {
       piece: 'szt.',
@@ -4291,6 +4386,93 @@ export const assemblyEn: typeof assemblyPl = {
     },
   },
   // V47 project readiness: problem → consequence → action.
+  // V53 project journey: where am I, what is ready, what next and why.
+  journey: {
+    now: 'Next',
+    title: 'Roof preparation',
+    counts: '{{ready}} ready · {{decisions}} to decide',
+    stage: {
+      geometry: 'Geometry',
+      construction: 'Structure',
+      covering: 'Covering',
+      layers: 'Layers',
+      'roof-system': 'Roof system',
+      materials: 'Materials',
+      cost: 'Estimate',
+      documents: 'Documents',
+    },
+    state: {
+      ready: 'Ready',
+      'in-progress': 'In progress',
+      decision: 'Needs a decision',
+      fix: 'Needs a fix',
+      optional: 'Optional',
+      waiting: 'Later',
+      'not-applicable': 'Not applicable',
+    },
+    waiting: {
+      geometry: 'Waits for valid roof geometry.',
+      construction: 'Waits for a resolved structure.',
+      covering:
+        'Waits for the covering — Auto battens, the roof system and quantities use the chosen product.',
+    },
+    open: 'Open',
+    waitingShort: 'Waits for: {{stage}}',
+    next: {
+      geometry: {
+        title: 'Check the roof geometry',
+        description: 'Dimensions and pitch drive every later result.',
+      },
+      construction: {
+        title: 'Check the structure',
+        description: 'Rafters and members drive layers and materials.',
+      },
+      covering: {
+        title: 'Finish the covering',
+        description: 'The covering drives the layout, battens and quantities.',
+      },
+      layers: {
+        title: 'Finish the roof layers',
+        description:
+          'Membrane, battens and counter-battens feed the material plan.',
+      },
+      'roof-system-openings': {
+        title: 'Choose a window flashing',
+        description:
+          'A roof window needs a flashing — only then is the material list complete.',
+      },
+      'roof-system-ridge': {
+        title: 'Complete the ridge and hips',
+        description: 'Ridge tiles and ridge elements complete the covering.',
+      },
+      'roof-system-verge': {
+        title: 'Complete the verges',
+        description: 'Verge tiles or flashings close the plane edges.',
+      },
+      'roof-system-eave': {
+        title: 'Complete the eave',
+        description: 'Eave elements finish the covering at the gutter.',
+      },
+      'roof-system-drainage': {
+        title: 'Finish the drainage',
+        description: 'Gutters are on — complete the missing inputs.',
+      },
+      'roof-system-open': {
+        title: 'Complete the roof system',
+        description: 'Ridge, eave, opening and drainage elements.',
+      },
+      materials: {
+        title: 'Review the material plan',
+        description:
+          'Some items wait for a purchase decision — a purchase plan gives quantities to buy.',
+      },
+      documents: {
+        title: 'Prepare documents',
+        description:
+          'Execution package, material list and estimate from the same data.',
+      },
+    },
+  },
   readiness: {
     panelTitle: 'Project check',
     panelIntro:
@@ -4394,6 +4576,7 @@ export const assemblyEn: typeof assemblyPl = {
       'open-materials': 'Open materials',
       'open-drainage': 'Open drainage',
       'open-roof-system': 'Open roof system',
+      'open-documents': 'Open documents',
       'open-cost': 'Open cost estimate',
     },
     issue: {
@@ -4721,6 +4904,12 @@ export const assemblyEn: typeof assemblyPl = {
     exportCsv: 'Download CSV',
     openInDocuments: 'Open in export',
     noLinesTitle: 'No estimate lines yet',
+    materialsFirstTitle: 'Prepare the missing material items first',
+    materialsFirst:
+      '{{count}} material plan items need a decision — without them the estimate is incomplete.',
+    openMaterials: 'Complete materials',
+    continueAnyway: 'Continue anyway',
+    fillPrices: 'Fill in prices ({{count}})',
     noLines: 'The estimate is empty. Add a suggested or manual line.',
     unitLabel: {
       piece: 'pc',

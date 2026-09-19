@@ -519,3 +519,21 @@
 .dw-outlets small {
   font-size: 12px;
 }
+.dw-advanced > summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ui-text-muted, #667b71);
+}
+.dw-advanced[open] > summary {
+  margin-bottom: 6px;
+}
+.dw-advanced > summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ui-text-muted, #667b71);
+}
+.dw-advanced[open] > summary {
+  margin-bottom: 6px;
+}

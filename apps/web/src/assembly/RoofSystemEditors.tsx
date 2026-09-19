@@ -175,6 +175,7 @@ export function ComponentPicker({
   roles,
   coveringProductId,
   openEnds,
+  lineLengthMm,
   locale,
   c,
   nextId,
@@ -182,6 +183,8 @@ export function ComponentPicker({
   onCancel,
 }: {
   roles: readonly RoofLineComponentRole[];
+  /** V53: the physical line length the area's elements apply to. */
+  lineLengthMm?: number;
   coveringProductId?: string;
   openEnds: number;
   locale: string;
@@ -306,6 +309,19 @@ export function ComponentPicker({
                         ? c.roll(metres(preview.rollLengthMm, locale))
                         : c.ruleUnknown}
                     </small>
+                    {preview.rollLengthMm && lineLengthMm ? (
+                      <small data-testid="rs-product-preview">
+                        {c.needFor(metres(lineLengthMm, locale))} · {c.toBuy}:{' '}
+                        {c.rolls(
+                          Math.max(
+                            1,
+                            Math.ceil(
+                              lineLengthMm / preview.rollLengthMm - 1e-9,
+                            ),
+                          ),
+                        )}
+                      </small>
+                    ) : null}
                     <em className={`rs-badge is-${state}`}>
                       {state === 'compatible'
                         ? `${c.compatible} · ${c.systemElement}`
@@ -699,7 +715,7 @@ export function OpeningEditor({
         </div>
       </dl>
       <section>
-        <h5>{c.window}</h5>
+        <h5>{c.stepWindow}</h5>
         <p className="rs-muted">{window ? window.name : c.windowGeneric}</p>
         {opening.windowSizeDiffers && (
           <p className="rs-warning" data-testid="rs-window-size-differs">
@@ -758,7 +774,7 @@ export function OpeningEditor({
         </details>
       </section>
       <section>
-        <h5>{c.coveringClass}</h5>
+        <h5>{c.stepCovering}</h5>
         <p className="rs-muted">{c.coveringClassHelp}</p>
         <div className="dw-chips" role="group">
           {(['profiled', 'flat'] as const).map((value) => (
@@ -775,7 +791,7 @@ export function OpeningEditor({
         </div>
       </section>
       <section>
-        <h5>{c.flashing}</h5>
+        <h5>{c.stepFlashing}</h5>
         {flashing.status === 'resolved' ||
         flashing.status === 'incompatible' ? (
           <div className="rs-card" data-status={flashing.status}>

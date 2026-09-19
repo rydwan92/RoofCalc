@@ -14,6 +14,7 @@ import { materialText } from './material-copy';
 import type { ExportFacts } from './export-adapter';
 import {
   featureLabel,
+  featureScopeLabel,
   nextLineComponentId,
   withLineComponent,
   withOpening,
@@ -447,6 +448,13 @@ export function RoofSystemWorkspace({
             roles={roles}
             coveringProductId={coveringProductId}
             openEnds={openEnds}
+            lineLengthMm={features
+              .filter((feature) =>
+                selectable
+                  ? feature.kind === selectable
+                  : feature.kind === 'ridge' || feature.kind === 'hip',
+              )
+              .reduce((sum, feature) => sum + feature.lengthMm, 0)}
             locale={locale}
             c={c}
             nextId={nextLineComponentId(intent)}
@@ -649,6 +657,31 @@ export function RoofSystemWorkspace({
     </div>
   );
 
+  /** The physical length this area applies to — the fact behind every count. */
+  const detected = (kinds: readonly string[]) => {
+    const total = features
+      .filter((feature) => kinds.includes(feature.kind))
+      .reduce((sum, feature) => sum + feature.lengthMm, 0);
+    return (
+      <p className="rs-detected" data-testid="rs-detected-length">
+        {c.detectedLength}:{' '}
+        <strong>
+          {new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(
+            total / 1000,
+          )}{' '}
+          m
+        </strong>{' '}
+        ·{' '}
+        {featureScopeLabel(
+          topology,
+          features
+            .filter((feature) => kinds.includes(feature.kind))
+            .map((feature) => feature.id),
+          locale,
+        )}
+      </p>
+    );
+  };
   const editor = (key: RoofSystemAreaKey) => {
     switch (key) {
       case 'covering':
@@ -690,6 +723,7 @@ export function RoofSystemWorkspace({
       case 'ridge':
         return (
           <div className="rs-editor">
+            {detected(['ridge', 'hip'])}
             {tileAccessories(['ridge', 'hip-ridge'])}
             {cards(RIDGE_ROLES)}
           </div>
@@ -697,12 +731,18 @@ export function RoofSystemWorkspace({
       case 'verge':
         return (
           <div className="rs-editor">
+            {detected(['verge'])}
             {tileAccessories(['verge-left', 'verge-right'])}
             {cards(VERGE_ROLES, 'verge')}
           </div>
         );
       case 'eave':
-        return <div className="rs-editor">{cards(EAVE_ROLES, 'eave')}</div>;
+        return (
+          <div className="rs-editor">
+            {detected(['eave'])}
+            {cards(EAVE_ROLES, 'eave')}
+          </div>
+        );
       case 'openings':
         return openingDetail;
       case 'drainage':
@@ -748,10 +788,41 @@ export function RoofSystemWorkspace({
               {c.state[item.state]}
             </strong>
           </button>
+          {item.state !== 'not-applicable' &&
+            item.key !== 'covering' &&
+            item.items.length > 0 && (
+              <ul className="rs-area-items">
+                {item.items.map((entry) => (
+                  <li
+                    key={`${entry.key}:${entry.featureId ?? ''}`}
+                    data-state={entry.state}
+                  >
+                    <span aria-hidden="true">
+                      {entry.state === 'done'
+                        ? '✓'
+                        : entry.state === 'attention'
+                          ? '⚠'
+                          : '○'}
+                    </span>
+                    {entry.key === 'opening-flashing'
+                      ? `${c.opening(entry.ordinal ?? 0)} · ${
+                          system.openingSystems.find(
+                            (opening) => opening.featureId === entry.featureId,
+                          )?.flashing.name ?? c.flashingNeeded
+                        }`
+                      : c.item[entry.key]}
+                  </li>
+                ))}
+              </ul>
+            )}
         </li>
       ))}
     </ul>
   );
+  const attentionItems = checklist.areas
+    .filter((area) => area.key !== 'covering')
+    .flatMap((area) => area.items)
+    .filter((entry) => entry.state === 'attention').length;
 
   return (
     <section className="rs-workspace" data-testid="roof-system-workspace">
@@ -812,6 +883,25 @@ export function RoofSystemWorkspace({
             <>
               <p className="rs-muted">{c.intro}</p>
               {overview}
+              {attentionItems > 0 && (
+                <div className="rs-next" data-testid="rs-attention">
+                  <strong>{c.attentionCount(attentionItems)}</strong>
+                  <button
+                    type="button"
+                    className="a-primary"
+                    data-testid="rs-fill-missing"
+                    onClick={() => {
+                      const first = checklist.areas
+                        .filter((area) => area.key !== 'covering')
+                        .flatMap((area) => area.items)
+                        .find((entry) => entry.state === 'attention');
+                      if (first) openArea(first.area, first.featureId);
+                    }}
+                  >
+                    {c.fillMissing}
+                  </button>
+                </div>
+              )}
             </>
           )}
         </aside>

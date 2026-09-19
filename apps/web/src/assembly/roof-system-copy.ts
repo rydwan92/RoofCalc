@@ -29,6 +29,16 @@ const pl = {
   completeHelp:
     'Lista pokazuje obszary tego dachu. Nic nie jest dodawane automatycznie — wybierasz sam.',
   close: 'Zamknij',
+  attentionCount: (n: number) =>
+    `${n} ${plural(n, 'rzecz wymaga', 'rzeczy wymagają', 'rzeczy wymaga')} decyzji`,
+  fillMissing: 'Uzupełnij brakujące',
+  detectedLength: 'Długość na dachu',
+  needFor: (m: string) => `Potrzeba ${m}`,
+  toBuy: 'Do zakupu',
+  stepWindow: '1. Określ okno',
+  stepCovering: '2. Potwierdź rodzaj pokrycia',
+  stepFlashing: '3. Dobierz kołnierz',
+  flashingNeeded: 'wymaga kołnierza',
   back: '← Wszystkie obszary',
   area: {
     covering: 'Pokrycie',
@@ -41,7 +51,7 @@ const pl = {
   state: {
     ready: '✓ Gotowe',
     'needs-decision': '⚠ Wymaga decyzji',
-    'not-configured': '— Nie skonfigurowano',
+    'not-configured': '○ Opcjonalne',
     'not-applicable': 'Nie dotyczy',
   },
   item: {
@@ -198,6 +208,16 @@ const en: Copy = {
   completeHelp:
     'The list shows the areas of this roof. Nothing is added automatically — you choose.',
   close: 'Close',
+  attentionCount: (n) =>
+    `${n} ${n === 1 ? 'item needs' : 'items need'} a decision`,
+  fillMissing: 'Complete missing',
+  detectedLength: 'Length on the roof',
+  needFor: (m) => `Needed ${m}`,
+  toBuy: 'To buy',
+  stepWindow: '1. Identify the window',
+  stepCovering: '2. Confirm the covering type',
+  stepFlashing: '3. Choose the flashing',
+  flashingNeeded: 'needs a flashing',
   back: '← All areas',
   area: {
     covering: 'Covering',
@@ -210,7 +230,7 @@ const en: Copy = {
   state: {
     ready: '✓ Ready',
     'needs-decision': '⚠ Needs a decision',
-    'not-configured': '— Not configured',
+    'not-configured': '○ Optional',
     'not-applicable': 'Not applicable',
   },
   item: {

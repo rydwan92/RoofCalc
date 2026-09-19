@@ -119,6 +119,16 @@ import { usePriceOptions } from '../pricing/use-prices';
 import { createTilePurchasePlans } from './tile-purchase';
 import { resolveRoofSystemFacts, ridgeTileCount } from './roof-system';
 import {
+  requestRoofSystemFocus,
+  resolveRoofSystemChecklist,
+} from './roof-system-checklist';
+import {
+  deriveProjectJourney,
+  type JourneyAction,
+  type JourneyStageKey,
+} from './project-journey';
+import { tileProductName } from './tile-purchase';
+import {
   createMaterialPlanRows,
   materialScenarioPrices,
   type MaterialPriceSelection,
@@ -1399,6 +1409,46 @@ function AssemblyPageContent() {
       roofSystem,
     ],
   );
+  // V53 project journey: stages + ONE next action from resolved facts only.
+  const roofChecklist = resolveRoofSystemChecklist(materialFacts);
+  const pitch = Math.round(state.template.pitchDeg * 10) / 10;
+  const primaryCovering = coveringAssignments[0];
+  const projectJourney = deriveProjectJourney({
+    readiness: projectReadiness,
+    checklist: roofChecklist,
+    summaries: {
+      geometry: `${t(`assembly.${state.template.type === 'gable' ? 'gableRoof' : 'hipRoof'}`)} · ${(
+        state.template.buildingLengthMm / 1000
+      ).toLocaleString(i18n.language)} × ${(
+        (state.template.halfRunMm * 2) /
+        1000
+      ).toLocaleString(
+        i18n.language,
+      )} m · ${pitch.toLocaleString(i18n.language)}°`,
+      construction: [
+        ...new Set(memberSchedule.timberRows.map((row) => row.familyKey)),
+      ]
+        .sort()
+        .join(' + '),
+      ...(primaryCovering
+        ? { covering: tileProductName(primaryCovering) }
+        : {}),
+    },
+    openingsNeedingFlashing: roofSystem.openingSystems.filter(
+      (opening) => opening.flashing.status !== 'resolved',
+    ),
+    materials: {
+      attention: materialRows.filter((row) => row.partial).length,
+      total: materialRows.length,
+    },
+    cost: {
+      started: !!costScenario && costScenario.lines.length > 0,
+      missingPrices:
+        costScenario && costScenario.lines.length
+          ? summarizeCostScenario(costScenario).needsPriceCount
+          : 0,
+    },
+  });
   const documentFactsWithLimits: ExportFacts = {
     ...documentFacts,
     limitations: projectReadiness.limitations,
@@ -1744,6 +1794,12 @@ function AssemblyPageContent() {
       message: t(messageKey),
       historyLength: useAssembly.getState().historyPast.length,
     });
+  // V53: a journey action may carry an exact roof-system focus (one
+  // opening, one area); it is transient view state and creates no history.
+  const runJourneyAction = (next: JourneyAction) => {
+    if (next.focus) requestRoofSystemFocus(next.focus);
+    runReadinessAction(next.action);
+  };
   const runReadinessAction = (action: ReadinessAction) => {
     setReadinessOpen(false);
     closeDocument();
@@ -1833,6 +1889,9 @@ function AssemblyPageContent() {
         return;
       case 'open-roof-system':
         state.navigateTo(workbenchLocation('materials', 'system'));
+        return;
+      case 'open-documents':
+        state.navigateTo(workbenchLocation('documents'));
         return;
       case 'open-cost':
         state.navigateTo(workbenchLocation('costing'));
@@ -2331,12 +2390,34 @@ function AssemblyPageContent() {
           <>
             <ProjectReadinessBar
               readiness={projectReadiness}
+              journey={projectJourney}
+              currentStage={
+                (
+                  {
+                    construction: 'construction',
+                    openings: 'geometry',
+                    layers: 'layers',
+                    covering: 'covering',
+                    cuts: 'construction',
+                    materials:
+                      workbench.materialsView === 'system' ||
+                      workbench.materialsView === 'drainage'
+                        ? 'roof-system'
+                        : 'materials',
+                    costing: 'cost',
+                    documents: 'documents',
+                  } as Partial<Record<string, JourneyStageKey>>
+                )[workbench.viewPreset]
+              }
               unit={state.unit}
               onAction={runReadinessAction}
+              onJourneyAction={runJourneyAction}
               onOpenPanel={() => setReadinessOpen(true)}
             />
             {readinessOpen && (
               <ProjectReadinessPanel
+                journey={projectJourney}
+                onJourneyAction={runJourneyAction}
                 readiness={projectReadiness}
                 unit={state.unit}
                 onAction={runReadinessAction}
@@ -2753,6 +2834,12 @@ function AssemblyPageContent() {
                         scenario={costScenario}
                         onScenarioChange={setCostScenario}
                         onOpenDocuments={openExecutionExport}
+                        materialsAttention={
+                          materialRows.filter((row) => row.partial).length
+                        }
+                        onOpenMaterials={() =>
+                          state.navigateTo(workbenchLocation('materials'))
+                        }
                       />
                     ) : (
                       <div className="a-loading-panel" />

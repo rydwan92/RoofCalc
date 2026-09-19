@@ -479,3 +479,126 @@
     white-space: normal;
   }
 }
+
+/* V53 project journey: stage list in the check panel, "Co teraz" eyebrow. */
+.a-journey-now {
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ui-text-muted, #667b71);
+}
+.a-journey {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.a-journey h3 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.a-journey h3 small {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ui-text-muted, #667b71);
+}
+.a-journey ol {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--ui-line, #dce3dc);
+}
+.a-journey li {
+  border-bottom: 1px solid var(--ui-line, #dce3dc);
+}
+.a-journey li button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.a-journey li button:hover,
+.a-journey li button:focus-visible {
+  background: var(--ui-canvas, #f4f7f3);
+}
+.a-journey li button:focus-visible {
+  outline: 2px solid var(--ui-accent, #235344);
+  outline-offset: -2px;
+}
+.a-journey-name {
+  font-weight: 700;
+}
+.a-journey-state {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ui-text-muted, #667b71);
+}
+.a-journey li button small {
+  grid-column: 1 / -1;
+  font-size: 12px;
+  color: var(--ui-text-muted, #667b71);
+}
+.a-journey li[data-state='ready'] .a-journey-state {
+  color: var(--ui-accent, #235344);
+}
+.a-journey li[data-state='decision'] .a-journey-state {
+  color: var(--ui-warning, #b35b2d);
+}
+.a-journey li[data-state='fix'] .a-journey-state {
+  color: var(--ui-danger, #b42318);
+}
+.a-journey li[data-state='waiting'],
+.a-journey li[data-state='optional'],
+.a-journey li[data-state='not-applicable'] {
+  opacity: 0.75;
+}
+.a-journey li[data-recommended] {
+  border-left: 4px solid var(--ui-accent, #235344);
+  background: #eef5f1;
+}
+.cw-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 16px;
+}
+.a-journey-here {
+  margin-right: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--ui-canvas, #f4f7f3);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--ui-text-muted, #667b71);
+}
+.a-journey-here[data-state='ready'] {
+  color: var(--ui-accent, #235344);
+}
+.a-journey-here[data-state='decision'],
+.a-journey-here[data-state='fix'] {
+  color: var(--ui-warning, #b35b2d);
+}
+@media (max-width: 700px) {
+  .a-journey-here {
+    display: none;
+  }
+}
