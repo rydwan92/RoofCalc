@@ -5,17 +5,60 @@ const pl = {
   covering: 'Pokrycie',
   other: 'Konstrukcja — pozostałe elementy (geometria)',
   // V51 whole-roof groups and roof-system rows.
-  eave: 'Okap i obróbki',
+  eave: 'Okap / krawędzie',
+  openings: 'Otwory dachowe',
   drainage: 'Odwodnienie',
   subgroupTile: 'Dachówka podstawowa',
-  subgroupRidge: 'Gąsiory',
-  subgroupVerge: 'Dachówki skrajne',
-  subgroupAccessory: 'Pozostałe akcesoria systemu',
+  subgroupRidge: 'Gąsiory / grzbiet',
+  subgroupVerge: 'Skrajne',
+  subgroupAccessory: 'Inne systemowe',
   'roofSystem.ridge-tape': 'Taśma kalenicowa / grzbietowa',
+  'roofSystem.ridge-end': 'Zakończenie kalenicy / grzbietu',
+  'roofSystem.ridge-clip': 'Klamra gąsiora',
   'roofSystem.eave-comb': 'Grzebień okapowy',
   'roofSystem.ventilation-comb': 'Grzebień wentylacyjny',
+  'roofSystem.eave-ventilation-strip': 'Taśma wentylacyjna okapu',
   'roofSystem.eave-strip': 'Pas okapowy',
+  'roofSystem.drip-edge': 'Okapnik',
   'roofSystem.eave-flashing': 'Obróbka okapu (pas nadrynnowy)',
+  'roofSystem.gutter-apron': 'Pas podrynnowy',
+  'roofSystem.verge-flashing': 'Obróbka skrajna (wiatrownica)',
+  'roofSystem.wind-board': 'Deska wiatrowa',
+  'opening.flashing-kit': 'Kołnierz okna dachowego',
+  'opening-flashing-resolved': 'Kołnierz przypisany do tego okna.',
+  'opening-flashing-requires-product':
+    'Otwór bez produktu okna — kołnierz wymaga wyboru okna albo wpisu ręcznego.',
+  'opening-flashing-requires-decision': 'Kołnierz wymaga wyboru.',
+  'opening-flashing-incompatible':
+    'NIEZGODNE: wybrany kołnierz nie pasuje do tego okna.',
+  'opening-window-generic': 'Okno nie ma przypisanego produktu.',
+  'opening-window-system-mismatch': 'Inny system okien niż kołnierz.',
+  'opening-size-code-mismatch': 'Inny rozmiar okna niż kołnierz.',
+  'opening-covering-class-unconfirmed':
+    'Potwierdź rodzaj pokrycia przy oknie (profilowane / płaskie).',
+  'opening-covering-class-mismatch':
+    'Kołnierz jest do innego rodzaju pokrycia.',
+  'opening-pitch-out-of-range': 'Kąt połaci poza zakresem kołnierza.',
+  'opening-opening-not-rectangular':
+    'Otwór jest przycięty krawędzią połaci — kołnierz systemowy nie pasuje.',
+  'opening-not-a-flashing-kit': 'To nie jest kołnierz.',
+  'opening-window-size-differs':
+    'Rozmiar okna z katalogu różni się od narysowanego otworu.',
+  requirementLength: 'Wymaganie',
+  explicitAllowance: 'Naddatek (wpisany)',
+  openEnds: 'Otwarte końce',
+  'line-component-rolls':
+    'Wymaganie z długości linii; zakup w całych rolkach (rolka przechodzi między liniami).',
+  'line-component-open-ends':
+    'Jedna sztuka na każdy otwarty koniec kalenicy / grzbietu (z topologii dachu).',
+  'line-component-per-ridge-tile': 'Jedna sztuka na każdy gąsior.',
+  'line-component-ridge-tiles-unresolved':
+    'Najpierw policz gąsiory w planie zakupu dachówki.',
+  'line-component-no-features-selected': 'Nie wybrano żadnej linii dachu.',
+  'line-component-rule-not-allowed':
+    'Ta reguła ilości nie pasuje do tego elementu.',
+  'drainage-reuse-remainders':
+    'Końcówki proste mogą trafić do innej rynny (wybór użytkownika).',
   'drainage.gutter-section': 'Rynna',
   'drainage.gutter-connector': 'Łącznik rynny',
   'drainage.gutter-corner-external': 'Narożnik zewnętrzny',
@@ -227,17 +270,61 @@ const en: typeof pl = {
   covering: 'Covering',
   other: 'Structure — other members (geometry)',
   // V51 whole-roof groups and roof-system rows.
-  eave: 'Eave and flashings',
+  eave: 'Eave / edges',
+  openings: 'Roof openings',
   drainage: 'Drainage',
   subgroupTile: 'Base tile',
-  subgroupRidge: 'Ridge tiles',
-  subgroupVerge: 'Verge tiles',
-  subgroupAccessory: 'Other system accessories',
+  subgroupRidge: 'Ridge / hip',
+  subgroupVerge: 'Verge',
+  subgroupAccessory: 'Other system items',
   'roofSystem.ridge-tape': 'Ridge / hip tape',
+  'roofSystem.ridge-end': 'Ridge / hip end',
+  'roofSystem.ridge-clip': 'Ridge tile clip',
   'roofSystem.eave-comb': 'Eave comb',
   'roofSystem.ventilation-comb': 'Ventilation comb',
+  'roofSystem.eave-ventilation-strip': 'Eave ventilation strip',
   'roofSystem.eave-strip': 'Eave strip',
+  'roofSystem.drip-edge': 'Drip edge',
   'roofSystem.eave-flashing': 'Eave flashing (drip edge)',
+  'roofSystem.gutter-apron': 'Gutter apron',
+  'roofSystem.verge-flashing': 'Verge flashing',
+  'roofSystem.wind-board': 'Barge board',
+  'opening.flashing-kit': 'Roof window flashing',
+  'opening-flashing-resolved': 'Flashing assigned to this window.',
+  'opening-flashing-requires-product':
+    'Opening without a window product — the flashing needs a window or a manual entry.',
+  'opening-flashing-requires-decision': 'Choose a flashing.',
+  'opening-flashing-incompatible':
+    'INCOMPATIBLE: the chosen flashing does not fit this window.',
+  'opening-window-generic': 'The window has no product assigned.',
+  'opening-window-system-mismatch':
+    'Different window system than the flashing.',
+  'opening-size-code-mismatch': 'Different window size than the flashing.',
+  'opening-covering-class-unconfirmed':
+    'Confirm the covering type at the window (profiled / flat).',
+  'opening-covering-class-mismatch':
+    'The flashing is for a different covering type.',
+  'opening-pitch-out-of-range': 'Roof pitch outside the flashing range.',
+  'opening-opening-not-rectangular':
+    'The opening is clipped by the plane edge — a system flashing does not fit.',
+  'opening-not-a-flashing-kit': 'This is not a flashing.',
+  'opening-window-size-differs':
+    'The catalogue window size differs from the drawn opening.',
+  requirementLength: 'Requirement',
+  explicitAllowance: 'Allowance (entered)',
+  openEnds: 'Open ends',
+  'line-component-rolls':
+    'Requirement from the line length; bought in whole rolls (a roll continues between lines).',
+  'line-component-open-ends':
+    'One piece per open ridge / hip end (from the roof topology).',
+  'line-component-per-ridge-tile': 'One piece per ridge tile.',
+  'line-component-ridge-tiles-unresolved':
+    'Count the ridge tiles in the tile purchase plan first.',
+  'line-component-no-features-selected': 'No roof line selected.',
+  'line-component-rule-not-allowed':
+    'This quantity rule does not fit this element.',
+  'drainage-reuse-remainders':
+    'Straight remainders may go to another gutter (user choice).',
   'drainage.gutter-section': 'Gutter',
   'drainage.gutter-connector': 'Gutter connector',
   'drainage.gutter-corner-external': 'External corner',

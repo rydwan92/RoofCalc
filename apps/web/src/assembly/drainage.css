@@ -497,3 +497,25 @@
     max-height: 48vh;
   }
 }
+
+/* V52: hook/joint markers on demand, source vs RoofCalc strategy. */
+.dw-hook {
+  fill: #fff;
+  stroke: #0b4f59;
+  stroke-width: 10;
+}
+.dw-joint {
+  fill: #0b4f59;
+}
+.dw-rule {
+  display: grid;
+  gap: 2px;
+  padding: 6px 8px;
+  border-left: 3px solid var(--dw-gutter);
+  background: var(--dw-gutter-soft);
+  font-size: 11px;
+}
+.dw-step > .dw-toggle,
+.dw-outlets small {
+  font-size: 12px;
+}

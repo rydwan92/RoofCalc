@@ -13,6 +13,18 @@
  */
 export type SectionPolicy = 'no-reuse-between-runs';
 
+/**
+ * V52 purchase policy for straight gutter sections. `no-reuse-between-runs`
+ * (default, KONSERWATYWNY) buys every run from whole sections; with
+ * `reuse-straight-remainders` the user states that a straight remainder cut
+ * from one run may be installed as a straight piece of another run. The
+ * installed assembly (pieces, joints, connectors) is identical in both; only
+ * the purchase changes. No source forbids or requires it, so it is never the
+ * default.
+ */
+export type GutterPurchasePolicy =
+  'no-reuse-between-runs' | 'reuse-straight-remainders';
+
 export interface SectionAssembly {
   policy: SectionPolicy;
   requiredLengthMm: number;
@@ -25,6 +37,13 @@ export interface SectionAssembly {
   joints: number;
   /** A section is cut to finish the run. */
   finalCut: boolean;
+  /**
+   * V52: installed piece lengths in laying order — whole sections, longest
+   * first, then the cut piece. Joint stations follow from them.
+   */
+  piecesMm: number[];
+  /** Distance of every joint from the run start, mm. */
+  jointStationsMm: number[];
 }
 
 const MAX_COMBINATIONS = 20_000;
@@ -67,7 +86,18 @@ export function planCommercialSections(
   };
   search(0, count, 0);
   const overage = Math.max(0, bestTotal - requiredLengthMm);
+  const piecesMm = best.map((length, index) =>
+    index === best.length - 1 ? length - overage : length,
+  );
+  const jointStationsMm: number[] = [];
+  let station = 0;
+  for (const piece of piecesMm.slice(0, -1)) {
+    station += piece;
+    jointStationsMm.push(station);
+  }
   return {
+    piecesMm,
+    jointStationsMm,
     policy: 'no-reuse-between-runs',
     requiredLengthMm,
     sectionsMm: best,

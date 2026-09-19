@@ -4,8 +4,9 @@ import type {
   DrainageIntent,
   DrainageSystemSnapshot,
 } from './drainage-spec';
+import { planGutterPurchase, type GutterPurchase } from './gutter-purchase';
 import { planCommercialSections, type SectionAssembly } from './sections';
-import { distributeAlongLength } from './spacing';
+import { distributeAlongLength, distributeAvoidingJoints } from './spacing';
 
 /**
  * V51 drainage planner: "for THIS selected system and THIS chosen layout,
@@ -40,6 +41,7 @@ export type DrainageQuantityRule =
   | 'one-per-feature-end'
   | 'spacing-along-feature'
   | 'one-per-outlet'
+  | 'one-per-route-elbow'
   | 'manual';
 
 export type DrainageIssueCode =
@@ -73,6 +75,8 @@ export interface GutterSegment {
   offsetMm: number;
   assembly?: SectionAssembly;
   hookPositionsMm: number[];
+  /** V52: connector stations inside this segment, mm from its start. */
+  jointStationsMm: number[];
 }
 
 export interface GutterRun {
@@ -97,7 +101,13 @@ export interface ResolvedDrainageCorner extends DrainageCornerInput {
 export interface ResolvedDownpipe {
   heightMm?: number;
   assembly?: SectionAssembly;
+  /** V52: the offset pipe between the two offset elbows. */
+  offsetAssembly?: SectionAssembly;
+  route?: 'straight' | 'offset';
+  offsetPipeLengthMm?: number;
   elbows?: number;
+  /** `route`: derived from the chosen route; `user`: confirmed count. */
+  elbowSource?: 'route' | 'user';
   clamps?: number;
   clampSource?: 'spacing' | 'user';
 }
@@ -144,6 +154,14 @@ export interface HookPlan {
   actualIntervalMm?: number;
   count?: number;
   status: 'resolved' | 'incompatible' | 'requires-decision';
+  /**
+   * V52: hooks were kept off gutter connector stations (source requirement),
+   * `jointClearanceMm` either side (RoofCalc strategy, not a source value).
+   */
+  avoidsJoints: boolean;
+  jointClearanceMm?: number;
+  /** Largest actual gap between two hooks, including across a joint. */
+  maxGapMm?: number;
 }
 
 export interface DrainagePlan {
@@ -159,9 +177,19 @@ export interface DrainagePlan {
   issues: DrainageIssue[];
   totalGutterLengthMm: number;
   purchasedGutterLengthMm?: number;
+  /** V52: the gutter purchase under the chosen policy. */
+  gutterPurchase?: GutterPurchase;
 }
 
 const PROPOSED_OUTLET_END_DISTANCE_MM = 300;
+/**
+ * ROOFCALC STRATEGY: clear distance kept between a hook and a gutter
+ * connector station. The source says only "not at a joint"; 100 mm keeps a
+ * hook off a connector while the gap across the joint (200 mm) stays far
+ * below any hook maximum. Shown as a RoofCalc value, never as a manufacturer
+ * figure.
+ */
+export const HOOK_JOINT_CLEARANCE_MM = 100;
 
 function components(
   system: DrainageSystemSnapshot | undefined,
@@ -182,7 +210,7 @@ function emptyPlan(
     corners: [],
     outlets: [],
     proposedOutlets: [],
-    hooks: { mode: 'auto', status: 'requires-decision' },
+    hooks: { mode: 'auto', status: 'requires-decision', avoidsJoints: false },
     bom: [],
     issues: [],
     totalGutterLengthMm: 0,
@@ -270,7 +298,9 @@ export function resolveDrainagePlan(args: {
           ? { assembly: planCommercialSections(lengthMm, gutterLengths) }
           : {}),
         hookPositionsMm: [],
+        jointStationsMm: [],
       };
+      segment.jointStationsMm = segment.assembly?.jointStationsMm ?? [];
       offset += lengthMm;
       return segment;
     });
@@ -309,16 +339,22 @@ export function resolveDrainagePlan(args: {
         ? 'incompatible'
         : 'resolved';
   let actualIntervalMm = 0;
+  let maxGapMm = 0;
+  // The joints are known only once commercial sections are known.
+  const avoidsJoints = gutterLengths.length > 0;
   if (appliedSpacingMm !== undefined)
     for (const run of runs)
       for (const segment of run.segments) {
-        const plan = distributeAlongLength({
+        const plan = distributeAvoidingJoints({
           lengthMm: segment.lengthMm,
           maxSpacingMm: appliedSpacingMm,
+          jointStationsMm: segment.jointStationsMm,
+          clearanceMm: HOOK_JOINT_CLEARANCE_MM,
           endOffsetMm: hookComponent?.spec.maxEndDistanceMm,
         });
         segment.hookPositionsMm = plan.positionsMm;
         actualIntervalMm = Math.max(actualIntervalMm, plan.intervalMm);
+        maxGapMm = Math.max(maxGapMm, plan.maxGapMm);
       }
   if (guttered.length && appliedSpacingMm === undefined && system)
     issues.push({ code: 'hook-spacing-missing', role: 'gutter-hook' });
@@ -338,9 +374,11 @@ export function resolveDrainagePlan(args: {
     ...(maxSpacingMm !== undefined ? { maxSpacingMm } : {}),
     ...(appliedSpacingMm !== undefined ? { appliedSpacingMm } : {}),
     ...(appliedSpacingMm !== undefined
-      ? { actualIntervalMm, count: hookCount }
+      ? { actualIntervalMm, count: hookCount, maxGapMm }
       : {}),
     status: guttered.length ? hookStatus : 'requires-decision',
+    avoidsJoints,
+    ...(avoidsJoints ? { jointClearanceMm: HOOK_JOINT_CLEARANCE_MM } : {}),
   };
   // 5. Outlets: explicit only; proposals are shown, never counted.
   const downpipeLengths = components(system, 'downpipe').flatMap((item) =>
@@ -359,7 +397,12 @@ export function resolveDrainagePlan(args: {
     const heightMm = outlet.downpipeHeightMm;
     if (heightMm === undefined)
       issues.push({ code: 'downpipe-height-missing', outletId: outlet.id });
-    if (outlet.elbowCount === undefined)
+    // V52: a chosen route implies its elbows; otherwise the user confirms.
+    const route = outlet.route;
+    const elbows = route
+      ? (route.kind === 'offset' ? 2 : 0) + (route.dischargeElbow ? 1 : 0)
+      : outlet.elbowCount;
+    if (elbows === undefined)
       issues.push({ code: 'elbows-unconfirmed', outletId: outlet.id });
     const clamps =
       outlet.clampCount ??
@@ -382,8 +425,25 @@ export function resolveDrainagePlan(args: {
         ...(heightMm !== undefined && downpipeLengths.length
           ? { assembly: planCommercialSections(heightMm, downpipeLengths) }
           : {}),
-        ...(outlet.elbowCount !== undefined
-          ? { elbows: outlet.elbowCount }
+        ...(route ? { route: route.kind } : {}),
+        ...(route?.kind === 'offset'
+          ? {
+              offsetPipeLengthMm: route.offsetPipeLengthMm,
+              ...(downpipeLengths.length
+                ? {
+                    offsetAssembly: planCommercialSections(
+                      route.offsetPipeLengthMm,
+                      downpipeLengths,
+                    ),
+                  }
+                : {}),
+            }
+          : {}),
+        ...(elbows !== undefined
+          ? {
+              elbows,
+              elbowSource: route ? ('route' as const) : ('user' as const),
+            }
           : {}),
         ...(clamps !== undefined
           ? {
@@ -419,7 +479,22 @@ export function resolveDrainagePlan(args: {
         );
     } else proposedOutlets.push(near(run.segments.at(-1)!, true));
   }
-  // 6. Bill of materials from the resolved topology.
+  // 6. Purchase: the installed assemblies are fixed; only buying may share
+  // stock between runs, and only when the user chose it.
+  const assemblies = runs.flatMap((run) =>
+    run.segments.flatMap((segment) =>
+      segment.assembly ? [segment.assembly] : [],
+    ),
+  );
+  const gutterPurchase =
+    gutterLengths.length && assemblies.length
+      ? planGutterPurchase({
+          assemblies,
+          stockLengthsMm: gutterLengths,
+          policy: intent.purchasePolicy ?? 'no-reuse-between-runs',
+        })
+      : undefined;
+  // 7. Bill of materials from the resolved topology.
   const bom: DrainageBomRow[] = [];
   if (!system) {
     issues.unshift({ code: 'system-missing' });
@@ -454,14 +529,7 @@ export function resolveDrainagePlan(args: {
         reason: 'gutter-length-missing',
       });
     } else {
-      const byLength = new Map<number, number>();
-      for (const run of runs)
-        for (const segment of run.segments)
-          for (const section of segment.assembly!.sectionsMm)
-            byLength.set(section, (byLength.get(section) ?? 0) + 1);
-      for (const [lengthMm, quantity] of [...byLength].sort(
-        ([a], [b]) => b - a,
-      ))
+      for (const { lengthMm, quantity } of gutterPurchase!.sections)
         row('gutter-section', 'commercial-assembly', quantity, {
           key: `gutter-section:${lengthMm}`,
           lengthMm,
@@ -538,7 +606,10 @@ export function resolveDrainagePlan(args: {
       else {
         const byLength = new Map<number, number>();
         for (const item of heights)
-          for (const section of item.assembly!.sectionsMm)
+          for (const section of [
+            ...item.assembly!.sectionsMm,
+            ...(item.offsetAssembly?.sectionsMm ?? []),
+          ])
             byLength.set(section, (byLength.get(section) ?? 0) + 1);
         for (const [lengthMm, quantity] of [...byLength].sort(
           ([a], [b]) => b - a,
@@ -552,7 +623,10 @@ export function resolveDrainagePlan(args: {
           });
         const pipeJoint = components(system, 'downpipe')[0]?.spec.joint;
         const joints = heights.reduce(
-          (sum, item) => sum + (item.assembly?.joints ?? 0),
+          (sum, item) =>
+            sum +
+            (item.assembly?.joints ?? 0) +
+            (item.offsetAssembly?.joints ?? 0),
           0,
         );
         if (pipeJoint !== 'integrated' && joints > 0)
@@ -560,11 +634,19 @@ export function resolveDrainagePlan(args: {
       }
       const elbowsKnown = heights.every((item) => item.elbows !== undefined);
       const elbows = heights.reduce((sum, item) => sum + (item.elbows ?? 0), 0);
+      const elbowsDerived = heights.every(
+        (item) => item.elbowSource === 'route',
+      );
       if (!elbowsKnown)
         row('downpipe-elbow', 'manual', undefined, {
           reason: 'elbows-unconfirmed',
         });
-      else if (elbows > 0) row('downpipe-elbow', 'manual', elbows);
+      else if (elbows > 0)
+        row(
+          'downpipe-elbow',
+          elbowsDerived ? 'one-per-route-elbow' : 'manual',
+          elbows,
+        );
       const clampsKnown = heights.every((item) => item.clamps !== undefined);
       row(
         'downpipe-clamp',
@@ -592,19 +674,7 @@ export function resolveDrainagePlan(args: {
     (issue) => issue.code !== 'stale-eave-reference',
   );
   const totalGutterLengthMm = runs.reduce((sum, run) => sum + run.lengthMm, 0);
-  const purchased = runs.every((run) =>
-    run.segments.every((segment) => segment.assembly),
-  )
-    ? runs.reduce(
-        (sum, run) =>
-          sum +
-          run.segments.reduce(
-            (total, segment) => total + segment.assembly!.purchasedLengthMm,
-            0,
-          ),
-        0,
-      )
-    : undefined;
+  const purchased = gutterPurchase?.purchasedLengthMm;
   return {
     status: !system
       ? 'system-missing'
@@ -624,5 +694,6 @@ export function resolveDrainagePlan(args: {
     ...(purchased !== undefined && runs.length
       ? { purchasedGutterLengthMm: purchased }
       : {}),
+    ...(gutterPurchase && runs.length ? { gutterPurchase } : {}),
   };
 }

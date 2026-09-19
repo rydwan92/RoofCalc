@@ -12,7 +12,16 @@ export interface Money {
 
 /** V50: `pack`/`pallet` for products sold in whole packaging units. */
 export type QuantityUnit =
-  'piece' | 'pack' | 'pallet' | 'm' | 'm2' | 'm3' | 'kg' | 'hour' | 'flat';
+  | 'piece'
+  | 'pack'
+  | 'pallet'
+  | 'roll'
+  | 'm'
+  | 'm2'
+  | 'm3'
+  | 'kg'
+  | 'hour'
+  | 'flat';
 
 export interface Quantity {
   readonly value: number;

@@ -11,6 +11,8 @@ const SEEDED_KINDS = [
   'timber-stock',
   'roof-tile-accessory',
   'roof-drainage-component',
+  'roof-system-component',
+  'roof-window-component',
 ] as const;
 
 async function main() {
@@ -70,6 +72,25 @@ async function main() {
       hookSpec.maxSpacingMm !== 600
     )
       problems.push('Galeco STAL2 hook missing or without source spacing');
+
+    // V52: ridge tape keeps its roll length and roll rule; a VELUX flashing
+    // kit round-trips with its structural compatibility facts.
+    const tape = await catalog.getProduct('product:swissporton:rbf-vent-310');
+    const tapeSpec = tape?.currentRevision.technicalSpec;
+    if (
+      tapeSpec?.kind !== 'roof-system-component' ||
+      tapeSpec.rollLengthMm !== 5000 ||
+      tapeSpec.quantityRule !== 'roll-length'
+    )
+      problems.push('RBF vent ridge tape missing or without roll length');
+    const kit = await catalog.getProduct('product:velux:edw-0000-mk06');
+    const kitSpec = kit?.currentRevision.technicalSpec;
+    if (
+      kitSpec?.kind !== 'roof-window-component' ||
+      kitSpec.sizeCode !== 'MK06' ||
+      kitSpec.covering?.class !== 'profiled'
+    )
+      problems.push('VELUX EDW MK06 flashing missing or incomplete');
 
     const timberVariantId = 'variant:timber:c24-45x145x4000-treated:standard';
     const priced = await pricing.entriesForVariants([timberVariantId]);

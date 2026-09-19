@@ -64,6 +64,7 @@ export type ReadinessAction =
   | 'plan-k1'
   | 'open-materials'
   | 'open-drainage'
+  | 'open-roof-system'
   | 'open-cost';
 
 export type ReadinessIssueCode =
@@ -102,6 +103,9 @@ export type ReadinessIssueCode =
   | 'drainage-outlets-unconfirmed'
   | 'drainage-downpipes-incomplete'
   | 'drainage-hook-incompatible'
+  | 'opening-flashing-undecided'
+  | 'opening-flashing-incompatible'
+  | 'roof-system-component-undecided'
   | 'cost-not-started'
   | 'cost-prices-missing'
   | 'cost-quantities-missing';
@@ -258,6 +262,16 @@ export interface ReadinessFacts {
     issueCodes: readonly string[];
     unconfirmedRuns: number;
   };
+  /**
+   * V52: roof openings and line-bound system components. Conditional: a
+   * roof without windows has no flashing issue, and nothing here ever blocks
+   * construction, covering or the execution package.
+   */
+  roofDetails?: {
+    openingsUndecided: number;
+    openingsIncompatible: number;
+    componentsUndecided: number;
+  };
 }
 
 export const DOCUMENT_SECTIONS: Record<
@@ -273,6 +287,7 @@ export const DOCUMENT_SECTIONS: Record<
     'layers',
     'covering',
     'drainage-plan',
+    'roof-details',
     'assumptions',
   ],
   cost: ['project-summary', 'cost-estimate'],
@@ -280,7 +295,10 @@ export const DOCUMENT_SECTIONS: Record<
 };
 
 /** Sections that exist only when the user configured them (V51). */
-const OPTIONAL_SECTIONS: readonly SectionKind[] = ['drainage-plan'];
+const OPTIONAL_SECTIONS: readonly SectionKind[] = [
+  'drainage-plan',
+  'roof-details',
+];
 
 const AREA_ORDER: ReadinessArea[] = [
   'construction',
@@ -830,6 +848,39 @@ export function deriveProjectReadiness(
         drainageIssue('drainage-hook-incompatible');
     }
   }
+
+  // ── Roof details: openings and system components (V52) ───────────────
+  const details = facts.roofDetails;
+  if (details?.openingsIncompatible)
+    add({
+      code: 'opening-flashing-incompatible',
+      severity: 'warning',
+      area: 'materials',
+      params: { count: details.openingsIncompatible },
+      action: 'open-roof-system',
+      affects: ['materials', 'cost'],
+      source: 'material-list',
+    });
+  if (details?.openingsUndecided)
+    add({
+      code: 'opening-flashing-undecided',
+      severity: 'info',
+      area: 'materials',
+      params: { count: details.openingsUndecided },
+      action: 'open-roof-system',
+      affects: ['materials', 'cost'],
+      source: 'material-list',
+    });
+  if (details?.componentsUndecided)
+    add({
+      code: 'roof-system-component-undecided',
+      severity: 'info',
+      area: 'materials',
+      params: { count: details.componentsUndecided },
+      action: 'open-roof-system',
+      affects: ['materials', 'cost'],
+      source: 'material-list',
+    });
 
   // ── Cost ─────────────────────────────────────────────────────────────
   const costStarted = !!facts.cost && facts.cost.includedLineCount > 0;

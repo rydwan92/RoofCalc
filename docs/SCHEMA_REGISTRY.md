@@ -153,6 +153,19 @@ free; changing meaning, type or required-ness is not.
 - V51 catalogue: `CATALOG_PRODUCT_KINDS` gains `roof-drainage-component`
   (existing `covering_kind varchar(32)`); preview gains `drainageSystemKey`,
   `drainageRole`, `nominalSystemSize`, `maxSpacingMm`, `hand`. No migration.
+- V52 note: additive-optional, no `schemaVersion` bump. `roofSystem.openings?[]`
+  (`featureId`, optional `window` snapshot, optional `coveringClass
+  profiled | flat`, optional `flashing` = catalogue kit snapshot or manual
+  name + quantity); `lineComponents[]` gain optional `source`, `product`
+  (`roof-system-component` spec snapshot + catalogRef), `featureIds`,
+  `allowanceMm` and the rules `roll-length`, `one-per-feature-end`,
+  `one-per-ridge-tile` (role-validated); `drainage.purchasePolicy?` and
+  `outlets[].route?` (`straight` | `offset` + `offsetPipeLengthMm`, optional
+  `dischargeElbow`). V51 documents parse unchanged.
+- V52 catalogue: kinds `roof-system-component` and `roof-window-component`;
+  preview gains `systemRole`, `windowRole`, `windowSystemKey`, `sizeCode`,
+  `flashingCoveringClass`. `QuantityUnit` / `PriceQuantityUnit` gain `roll`.
+  No migration.
 
 ---
 

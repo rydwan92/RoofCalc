@@ -413,6 +413,246 @@ export function resolveRoofFeatureTopology(
   };
 }
 
+/**
+ * V52: one roof opening as a physical perimeter in its own roof plane.
+ *
+ * Built from the canonical opening edges (plane-local `u` along the eave,
+ * `v` up the slope) — never from screen or SVG coordinates. Edges are ordered
+ * bottom → right → top → left (counter-clockwise seen from above the plane).
+ * An opening clipped by the plane boundary is not a rectangle; it keeps its
+ * edges but reports `rectangular: false`, so a flashing kit is never assumed
+ * to fit it.
+ */
+export type OpeningPerimeterSide = 'bottom' | 'right' | 'top' | 'left';
+
+export interface ResolvedOpeningPerimeterEdge {
+  edgeId: string;
+  side: OpeningPerimeterSide | 'other';
+  from: RoofPlanePosition;
+  to: RoofPlanePosition;
+  /** The same edge in resolved 3D world coordinates. */
+  worldFrom: Point3D;
+  worldTo: Point3D;
+  lengthMm: number;
+}
+
+export interface ResolvedRoofOpening {
+  /** The roof-window feature (opaque). */
+  featureId: string;
+  roofPlaneId: string;
+  /** 1-based, by plane order then position; display labels only (O1…). */
+  ordinal: number;
+  widthMm: number;
+  heightMm: number;
+  centre: RoofPlanePosition;
+  perimeterMm: number;
+  rectangular: boolean;
+  /** Pitch of the owning plane from its resolved 3D polygon. */
+  pitchDeg: number;
+  edges: ResolvedOpeningPerimeterEdge[];
+}
+
+const SIDE_ORDER: (OpeningPerimeterSide | 'other')[] = [
+  'bottom',
+  'right',
+  'top',
+  'left',
+  'other',
+];
+
+/**
+ * The plane's own local → world map, recovered from its resolved polygon
+ * pairs (local polygon[i] ↔ worldPolygon[i]); the pair of edge vectors with
+ * the largest local determinant is used, so it is exact for a planar plane.
+ */
+function localToWorld(plane: RoofSurfaceGeometryResult['planes'][number]) {
+  const local = plane.polygon;
+  const world = plane.worldPolygon;
+  let best = { det: 0, i: 1, j: 2 };
+  for (let i = 1; i < local.length; i += 1)
+    for (let j = i + 1; j < local.length; j += 1) {
+      const det =
+        (local[i]!.uMm - local[0]!.uMm) * (local[j]!.vMm - local[0]!.vMm) -
+        (local[i]!.vMm - local[0]!.vMm) * (local[j]!.uMm - local[0]!.uMm);
+      if (Math.abs(det) > Math.abs(best.det)) best = { det, i, j };
+    }
+  const a = {
+    u: local[best.i]!.uMm - local[0]!.uMm,
+    v: local[best.i]!.vMm - local[0]!.vMm,
+  };
+  const b = {
+    u: local[best.j]!.uMm - local[0]!.uMm,
+    v: local[best.j]!.vMm - local[0]!.vMm,
+  };
+  const wa = sub(world[best.i]!, world[0]!);
+  const wb = sub(world[best.j]!, world[0]!);
+  const det = best.det || 1;
+  // Solve [a; b] · [U; V] = [wa; wb] for the world u and v axes.
+  const axis = (key: 'x' | 'y' | 'z') => ({
+    u: (wa[key] * b.v - wb[key] * a.v) / det,
+    v: (a.u * wb[key] - b.u * wa[key]) / det,
+  });
+  const x = axis('x');
+  const y = axis('y');
+  const z = axis('z');
+  const origin = world[0]!;
+  const u0 = local[0]!.uMm;
+  const v0 = local[0]!.vMm;
+  return (point: RoofPlanePosition): Point3D => ({
+    x: origin.x + x.u * (point.uMm - u0) + x.v * (point.vMm - v0),
+    y: origin.y + y.u * (point.uMm - u0) + y.v * (point.vMm - v0),
+    z: origin.z + z.u * (point.uMm - u0) + z.v * (point.vMm - v0),
+  });
+}
+
+export function resolveRoofOpenings(
+  surface: RoofSurfaceGeometryResult,
+  topology: RoofFeatureTopology,
+): ResolvedRoofOpening[] {
+  const openings: ResolvedRoofOpening[] = [];
+  for (const plane of surface.planes) {
+    if (plane.worldPolygon.length < 3) continue;
+    const toWorld = localToWorld(plane);
+    const normal = upwardNormal(plane.worldPolygon);
+    const pitchDeg =
+      (Math.acos(Math.min(1, Math.max(-1, normal.z))) * 180) / Math.PI;
+    const ordered = [...plane.openingPolygons].sort((a, b) => {
+      const av = Math.min(...a.polygon.map((p) => p.vMm));
+      const bv = Math.min(...b.polygon.map((p) => p.vMm));
+      const au = Math.min(...a.polygon.map((p) => p.uMm));
+      const bu = Math.min(...b.polygon.map((p) => p.uMm));
+      return au - bu || av - bv;
+    });
+    for (const opening of ordered) {
+      const us = opening.polygon.map((p) => p.uMm);
+      const vs = opening.polygon.map((p) => p.vMm);
+      const minU = Math.min(...us);
+      const maxU = Math.max(...us);
+      const minV = Math.min(...vs);
+      const maxV = Math.max(...vs);
+      const near = (a: number, b: number) => Math.abs(a - b) <= TOLERANCE_MM;
+      const edges = topology.openingEdges
+        .filter(
+          (edge) =>
+            edge.sourceFeatureId === opening.featureId &&
+            edge.roofPlaneId === plane.roofPlaneId,
+        )
+        .map((edge): ResolvedOpeningPerimeterEdge => {
+          const horizontal = near(edge.from.vMm, edge.to.vMm);
+          const vertical = near(edge.from.uMm, edge.to.uMm);
+          const side: ResolvedOpeningPerimeterEdge['side'] =
+            horizontal && near(edge.from.vMm, minV)
+              ? 'bottom'
+              : horizontal && near(edge.from.vMm, maxV)
+                ? 'top'
+                : vertical && near(edge.from.uMm, minU)
+                  ? 'left'
+                  : vertical && near(edge.from.uMm, maxU)
+                    ? 'right'
+                    : 'other';
+          return {
+            edgeId: edge.id,
+            side,
+            from: edge.from,
+            to: edge.to,
+            worldFrom: toWorld(edge.from),
+            worldTo: toWorld(edge.to),
+            lengthMm: edge.lengthMm,
+          };
+        })
+        .sort(
+          (a, b) =>
+            SIDE_ORDER.indexOf(a.side) - SIDE_ORDER.indexOf(b.side) ||
+            a.from.uMm - b.from.uMm ||
+            a.from.vMm - b.from.vMm,
+        );
+      const rectangular =
+        edges.length === 4 &&
+        ['bottom', 'right', 'top', 'left'].every((side) =>
+          edges.some((edge) => edge.side === side),
+        );
+      openings.push({
+        featureId: opening.featureId,
+        roofPlaneId: plane.roofPlaneId,
+        ordinal: openings.length + 1,
+        widthMm: maxU - minU,
+        heightMm: maxV - minV,
+        centre: { uMm: (minU + maxU) / 2, vMm: (minV + maxV) / 2 },
+        perimeterMm: edges.reduce((sum, edge) => sum + edge.lengthMm, 0),
+        rectangular,
+        pitchDeg,
+        edges,
+      });
+    }
+  }
+  return openings;
+}
+
+/**
+ * V52: the ends of the ridge/hip line network. A ridge or hip end that meets
+ * another ridge or hip is a junction (covered by the neighbouring line's
+ * pieces); any other end is open and may need a closure. Decided by resolved
+ * 3D endpoints only — never "2 × number of ridges".
+ */
+export type RoofLineEndContext = 'verge' | 'eave-corner' | 'free';
+
+export interface RoofLineEnd {
+  featureId: string;
+  kind: 'ridge' | 'hip';
+  end: 'start' | 'end';
+  point: Point3D;
+  open: boolean;
+  /** Other ridge/hip features meeting at this end. */
+  meetsFeatureIds: string[];
+  /** What an open end stops at. */
+  context?: RoofLineEndContext;
+}
+
+export function resolveRoofLineEnds(
+  topology: RoofFeatureTopology,
+): RoofLineEnd[] {
+  const lines = topology.features.filter(
+    (feature): feature is ResolvedRoofFeature & { kind: 'ridge' | 'hip' } =>
+      feature.kind === 'ridge' || feature.kind === 'hip',
+  );
+  const others = topology.features.filter(
+    (feature) => feature.kind !== 'ridge' && feature.kind !== 'hip',
+  );
+  return lines.flatMap((line) =>
+    (['start', 'end'] as const).map((end) => {
+      const point = line[end];
+      const meets = lines
+        .filter(
+          (other) =>
+            other !== line &&
+            (same(other.start, point) || same(other.end, point)),
+        )
+        .map((other) => other.id);
+      const touching = others.filter(
+        (other) => same(other.start, point) || same(other.end, point),
+      );
+      const open = meets.length === 0;
+      return {
+        featureId: line.id,
+        kind: line.kind,
+        end,
+        point,
+        open,
+        meetsFeatureIds: meets,
+        ...(open
+          ? {
+              context: touching.some((item) => item.kind === 'eave')
+                ? ('eave-corner' as const)
+                : touching.some((item) => item.kind === 'verge')
+                  ? ('verge' as const)
+                  : ('free' as const),
+            }
+          : {}),
+      };
+    }),
+  );
+}
+
 /** Total true length of every feature of one kind. */
 export function roofFeatureLength(
   topology: RoofFeatureTopology,

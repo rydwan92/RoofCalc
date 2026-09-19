@@ -1,0 +1,329 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "id": "manufacturer-research-2026-09-v52",
+    "label": "V52: ridge tape and ridge starter (swissporTON) and a first roof-window slice (VELUX sizes MK04/MK06 with EDW/EDS flashings) from official manufacturer pages, retrieved 2026-09-19. Technical data only; no prices.",
+    "sourceRevision": "2026-09-v52",
+    "sourceUrl": "https://materialy.velux.pl/produkty-montazowe/kolnierze"
+  },
+  "manufacturers": [
+    {
+      "id": "manufacturer:swissporton",
+      "slug": "swissporton",
+      "name": "swissporTON",
+      "countryCode": "PL",
+      "websiteUrl": "https://www.swissporton.pl",
+      "active": true
+    },
+    {
+      "id": "manufacturer:velux",
+      "slug": "velux",
+      "name": "VELUX",
+      "countryCode": "DK",
+      "websiteUrl": "https://www.velux.pl",
+      "active": true
+    }
+  ],
+  "products": [
+    {
+      "id": "product:swissporton:rbf-vent-310",
+      "manufacturerId": "manufacturer:swissporton",
+      "slug": "rbf-vent-310",
+      "name": "Taśma kalenicowa RBF vent 310 mm",
+      "coveringKind": "roof-system-component",
+      "active": true
+    },
+    {
+      "id": "product:swissporton:rbf-vent-390",
+      "manufacturerId": "manufacturer:swissporton",
+      "slug": "rbf-vent-390",
+      "name": "Taśma kalenicowa RBF vent 390 mm",
+      "coveringKind": "roof-system-component",
+      "active": true
+    },
+    {
+      "id": "product:swissporton:gasior-poczatkowy-ps",
+      "manufacturerId": "manufacturer:swissporton",
+      "slug": "gasior-poczatkowy-ps",
+      "name": "Gąsior początkowy ceramiczny PS",
+      "coveringKind": "roof-system-component",
+      "active": true
+    },
+    {
+      "id": "product:velux:okno-mk04",
+      "manufacturerId": "manufacturer:velux",
+      "slug": "okno-mk04",
+      "name": "VELUX okno dachowe — rozmiar MK04 (78 × 98 cm)",
+      "coveringKind": "roof-window-component",
+      "active": true
+    },
+    {
+      "id": "product:velux:okno-mk06",
+      "manufacturerId": "manufacturer:velux",
+      "slug": "okno-mk06",
+      "name": "VELUX okno dachowe — rozmiar MK06 (78 × 118 cm)",
+      "coveringKind": "roof-window-component",
+      "active": true
+    },
+    {
+      "id": "product:velux:edw-0000-mk04",
+      "manufacturerId": "manufacturer:velux",
+      "slug": "edw-0000-mk04",
+      "name": "VELUX kołnierz EDW 0000 MK04",
+      "coveringKind": "roof-window-component",
+      "active": true
+    },
+    {
+      "id": "product:velux:edw-0000-mk06",
+      "manufacturerId": "manufacturer:velux",
+      "slug": "edw-0000-mk06",
+      "name": "VELUX kołnierz EDW 0000 MK06",
+      "coveringKind": "roof-window-component",
+      "active": true
+    },
+    {
+      "id": "product:velux:edw-2000-mk06",
+      "manufacturerId": "manufacturer:velux",
+      "slug": "edw-2000-mk06",
+      "name": "VELUX kołnierz EDW 2000 MK06",
+      "coveringKind": "roof-window-component",
+      "active": true
+    },
+    {
+      "id": "product:velux:eds-0000-mk06",
+      "manufacturerId": "manufacturer:velux",
+      "slug": "eds-0000-mk06",
+      "name": "VELUX kołnierz EDS 0000 MK06",
+      "coveringKind": "roof-window-component",
+      "active": true
+    }
+  ],
+  "revisions": [
+    {
+      "id": "revision:swissporton:rbf-vent-310:2026-09-v52",
+      "productId": "product:swissporton:rbf-vent-310",
+      "revisionCode": "2026-09-v52",
+      "validFrom": "2026-09-19",
+      "source": {
+        "label": "swissporton.pl RBF vent: długość rolki 5 mb, szer. 310 mm; do dachówek ceramicznych i cementowych swissporTON; brak instrukcji zakładu (pobrano 2026-09-19).",
+        "url": "https://www.swissporton.pl/produkty/tasma-kalenicowa",
+        "revision": "2026-09-v52"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-system-component",
+        "role": "ridge-tape",
+        "rollLengthMm": 5000,
+        "widthMm": 310,
+        "quantityRule": "roll-length",
+        "compatibility": {
+          "scope": "covering-products",
+          "productIds": [
+            "product:swissporton:koda",
+            "product:swissporton:simpla",
+            "product:swissporton:balance"
+          ]
+        }
+      }
+    },
+    {
+      "id": "revision:swissporton:rbf-vent-390:2026-09-v52",
+      "productId": "product:swissporton:rbf-vent-390",
+      "revisionCode": "2026-09-v52",
+      "validFrom": "2026-09-19",
+      "source": {
+        "label": "swissporton.pl RBF vent: długość rolki 5 mb, szer. 390 mm wskazana dla modelu TITANIA; brak instrukcji zakładu (pobrano 2026-09-19).",
+        "url": "https://www.swissporton.pl/produkty/tasma-kalenicowa",
+        "revision": "2026-09-v52"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-system-component",
+        "role": "ridge-tape",
+        "rollLengthMm": 5000,
+        "widthMm": 390,
+        "quantityRule": "roll-length",
+        "compatibility": {
+          "scope": "covering-products",
+          "productIds": ["product:swissporton:titania"]
+        }
+      }
+    },
+    {
+      "id": "revision:swissporton:gasior-poczatkowy-ps:2026-09-v52",
+      "productId": "product:swissporton:gasior-poczatkowy-ps",
+      "revisionCode": "2026-09-v52",
+      "validFrom": "2026-09-19",
+      "source": {
+        "label": "swissporton.pl: element startowy systemu gąsiorów, dedykowany SIMPLA i KODA; producent nie podaje zasady ilości — potwierdza ją użytkownik (pobrano 2026-09-19).",
+        "url": "https://www.swissporton.pl/produkty/gasior-poczatkowy-ceramiczny-ps",
+        "revision": "2026-09-v52"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-system-component",
+        "role": "ridge-end",
+        "compatibility": {
+          "scope": "covering-products",
+          "productIds": [
+            "product:swissporton:simpla",
+            "product:swissporton:koda"
+          ]
+        }
+      }
+    },
+    {
+      "id": "revision:velux:okno-mk04:2026-09-v52",
+      "productId": "product:velux:okno-mk04",
+      "revisionCode": "2026-09-v52",
+      "validFrom": "2026-09-19",
+      "source": {
+        "label": "velux.pl wymiary okien do dachów skośnych: MK04 = 78 × 98 cm (pobrano 2026-09-19). Tożsamość rozmiaru, nie konkretny model okna.",
+        "url": "https://www.velux.pl/produkty/wymiary",
+        "revision": "2026-09-v52"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-window-component",
+        "role": "roof-window",
+        "windowSystemKey": "velux-pitched",
+        "sizeCode": "MK04",
+        "nominalWidthMm": 780,
+        "nominalHeightMm": 980
+      }
+    },
+    {
+      "id": "revision:velux:okno-mk06:2026-09-v52",
+      "productId": "product:velux:okno-mk06",
+      "revisionCode": "2026-09-v52",
+      "validFrom": "2026-09-19",
+      "source": {
+        "label": "velux.pl wymiary okien do dachów skośnych: MK06 = 78 × 118 cm (pobrano 2026-09-19). Tożsamość rozmiaru, nie konkretny model okna.",
+        "url": "https://www.velux.pl/produkty/wymiary",
+        "revision": "2026-09-v52"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-window-component",
+        "role": "roof-window",
+        "windowSystemKey": "velux-pitched",
+        "sizeCode": "MK06",
+        "nominalWidthMm": 780,
+        "nominalHeightMm": 1180
+      }
+    },
+    {
+      "id": "revision:velux:edw-0000-mk04:2026-09-v52",
+      "productId": "product:velux:edw-0000-mk04",
+      "revisionCode": "2026-09-v52",
+      "validFrom": "2026-09-19",
+      "source": {
+        "label": "EDW: do profilowanych materiałów pokryciowych o wysokości profilu do 120 mm, kąt 15°–90°, montaż standardowy (pobrano 2026-09-19). Dobór po kodzie rozmiaru okna.",
+        "url": "https://materialy.velux.pl/produkty-montazowe/kolnierze",
+        "revision": "2026-09-v52"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-window-component",
+        "role": "window-flashing-kit",
+        "windowSystemKey": "velux-pitched",
+        "sizeCode": "MK04",
+        "covering": {
+          "class": "profiled",
+          "maxProfileHeightMm": 120
+        },
+        "pitchRangeDeg": {
+          "min": 15,
+          "max": 90
+        },
+        "installationDepth": "standard",
+        "includes": ["window-flashing"]
+      }
+    },
+    {
+      "id": "revision:velux:edw-0000-mk06:2026-09-v52",
+      "productId": "product:velux:edw-0000-mk06",
+      "revisionCode": "2026-09-v52",
+      "validFrom": "2026-09-19",
+      "source": {
+        "label": "EDW: do profilowanych materiałów pokryciowych o wysokości profilu do 120 mm, kąt 15°–90°, montaż standardowy (pobrano 2026-09-19). Dobór po kodzie rozmiaru okna.",
+        "url": "https://materialy.velux.pl/produkty-montazowe/kolnierze",
+        "revision": "2026-09-v52"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-window-component",
+        "role": "window-flashing-kit",
+        "windowSystemKey": "velux-pitched",
+        "sizeCode": "MK06",
+        "covering": {
+          "class": "profiled",
+          "maxProfileHeightMm": 120
+        },
+        "pitchRangeDeg": {
+          "min": 15,
+          "max": 90
+        },
+        "installationDepth": "standard",
+        "includes": ["window-flashing"]
+      }
+    },
+    {
+      "id": "revision:velux:edw-2000-mk06:2026-09-v52",
+      "productId": "product:velux:edw-2000-mk06",
+      "revisionCode": "2026-09-v52",
+      "validFrom": "2026-09-19",
+      "source": {
+        "label": "EDW 2000: kołnierz EDW z kołnierzem paroprzepuszczalnym BFX i ramą izolacyjną BDX; profil do 120 mm, 15°–90° (pobrano 2026-09-19). Dobór po kodzie rozmiaru okna.",
+        "url": "https://www.velux.pl/biblioteka-techniczna/kolnierze-uszczelniajace-produkty-montazowe/kolnierze-uszczelniajace/e-w-120/edw",
+        "revision": "2026-09-v52"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-window-component",
+        "role": "window-flashing-kit",
+        "windowSystemKey": "velux-pitched",
+        "sizeCode": "MK06",
+        "covering": {
+          "class": "profiled",
+          "maxProfileHeightMm": 120
+        },
+        "pitchRangeDeg": {
+          "min": 15,
+          "max": 90
+        },
+        "installationDepth": "standard",
+        "includes": ["window-flashing", "membrane-collar", "insulation-collar"]
+      }
+    },
+    {
+      "id": "revision:velux:eds-0000-mk06:2026-09-v52",
+      "productId": "product:velux:eds-0000-mk06",
+      "revisionCode": "2026-09-v52",
+      "validFrom": "2026-09-19",
+      "source": {
+        "label": "EDS: do płaskich materiałów pokryciowych do 16 mm (2 × 8 mm), kąt 15°–90°, montaż standardowy (pobrano 2026-09-19). Dobór po kodzie rozmiaru okna.",
+        "url": "https://materialy.velux.pl/produkty-montazowe/kolnierze",
+        "revision": "2026-09-v52"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-window-component",
+        "role": "window-flashing-kit",
+        "windowSystemKey": "velux-pitched",
+        "sizeCode": "MK06",
+        "covering": {
+          "class": "flat",
+          "maxThicknessMm": 16
+        },
+        "pitchRangeDeg": {
+          "min": 15,
+          "max": 90
+        },
+        "installationDepth": "standard",
+        "includes": ["window-flashing"]
+      }
+    }
+  ],
+  "variants": []
+}

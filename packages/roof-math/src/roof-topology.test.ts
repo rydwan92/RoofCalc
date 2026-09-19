@@ -5,6 +5,8 @@ import { gableTemplateFromAssembly } from './gable-roof';
 import { resolveRoofSurfaceGeometry } from './roof-surface';
 import {
   resolveRoofFeatureTopology,
+  resolveRoofLineEnds,
+  resolveRoofOpenings,
   roofFeatureLength,
   type RoofLineFeatureKind,
 } from './roof-topology';
@@ -224,5 +226,130 @@ describe('opening edges', () => {
       ),
     ).toBe(true);
     expect(count(withWindow, 'eave')).toBe(2);
+  });
+});
+
+describe('V52 opening perimeters', () => {
+  const roof = gable();
+  const window: RoofWindowFeature = {
+    id: 'feature:roof-window-1',
+    kind: 'roof-window',
+    roofPlaneId: 'roof-plane:left',
+    widthMm: 780,
+    heightMm: 1180,
+    position: { uMm: 2000, vMm: 1500 },
+  };
+  const surface = resolveRoofSurfaceGeometry({
+    template: roof,
+    features: [window],
+  });
+  const openings = resolveRoofOpenings(
+    surface,
+    resolveRoofFeatureTopology(surface),
+  );
+
+  it('groups the four edges of one opening in a stable bottom → right → top → left order', () => {
+    expect(openings).toHaveLength(1);
+    const opening = openings[0]!;
+    expect(opening.featureId).toBe(window.id);
+    expect(opening.roofPlaneId).toBe('roof-plane:left');
+    expect(opening.rectangular).toBe(true);
+    expect(opening.edges.map((edge) => edge.side)).toEqual([
+      'bottom',
+      'right',
+      'top',
+      'left',
+    ]);
+    const lengths = Object.fromEntries(
+      opening.edges.map((edge) => [edge.side, edge.lengthMm]),
+    );
+    expect(lengths.bottom).toBeCloseTo(780, 6);
+    expect(lengths.top).toBeCloseTo(780, 6);
+    expect(lengths.left).toBeCloseTo(1180, 6);
+    expect(lengths.right).toBeCloseTo(1180, 6);
+    expect(opening.perimeterMm).toBeCloseTo(2 * (780 + 1180), 6);
+    expect(opening.widthMm).toBeCloseTo(780, 6);
+    expect(opening.heightMm).toBeCloseTo(1180, 6);
+    expect(opening.centre).toEqual({ uMm: 2390, vMm: 2090 });
+  });
+
+  it('every edge is finite and lies inside the owning plane', () => {
+    const plane = surface.planes.find(
+      (item) => item.roofPlaneId === 'roof-plane:left',
+    )!;
+    const us = plane.polygon.map((p) => p.uMm);
+    const vs = plane.polygon.map((p) => p.vMm);
+    for (const edge of openings[0]!.edges)
+      for (const point of [edge.from, edge.to]) {
+        expect(Number.isFinite(point.uMm) && Number.isFinite(point.vMm)).toBe(
+          true,
+        );
+        expect(point.uMm).toBeGreaterThanOrEqual(Math.min(...us) - 1e-6);
+        expect(point.uMm).toBeLessThanOrEqual(Math.max(...us) + 1e-6);
+        expect(point.vMm).toBeGreaterThanOrEqual(Math.min(...vs) - 1e-6);
+        expect(point.vMm).toBeLessThanOrEqual(Math.max(...vs) + 1e-6);
+      }
+  });
+
+  it('maps every edge into resolved 3D with its true length', () => {
+    for (const edge of openings[0]!.edges)
+      expect(
+        Math.hypot(
+          edge.worldTo.x - edge.worldFrom.x,
+          edge.worldTo.y - edge.worldFrom.y,
+          edge.worldTo.z - edge.worldFrom.z,
+        ),
+      ).toBeCloseTo(edge.lengthMm, 6);
+    // The bottom edge is horizontal in the world, the sides rise.
+    const bottom = openings[0]!.edges.find((edge) => edge.side === 'bottom')!;
+    expect(bottom.worldFrom.z).toBeCloseTo(bottom.worldTo.z, 6);
+    const left = openings[0]!.edges.find((edge) => edge.side === 'left')!;
+    expect(Math.abs(left.worldTo.z - left.worldFrom.z)).toBeGreaterThan(100);
+  });
+
+  it('reports the owning plane pitch from resolved 3D geometry', () => {
+    expect(openings[0]!.pitchDeg).toBeCloseTo(roof.pitchDeg, 6);
+  });
+
+  it('is deterministic and needs no screen coordinates', () => {
+    const again = resolveRoofOpenings(
+      surface,
+      resolveRoofFeatureTopology(surface),
+    );
+    expect(again).toEqual(openings);
+  });
+
+  it('a roof without openings has none', () => {
+    const plain = resolveRoofSurfaceGeometry({ template: roof, features: [] });
+    expect(
+      resolveRoofOpenings(plain, resolveRoofFeatureTopology(plain)),
+    ).toEqual([]);
+  });
+});
+
+describe('V52 ridge / hip line ends', () => {
+  it('a gable ridge has two open ends, both at verges', () => {
+    const ends = resolveRoofLineEnds(topologyOf(gable()));
+    expect(ends).toHaveLength(2);
+    expect(ends.every((end) => end.open && end.context === 'verge')).toBe(true);
+  });
+
+  it('on a hip roof the ridge meets hips (junctions); only hip feet are open', () => {
+    const topology = topologyOf(hip());
+    const ends = resolveRoofLineEnds(topology);
+    expect(ends).toHaveLength(10);
+    const open = ends.filter((end) => end.open);
+    expect(open).toHaveLength(4);
+    expect(open.every((end) => end.kind === 'hip')).toBe(true);
+    expect(open.every((end) => end.context === 'eave-corner')).toBe(true);
+    const ridge = ends.filter((end) => end.kind === 'ridge');
+    expect(ridge.every((end) => !end.open)).toBe(true);
+    expect(ridge.every((end) => end.meetsFeatureIds.length === 2)).toBe(true);
+  });
+
+  it('a square hip (pyramid) has four open hip feet and a closed apex', () => {
+    const ends = resolveRoofLineEnds(topologyOf(hip(gable().halfRunMm * 2)));
+    expect(ends.filter((end) => end.open)).toHaveLength(4);
+    expect(ends.filter((end) => !end.open)).toHaveLength(4);
   });
 });

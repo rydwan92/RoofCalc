@@ -166,9 +166,17 @@ describe('package dependency direction', () => {
     );
   });
 
-  it('roof-system-core depends on no workspace package', () => {
+  /**
+   * V52: gutter purchase with reuse of straight remainders sends installed
+   * pieces (already-resolved blanks, ADR-010) to the existing stock-length
+   * engine instead of growing a second cutting engine. `procurement-core` is
+   * the one workspace package allowed; it infers nothing (ADR-009).
+   */
+  it('roof-system-core depends on procurement-core and no other workspace package', () => {
     expect(
-      forbiddenImports('packages/roof-system-core', [/^@cieslacalc\//]),
+      forbiddenImports('packages/roof-system-core', [
+        /^@cieslacalc\/(?!procurement-core$)/,
+      ]),
     ).toEqual([]);
   });
 

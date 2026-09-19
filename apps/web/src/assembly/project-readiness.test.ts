@@ -602,3 +602,63 @@ describe('V51 drainage readiness', () => {
     ).not.toContain('drainage-hydraulics-not-verified');
   });
 });
+
+describe('V52 roof-detail readiness', () => {
+  it('no windows and no components: no roof-detail issue at all', () => {
+    const readiness = deriveProjectReadiness({
+      ...facts({}),
+      roofDetails: {
+        openingsUndecided: 0,
+        openingsIncompatible: 0,
+        componentsUndecided: 0,
+      },
+    });
+    expect(
+      codes(readiness).some(
+        (code) =>
+          code.startsWith('opening-') || code.startsWith('roof-system-'),
+      ),
+    ).toBe(false);
+  });
+
+  it('an undecided flashing is information for materials/cost only', () => {
+    const readiness = deriveProjectReadiness({
+      ...facts({}),
+      roofDetails: {
+        openingsUndecided: 1,
+        openingsIncompatible: 0,
+        componentsUndecided: 0,
+      },
+    });
+    const issue = readiness.issues.find(
+      (item) => item.code === 'opening-flashing-undecided',
+    )!;
+    expect(issue.severity).toBe('info');
+    expect(issue.affects).toEqual(['materials', 'cost']);
+    expect(issue.action).toBe('open-roof-system');
+  });
+
+  it('an incompatible flashing is a warning, never a blocker', () => {
+    const readiness = deriveProjectReadiness({
+      ...facts({}),
+      roofDetails: {
+        openingsUndecided: 0,
+        openingsIncompatible: 1,
+        componentsUndecided: 2,
+      },
+    });
+    expect(
+      readiness.issues.find(
+        (item) => item.code === 'opening-flashing-incompatible',
+      )?.severity,
+    ).toBe('warning');
+    expect(
+      readiness.issues.find(
+        (item) => item.code === 'roof-system-component-undecided',
+      )?.params,
+    ).toEqual({ count: 2 });
+    expect(readiness.issues.some((item) => item.severity === 'blocker')).toBe(
+      false,
+    );
+  });
+});

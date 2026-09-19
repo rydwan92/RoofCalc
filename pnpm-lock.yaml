@@ -342,6 +342,9 @@ importers:
 
   packages/roof-system-core:
     dependencies:
+      '@cieslacalc/procurement-core':
+        specifier: workspace:*
+        version: link:../procurement-core
       zod:
         specifier: ^3.25.0
         version: 3.25.76

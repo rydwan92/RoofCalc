@@ -5,6 +5,7 @@
   "type": "module",
   "exports": "./src/index.ts",
   "dependencies": {
+    "@cieslacalc/procurement-core": "workspace:*",
     "zod": "^3.25.0"
   }
 }

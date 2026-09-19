@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { ROOF_LINE_COMPONENT_ROLES } from './roles';
 
 /**
  * V51 drainage vocabulary: schemas only, price-free (ADR-005).
@@ -111,6 +110,26 @@ export const drainageOutletSchema = z.object({
   elbowCount: z.number().int().min(0).max(12).optional(),
   /** User-stated clamp count, used when no source-backed spacing exists. */
   clampCount: z.number().int().min(0).max(100).optional(),
+  /**
+   * V52 downpipe route. `straight` (PROSTY PION) needs no offset elbows;
+   * `offset` is outlet → upper elbow → offset pipe → lower elbow → vertical
+   * pipe, so it implies exactly two elbows. The facade is not modelled: the
+   * offset pipe length is the user's number, never inferred from the roof.
+   * Absent = V51 behaviour (elbows confirmed manually via `elbowCount`).
+   */
+  route: z
+    .discriminatedUnion('kind', [
+      z.object({
+        kind: z.literal('straight'),
+        dischargeElbow: z.boolean().optional(),
+      }),
+      z.object({
+        kind: z.literal('offset'),
+        offsetPipeLengthMm: positiveMm,
+        dischargeElbow: z.boolean().optional(),
+      }),
+    ])
+    .optional(),
 });
 export type DrainageOutletIntent = z.infer<typeof drainageOutletSchema>;
 
@@ -138,6 +157,10 @@ export const drainageIntentSchema = z.object({
   gutteredEaveIds: z.array(stableId).max(200).optional(),
   corners: z.array(drainageCornerDecisionSchema).max(200).optional(),
   outlets: z.array(drainageOutletSchema).max(100).optional(),
+  /** V52: gutter purchase policy; absent = no reuse between runs. */
+  purchasePolicy: z
+    .enum(['no-reuse-between-runs', 'reuse-straight-remainders'])
+    .optional(),
   hookSpacing: z
     .discriminatedUnion('mode', [
       z.object({ mode: z.literal('auto') }),
@@ -146,36 +169,6 @@ export const drainageIntentSchema = z.object({
     .optional(),
 });
 export type DrainageIntent = z.infer<typeof drainageIntentSchema>;
-
-/**
- * A user-specified line component (ridge tape, eave strip, …) with an
- * explicit technical rule. Manual by nature until catalogue data exists.
- */
-export const roofLineComponentIntentSchema = z.object({
-  id: stableId,
-  role: z.enum(ROOF_LINE_COMPONENT_ROLES as [string, ...string[]]),
-  name: z.string().trim().min(1).max(240),
-  rule: z.discriminatedUnion('kind', [
-    z.object({
-      kind: z.literal('linear-effective-cover'),
-      effectiveCoverLengthMm: positiveMm,
-    }),
-    z.object({
-      kind: z.literal('manual'),
-      quantity: z.number().int().min(0).max(100_000),
-    }),
-  ]),
-});
-export type RoofLineComponentIntent = z.infer<
-  typeof roofLineComponentIntentSchema
->;
-
-/** V51 additive-optional `project.roofSystem`. */
-export const roofSystemIntentSchema = z.object({
-  drainage: drainageIntentSchema.optional(),
-  lineComponents: z.array(roofLineComponentIntentSchema).max(50).optional(),
-});
-export type RoofSystemIntent = z.infer<typeof roofSystemIntentSchema>;
 
 /**
  * A manual gutter system: the user states commercial lengths and, only if

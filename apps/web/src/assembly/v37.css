@@ -546,6 +546,21 @@
   display: none;
 }
 
+/* ---------- Materials › System dachu (V52) ---------- */
+.a-material-workspace [data-material-surface='system'] {
+  display: none;
+}
+.a-material-workspace.material-view-system {
+  grid-template-columns: minmax(0, 1fr);
+}
+.a-material-workspace.material-view-system [data-material-surface='system'] {
+  display: block;
+}
+.a-material-workspace.material-view-system
+  [data-material-surface]:not([data-material-surface='system']) {
+  display: none;
+}
+
 /* ---------- Materials › Rozkrój K1 inline surface ---------- */
 .a-material-workspace [data-material-surface='cutting'] {
   display: none;

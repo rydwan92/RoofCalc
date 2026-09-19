@@ -13,7 +13,16 @@
 
 /** V50 adds `pack` and `pallet`: a price per pack never joins a piece count. */
 export type PriceQuantityUnit =
-  'piece' | 'pack' | 'pallet' | 'm' | 'm2' | 'm3' | 'kg' | 'hour' | 'flat';
+  | 'piece'
+  | 'pack'
+  | 'pallet'
+  | 'roll'
+  | 'm'
+  | 'm2'
+  | 'm3'
+  | 'kg'
+  | 'hour'
+  | 'flat';
 
 /** A supplier/owner's price list: one currency, one validity window. */
 export interface PriceList {

@@ -117,6 +117,29 @@ const copy = {
     legendOutlet: 'odpływ',
     legendProposed: 'propozycja',
     selectEave: 'Kliknij okap na rysunku, aby go edytować.',
+    route: 'Prowadzenie rury',
+    routeStraight: 'PROSTY PION',
+    routeOffset: 'Z ODSADZKĄ',
+    routeOther: 'Inne (ręcznie)',
+    offsetLength: 'Długość rury między kolanami odsadzki',
+    offsetHelp:
+      'Odpływ → kolano → rura odsadzki → kolano → pion. RoofCalc nie zna ściany — wpisz długość.',
+    dischargeElbow: 'Kolano wylotowe na dole',
+    elbowsDerived: (n: number) => `Kolana: ${n} (z wybranego prowadzenia)`,
+    offsetPipe: 'Rura odsadzki',
+    purchase: 'Końcówki rynien',
+    purchaseNoReuse: 'Bez przenoszenia (KONSERWATYWNIE)',
+    purchaseReuse: 'Przenoś proste końcówki',
+    purchaseHelp:
+      'Producent nie określa, czy docięta końcówka jednej rynny może być prostym odcinkiem innej. Domyślnie RoofCalc tego nie zakłada.',
+    purchaseShared: (n: number) =>
+      `${n} ${n === 1 ? 'odcinek' : 'odcinki'} z końcówek innych rynien`,
+    hookSourceRule:
+      'PRODUCENT: haki co max. rozstaw, nie w miejscu łączenia elementów.',
+    hookStrategyRule: (cm: string) =>
+      `STRATEGIA ROOFCALC: równe odstępy, hak min. ${cm} od łącznika; bez reguły odległości od końca (brak w źródle).`,
+    showHooks: 'Pokaż haki i łączenia',
+    hideHooks: 'Ukryj haki',
   },
   en: {
     title: 'Drainage',
@@ -196,6 +219,29 @@ const copy = {
     legendOutlet: 'outlet',
     legendProposed: 'proposal',
     selectEave: 'Click an eave on the drawing to edit it.',
+    route: 'Downpipe route',
+    routeStraight: 'STRAIGHT',
+    routeOffset: 'WITH OFFSET',
+    routeOther: 'Other (manual)',
+    offsetLength: 'Pipe length between the offset elbows',
+    offsetHelp:
+      'Outlet → elbow → offset pipe → elbow → vertical pipe. RoofCalc does not know the wall — enter the length.',
+    dischargeElbow: 'Discharge elbow at the bottom',
+    elbowsDerived: (n: number) => `Elbows: ${n} (from the chosen route)`,
+    offsetPipe: 'Offset pipe',
+    purchase: 'Gutter remainders',
+    purchaseNoReuse: 'No reuse (CONSERVATIVE)',
+    purchaseReuse: 'Reuse straight remainders',
+    purchaseHelp:
+      'The manufacturer does not say whether a cut remainder of one gutter may be a straight piece of another. By default RoofCalc does not assume it.',
+    purchaseShared: (n: number) =>
+      `${n} piece(s) from other gutters' remainders`,
+    hookSourceRule:
+      'MANUFACTURER: hooks at most every max spacing, not where elements are joined.',
+    hookStrategyRule: (cm: string) =>
+      `ROOFCALC STRATEGY: even spacing, hooks at least ${cm} from a connector; no end-distance rule (none in the source).`,
+    showHooks: 'Show hooks and joints',
+    hideHooks: 'Hide hooks',
   },
 };
 type Copy = (typeof copy)['pl'];
@@ -472,6 +518,7 @@ export function DrainageWorkspace({
   const plan: DrainagePlan = facts.drainage;
   const [selectedEaveId, setSelectedEaveId] = useState<string>();
   const [changingSystem, setChangingSystem] = useState(false);
+  const [showHooks, setShowHooks] = useState(false);
   const svgRef = useRef<SVGSVGElement>(null);
   const drag = useRef<
     { outletId: string; eave: ResolvedRoofFeature } | undefined
@@ -718,6 +765,51 @@ export function DrainageWorkspace({
                 strokeWidth={view.gutterOffsetMm * 0.8}
                 strokeDasharray={on ? undefined : `${stroke * 8} ${stroke * 5}`}
               />
+              {showHooks &&
+                on &&
+                (() => {
+                  const segment = plan.runs
+                    .flatMap((run) => run.segments)
+                    .find((item) => item.eaveId === eave.id);
+                  if (!segment) return null;
+                  return (
+                    <g data-testid="drainage-hook-markers">
+                      {segment.hookPositionsMm.map((position, index) => {
+                        const at = pointAtStation(
+                          line,
+                          position / eave.lengthMm,
+                        );
+                        return (
+                          <circle
+                            key={index}
+                            className="dw-hook"
+                            data-testid="drainage-hook-marker"
+                            cx={at.x}
+                            cy={at.y}
+                            r={view.gutterOffsetMm * 0.25}
+                          />
+                        );
+                      })}
+                      {segment.jointStationsMm.map((station, index) => {
+                        const at = pointAtStation(
+                          line,
+                          station / eave.lengthMm,
+                        );
+                        return (
+                          <rect
+                            key={`joint:${index}`}
+                            className="dw-joint"
+                            data-testid="drainage-joint-marker"
+                            x={at.x - view.gutterOffsetMm * 0.4}
+                            y={at.y - view.gutterOffsetMm * 0.4}
+                            width={view.gutterOffsetMm * 0.8}
+                            height={view.gutterOffsetMm * 0.8}
+                          />
+                        );
+                      })}
+                    </g>
+                  );
+                })()}
               <text
                 className="dw-label"
                 x={mid.x + out.x * view.gutterOffsetMm * 1.8}
@@ -950,29 +1042,133 @@ export function DrainageWorkspace({
                           )} m`}
                       </p>
                     )}
-                    <div className="dw-field">
-                      <span>
-                        {c.elbows}
-                        {outlet.elbowCount === undefined && (
-                          <em className="dw-badge is-warning">{c.confirm}</em>
-                        )}
-                      </span>
+                    <div className="dw-field" data-testid="drainage-route">
+                      <span>{c.route}</span>
                       <div className="dw-chips" role="group">
-                        {[0, 1, 2, 3].map((count) => (
-                          <button
-                            key={count}
-                            type="button"
-                            aria-pressed={outlet.elbowCount === count}
-                            data-testid={`drainage-elbows-${count}`}
-                            onClick={() =>
-                              updateOutlet(outlet.id, { elbowCount: count })
-                            }
-                          >
-                            {count}
-                          </button>
-                        ))}
+                        {(['straight', 'offset', 'other'] as const).map(
+                          (kind) => {
+                            const current = outlet.route?.kind ?? 'other';
+                            return (
+                              <button
+                                key={kind}
+                                type="button"
+                                aria-pressed={current === kind}
+                                data-testid={`drainage-route-${kind}`}
+                                onClick={() =>
+                                  updateOutlet(outlet.id, {
+                                    route:
+                                      kind === 'straight'
+                                        ? {
+                                            kind,
+                                            dischargeElbow:
+                                              outlet.route?.dischargeElbow,
+                                          }
+                                        : kind === 'offset'
+                                          ? {
+                                              kind,
+                                              offsetPipeLengthMm:
+                                                outlet.route?.kind === 'offset'
+                                                  ? outlet.route
+                                                      .offsetPipeLengthMm
+                                                  : 300,
+                                              dischargeElbow:
+                                                outlet.route?.dischargeElbow,
+                                            }
+                                          : undefined,
+                                  })
+                                }
+                              >
+                                {kind === 'straight'
+                                  ? c.routeStraight
+                                  : kind === 'offset'
+                                    ? c.routeOffset
+                                    : c.routeOther}
+                              </button>
+                            );
+                          },
+                        )}
                       </div>
                     </div>
+                    {outlet.route?.kind === 'offset' && (
+                      <>
+                        <LengthField
+                          label={c.offsetLength}
+                          unit={unit}
+                          valueMm={outlet.route.offsetPipeLengthMm}
+                          help={c.offsetHelp}
+                          testId="drainage-offset-length"
+                          onCommit={(value) =>
+                            value !== undefined &&
+                            outlet.route?.kind === 'offset' &&
+                            updateOutlet(outlet.id, {
+                              route: {
+                                ...outlet.route,
+                                offsetPipeLengthMm: value,
+                              },
+                            })
+                          }
+                        />
+                        {pipe?.offsetAssembly && (
+                          <p className="dw-muted">
+                            {c.offsetPipe}:{' '}
+                            {pipe.offsetAssembly.sectionsMm
+                              .map(
+                                (mm) =>
+                                  `${formatNumber(mm / 1000, locale, 2)} m`,
+                              )
+                              .join(' + ')}
+                          </p>
+                        )}
+                      </>
+                    )}
+                    {outlet.route ? (
+                      <>
+                        <label className="dw-toggle">
+                          <input
+                            type="checkbox"
+                            checked={!!outlet.route.dischargeElbow}
+                            data-testid="drainage-discharge-elbow"
+                            onChange={(event) =>
+                              outlet.route &&
+                              updateOutlet(outlet.id, {
+                                route: {
+                                  ...outlet.route,
+                                  dischargeElbow: event.target.checked,
+                                },
+                              })
+                            }
+                          />
+                          {c.dischargeElbow}
+                        </label>
+                        <small data-testid="drainage-elbows-derived">
+                          {c.elbowsDerived(pipe?.elbows ?? 0)}
+                        </small>
+                      </>
+                    ) : (
+                      <div className="dw-field">
+                        <span>
+                          {c.elbows}
+                          {outlet.elbowCount === undefined && (
+                            <em className="dw-badge is-warning">{c.confirm}</em>
+                          )}
+                        </span>
+                        <div className="dw-chips" role="group">
+                          {[0, 1, 2, 3].map((count) => (
+                            <button
+                              key={count}
+                              type="button"
+                              aria-pressed={outlet.elbowCount === count}
+                              data-testid={`drainage-elbows-${count}`}
+                              onClick={() =>
+                                updateOutlet(outlet.id, { elbowCount: count })
+                              }
+                            >
+                              {count}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     <div className="dw-field">
                       <span>{c.clamps}</span>
                       {clampSpacing && outlet.clampCount === undefined ? (
@@ -1231,6 +1427,22 @@ export function DrainageWorkspace({
             }
           />
         )}
+        {plan.hooks.avoidsJoints && (
+          <div className="dw-rule" data-testid="drainage-hook-rules">
+            <small>{c.hookSourceRule}</small>
+            <small>
+              {c.hookStrategyRule(length(plan.hooks.jointClearanceMm ?? 0))}
+            </small>
+          </div>
+        )}
+        <button
+          type="button"
+          aria-pressed={showHooks}
+          data-testid="drainage-show-hooks"
+          onClick={() => setShowHooks(!showHooks)}
+        >
+          {showHooks ? c.hideHooks : c.showHooks}
+        </button>
         {plan.hooks.status === 'incompatible' && (
           <p className="dw-warning" data-testid="drainage-hook-incompatible">
             {c.hookIncompatible}
@@ -1242,6 +1454,43 @@ export function DrainageWorkspace({
           )}
       </div>
     </>
+  );
+
+  const policy = drainage.purchasePolicy ?? 'no-reuse-between-runs';
+  const purchasePanel = system && plan.gutterPurchase && (
+    <div className="dw-step" data-testid="drainage-purchase-policy">
+      <h4>{c.purchase}</h4>
+      <div className="dw-chips" role="group">
+        {(['no-reuse-between-runs', 'reuse-straight-remainders'] as const).map(
+          (value) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={policy === value}
+              data-testid={`drainage-policy-${value}`}
+              onClick={() =>
+                commit({
+                  ...drainage,
+                  purchasePolicy:
+                    value === 'no-reuse-between-runs' ? undefined : value,
+                })
+              }
+            >
+              {value === 'no-reuse-between-runs'
+                ? c.purchaseNoReuse
+                : c.purchaseReuse}
+            </button>
+          ),
+        )}
+      </div>
+      <p className="dw-muted">{c.purchaseHelp}</p>
+      {policy === 'reuse-straight-remainders' &&
+        plan.gutterPurchase.sharedStockPieces > 0 && (
+          <p className="dw-muted" data-testid="drainage-shared-pieces">
+            {c.purchaseShared(plan.gutterPurchase.sharedStockPieces)}
+          </p>
+        )}
+    </div>
   );
 
   const bom = system && (
@@ -1311,6 +1560,7 @@ export function DrainageWorkspace({
           ) : (
             overview
           )}
+          {system && !changingSystem && !selectedEave && purchasePanel}
           {system && !changingSystem && bom}
         </aside>
       </div>

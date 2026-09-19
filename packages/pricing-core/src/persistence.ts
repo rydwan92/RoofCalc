@@ -15,6 +15,7 @@ const saleUnitSchema = z.enum([
   'piece',
   'pack',
   'pallet',
+  'roll',
   'm',
   'm2',
   'm3',

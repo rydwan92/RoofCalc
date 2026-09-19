@@ -4,6 +4,7 @@ import {
   FileText,
   Grid3X3,
   Hammer,
+  House,
   Layers3,
   LayoutGrid,
   ListTree,
@@ -57,6 +58,7 @@ const ALL_DESTINATIONS: readonly ViewPreset[] = [
 
 const MATERIAL_VIEWS: readonly MaterialsView[] = [
   'plan',
+  'system',
   'drainage',
   'cutting',
   'schedule',
@@ -174,6 +176,8 @@ export function ContextualTaskTabs({ k1Ready = true }: { k1Ready?: boolean }) {
               <Scissors size={15} aria-hidden="true" />
             ) : view === 'drainage' ? (
               <Droplets size={15} aria-hidden="true" />
+            ) : view === 'system' ? (
+              <House size={15} aria-hidden="true" />
             ) : (
               <ListTree size={15} aria-hidden="true" />
             )}

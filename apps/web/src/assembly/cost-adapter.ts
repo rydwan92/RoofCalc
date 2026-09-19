@@ -176,9 +176,10 @@ export interface TileAccessorySuggestion extends CostSuggestionBase {
 }
 
 /**
- * V51: one resolved roof-system BOM row (drainage component or line
- * component). The quantity is the commercial count of the resolved plan —
- * sections, connectors, hooks, pipes — so a piece price multiplies pieces,
+ * V51/V52: one resolved roof-system BOM row (drainage component, line
+ * component or roof-window flashing). The quantity is the commercial count of
+ * the resolved plan — sections, connectors, hooks, pipes, rolls, kits — in the
+ * unit it is sold in: a roll price multiplies rolls, a piece price pieces,
  * never a total length. A row that still needs a decision is never suggested.
  */
 export interface RoofSystemSuggestion extends CostSuggestionBase {
@@ -186,7 +187,7 @@ export interface RoofSystemSuggestion extends CostSuggestionBase {
   category: 'material';
   quantityBasis: 'procurement-stock' | 'manual';
   suitability: 'execution-based';
-  quantity: { value: number; unit: 'piece' };
+  quantity: { value: number; unit: 'piece' | 'roll' };
   /** Material-copy key naming the element (e.g. `drainage.gutter-hook`). */
   labelKey: string;
   lengthMm?: number;
@@ -702,9 +703,39 @@ function roofSystemSuggestions(facts: ExportFacts): RoofSystemSuggestion[] {
                 ? ('manual' as const)
                 : ('procurement-stock' as const),
             suitability: 'execution-based' as const,
-            quantity: { value: item.quantity, unit: 'piece' as const },
+            quantity: { value: item.quantity, unit: item.unit },
             labelKey: `roofSystem.${item.role}`,
             productName: item.name,
+            noteKeys:
+              item.rule === 'roll-length' ? ['line-component-rolls'] : [],
+          },
+        ]
+      : [],
+  );
+  // V52: one flashing kit per window, only when it resolved (compatible
+  // catalogue kit or an explicit manual entry).
+  const openings = system.openingSystems.flatMap((opening) =>
+    opening.flashing.status === 'resolved' &&
+    opening.flashing.quantity !== undefined &&
+    opening.flashing.quantity > 0
+      ? [
+          {
+            kind: 'roof-system' as const,
+            key: `opening:${opening.featureId}`,
+            category: 'material' as const,
+            quantityBasis:
+              opening.flashing.source === 'manual'
+                ? ('manual' as const)
+                : ('procurement-stock' as const),
+            suitability: 'execution-based' as const,
+            quantity: {
+              value: opening.flashing.quantity,
+              unit: 'piece' as const,
+            },
+            labelKey: 'opening.flashing-kit',
+            ...(opening.flashing.name
+              ? { productName: opening.flashing.name }
+              : {}),
             noteKeys: [],
           },
         ]
@@ -745,13 +776,19 @@ function roofSystemSuggestions(facts: ExportFacts): RoofSystemSuggestion[] {
                     : {}),
                   noteKeys:
                     item.rule === 'commercial-assembly'
-                      ? ['drainage-sections-no-reuse']
+                      ? [
+                          item.role === 'gutter-section' &&
+                          system.drainage.gutterPurchase?.policy ===
+                            'reuse-straight-remainders'
+                            ? 'drainage-reuse-remainders'
+                            : 'drainage-sections-no-reuse',
+                        ]
                       : [],
                 },
               ]
             : [],
         );
-  return [...lines, ...drainage];
+  return [...lines, ...openings, ...drainage];
 }
 
 /** Pure projection from trusted facts to cost suggestions. No pricing happens here. */

@@ -15,18 +15,23 @@ import { createCostSuggestions } from './cost-adapter';
 import { purchasedPieces } from '@cieslacalc/tile-procurement';
 import type { TilePurchasePlan } from './tile-purchase';
 import type { RoofSystemFacts } from './roof-system';
-import { ROOF_SYSTEM_ROLE_GROUP } from '@cieslacalc/roof-system-core';
+import {
+  ROOF_SYSTEM_ROLE_GROUP,
+  type RoofLineComponentRequirement,
+} from '@cieslacalc/roof-system-core';
 
 /**
- * V51 whole-roof grouping. Covering first (what the roof is), then its layers,
- * eave details, drainage and finally structural timber.
+ * V51/V52 whole-roof grouping. Covering first (what the roof is), then its
+ * layers, eave and edge details, roof openings, drainage and finally
+ * structural timber.
  */
 export type MaterialCategory =
-  'covering' | 'layers' | 'eave' | 'drainage' | 'timber' | 'other';
+  'covering' | 'layers' | 'eave' | 'openings' | 'drainage' | 'timber' | 'other';
 export const MATERIAL_CATEGORY_ORDER: readonly MaterialCategory[] = [
   'covering',
   'layers',
   'eave',
+  'openings',
   'drainage',
   'timber',
   'other',
@@ -72,6 +77,11 @@ export interface MaterialPlanRow {
   subgroup?: MaterialSubgroup;
   /** V51: a roof-system row (drainage or line component) and its role. */
   roofSystemRole?: string;
+  /** V52: the canonical features a roof-system row applies to. */
+  appliesTo?: string[];
+  /** V52: the roof opening (roof-window feature) a row belongs to. */
+  openingFeatureId?: string;
+  openingOrdinal?: number;
 }
 
 export interface MaterialPriceSelection {
@@ -638,41 +648,150 @@ function tilePlanRows(
 }
 
 /**
- * V51: the roof-system BOM as material rows — line components and drainage.
- * Quantities come from the resolved plan; a row needing a decision carries
- * no quantity, so it can never be priced or costed by accident.
+ * V51/V52: the roof-system BOM as material rows — line components, opening
+ * flashings and drainage. Quantities come from the resolved plans; a row
+ * needing a decision carries no quantity, so it can never be priced or costed
+ * by accident.
  */
-function roofSystemRows(facts: RoofSystemFacts): MaterialPlanRow[] {
-  const rows: MaterialPlanRow[] = facts.lineComponents
-    .filter((item) => item.status === 'resolved')
-    .map((item) => ({
-      id: `line-component:${item.componentId}`,
-      costSuggestionKey: `line-component:${item.componentId}`,
-      category:
-        ROOF_SYSTEM_ROLE_GROUP[item.role] === 'eave' ? 'eave' : 'covering',
-      ...(ROOF_SYSTEM_ROLE_GROUP[item.role] === 'eave'
-        ? {}
-        : { subgroup: 'accessory' as const }),
-      labelKey: `roofSystem.${item.role}`,
-      description: item.name,
-      quantity: item.quantity,
+function lineComponentCategory(
+  role: RoofLineComponentRequirement['role'],
+): Pick<MaterialPlanRow, 'category' | 'subgroup'> {
+  const group = ROOF_SYSTEM_ROLE_GROUP[role];
+  if (group === 'eave' || group === 'verge') return { category: 'eave' };
+  return { category: 'covering', subgroup: 'ridge' };
+}
+
+function lineComponentRows(facts: RoofSystemFacts): MaterialPlanRow[] {
+  return facts.lineComponents
+    .filter((item) => item.status !== 'not-applicable')
+    .map((item) => {
+      const resolved =
+        item.status === 'resolved' && item.quantity !== undefined;
+      const product = facts.intent?.lineComponents?.find(
+        (component) => component.id === item.componentId,
+      )?.product;
+      const metrics: MaterialPlanRow['metrics'] = [];
+      if (
+        item.rule !== 'one-per-feature-end' &&
+        item.rule !== 'one-per-ridge-tile'
+      )
+        metrics.push({
+          labelKey: 'requirementLength',
+          value: item.requirementMm / 1000,
+          unit: 'm',
+        });
+      if (item.allowanceMm > 0)
+        metrics.push({
+          labelKey: 'explicitAllowance',
+          value: item.allowanceMm / 1000,
+          unit: 'm',
+        });
+      if (item.openEnds !== undefined)
+        metrics.push({
+          labelKey: 'openEnds',
+          value: item.openEnds,
+          unit: 'piece',
+        });
+      if (resolved && item.purchasedLengthMm !== undefined)
+        metrics.push({
+          labelKey: 'purchasedLength',
+          value: item.purchasedLengthMm / 1000,
+          unit: 'm',
+        });
+      if (resolved && item.commercialSurplusMm !== undefined)
+        metrics.push({
+          labelKey: 'commercialOverageLength',
+          value: Math.round(item.commercialSurplusMm) / 1000,
+          unit: 'm',
+        });
+      return {
+        id: `line-component:${item.componentId}`,
+        costSuggestionKey: `line-component:${item.componentId}`,
+        ...lineComponentCategory(item.role),
+        labelKey: `roofSystem.${item.role}`,
+        description: item.name,
+        ...(resolved ? { quantity: item.quantity } : {}),
+        unit: item.unit,
+        basis: item.rule === 'manual' ? 'manual' : 'procurement-stock',
+        suitability: resolved ? 'execution-based' : 'manual-required',
+        partial: !resolved,
+        product: {
+          name: item.name,
+          ...(product?.catalogRef?.variantId
+            ? { variantId: product.catalogRef.variantId }
+            : {}),
+          facts: [],
+        },
+        productSource: item.source,
+        metrics,
+        warnings: [
+          ...(item.reason ? [`line-component-${item.reason}`] : []),
+          item.rule === 'manual'
+            ? 'line-component-manual'
+            : item.rule === 'roll-length'
+              ? 'line-component-rolls'
+              : item.rule === 'one-per-feature-end'
+                ? 'line-component-open-ends'
+                : item.rule === 'one-per-ridge-tile'
+                  ? 'line-component-per-ridge-tile'
+                  : 'line-component-per-feature',
+        ],
+        sourceReferences: item.featureIds,
+        roofSystemRole: item.role,
+        appliesTo: item.featureIds,
+      } satisfies MaterialPlanRow;
+    });
+}
+
+function openingRows(facts: RoofSystemFacts): MaterialPlanRow[] {
+  return facts.openingSystems.map((opening) => {
+    const flashing = opening.flashing;
+    const resolved =
+      flashing.status === 'resolved' && flashing.quantity !== undefined;
+    return {
+      id: `opening:${opening.featureId}`,
+      costSuggestionKey: `opening:${opening.featureId}`,
+      category: 'openings',
+      labelKey: 'opening.flashing-kit',
+      description: `#${opening.ordinal} · ${Math.round(
+        opening.widthMm / 10,
+      )} × ${Math.round(opening.heightMm / 10)} cm`,
+      ...(resolved ? { quantity: flashing.quantity } : {}),
       unit: 'piece',
-      basis: item.rule === 'manual' ? 'manual' : 'procurement-stock',
-      suitability: 'execution-based',
-      partial: false,
-      product: { name: item.name, facts: [] },
-      productSource: 'manual',
-      metrics: [
-        { labelKey: 'lineLength', value: item.lineLengthMm / 1000, unit: 'm' },
-      ],
+      basis: flashing.source === 'manual' ? 'manual' : 'procurement-stock',
+      suitability: resolved ? 'execution-based' : 'manual-required',
+      partial: !resolved,
+      ...(flashing.name
+        ? {
+            product: {
+              name: flashing.name,
+              ...(flashing.product?.catalogRef?.variantId
+                ? { variantId: flashing.product.catalogRef.variantId }
+                : {}),
+              facts: [],
+            },
+            productSource: flashing.source ?? 'manual',
+          }
+        : {}),
+      metrics: [],
       warnings: [
-        item.rule === 'manual'
-          ? 'line-component-manual'
-          : 'line-component-per-feature',
+        `opening-flashing-${flashing.status}`,
+        ...flashing.reasons.map((reason) => `opening-${reason}`),
+        ...(opening.windowSizeDiffers ? ['opening-window-size-differs'] : []),
       ],
-      sourceReferences: item.featureIds,
-      roofSystemRole: item.role,
-    }));
+      sourceReferences: [opening.featureId],
+      roofSystemRole: 'window-flashing-kit',
+      openingFeatureId: opening.featureId,
+      openingOrdinal: opening.ordinal,
+    } satisfies MaterialPlanRow;
+  });
+}
+
+function roofSystemRows(facts: RoofSystemFacts): MaterialPlanRow[] {
+  const rows: MaterialPlanRow[] = [
+    ...lineComponentRows(facts),
+    ...openingRows(facts),
+  ];
   const plan = facts.drainage;
   if (plan.status === 'disabled' || !plan.bom.length) return rows;
   const system = facts.intent?.drainage?.system;
@@ -752,11 +871,17 @@ function roofSystemRows(facts: RoofSystemFacts): MaterialPlanRow[] {
       warnings: [
         ...(item.reason ? [`drainage-${item.reason}`] : []),
         ...(item.rule === 'commercial-assembly' && resolved
-          ? ['drainage-sections-no-reuse']
+          ? [
+              item.role === 'gutter-section' &&
+              plan.gutterPurchase?.policy === 'reuse-straight-remainders'
+                ? 'drainage-reuse-remainders'
+                : 'drainage-sections-no-reuse',
+            ]
           : []),
       ],
       sourceReferences: plan.gutteredEaveIds,
       roofSystemRole: item.role,
+      appliesTo: plan.gutteredEaveIds,
     });
   }
   return rows;

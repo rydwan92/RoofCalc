@@ -59,6 +59,7 @@ import type {
 import type { MembraneProductSelection } from '@cieslacalc/covering-core';
 import type { TilePurchasePlan } from './tile-purchase';
 import { eaveLabel, type RoofSystemFacts } from './roof-system';
+import { ROOF_SYSTEM_ROLE_GROUP } from '@cieslacalc/roof-system-core';
 import {
   structuralLimitations,
   type ProjectLimitation,
@@ -314,10 +315,17 @@ function drainagePlanCandidate(facts: ExportFacts): SectionCandidate {
         ...(outlet.downpipe.elbows !== undefined
           ? { elbows: outlet.downpipe.elbows }
           : {}),
+        ...(outlet.downpipe.route ? { route: outlet.downpipe.route } : {}),
+        ...(outlet.downpipe.offsetPipeLengthMm !== undefined
+          ? { offsetPipeLengthMm: outlet.downpipe.offsetPipeLengthMm }
+          : {}),
       };
     }),
     ...(plan.hooks.actualIntervalMm !== undefined
       ? { hookSpacingMm: plan.hooks.actualIntervalMm }
+      : {}),
+    ...(plan.hooks.jointClearanceMm !== undefined
+      ? { hookJointClearanceMm: plan.hooks.jointClearanceMm }
       : {}),
     hydraulicsNotVerified: true,
   };
@@ -326,6 +334,80 @@ function drainagePlanCandidate(facts: ExportFacts): SectionCandidate {
     readiness: plan.status === 'complete' ? 'available' : 'warning',
     ...(plan.status === 'complete' ? {} : { reason: 'drainage-incomplete' }),
     section,
+  };
+}
+
+/**
+ * V52 roof-detail execution section: system elements per roof area, read
+ * from the resolved line components and opening systems. Present only when
+ * the roof has such elements or openings.
+ */
+function roofDetailsCandidate(facts: ExportFacts): SectionCandidate {
+  const system = facts.roofSystem;
+  const features = system?.topology.features ?? [];
+  const scope = (featureIds: readonly string[]) =>
+    (['ridge', 'hip', 'eave', 'verge', 'valley'] as const).flatMap((kind) => {
+      const ordinals = features
+        .filter(
+          (feature) => feature.kind === kind && featureIds.includes(feature.id),
+        )
+        .map((feature) => feature.ordinal);
+      return ordinals.length ? [{ kind, ordinals }] : [];
+    });
+  const lineGroup = (
+    area: 'ridge' | 'eave' | 'verge',
+    groups: readonly string[],
+  ) => ({
+    area,
+    items: (system?.lineComponents ?? [])
+      .filter(
+        (item) =>
+          item.status !== 'not-applicable' &&
+          groups.includes(ROOF_SYSTEM_ROLE_GROUP[item.role]),
+      )
+      .map((item) => ({
+        roleKey: `roofSystem.${item.role}`,
+        product: item.name,
+        source: item.source,
+        scope: scope(item.featureIds),
+        decided: item.status === 'resolved',
+      })),
+  });
+  const groups = [
+    lineGroup('ridge', ['ridge-hip']),
+    lineGroup('eave', ['eave']),
+    lineGroup('verge', ['verge']),
+    {
+      area: 'openings' as const,
+      items: (system?.openingSystems ?? []).map((opening) => ({
+        roleKey: 'opening.flashing-kit',
+        ...(opening.flashing.name ? { product: opening.flashing.name } : {}),
+        source: opening.flashing.source ?? ('manual' as const),
+        scope: [],
+        opening: {
+          ordinal: opening.ordinal,
+          widthMm: opening.widthMm,
+          heightMm: opening.heightMm,
+          includes: opening.flashing.includes,
+        },
+        decided: opening.flashing.status === 'resolved',
+      })),
+    },
+  ].filter((group) => group.items.length);
+  if (!groups.length)
+    return {
+      kind: 'roof-details',
+      readiness: 'unavailable',
+      reason: 'no-roof-details',
+    };
+  const open = groups.some((group) =>
+    group.items.some((item) => !item.decided),
+  );
+  return {
+    kind: 'roof-details',
+    readiness: open ? 'warning' : 'available',
+    ...(open ? { reason: 'roof-details-incomplete' } : {}),
+    section: { kind: 'roof-details', groups },
   };
 }
 
@@ -895,6 +977,7 @@ export function createExportCandidates(facts: ExportFacts): SectionCandidate[] {
       section: coveringRows.length ? covering : undefined,
     },
     drainagePlanCandidate(facts),
+    roofDetailsCandidate(facts),
     { kind: 'assumptions', readiness: 'available', section: assumptions },
     (() => {
       const rows =

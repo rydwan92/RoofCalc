@@ -117,7 +117,7 @@ import { k1RequirementSignature } from './k1-cutting-adapter';
 import { createExportCandidates, type ExportFacts } from './export-adapter';
 import { usePriceOptions } from '../pricing/use-prices';
 import { createTilePurchasePlans } from './tile-purchase';
-import { resolveRoofSystemFacts } from './roof-system';
+import { resolveRoofSystemFacts, ridgeTileCount } from './roof-system';
 import {
   createMaterialPlanRows,
   materialScenarioPrices,
@@ -199,6 +199,11 @@ const MaterialScheduleInspector = lazy(() =>
 const DrainageWorkspace = lazy(() =>
   import('./DrainageWorkspace').then((module) => ({
     default: module.DrainageWorkspace,
+  })),
+);
+const RoofSystemWorkspace = lazy(() =>
+  import('./RoofSystemWorkspace').then((module) => ({
+    default: module.RoofSystemWorkspace,
   })),
 );
 const CoveringWorkspace = lazy(() =>
@@ -482,16 +487,6 @@ function AssemblyPageContent() {
   const roofTopology = useMemo(
     () => resolveRoofFeatureTopology(surfaceProjection),
     [surfaceProjection],
-  );
-  const roofSystemIntent = state.projectDocument.project.roofSystem;
-  const roofSystem = useMemo(
-    () =>
-      resolveRoofSystemFacts({
-        surface: surfaceProjection,
-        topology: roofTopology,
-        intent: roofSystemIntent,
-      }),
-    [surfaceProjection, roofTopology, roofSystemIntent],
   );
   const membraneAreaMm2 = membrane?.enabled
     ? surfaceProjection.planes
@@ -1041,6 +1036,20 @@ function AssemblyPageContent() {
       roofTopology,
     ],
   );
+  // V51/V52: the whole roof system from the one topology. Resolved after the
+  // tile plans so a clip rule can read the resolved ridge-tile count.
+  const roofSystemIntent = state.projectDocument.project.roofSystem;
+  const resolvedRidgeTiles = ridgeTileCount(tilePurchasePlans);
+  const roofSystem = useMemo(
+    () =>
+      resolveRoofSystemFacts({
+        surface: surfaceProjection,
+        topology: roofTopology,
+        intent: roofSystemIntent,
+        ridgeTileCount: resolvedRidgeTiles,
+      }),
+    [surfaceProjection, roofTopology, roofSystemIntent, resolvedRidgeTiles],
+  );
   const materialFacts: ExportFacts = {
     source: {
       projectId: projectSessionState.active?.id ?? 'unsaved',
@@ -1315,6 +1324,19 @@ function AssemblyPageContent() {
           issueCodes: roofSystem.drainage.issues.map((issue) => issue.code),
           unconfirmedRuns: roofSystem.drainage.issues.filter(
             (issue) => issue.code === 'outlets-unconfirmed',
+          ).length,
+        },
+        roofDetails: {
+          openingsUndecided: roofSystem.openingSystems.filter(
+            (opening) =>
+              opening.flashing.status === 'requires-product' ||
+              opening.flashing.status === 'requires-decision',
+          ).length,
+          openingsIncompatible: roofSystem.openingSystems.filter(
+            (opening) => opening.flashing.status === 'incompatible',
+          ).length,
+          componentsUndecided: roofSystem.lineComponents.filter(
+            (item) => item.status === 'requires-decision',
           ).length,
         },
         // V48: commercial planning is optional, so only plannable materials
@@ -1808,6 +1830,9 @@ function AssemblyPageContent() {
         return;
       case 'open-drainage':
         state.navigateTo(workbenchLocation('materials', 'drainage'));
+        return;
+      case 'open-roof-system':
+        state.navigateTo(workbenchLocation('materials', 'system'));
         return;
       case 'open-cost':
         state.navigateTo(workbenchLocation('costing'));
@@ -2509,6 +2534,27 @@ function AssemblyPageContent() {
                           onOpenExport={openExecutionExport}
                         />
                       </Suspense>
+                    </div>
+                    <div data-material-surface="system">
+                      {workbench.materialsView === 'system' && (
+                        <Suspense
+                          fallback={<div className="a-loading-panel" />}
+                        >
+                          <RoofSystemWorkspace
+                            surface={surfaceProjection}
+                            facts={materialFacts}
+                            onOpenCovering={() =>
+                              state.navigateTo(workbenchLocation('covering'))
+                            }
+                            onOpenTilePlan={() =>
+                              state.setMaterialsView('plan')
+                            }
+                            onOpenDrainage={() =>
+                              state.setMaterialsView('drainage')
+                            }
+                          />
+                        </Suspense>
+                      )}
                     </div>
                     <div data-material-surface="drainage">
                       {workbench.materialsView === 'drainage' && (

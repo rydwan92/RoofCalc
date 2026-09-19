@@ -802,6 +802,7 @@ export const assemblyPl = {
     documentPreview: 'Podgląd dokumentu',
     materials: {
       plan: 'Plan materiałów',
+      system: 'System dachu',
       drainage: 'Odwodnienie',
       cutting: 'Rozkrój K1',
       schedule: 'Zestawienie techniczne',
@@ -2033,6 +2034,7 @@ export const assemblyPl = {
       'plan-k1': 'Zaplanuj rozkrój K1',
       'open-materials': 'Otwórz materiały',
       'open-drainage': 'Otwórz odwodnienie',
+      'open-roof-system': 'Otwórz system dachu',
       'open-cost': 'Otwórz kosztorys',
     },
     issue: {
@@ -2204,6 +2206,21 @@ export const assemblyPl = {
         description:
           'Podaj wysokość pionu i potwierdź liczbę kolan przy każdym odpływie. Rynny są już policzone.',
       },
+      'opening-flashing-undecided': {
+        title: 'Otwory: {{count}} kołnierz(e) do wyboru',
+        description:
+          'Okno nie ma jeszcze kołnierza. Geometria działa normalnie — dotyczy tylko listy materiałów i kosztorysu.',
+      },
+      'opening-flashing-incompatible': {
+        title: 'Otwory: {{count}} niezgodny kołnierz',
+        description:
+          'Wybrany kołnierz nie pasuje do okna, pokrycia lub kąta połaci. RoofCalc go nie liczy — wybierz inny.',
+      },
+      'roof-system-component-undecided': {
+        title: 'System dachu: {{count}} element(y) bez ilości',
+        description:
+          'Element systemowy czeka na decyzję (np. gąsiory do policzenia klamer). Pozostałe ilości są gotowe.',
+      },
       'drainage-hook-incompatible': {
         title: 'Odwodnienie: rozstaw haków niezgodny z producentem',
         description:
@@ -2350,6 +2367,7 @@ export const assemblyPl = {
       piece: 'szt.',
       pack: 'opak.',
       pallet: 'pal.',
+      roll: 'rol.',
       m: 'm',
       m2: 'm²',
       m3: 'm³',
@@ -3155,6 +3173,7 @@ export const assemblyEn: typeof assemblyPl = {
     documentPreview: 'Document preview',
     materials: {
       plan: 'Material plan',
+      system: 'Roof system',
       drainage: 'Drainage',
       cutting: 'K1 cutting',
       schedule: 'Technical schedule',
@@ -4374,6 +4393,7 @@ export const assemblyEn: typeof assemblyPl = {
       'plan-k1': 'Plan K1 cutting',
       'open-materials': 'Open materials',
       'open-drainage': 'Open drainage',
+      'open-roof-system': 'Open roof system',
       'open-cost': 'Open cost estimate',
     },
     issue: {
@@ -4543,6 +4563,21 @@ export const assemblyEn: typeof assemblyPl = {
         description:
           'Enter each downpipe height and confirm the elbow count. Gutters are already counted.',
       },
+      'opening-flashing-undecided': {
+        title: 'Openings: {{count}} flashing(s) to choose',
+        description:
+          'A window has no flashing yet. Geometry works normally — only the material list and the estimate are affected.',
+      },
+      'opening-flashing-incompatible': {
+        title: 'Openings: {{count}} incompatible flashing',
+        description:
+          'The chosen flashing does not fit the window, covering or pitch. RoofCalc does not count it — choose another.',
+      },
+      'roof-system-component-undecided': {
+        title: 'Roof system: {{count}} element(s) without a quantity',
+        description:
+          'A system element waits for a decision (e.g. ridge tiles to count clips). Other quantities are ready.',
+      },
       'drainage-hook-incompatible': {
         title: 'Drainage: hook spacing exceeds the manufacturer maximum',
         description:
@@ -4691,6 +4726,7 @@ export const assemblyEn: typeof assemblyPl = {
       piece: 'pc',
       pack: 'pack',
       pallet: 'pallet',
+      roll: 'roll',
       m: 'm',
       m2: 'm²',
       m3: 'm³',

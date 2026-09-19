@@ -172,10 +172,14 @@ describe('drainage — gable, two independent eaves', () => {
     expect(quantity(plan, 'gutter-connector')).toBe(4);
   });
 
-  it('hooks are placed per run with every interval ≤ 600 mm', () => {
-    expect(quantity(plan, 'gutter-hook')).toBe(34);
+  it('hooks are placed per run with every interval ≤ 600 mm and off the joints', () => {
+    // V51 placed 17 even hooks per 9,2 m eave (575 mm); the 8th landed 25 mm
+    // from the 4 m joint. V52 keeps hooks off joints (source requirement), so
+    // each eave needs one more: 18 at 541 mm.
+    expect(quantity(plan, 'gutter-hook')).toBe(36);
     expect(plan.hooks.actualIntervalMm).toBeLessThanOrEqual(600);
-    expect(plan.hooks.actualIntervalMm).toBeCloseTo(575, 6);
+    expect(plan.hooks.actualIntervalMm).toBeCloseTo(9200 / 17, 6);
+    expect(plan.hooks.avoidsJoints).toBe(true);
   });
 
   it('outlets, downpipes, elbows and clamps follow the explicit outlets', () => {

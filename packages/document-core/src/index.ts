@@ -8,6 +8,7 @@ export type SectionKind =
   | 'layers'
   | 'covering'
   | 'drainage-plan'
+  | 'roof-details'
   | 'assumptions'
   | 'material-list'
   | 'cost-estimate';
@@ -21,6 +22,7 @@ export const sectionOrder: readonly SectionKind[] = [
   'layers',
   'covering',
   'drainage-plan',
+  'roof-details',
   'assumptions',
   'material-list',
   'cost-estimate',
@@ -282,7 +284,16 @@ export interface CostEstimateSection {
     label: string;
     quantityValue: number;
     quantityUnit:
-      'piece' | 'pack' | 'pallet' | 'm' | 'm2' | 'm3' | 'kg' | 'hour' | 'flat';
+      | 'piece'
+      | 'pack'
+      | 'pallet'
+      | 'roll'
+      | 'm'
+      | 'm2'
+      | 'm3'
+      | 'kg'
+      | 'hour'
+      | 'flat';
     basis:
       | 'procurement-stock'
       | 'fabrication-requirement'
@@ -363,13 +374,50 @@ export interface DrainagePlanSection {
     distanceFromEaveStartMm: number;
     downpipeHeightMm?: number;
     elbows?: number;
+    /** V52: the chosen downpipe route and its offset pipe, if any. */
+    route?: 'straight' | 'offset';
+    offsetPipeLengthMm?: number;
   }[];
   hookSpacingMm?: number;
+  /** V52: hooks are kept this far from gutter connectors (RoofCalc rule). */
+  hookJointClearanceMm?: number;
   /** Always true: hydraulic adequacy is not assessed. */
   hydraulicsNotVerified: true;
 }
 
+/**
+ * V52 concise roof-detail section: which system element goes on which roof
+ * line or opening. What to buy (quantities, prices) stays in the material
+ * list and estimate; nothing is calculated here.
+ */
+export interface RoofDetailsSection {
+  kind: 'roof-details';
+  groups: {
+    area: 'ridge' | 'eave' | 'verge' | 'openings';
+    items: {
+      /** Material-copy key of the role (e.g. `roofSystem.ridge-tape`). */
+      roleKey: string;
+      product?: string;
+      source: 'catalog' | 'manual';
+      /** Roof lines by kind with generated ordinals. */
+      scope: {
+        kind: 'ridge' | 'hip' | 'eave' | 'verge' | 'valley';
+        ordinals: number[];
+      }[];
+      /** Opening only. */
+      opening?: {
+        ordinal: number;
+        widthMm: number;
+        heightMm: number;
+        includes: string[];
+      };
+      decided: boolean;
+    }[];
+  }[];
+}
+
 export type ExecutionSection =
+  | RoofDetailsSection
   | ProjectSummarySection
   | RoofOverviewSection
   | MemberScheduleSection

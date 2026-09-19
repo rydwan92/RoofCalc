@@ -168,6 +168,32 @@ const copy = {
     tileCut: 'Docinane',
     tileAccessories: 'Elementy systemowe pokrycia',
     'drainage-plan': 'Plan odwodnienia',
+    'roof-details': 'Detale dachu',
+    detailArea: {
+      ridge: 'Kalenica / grzbiety',
+      eave: 'Okap',
+      verge: 'Skraje',
+      openings: 'Otwory',
+    },
+    detailWhere: 'Gdzie',
+    detailProduct: 'Produkt',
+    detailElement: 'Element',
+    detailToDecide: 'do wyboru',
+    detailScope: {
+      ridge: 'kalenica',
+      hip: 'grzbiety',
+      eave: 'okapy',
+      verge: 'skraje',
+      valley: 'kosze',
+    },
+    detailWindow: 'Okno',
+    detailIncludes: 'w zestawie',
+    detailNote:
+      'Elementy przypisane do linii dachu i otworów. Ilości — w liście materiałów.',
+    drainageRoute: 'Prowadzenie',
+    drainageStraight: 'prosty pion',
+    drainageOffset: 'odsadzka',
+    drainageHookRule: 'haki min. {{cm}} od łącznika rynny (strategia RoofCalc)',
     drainageSystem: 'System',
     drainageProposed: 'Układ proponowany (do potwierdzenia na budowie)',
     drainageManual: 'Układ ustalony przez użytkownika',
@@ -231,6 +257,7 @@ const copy = {
         flat: 'kpl.',
         pack: 'opak.',
         pallet: 'pal.',
+        roll: 'rol.',
       },
     },
     assumptionsHeading: {
@@ -322,6 +349,8 @@ const copy = {
       'no-cost-lines': 'Nie dodano żadnej pozycji kosztorysu.',
       'no-drainage': 'Odwodnienie nie jest skonfigurowane.',
       'drainage-incomplete': 'Plan odwodnienia ma nieuzupełnione dane.',
+      'no-roof-details': 'Brak elementów kalenicy, okapu i otworów.',
+      'roof-details-incomplete': 'Część elementów systemowych czeka na wybór.',
       'cost-incomplete': 'Część pozycji wymaga jeszcze ceny lub ilości.',
     },
   },
@@ -420,6 +449,33 @@ const copy = {
     tileCut: 'Cut',
     tileAccessories: 'Covering system elements',
     'drainage-plan': 'Drainage plan',
+    'roof-details': 'Roof details',
+    detailArea: {
+      ridge: 'Ridge / hips',
+      eave: 'Eave',
+      verge: 'Verges',
+      openings: 'Openings',
+    },
+    detailWhere: 'Where',
+    detailProduct: 'Product',
+    detailElement: 'Element',
+    detailToDecide: 'to choose',
+    detailScope: {
+      ridge: 'ridge',
+      hip: 'hips',
+      eave: 'eaves',
+      verge: 'verges',
+      valley: 'valleys',
+    },
+    detailWindow: 'Window',
+    detailIncludes: 'includes',
+    detailNote:
+      'Elements assigned to roof lines and openings. Quantities — in the material list.',
+    drainageRoute: 'Route',
+    drainageStraight: 'straight',
+    drainageOffset: 'offset',
+    drainageHookRule:
+      'hooks at least {{cm}} from a gutter connector (RoofCalc rule)',
     drainageSystem: 'System',
     drainageProposed: 'Proposed layout (confirm on site)',
     drainageManual: 'Layout set by the user',
@@ -483,6 +539,7 @@ const copy = {
         flat: 'set',
         pack: 'pack',
         pallet: 'pallet',
+        roll: 'roll',
       },
     },
     assumptionsHeading: {
@@ -576,6 +633,8 @@ const copy = {
       'no-cost-lines': 'No estimate lines added yet.',
       'no-drainage': 'Drainage is not configured.',
       'drainage-incomplete': 'The drainage plan has missing inputs.',
+      'no-roof-details': 'No ridge, eave or opening elements.',
+      'roof-details-incomplete': 'Some system elements still need a choice.',
       'cost-incomplete': 'Some lines still need a price or quantity.',
     },
   },
@@ -883,6 +942,9 @@ function SectionBody({
             {section.hookSpacingMm !== undefined
               ? ` · ${m.drainageHooks}: ${length(section.hookSpacingMm)}`
               : ''}
+            {section.hookJointClearanceMm !== undefined
+              ? ` · ${m.drainageHookRule.replace('{{cm}}', length(section.hookJointClearanceMm))}`
+              : ''}
           </p>
           <table>
             <thead>
@@ -916,6 +978,7 @@ function SectionBody({
                   <th>{m.drainageEaves}</th>
                   <th>{m.drainageHeight}</th>
                   <th>{m.drainageElbows}</th>
+                  <th>{m.drainageRoute}</th>
                 </tr>
               </thead>
               <tbody>
@@ -933,12 +996,69 @@ function SectionBody({
                         : m.drainageUnknown}
                     </td>
                     <td>{outlet.elbows ?? m.drainageUnknown}</td>
+                    <td>
+                      {outlet.route === 'offset'
+                        ? `${m.drainageOffset}${
+                            outlet.offsetPipeLengthMm !== undefined
+                              ? ` ${length(outlet.offsetPipeLengthMm)}`
+                              : ''
+                          }`
+                        : outlet.route === 'straight'
+                          ? m.drainageStraight
+                          : '—'}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           )}
           <p className="doc-note">{m.drainageNote}</p>
+        </div>
+      );
+    case 'roof-details':
+      return (
+        <div data-testid="doc-roof-details">
+          {section.groups.map((group) => (
+            <div key={group.area}>
+              <h3>{m.detailArea[group.area]}</h3>
+              <table>
+                <thead>
+                  <tr>
+                    <th>{m.detailElement}</th>
+                    <th>{m.detailProduct}</th>
+                    <th>{m.detailWhere}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {group.items.map((item, index) => (
+                    <tr key={`${item.roleKey}:${index}`}>
+                      <th>{materialText(locale, item.roleKey)}</th>
+                      <td>
+                        {item.decided && item.product
+                          ? `${item.product}${
+                              item.opening?.includes.length
+                                ? ` (${m.detailIncludes}: ${item.opening.includes.length})`
+                                : ''
+                            }`
+                          : m.detailToDecide}
+                      </td>
+                      <td>
+                        {item.opening
+                          ? `${m.detailWindow} ${item.opening.ordinal} · ${Math.round(item.opening.widthMm / 10)} × ${Math.round(item.opening.heightMm / 10)} cm`
+                          : item.scope
+                              .map(
+                                (scope) =>
+                                  `${m.detailScope[scope.kind]} ${scope.ordinals.join(', ')}`,
+                              )
+                              .join(' · ')}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ))}
+          <p className="doc-note">{m.detailNote}</p>
         </div>
       );
     case 'member-schedule':

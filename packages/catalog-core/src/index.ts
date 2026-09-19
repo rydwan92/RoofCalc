@@ -14,7 +14,11 @@ import {
 } from '@cieslacalc/covering-core';
 import {
   DRAINAGE_COMPONENT_ROLES,
+  ROOF_LINE_COMPONENT_ROLES,
+  ROOF_WINDOW_COMPONENT_ROLES,
   roofDrainageComponentTechnicalSpecSchema,
+  roofSystemComponentTechnicalSpecSchema,
+  roofWindowComponentTechnicalSpecSchema,
 } from '@cieslacalc/roof-system-core';
 import {
   TIMBER_STOCK_APPLICATIONS,
@@ -44,6 +48,11 @@ export const CATALOG_PRODUCT_KINDS = [
   'roof-tile-accessory',
   // V51: gutter-system components. One kind; the role is a field.
   'roof-drainage-component',
+  // V52: line-bound roof-system elements (ridge tape, ridge ends, eave and
+  // verge elements). One kind; the role is a field.
+  'roof-system-component',
+  // V52: roof windows (size identity) and their flashing kits.
+  'roof-window-component',
 ] as const;
 export type CatalogProductKind = (typeof CATALOG_PRODUCT_KINDS)[number];
 
@@ -59,6 +68,8 @@ export const catalogTechnicalSpecSchema = z.union([
   timberStockTechnicalSpecSchema,
   roofTileAccessoryTechnicalSpecSchema,
   roofDrainageComponentTechnicalSpecSchema,
+  roofSystemComponentTechnicalSpecSchema,
+  roofWindowComponentTechnicalSpecSchema,
 ]);
 export type CatalogTechnicalSpec = z.infer<typeof catalogTechnicalSpecSchema>;
 
@@ -370,6 +381,15 @@ export const catalogTechnicalPreviewSchema = z
     nominalSystemSize: z.string().min(1).max(40).optional(),
     maxSpacingMm: z.number().finite().positive().optional(),
     hand: z.enum(['left', 'right', 'universal']).optional(),
+    // V52: roof-system components are filtered by role client-side.
+    systemRole: z
+      .enum(ROOF_LINE_COMPONENT_ROLES as [string, ...string[]])
+      .optional(),
+    // V52: windows and flashing kits by system, size and role.
+    windowRole: z.enum(ROOF_WINDOW_COMPONENT_ROLES).optional(),
+    windowSystemKey: z.string().min(1).max(64).optional(),
+    sizeCode: z.string().min(1).max(16).optional(),
+    flashingCoveringClass: z.enum(['profiled', 'flat']).optional(),
   })
   .strict();
 
@@ -486,6 +506,24 @@ export function technicalPreview(
       maxSpacingMm: spec.maxSpacingMm,
       hand: spec.hand,
     };
+  if (spec.kind === 'roof-system-component')
+    return {
+      systemRole: spec.role,
+      lengthMm: spec.lengthMm,
+      rollLengthMm: spec.rollLengthMm,
+      compatibleProductIds:
+        spec.compatibility.scope === 'covering-products'
+          ? spec.compatibility.productIds
+          : undefined,
+    };
+  if (spec.kind === 'roof-window-component')
+    return {
+      windowRole: spec.role,
+      windowSystemKey: spec.windowSystemKey,
+      sizeCode: spec.sizeCode,
+      flashingCoveringClass: spec.covering?.class,
+      minPitchDeg: spec.pitchRangeDeg?.min || undefined,
+    };
   if (spec.kind === 'timber-stock')
     return {
       sectionWidthMm: spec.widthMm,
@@ -520,6 +558,8 @@ export function isCoveringTechnicalSpec(
     spec.kind !== 'membrane' &&
     spec.kind !== 'timber-stock' &&
     spec.kind !== 'roof-tile-accessory' &&
-    spec.kind !== 'roof-drainage-component'
+    spec.kind !== 'roof-drainage-component' &&
+    spec.kind !== 'roof-system-component' &&
+    spec.kind !== 'roof-window-component'
   );
 }

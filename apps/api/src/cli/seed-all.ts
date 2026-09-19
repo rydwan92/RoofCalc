@@ -43,6 +43,9 @@ const CATALOG_BATCHES = [
   // V51: one real gutter system (Galeco STAL²) as roof-drainage-component
   // revisions, technical data only. No price batch: no net price was found.
   'drainage-galeco-stal2-2026-09-v51.json',
+  // V52: ridge tape / ridge starter (swissporTON) and a first roof-window
+  // slice (VELUX MK04/MK06, EDW/EDS). Technical only; no price batch.
+  'roof-system-2026-09-v52.json',
 ] as const;
 const PRICING_BATCHES = [
   'prices-2026-09.json',

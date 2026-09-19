@@ -1297,7 +1297,21 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
-**Iteration:** `051 — roof system features and drainage foundation`
+**Iteration:** `052 — complete roof detail system and drainage hardening`
+
+**Status:** `IMPLEMENTED — committed on main`
+
+**Completed:** Drainage hardening from the Galeco STAL² guide: hooks are kept off gutter connector stations (source: "not at a joint"; RoofCalc strategy: 100 mm clearance, fewest even hooks, one more only when a gap would exceed 60 cm — gable reference 17 → 18 hooks per 9,2 m eave); section assemblies expose installed pieces and joint stations; explicit gutter purchase policy `no-reuse-between-runs` (default) / `reuse-straight-remainders` through `procurement-core` (installed assembly unchanged, never worse); downpipe route PROSTY PION / ODSADZKA (+ offset pipe, 2 derived elbows, optional discharge elbow) / manual. Corner takeout and hook end distance stay unmodelled (no source geometry). `roof-math`: `resolveRoofOpenings` (bottom/right/top/left edges, plane-local + 3D, pitch, rectangular flag) and `resolveRoofLineEnds` (open vs junction; gable 2, hip 4 hip feet, pyramid 4). `roof-system-core`: `roof-system-component` spec (role-validated rules, structural compatibility), line components with `roll-length` / `linear-effective-cover` per feature / `one-per-feature-end` / `one-per-ridge-tile` / manual, explicit allowance only, feature selection; `roof-window-component` (window size identity, flashing kits with covering class, pitch range, includes) and `resolveOpeningSystems` with structural reasons. Cost/pricing gain the `roll` unit. Web: Materiały › **System dachu** (area states + counts, "Uzupełnij system dachu" checklist, product cards KOMPATYBILNE/Uniwersalny/Niezgodne, manual forms, eave/verge chips, "Dotyczy" highlighting, layer toggles, hook/joint markers, opening editor); Material Plan groups incl. OTWORY DACHOWE, no empty groups, actionable SYSTEM DACHU summary; drainage workspace route/policy/hook-rule UI; readiness `opening-flashing-*`, `roof-system-component-undecided` (materials/cost only); execution `roof-details` section. Catalogue `roof-system-2026-09-v52.json` (swissporTON RBF vent 310/390, Gąsior początkowy PS; VELUX MK04/MK06, EDW 0000 MK04/MK06, EDW 2000 MK06, EDS 0000 MK06). See `docs/ARCHITECTURE_V52_ROOF_DETAIL_SYSTEM.md`.
+
+**Validation:** `pnpm verify`, `pnpm test:architecture`, `pnpm e2e` (new `e2e/v52-roof-system.spec.ts`: gable full system, hip highlighting, window flashing via the real batch — desktop + mobile), `pnpm build:edge`, `git diff --check`; local XAMPP MariaDB seed ×2 (V52 batch second pass 0 new / 0 updated / 0 conflicts) + smoke-check ok (3 system components, 6 window components); browser QA 1920×1080, 1440×900, 1024×768, 390×844.
+
+**Known / not done:** no drainage/accessory/flashing prices (no commercial variants to join; retail prices vary ~2.5× and are colour-specific); corner takeout and hook end distance not modelled; downpipe height not reduced by the offset (upper estimate); no FAKRO, no separate collar products, no verge-flashing catalogue products; ridge starter quantity is user-confirmed (source states no rule); remote alwaysdata DEV DB not seeded (credentials).
+
+**NEXT ACTION:** V53 — commercial variants (colour) for drainage and roof-system components with verified net prices joined by sale unit; verge flashing and eave flashing catalogue products; FAKRO or a second window size range; then valleys/compound roofs on the same topology.
+
+---
+
+**Previous iteration:** `051 — roof system features and drainage foundation`
 
 **Status:** `IMPLEMENTED — committed on main`
 

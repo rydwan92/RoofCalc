@@ -29,11 +29,13 @@ import type {
 import { readinessIssueText } from './readiness-copy';
 import { LinearPurchasePanel } from './LinearPurchase';
 import { TilePurchasePanel } from './TilePurchase';
+import { DrainageGroupHead, RoofSystemSummary } from './RoofSystemMaterials';
+import { featureScopeLabel } from './roof-system';
 import {
-  DrainageGroupHead,
-  LineComponentAdder,
-  RoofSystemSummary,
-} from './RoofSystemMaterials';
+  requestRoofSystemFocus,
+  type RoofSystemAreaKey,
+} from './roof-system-checklist';
+import { roofSystemCopy } from './roof-system-copy';
 import type { RoofTileLayoutResult } from '@cieslacalc/covering-core';
 import type {
   LinearMaterialKind,
@@ -179,6 +181,12 @@ export function MaterialPlan({
   const [kept, setKept] = useState<Record<string, string>>({});
   // V51: the drainage workspace; the first click also switches drainage on.
   const openDrainage = () => state.setMaterialsView('drainage');
+  // V52: the roof-system workspace, optionally focused on one area/opening.
+  const openRoofSystem = (area?: RoofSystemAreaKey, featureId?: string) => {
+    requestRoofSystemFocus(area ? { area, featureId } : { checklist: true });
+    state.setMaterialsView('system');
+  };
+  const rs = roofSystemCopy(locale);
   const rows = createMaterialPlanRows(facts, membrane);
   const options = usePriceOptions(
     rows.flatMap((row) =>
@@ -341,9 +349,8 @@ export function MaterialPlan({
       {!rows.length && <p>{m.empty}</p>}
       <RoofSystemSummary
         facts={facts}
-        rows={rows}
         locale={locale}
-        onOpenDrainage={openDrainage}
+        onOpenArea={openRoofSystem}
       />
       {(() => {
         const renderRow = (row: MaterialPlanRow) => {
@@ -388,9 +395,20 @@ export function MaterialPlan({
                   item.assignmentId === tileAssignment.id,
               )
             : undefined;
-          const label = `${materialText(locale, row.labelKey)}${
-            section ? ` ${section.widthMm}×${section.depthMm}` : ''
-          }${row.description ? ` · ${row.description}` : ''}`;
+          const label =
+            row.openingOrdinal !== undefined
+              ? `${rs.opening(row.openingOrdinal)} · ${row.description?.split(' · ')[1] ?? ''} — ${materialText(locale, row.labelKey)}`
+              : `${materialText(locale, row.labelKey)}${
+                  section ? ` ${section.widthMm}×${section.depthMm}` : ''
+                }${row.description ? ` · ${row.description}` : ''}`;
+          const appliesTo =
+            row.appliesTo?.length && facts.roofSystem
+              ? featureScopeLabel(
+                  facts.roofSystem.topology,
+                  row.appliesTo,
+                  locale,
+                )
+              : '';
           return (
             <article
               key={row.id}
@@ -408,6 +426,26 @@ export function MaterialPlan({
                   <div className="mp-row-main">
                     <div>
                       <h4>{label}</h4>
+                      {appliesTo && (
+                        <small
+                          className="mp-applies"
+                          data-testid="material-applies-to"
+                        >
+                          {rs.appliesTo}: {appliesTo}
+                        </small>
+                      )}
+                      {row.openingFeatureId && row.partial && (
+                        <button
+                          type="button"
+                          className="a-primary"
+                          data-testid="material-opening-choose"
+                          onClick={() =>
+                            openRoofSystem('openings', row.openingFeatureId)
+                          }
+                        >
+                          {rs.chooseFlashing}
+                        </button>
+                      )}
                       <span
                         className="mp-badge"
                         data-status={
@@ -698,7 +736,7 @@ export function MaterialPlan({
                 row.labelKey === 'counterBattens' ? (
                   <button onClick={onOpenLayers}>{m.parameters}</button>
                 ) : null}
-                {row.category === 'covering' && (
+                {row.category === 'covering' && !row.roofSystemRole && (
                   <button onClick={onOpenCovering}>{m.chooseCovering}</button>
                 )}
                 {scenario &&
@@ -800,29 +838,20 @@ export function MaterialPlan({
                 {categoryRows.map(renderRow)}
               </div>
             );
-          if (category === 'eave')
+          // V52: empty groups do not render; the SYSTEM DACHU summary is
+          // the one entry point for areas that are not configured yet.
+          if (!categoryRows.length) return null;
+          if (category === 'eave' || category === 'openings')
             return (
               <div
                 key={category}
                 className="mp-group"
-                data-testid="material-group-eave"
+                data-testid={`material-group-${category}`}
               >
-                <h3>{m.eave}</h3>
+                <h3>{m[category]}</h3>
                 {categoryRows.map(renderRow)}
-                <LineComponentAdder
-                  facts={facts}
-                  locale={locale}
-                  roles={[
-                    'eave-strip',
-                    'eave-flashing',
-                    'eave-comb',
-                    'ventilation-comb',
-                  ]}
-                  empty={!categoryRows.length}
-                />
               </div>
             );
-          if (!categoryRows.length) return null;
           if (category === 'covering') {
             const order: MaterialSubgroup[] = [
               'tile',
@@ -856,12 +885,6 @@ export function MaterialPlan({
                       .map(renderRow)}
                   </div>
                 ))}
-                <LineComponentAdder
-                  facts={facts}
-                  locale={locale}
-                  roles={['ridge-tape']}
-                  empty={false}
-                />
               </div>
             );
           }
