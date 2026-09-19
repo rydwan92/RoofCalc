@@ -22,6 +22,7 @@ import { roofPlaneShortLabelKey } from './covering-presentation';
 import { createExportCandidates, type ExportFacts } from './export-adapter';
 import './execution-export.css';
 import { materialCopy, materialText } from './material-copy';
+import { MATERIAL_CATEGORY_ORDER } from './material-plan';
 import type { DocumentStatus } from '@cieslacalc/document-core';
 import type { ReadinessDocumentKind } from './project-readiness';
 import { readinessIssueText } from './readiness-copy';
@@ -165,7 +166,24 @@ const copy = {
     tileGauge: 'Rozstaw łat',
     tileFull: 'Pełne',
     tileCut: 'Docinane',
-    tileAccessories: 'Akcesoria systemowe',
+    tileAccessories: 'Elementy systemowe pokrycia',
+    'drainage-plan': 'Plan odwodnienia',
+    drainageSystem: 'System',
+    drainageProposed: 'Układ proponowany (do potwierdzenia na budowie)',
+    drainageManual: 'Układ ustalony przez użytkownika',
+    drainageRun: 'Rynna',
+    drainageEaves: 'Okapy',
+    drainageLength: 'Długość',
+    drainageClosed: 'obwód zamknięty',
+    drainageCorners: 'narożniki',
+    drainageOutlet: 'Odpływ / pion',
+    drainageFromStart: 'od początku okapu',
+    drainageHeight: 'Wysokość pionu',
+    drainageElbows: 'Kolana',
+    drainageHooks: 'Rozstaw haków',
+    drainageUnknown: 'do ustalenia',
+    drainageNote:
+      'Rozmieszczenie elementów jest planem materiałowym. Dobór średnicy i wydajności systemu odwodnienia nie został zweryfikowany hydraulicznie. Ilości — w liście materiałów.',
     tileNeedsDecision: 'wymaga ustalenia',
     modular: 'Blacha modułowa',
     cutSheet: 'Blacha cięta na długość',
@@ -270,6 +288,8 @@ const copy = {
         'Jętka: długość i położenie to wynik geometryczny względem osi krokwi, bez cięć wykonawczych i doboru przekroju.',
       'cost-incomplete': (p: Params) =>
         `Kosztorys: ${p.missingPrices} pozycji bez ceny nie wchodzi do sumy.`,
+      'drainage-hydraulics-not-verified': () =>
+        'Odwodnienie: rozmieszczenie elementów jest planem materiałowym. Dobór średnicy i wydajności systemu odwodnienia nie został jeszcze zweryfikowany hydraulicznie.',
     },
     notModelledText: {
       'structural-check': 'Weryfikacja nośności, ugięć i stateczności',
@@ -300,6 +320,8 @@ const copy = {
       'invalid-roof-surface': 'Sprawdź otwory i powierzchnię dachu.',
       'cutting-incomplete': 'Część blanków pozostaje nieprzypisana.',
       'no-cost-lines': 'Nie dodano żadnej pozycji kosztorysu.',
+      'no-drainage': 'Odwodnienie nie jest skonfigurowane.',
+      'drainage-incomplete': 'Plan odwodnienia ma nieuzupełnione dane.',
       'cost-incomplete': 'Część pozycji wymaga jeszcze ceny lub ilości.',
     },
   },
@@ -396,7 +418,24 @@ const copy = {
     tileGauge: 'Batten gauge',
     tileFull: 'Full',
     tileCut: 'Cut',
-    tileAccessories: 'System accessories',
+    tileAccessories: 'Covering system elements',
+    'drainage-plan': 'Drainage plan',
+    drainageSystem: 'System',
+    drainageProposed: 'Proposed layout (confirm on site)',
+    drainageManual: 'Layout set by the user',
+    drainageRun: 'Gutter',
+    drainageEaves: 'Eaves',
+    drainageLength: 'Length',
+    drainageClosed: 'closed loop',
+    drainageCorners: 'corners',
+    drainageOutlet: 'Outlet / downpipe',
+    drainageFromStart: 'from the eave start',
+    drainageHeight: 'Downpipe height',
+    drainageElbows: 'Elbows',
+    drainageHooks: 'Hook spacing',
+    drainageUnknown: 'to decide',
+    drainageNote:
+      'Component placement is a material plan. Gutter size and capacity have not been verified hydraulically. Quantities are in the material list.',
     tileNeedsDecision: 'needs a decision',
     modular: 'Modular sheet',
     cutSheet: 'Cut-to-length sheet',
@@ -501,6 +540,8 @@ const copy = {
         'Collar tie: length and position are geometric, referenced to the rafter axis, without fabrication cuts or section sizing.',
       'cost-incomplete': (p: Params) =>
         `Cost estimate: ${p.missingPrices} items without a price are excluded from the total.`,
+      'drainage-hydraulics-not-verified': () =>
+        'Drainage: component placement is a material plan. The gutter size and capacity have not been verified hydraulically.',
     },
     notModelledText: {
       'structural-check':
@@ -533,6 +574,8 @@ const copy = {
       'invalid-roof-surface': 'Review openings and roof surface.',
       'cutting-incomplete': 'Some blanks are unassigned.',
       'no-cost-lines': 'No estimate lines added yet.',
+      'no-drainage': 'Drainage is not configured.',
+      'drainage-incomplete': 'The drainage plan has missing inputs.',
       'cost-incomplete': 'Some lines still need a price or quantity.',
     },
   },
@@ -583,6 +626,85 @@ function Diagram({
             y2={b.y}
             className={`doc-line doc-${line.role}`}
           />
+        );
+      })}
+    </svg>
+  );
+}
+
+function DrainageDiagram({
+  section,
+  m,
+}: {
+  section: Extract<ExecutionSection, { kind: 'drainage-plan' }>;
+  m: Copy;
+}) {
+  const points = section.outlines.flatMap((outline) => outline.points);
+  if (!points.length) return null;
+  const fit = fitDrawing(boundsFromPoints(points), {
+    width: 640,
+    height: 360,
+    padding: 40,
+  });
+  return (
+    <svg
+      className="doc-roof-diagram doc-drainage-diagram"
+      viewBox="0 0 640 360"
+      role="img"
+      aria-label={m['drainage-plan']}
+    >
+      <title>{m['drainage-plan']}</title>
+      {section.outlines.map((outline) => (
+        <polygon
+          key={outline.id}
+          className="doc-roof-outline"
+          points={outline.points
+            .map(fit.project)
+            .map(({ x, y }) => `${x},${y}`)
+            .join(' ')}
+        />
+      ))}
+      {section.gutters.map((gutter) => {
+        const a = fit.project(gutter.from);
+        const b = fit.project(gutter.to);
+        return (
+          <g key={gutter.eaveLabel}>
+            <line
+              x1={a.x}
+              y1={a.y}
+              x2={b.x}
+              y2={b.y}
+              stroke="#0f7c8c"
+              strokeWidth={5}
+              strokeLinecap="round"
+            />
+            <text
+              x={(a.x + b.x) / 2}
+              y={(a.y + b.y) / 2 - 8}
+              textAnchor="middle"
+              fontSize={12}
+            >
+              {gutter.eaveLabel}
+            </text>
+          </g>
+        );
+      })}
+      {section.outlets.map((outlet) => {
+        const at = fit.project(outlet.at);
+        return (
+          <g key={outlet.label}>
+            <circle
+              cx={at.x}
+              cy={at.y}
+              r={7}
+              fill="#fff"
+              stroke="#04424b"
+              strokeWidth={2.5}
+            />
+            <text x={at.x + 10} y={at.y + 16} fontSize={12} fontWeight={700}>
+              ↓{outlet.label}
+            </text>
+          </g>
         );
       })}
     </svg>
@@ -747,6 +869,78 @@ function SectionBody({
       );
     case 'roof-overview':
       return <RoofDiagram section={section} m={m} />;
+    case 'drainage-plan':
+      return (
+        <div data-testid="doc-drainage-plan">
+          <DrainageDiagram section={section} m={m} />
+          <p>
+            {section.systemName
+              ? `${m.drainageSystem}: ${section.systemName} · `
+              : ''}
+            {section.layout === 'proposed'
+              ? m.drainageProposed
+              : m.drainageManual}
+            {section.hookSpacingMm !== undefined
+              ? ` · ${m.drainageHooks}: ${length(section.hookSpacingMm)}`
+              : ''}
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>{m.drainageRun}</th>
+                <th>{m.drainageEaves}</th>
+                <th>{m.drainageLength}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {section.runs.map((run) => (
+                <tr key={run.label}>
+                  <th>{run.label}</th>
+                  <td>
+                    {run.eaveLabels.join(' → ')}
+                    {run.closed ? ` (${m.drainageClosed})` : ''}
+                    {run.connectedCorners
+                      ? ` · ${m.drainageCorners}: ${run.connectedCorners}`
+                      : ''}
+                  </td>
+                  <td>{length(run.lengthMm)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {section.outlets.length > 0 && (
+            <table>
+              <thead>
+                <tr>
+                  <th>{m.drainageOutlet}</th>
+                  <th>{m.drainageEaves}</th>
+                  <th>{m.drainageHeight}</th>
+                  <th>{m.drainageElbows}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {section.outlets.map((outlet) => (
+                  <tr key={outlet.label}>
+                    <th>{outlet.label}</th>
+                    <td>
+                      {outlet.eaveLabel} ·{' '}
+                      {length(outlet.distanceFromEaveStartMm)}{' '}
+                      {m.drainageFromStart}
+                    </td>
+                    <td>
+                      {outlet.downpipeHeightMm !== undefined
+                        ? length(outlet.downpipeHeightMm)
+                        : m.drainageUnknown}
+                    </td>
+                    <td>{outlet.elbows ?? m.drainageUnknown}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          <p className="doc-note">{m.drainageNote}</p>
+        </div>
+      );
     case 'member-schedule':
       return (
         <>
@@ -1142,10 +1336,16 @@ function SectionBody({
                       .filter(Boolean)
                       .join(' · ')}
                   </p>
-                  {row.tile.accessories.length > 0 && (
+                  {row.tile.accessories.some(
+                    (item) => item.name || item.quantity !== undefined,
+                  ) && (
                     <p>
                       {m.tileAccessories}:{' '}
                       {row.tile.accessories
+                        // V51: only elements actually chosen or resolved.
+                        .filter(
+                          (item) => item.name || item.quantity !== undefined,
+                        )
                         .map(
                           (item) =>
                             `${materialText(locale, `tileAccessory.${item.role}`)}${
@@ -1253,98 +1453,98 @@ function SectionBody({
         );
       return (
         <>
-          {(['timber', 'layers', 'covering', 'other'] as const).map(
-            (category) => (
-              <div key={category}>
-                <h3>{mc[category]}</h3>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>{mc.title}</th>
-                      <th>{m.basis}</th>
-                      <th>{mc.value}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {section.rows
-                      .filter((row) => row.category === category)
-                      .map((row, index) => {
-                        const money = (value: number) =>
-                          new Intl.NumberFormat(locale, {
-                            style: 'currency',
-                            currency: row.currencyCode ?? 'PLN',
-                          }).format(value / 100);
-                        return (
-                          <tr key={index}>
-                            <td>
-                              {materialText(locale, row.labelKey)}{' '}
-                              {row.description}
-                              <p>{row.product}</p>
-                              {row.metrics.map((metric) => (
-                                <p key={metric.labelKey}>
-                                  {materialText(locale, metric.labelKey)}:{' '}
-                                  {number(metric.value)}
-                                  {metric.maxValue !== undefined
-                                    ? `–${number(metric.maxValue)}`
-                                    : ''}{' '}
-                                  {unit(metric.unit)}
-                                </p>
-                              ))}
-                              {row.warnings.map((warning) => (
-                                <p key={warning}>
-                                  {materialText(locale, warning)}
-                                </p>
-                              ))}
-                            </td>
-                            <td>
-                              {row.basis === 'procurement-stock'
-                                ? mc.procurement
-                                : row.basis === 'fabrication-requirement'
-                                  ? mc.fabrication
-                                  : row.basis === 'manufacturer'
-                                    ? mc.manufacturer
-                                    : mc.geometry}
+          {MATERIAL_CATEGORY_ORDER.filter((category) =>
+            section.rows.some((row) => row.category === category),
+          ).map((category) => (
+            <div key={category} data-material-category={category}>
+              <h3>{mc[category]}</h3>
+              <table>
+                <thead>
+                  <tr>
+                    <th>{mc.title}</th>
+                    <th>{m.basis}</th>
+                    <th>{mc.value}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {section.rows
+                    .filter((row) => row.category === category)
+                    .map((row, index) => {
+                      const money = (value: number) =>
+                        new Intl.NumberFormat(locale, {
+                          style: 'currency',
+                          currency: row.currencyCode ?? 'PLN',
+                        }).format(value / 100);
+                      return (
+                        <tr key={index}>
+                          <td>
+                            {materialText(locale, row.labelKey)}{' '}
+                            {row.description}
+                            <p>{row.product}</p>
+                            {row.metrics.map((metric) => (
+                              <p key={metric.labelKey}>
+                                {materialText(locale, metric.labelKey)}:{' '}
+                                {number(metric.value)}
+                                {metric.maxValue !== undefined
+                                  ? `–${number(metric.maxValue)}`
+                                  : ''}{' '}
+                                {unit(metric.unit)}
+                              </p>
+                            ))}
+                            {row.warnings.map((warning) => (
+                              <p key={warning}>
+                                {materialText(locale, warning)}
+                              </p>
+                            ))}
+                          </td>
+                          <td>
+                            {row.basis === 'procurement-stock'
+                              ? mc.procurement
+                              : row.basis === 'fabrication-requirement'
+                                ? mc.fabrication
+                                : row.basis === 'manufacturer'
+                                  ? mc.manufacturer
+                                  : mc.geometry}
+                            <p>
+                              {row.minimumQuantity !== undefined &&
+                              row.maximumQuantity !== undefined
+                                ? `${number(row.minimumQuantity)}–${number(row.maximumQuantity)}`
+                                : row.quantity !== undefined
+                                  ? number(row.quantity)
+                                  : '—'}{' '}
+                              {unit(row.unit)}
+                            </p>
+                            {row.partial && <strong>{mc.partial}</strong>}
+                          </td>
+                          <td>
+                            {row.minimumValueMinor !== undefined &&
+                            row.maximumValueMinor !== undefined
+                              ? `${money(row.minimumValueMinor)}${row.minimumValueMinor !== row.maximumValueMinor ? `–${money(row.maximumValueMinor)}` : ''}`
+                              : '—'}
+                            <p>
+                              {row.priceProvenance === 'manual'
+                                ? mc.manual
+                                : row.priceProvenance}
+                            </p>
+                            {row.unitPriceMinor !== undefined && (
                               <p>
-                                {row.minimumQuantity !== undefined &&
-                                row.maximumQuantity !== undefined
-                                  ? `${number(row.minimumQuantity)}–${number(row.maximumQuantity)}`
-                                  : row.quantity !== undefined
-                                    ? number(row.quantity)
-                                    : '—'}{' '}
+                                {mc.price}: {money(row.unitPriceMinor)}/
                                 {unit(row.unit)}
                               </p>
-                              {row.partial && <strong>{mc.partial}</strong>}
-                            </td>
-                            <td>
-                              {row.minimumValueMinor !== undefined &&
-                              row.maximumValueMinor !== undefined
-                                ? `${money(row.minimumValueMinor)}${row.minimumValueMinor !== row.maximumValueMinor ? `–${money(row.maximumValueMinor)}` : ''}`
-                                : '—'}
-                              <p>
-                                {row.priceProvenance === 'manual'
-                                  ? mc.manual
-                                  : row.priceProvenance}
-                              </p>
-                              {row.unitPriceMinor !== undefined && (
-                                <p>
-                                  {mc.price}: {money(row.unitPriceMinor)}/
-                                  {unit(row.unit)}
-                                </p>
+                            )}
+                            {row.priceProvenance &&
+                              row.priceProvenance !== mc.manual &&
+                              row.priceProvenance !== 'manual' && (
+                                <small>{mc.verify}</small>
                               )}
-                              {row.priceProvenance &&
-                                row.priceProvenance !== mc.manual &&
-                                row.priceProvenance !== 'manual' && (
-                                  <small>{mc.verify}</small>
-                                )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                  </tbody>
-                </table>
-              </div>
-            ),
-          )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
+            </div>
+          ))}
         </>
       );
     }

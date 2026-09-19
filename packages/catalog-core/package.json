@@ -6,6 +6,7 @@
   "exports": "./src/index.ts",
   "dependencies": {
     "@cieslacalc/covering-core": "workspace:*",
-    "zod": "^3.25.0"
+    "zod": "^3.25.0",
+    "@cieslacalc/roof-system-core": "workspace:*"
   }
 }

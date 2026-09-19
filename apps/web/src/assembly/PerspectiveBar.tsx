@@ -1,5 +1,6 @@
 import {
   ChevronDown,
+  Droplets,
   FileText,
   Grid3X3,
   Hammer,
@@ -56,6 +57,7 @@ const ALL_DESTINATIONS: readonly ViewPreset[] = [
 
 const MATERIAL_VIEWS: readonly MaterialsView[] = [
   'plan',
+  'drainage',
   'cutting',
   'schedule',
 ];
@@ -170,6 +172,8 @@ export function ContextualTaskTabs({ k1Ready = true }: { k1Ready?: boolean }) {
           >
             {view === 'cutting' ? (
               <Scissors size={15} aria-hidden="true" />
+            ) : view === 'drainage' ? (
+              <Droplets size={15} aria-hidden="true" />
             ) : (
               <ListTree size={15} aria-hidden="true" />
             )}

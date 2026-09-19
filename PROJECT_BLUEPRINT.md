@@ -1297,7 +1297,21 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
-**Iteration:** `050 — roof tile purchase planning and system BOM`
+**Iteration:** `051 — roof system features and drainage foundation`
+
+**Status:** `IMPLEMENTED — committed on main`
+
+**Completed:** `roof-math/roof-topology.ts` — canonical, deduplicated roof features from the resolved surface (shared edge = one feature with all incident planes; ridge / hip / valley by convexity / eave / verge; true 3D lengths; oriented eaves with outward normals; eave corners external/internal; opening edges kept separate; deterministic opaque IDs guarded by an architecture test). Gable 1 ridge / 2 eaves / 4 verges; hip 1 ridge / 4 hips / 4 eaves / 4 external corners. The covering drawing and the V50 ridge/hip line lengths now read these features (V50 numbers unchanged). New pure `packages/roof-system-core` (zod only): roles and a finite rule vocabulary, even spacing without cumulative rounding, commercial section assembly per straight run (`no-reuse-between-runs`, KONSERWATYWNY), `roof-drainage-component` spec, persisted `project.roofSystem` intent (decisions only), line components (ridge tape, eave elements) and the drainage planner (runs through connected corners incl. closed loops, sections/connectors from the actual assembly, end caps from open ends with left/right when declared, hooks ≤ source/user spacing with visible incompatibility, explicit outlets, proposals never counted, downpipes from user heights, elbows user-confirmed, clamps from source spacing or a user count). UI: Materials › Odwodnienie (plan view with teal gutters, outlets, downpipe labels, clickable eaves, corner toggles, drag with one history entry, numeric station/height, AUTO „PROPONOWANY UKŁAD” vs RĘCZNIE, one hydraulic sentence); Material Plan grouped Pokrycie (tile / gąsiory / skrajne / akcesoria) → Warstwy → Okap i obróbki → Odwodnienie → Konstrukcja, SYSTEM DACHU summary, one compact row when drainage is off; cost `drainage:*` / `line-component:*` piece suggestions with drift review; readiness warnings affecting only materials/cost; material list and a concise `drainage-plan` execution section. Catalogue: `drainage-galeco-stal2-2026-09-v51.json` (Galeco STAL² 125/80×80, 14 technical revisions from galeco.pl, no prices). See `docs/ARCHITECTURE_V51_ROOF_SYSTEM_AND_DRAINAGE.md`.
+
+**Validation:** `pnpm verify` (1384 tests), `pnpm test:architecture` 36/36, `pnpm e2e` 88 passed / 24 DB-gated skipped (new `e2e/v51-drainage.spec.ts`: hip normal flow, gable manual flow, catalogue system — desktop + mobile), `pnpm build:edge`, `git diff --check`; local XAMPP MariaDB seed ×2 (second pass 0 new / 0 conflicts for the V51 batch) + smoke-check ok (14 drainage components); browser QA 1920×1080, 1440×900, 1024×768, 390×844.
+
+**Known / not done:** no hydraulic sizing (by design); no offcut reuse between runs; corner pieces do not shorten gutters; hooks at both ends of each eave segment and "not at a joint" not enforced; corner connector needs unmodelled; downpipe offsets/elbows user-confirmed; ridge tape and eave elements manual until catalogue data; no drainage prices (no source-stated net price); remote alwaysdata DEV DB still not seeded (credentials).
+
+**NEXT ACTION:** V52 — valleys/compound roofs on the same topology, flashings and roof-window collars from opening edges, verified eave/ridge accessory catalogue data (ridge tape, eave combs) and source-backed drainage prices; optional hydraulic check as a separate module.
+
+---
+
+**Previous iteration:** `050 — roof tile purchase planning and system BOM`
 
 **Status:** `IMPLEMENTED — committed on main`
 

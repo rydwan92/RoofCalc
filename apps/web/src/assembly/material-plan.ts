@@ -14,8 +14,25 @@ import type { ExportFacts } from './export-adapter';
 import { createCostSuggestions } from './cost-adapter';
 import { purchasedPieces } from '@cieslacalc/tile-procurement';
 import type { TilePurchasePlan } from './tile-purchase';
+import type { RoofSystemFacts } from './roof-system';
+import { ROOF_SYSTEM_ROLE_GROUP } from '@cieslacalc/roof-system-core';
 
-export type MaterialCategory = 'timber' | 'layers' | 'covering' | 'other';
+/**
+ * V51 whole-roof grouping. Covering first (what the roof is), then its layers,
+ * eave details, drainage and finally structural timber.
+ */
+export type MaterialCategory =
+  'covering' | 'layers' | 'eave' | 'drainage' | 'timber' | 'other';
+export const MATERIAL_CATEGORY_ORDER: readonly MaterialCategory[] = [
+  'covering',
+  'layers',
+  'eave',
+  'drainage',
+  'timber',
+  'other',
+];
+/** V51 sub-groups inside POKRYCIE, for readable hierarchy only. */
+export type MaterialSubgroup = 'tile' | 'ridge' | 'verge' | 'accessory';
 export interface MaterialPlanRow {
   id: string;
   category: MaterialCategory;
@@ -52,6 +69,9 @@ export interface MaterialPlanRow {
    */
   tileAssignmentId?: string;
   tilePlan?: TilePurchasePlan;
+  subgroup?: MaterialSubgroup;
+  /** V51: a roof-system row (drainage or line component) and its role. */
+  roofSystemRole?: string;
 }
 
 export interface MaterialPriceSelection {
@@ -146,7 +166,9 @@ export function createMaterialPlanRows(
       suggestion.kind === 'linear-stock' ||
       suggestion.kind.startsWith('covering-') ||
       // V50: the tile plan owns its own rows (base tile + accessories).
-      suggestion.kind.startsWith('tile-')
+      suggestion.kind.startsWith('tile-') ||
+      // V51: roof-system rows come from the resolved plan below.
+      suggestion.kind === 'roof-system'
     )
       continue;
     if (!('quantity' in suggestion)) continue;
@@ -401,6 +423,7 @@ export function createMaterialPlanRows(
       ...(assignment.product.technicalSpecSnapshot.kind === 'roof-tile'
         ? { tileAssignmentId: assignment.id }
         : {}),
+      subgroup: 'tile',
     });
   }
   for (const [id, enabled, labelKey, unit, basis] of [
@@ -428,6 +451,7 @@ export function createMaterialPlanRows(
         sourceReferences: [],
       });
   }
+  if (facts.roofSystem) rows.push(...roofSystemRows(facts.roofSystem));
   // Additional timber families remain visible as technical evidence, never procurement.
   for (const item of facts.schedule.timberRows.filter(
     (item) => item.familyKey !== 'K1' || facts.k1.status !== 'resolved',
@@ -551,6 +575,7 @@ function tilePlanRows(
     sourceReferences: [assignmentId],
     tileAssignmentId: assignmentId,
     tilePlan: plan,
+    subgroup: 'tile',
   };
   const accessories = plan.accessories.map<MaterialPlanRow>((item) => ({
     id: `tile-accessory:${assignmentId}:${item.role}`,
@@ -602,8 +627,139 @@ function tilePlanRows(
     ],
     sourceReferences: [assignmentId],
     tileAssignmentId: assignmentId,
+    subgroup:
+      item.role === 'ridge' || item.role === 'hip-ridge'
+        ? 'ridge'
+        : item.role === 'verge-left' || item.role === 'verge-right'
+          ? 'verge'
+          : 'accessory',
   }));
   return [base, ...accessories];
+}
+
+/**
+ * V51: the roof-system BOM as material rows — line components and drainage.
+ * Quantities come from the resolved plan; a row needing a decision carries
+ * no quantity, so it can never be priced or costed by accident.
+ */
+function roofSystemRows(facts: RoofSystemFacts): MaterialPlanRow[] {
+  const rows: MaterialPlanRow[] = facts.lineComponents
+    .filter((item) => item.status === 'resolved')
+    .map((item) => ({
+      id: `line-component:${item.componentId}`,
+      costSuggestionKey: `line-component:${item.componentId}`,
+      category:
+        ROOF_SYSTEM_ROLE_GROUP[item.role] === 'eave' ? 'eave' : 'covering',
+      ...(ROOF_SYSTEM_ROLE_GROUP[item.role] === 'eave'
+        ? {}
+        : { subgroup: 'accessory' as const }),
+      labelKey: `roofSystem.${item.role}`,
+      description: item.name,
+      quantity: item.quantity,
+      unit: 'piece',
+      basis: item.rule === 'manual' ? 'manual' : 'procurement-stock',
+      suitability: 'execution-based',
+      partial: false,
+      product: { name: item.name, facts: [] },
+      productSource: 'manual',
+      metrics: [
+        { labelKey: 'lineLength', value: item.lineLengthMm / 1000, unit: 'm' },
+      ],
+      warnings: [
+        item.rule === 'manual'
+          ? 'line-component-manual'
+          : 'line-component-per-feature',
+      ],
+      sourceReferences: item.featureIds,
+      roofSystemRole: item.role,
+    }));
+  const plan = facts.drainage;
+  if (plan.status === 'disabled' || !plan.bom.length) return rows;
+  const system = facts.intent?.drainage?.system;
+  for (const item of plan.bom) {
+    const resolved = item.status === 'resolved' && item.quantity !== undefined;
+    const lengthLabel =
+      item.lengthMm !== undefined ? `${item.lengthMm / 1000} m` : undefined;
+    const handLabel =
+      item.hand && item.hand !== 'universal' ? item.hand : undefined;
+    const metrics: MaterialPlanRow['metrics'] = [];
+    if (
+      item.role === 'gutter-section' &&
+      item.key === plan.bom.find((r) => r.role === 'gutter-section')?.key
+    ) {
+      metrics.push({
+        labelKey: 'drainageGutterLength',
+        value: plan.totalGutterLengthMm / 1000,
+        unit: 'm',
+      });
+      if (plan.purchasedGutterLengthMm !== undefined)
+        metrics.push(
+          {
+            labelKey: 'purchasedLength',
+            value: plan.purchasedGutterLengthMm / 1000,
+            unit: 'm',
+          },
+          {
+            labelKey: 'commercialOverageLength',
+            value:
+              (plan.purchasedGutterLengthMm - plan.totalGutterLengthMm) / 1000,
+            unit: 'm',
+          },
+        );
+    }
+    if (item.role === 'gutter-hook' && plan.hooks.appliedSpacingMm) {
+      if (plan.hooks.maxSpacingMm !== undefined)
+        metrics.push({
+          labelKey: 'hookMaxSpacing',
+          value: plan.hooks.maxSpacingMm / 10,
+          unit: 'cm',
+        });
+      if (plan.hooks.actualIntervalMm !== undefined)
+        metrics.push({
+          labelKey: 'hookActualSpacing',
+          value: Math.round(plan.hooks.actualIntervalMm) / 10,
+          unit: 'cm',
+        });
+    }
+    rows.push({
+      id: `drainage:${item.key}`,
+      costSuggestionKey: `drainage:${item.key}`,
+      category: 'drainage',
+      labelKey: handLabel
+        ? `drainage.${item.role}.${handLabel}`
+        : `drainage.${item.role}`,
+      ...(lengthLabel ? { description: lengthLabel } : {}),
+      ...(resolved ? { quantity: item.quantity } : {}),
+      unit: 'piece',
+      basis: item.rule === 'manual' ? 'manual' : 'procurement-stock',
+      suitability: resolved ? 'execution-based' : 'manual-required',
+      partial: !resolved,
+      // A catalogue component names its product; a manual system names
+      // the system the user typed, never a role key.
+      ...(item.component
+        ? {
+            product: {
+              name: item.component.catalogRef
+                ? item.component.name
+                : (system?.name ?? item.component.name),
+              variantId: item.component.catalogRef?.variantId,
+              facts: [],
+            },
+            productSource: item.component.catalogRef ? 'catalog' : 'manual',
+          }
+        : {}),
+      metrics,
+      warnings: [
+        ...(item.reason ? [`drainage-${item.reason}`] : []),
+        ...(item.rule === 'commercial-assembly' && resolved
+          ? ['drainage-sections-no-reuse']
+          : []),
+      ],
+      sourceReferences: plan.gutteredEaveIds,
+      roofSystemRole: item.role,
+    });
+  }
+  return rows;
 }
 
 /** A safe price must join the deliberately selected variant and exact sale unit. */

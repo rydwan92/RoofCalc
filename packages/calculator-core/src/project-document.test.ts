@@ -374,4 +374,36 @@ describe('RoofProjectDocumentV1', () => {
     expect(serialized).not.toMatch(/catalogBrowser|query|manufacturer/);
     expect(serialized).not.toContain('selectedFeatureIds');
   });
+
+  it('V51: round-trips the optional roof-system intent and never stores derived counts', () => {
+    const roof = gableTemplateFromAssembly(assemblyDefaults);
+    const document = createRoofProjectDocument(roof, {
+      roofSystem: {
+        drainage: {
+          enabled: true,
+          mode: 'manual',
+          gutteredEaveIds: ['eave-a'],
+          outlets: [
+            {
+              id: 'outlet-1',
+              eaveId: 'eave-a',
+              station: 0.25,
+              downpipeHeightMm: 5400,
+              elbowCount: 2,
+            },
+          ],
+          hookSpacing: { mode: 'manual', spacingMm: 500 },
+        },
+      },
+    });
+    const serialized = serializeRoofProjectDocument(document);
+    expect(parseRoofProjectDocument(serialized)).toEqual(document);
+    expect(serialized).not.toMatch(/quantity|hookCount|sections|runs/);
+    // Older documents simply have no roof system.
+    expect(
+      parseRoofProjectDocument(
+        serializeRoofProjectDocument(createRoofProjectDocument(roof)),
+      ).project.roofSystem,
+    ).toBeUndefined();
+  });
 });

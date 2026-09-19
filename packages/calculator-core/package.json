@@ -6,10 +6,11 @@
   "exports": "./src/index.ts",
   "dependencies": {
     "@cieslacalc/covering-core": "workspace:*",
-    "@cieslacalc/timber-model": "workspace:*",
-    "@cieslacalc/roof-math": "workspace:*",
     "@cieslacalc/drawing-engine": "workspace:*",
+    "@cieslacalc/roof-math": "workspace:*",
+    "@cieslacalc/roof-system-core": "workspace:*",
     "@cieslacalc/shared": "workspace:*",
+    "@cieslacalc/timber-model": "workspace:*",
     "zod": "^3.25.0"
   }
 }

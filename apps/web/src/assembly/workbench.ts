@@ -149,7 +149,7 @@ export const WORKBENCH_PERSPECTIVES: readonly WorkbenchPerspective[] = [
 export type BuildUpView =
   'overview' | 'membrane' | 'counterBattens' | 'battens' | 'installation';
 export type MaterialsView =
-  'plan' | 'cutting' | 'summary' | 'schedule' | 'drawing';
+  'plan' | 'drainage' | 'cutting' | 'summary' | 'schedule' | 'drawing';
 export type MobilePanel = 'none' | 'tools' | 'inspector' | 'view';
 export type DimensionLevel = 'minimal' | 'working' | 'full';
 export type DetailDockMode = 'collapsed' | 'working' | 'focus';

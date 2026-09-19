@@ -12,7 +12,9 @@ import {
   acceptMaterialRow,
   compatibleMaterialPrices,
   createMaterialPlanRows,
+  MATERIAL_CATEGORY_ORDER,
   materialValue,
+  type MaterialSubgroup,
   type MaterialPlanRow,
   type MaterialPriceSelection,
 } from './material-plan';
@@ -27,6 +29,11 @@ import type {
 import { readinessIssueText } from './readiness-copy';
 import { LinearPurchasePanel } from './LinearPurchase';
 import { TilePurchasePanel } from './TilePurchase';
+import {
+  DrainageGroupHead,
+  LineComponentAdder,
+  RoofSystemSummary,
+} from './RoofSystemMaterials';
 import type { RoofTileLayoutResult } from '@cieslacalc/covering-core';
 import type {
   LinearMaterialKind,
@@ -76,11 +83,13 @@ function rowIssues(
         ? issue.code.startsWith('battens')
         : row.labelKey === 'membrane'
           ? issue.code.startsWith('membrane')
-          : row.category === 'covering'
-            ? issue.code.startsWith('covering') ||
-              issue.code === 'plane-scope-stale' ||
-              issue.code === 'tile-eave-projection'
-            : false;
+          : row.category === 'drainage'
+            ? false
+            : row.category === 'covering'
+              ? issue.code.startsWith('covering') ||
+                issue.code === 'plane-scope-stale' ||
+                issue.code === 'tile-eave-projection'
+              : false;
   return readiness.issues.filter(
     (issue) => issue.severity !== 'info' && matches(issue),
   );
@@ -168,6 +177,8 @@ export function MaterialPlan({
   const [picker, setPicker] = useState(false);
   const [review, setReview] = useState<string>();
   const [kept, setKept] = useState<Record<string, string>>({});
+  // V51: the drainage workspace; the first click also switches drainage on.
+  const openDrainage = () => state.setMaterialsView('drainage');
   const rows = createMaterialPlanRows(facts, membrane);
   const options = usePriceOptions(
     rows.flatMap((row) =>
@@ -328,459 +339,540 @@ export function MaterialPlan({
       </div>
       <small>{m.incomplete}</small>
       {!rows.length && <p>{m.empty}</p>}
-      {(['timber', 'layers', 'covering', 'other'] as const).map((category) => (
-        <div key={category} className="mp-group">
-          <h3>{m[category]}</h3>
-          {rows
-            .filter((row) => row.category === category)
-            .map((row) => {
-              const price = activePrice(row);
-              const candidates = compatibleMaterialPrices(
-                row,
-                options,
-                currency,
-              );
-              const value = materialValue(row, price);
-              const existing = scenario?.lines.find(
-                (line) =>
-                  line.id === row.id || line.id === row.costSuggestionKey,
-              );
-              const fingerprint = JSON.stringify([
-                row.quantity,
-                row.basis,
-                price,
-              ]);
-              const changed =
-                !!existing &&
-                (existing.quantity.value !== row.quantity ||
-                  existing.quantityBasis !== row.basis ||
-                  existing.unitPriceMinor !== price?.amountMinor);
-              const linearKind = linearKindOf(row.labelKey);
-              const linearRequirement = linearKind
-                ? linear?.requirements[linearKind]
-                : undefined;
-              const linearPlan = linearKind
-                ? linear?.plans[linearKind]
-                : undefined;
-              const section = linearRequirement?.section;
-              /**
-               * V48 §27: once a purchase plan exists the row headline is the
-               * commercial quantity. The geometric requirement stays visible
-               * as its own metric, so a geometric length is never mislabelled
-               * as a purchase length.
-               */
-              const purchaseCount = linearPlan
-                ? linearPlan.stock.reduce((sum, item) => sum + item.quantity, 0)
-                : undefined;
-              // V50: the covering row of a roof-tile assignment carries the
-              // tile purchase panel; accessory rows are plain rows.
-              const tileAssignment =
-                row.tileAssignmentId &&
-                (row.labelKey === 'tile' || row.labelKey === 'tileBase')
-                  ? facts.coverings.find(
-                      (item) => item.id === row.tileAssignmentId,
-                    )
-                  : undefined;
-              const tileLayout = tileAssignment
-                ? (facts.coveringLayouts ?? []).find(
-                    (item): item is RoofTileLayoutResult =>
-                      item.kind === 'roof-tile' &&
-                      item.assignmentId === tileAssignment.id,
-                  )
-                : undefined;
-              const label = `${materialText(locale, row.labelKey)}${
-                section ? ` ${section.widthMm}×${section.depthMm}` : ''
-              }${row.description ? ` · ${row.description}` : ''}`;
-              return (
-                <article
-                  key={row.id}
-                  className="mp-row"
-                  data-testid={`material-row-${row.labelKey}`}
-                >
-                  <RowReadiness
-                    issues={rowIssues(row, readiness)}
-                    onAction={onReadinessAction}
-                  />
-                  {row.labelKey === 'membrane' ? (
-                    <MembraneMaterialCard row={row} locale={locale} />
-                  ) : (
-                    <>
-                      <div className="mp-row-main">
-                        <div>
-                          <h4>{label}</h4>
-                          <span
-                            className="mp-badge"
-                            data-status={
-                              purchaseCount !== undefined ||
-                              row.basis === 'procurement-stock'
-                                ? 'success'
-                                : 'neutral'
-                            }
-                            data-testid={`material-basis-${row.labelKey}`}
-                          >
-                            {purchaseCount !== undefined
-                              ? m.procurement
-                              : basis(row)}
-                          </span>
-                          {row.partial && (
-                            <span className="mp-badge" data-status="warning">
-                              {m.partial}
-                            </span>
-                          )}
-                          {linearPlan && (
-                            <p
-                              className="mp-linear-identity"
-                              data-testid={`material-identity-${row.labelKey}`}
-                            >
-                              <span className="mp-badge">
-                                {Object.values(linearPlan.stockSources).some(
-                                  (origin) => origin.kind === 'catalogue',
-                                )
-                                  ? m.sourceCatalogueBadge
-                                  : m.sourceManualBadge}
-                              </span>{' '}
-                              {[...linearPlan.stock]
-                                .sort((a, b) => a.lengthMm - b.lengthMm)
-                                .map((item) => {
-                                  const origin =
-                                    linearPlan.stockSources[item.stockOptionId];
-                                  return `${item.quantity} × ${number(item.lengthMm / 1000)} m${
-                                    origin?.kind === 'catalogue'
-                                      ? ` (${origin.productName})`
-                                      : ''
-                                  }`;
-                                })
-                                .join(' · ')}
-                            </p>
-                          )}
-                          {row.product?.name && (
-                            <p>
-                              <small>
-                                {row.category === 'timber'
-                                  ? m.commercial
-                                  : row.productSource === 'catalog'
-                                    ? m.catalogue
-                                    : ''}
-                              </small>
-                              <br />
-                              {row.product.name}
-                            </p>
-                          )}
-                        </div>
-                        <strong
-                          className="mp-quantity"
-                          data-testid={`material-quantity-${row.labelKey}`}
+      <RoofSystemSummary
+        facts={facts}
+        rows={rows}
+        locale={locale}
+        onOpenDrainage={openDrainage}
+      />
+      {(() => {
+        const renderRow = (row: MaterialPlanRow) => {
+          const price = activePrice(row);
+          const candidates = compatibleMaterialPrices(row, options, currency);
+          const value = materialValue(row, price);
+          const existing = scenario?.lines.find(
+            (line) => line.id === row.id || line.id === row.costSuggestionKey,
+          );
+          const fingerprint = JSON.stringify([row.quantity, row.basis, price]);
+          const changed =
+            !!existing &&
+            (existing.quantity.value !== row.quantity ||
+              existing.quantityBasis !== row.basis ||
+              existing.unitPriceMinor !== price?.amountMinor);
+          const linearKind = linearKindOf(row.labelKey);
+          const linearRequirement = linearKind
+            ? linear?.requirements[linearKind]
+            : undefined;
+          const linearPlan = linearKind ? linear?.plans[linearKind] : undefined;
+          const section = linearRequirement?.section;
+          /**
+           * V48 §27: once a purchase plan exists the row headline is the
+           * commercial quantity. The geometric requirement stays visible
+           * as its own metric, so a geometric length is never mislabelled
+           * as a purchase length.
+           */
+          const purchaseCount = linearPlan
+            ? linearPlan.stock.reduce((sum, item) => sum + item.quantity, 0)
+            : undefined;
+          // V50: the covering row of a roof-tile assignment carries the
+          // tile purchase panel; accessory rows are plain rows.
+          const tileAssignment =
+            row.tileAssignmentId &&
+            (row.labelKey === 'tile' || row.labelKey === 'tileBase')
+              ? facts.coverings.find((item) => item.id === row.tileAssignmentId)
+              : undefined;
+          const tileLayout = tileAssignment
+            ? (facts.coveringLayouts ?? []).find(
+                (item): item is RoofTileLayoutResult =>
+                  item.kind === 'roof-tile' &&
+                  item.assignmentId === tileAssignment.id,
+              )
+            : undefined;
+          const label = `${materialText(locale, row.labelKey)}${
+            section ? ` ${section.widthMm}×${section.depthMm}` : ''
+          }${row.description ? ` · ${row.description}` : ''}`;
+          return (
+            <article
+              key={row.id}
+              className="mp-row"
+              data-testid={`material-row-${row.labelKey}`}
+            >
+              <RowReadiness
+                issues={rowIssues(row, readiness)}
+                onAction={onReadinessAction}
+              />
+              {row.labelKey === 'membrane' ? (
+                <MembraneMaterialCard row={row} locale={locale} />
+              ) : (
+                <>
+                  <div className="mp-row-main">
+                    <div>
+                      <h4>{label}</h4>
+                      <span
+                        className="mp-badge"
+                        data-status={
+                          purchaseCount !== undefined ||
+                          row.basis === 'procurement-stock'
+                            ? 'success'
+                            : 'neutral'
+                        }
+                        data-testid={`material-basis-${row.labelKey}`}
+                      >
+                        {purchaseCount !== undefined
+                          ? m.procurement
+                          : basis(row)}
+                      </span>
+                      {row.partial && (
+                        <span className="mp-badge" data-status="warning">
+                          {m.partial}
+                        </span>
+                      )}
+                      {linearPlan && (
+                        <p
+                          className="mp-linear-identity"
+                          data-testid={`material-identity-${row.labelKey}`}
                         >
-                          {purchaseCount !== undefined
-                            ? number(purchaseCount)
-                            : displayQuantity(row)}{' '}
+                          <span className="mp-badge">
+                            {Object.values(linearPlan.stockSources).some(
+                              (origin) => origin.kind === 'catalogue',
+                            )
+                              ? m.sourceCatalogueBadge
+                              : m.sourceManualBadge}
+                          </span>{' '}
+                          {[...linearPlan.stock]
+                            .sort((a, b) => a.lengthMm - b.lengthMm)
+                            .map((item) => {
+                              const origin =
+                                linearPlan.stockSources[item.stockOptionId];
+                              return `${item.quantity} × ${number(item.lengthMm / 1000)} m${
+                                origin?.kind === 'catalogue'
+                                  ? ` (${origin.productName})`
+                                  : ''
+                              }`;
+                            })
+                            .join(' · ')}
+                        </p>
+                      )}
+                      {row.product?.name && (
+                        <p>
                           <small>
-                            {purchaseCount !== undefined
-                              ? unit('piece')
-                              : unit(row.unit)}
-                          </small>
-                        </strong>
-                      </div>
-                      {row.metrics.length > 0 &&
-                        row.labelKey !== 'tileBase' && (
-                          <dl className="mp-metrics">
-                            {row.metrics.map((metric) => (
-                              <div key={metric.labelKey}>
-                                <dt>{materialText(locale, metric.labelKey)}</dt>
-                                <dd>
-                                  {number(metric.value)}
-                                  {metric.maxValue !== undefined
-                                    ? `–${number(metric.maxValue)}`
-                                    : ''}{' '}
-                                  {unit(metric.unit)}
-                                </dd>
-                              </div>
-                            ))}
-                          </dl>
-                        )}
-                    </>
-                  )}
-                  {tileAssignment && (
-                    <TilePurchasePanel
-                      assignment={tileAssignment}
-                      layout={tileLayout}
-                      plan={row.tilePlan}
-                      locale={locale}
-                      onShowOnRoof={(highlight) => {
-                        state.setSelectedCoveringAssignment(tileAssignment.id);
-                        state.setTileHighlight(highlight);
-                        onOpenCovering();
-                      }}
-                    />
-                  )}
-                  {linearKind && linearRequirement && linear && (
-                    <LinearPurchasePanel
-                      kind={linearKind}
-                      requirement={linearRequirement}
-                      selection={linear.selections[linearKind]}
-                      plan={linearPlan}
-                      locale={locale}
-                      onChange={(selection) =>
-                        linear.onSelectionChange(linearKind, selection)
-                      }
-                      {...(linear.onFixBlocker
-                        ? {
-                            onFixBlocker: (blocker: string) =>
-                              linear.onFixBlocker?.(linearKind, blocker),
-                          }
-                        : {})}
-                      {...(linear.onChangeSection && linearKind === 'batten'
-                        ? {
-                            onChangeSection: (section: {
-                              widthMm: number;
-                              depthMm: number;
-                            }) => linear.onChangeSection?.(linearKind, section),
-                          }
-                        : {})}
-                    />
-                  )}
-                  {row.range && <p className="mp-note">{m.rangeNote}</p>}
-                  {purchaseCount !== undefined ? (
-                    // V49 §34: a planned row is bought per commercial piece, and
-                    // one row can hold several lengths, so a per-metre price
-                    // here would multiply the wrong unit. Pieces are priced
-                    // per length in the estimate.
-                    <p
-                      className="mp-note"
-                      data-testid={`material-piece-pricing-${row.labelKey}`}
-                    >
-                      {m.piecePricingInCost}
-                    </p>
-                  ) : (
-                    <div className="mp-price">
-                      <label>
-                        {m.selectPrice}
-                        <select
-                          aria-label={`${m.selectPrice} · ${label}`}
-                          value={
-                            price?.source === 'manual'
-                              ? 'manual'
-                              : (price?.entryId ?? '')
-                          }
-                          onChange={(event) => {
-                            const selected = candidates.find(
-                              (candidate) =>
-                                candidate.entry.id === event.target.value,
-                            );
-                            const next = { ...prices };
-                            if (selected)
-                              next[row.id] = {
-                                source: 'price-list',
-                                amountMinor: selected.entry.netAmountMinor,
-                                currencyCode: selected.currencyCode,
-                                entryId: selected.entry.id,
-                                variantId: selected.variantId,
-                                saleUnit: selected.entry.saleUnit,
-                                provenance: [
-                                  selected.ownerLabel,
-                                  selected.entry.validFrom,
-                                  m.net,
-                                  selected.entry.sourceAmountBasis === 'gross'
-                                    ? m.gross
-                                    : '',
-                                  selected.entry.sourceVatRateBps !== undefined
-                                    ? `VAT ${selected.entry.sourceVatRateBps / 100}%`
-                                    : selected.taxContext,
-                                ]
-                                  .filter(Boolean)
-                                  .join(' · '),
-                              };
-                            else if (event.target.value === 'manual')
-                              next[row.id] = {
-                                source: 'manual',
-                                amountMinor: 0,
-                                currencyCode: currency,
-                                provenance: m.manual,
-                                valid: false,
-                              };
-                            else delete next[row.id];
-                            onPricesChange(next);
-                          }}
-                        >
-                          <option value="">
-                            {candidates.length ? m.selectPrice : m.noPrice}
-                          </option>
-                          {candidates.map((candidate) => (
-                            <option
-                              key={candidate.entry.id}
-                              value={candidate.entry.id}
-                            >
-                              {candidate.ownerLabel ?? m.catalogue} ·{' '}
-                              {candidate.entry.validFrom} ·{' '}
-                              {money(candidate.entry.netAmountMinor)}/
-                              {unit(candidate.entry.saleUnit)} · {m.net}
-                              {candidate.entry.sourceVatRateBps !== undefined
-                                ? ` · VAT ${candidate.entry.sourceVatRateBps / 100}%`
+                            {row.category === 'timber'
+                              ? m.commercial
+                              : row.productSource === 'catalog'
+                                ? m.catalogue
                                 : ''}
-                            </option>
-                          ))}
-                          {price?.source === 'price-list' &&
-                            !candidates.some(
-                              (candidate) =>
-                                candidate.entry.id === price.entryId,
-                            ) && (
-                              <option value={price.entryId}>
-                                {price.provenance} · {money(price.amountMinor)}
-                              </option>
-                            )}
-                          <option value="manual">{m.manual}</option>
-                        </select>
-                      </label>
-                      {price?.source === 'manual' && (
-                        <label>
-                          {m.manualPrice}
-                          <input
-                            aria-label={`${m.manualPrice} · ${label}`}
-                            inputMode="decimal"
-                            defaultValue={number(price.amountMinor / 100)}
-                            onChange={() =>
-                              onPricesChange({
-                                ...prices,
-                                [row.id]: { ...price, valid: false },
-                              })
-                            }
-                            onBlur={(event) => {
-                              const parsed = parseDecimal(event.target.value);
-                              if (parsed !== null && parsed >= 0)
-                                onPricesChange({
-                                  ...prices,
-                                  [row.id]: {
-                                    ...price,
-                                    amountMinor: Math.round(parsed * 100),
-                                    valid: true,
-                                  },
-                                });
-                            }}
-                          />
-                        </label>
-                      )}
-                      {price && (
-                        <div>
-                          <strong>
-                            {money(price.amountMinor)}/{unit(row.unit)}
-                          </strong>
-                          <small>
-                            {price.source === 'manual'
-                              ? m.manual
-                              : price.provenance}
                           </small>
-                          {price.source === 'price-list' && (
-                            <small>{m.verify}</small>
-                          )}
-                        </div>
+                          <br />
+                          {row.product.name}
+                        </p>
                       )}
-                      {value && (
-                        <strong className="mp-value">
-                          {value.min === value.max
-                            ? money(value.min)
-                            : `${money(value.min)}–${money(value.max)}`}
-                          <small>{row.range ? m.rangeCost : m.value}</small>
-                        </strong>
+                    </div>
+                    <strong
+                      className="mp-quantity"
+                      data-testid={`material-quantity-${row.labelKey}`}
+                    >
+                      {purchaseCount !== undefined
+                        ? number(purchaseCount)
+                        : displayQuantity(row)}{' '}
+                      <small>
+                        {purchaseCount !== undefined
+                          ? unit('piece')
+                          : unit(row.unit)}
+                      </small>
+                    </strong>
+                  </div>
+                  {row.metrics.length > 0 && row.labelKey !== 'tileBase' && (
+                    <dl className="mp-metrics">
+                      {row.metrics.map((metric) => (
+                        <div key={metric.labelKey}>
+                          <dt>{materialText(locale, metric.labelKey)}</dt>
+                          <dd>
+                            {number(metric.value)}
+                            {metric.maxValue !== undefined
+                              ? `–${number(metric.maxValue)}`
+                              : ''}{' '}
+                            {unit(metric.unit)}
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                  )}
+                </>
+              )}
+              {tileAssignment && (
+                <TilePurchasePanel
+                  assignment={tileAssignment}
+                  layout={tileLayout}
+                  plan={row.tilePlan}
+                  locale={locale}
+                  onShowOnRoof={(highlight) => {
+                    state.setSelectedCoveringAssignment(tileAssignment.id);
+                    state.setTileHighlight(highlight);
+                    onOpenCovering();
+                  }}
+                />
+              )}
+              {linearKind && linearRequirement && linear && (
+                <LinearPurchasePanel
+                  kind={linearKind}
+                  requirement={linearRequirement}
+                  selection={linear.selections[linearKind]}
+                  plan={linearPlan}
+                  locale={locale}
+                  onChange={(selection) =>
+                    linear.onSelectionChange(linearKind, selection)
+                  }
+                  {...(linear.onFixBlocker
+                    ? {
+                        onFixBlocker: (blocker: string) =>
+                          linear.onFixBlocker?.(linearKind, blocker),
+                      }
+                    : {})}
+                  {...(linear.onChangeSection && linearKind === 'batten'
+                    ? {
+                        onChangeSection: (section: {
+                          widthMm: number;
+                          depthMm: number;
+                        }) => linear.onChangeSection?.(linearKind, section),
+                      }
+                    : {})}
+                />
+              )}
+              {row.range && <p className="mp-note">{m.rangeNote}</p>}
+              {purchaseCount !== undefined ? (
+                // V49 §34: a planned row is bought per commercial piece, and
+                // one row can hold several lengths, so a per-metre price
+                // here would multiply the wrong unit. Pieces are priced
+                // per length in the estimate.
+                <p
+                  className="mp-note"
+                  data-testid={`material-piece-pricing-${row.labelKey}`}
+                >
+                  {m.piecePricingInCost}
+                </p>
+              ) : (
+                <div className="mp-price">
+                  <label>
+                    {m.selectPrice}
+                    <select
+                      aria-label={`${m.selectPrice} · ${label}`}
+                      value={
+                        price?.source === 'manual'
+                          ? 'manual'
+                          : (price?.entryId ?? '')
+                      }
+                      onChange={(event) => {
+                        const selected = candidates.find(
+                          (candidate) =>
+                            candidate.entry.id === event.target.value,
+                        );
+                        const next = { ...prices };
+                        if (selected)
+                          next[row.id] = {
+                            source: 'price-list',
+                            amountMinor: selected.entry.netAmountMinor,
+                            currencyCode: selected.currencyCode,
+                            entryId: selected.entry.id,
+                            variantId: selected.variantId,
+                            saleUnit: selected.entry.saleUnit,
+                            provenance: [
+                              selected.ownerLabel,
+                              selected.entry.validFrom,
+                              m.net,
+                              selected.entry.sourceAmountBasis === 'gross'
+                                ? m.gross
+                                : '',
+                              selected.entry.sourceVatRateBps !== undefined
+                                ? `VAT ${selected.entry.sourceVatRateBps / 100}%`
+                                : selected.taxContext,
+                            ]
+                              .filter(Boolean)
+                              .join(' · '),
+                          };
+                        else if (event.target.value === 'manual')
+                          next[row.id] = {
+                            source: 'manual',
+                            amountMinor: 0,
+                            currencyCode: currency,
+                            provenance: m.manual,
+                            valid: false,
+                          };
+                        else delete next[row.id];
+                        onPricesChange(next);
+                      }}
+                    >
+                      <option value="">
+                        {candidates.length ? m.selectPrice : m.noPrice}
+                      </option>
+                      {candidates.map((candidate) => (
+                        <option
+                          key={candidate.entry.id}
+                          value={candidate.entry.id}
+                        >
+                          {candidate.ownerLabel ?? m.catalogue} ·{' '}
+                          {candidate.entry.validFrom} ·{' '}
+                          {money(candidate.entry.netAmountMinor)}/
+                          {unit(candidate.entry.saleUnit)} · {m.net}
+                          {candidate.entry.sourceVatRateBps !== undefined
+                            ? ` · VAT ${candidate.entry.sourceVatRateBps / 100}%`
+                            : ''}
+                        </option>
+                      ))}
+                      {price?.source === 'price-list' &&
+                        !candidates.some(
+                          (candidate) => candidate.entry.id === price.entryId,
+                        ) && (
+                          <option value={price.entryId}>
+                            {price.provenance} · {money(price.amountMinor)}
+                          </option>
+                        )}
+                      <option value="manual">{m.manual}</option>
+                    </select>
+                  </label>
+                  {price?.source === 'manual' && (
+                    <label>
+                      {m.manualPrice}
+                      <input
+                        aria-label={`${m.manualPrice} · ${label}`}
+                        inputMode="decimal"
+                        defaultValue={number(price.amountMinor / 100)}
+                        onChange={() =>
+                          onPricesChange({
+                            ...prices,
+                            [row.id]: { ...price, valid: false },
+                          })
+                        }
+                        onBlur={(event) => {
+                          const parsed = parseDecimal(event.target.value);
+                          if (parsed !== null && parsed >= 0)
+                            onPricesChange({
+                              ...prices,
+                              [row.id]: {
+                                ...price,
+                                amountMinor: Math.round(parsed * 100),
+                                valid: true,
+                              },
+                            });
+                        }}
+                      />
+                    </label>
+                  )}
+                  {price && (
+                    <div>
+                      <strong>
+                        {money(price.amountMinor)}/{unit(row.unit)}
+                      </strong>
+                      <small>
+                        {price.source === 'manual'
+                          ? m.manual
+                          : price.provenance}
+                      </small>
+                      {price.source === 'price-list' && (
+                        <small>{m.verify}</small>
                       )}
                     </div>
                   )}
-                  <div className="mp-actions">
-                    {row.category === 'timber' && (
-                      <button onClick={onOpenCutting}>{m.chooseTimber}</button>
-                    )}
-                    {row.labelKey === 'membrane' && (
-                      <>
-                        <button onClick={() => setPicker(true)}>
-                          {m.chooseMembrane}
-                        </button>
-                        <button onClick={onOpenLayers}>{m.parameters}</button>
-                      </>
-                    )}
-                    {row.labelKey === 'battens' ||
-                    row.labelKey === 'counterBattens' ? (
-                      <button onClick={onOpenLayers}>{m.parameters}</button>
-                    ) : null}
-                    {row.category === 'covering' && (
-                      <button onClick={onOpenCovering}>
-                        {m.chooseCovering}
-                      </button>
-                    )}
-                    {scenario &&
-                      price &&
-                      value &&
-                      !row.range &&
-                      (!existing || changed) &&
-                      kept[row.id] !== fingerprint && (
-                        <button
-                          className="a-primary"
-                          onClick={() => {
-                            if (existing) setReview(row.id);
-                            else
-                              onScenarioChange(
-                                acceptMaterialRow(scenario, row, price, label),
-                              );
-                          }}
-                        >
-                          {existing ? m.update : m.add}
-                        </button>
-                      )}
-                    {row.range && (
-                      <button onClick={onOpenCosting}>{m.rangeAction}</button>
-                    )}
-                  </div>
-                  {review === row.id && existing && price && scenario && (
-                    <div className="mp-review" role="status">
-                      <strong>{m.review}</strong>
-                      <p>
-                        {number(existing.quantity.value)}{' '}
-                        {unit(existing.quantity.unit)} →{' '}
-                        {existing.source === 'manual'
-                          ? number(existing.quantity.value)
-                          : displayQuantity(row)}{' '}
-                        {unit(row.unit)}
-                        <br />
-                        {m.price}:{' '}
-                        {existing.unitPriceMinor === undefined
-                          ? '—'
-                          : money(existing.unitPriceMinor)}{' '}
-                        → {money(price.amountMinor)}
-                      </p>
-                      {existing.source === 'manual' && <p>{m.manualOwned}</p>}
-                      <button
-                        onClick={() => {
+                  {value && (
+                    <strong className="mp-value">
+                      {value.min === value.max
+                        ? money(value.min)
+                        : `${money(value.min)}–${money(value.max)}`}
+                      <small>{row.range ? m.rangeCost : m.value}</small>
+                    </strong>
+                  )}
+                </div>
+              )}
+              <div className="mp-actions">
+                {row.category === 'timber' && (
+                  <button onClick={onOpenCutting}>{m.chooseTimber}</button>
+                )}
+                {row.labelKey === 'membrane' && (
+                  <>
+                    <button onClick={() => setPicker(true)}>
+                      {m.chooseMembrane}
+                    </button>
+                    <button onClick={onOpenLayers}>{m.parameters}</button>
+                  </>
+                )}
+                {row.labelKey === 'battens' ||
+                row.labelKey === 'counterBattens' ? (
+                  <button onClick={onOpenLayers}>{m.parameters}</button>
+                ) : null}
+                {row.category === 'covering' && (
+                  <button onClick={onOpenCovering}>{m.chooseCovering}</button>
+                )}
+                {scenario &&
+                  price &&
+                  value &&
+                  !row.range &&
+                  (!existing || changed) &&
+                  kept[row.id] !== fingerprint && (
+                    <button
+                      className="a-primary"
+                      onClick={() => {
+                        if (existing) setReview(row.id);
+                        else
                           onScenarioChange(
                             acceptMaterialRow(scenario, row, price, label),
                           );
-                          setReview(undefined);
-                        }}
-                      >
-                        {m.update}
-                      </button>
-                      <button
-                        onClick={() => {
-                          setKept({ ...kept, [row.id]: fingerprint });
-                          setReview(undefined);
-                        }}
-                      >
-                        {m.keep}
-                      </button>
-                    </div>
+                      }}
+                    >
+                      {existing ? m.update : m.add}
+                    </button>
                   )}
-                  <details>
-                    <summary>{m.details}</summary>
-                    <p>{basis(row)}</p>
-                    {row.product?.facts.map((fact) => (
-                      <p key={fact}>{fact}</p>
-                    ))}
-                    {row.warnings.map((warning) => (
-                      <p key={warning}>{materialText(locale, warning)}</p>
-                    ))}
-                  </details>
-                </article>
-              );
-            })}
-        </div>
-      ))}
+                {row.range && (
+                  <button onClick={onOpenCosting}>{m.rangeAction}</button>
+                )}
+              </div>
+              {review === row.id && existing && price && scenario && (
+                <div className="mp-review" role="status">
+                  <strong>{m.review}</strong>
+                  <p>
+                    {number(existing.quantity.value)}{' '}
+                    {unit(existing.quantity.unit)} →{' '}
+                    {existing.source === 'manual'
+                      ? number(existing.quantity.value)
+                      : displayQuantity(row)}{' '}
+                    {unit(row.unit)}
+                    <br />
+                    {m.price}:{' '}
+                    {existing.unitPriceMinor === undefined
+                      ? '—'
+                      : money(existing.unitPriceMinor)}{' '}
+                    → {money(price.amountMinor)}
+                  </p>
+                  {existing.source === 'manual' && <p>{m.manualOwned}</p>}
+                  <button
+                    onClick={() => {
+                      onScenarioChange(
+                        acceptMaterialRow(scenario, row, price, label),
+                      );
+                      setReview(undefined);
+                    }}
+                  >
+                    {m.update}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setKept({ ...kept, [row.id]: fingerprint });
+                      setReview(undefined);
+                    }}
+                  >
+                    {m.keep}
+                  </button>
+                </div>
+              )}
+              <details>
+                <summary>{m.details}</summary>
+                <p>{basis(row)}</p>
+                {row.product?.facts.map((fact) => (
+                  <p key={fact}>{fact}</p>
+                ))}
+                {row.warnings.map((warning) => (
+                  <p key={warning}>{materialText(locale, warning)}</p>
+                ))}
+              </details>
+            </article>
+          );
+        };
+        return MATERIAL_CATEGORY_ORDER.map((category) => {
+          const categoryRows = rows.filter((row) => row.category === category);
+          if (category === 'drainage')
+            return (
+              <div
+                key={category}
+                className="mp-group"
+                data-testid="material-group-drainage"
+              >
+                <h3>{m.drainage}</h3>
+                <DrainageGroupHead
+                  facts={facts}
+                  locale={locale}
+                  onOpen={openDrainage}
+                />
+                {/* One readiness line for the whole group, not per row. */}
+                <RowReadiness
+                  issues={(readiness?.issues ?? []).filter((issue) =>
+                    issue.code.startsWith('drainage'),
+                  )}
+                  onAction={onReadinessAction}
+                />
+                {categoryRows.map(renderRow)}
+              </div>
+            );
+          if (category === 'eave')
+            return (
+              <div
+                key={category}
+                className="mp-group"
+                data-testid="material-group-eave"
+              >
+                <h3>{m.eave}</h3>
+                {categoryRows.map(renderRow)}
+                <LineComponentAdder
+                  facts={facts}
+                  locale={locale}
+                  roles={[
+                    'eave-strip',
+                    'eave-flashing',
+                    'eave-comb',
+                    'ventilation-comb',
+                  ]}
+                  empty={!categoryRows.length}
+                />
+              </div>
+            );
+          if (!categoryRows.length) return null;
+          if (category === 'covering') {
+            const order: MaterialSubgroup[] = [
+              'tile',
+              'ridge',
+              'verge',
+              'accessory',
+            ];
+            const present = order.filter((group) =>
+              categoryRows.some((row) => (row.subgroup ?? 'tile') === group),
+            );
+            return (
+              <div
+                key={category}
+                className="mp-group"
+                data-testid="material-group-covering"
+              >
+                <h3>{m.covering}</h3>
+                {present.map((group) => (
+                  <div key={group} data-subgroup={group}>
+                    {present.length > 1 && (
+                      <p className="mp-subgroup">
+                        {
+                          m[
+                            `subgroup${group[0]!.toUpperCase()}${group.slice(1)}` as 'subgroupTile'
+                          ]
+                        }
+                      </p>
+                    )}
+                    {categoryRows
+                      .filter((row) => (row.subgroup ?? 'tile') === group)
+                      .map(renderRow)}
+                  </div>
+                ))}
+                <LineComponentAdder
+                  facts={facts}
+                  locale={locale}
+                  roles={['ridge-tape']}
+                  empty={false}
+                />
+              </div>
+            );
+          }
+          return (
+            <div key={category} className="mp-group">
+              <h3>{m[category]}</h3>
+              {categoryRows.map(renderRow)}
+            </div>
+          );
+        });
+      })()}
       {picker && (
         <Suspense fallback={<p>{m.loading}</p>}>
           <MembraneProductPicker

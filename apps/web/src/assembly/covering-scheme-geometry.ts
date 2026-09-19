@@ -1,49 +1,62 @@
+import type {
+  RoofFeatureTopology,
+  RoofLineFeatureKind,
+} from '@cieslacalc/roof-math';
+
 /**
  * V46 covering scheme presentation geometry (view layer only).
  *
- * Classifies the edges of a plane's local polygon (u along the eave, v up the
- * slope, eave at the lowest v) so the drawing can show roof context — ridge
- * and hip caps, the eave line, verges — and technical annotations. Nothing
- * here is counted: quantities stay with the covering resolvers.
+ * V51: the edge semantics (eave, ridge, hip, verge, valley) are no longer
+ * decided here. They come from the canonical roof features resolved by
+ * `roof-math` (`resolveRoofFeatureTopology`), the same features the V50
+ * accessories, drainage and documents read. This module only projects them
+ * into the plane-local drawing and keeps presentation helpers. Nothing here
+ * is counted.
  */
 export interface LocalPoint {
   uMm: number;
   vMm: number;
 }
 
-export type PlaneEdgeKind = 'eave' | 'ridge' | 'hip' | 'verge';
+export type PlaneEdgeKind = RoofLineFeatureKind;
 
 export interface PlaneEdge {
   kind: PlaneEdgeKind;
+  featureId: string;
   from: LocalPoint;
   to: LocalPoint;
   lengthMm: number;
+  sameDirectionAsFeature: boolean;
 }
 
-const EPSILON_MM = 1;
+/** Plane-local point at a normalized station along an edge's feature. */
+export function pointAtFeatureStation(edge: PlaneEdge, station: number) {
+  const t = edge.sameDirectionAsFeature ? station : 1 - station;
+  return {
+    uMm: edge.from.uMm + (edge.to.uMm - edge.from.uMm) * t,
+    vMm: edge.from.vMm + (edge.to.vMm - edge.from.vMm) * t,
+  };
+}
 
-export function classifyPlaneEdges(
-  polygon: readonly LocalPoint[],
+/** A plane's own edges, labelled with their canonical roof feature. */
+export function planeFeatureEdges(
+  topology: RoofFeatureTopology,
+  roofPlaneId: string,
 ): PlaneEdge[] {
-  if (polygon.length < 3) return [];
-  const minV = Math.min(...polygon.map((point) => point.vMm));
-  const maxV = Math.max(...polygon.map((point) => point.vMm));
-  return polygon.flatMap<PlaneEdge>((from, index) => {
-    const to = polygon[(index + 1) % polygon.length]!;
-    const lengthMm = Math.hypot(to.uMm - from.uMm, to.vMm - from.vMm);
-    if (lengthMm <= EPSILON_MM) return [];
-    const horizontal = Math.abs(to.vMm - from.vMm) <= EPSILON_MM;
-    const kind: PlaneEdgeKind = horizontal
-      ? Math.abs(from.vMm - minV) <= EPSILON_MM
-        ? 'eave'
-        : Math.abs(from.vMm - maxV) <= EPSILON_MM
-          ? 'ridge'
-          : 'verge'
-      : Math.abs(to.uMm - from.uMm) <= EPSILON_MM
-        ? 'verge'
-        : 'hip';
-    return [{ kind, from, to, lengthMm }];
-  });
+  return (
+    topology.planeEdges.find((plane) => plane.roofPlaneId === roofPlaneId)
+      ?.edges ?? []
+  ).map((edge) => ({
+    kind: edge.kind,
+    featureId: edge.featureId,
+    from: edge.from,
+    to: edge.to,
+    sameDirectionAsFeature: edge.sameDirectionAsFeature,
+    lengthMm: Math.hypot(
+      edge.to.uMm - edge.from.uMm,
+      edge.to.vMm - edge.from.vMm,
+    ),
+  }));
 }
 
 /**

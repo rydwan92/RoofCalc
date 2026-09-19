@@ -58,6 +58,7 @@ import {
   resolveMembraneLayout,
   resolveRoofFeatureCollisions,
   resolveRoofSurfaceGeometry,
+  resolveRoofFeatureTopology,
 } from '@cieslacalc/roof-math';
 import { useAssembly } from './store';
 import {
@@ -116,6 +117,7 @@ import { k1RequirementSignature } from './k1-cutting-adapter';
 import { createExportCandidates, type ExportFacts } from './export-adapter';
 import { usePriceOptions } from '../pricing/use-prices';
 import { createTilePurchasePlans } from './tile-purchase';
+import { resolveRoofSystemFacts } from './roof-system';
 import {
   createMaterialPlanRows,
   materialScenarioPrices,
@@ -192,6 +194,11 @@ const SkeletonCanvas = lazy(() =>
 const MaterialScheduleInspector = lazy(() =>
   import('./MaterialSchedule').then((module) => ({
     default: module.MaterialScheduleInspector,
+  })),
+);
+const DrainageWorkspace = lazy(() =>
+  import('./DrainageWorkspace').then((module) => ({
+    default: module.DrainageWorkspace,
   })),
 );
 const CoveringWorkspace = lazy(() =>
@@ -468,6 +475,23 @@ function AssemblyPageContent() {
         features: state.projectDocument.project.features,
       }),
     [state.projectDocument.project.features, state.template],
+  );
+  // V51: one canonical roof topology per resolved surface. Covering drawing,
+  // tile accessories, drainage, materials, cost and documents all read it;
+  // camera, hover and panel state never re-run it.
+  const roofTopology = useMemo(
+    () => resolveRoofFeatureTopology(surfaceProjection),
+    [surfaceProjection],
+  );
+  const roofSystemIntent = state.projectDocument.project.roofSystem;
+  const roofSystem = useMemo(
+    () =>
+      resolveRoofSystemFacts({
+        surface: surfaceProjection,
+        topology: roofTopology,
+        intent: roofSystemIntent,
+      }),
+    [surfaceProjection, roofTopology, roofSystemIntent],
   );
   const membraneAreaMm2 = membrane?.enabled
     ? surfaceProjection.planes
@@ -1008,8 +1032,14 @@ function AssemblyPageContent() {
         coverings: coveringAssignments,
         layouts: resolvedCoveringLayouts,
         surface: surfaceProjection,
+        topology: roofTopology,
       }),
-    [coveringAssignments, resolvedCoveringLayouts, surfaceProjection],
+    [
+      coveringAssignments,
+      resolvedCoveringLayouts,
+      surfaceProjection,
+      roofTopology,
+    ],
   );
   const materialFacts: ExportFacts = {
     source: {
@@ -1048,6 +1078,7 @@ function AssemblyPageContent() {
     variantPrices,
     cost: costScenario,
     tilePurchasePlans,
+    roofSystem,
   };
   const materialRows = createMaterialPlanRows(materialFacts, membraneProduct);
   const effectiveMaterialPrices = {
@@ -1278,6 +1309,14 @@ function AssemblyPageContent() {
             ? summarizeCostScenario(costScenario)
             : undefined,
         candidates: readinessCandidates,
+        // V51: optional drainage — never a blocker for unrelated work.
+        drainage: {
+          status: roofSystem.drainage.status,
+          issueCodes: roofSystem.drainage.issues.map((issue) => issue.code),
+          unconfirmedRuns: roofSystem.drainage.issues.filter(
+            (issue) => issue.code === 'outlets-unconfirmed',
+          ).length,
+        },
         // V48: commercial planning is optional, so only plannable materials
         // are ever mentioned, and never as a blocker.
         tilePlannable: resolvedCoveringLayouts.flatMap((layout) =>
@@ -1335,6 +1374,7 @@ function AssemblyPageContent() {
       linearRequirements,
       linearPlans,
       tilePurchasePlans,
+      roofSystem,
     ],
   );
   const documentFactsWithLimits: ExportFacts = {
@@ -1765,6 +1805,9 @@ function AssemblyPageContent() {
         return;
       case 'open-materials':
         state.navigateTo(workbenchLocation('materials'));
+        return;
+      case 'open-drainage':
+        state.navigateTo(workbenchLocation('materials', 'drainage'));
         return;
       case 'open-cost':
         state.navigateTo(workbenchLocation('costing'));
@@ -2467,6 +2510,19 @@ function AssemblyPageContent() {
                         />
                       </Suspense>
                     </div>
+                    <div data-material-surface="drainage">
+                      {workbench.materialsView === 'drainage' && (
+                        <Suspense
+                          fallback={<div className="a-loading-panel" />}
+                        >
+                          <DrainageWorkspace
+                            surface={surfaceProjection}
+                            facts={roofSystem}
+                            onOpenPlan={() => state.setMaterialsView('plan')}
+                          />
+                        </Suspense>
+                      )}
+                    </div>
                     <div
                       data-material-surface="cutting"
                       data-testid="k1-cutting-surface"
@@ -2588,6 +2644,8 @@ function AssemblyPageContent() {
                         (plan) =>
                           plan.assignmentId === activeCoveringAssignment?.id,
                       )}
+                      roofTopology={roofTopology}
+                      drainage={roofSystem.drainage}
                       onOpenMaterials={() =>
                         state.navigateTo(
                           workbenchLocation('materials', 'plan'),
@@ -2642,6 +2700,8 @@ function AssemblyPageContent() {
                             linearPlans,
                             // V50: price the tiles to buy, not the area.
                             tilePurchasePlans,
+                            // V51: price the commercial roof-system pieces.
+                            roofSystem,
                           } satisfies Omit<ExportFacts, 'cost'>
                         }
                         scenario={costScenario}

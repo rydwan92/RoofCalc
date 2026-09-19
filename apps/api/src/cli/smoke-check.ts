@@ -10,6 +10,7 @@ const SEEDED_KINDS = [
   'membrane',
   'timber-stock',
   'roof-tile-accessory',
+  'roof-drainage-component',
 ] as const;
 
 async function main() {
@@ -59,6 +60,16 @@ async function main() {
       !ridgeSpec.compatibleProductIds.includes('product:swissporton:simpla')
     )
       problems.push('SIMPLA ridge accessory missing or not compatible');
+
+    // V51: a drainage component round-trips with its explicit system key.
+    const hook = await catalog.getProduct('product:galeco:stal2-hak-doczolowy');
+    const hookSpec = hook?.currentRevision.technicalSpec;
+    if (
+      hookSpec?.kind !== 'roof-drainage-component' ||
+      hookSpec.systemKey !== 'galeco-stal2-125-80' ||
+      hookSpec.maxSpacingMm !== 600
+    )
+      problems.push('Galeco STAL2 hook missing or without source spacing');
 
     const timberVariantId = 'variant:timber:c24-45x145x4000-treated:standard';
     const priced = await pricing.entriesForVariants([timberVariantId]);

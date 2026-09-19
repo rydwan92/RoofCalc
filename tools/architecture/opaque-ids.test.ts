@@ -48,7 +48,7 @@ const ID_NAMESPACE_OWNERS = ['packages/roof-math/src/assembly.ts'];
  * which is the correct opaque-ID usage and stays allowed.
  */
 const ID_STRING_SURGERY =
-  /\b(?:roofPlaneId|planeId|memberId|instanceId|prototypeId|sourceMemberId|sourceFeatureId|selectionId|assignmentId|featureId|revisionId|productId|variantId|stockClassId|stockOptionId|requiredPieceId|referenceId)\b\s*\.\s*(?:includes|startsWith|endsWith|split|slice|substring|match|replace|indexOf|lastIndexOf|charAt)\s*\(/;
+  /\b(?:roofPlaneId|planeId|memberId|instanceId|prototypeId|sourceMemberId|sourceFeatureId|selectionId|assignmentId|featureId|eaveId|endingEaveId|startingEaveId|outletId|runId|revisionId|productId|variantId|stockClassId|stockOptionId|requiredPieceId|referenceId)\b\s*\.\s*(?:includes|startsWith|endsWith|split|slice|substring|match|replace|indexOf|lastIndexOf|charAt)\s*\(/;
 
 const PLANE_ID_LITERAL = /['"`]roof-plane:/;
 
@@ -65,6 +65,8 @@ const DOMAIN_DIRECTORIES = [
   'packages/project-core',
   'packages/timber-model',
   'packages/technical-scene',
+  'packages/roof-system-core',
+  'packages/tile-procurement',
   'apps/api/src',
 ];
 
@@ -106,6 +108,33 @@ describe('domain logic treats geometry IDs as opaque', () => {
     expect(openingFraming?.text).toContain('sourceMemberId');
     expect(openingFraming?.text).toContain('sourceFeatureId');
     expect(openingFraming?.text).toContain('openingRole');
+  });
+});
+
+describe('V51 roof features are structured, never parsed', () => {
+  /**
+   * Feature, eave-corner, opening-edge and gutter-run IDs are minted by their
+   * resolvers. Only the minting module may spell their namespace; everything
+   * else reads `kind`, `incidentPlaneIds`, `ordinal` or topology fields.
+   */
+  const FEATURE_ID_LITERAL =
+    /['"`](?:roof-line:|eave-corner:|opening-edge:|gutter-run:)/;
+
+  it('only the minting modules spell a roof-feature ID namespace', () => {
+    for (const directory of [
+      ...DOMAIN_DIRECTORIES,
+      'apps/web/src',
+      'packages/document-core',
+    ])
+      expect({
+        directory,
+        matches: forbiddenText(directory, FEATURE_ID_LITERAL, {
+          allow: [
+            'packages/roof-math/src/roof-topology.ts',
+            'packages/roof-system-core/src/drainage-planner.ts',
+          ],
+        }),
+      }).toEqual({ directory, matches: [] });
   });
 });
 

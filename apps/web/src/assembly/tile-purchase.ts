@@ -4,7 +4,12 @@ import type {
   RoofTileLayoutResult,
   RoofTilePurchaseDecision,
 } from '@cieslacalc/covering-core';
-import type { RoofSurfaceGeometryResult } from '@cieslacalc/roof-math';
+import {
+  resolveRoofFeatureTopology,
+  type RoofFeatureTopology,
+  type RoofSurfaceGeometryResult,
+} from '@cieslacalc/roof-math';
+import { roofLineLengthsFromFeatures } from './roof-system';
 import {
   purchasedPieces,
   resolveAccessoryRequirements,
@@ -59,30 +64,17 @@ export function defaultTilePurchaseDecision(): RoofTilePurchaseDecision {
 }
 
 /**
- * Ridge and hip lines from `roof-math`'s resolved per-plane boundaries. Each
- * line is shared by two planes, so a plane contributes half of it; the total
- * is owned by this assignment only when it covers every roof plane.
+ * Ridge and hip lines, read from the canonical roof features (V51): each
+ * physical line counted once, owned by this assignment only when all of its
+ * incident planes are in it. Pass the already-resolved topology to avoid
+ * resolving it again.
  */
 export function roofLineLengths(
   surface: RoofSurfaceGeometryResult,
   roofPlaneIds: readonly string[],
+  topology: RoofFeatureTopology = resolveRoofFeatureTopology(surface),
 ): RoofLineLengths {
-  const planes = surface.planes.filter((plane) =>
-    roofPlaneIds.includes(plane.roofPlaneId),
-  );
-  return {
-    ridgeMm: planes.reduce(
-      (sum, plane) => sum + plane.ridgeBoundaryLengthMm / 2,
-      0,
-    ),
-    hipMm: planes.reduce(
-      (sum, plane) => sum + plane.hipBoundaryLengthMm / 2,
-      0,
-    ),
-    complete:
-      surface.planes.length > 0 &&
-      surface.planes.every((plane) => roofPlaneIds.includes(plane.roofPlaneId)),
-  };
+  return roofLineLengthsFromFeatures(topology, roofPlaneIds);
 }
 
 /** Whether a catalogue packaging choice is still what the product declares. */
@@ -103,7 +95,9 @@ export function createTilePurchasePlans(args: {
   coverings: readonly CoveringAssignmentSpec[];
   layouts: readonly { kind: string; assignmentId: string }[];
   surface: RoofSurfaceGeometryResult;
+  topology?: RoofFeatureTopology;
 }): TilePurchasePlan[] {
+  const topology = args.topology ?? resolveRoofFeatureTopology(args.surface);
   return args.coverings.flatMap((assignment) => {
     const decision = assignment.purchase;
     if (
@@ -122,7 +116,10 @@ export function createTilePurchasePlans(args: {
     const effective = packagingStale
       ? { ...decision, packaging: undefined }
       : decision;
-    const lines = roofLineLengths(args.surface, assignment.roofPlaneIds);
+    const lines = roofLineLengthsFromFeatures(
+      topology,
+      assignment.roofPlaneIds,
+    );
     return [
       {
         assignmentId: assignment.id,

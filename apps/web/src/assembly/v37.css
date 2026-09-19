@@ -527,6 +527,25 @@
   box-shadow: var(--v37-shadow);
 }
 
+/* ---------- Materials › Odwodnienie (V51) ---------- */
+.a-material-workspace [data-material-surface='drainage'] {
+  display: none;
+}
+.a-material-workspace.material-view-drainage {
+  grid-template-columns: minmax(0, 1fr);
+}
+.a-material-workspace.material-view-drainage
+  [data-material-surface='drainage'] {
+  display: block;
+}
+.a-material-workspace.material-view-drainage
+  [data-material-surface]:not([data-material-surface='drainage']) {
+  display: none;
+}
+.a-material-workspace.material-view-drainage .a-material-local-switch {
+  display: none;
+}
+
 /* ---------- Materials › Rozkrój K1 inline surface ---------- */
 .a-material-workspace [data-material-surface='cutting'] {
   display: none;

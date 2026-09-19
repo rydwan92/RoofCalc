@@ -27,7 +27,13 @@ import {
   type RoofTileLayoutResult,
   type StandingSeamLayoutResult,
 } from '@cieslacalc/covering-core';
-import { fromMillimetres, toMillimetres } from '@cieslacalc/roof-math';
+import {
+  fromMillimetres,
+  resolveRoofFeatureTopology,
+  toMillimetres,
+  type RoofFeatureTopology,
+} from '@cieslacalc/roof-math';
+import type { DrainagePlan } from '@cieslacalc/roof-system-core';
 import type {
   BattenLayoutResult,
   CounterBattenLayoutResult,
@@ -57,7 +63,8 @@ import { ResultBasis, ResultLayerProgress } from './ResultBasis';
 import { BattenAutoRepair } from './BattenInstallation';
 import { CoveringAddAssistant } from './CoveringAddAssistant';
 import {
-  classifyPlaneEdges,
+  planeFeatureEdges,
+  pointAtFeatureStation,
   regularCourseGauge,
   tileToneIndex,
 } from './covering-scheme-geometry';
@@ -388,7 +395,13 @@ export function CoveringWorkspace({
   installation,
   tilePlan,
   onOpenMaterials,
+  roofTopology: roofTopologyProp,
+  drainage,
 }: {
+  /** V51: canonical roof features; resolved here only as a fallback. */
+  roofTopology?: RoofFeatureTopology;
+  /** V51: the resolved drainage plan, drawn on guttered eaves only. */
+  drainage?: DrainagePlan;
   assignments: readonly CoveringAssignmentSpec[];
   assignment?: CoveringAssignmentSpec;
   /** V50: the prepared purchase plan of the active tile assignment, if any. */
@@ -427,6 +440,13 @@ export function CoveringWorkspace({
   const selectedSurface = surfaceGeometry.planes.find(
     (plane) => plane.roofPlaneId === selectedPlaneId,
   );
+  const roofTopology = useMemo(
+    () => roofTopologyProp ?? resolveRoofFeatureTopology(surfaceGeometry),
+    [roofTopologyProp, surfaceGeometry],
+  );
+  // V51: with drainage configured the gutter is drawn only where it exists,
+  // with its outlets; without it the eave keeps the V46 context gutter.
+  const drainageActive = !!drainage && drainage.status !== 'disabled';
   const selectedLayout = layout?.planes.find(
     (plane) => plane.roofPlaneId === selectedPlaneId,
   );
@@ -604,7 +624,7 @@ export function CoveringWorkspace({
     : undefined;
 
   const planeEdges = selectedSurface
-    ? classifyPlaneEdges(selectedSurface.polygon)
+    ? planeFeatureEdges(roofTopology, selectedSurface.roofPlaneId)
     : [];
   const courseStations =
     selectedLayout && 'courses' in selectedLayout
@@ -1484,15 +1504,49 @@ export function CoveringWorkspace({
                 {visual &&
                   planeEdges.map((edge, index) =>
                     edge.kind === 'eave' ? (
-                      <g key={`edge:${index}`} className="a-roof-eave">
-                        <line
-                          className="a-roof-gutter"
-                          x1={edge.from.uMm}
-                          x2={edge.to.uMm}
-                          y1={edge.from.vMm - CAP_WIDTH_MM * 0.35}
-                          y2={edge.to.vMm - CAP_WIDTH_MM * 0.35}
-                          strokeWidth={CAP_WIDTH_MM * 0.45}
-                        />
+                      <g
+                        key={`edge:${index}`}
+                        className="a-roof-eave"
+                        data-feature-id={edge.featureId}
+                      >
+                        {(!drainageActive ||
+                          drainage.gutteredEaveIds.includes(
+                            edge.featureId,
+                          )) && (
+                          <line
+                            className={`a-roof-gutter${drainageActive ? ' is-planned' : ''}`}
+                            data-testid={
+                              drainageActive
+                                ? 'covering-planned-gutter'
+                                : undefined
+                            }
+                            x1={edge.from.uMm}
+                            x2={edge.to.uMm}
+                            y1={edge.from.vMm - CAP_WIDTH_MM * 0.35}
+                            y2={edge.to.vMm - CAP_WIDTH_MM * 0.35}
+                            strokeWidth={CAP_WIDTH_MM * 0.45}
+                          />
+                        )}
+                        {drainageActive &&
+                          drainage.outlets
+                            .filter(
+                              (outlet) => outlet.eaveId === edge.featureId,
+                            )
+                            .map((outlet) => {
+                              const point = pointAtFeatureStation(
+                                edge,
+                                outlet.station,
+                              );
+                              return (
+                                <circle
+                                  key={outlet.id}
+                                  className="a-roof-outlet"
+                                  cx={point.uMm}
+                                  cy={point.vMm - CAP_WIDTH_MM * 0.35}
+                                  r={CAP_WIDTH_MM * 0.55}
+                                />
+                              );
+                            })}
                         <line
                           className="a-roof-eave-line"
                           x1={edge.from.uMm}

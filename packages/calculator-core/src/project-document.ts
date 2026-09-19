@@ -6,6 +6,10 @@ import {
   type MembraneProductSelection,
 } from '@cieslacalc/covering-core';
 import { roofTemplateSchema } from '@cieslacalc/roof-math';
+import {
+  roofSystemIntentSchema,
+  type RoofSystemIntent,
+} from '@cieslacalc/roof-system-core';
 import type {
   LinearStockSelectionSpec,
   RoofBuildUp,
@@ -125,6 +129,12 @@ export interface RoofProjectDocumentV1 {
      * accepts and normalizes the old raw-spec shape on parse.
      */
     membraneProduct?: MembraneProductSelection;
+    /**
+     * V51 roof-system intent (drainage, line components). Additive: absent
+     * on every older project, which simply has no drainage configured. Only
+     * user decisions are stored — never a derived gutter or hook count.
+     */
+    roofSystem?: RoofSystemIntent;
   };
 }
 
@@ -138,6 +148,7 @@ export const roofProjectDocumentV1Schema = z
       buildUp: roofBuildUpSchema.optional(),
       coverings: z.array(coveringAssignmentSpecSchema).optional(),
       membraneProduct: membraneProductFieldSchema.optional(),
+      roofSystem: roofSystemIntentSchema.optional(),
     }),
   })
   .transform((document): RoofProjectDocumentV1 => ({
@@ -149,6 +160,9 @@ export const roofProjectDocumentV1Schema = z
       buildUp: document.project.buildUp ?? {},
       coverings: document.project.coverings ?? [],
       membraneProduct: document.project.membraneProduct,
+      ...(document.project.roofSystem
+        ? { roofSystem: document.project.roofSystem }
+        : {}),
     },
   }));
 
@@ -162,6 +176,7 @@ export function createRoofProjectDocument(
       | 'buildUp'
       | 'coverings'
       | 'membraneProduct'
+      | 'roofSystem'
     >
   > = {},
 ): RoofProjectDocumentV1 {
@@ -174,6 +189,7 @@ export function createRoofProjectDocument(
       buildUp: composition.buildUp ?? {},
       coverings: composition.coverings ?? [],
       membraneProduct: composition.membraneProduct,
+      roofSystem: composition.roofSystem,
     },
   });
 }

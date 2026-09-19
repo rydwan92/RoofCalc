@@ -175,7 +175,26 @@ export interface TileAccessorySuggestion extends CostSuggestionBase {
   productName: string;
 }
 
+/**
+ * V51: one resolved roof-system BOM row (drainage component or line
+ * component). The quantity is the commercial count of the resolved plan —
+ * sections, connectors, hooks, pipes — so a piece price multiplies pieces,
+ * never a total length. A row that still needs a decision is never suggested.
+ */
+export interface RoofSystemSuggestion extends CostSuggestionBase {
+  kind: 'roof-system';
+  category: 'material';
+  quantityBasis: 'procurement-stock' | 'manual';
+  suitability: 'execution-based';
+  quantity: { value: number; unit: 'piece' };
+  /** Material-copy key naming the element (e.g. `drainage.gutter-hook`). */
+  labelKey: string;
+  lengthMm?: number;
+  productName?: string;
+}
+
 export type CostSuggestion =
+  | RoofSystemSuggestion
   | TilePurchaseSuggestion
   | TileAccessorySuggestion
   | K1StockSuggestion
@@ -666,6 +685,75 @@ export function supersededByTilePlan(
   );
 }
 
+function roofSystemSuggestions(facts: ExportFacts): RoofSystemSuggestion[] {
+  const system = facts.roofSystem;
+  if (!system) return [];
+  const lines = system.lineComponents.flatMap((item) =>
+    item.status === 'resolved' &&
+    item.quantity !== undefined &&
+    item.quantity > 0
+      ? [
+          {
+            kind: 'roof-system' as const,
+            key: `line-component:${item.componentId}`,
+            category: 'material' as const,
+            quantityBasis:
+              item.rule === 'manual'
+                ? ('manual' as const)
+                : ('procurement-stock' as const),
+            suitability: 'execution-based' as const,
+            quantity: { value: item.quantity, unit: 'piece' as const },
+            labelKey: `roofSystem.${item.role}`,
+            productName: item.name,
+            noteKeys: [],
+          },
+        ]
+      : [],
+  );
+  const drainage =
+    system.drainage.status === 'disabled'
+      ? []
+      : system.drainage.bom.flatMap((item) =>
+          item.status === 'resolved' &&
+          item.quantity !== undefined &&
+          item.quantity > 0
+            ? [
+                {
+                  kind: 'roof-system' as const,
+                  key: `drainage:${item.key}`,
+                  category: 'material' as const,
+                  quantityBasis:
+                    item.rule === 'manual'
+                      ? ('manual' as const)
+                      : ('procurement-stock' as const),
+                  suitability: 'execution-based' as const,
+                  quantity: { value: item.quantity, unit: 'piece' as const },
+                  labelKey:
+                    item.hand && item.hand !== 'universal'
+                      ? `drainage.${item.role}.${item.hand}`
+                      : `drainage.${item.role}`,
+                  ...(item.lengthMm !== undefined
+                    ? { lengthMm: item.lengthMm }
+                    : {}),
+                  ...(item.component
+                    ? {
+                        productName: item.component.catalogRef
+                          ? item.component.name
+                          : (system.intent?.drainage?.system?.name ??
+                            item.component.name),
+                      }
+                    : {}),
+                  noteKeys:
+                    item.rule === 'commercial-assembly'
+                      ? ['drainage-sections-no-reuse']
+                      : [],
+                },
+              ]
+            : [],
+        );
+  return [...lines, ...drainage];
+}
+
 /** Pure projection from trusted facts to cost suggestions. No pricing happens here. */
 export function createCostSuggestions(facts: ExportFacts): CostSuggestion[] {
   return [
@@ -677,6 +765,7 @@ export function createCostSuggestions(facts: ExportFacts): CostSuggestion[] {
     ...counterBattensSuggestion(facts),
     ...membraneSuggestion(facts),
     ...coveringSuggestions(facts),
+    ...roofSystemSuggestions(facts),
   ];
 }
 

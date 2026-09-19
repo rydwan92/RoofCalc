@@ -1,6 +1,6 @@
 # RoofCalc / CieślaCalc — Architecture Index
 
-**This is the current-state map, after V50.** Read it after `PROJECT_BLUEPRINT.md`
+**This is the current-state map, after V51.** Read it after `PROJECT_BLUEPRINT.md`
 and before touching code. It describes what exists today, not the history of how
 it got here. Historical `ARCHITECTURE_V*.md` documents stay authoritative for the
 subsystem they introduced and should be opened only when changing that subsystem.
@@ -48,14 +48,15 @@ Dependency direction is **downward only**.
 | Package | Responsibility | Depends on |
 | --- | --- | --- |
 | `timber-model` | Pure type vocabulary: sections, members, skeletons, templates, build-up, features. No logic, no dependencies. | — |
-| `roof-math` | The geometry engine. Templates → resolved roofs, skeletons, rafters, hips, jacks, cuts, plane bases, roof surfaces, battens, counter-battens, opening framing. **Generates and owns roof-plane IDs.** **V34C** adds the membrane build-up layer's course-fit solver (`resolveMembraneCourseFit`, `resolveMembraneLayout`), mirroring the batten solver's own shape and home — a membrane never enters `covering-core`'s layout engines, since it is a build-up layer, not a primary covering. | `timber-model`, `zod` |
+| `roof-math` | The geometry engine. **V51** adds `resolveRoofFeatureTopology`: canonical, deduplicated physical roof lines (eave/ridge/hip/valley/verge), eave corners and opening edges. Templates → resolved roofs, skeletons, rafters, hips, jacks, cuts, plane bases, roof surfaces, battens, counter-battens, opening framing. **Generates and owns roof-plane IDs.** **V34C** adds the membrane build-up layer's course-fit solver (`resolveMembraneCourseFit`, `resolveMembraneLayout`), mirroring the batten solver's own shape and home — a membrane never enters `covering-core`'s layout engines, since it is a build-up layer, not a primary covering. | `timber-model`, `zod` |
 | `drawing-engine` | Renderer-neutral projection: lanes, dimensions, interaction hit-testing, measurement. Produces view models, not DOM. **V38** extracts `createTimberPrismBasis` so the 2D faces and the 3D solid share one orientation formula. | — |
 | `technical-scene` | **V38.** The renderer-neutral technical scene: `TechnicalScene`/`TechnicalSceneEntity` DTOs, the roof→scene adapter, pure camera framing and the visibility policy. Consumes resolved geometry; runs no solver and knows no renderer. **V39** adds the `extruded-profile` primitive (a finished, already-machined timber) plus optional counter-batten, unresolved-hip-boundary and finished-member inputs. | `timber-model`, `drawing-engine` |
+| `roof-system-core` | **V51.** Pure roof-system requirements: structured component roles, a finite quantity-rule vocabulary, even spacing, commercial section assembly per straight run, `roof-drainage-component` / drainage-intent schemas and the drainage planner (runs, corners, end caps, hooks, outlets, downpipes). Price-free; features arrive as structural inputs. | `zod` |
 | `tile-procurement` | **V50.** Pure tile purchase requirement over a resolved `RoofTileLayoutResult`: cut policy, reserve, packaging rounding, manufacturer cross-check, ridge/hip/verge accessory quantities. No price, no geometry solver, no catalogue. | `covering-core` |
 | `covering-core` | Covering technical product schemas and the four family layout solvers (tile, fixed modular sheet, standing seam, cut-to-length), plane-ownership resolution, and the quantity bridge. **V34C** adds `membraneTechnicalSpecSchema`/`MembraneTechnicalSpec` — a schema **sibling** to `coveringTechnicalSpecSchema`, deliberately never joined into its union. | `zod` |
-| `calculator-core` | Composition layer: assembly resolution, member instances, fabrication packages, detail previews, and the canonical `RoofProjectDocumentV1`. **V34C** adds the additive optional `project.membraneProduct?: MembraneTechnicalSpec` field. | `roof-math`, `timber-model`, `covering-core`, `drawing-engine`, `shared` |
+| `calculator-core` | Composition layer: assembly resolution, member instances, fabrication packages, detail previews, and the canonical `RoofProjectDocumentV1`. **V34C** adds the additive optional `project.membraneProduct?: MembraneTechnicalSpec` field; **V51** adds additive `project.roofSystem?`. | `roof-math`, `timber-model`, `covering-core`, `roof-system-core`, `drawing-engine`, `shared` |
 | `quantity-core` | Aggregates neutral quantity sources into the member/material schedule. Knows nothing about products, procurement or prices. **V34C** adds optional gross build-up fields (`grossAreaMm2`, `courseCount`, `rollCount`, `semantic: 'gross-installed'`) alongside the always-present net area — exposed only once every contributing plane resolves a roll product, never blended from a partial mix. | `timber-model` |
-| `catalog-core` | Pure catalogue contracts: manufacturers, product families, immutable technical revisions, commercial variants, import batch, read-API payloads. Reuses `covering-core` technical schemas rather than redefining them. **V35** widens the catalogue boundary from covering-only to a general technical material catalogue: `CatalogProductKind`/`CatalogTechnicalSpec` also accept `membrane` and the new `timber-stock` (own `timber-stock-spec.ts`, no roof-plane geometry concept at all). `coveringKind` keeps its field/column name (ADR-011). | `covering-core`, `zod` |
+| `catalog-core` | **V51** adds the `roof-drainage-component` kind (schema from `roof-system-core`). Pure catalogue contracts: manufacturers, product families, immutable technical revisions, commercial variants, import batch, read-API payloads. Reuses `covering-core` technical schemas rather than redefining them. **V35** widens the catalogue boundary from covering-only to a general technical material catalogue: `CatalogProductKind`/`CatalogTechnicalSpec` also accept `membrane` and the new `timber-stock` (own `timber-stock-spec.ts`, no roof-plane geometry concept at all). `coveringKind` keeps its field/column name (ADR-011). | `covering-core`, `roof-system-core`, `zod` |
 | `procurement-core` | **V26.** Pure timber cutting/stock planning over explicit required blanks. Indivisible blanks, kerf, stock end trims, reusable remnants, finite availability, three objectives, bounded search with deterministic fallback and honest optimality status. | **nothing — zero dependencies** |
 | `document-core` | **V30.** Pure typed execution-document sections, source identity, deterministic order and readiness filtering. No solver or renderer. Its V34B `cost-estimate` section carries only plain numbers/strings; V34C widens its `basis` literal to include `'gross-area'`. | **nothing — zero dependencies** |
 | `cost-core` | **V34B.** Pure commerce layer: integer-minor-unit money, typed quantity/unit, named `CostQuantityBasis` and `CostSuitability` (never a confidence score), `CostLine`/`CostScenario`, deterministic line/VAT rounding and scenario totals. Knows no product, geometry, procurement or translation. **V34C** adds `'gross-area'` to `CostQuantityBasis` (a gross, overlap-inclusive area is never blended with a net one) and the `'price-list'` `CostLineSource` is now a real join, not just reserved. | `zod` |
@@ -285,6 +286,19 @@ source-backed semantics stays *WYMAGA USTALENIA*. The canonical decision is
 is the one application adapter, and Material Plan, cost (sale-unit safe,
 supersedes the consumption line), readiness, the material list and the
 covering evidence (filters, highlight, tile inspector) all read its plan.
+
+V51 makes the roof a set of physical features. `roof-math` resolves one
+canonical topology (a shared ridge/hip is one feature with both planes); the
+covering drawing, V50 accessory line lengths, drainage, the Material Plan,
+cost and documents all read it. The new pure `packages/roof-system-core`
+turns features + a selected system + persisted user intent
+(`project.roofSystem`, decisions only) into requirements; the first real
+module is drainage (Materials › Odwodnienie): runs from canonical eaves and
+corners, sections/connectors from the actual commercial assembly, end caps
+from open ends, hooks under the source/user spacing, explicit outlets and
+user-entered downpipe heights. Hydraulic adequacy is never claimed. One real
+system (Galeco STAL²) is seeded technical-only. See
+`docs/ARCHITECTURE_V51_ROOF_SYSTEM_AND_DRAINAGE.md`.
 
 V43B turns covering → battens → counter-battens into one workflow. The batten
 quantity audit found no solver error but a silent application defect: repair
@@ -612,6 +626,7 @@ pnpm e2e      # real-browser smoke, desktop 1440x900 and mobile 390x844 (pnpm e2
 | `ARCHITECTURE_V47_PROJECT_READINESS_AND_GUARDRAILS` | project readiness projection, severity semantics, safe repair vs expert decisions, document preflight/status, structured assumptions, membrane end laps, tile eave projection |
 | `ARCHITECTURE_V48_LINEAR_MATERIAL_PROCUREMENT` | join policy, installable pieces, batten/counter-batten purchase plans, cutting settings, cost and material-list integration |
 | `ARCHITECTURE_V49_STOCK_AWARE_LINEAR_PLANNING` | stock-aware choice between legal assemblies, search bounds and optimality truth, batten catalogue, price provenance, piece pricing |
+| `ARCHITECTURE_V51_ROOF_SYSTEM_AND_DRAINAGE` | canonical roof features, roof-system roles/rules, drainage intent/planner/UI, drainage catalogue and truth limits |
 | `domain/BATTEN_COMMERCIAL_PRODUCTS_RESEARCH` | verified Polish-market batten products, what each source states, which prices meet the net-price rule |
 | `domain/BATTEN_STOCK_AND_JOINING_RESEARCH` | where a batten joint may be made, minimum piece and span, stagger, evidence strength per claim |
 | `domain/ROOF_TILE_EDGE_PLACEMENT` | eave/verge evidence; why no physical tile edge projection is modelled |

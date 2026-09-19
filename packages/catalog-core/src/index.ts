@@ -13,6 +13,10 @@ import {
   type MembraneProductSelection,
 } from '@cieslacalc/covering-core';
 import {
+  DRAINAGE_COMPONENT_ROLES,
+  roofDrainageComponentTechnicalSpecSchema,
+} from '@cieslacalc/roof-system-core';
+import {
   TIMBER_STOCK_APPLICATIONS,
   timberStockTechnicalSpecSchema,
 } from './timber-stock-spec';
@@ -38,6 +42,8 @@ export const CATALOG_PRODUCT_KINDS = [
   'timber-stock',
   // V50: roof-tile system accessories (ridge, verge, …). Never a covering.
   'roof-tile-accessory',
+  // V51: gutter-system components. One kind; the role is a field.
+  'roof-drainage-component',
 ] as const;
 export type CatalogProductKind = (typeof CATALOG_PRODUCT_KINDS)[number];
 
@@ -52,6 +58,7 @@ export const catalogTechnicalSpecSchema = z.union([
   membraneTechnicalSpecSchema,
   timberStockTechnicalSpecSchema,
   roofTileAccessoryTechnicalSpecSchema,
+  roofDrainageComponentTechnicalSpecSchema,
 ]);
 export type CatalogTechnicalSpec = z.infer<typeof catalogTechnicalSpecSchema>;
 
@@ -357,6 +364,12 @@ export const catalogTechnicalPreviewSchema = z
     // V50: an accessory list is filtered by role and compatibility client-side.
     accessoryRoles: z.array(z.enum(ROOF_TILE_ACCESSORY_ROLES)).optional(),
     compatibleProductIds: z.array(catalogIdSchema).optional(),
+    // V51: a drainage system is assembled client-side by its explicit key.
+    drainageSystemKey: z.string().min(1).max(64).optional(),
+    drainageRole: z.enum(DRAINAGE_COMPONENT_ROLES).optional(),
+    nominalSystemSize: z.string().min(1).max(40).optional(),
+    maxSpacingMm: z.number().finite().positive().optional(),
+    hand: z.enum(['left', 'right', 'universal']).optional(),
   })
   .strict();
 
@@ -464,6 +477,15 @@ export function technicalPreview(
       accessoryRoles: spec.roles,
       compatibleProductIds: spec.compatibleProductIds,
     };
+  if (spec.kind === 'roof-drainage-component')
+    return {
+      drainageSystemKey: spec.systemKey,
+      drainageRole: spec.role,
+      nominalSystemSize: spec.nominalSystemSize,
+      lengthMm: spec.lengthMm,
+      maxSpacingMm: spec.maxSpacingMm,
+      hand: spec.hand,
+    };
   if (spec.kind === 'timber-stock')
     return {
       sectionWidthMm: spec.widthMm,
@@ -497,6 +519,7 @@ export function isCoveringTechnicalSpec(
   return (
     spec.kind !== 'membrane' &&
     spec.kind !== 'timber-stock' &&
-    spec.kind !== 'roof-tile-accessory'
+    spec.kind !== 'roof-tile-accessory' &&
+    spec.kind !== 'roof-drainage-component'
   );
 }

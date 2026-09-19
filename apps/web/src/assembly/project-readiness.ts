@@ -63,6 +63,7 @@ export type ReadinessAction =
   | 'review-membrane'
   | 'plan-k1'
   | 'open-materials'
+  | 'open-drainage'
   | 'open-cost';
 
 export type ReadinessIssueCode =
@@ -96,6 +97,11 @@ export type ReadinessIssueCode =
   | 'tile-plan-unresolved'
   | 'tile-plan-openings'
   | 'tile-accessories-undecided'
+  | 'drainage-system-missing'
+  | 'drainage-layout-undecided'
+  | 'drainage-outlets-unconfirmed'
+  | 'drainage-downpipes-incomplete'
+  | 'drainage-hook-incompatible'
   | 'cost-not-started'
   | 'cost-prices-missing'
   | 'cost-quantities-missing';
@@ -156,7 +162,8 @@ export type ProjectLimitation =
   | { code: 'hip-execution-reference-only' }
   | { code: 'ridge-half-lap-unresolved' }
   | { code: 'collar-tie-geometric' }
-  | { code: 'cost-incomplete'; params: { missingPrices: number } };
+  | { code: 'cost-incomplete'; params: { missingPrices: number } }
+  | { code: 'drainage-hydraulics-not-verified' };
 
 export interface MembraneFacts {
   netAreaM2: number;
@@ -240,6 +247,17 @@ export interface ReadinessFacts {
   }[];
   cost?: CostScenarioSummary;
   candidates: readonly SectionCandidate[];
+  /**
+   * V51: the drainage plan's state and open decisions. Absent or disabled
+   * means no drainage — optional, never an issue. Enabled drainage never
+   * blocks construction, covering or the execution package: its issues only
+   * affect the material list and the cost estimate.
+   */
+  drainage?: {
+    status: 'disabled' | 'system-missing' | 'incomplete' | 'complete';
+    issueCodes: readonly string[];
+    unconfirmedRuns: number;
+  };
 }
 
 export const DOCUMENT_SECTIONS: Record<
@@ -254,11 +272,15 @@ export const DOCUMENT_SECTIONS: Record<
     'cutting-plan',
     'layers',
     'covering',
+    'drainage-plan',
     'assumptions',
   ],
   cost: ['project-summary', 'cost-estimate'],
   materials: ['project-summary', 'material-list'],
 };
+
+/** Sections that exist only when the user configured them (V51). */
+const OPTIONAL_SECTIONS: readonly SectionKind[] = ['drainage-plan'];
 
 const AREA_ORDER: ReadinessArea[] = [
   'construction',
@@ -761,6 +783,54 @@ export function deriveProjectReadiness(
       });
   }
 
+  // ── Drainage (optional; V51) ───────────────────────────────────────────
+  const drainage = facts.drainage;
+  if (drainage && drainage.status !== 'disabled') {
+    const count = (codes: readonly string[]) =>
+      drainage.issueCodes.filter((code) => codes.includes(code)).length;
+    const drainageIssue = (
+      code: ReadinessIssueCode,
+      params?: Record<string, number>,
+    ) =>
+      add({
+        code,
+        severity: 'warning',
+        area: 'materials',
+        ...(params ? { params } : {}),
+        action: 'open-drainage',
+        affects: ['materials', 'cost'],
+        source: 'drainage-plan',
+      });
+    if (drainage.status === 'system-missing')
+      drainageIssue('drainage-system-missing');
+    else {
+      const layout = count([
+        'corner-undecided',
+        'no-guttered-eaves',
+        'stale-eave-reference',
+        'component-missing',
+        'gutter-length-missing',
+        'hook-spacing-missing',
+      ]);
+      if (layout) drainageIssue('drainage-layout-undecided', { count: layout });
+      if (drainage.unconfirmedRuns)
+        drainageIssue('drainage-outlets-unconfirmed', {
+          count: drainage.unconfirmedRuns,
+        });
+      const downpipes = count([
+        'downpipe-height-missing',
+        'elbows-unconfirmed',
+        'clamps-unresolved',
+        'downpipe-length-missing',
+        'outlet-outside-run',
+      ]);
+      if (downpipes)
+        drainageIssue('drainage-downpipes-incomplete', { count: downpipes });
+      if (drainage.issueCodes.includes('hook-spacing-exceeds-maximum'))
+        drainageIssue('drainage-hook-incompatible');
+    }
+  }
+
   // ── Cost ─────────────────────────────────────────────────────────────
   const costStarted = !!facts.cost && facts.cost.includedLineCount > 0;
   if (facts.constructionReady && !costStarted)
@@ -889,7 +959,11 @@ export function deriveProjectReadiness(
     );
   const documents = Object.fromEntries(
     ALL_DOCUMENTS.map((kind) => {
-      const sections = DOCUMENT_SECTIONS[kind];
+      // V51: an optional section (drainage) counts only when it exists.
+      const sections = DOCUMENT_SECTIONS[kind].filter(
+        (section) =>
+          !OPTIONAL_SECTIONS.includes(section) || hasSection(section),
+      );
       const readySections = sections.filter(hasSection).length;
       const core = sections.filter((section) => section !== 'project-summary');
       const blockerIds = issues
@@ -1012,6 +1086,8 @@ export function deriveProjectLimitations(
   limitations.push(
     ...structuralLimitations({ template: facts.template, k1: facts.k1 }),
   );
+  if (facts.drainage && facts.drainage.status !== 'disabled')
+    limitations.push({ code: 'drainage-hydraulics-not-verified' });
   if (facts.cost && facts.cost.includedLineCount > 0 && !facts.cost.complete)
     limitations.push({
       code: 'cost-incomplete',

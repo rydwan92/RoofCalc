@@ -5,8 +5,9 @@ import {
   convertRoofTemplate,
   gableTemplateFromAssembly,
 } from '@cieslacalc/roof-math';
+import { resolveRoofFeatureTopology } from '@cieslacalc/roof-math';
 import {
-  classifyPlaneEdges,
+  planeFeatureEdges,
   regularCourseGauge,
   tileToneIndex,
 } from './covering-scheme-geometry';
@@ -16,15 +17,14 @@ const gable = gableTemplateFromAssembly(assemblyDefaults);
 const hip = convertRoofTemplate(gable, 'hip');
 
 const kinds = (template: RoofTemplateSpec, id: string) =>
-  classifyPlaneEdges(
-    resolveRoofSurfaceGeometry({ template }).planes.find(
-      (plane) => plane.roofPlaneId === id,
-    )!.polygon,
+  planeFeatureEdges(
+    resolveRoofFeatureTopology(resolveRoofSurfaceGeometry({ template })),
+    id,
   )
     .map((edge) => edge.kind)
     .sort();
 
-describe('classifyPlaneEdges', () => {
+describe('planeFeatureEdges (canonical roof features in the drawing)', () => {
   it('gable plane: eave, ridge and two verges', () => {
     expect(kinds(gable, 'roof-plane:left')).toEqual([
       'eave',
@@ -44,16 +44,15 @@ describe('classifyPlaneEdges', () => {
     expect(kinds(hip, 'roof-plane:front')).not.toContain('verge');
   });
 
-  it('ignores degenerate polygons and zero-length edges', () => {
-    expect(classifyPlaneEdges([{ uMm: 0, vMm: 0 }])).toEqual([]);
-    expect(
-      classifyPlaneEdges([
-        { uMm: 0, vMm: 0 },
-        { uMm: 0, vMm: 0 },
-        { uMm: 10, vMm: 0 },
-        { uMm: 5, vMm: 10 },
-      ]),
-    ).toHaveLength(3);
+  it('a shared ridge is one feature drawn on both planes', () => {
+    const topology = resolveRoofFeatureTopology(
+      resolveRoofSurfaceGeometry({ template: gable }),
+    );
+    const ridgeOn = (id: string) =>
+      planeFeatureEdges(topology, id).find((edge) => edge.kind === 'ridge')!
+        .featureId;
+    expect(ridgeOn('roof-plane:left')).toBe(ridgeOn('roof-plane:right'));
+    expect(planeFeatureEdges(topology, 'unknown')).toEqual([]);
   });
 });
 

@@ -525,3 +525,80 @@ describe('V47 project readiness', () => {
         if (issue.severity === 'blocker') expect(issue.action).toBeDefined();
   });
 });
+
+describe('V51 drainage readiness', () => {
+  const drainage = (
+    status: 'disabled' | 'system-missing' | 'incomplete' | 'complete',
+    issueCodes: string[] = [],
+    unconfirmedRuns = 0,
+  ) => ({ status, issueCodes, unconfirmedRuns });
+
+  it('drainage disabled is not an issue', () => {
+    const readiness = deriveProjectReadiness({
+      ...facts({}),
+      drainage: drainage('disabled'),
+    });
+    expect(codes(readiness).some((code) => code.startsWith('drainage'))).toBe(
+      false,
+    );
+  });
+
+  it('enabled without a system: an actionable warning, never a blocker', () => {
+    const readiness = deriveProjectReadiness({
+      ...facts({}),
+      drainage: drainage('system-missing', ['system-missing']),
+    });
+    const issue = readiness.issues.find(
+      (item) => item.code === 'drainage-system-missing',
+    );
+    expect(issue).toMatchObject({
+      severity: 'warning',
+      action: 'open-drainage',
+      affects: ['materials', 'cost'],
+    });
+    // The execution package and construction are unaffected.
+    expect(readiness.documents.execution.warningIds).not.toContain(issue!.id);
+    expect(readiness.issues.some((item) => item.severity === 'blocker')).toBe(
+      false,
+    );
+  });
+
+  it('unconfirmed outlets and missing downpipe data are separate actions', () => {
+    const readiness = deriveProjectReadiness({
+      ...facts({}),
+      drainage: drainage(
+        'incomplete',
+        [
+          'outlets-unconfirmed',
+          'downpipe-height-missing',
+          'elbows-unconfirmed',
+        ],
+        1,
+      ),
+    });
+    expect(codes(readiness)).toEqual(
+      expect.arrayContaining([
+        'drainage-outlets-unconfirmed',
+        'drainage-downpipes-incomplete',
+      ]),
+    );
+    expect(
+      readiness.issues.find(
+        (item) => item.code === 'drainage-downpipes-incomplete',
+      )?.params,
+    ).toEqual({ count: 2 });
+  });
+
+  it('enabled drainage adds the one hydraulic limitation to documents', () => {
+    const readiness = deriveProjectReadiness({
+      ...facts({}),
+      drainage: drainage('complete'),
+    });
+    expect(readiness.limitations.map((item) => item.code)).toContain(
+      'drainage-hydraulics-not-verified',
+    );
+    expect(
+      deriveProjectReadiness(facts({})).limitations.map((item) => item.code),
+    ).not.toContain('drainage-hydraulics-not-verified');
+  });
+});

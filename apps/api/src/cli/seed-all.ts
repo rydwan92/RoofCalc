@@ -40,6 +40,9 @@ const CATALOG_BATCHES = [
   // V50: tile colour variants with source-backed packaging, and system
   // accessories (ridge demand, verge tiles) as their own catalogue kind.
   'tiles-commercial-2026-09-v50.json',
+  // V51: one real gutter system (Galeco STAL²) as roof-drainage-component
+  // revisions, technical data only. No price batch: no net price was found.
+  'drainage-galeco-stal2-2026-09-v51.json',
 ] as const;
 const PRICING_BATCHES = [
   'prices-2026-09.json',

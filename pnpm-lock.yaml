@@ -32,6 +32,9 @@ importers:
       '@cieslacalc/roof-math':
         specifier: workspace:*
         version: link:packages/roof-math
+      '@cieslacalc/roof-system-core':
+        specifier: workspace:*
+        version: link:packages/roof-system-core
       '@cieslacalc/tile-procurement':
         specifier: workspace:*
         version: link:packages/tile-procurement
@@ -101,6 +104,9 @@ importers:
       '@cieslacalc/pricing-core':
         specifier: workspace:*
         version: link:../../packages/pricing-core
+      '@cieslacalc/roof-system-core':
+        specifier: workspace:*
+        version: link:../../packages/roof-system-core
       '@cieslacalc/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -177,6 +183,9 @@ importers:
       '@cieslacalc/roof-math':
         specifier: workspace:*
         version: link:../../packages/roof-math
+      '@cieslacalc/roof-system-core':
+        specifier: workspace:*
+        version: link:../../packages/roof-system-core
       '@cieslacalc/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -244,6 +253,9 @@ importers:
       '@cieslacalc/roof-math':
         specifier: workspace:*
         version: link:../roof-math
+      '@cieslacalc/roof-system-core':
+        specifier: workspace:*
+        version: link:../roof-system-core
       '@cieslacalc/shared':
         specifier: workspace:*
         version: link:../shared
@@ -259,6 +271,9 @@ importers:
       '@cieslacalc/covering-core':
         specifier: workspace:*
         version: link:../covering-core
+      '@cieslacalc/roof-system-core':
+        specifier: workspace:*
+        version: link:../roof-system-core
       zod:
         specifier: ^3.25.0
         version: 3.25.76
@@ -321,6 +336,12 @@ importers:
       '@cieslacalc/timber-model':
         specifier: workspace:*
         version: link:../timber-model
+      zod:
+        specifier: ^3.25.0
+        version: 3.25.76
+
+  packages/roof-system-core:
+    dependencies:
       zod:
         specifier: ^3.25.0
         version: 3.25.76

@@ -58,6 +58,7 @@ import type {
 } from './linear-material-plan';
 import type { MembraneProductSelection } from '@cieslacalc/covering-core';
 import type { TilePurchasePlan } from './tile-purchase';
+import { eaveLabel, type RoofSystemFacts } from './roof-system';
 import {
   structuralLimitations,
   type ProjectLimitation,
@@ -121,6 +122,11 @@ export type ExportFacts = {
    * Cost, the material list and readiness read these; none re-solves them.
    */
   tilePurchasePlans?: TilePurchasePlan[];
+  /**
+   * V51: canonical roof features, line components and the drainage plan.
+   * Absent on older callers → no roof-system rows or drainage sections.
+   */
+  roofSystem?: RoofSystemFacts;
 };
 
 function drawing(model: DrawingModel): DocumentDrawing {
@@ -244,6 +250,85 @@ function costEstimateSection(
 }
 
 /** Copies already resolved facts. No roof, quantity or procurement solver runs here. */
+/**
+ * V51 execution-package drainage plan, read from the resolved drainage plan
+ * and the canonical eaves. No count or price is computed here.
+ */
+function drainagePlanCandidate(facts: ExportFacts): SectionCandidate {
+  const system = facts.roofSystem;
+  const plan = system?.drainage;
+  if (!system || !plan || plan.status === 'disabled' || !plan.runs.length)
+    return {
+      kind: 'drainage-plan',
+      readiness: 'unavailable',
+      reason: 'no-drainage',
+    };
+  const eaves = new Map(system.eaves.map((eave) => [eave.id, eave]));
+  const label = (id: string) => {
+    const eave = eaves.get(id);
+    return eave ? eaveLabel(eave) : '—';
+  };
+  const section: ExecutionSection = {
+    kind: 'drainage-plan',
+    ...(system.intent?.drainage?.system
+      ? { systemName: system.intent.drainage.system.name }
+      : {}),
+    layout: plan.mode === 'auto' ? 'proposed' : 'manual',
+    outlines: facts.surface.planes.map((plane) => ({
+      id: plane.roofPlaneId,
+      points: plane.worldPolygon.map(({ x, y }) => ({ x, y })),
+    })),
+    gutters: plan.gutteredEaveIds.flatMap((id) => {
+      const eave = eaves.get(id);
+      return eave
+        ? [
+            {
+              eaveLabel: eaveLabel(eave),
+              from: { x: eave.start.x, y: eave.start.y },
+              to: { x: eave.end.x, y: eave.end.y },
+              lengthMm: eave.lengthMm,
+            },
+          ]
+        : [];
+    }),
+    runs: plan.runs.map((run) => ({
+      label: `R${run.ordinal}`,
+      eaveLabels: run.segments.map((segment) => label(segment.eaveId)),
+      lengthMm: run.lengthMm,
+      closed: run.closed,
+      connectedCorners: run.cornerIds.length,
+    })),
+    outlets: plan.outlets.map((outlet, index) => {
+      const eave = eaves.get(outlet.eaveId)!;
+      return {
+        label: `P${index + 1}`,
+        eaveLabel: eaveLabel(eave),
+        at: {
+          x: eave.start.x + (eave.end.x - eave.start.x) * outlet.station,
+          y: eave.start.y + (eave.end.y - eave.start.y) * outlet.station,
+        },
+        distanceFromEaveStartMm: outlet.positionMm,
+        ...(outlet.downpipe.heightMm !== undefined
+          ? { downpipeHeightMm: outlet.downpipe.heightMm }
+          : {}),
+        ...(outlet.downpipe.elbows !== undefined
+          ? { elbows: outlet.downpipe.elbows }
+          : {}),
+      };
+    }),
+    ...(plan.hooks.actualIntervalMm !== undefined
+      ? { hookSpacingMm: plan.hooks.actualIntervalMm }
+      : {}),
+    hydraulicsNotVerified: true,
+  };
+  return {
+    kind: 'drainage-plan',
+    readiness: plan.status === 'complete' ? 'available' : 'warning',
+    ...(plan.status === 'complete' ? {} : { reason: 'drainage-incomplete' }),
+    section,
+  };
+}
+
 export function createExportCandidates(facts: ExportFacts): SectionCandidate[] {
   const timberFamilies = new Map<string, number>();
   for (const row of facts.schedule.timberRows)
@@ -809,6 +894,7 @@ export function createExportCandidates(facts: ExportFacts): SectionCandidate[] {
       reason: coveringRows.length ? undefined : 'no-covering',
       section: coveringRows.length ? covering : undefined,
     },
+    drainagePlanCandidate(facts),
     { kind: 'assumptions', readiness: 'available', section: assumptions },
     (() => {
       const rows =

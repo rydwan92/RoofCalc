@@ -7,6 +7,7 @@ export type SectionKind =
   | 'cutting-plan'
   | 'layers'
   | 'covering'
+  | 'drainage-plan'
   | 'assumptions'
   | 'material-list'
   | 'cost-estimate';
@@ -19,6 +20,7 @@ export const sectionOrder: readonly SectionKind[] = [
   'cutting-plan',
   'layers',
   'covering',
+  'drainage-plan',
   'assumptions',
   'material-list',
   'cost-estimate',
@@ -330,6 +332,43 @@ export interface MaterialListSection {
   }[];
 }
 
+/**
+ * V51 concise drainage plan for the execution package: where the gutters
+ * run, where the outlets and downpipes are. Quantities and prices belong to
+ * the material list and cost estimate, never here. Numbers are canonical mm.
+ */
+export interface DrainagePlanSection {
+  kind: 'drainage-plan';
+  systemName?: string;
+  layout: 'proposed' | 'manual';
+  /** Plan-view roof outline and gutter/outlet geometry (x right, y up). */
+  outlines: { id: string; points: Point2D[] }[];
+  gutters: {
+    eaveLabel: string;
+    from: Point2D;
+    to: Point2D;
+    lengthMm: number;
+  }[];
+  runs: {
+    label: string;
+    eaveLabels: string[];
+    lengthMm: number;
+    closed: boolean;
+    connectedCorners: number;
+  }[];
+  outlets: {
+    label: string;
+    eaveLabel: string;
+    at: Point2D;
+    distanceFromEaveStartMm: number;
+    downpipeHeightMm?: number;
+    elbows?: number;
+  }[];
+  hookSpacingMm?: number;
+  /** Always true: hydraulic adequacy is not assessed. */
+  hydraulicsNotVerified: true;
+}
+
 export type ExecutionSection =
   | ProjectSummarySection
   | RoofOverviewSection
@@ -338,6 +377,7 @@ export type ExecutionSection =
   | CuttingPlanSection
   | LayersSection
   | CoveringSection
+  | DrainagePlanSection
   | AssumptionsSection
   | MaterialListSection
   | CostEstimateSection;

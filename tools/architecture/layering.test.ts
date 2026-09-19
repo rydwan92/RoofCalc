@@ -148,6 +148,30 @@ describe('package dependency direction', () => {
     ).toEqual([]);
   });
 
+  /**
+   * V51: `roof-system-core` turns canonical roof features plus a selected
+   * system and user intent into physical roof-system requirements (drainage,
+   * line components). Features arrive as structural inputs: it imports no
+   * geometry solver, no catalogue, no UI and no price.
+   */
+  it('roof-system-core stays free of React, DOM, apps, catalogue, API and database', () => {
+    expect(
+      forbiddenImports('packages/roof-system-core', [
+        ...PURE_DOMAIN,
+        ...CATALOGUE,
+      ]),
+    ).toEqual([]);
+    expect(forbiddenText('packages/roof-system-core', BROWSER_GLOBALS)).toEqual(
+      [],
+    );
+  });
+
+  it('roof-system-core depends on no workspace package', () => {
+    expect(
+      forbiddenImports('packages/roof-system-core', [/^@cieslacalc\//]),
+    ).toEqual([]);
+  });
+
   it('procurement-core depends on no workspace package at all', () => {
     expect(
       forbiddenImports('packages/procurement-core', [/^@cieslacalc\//]),
@@ -265,6 +289,7 @@ describe('commercial boundary', () => {
       'packages/quantity-core',
       'packages/procurement-core',
       'packages/tile-procurement',
+      'packages/roof-system-core',
       'packages/catalog-core',
       'packages/timber-model',
     ])

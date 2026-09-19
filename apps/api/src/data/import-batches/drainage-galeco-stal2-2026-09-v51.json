@@ -1,0 +1,417 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "id": "manufacturer-research-2026-09-v51-drainage",
+    "label": "V51: Galeco STAL² 125/80×80 gutter system — component roles, commercial lengths and source-stated hook/clamp spacing from galeco.pl, retrieved 2026-09-18. Technical data only; no prices.",
+    "sourceRevision": "2026-09-v51",
+    "sourceUrl": "https://galeco.pl/produkty/systemy-rynnowe/galeco-stal2/"
+  },
+  "manufacturers": [
+    {
+      "id": "manufacturer:galeco",
+      "slug": "galeco",
+      "name": "Galeco",
+      "countryCode": "PL",
+      "websiteUrl": "https://galeco.pl",
+      "active": true
+    }
+  ],
+  "products": [
+    {
+      "id": "product:galeco:stal2-rynna-3m",
+      "manufacturerId": "manufacturer:galeco",
+      "slug": "stal2-rynna-3m",
+      "name": "STAL² Rynna 3 m",
+      "coveringKind": "roof-drainage-component",
+      "active": true
+    },
+    {
+      "id": "product:galeco:stal2-rynna-4m",
+      "manufacturerId": "manufacturer:galeco",
+      "slug": "stal2-rynna-4m",
+      "name": "STAL² Rynna 4 m",
+      "coveringKind": "roof-drainage-component",
+      "active": true
+    },
+    {
+      "id": "product:galeco:stal2-lacznik-rynnowy",
+      "manufacturerId": "manufacturer:galeco",
+      "slug": "stal2-lacznik-rynnowy",
+      "name": "STAL² Łącznik rynnowy",
+      "coveringKind": "roof-drainage-component",
+      "active": true
+    },
+    {
+      "id": "product:galeco:stal2-luk-rynnowy-90-zewnetrzny",
+      "manufacturerId": "manufacturer:galeco",
+      "slug": "stal2-luk-rynnowy-90-zewnetrzny",
+      "name": "STAL² Łuk rynnowy 90° zewnętrzny",
+      "coveringKind": "roof-drainage-component",
+      "active": true
+    },
+    {
+      "id": "product:galeco:stal2-luk-rynnowy-90-wewnetrzny",
+      "manufacturerId": "manufacturer:galeco",
+      "slug": "stal2-luk-rynnowy-90-wewnetrzny",
+      "name": "STAL² Łuk rynnowy 90° wewnętrzny",
+      "coveringKind": "roof-drainage-component",
+      "active": true
+    },
+    {
+      "id": "product:galeco:stal2-zaslepka-rynnowa-lewa",
+      "manufacturerId": "manufacturer:galeco",
+      "slug": "stal2-zaslepka-rynnowa-lewa",
+      "name": "STAL² Zaślepka rynnowa lewa",
+      "coveringKind": "roof-drainage-component",
+      "active": true
+    },
+    {
+      "id": "product:galeco:stal2-zaslepka-rynnowa-prawa",
+      "manufacturerId": "manufacturer:galeco",
+      "slug": "stal2-zaslepka-rynnowa-prawa",
+      "name": "STAL² Zaślepka rynnowa prawa",
+      "coveringKind": "roof-drainage-component",
+      "active": true
+    },
+    {
+      "id": "product:galeco:stal2-lej-spustowy",
+      "manufacturerId": "manufacturer:galeco",
+      "slug": "stal2-lej-spustowy",
+      "name": "STAL² Lej spustowy (odpływ)",
+      "coveringKind": "roof-drainage-component",
+      "active": true
+    },
+    {
+      "id": "product:galeco:stal2-hak-doczolowy",
+      "manufacturerId": "manufacturer:galeco",
+      "slug": "stal2-hak-doczolowy",
+      "name": "STAL² Hak metalowy doczołowy",
+      "coveringKind": "roof-drainage-component",
+      "active": true
+    },
+    {
+      "id": "product:galeco:stal2-rura-spustowa-1m",
+      "manufacturerId": "manufacturer:galeco",
+      "slug": "stal2-rura-spustowa-1m",
+      "name": "STAL² Rura spustowa 1 m",
+      "coveringKind": "roof-drainage-component",
+      "active": true
+    },
+    {
+      "id": "product:galeco:stal2-rura-spustowa-3m",
+      "manufacturerId": "manufacturer:galeco",
+      "slug": "stal2-rura-spustowa-3m",
+      "name": "STAL² Rura spustowa 3 m",
+      "coveringKind": "roof-drainage-component",
+      "active": true
+    },
+    {
+      "id": "product:galeco:stal2-mufa",
+      "manufacturerId": "manufacturer:galeco",
+      "slug": "stal2-mufa",
+      "name": "STAL² Mufa",
+      "coveringKind": "roof-drainage-component",
+      "active": true
+    },
+    {
+      "id": "product:galeco:stal2-kolano-72",
+      "manufacturerId": "manufacturer:galeco",
+      "slug": "stal2-kolano-72",
+      "name": "STAL² Kolano 72°",
+      "coveringKind": "roof-drainage-component",
+      "active": true
+    },
+    {
+      "id": "product:galeco:stal2-obejma-do-dybla",
+      "manufacturerId": "manufacturer:galeco",
+      "slug": "stal2-obejma-do-dybla",
+      "name": "STAL² Obejma metalowa do dybla",
+      "coveringKind": "roof-drainage-component",
+      "active": true
+    }
+  ],
+  "revisions": [
+    {
+      "id": "revision:galeco:stal2-rynna-3m:2026-09",
+      "productId": "product:galeco:stal2-rynna-3m",
+      "revisionCode": "2026-09",
+      "validFrom": "2026-09-18",
+      "source": {
+        "label": "galeco.pl STAL²: rynna 125, długości handlowe 3 mb i 4 mb; łączenie łącznikiem rynnowym (pobrano 2026-09-18).",
+        "url": "https://galeco.pl/produkty/systemy-rynnowe/galeco-stal2/",
+        "revision": "2026-09"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-drainage-component",
+        "systemKey": "galeco-stal2-125-80",
+        "nominalSystemSize": "125/80×80",
+        "material": "steel",
+        "role": "gutter-section",
+        "lengthMm": 3000,
+        "joint": "separate-connector"
+      }
+    },
+    {
+      "id": "revision:galeco:stal2-rynna-4m:2026-09",
+      "productId": "product:galeco:stal2-rynna-4m",
+      "revisionCode": "2026-09",
+      "validFrom": "2026-09-18",
+      "source": {
+        "label": "galeco.pl STAL²: rynna 125, długości handlowe 3 mb i 4 mb; łączenie łącznikiem rynnowym (pobrano 2026-09-18).",
+        "url": "https://galeco.pl/produkty/systemy-rynnowe/galeco-stal2/",
+        "revision": "2026-09"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-drainage-component",
+        "systemKey": "galeco-stal2-125-80",
+        "nominalSystemSize": "125/80×80",
+        "material": "steel",
+        "role": "gutter-section",
+        "lengthMm": 4000,
+        "joint": "separate-connector"
+      }
+    },
+    {
+      "id": "revision:galeco:stal2-lacznik-rynnowy:2026-09",
+      "productId": "product:galeco:stal2-lacznik-rynnowy",
+      "revisionCode": "2026-09",
+      "validFrom": "2026-09-18",
+      "source": {
+        "label": "galeco.pl STAL²: element systemu „Łącznik rynnowy” (pobrano 2026-09-18).",
+        "url": "https://galeco.pl/produkty/systemy-rynnowe/galeco-stal2/",
+        "revision": "2026-09"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-drainage-component",
+        "systemKey": "galeco-stal2-125-80",
+        "nominalSystemSize": "125/80×80",
+        "material": "steel",
+        "role": "gutter-connector"
+      }
+    },
+    {
+      "id": "revision:galeco:stal2-luk-rynnowy-90-zewnetrzny:2026-09",
+      "productId": "product:galeco:stal2-luk-rynnowy-90-zewnetrzny",
+      "revisionCode": "2026-09",
+      "validFrom": "2026-09-18",
+      "source": {
+        "label": "galeco.pl STAL²: „Łuk rynnowy 90° zewnętrzny” (pobrano 2026-09-18).",
+        "url": "https://galeco.pl/produkty/systemy-rynnowe/galeco-stal2/",
+        "revision": "2026-09"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-drainage-component",
+        "systemKey": "galeco-stal2-125-80",
+        "nominalSystemSize": "125/80×80",
+        "material": "steel",
+        "role": "gutter-corner-external",
+        "angleDeg": 90
+      }
+    },
+    {
+      "id": "revision:galeco:stal2-luk-rynnowy-90-wewnetrzny:2026-09",
+      "productId": "product:galeco:stal2-luk-rynnowy-90-wewnetrzny",
+      "revisionCode": "2026-09",
+      "validFrom": "2026-09-18",
+      "source": {
+        "label": "galeco.pl STAL²: „Łuk rynnowy 90° wewnętrzny” (pobrano 2026-09-18).",
+        "url": "https://galeco.pl/produkty/systemy-rynnowe/galeco-stal2/",
+        "revision": "2026-09"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-drainage-component",
+        "systemKey": "galeco-stal2-125-80",
+        "nominalSystemSize": "125/80×80",
+        "material": "steel",
+        "role": "gutter-corner-internal",
+        "angleDeg": 90
+      }
+    },
+    {
+      "id": "revision:galeco:stal2-zaslepka-rynnowa-lewa:2026-09",
+      "productId": "product:galeco:stal2-zaslepka-rynnowa-lewa",
+      "revisionCode": "2026-09",
+      "validFrom": "2026-09-18",
+      "source": {
+        "label": "galeco.pl STAL²: zaślepka rynnowa lewa i prawa (Left/Right endcap) (pobrano 2026-09-18).",
+        "url": "https://galeco.pl/en/products/gutter-systems/galeco-stal2-gutter-system/technical-information",
+        "revision": "2026-09"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-drainage-component",
+        "systemKey": "galeco-stal2-125-80",
+        "nominalSystemSize": "125/80×80",
+        "material": "steel",
+        "role": "gutter-end-cap",
+        "hand": "left"
+      }
+    },
+    {
+      "id": "revision:galeco:stal2-zaslepka-rynnowa-prawa:2026-09",
+      "productId": "product:galeco:stal2-zaslepka-rynnowa-prawa",
+      "revisionCode": "2026-09",
+      "validFrom": "2026-09-18",
+      "source": {
+        "label": "galeco.pl STAL²: zaślepka rynnowa lewa i prawa (Left/Right endcap) (pobrano 2026-09-18).",
+        "url": "https://galeco.pl/en/products/gutter-systems/galeco-stal2-gutter-system/technical-information",
+        "revision": "2026-09"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-drainage-component",
+        "systemKey": "galeco-stal2-125-80",
+        "nominalSystemSize": "125/80×80",
+        "material": "steel",
+        "role": "gutter-end-cap",
+        "hand": "right"
+      }
+    },
+    {
+      "id": "revision:galeco:stal2-lej-spustowy:2026-09",
+      "productId": "product:galeco:stal2-lej-spustowy",
+      "revisionCode": "2026-09",
+      "validFrom": "2026-09-18",
+      "source": {
+        "label": "galeco.pl STAL²: „Lej spustowy/Odpływ” łączący rynnę z rurą spustową (pobrano 2026-09-18).",
+        "url": "https://galeco.pl/produkty/systemy-rynnowe/galeco-stal2/",
+        "revision": "2026-09"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-drainage-component",
+        "systemKey": "galeco-stal2-125-80",
+        "nominalSystemSize": "125/80×80",
+        "material": "steel",
+        "role": "gutter-outlet"
+      }
+    },
+    {
+      "id": "revision:galeco:stal2-hak-doczolowy:2026-09",
+      "productId": "product:galeco:stal2-hak-doczolowy",
+      "revisionCode": "2026-09",
+      "validFrom": "2026-09-18",
+      "source": {
+        "label": "galeco.pl, „Montaż systemu Galeco STAL2 krok po kroku”: „Montując haki co 60cm…” — rozstaw maksymalny 60 cm; haki poza miejscami łączeń (pobrano 2026-09-18).",
+        "url": "https://galeco.pl/porady/montaz-systemu-galeco-stal2-krok-po-kroku/",
+        "revision": "2026-09"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-drainage-component",
+        "systemKey": "galeco-stal2-125-80",
+        "nominalSystemSize": "125/80×80",
+        "material": "steel",
+        "role": "gutter-hook",
+        "maxSpacingMm": 600
+      }
+    },
+    {
+      "id": "revision:galeco:stal2-rura-spustowa-1m:2026-09",
+      "productId": "product:galeco:stal2-rura-spustowa-1m",
+      "revisionCode": "2026-09",
+      "validFrom": "2026-09-18",
+      "source": {
+        "label": "galeco.pl STAL²: rura spustowa 80×80, długości 1 mb i 3 mb; odcinki łączone mufą (pobrano 2026-09-18).",
+        "url": "https://galeco.pl/produkty/systemy-rynnowe/galeco-stal2/",
+        "revision": "2026-09"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-drainage-component",
+        "systemKey": "galeco-stal2-125-80",
+        "nominalSystemSize": "125/80×80",
+        "material": "steel",
+        "role": "downpipe",
+        "lengthMm": 1000,
+        "joint": "separate-connector"
+      }
+    },
+    {
+      "id": "revision:galeco:stal2-rura-spustowa-3m:2026-09",
+      "productId": "product:galeco:stal2-rura-spustowa-3m",
+      "revisionCode": "2026-09",
+      "validFrom": "2026-09-18",
+      "source": {
+        "label": "galeco.pl STAL²: rura spustowa 80×80, długości 1 mb i 3 mb; odcinki łączone mufą (pobrano 2026-09-18).",
+        "url": "https://galeco.pl/produkty/systemy-rynnowe/galeco-stal2/",
+        "revision": "2026-09"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-drainage-component",
+        "systemKey": "galeco-stal2-125-80",
+        "nominalSystemSize": "125/80×80",
+        "material": "steel",
+        "role": "downpipe",
+        "lengthMm": 3000,
+        "joint": "separate-connector"
+      }
+    },
+    {
+      "id": "revision:galeco:stal2-mufa:2026-09",
+      "productId": "product:galeco:stal2-mufa",
+      "revisionCode": "2026-09",
+      "validFrom": "2026-09-18",
+      "source": {
+        "label": "galeco.pl STAL²: „Mufa” łącząca odcinki rury spustowej (pobrano 2026-09-18).",
+        "url": "https://galeco.pl/porady/montaz-systemu-galeco-stal2-krok-po-kroku/",
+        "revision": "2026-09"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-drainage-component",
+        "systemKey": "galeco-stal2-125-80",
+        "nominalSystemSize": "125/80×80",
+        "material": "steel",
+        "role": "downpipe-connector"
+      }
+    },
+    {
+      "id": "revision:galeco:stal2-kolano-72:2026-09",
+      "productId": "product:galeco:stal2-kolano-72",
+      "revisionCode": "2026-09",
+      "validFrom": "2026-09-18",
+      "source": {
+        "label": "galeco.pl STAL²: „Kolano 72°” (pobrano 2026-09-18). Liczbę kolan potwierdza użytkownik.",
+        "url": "https://galeco.pl/produkty/systemy-rynnowe/galeco-stal2/",
+        "revision": "2026-09"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-drainage-component",
+        "systemKey": "galeco-stal2-125-80",
+        "nominalSystemSize": "125/80×80",
+        "material": "steel",
+        "role": "downpipe-elbow",
+        "angleDeg": 72
+      }
+    },
+    {
+      "id": "revision:galeco:stal2-obejma-do-dybla:2026-09",
+      "productId": "product:galeco:stal2-obejma-do-dybla",
+      "revisionCode": "2026-09",
+      "validFrom": "2026-09-18",
+      "source": {
+        "label": "galeco.pl, „Montaż systemu Galeco STAL2 krok po kroku”: „odległości 1.8m między poszczególnymi obejmami” (pobrano 2026-09-18).",
+        "url": "https://galeco.pl/porady/montaz-systemu-galeco-stal2-krok-po-kroku/",
+        "revision": "2026-09"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-drainage-component",
+        "systemKey": "galeco-stal2-125-80",
+        "nominalSystemSize": "125/80×80",
+        "material": "steel",
+        "role": "downpipe-clamp",
+        "maxSpacingMm": 1800
+      }
+    }
+  ],
+  "variants": []
+}

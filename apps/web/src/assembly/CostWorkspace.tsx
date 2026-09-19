@@ -31,7 +31,7 @@ import {
 } from './cost-adapter';
 import { downloadCostEstimateCsv } from './cost-csv';
 import type { ExportFacts } from './export-adapter';
-import { materialCopy } from './material-copy';
+import { materialCopy, materialText } from './material-copy';
 
 const QUANTITY_UNITS: readonly QuantityUnit[] = [
   'piece',
@@ -74,6 +74,8 @@ function suggestionLabelKey(suggestion: CostSuggestion): string {
       return 'coveringRuns';
     case 'covering-consumption':
       return 'coveringConsumption';
+    case 'roof-system':
+      return 'roofSystem';
   }
 }
 
@@ -85,7 +87,20 @@ function suggestionLabelKey(suggestion: CostSuggestion): string {
 function suggestionLabel(
   suggestion: CostSuggestion,
   t: (key: string) => string,
+  locale = 'pl',
 ): string {
+  // V51: roof-system rows name the element, its length and the product.
+  if (suggestion.kind === 'roof-system')
+    return [
+      `${materialText(locale, suggestion.labelKey)}${
+        suggestion.lengthMm !== undefined
+          ? ` ${(suggestion.lengthMm / 1000).toLocaleString(locale)} m`
+          : ''
+      }`,
+      suggestion.productName,
+    ]
+      .filter(Boolean)
+      .join(' · ');
   const base = t(`assembly.cost.suggestion.${suggestionLabelKey(suggestion)}`);
   if (
     suggestion.kind === 'tile-purchase' ||
@@ -192,7 +207,7 @@ export function CostWorkspace({
     const line = createCostLine({
       id: suggestion.key,
       category: suggestion.category,
-      label: suggestionLabel(suggestion, t),
+      label: suggestionLabel(suggestion, t, i18n.language),
       quantity,
       quantityBasis: suggestion.quantityBasis,
       suitability: suggestion.suitability,
@@ -326,7 +341,9 @@ export function CostWorkspace({
                 data-suitability={suggestion.suitability}
               >
                 <div>
-                  <strong>{suggestionLabel(suggestion, t)}</strong>
+                  <strong>
+                    {suggestionLabel(suggestion, t, i18n.language)}
+                  </strong>
                   <small>
                     {t(`assembly.cost.suitability.${suggestion.suitability}`)}
                   </small>

@@ -802,6 +802,7 @@ export const assemblyPl = {
     documentPreview: 'Podgląd dokumentu',
     materials: {
       plan: 'Plan materiałów',
+      drainage: 'Odwodnienie',
       cutting: 'Rozkrój K1',
       schedule: 'Zestawienie techniczne',
       summary: 'Podsumowanie projektu',
@@ -2031,6 +2032,7 @@ export const assemblyPl = {
       'review-membrane': 'Otwórz membranę',
       'plan-k1': 'Zaplanuj rozkrój K1',
       'open-materials': 'Otwórz materiały',
+      'open-drainage': 'Otwórz odwodnienie',
       'open-cost': 'Otwórz kosztorys',
     },
     issue: {
@@ -2182,6 +2184,31 @@ export const assemblyPl = {
         description:
           'Przyjęto osobną dachówkę na każdą pozycję i każdy fragment przy otworach. Sprawdź na dachu.',
       },
+      'drainage-system-missing': {
+        title: 'Odwodnienie: wybierz system rynnowy',
+        description:
+          'Rynny są włączone, ale bez systemu RoofCalc nie policzy elementów. Nie wpływa to na konstrukcję ani pokrycie.',
+      },
+      'drainage-layout-undecided': {
+        title: 'Odwodnienie: {{count}} decyzje układu',
+        description:
+          'Rozstrzygnij narożniki, okapy lub brakujące dane systemu — dotyczy tylko listy materiałów i kosztorysu.',
+      },
+      'drainage-outlets-unconfirmed': {
+        title: 'Odwodnienie: potwierdź odpływy ({{count}})',
+        description:
+          'RoofCalc proponuje położenie odpływów. Potwierdź je lub przesuń — bez tego nie policzy rur spustowych.',
+      },
+      'drainage-downpipes-incomplete': {
+        title: 'Odwodnienie: {{count}} dane pionów do uzupełnienia',
+        description:
+          'Podaj wysokość pionu i potwierdź liczbę kolan przy każdym odpływie. Rynny są już policzone.',
+      },
+      'drainage-hook-incompatible': {
+        title: 'Odwodnienie: rozstaw haków niezgodny z producentem',
+        description:
+          'Ręczny rozstaw haków przekracza maksymalny rozstaw systemu. RoofCalc go nie poprawia — zmień go świadomie.',
+      },
       'tile-accessories-undecided': {
         title: '{{count}} akcesoria wymagają ustalenia',
         description:
@@ -2268,6 +2295,7 @@ export const assemblyPl = {
       coveringConsumption: 'Pokrycie (wg zużycia producenta)',
       tilePurchase: 'Dachówka podstawowa — plan zakupu',
       tileAccessory: 'Akcesorium systemowe',
+      roofSystem: 'System dachu',
     },
     notPurchaseFact:
       '{{count}} {{unit}} — wynik geometryczny, nie ilość do zakupu.',
@@ -3127,6 +3155,7 @@ export const assemblyEn: typeof assemblyPl = {
     documentPreview: 'Document preview',
     materials: {
       plan: 'Material plan',
+      drainage: 'Drainage',
       cutting: 'K1 cutting',
       schedule: 'Technical schedule',
       summary: 'Project summary',
@@ -4344,6 +4373,7 @@ export const assemblyEn: typeof assemblyPl = {
       'review-membrane': 'Open membrane',
       'plan-k1': 'Plan K1 cutting',
       'open-materials': 'Open materials',
+      'open-drainage': 'Open drainage',
       'open-cost': 'Open cost estimate',
     },
     issue: {
@@ -4493,6 +4523,31 @@ export const assemblyEn: typeof assemblyPl = {
         description:
           'A separate tile is reserved for every position and fragment at openings. Check them on the roof.',
       },
+      'drainage-system-missing': {
+        title: 'Drainage: choose a gutter system',
+        description:
+          'Gutters are on, but without a system RoofCalc cannot count components. Structure and covering are unaffected.',
+      },
+      'drainage-layout-undecided': {
+        title: 'Drainage: {{count}} layout decisions',
+        description:
+          'Decide corners, eaves or missing system data — affects only the material list and the estimate.',
+      },
+      'drainage-outlets-unconfirmed': {
+        title: 'Drainage: confirm outlets ({{count}})',
+        description:
+          'RoofCalc proposes outlet positions. Confirm or move them — downpipes are not counted until then.',
+      },
+      'drainage-downpipes-incomplete': {
+        title: 'Drainage: {{count}} downpipe inputs missing',
+        description:
+          'Enter each downpipe height and confirm the elbow count. Gutters are already counted.',
+      },
+      'drainage-hook-incompatible': {
+        title: 'Drainage: hook spacing exceeds the manufacturer maximum',
+        description:
+          'The manual hook spacing is larger than the system allows. RoofCalc does not correct it — change it deliberately.',
+      },
       'tile-accessories-undecided': {
         title: '{{count}} accessories need a decision',
         description:
@@ -4579,6 +4634,7 @@ export const assemblyEn: typeof assemblyPl = {
       coveringConsumption: 'Covering (manufacturer consumption)',
       tilePurchase: 'Base roof tile — purchase plan',
       tileAccessory: 'System accessory',
+      roofSystem: 'Roof system',
     },
     notPurchaseFact:
       '{{count}} {{unit}} — a geometric result, not a purchase quantity.',

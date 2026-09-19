@@ -137,6 +137,22 @@ free; changing meaning, type or required-ness is not.
   types one key, `packaging`, in the existing JSON column. No migration.
   `QuantityUnit`/`PriceQuantityUnit` gain `pack` and `pallet` (additive enum
   values in the cost sidecar and price entries).
+- V51 note: one additive-optional field, no `schemaVersion` bump.
+  `project.roofSystem?: RoofSystemIntent` (`roof-system-core`
+  `drainage-spec.ts`): `drainage?` (`enabled`, `mode: auto | manual`,
+  `system?` snapshot of `roof-drainage-component` specs, `gutteredEaveIds?`,
+  `corners?[] {endingEaveId, startingEaveId, connection}`, `outlets?[] {id,
+  eaveId, station 0–1, downpipeHeightMm?, elbowCount?, clampCount?}`,
+  `hookSpacing? auto | {manual, spacingMm}`) and `lineComponents?[]` (ridge
+  tape / eave elements with an explicit `linear-effective-cover` or `manual`
+  rule). Only user decisions are stored; runs, sections, hooks and every
+  count are derived by `resolveDrainagePlan`. Eave IDs are the deterministic
+  opaque IDs of `resolveRoofFeatureTopology`; an ID no longer present (roof
+  type changed) is reported as `stale-eave-reference`, never re-mapped.
+  Absence = no drainage; every older project opens unchanged.
+- V51 catalogue: `CATALOG_PRODUCT_KINDS` gains `roof-drainage-component`
+  (existing `covering_kind varchar(32)`); preview gains `drainageSystemKey`,
+  `drainageRole`, `nominalSystemSize`, `maxSpacingMm`, `hand`. No migration.
 
 ---
 
@@ -336,6 +352,11 @@ ProjectRecord, localStorage or the database. The `version: 1` tag reserves an
 explicit reader boundary if these output bytes are ever persisted or exchanged.
 That future persistence requires its own compatibility policy and `ExportArtifact`
 design, without changing `RoofProjectDocumentV1` by implication.
+
+V51 adds the `drainage-plan` section (runs, outlets, downpipe heights,
+plan-view outline; `hydraulicsNotVerified: true`, no quantities or prices).
+It is optional: it counts toward the execution package only when drainage
+is configured.
 
 ---
 

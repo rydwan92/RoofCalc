@@ -1200,3 +1200,38 @@ it('selects a ridge connection and reflects it on the assembly spec', () => {
   useAssembly.getState().setRidgeConnection('half-lap');
   expect(useAssembly.getState().spec.ridge.connection).toBe('half-lap');
 });
+it('V51: roof-system intent is one undoable edit, survives other edits, and a drag is one entry', () => {
+  useAssembly.setState({ historyPast: [], historyFuture: [] });
+  const drainage = {
+    enabled: true,
+    mode: 'auto' as const,
+    outlets: [{ id: 'outlet-1', eaveId: 'eave-a', station: 0.5 }],
+  };
+  useAssembly.getState().setRoofSystem({ drainage });
+  expect(useAssembly.getState().historyPast).toHaveLength(1);
+  // An unrelated canonical edit keeps the drainage intent.
+  useAssembly.getState().setMembraneLayer({ enabled: true });
+  expect(
+    useAssembly.getState().projectDocument.project.roofSystem?.drainage,
+  ).toEqual(drainage);
+  const before = useAssembly.getState().historyPast.length;
+  useAssembly.getState().beginTransaction();
+  for (const station of [0.55, 0.6, 0.7])
+    useAssembly.getState().previewRoofSystem({
+      drainage: {
+        ...drainage,
+        outlets: [{ ...drainage.outlets[0]!, station }],
+      },
+    });
+  useAssembly.getState().commitTransaction();
+  expect(useAssembly.getState().historyPast).toHaveLength(before + 1);
+  expect(
+    useAssembly.getState().projectDocument.project.roofSystem?.drainage
+      ?.outlets?.[0]?.station,
+  ).toBe(0.7);
+  useAssembly.getState().undo();
+  expect(
+    useAssembly.getState().projectDocument.project.roofSystem?.drainage
+      ?.outlets?.[0]?.station,
+  ).toBe(0.5);
+});
