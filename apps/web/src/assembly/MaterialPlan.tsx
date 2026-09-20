@@ -20,6 +20,7 @@ import {
 } from './material-plan';
 import { downloadMaterialCsv } from './material-csv';
 import { MembraneMaterialCard } from './MembraneMaterialCard';
+import { CommercialBadge } from '../business/CommercialBadge';
 import type { ExportFacts } from './export-adapter';
 import type {
   ProjectReadiness,
@@ -557,6 +558,12 @@ export function MaterialPlan({
                           {row.product.name}
                         </p>
                       )}
+                      {/*
+                       * V54 §42: in Business mode the row also carries the
+                       * wholesaler's own code and whether a price exists.
+                       * Renders nothing in Standard mode.
+                       */}
+                      <CommercialBadge variantId={row.product?.variantId} />
                     </div>
                     <strong
                       className="mp-quantity"

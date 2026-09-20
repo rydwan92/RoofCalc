@@ -1,0 +1,807 @@
+/*
+ * V54 Business mode. Every colour is a semantic `--ui-*` token, so the
+ * wholesale surfaces inherit the workbench theme rather than introducing a
+ * second palette. Nothing here loads in STANDARD mode: the components that
+ * use these classes render `null` outside business mode.
+ */
+
+.bz-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------------------------------------------------------------- header */
+
+.bz-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--ui-border);
+  border-radius: 999px;
+  background: var(--ui-surface-2, var(--ui-surface));
+  font-size: 0.82rem;
+  min-width: 0;
+}
+
+.bz-header-label {
+  color: var(--ui-text-muted);
+}
+
+.bz-header strong,
+.bz-header select {
+  font-weight: 600;
+  max-width: 16ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bz-header select {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.bz-admin-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: 0;
+  background: transparent;
+  color: var(--ui-text-muted);
+  cursor: pointer;
+  padding: 0.15rem 0.3rem;
+  border-radius: 6px;
+}
+
+.bz-admin-entry:hover,
+.bz-admin-entry:focus-visible {
+  color: var(--ui-text);
+  background: var(--ui-surface);
+}
+
+.bz-mode-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--ui-text-muted);
+  /*
+   * The header is a fixed-height row of existing controls; this toggle is the
+   * newest arrival and must yield first. Without `min-width: 0` a select's
+   * intrinsic width is a hard floor and the whole settings group is pushed
+   * past the viewport at 1024px wide.
+   */
+  min-width: 0;
+  flex-shrink: 1;
+}
+
+.bz-mode-toggle select {
+  font: inherit;
+  padding: 0.2rem 0.3rem;
+  border: 1px solid var(--ui-border);
+  border-radius: 6px;
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  min-width: 0;
+  max-width: 12ch;
+  text-overflow: ellipsis;
+}
+
+/* Below a comfortable desktop width the word "Tryb" is redundant: the
+   select's own value already says which mode is active. */
+@media (max-width: 1200px) {
+  .bz-mode-toggle > span {
+    display: none;
+  }
+
+  .bz-mode-toggle select {
+    max-width: 9ch;
+  }
+}
+
+/* ---------------------------------------------------------------- picker */
+
+.bz-picker-tabs {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.6rem 0.9rem 0;
+}
+
+.bz-picker-tabs button {
+  flex: 1 1 0;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--ui-border);
+  border-bottom: 0;
+  border-radius: 8px 8px 0 0;
+  background: var(--ui-surface-2, var(--ui-surface));
+  color: var(--ui-text-muted);
+  font: inherit;
+  font-size: 0.86rem;
+  cursor: pointer;
+}
+
+.bz-picker-tabs button[aria-selected='true'] {
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  font-weight: 600;
+  box-shadow: inset 0 2px 0 var(--ui-accent, currentColor);
+}
+
+.bz-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.9rem;
+  min-height: 0;
+  overflow: auto;
+}
+
+.bz-picker-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.bz-picker-head small {
+  display: block;
+  color: var(--ui-text-muted);
+}
+
+.bz-org-name {
+  font-size: 0.8rem;
+  color: var(--ui-text-muted);
+}
+
+.bz-search {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--ui-surface);
+}
+
+.bz-search input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.bz-search input:focus {
+  outline: none;
+}
+
+.bz-picker-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.bz-picker-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--ui-surface);
+  flex-wrap: wrap;
+}
+
+.bz-row-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+  flex: 1 1 18rem;
+}
+
+.bz-row-identity small {
+  color: var(--ui-text-muted);
+  font-size: 0.78rem;
+}
+
+.bz-sku code {
+  font-size: 0.8rem;
+}
+
+.bz-preferred {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  margin-left: 0.4rem;
+  padding: 0 0.35rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  background: var(--ui-surface-2, var(--ui-surface));
+  color: var(--ui-text-muted);
+  border: 1px solid var(--ui-border);
+}
+
+.bz-row-commerce {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.bz-price-state {
+  font-size: 0.78rem;
+  color: var(--ui-text-muted);
+}
+
+.bz-price-state[data-has-price='no'] {
+  color: var(--ui-warning, var(--ui-text-muted));
+}
+
+.bz-unavailable,
+.bz-empty,
+.bz-hint {
+  color: var(--ui-text-muted);
+  font-size: 0.86rem;
+}
+
+/* ------------------------------------------------- outside assortment */
+
+.bz-outside {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--ui-warning, var(--ui-border));
+  border-radius: 8px;
+  background: var(--ui-surface-2, var(--ui-surface));
+}
+
+.bz-outside-head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  color: var(--ui-warning, var(--ui-text));
+  text-transform: uppercase;
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+}
+
+.bz-outside p {
+  margin: 0;
+  font-size: 0.86rem;
+}
+
+.bz-outside-technical,
+.bz-outside-product {
+  color: var(--ui-text-muted);
+  font-size: 0.8rem;
+}
+
+.bz-outside-actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-top: 0.2rem;
+}
+
+/* ----------------------------------------------------- material / cost */
+
+.bz-commercial {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.6rem;
+  font-size: 0.78rem;
+  color: var(--ui-text-muted);
+}
+
+.bz-commercial code {
+  font-size: 0.78rem;
+}
+
+.bz-commercial[data-state='outside'] {
+  color: var(--ui-warning, var(--ui-text-muted));
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.bz-commercial[data-state='no-price'] {
+  color: var(--ui-warning, var(--ui-text-muted));
+}
+
+.bz-price-source {
+  display: block;
+  font-size: 0.76rem;
+  color: var(--ui-text-muted);
+}
+
+/* ----------------------------------------------------------- admin MVP */
+
+.bz-admin-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.bz-admin-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgb(0 0 0 / 45%);
+  cursor: pointer;
+}
+
+.bz-admin-dialog {
+  position: relative;
+  width: min(1100px, 100%);
+  max-height: min(90vh, 900px);
+  overflow: auto;
+  border: 1px solid var(--ui-border);
+  border-radius: 12px;
+  background: var(--ui-surface);
+  box-shadow: 0 20px 60px rgb(0 0 0 / 35%);
+}
+
+.bz-admin {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 1rem;
+  min-width: 0;
+}
+
+.bz-admin-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.bz-admin-head h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.bz-dashboard {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: 0.5rem;
+}
+
+.bz-count {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--ui-surface-2, var(--ui-surface));
+}
+
+.bz-count span {
+  font-size: 0.76rem;
+  color: var(--ui-text-muted);
+}
+
+.bz-count strong {
+  font-size: 1.2rem;
+}
+
+.bz-count[data-tone='warning'] strong {
+  color: var(--ui-warning, var(--ui-text));
+}
+
+.bz-admin-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.bz-admin-toolbar input {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--ui-surface);
+  color: inherit;
+  font: inherit;
+  min-width: 14rem;
+}
+
+.bz-filters {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.bz-filters button {
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--ui-border);
+  border-radius: 999px;
+  background: var(--ui-surface);
+  color: var(--ui-text-muted);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.bz-filters button[aria-selected='true'] {
+  background: var(--ui-surface-2, var(--ui-surface));
+  color: var(--ui-text);
+  font-weight: 600;
+}
+
+.bz-admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.bz-admin-table th,
+.bz-admin-table td {
+  text-align: left;
+  padding: 0.45rem 0.5rem;
+  border-bottom: 1px solid var(--ui-border);
+  vertical-align: top;
+}
+
+.bz-admin-table th {
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--ui-text-muted);
+}
+
+.bz-admin-table tbody tr {
+  cursor: pointer;
+}
+
+.bz-admin-table tbody tr:hover,
+.bz-admin-table tbody tr:focus-visible {
+  background: var(--ui-surface-2, var(--ui-surface));
+}
+
+.bz-state {
+  display: inline-block;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border: 1px solid var(--ui-border);
+  color: var(--ui-text-muted);
+}
+
+.bz-state[data-state='unmatched'] {
+  color: var(--ui-warning, var(--ui-text));
+  border-color: var(--ui-warning, var(--ui-border));
+}
+
+.bz-back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: 0;
+  background: transparent;
+  color: var(--ui-text-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+/* ------------------------------------------------------- admin detail */
+
+.bz-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.bz-detail header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.bz-detail header h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.bz-detail-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.bz-detail-facts dt {
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--ui-text-muted);
+}
+
+.bz-detail-facts dd {
+  margin: 0.1rem 0 0;
+  font-size: 0.9rem;
+}
+
+.bz-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--ui-warning, var(--ui-border));
+  border-radius: 8px;
+  font-size: 0.84rem;
+}
+
+.bz-detail-actions,
+.bz-link-variants {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.bz-link h4 {
+  margin: 0 0 0.4rem;
+  font-size: 0.9rem;
+}
+
+.bz-link-results {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.bz-link-results li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  flex-wrap: wrap;
+}
+
+.bz-link-results small {
+  display: block;
+  color: var(--ui-text-muted);
+  font-size: 0.78rem;
+}
+
+/* -------------------------------------------------------- CSV import */
+
+.bz-import {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.bz-import header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.bz-import header h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.bz-import-step {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.bz-import-step > strong {
+  font-size: 0.82rem;
+  color: var(--ui-text-muted);
+  min-width: 11rem;
+}
+
+.bz-import input[type='file'] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.bz-mapping {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.bz-mapping label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.8rem;
+}
+
+.bz-mapping select {
+  padding: 0.35rem 0.4rem;
+  border: 1px solid var(--ui-border);
+  border-radius: 6px;
+  background: var(--ui-surface);
+  color: inherit;
+  font: inherit;
+  font-size: 0.84rem;
+}
+
+.bz-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--ui-surface-2, var(--ui-surface));
+}
+
+.bz-preview-total {
+  margin: 0;
+  font-weight: 600;
+}
+
+.bz-preview-counts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  font-size: 0.86rem;
+}
+
+.bz-preview-counts li[data-tone='warning'] {
+  color: var(--ui-warning, var(--ui-text));
+}
+
+.bz-preview-actions-summary {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--ui-text-muted);
+}
+
+.bz-preview-problems {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.bz-preview-problems th,
+.bz-preview-problems td {
+  text-align: left;
+  padding: 0.35rem 0.45rem;
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.bz-preview-problems small[data-severity='blocker'] {
+  color: var(--ui-danger, var(--ui-warning, inherit));
+}
+
+/* ------------------------------------------------------------- mobile */
+
+@media (max-width: 768px) {
+  /*
+   * The workbench top bar is a single non-wrapping row, so the business badge
+   * — the one element V54 adds to it — must collapse rather than push the row
+   * wider than the phone. It keeps the wholesaler's name (§39: the user must
+   * always know whose prices they are seeing), truncated, and drops the
+   * "Cennik:" prefix and the "Administracja" word, whose icons carry the same
+   * meaning in this space.
+   */
+  .bz-header {
+    min-width: 0;
+    flex-shrink: 1;
+    gap: 0.3rem;
+    padding: 0.2rem 0.4rem;
+  }
+
+  .bz-header-label {
+    display: none;
+  }
+
+  .bz-header strong,
+  .bz-header select {
+    max-width: 7ch;
+  }
+
+  .bz-admin-entry > span {
+    display: none;
+  }
+
+  .bz-admin-dialog {
+    width: 100%;
+    max-height: 94vh;
+    border-radius: 10px;
+  }
+
+  .bz-admin {
+    padding: 0.75rem;
+  }
+
+  .bz-admin-toolbar input {
+    min-width: 0;
+    width: 100%;
+  }
+
+  /*
+   * The admin table becomes stacked cards: a six-column table at 390px is
+   * unusable, and horizontal page scroll is not acceptable.
+   */
+  .bz-admin-table thead {
+    display: none;
+  }
+
+  .bz-admin-table,
+  .bz-admin-table tbody,
+  .bz-admin-table tr,
+  .bz-admin-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .bz-admin-table tr {
+    border: 1px solid var(--ui-border);
+    border-radius: 8px;
+    margin-bottom: 0.4rem;
+    padding: 0.3rem 0.4rem;
+  }
+
+  .bz-admin-table td {
+    border: 0;
+    padding: 0.15rem 0.1rem;
+  }
+
+  .bz-picker-list li,
+  .bz-link-results li {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .bz-row-commerce {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .bz-mapping {
+    grid-template-columns: 1fr;
+  }
+}

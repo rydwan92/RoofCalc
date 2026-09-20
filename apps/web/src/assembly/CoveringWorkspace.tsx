@@ -16,6 +16,8 @@ import {
 import { useTranslation } from 'react-i18next';
 import { AlertTriangle, Info, Trash2 } from 'lucide-react';
 import { usePriceOptions } from '../pricing/use-prices';
+import { OutsideAssortmentNotice } from '../business/OutsideAssortment';
+import { useEffectiveVariantPrices } from '../business/use-effective-prices';
 import {
   resolveInstallationMode,
   type CoveringAssignmentSpec,
@@ -2029,7 +2031,17 @@ function CoveringProductCard({
   const display = assignment.product.displaySnapshot;
   const spec = assignment.product.technicalSpecSnapshot;
   const variantId = assignment.product.catalogRef?.variantId;
-  const prices = usePriceOptions(variantId ? [variantId] : []);
+  const cataloguePrices = usePriceOptions(variantId ? [variantId] : []);
+  /*
+   * V54: in Business mode the card must reflect the *wholesaler's* price
+   * list, not only the global catalogue one — otherwise a product the active
+   * wholesaler prices would read "Brak ceny w cenniku". In Standard mode this
+   * is `cataloguePrices` unchanged.
+   */
+  const prices = useEffectiveVariantPrices(
+    cataloguePrices,
+    variantId ? [variantId] : [],
+  );
   const length = (value: number) =>
     `${new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 1 }).format(fromMillimetres(value, state.unit))} ${state.unit}`;
   const facts: Array<[string, string]> = [];
@@ -2137,6 +2149,17 @@ function CoveringProductCard({
           </div>
         )}
       </dl>
+      {/*
+       * V54 §17: a saved project may use a valid global product the active
+       * wholesaler does not sell. The roof stays technically valid; only the
+       * commercial state changes, and the user chooses what to do about it.
+       * Renders nothing in Standard mode.
+       */}
+      <OutsideAssortmentNotice
+        variantId={variantId}
+        productName={display?.familyName ?? t(coveringKindLabelKey(assignment))}
+        onFindReplacement={() => state.setViewPreset('covering')}
+      />
     </div>
   );
 }

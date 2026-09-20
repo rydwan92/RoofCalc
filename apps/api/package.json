@@ -14,20 +14,22 @@
     "db:wait": "tsx src/cli/wait-for-db.ts",
     "db:doctor": "tsx src/cli/doctor.ts",
     "db:seed": "tsx src/cli/seed-all.ts --apply",
+    "db:seed-business": "tsx src/cli/seed-business.ts --apply",
     "db:smoke-check": "tsx src/cli/smoke-check.ts",
-    "db:bootstrap": "pnpm db:wait && pnpm db:migrate && pnpm db:seed && pnpm db:smoke-check",
+    "db:bootstrap": "pnpm db:wait && pnpm db:migrate && pnpm db:seed && pnpm db:seed-business && pnpm db:smoke-check",
     "deploy:cloudflare": "wrangler deploy --config ../../wrangler.jsonc"
   },
   "dependencies": {
+    "@cieslacalc/business-core": "workspace:*",
     "@cieslacalc/catalog-core": "workspace:*",
     "@cieslacalc/covering-core": "workspace:*",
     "@cieslacalc/pricing-core": "workspace:*",
+    "@cieslacalc/roof-system-core": "workspace:*",
     "@cieslacalc/shared": "workspace:*",
     "drizzle-orm": "0.44.0",
     "express": "^4.21.2",
     "mysql2": "3.14.0",
-    "zod": "^3.25.0",
-    "@cieslacalc/roof-system-core": "workspace:*"
+    "zod": "^3.25.0"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",

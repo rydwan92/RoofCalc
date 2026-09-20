@@ -12,8 +12,28 @@ import {
   isValidDateString,
   priceListEntrySchema,
 } from '@cieslacalc/pricing-core';
+import {
+  assortmentFlagsRequestSchema,
+  assortmentImportRequestSchema,
+  assortmentLinkRequestSchema,
+  assortmentPreviewResponseSchema,
+  assortmentQuerySchema,
+  assortmentUnlinkRequestSchema,
+  organizationAssortmentResponseSchema,
+  organizationPricesResponseSchema,
+  organizationsResponseSchema,
+} from '@cieslacalc/business-core';
 import { CatalogService, CatalogServiceError } from '../catalog/service';
 import { PricingService, PricingServiceError } from '../pricing/service';
+import { BusinessService, BusinessServiceError } from '../business/service';
+import {
+  BusinessAdminError,
+  BusinessAdminService,
+} from '../business/admin-service';
+import {
+  adminWritesAllowed,
+  type AdminRequestContext,
+} from '../business/capability';
 
 export interface ApiResult {
   status: number;
@@ -35,6 +55,20 @@ const pricingVariantsResponseSchema = z.object({
     }),
   ),
 });
+
+/**
+ * V54 business surface. Read services are always safe to pass; `admin` is only
+ * constructed by the Node server, and even then every mutation re-checks the
+ * local/dev capability gate per request (`business/capability.ts`). The
+ * Cloudflare Worker never passes one, so the edge deployment has no write
+ * surface at all (§33, §53).
+ */
+export interface BusinessApi {
+  service: BusinessService;
+  admin?: BusinessAdminService;
+  /** Per-request transport facts the capability gate needs. */
+  request?: AdminRequestContext;
+}
 
 /** Shared endpoint semantics for Express and Cloudflare Fetch transports. */
 export interface HealthContext {
@@ -88,7 +122,13 @@ export async function handleApiRequest(
   catalog?: CatalogService,
   pricing?: PricingService,
   health: HealthContext = { runtime: 'node' },
+  business?: BusinessApi,
+  /** Parsed JSON body, supplied by the transport for admin mutations only. */
+  body?: unknown,
 ): Promise<ApiResult> {
+  const businessPath = pathname.startsWith('/api/business/');
+  if (method === 'POST' && businessPath)
+    return handleBusinessAdmin(pathname, business, body);
   if (method !== 'GET' && method !== 'HEAD')
     return errorResult(404, 'not-found');
   if (pathname === '/api/health') return healthResult(health);
@@ -96,7 +136,11 @@ export async function handleApiRequest(
   const pricingPath = pathname.startsWith('/api/pricing/');
   if (catalogPath && !catalog) return errorResult(503, 'catalog-unavailable');
   if (pricingPath && !pricing) return errorResult(503, 'pricing-unavailable');
+  if (businessPath && !business)
+    return errorResult(503, 'business-unavailable');
   try {
+    if (businessPath)
+      return await handleBusinessRead(pathname, search, business!.service);
     if (pathname === '/api/catalog/manufacturers')
       return json(
         catalogManufacturersResponseSchema.parse({
@@ -154,10 +198,19 @@ export async function handleApiRequest(
       );
     }
   } catch (error) {
+    if (error instanceof BusinessServiceError)
+      return errorResult(
+        error.code.endsWith('not-found') ? 404 : 400,
+        error.code,
+      );
     if (error instanceof ZodError || error instanceof URIError)
       return errorResult(
         400,
-        pricingPath ? 'pricing-invalid-request' : 'catalog-invalid-request',
+        businessPath
+          ? 'business-invalid-request'
+          : pricingPath
+            ? 'pricing-invalid-request'
+            : 'catalog-invalid-request',
       );
     if (error instanceof CatalogServiceError)
       return errorResult(
@@ -168,8 +221,128 @@ export async function handleApiRequest(
       return errorResult(400, error.code);
     return errorResult(
       500,
-      pricingPath ? 'pricing-internal-error' : 'catalog-internal-error',
+      businessPath
+        ? 'business-internal-error'
+        : pricingPath
+          ? 'pricing-internal-error'
+          : 'catalog-internal-error',
     );
+  }
+  return errorResult(404, 'not-found');
+}
+
+/**
+ * `GET /api/business/...` — organization reads. Edge-compatible: the same
+ * services run under Node and the Cloudflare Worker (§53).
+ */
+async function handleBusinessRead(
+  pathname: string,
+  search: URLSearchParams,
+  service: BusinessService,
+): Promise<ApiResult> {
+  if (pathname === '/api/business/organizations')
+    return json(
+      organizationsResponseSchema.parse({
+        items: await service.listOrganizations(),
+      }),
+    );
+  const segments = pathname.split('/');
+  const organizationResource =
+    segments[1] === 'api' &&
+    segments[2] === 'business' &&
+    segments[3] === 'organizations' &&
+    segments.length === 6;
+  if (!organizationResource) return errorResult(404, 'not-found');
+  const organizationId = decodeURIComponent(segments[4]!);
+  const atDate = search.get('at') ?? undefined;
+  if (atDate !== undefined && !isValidDateString(atDate))
+    return errorResult(400, 'business-invalid-request');
+
+  if (segments[5] === 'assortment') {
+    const parameters = Object.fromEntries(search.entries());
+    delete parameters.at;
+    const query = assortmentQuerySchema.parse(parameters);
+    const result = await service.assortment(organizationId, query, atDate);
+    return json(organizationAssortmentResponseSchema.parse(result));
+  }
+  if (segments[5] === 'prices') {
+    const ids = (search.get('ids') ?? '')
+      .split(',')
+      .map((id) => id.trim())
+      .filter(Boolean);
+    return json(
+      organizationPricesResponseSchema.parse(
+        await service.pricesForVariants(organizationId, ids, atDate),
+      ),
+    );
+  }
+  return errorResult(404, 'not-found');
+}
+
+/**
+ * `POST /api/business/...` — admin mutations, **disabled unless** the
+ * local/dev capability gate passes. A refused request is `404 not-found`, not
+ * `403`: with no authentication to negotiate, the honest answer is that no
+ * such endpoint is available here. Nothing about the admin surface is
+ * disclosed to a remote caller.
+ */
+async function handleBusinessAdmin(
+  pathname: string,
+  business: BusinessApi | undefined,
+  body: unknown,
+): Promise<ApiResult> {
+  const admin = business?.admin;
+  if (!admin || !adminWritesAllowed(business?.request ?? {}))
+    return errorResult(404, 'not-found');
+  const segments = pathname.split('/');
+  if (
+    segments[1] !== 'api' ||
+    segments[2] !== 'business' ||
+    segments[3] !== 'organizations' ||
+    segments.length !== 7 ||
+    segments[5] !== 'assortment'
+  )
+    return errorResult(404, 'not-found');
+  const organizationId = decodeURIComponent(segments[4]!);
+  const action = segments[6]!;
+  try {
+    if (action === 'link') {
+      const request = assortmentLinkRequestSchema.parse(body);
+      return json({
+        item: await admin.link(
+          organizationId,
+          request.itemId,
+          request.commercialVariantId,
+        ),
+      });
+    }
+    if (action === 'unlink') {
+      const request = assortmentUnlinkRequestSchema.parse(body);
+      return json({ item: await admin.unlink(organizationId, request.itemId) });
+    }
+    if (action === 'flags') {
+      const { itemId, ...flags } = assortmentFlagsRequestSchema.parse(body);
+      return json({
+        item: await admin.setFlags(organizationId, itemId, flags),
+      });
+    }
+    if (action === 'import') {
+      const request = assortmentImportRequestSchema.parse(body);
+      return json(
+        assortmentPreviewResponseSchema.parse(
+          await admin.importCsv(organizationId, request),
+        ),
+      );
+    }
+  } catch (error) {
+    if (error instanceof BusinessAdminError)
+      return errorResult(
+        error.code.endsWith('not-found') ? 404 : 400,
+        error.code,
+      );
+    if (error instanceof ZodError)
+      return errorResult(400, 'business-invalid-request');
+    return errorResult(500, 'business-internal-error');
   }
   return errorResult(404, 'not-found');
 }

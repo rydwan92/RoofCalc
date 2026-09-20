@@ -95,6 +95,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@cieslacalc/business-core':
+        specifier: workspace:*
+        version: link:../../packages/business-core
       '@cieslacalc/catalog-core':
         specifier: workspace:*
         version: link:../../packages/catalog-core
@@ -147,6 +150,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@cieslacalc/business-core':
+        specifier: workspace:*
+        version: link:../../packages/business-core
       '@cieslacalc/calculator-core':
         specifier: workspace:*
         version: link:../../packages/calculator-core
@@ -241,6 +247,15 @@ importers:
       vite:
         specifier: ^6.1.0
         version: 6.4.3(@types/node@20.19.43)(tsx@4.23.13)
+
+  packages/business-core:
+    dependencies:
+      '@cieslacalc/pricing-core':
+        specifier: workspace:*
+        version: link:../pricing-core
+      zod:
+        specifier: ^3.25.0
+        version: 3.25.76
 
   packages/calculator-core:
     dependencies:

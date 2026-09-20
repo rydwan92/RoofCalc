@@ -12,19 +12,30 @@ export class MemoryPricingRepository
 {
   private priceLists = new Map<string, PriceList>();
   private entries = new Map<string, PriceListEntry>();
+  /** V54: which seeded lists belong to an organization rather than to all. */
+  private owners = new Map<string, string>();
   readonly audits: unknown[] = [];
 
-  constructor(seed?: { priceLists?: PriceList[]; entries?: PriceListEntry[] }) {
-    for (const item of seed?.priceLists ?? [])
-      this.priceLists.set(item.id, priceListSchema.parse(item));
+  constructor(seed?: {
+    priceLists?: Array<PriceList & { organizationId?: string }>;
+    entries?: PriceListEntry[];
+  }) {
+    for (const item of seed?.priceLists ?? []) {
+      const { organizationId, ...list } = item;
+      this.priceLists.set(list.id, priceListSchema.parse(list));
+      if (organizationId) this.owners.set(list.id, organizationId);
+    }
     for (const item of seed?.entries ?? [])
       this.entries.set(item.id, priceListEntrySchema.parse(item));
   }
 
+  /** Global lists only — the same rule the SQL repository enforces (§10). */
   async entriesForVariants(variantIds: string[]): Promise<PriceListEntry[]> {
     const wanted = new Set(variantIds);
-    return [...this.entries.values()].filter((entry) =>
-      wanted.has(entry.commercialVariantId),
+    return [...this.entries.values()].filter(
+      (entry) =>
+        wanted.has(entry.commercialVariantId) &&
+        !this.owners.has(entry.priceListId),
     );
   }
 

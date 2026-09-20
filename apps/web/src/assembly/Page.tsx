@@ -116,6 +116,9 @@ import { createK1CuttingRequirement } from './k1-cutting-adapter';
 import { k1RequirementSignature } from './k1-cutting-adapter';
 import { createExportCandidates, type ExportFacts } from './export-adapter';
 import { usePriceOptions } from '../pricing/use-prices';
+import { BusinessContextProvider } from '../business/context';
+import { useEffectiveVariantPrices } from '../business/use-effective-prices';
+import { BusinessHeader, BusinessModeToggle } from '../business/BusinessHeader';
 import { createTilePurchasePlans } from './tile-purchase';
 import { resolveRoofSystemFacts, ridgeTileCount } from './roof-system';
 import {
@@ -172,6 +175,7 @@ import { evaluateBattenInstallation } from './batten-installation';
 import { resolveBattenAutoComposition } from './batten-composition';
 import './styles.css';
 import './v37.css';
+import '../business/business.css';
 
 const creatorStartSeenKey = 'cieslacalc.creatorStartSeen.v1';
 
@@ -560,24 +564,42 @@ function AssemblyPageContent() {
       }),
     [coveringAssignments],
   );
-  const variantPrices = usePriceOptions([
-    ...coveringVariantIds,
-    ...(currentCuttingPlan?.plan.scenario.stocks.flatMap((stock) =>
-      stock.commercialVariantId ? [stock.commercialVariantId] : [],
-    ) ?? []),
-    ...(membraneProduct?.catalogRef?.variantId
-      ? [membraneProduct.catalogRef.variantId]
-      : []),
-    // V49: catalogue batten/counter-batten lengths carry their own prices.
-    ...[
-      ...(state.projectDocument.project.buildUp.linearStock?.battens?.lengths ??
-        []),
-      ...(state.projectDocument.project.buildUp.linearStock?.counterBattens
-        ?.lengths ?? []),
-    ].flatMap((item) =>
-      item.catalogRef?.variantId ? [item.catalogRef.variantId] : [],
-    ),
-  ]);
+  const pricedVariantIds = useMemo(
+    () => [
+      ...coveringVariantIds,
+      ...(currentCuttingPlan?.plan.scenario.stocks.flatMap((stock) =>
+        stock.commercialVariantId ? [stock.commercialVariantId] : [],
+      ) ?? []),
+      ...(membraneProduct?.catalogRef?.variantId
+        ? [membraneProduct.catalogRef.variantId]
+        : []),
+      // V49: catalogue batten/counter-batten lengths carry their own prices.
+      ...[
+        ...(state.projectDocument.project.buildUp.linearStock?.battens
+          ?.lengths ?? []),
+        ...(state.projectDocument.project.buildUp.linearStock?.counterBattens
+          ?.lengths ?? []),
+      ].flatMap((item) =>
+        item.catalogRef?.variantId ? [item.catalogRef.variantId] : [],
+      ),
+    ],
+    [
+      coveringVariantIds,
+      currentCuttingPlan,
+      membraneProduct,
+      state.projectDocument.project.buildUp.linearStock,
+    ],
+  );
+  const cataloguePrices = usePriceOptions(pricedVariantIds);
+  /*
+   * V54 §40/§41: in Business mode the active wholesaler's price becomes the
+   * primary commercial suggestion, and the fallback is an explicit policy the
+   * user can see. In Standard mode this is `cataloguePrices` unchanged.
+   */
+  const variantPrices = useEffectiveVariantPrices(
+    cataloguePrices,
+    pricedVariantIds,
+  );
   const effectiveBattenLayout = useMemo(
     () => battenLayout ?? disabledBattenLayer(),
     [battenLayout],
@@ -2160,6 +2182,7 @@ function AssemblyPageContent() {
           </button>
         )}
         {exportError && <span role="alert">{exportError}</span>}
+        <BusinessHeader />
         <div className="a-settings">
           <div className="a-units" role="group" aria-label={t('assembly.unit')}>
             {lengthUnits.map((unit) => (
@@ -2270,6 +2293,8 @@ function AssemblyPageContent() {
               {i18n.language.toUpperCase()}
             </button>
           )}
+          {/* An application capability, beside unit and language (§14). */}
+          <BusinessModeToggle />
         </div>
       </header>
       <main className="a-main">
@@ -3166,7 +3191,15 @@ export function AssemblyPage() {
   );
   return (
     <QueryClientProvider client={queryClient}>
-      <AssemblyPageContent />
+      {/*
+       * V54: the application-level business context. It wraps the workbench
+       * rather than living inside the project store, so switching wholesaler
+       * can never invalidate a roof (§12, §49). In STANDARD mode the provider
+       * issues no request and renders no business UI at all (§65).
+       */}
+      <BusinessContextProvider>
+        <AssemblyPageContent />
+      </BusinessContextProvider>
     </QueryClientProvider>
   );
 }

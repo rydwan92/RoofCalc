@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   forbiddenImports,
   forbiddenText,
+  productionSources,
   workspacePackageDirectories,
 } from './module-graph';
 
@@ -180,6 +181,43 @@ describe('package dependency direction', () => {
     ).toEqual([]);
   });
 
+  /**
+   * V54: `business-core` is the organization-owned commercial layer. Its whole
+   * purpose is to sit *above* the commercial variant without owning technical
+   * truth, so importing `catalog-core` would collapse the boundary the
+   * iteration exists to draw — a wholesaler would be able to redefine what a
+   * tile is. It references a catalogue item only by opaque ID, exactly as
+   * `pricing-core` does.
+   */
+  it('business-core stays free of React, DOM, apps, catalogue, API and database', () => {
+    expect(
+      forbiddenImports('packages/business-core', [
+        ...PURE_DOMAIN,
+        ...CATALOGUE,
+      ]),
+    ).toEqual([]);
+    expect(forbiddenText('packages/business-core', BROWSER_GLOBALS)).toEqual(
+      [],
+    );
+  });
+
+  it('business-core depends on pricing-core and no other workspace package', () => {
+    expect(
+      forbiddenImports('packages/business-core', [
+        /^@cieslacalc\/(?!pricing-core$)/,
+      ]),
+    ).toEqual([]);
+  });
+
+  it('business-core knows no roof, geometry or covering concept', () => {
+    expect(
+      forbiddenText(
+        'packages/business-core',
+        /\b(?:roofPlane|rafter|batten|pitchDeg|coverWidthMm|gaugeRangeMm|technicalSpec|installationMode)\b/,
+      ),
+    ).toEqual([]);
+  });
+
   it('procurement-core depends on no workspace package at all', () => {
     expect(
       forbiddenImports('packages/procurement-core', [/^@cieslacalc\//]),
@@ -311,15 +349,49 @@ describe('commercial boundary', () => {
     // V34C: apps/api/src/db also holds pricing-schema.ts/pricing-repository.ts
     // (the PriceList/PriceListEntry tables ADR-005 always reserved) — those
     // are the legitimate home for these words, not a boundary loosening.
-    // schema.ts and catalog-repository.ts, the catalogue-technical tables,
-    // stay exactly as forbidden as before.
+    // V54 adds two more commercial-layer files: business-schema.ts (the
+    // organization's own currency) and business-repository.ts, which reads
+    // those same price tables on behalf of an organization. schema.ts and
+    // catalog-repository.ts, the catalogue-technical tables, stay exactly as
+    // forbidden as before — no price or currency may reach a technical table.
     expect(
       forbiddenText('apps/api/src/db', PRICING, {
         allow: [
           'apps/api/src/db/pricing-schema.ts',
           'apps/api/src/db/pricing-repository.ts',
+          'apps/api/src/db/business-schema.ts',
+          'apps/api/src/db/business-repository.ts',
         ],
       }),
+    ).toEqual([]);
+  });
+
+  /**
+   * V54 tenant isolation, checked statically: the business SQL adapter must
+   * never read the assortment or price tables without naming an organization.
+   * A query that forgets the scope is how one wholesaler's commercial data
+   * reaches another (§58).
+   */
+  it('every business assortment query is organization-scoped', () => {
+    const source = productionSources('apps/api/src/db').find(
+      (file) => file.path === 'apps/api/src/db/business-repository.ts',
+    );
+    expect(source).toBeDefined();
+    const statements = source!.text.split(/\n\s*\n/);
+    const unscoped = statements.filter(
+      (block) =>
+        /\.from\(\s*organizationAssortmentItems/.test(block) &&
+        !/organizationAssortmentItems\.organizationId/.test(block),
+    );
+    expect(unscoped).toEqual([]);
+  });
+
+  it('the business read service never exposes a cross-tenant list method', () => {
+    expect(
+      forbiddenText(
+        'apps/api/src/business',
+        /\b(?:listAllAssortment|allAssortmentItems|assortmentForAllOrganizations)\b/,
+      ),
     ).toEqual([]);
   });
 

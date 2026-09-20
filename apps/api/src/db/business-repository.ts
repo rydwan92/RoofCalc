@@ -1,0 +1,434 @@
+import { and, eq, inArray, isNull, or, sql } from 'drizzle-orm';
+import {
+  organizationAssortmentItemSchema,
+  organizationSchema,
+  type AssortmentImportAudit,
+  type Organization,
+  type OrganizationAssortmentItem,
+  type OrganizationPriceList,
+} from '@cieslacalc/business-core';
+import {
+  priceListEntrySchema,
+  type PriceListEntry,
+} from '@cieslacalc/pricing-core';
+import type {
+  AssortmentCatalogFacts,
+  BusinessAdminRepository,
+  BusinessCatalogReader,
+  BusinessRepository,
+} from '../business/repository';
+import type { CatalogDatabase } from './client';
+import {
+  organizationAssortmentItems,
+  organizationImportBatches,
+  organizations,
+} from './business-schema';
+import { priceListEntries, priceLists } from './pricing-schema';
+import {
+  commercialVariants,
+  manufacturers,
+  technicalProductFamilies,
+  technicalProductRevisions,
+} from './schema';
+
+function organizationFromRow(
+  row: typeof organizations.$inferSelect,
+): Organization {
+  return organizationSchema.parse({
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    currencyCode: row.currencyCode,
+    active: row.active,
+    taxId: row.taxId ?? undefined,
+    address: row.address ?? undefined,
+    logoUrl: row.logoUrl ?? undefined,
+  });
+}
+
+function itemFromRow(
+  row: typeof organizationAssortmentItems.$inferSelect,
+): OrganizationAssortmentItem {
+  return organizationAssortmentItemSchema.parse({
+    id: row.id,
+    organizationId: row.organizationId,
+    commercialVariantId: row.commercialVariantId ?? undefined,
+    externalKey: row.externalKey,
+    ean: row.ean ?? undefined,
+    sourceName: row.sourceName,
+    displayNameOverride: row.displayNameOverride ?? undefined,
+    active: row.active,
+    preferred: row.preferred,
+    metadata: decodeJson(row.metadata) ?? undefined,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  });
+}
+
+/**
+ * MariaDB's `mysql2` returns a JSON column as a string where native MySQL
+ * returns an object — the same decode `DrizzleCatalogRepository` applies to
+ * technical specs. Database JSON is never trusted; the Zod parse above is.
+ */
+function decodeJson(value: unknown): Record<string, unknown> | undefined {
+  if (value === null || value === undefined) return undefined;
+  if (typeof value === 'string') {
+    try {
+      const parsed: unknown = JSON.parse(value);
+      return parsed && typeof parsed === 'object'
+        ? (parsed as Record<string, unknown>)
+        : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+  return typeof value === 'object'
+    ? (value as Record<string, unknown>)
+    : undefined;
+}
+
+function priceListFromRow(
+  row: typeof priceLists.$inferSelect,
+): OrganizationPriceList {
+  return {
+    id: row.id,
+    ...(row.organizationId ? { organizationId: row.organizationId } : {}),
+    ownerLabel: row.ownerLabel,
+    currencyCode: row.currencyCode,
+    ...(row.regionCode ? { regionCode: row.regionCode } : {}),
+    ...(row.taxContext ? { taxContext: row.taxContext } : {}),
+    validFrom: row.validFrom,
+    ...(row.validTo ? { validTo: row.validTo } : {}),
+  };
+}
+
+function entryFromRow(
+  row: typeof priceListEntries.$inferSelect,
+): PriceListEntry {
+  return priceListEntrySchema.parse({
+    id: row.id,
+    priceListId: row.priceListId,
+    commercialVariantId: row.commercialVariantId,
+    saleUnit: row.saleUnit,
+    netAmountMinor: row.netAmountMinor,
+    sourceAmountBasis:
+      (row.sourceAmountBasis as 'net' | 'gross' | null) ?? undefined,
+    sourceVatRateBps: row.sourceVatRateBps ?? undefined,
+    validFrom: row.validFrom,
+    validTo: row.validTo ?? undefined,
+  });
+}
+
+/**
+ * SQL adapter for the business layer.
+ *
+ * Every assortment query carries `organization_id` in its `WHERE` clause, and
+ * every price query is restricted to lists the organization may see. That is
+ * the first of three independent isolation checks (repository → service →
+ * pure resolver); none of them is allowed to be the only one (§58).
+ */
+export class DrizzleBusinessRepository
+  implements BusinessRepository, BusinessAdminRepository, BusinessCatalogReader
+{
+  constructor(private readonly db: CatalogDatabase) {}
+
+  async listOrganizations(): Promise<Organization[]> {
+    const rows = await this.db
+      .select()
+      .from(organizations)
+      .where(eq(organizations.active, true))
+      .orderBy(organizations.name);
+    return rows.map(organizationFromRow);
+  }
+
+  async getOrganization(
+    organizationId: string,
+  ): Promise<Organization | undefined> {
+    const rows = await this.db
+      .select()
+      .from(organizations)
+      .where(eq(organizations.id, organizationId))
+      .limit(1);
+    return rows[0] ? organizationFromRow(rows[0]) : undefined;
+  }
+
+  async assortmentForOrganization(
+    organizationId: string,
+  ): Promise<OrganizationAssortmentItem[]> {
+    const rows = await this.db
+      .select()
+      .from(organizationAssortmentItems)
+      .where(eq(organizationAssortmentItems.organizationId, organizationId));
+    return rows.map(itemFromRow);
+  }
+
+  async visiblePriceLists(
+    organizationId: string | undefined,
+  ): Promise<OrganizationPriceList[]> {
+    const visible = organizationId
+      ? or(
+          isNull(priceLists.organizationId),
+          eq(priceLists.organizationId, organizationId),
+        )
+      : isNull(priceLists.organizationId);
+    const rows = await this.db.select().from(priceLists).where(visible);
+    return rows.map(priceListFromRow);
+  }
+
+  async entriesForPriceLists(
+    priceListIds: string[],
+  ): Promise<PriceListEntry[]> {
+    if (!priceListIds.length) return [];
+    const rows = await this.db
+      .select()
+      .from(priceListEntries)
+      .where(inArray(priceListEntries.priceListId, priceListIds));
+    return rows.map(entryFromRow);
+  }
+
+  /** The catalogue join is read-only and display-only: no technical spec. */
+  private factsSelect() {
+    return this.db
+      .select({
+        productId: technicalProductFamilies.id,
+        productName: technicalProductFamilies.name,
+        manufacturerId: manufacturers.id,
+        manufacturerName: manufacturers.name,
+        kind: technicalProductFamilies.coveringKind,
+        currentRevisionId: sql<string>`(
+          SELECT r.id FROM ${technicalProductRevisions} r
+          WHERE r.product_id = ${technicalProductFamilies.id}
+          ORDER BY r.valid_from IS NULL, r.valid_from DESC, r.id DESC
+          LIMIT 1
+        )`,
+        variantId: commercialVariants.id,
+        variantName: commercialVariants.name,
+        variantSku: commercialVariants.sku,
+      })
+      .from(commercialVariants)
+      .innerJoin(
+        technicalProductFamilies,
+        eq(commercialVariants.productId, technicalProductFamilies.id),
+      )
+      .innerJoin(
+        manufacturers,
+        eq(technicalProductFamilies.manufacturerId, manufacturers.id),
+      );
+  }
+
+  async factsForVariants(
+    variantIds: string[],
+  ): Promise<AssortmentCatalogFacts[]> {
+    if (!variantIds.length) return [];
+    const rows = await this.factsSelect().where(
+      inArray(commercialVariants.id, variantIds),
+    );
+    return rows.flatMap(toFacts);
+  }
+
+  async matchCandidates(limit: number): Promise<AssortmentCatalogFacts[]> {
+    const rows = await this.factsSelect()
+      .where(eq(commercialVariants.active, true))
+      .limit(limit);
+    return rows.flatMap(toFacts);
+  }
+
+  async variantExists(variantId: string): Promise<boolean> {
+    const rows = await this.db
+      .select({ id: commercialVariants.id })
+      .from(commercialVariants)
+      .where(eq(commercialVariants.id, variantId))
+      .limit(1);
+    return rows.length > 0;
+  }
+
+  async upsertOrganization(organization: Organization): Promise<void> {
+    await this.db
+      .insert(organizations)
+      .values({
+        id: organization.id,
+        slug: organization.slug,
+        name: organization.name,
+        currencyCode: organization.currencyCode,
+        taxId: organization.taxId ?? null,
+        address: organization.address ?? null,
+        logoUrl: organization.logoUrl ?? null,
+        active: organization.active,
+      })
+      .onDuplicateKeyUpdate({
+        set: {
+          slug: organization.slug,
+          name: organization.name,
+          currencyCode: organization.currencyCode,
+          taxId: organization.taxId ?? null,
+          address: organization.address ?? null,
+          logoUrl: organization.logoUrl ?? null,
+          active: organization.active,
+        },
+      });
+  }
+
+  async upsertAssortmentItems(
+    organizationId: string,
+    items: OrganizationAssortmentItem[],
+  ): Promise<void> {
+    if (!items.length) return;
+    if (items.some((item) => item.organizationId !== organizationId))
+      throw new Error('organization-mismatch');
+    await this.db.transaction(async (tx) => {
+      for (const item of items)
+        await tx
+          .insert(organizationAssortmentItems)
+          .values({
+            id: item.id,
+            organizationId: item.organizationId,
+            commercialVariantId: item.commercialVariantId ?? null,
+            externalKey: item.externalKey,
+            ean: item.ean ?? null,
+            sourceName: item.sourceName,
+            displayNameOverride: item.displayNameOverride ?? null,
+            active: item.active,
+            preferred: item.preferred,
+            metadata: item.metadata ?? null,
+          })
+          /**
+           * Keyed by the `(organization_id, external_key)` unique index, so a
+           * re-import of the same file updates in place instead of creating a
+           * duplicate row (§29). `preferred` is deliberately updated too —
+           * the service already carried the previous value forward, so an
+           * import cannot silently clear an admin's own preference.
+           */
+          .onDuplicateKeyUpdate({
+            set: {
+              commercialVariantId: item.commercialVariantId ?? null,
+              ean: item.ean ?? null,
+              sourceName: item.sourceName,
+              displayNameOverride: item.displayNameOverride ?? null,
+              active: item.active,
+              preferred: item.preferred,
+              metadata: item.metadata ?? null,
+            },
+          });
+    });
+  }
+
+  async updateAssortmentItem(
+    organizationId: string,
+    itemId: string,
+    patch: Parameters<BusinessAdminRepository['updateAssortmentItem']>[2],
+  ): Promise<OrganizationAssortmentItem | undefined> {
+    const set: Partial<typeof organizationAssortmentItems.$inferInsert> = {};
+    if (patch.commercialVariantId !== undefined)
+      set.commercialVariantId = patch.commercialVariantId;
+    if (patch.active !== undefined) set.active = patch.active;
+    if (patch.preferred !== undefined) set.preferred = patch.preferred;
+    if (patch.displayNameOverride !== undefined)
+      set.displayNameOverride = patch.displayNameOverride;
+    if (!Object.keys(set).length) return undefined;
+    const scope = and(
+      eq(organizationAssortmentItems.id, itemId),
+      eq(organizationAssortmentItems.organizationId, organizationId),
+    );
+    await this.db.update(organizationAssortmentItems).set(set).where(scope);
+    const rows = await this.db
+      .select()
+      .from(organizationAssortmentItems)
+      .where(scope)
+      .limit(1);
+    return rows[0] ? itemFromRow(rows[0]) : undefined;
+  }
+
+  async recordImport(audit: AssortmentImportAudit): Promise<void> {
+    await this.db.insert(organizationImportBatches).values({
+      id: audit.id,
+      organizationId: audit.organizationId,
+      sourceLabel: audit.sourceLabel,
+      checksum: audit.checksum,
+      status: audit.status,
+      counts: audit.counts,
+      startedAt: audit.startedAt,
+      completedAt: audit.completedAt,
+      schemaVersion: 1,
+    });
+  }
+
+  async upsertOrganizationPrices(input: {
+    priceList: OrganizationPriceList;
+    entries: PriceListEntry[];
+  }): Promise<void> {
+    if (!input.priceList.organizationId)
+      throw new Error('organization-price-list-required');
+    await this.db.transaction(async (tx) => {
+      await tx
+        .insert(priceLists)
+        .values({
+          id: input.priceList.id,
+          organizationId: input.priceList.organizationId ?? null,
+          ownerLabel: input.priceList.ownerLabel,
+          currencyCode: input.priceList.currencyCode,
+          regionCode: input.priceList.regionCode ?? null,
+          taxContext: input.priceList.taxContext ?? null,
+          validFrom: input.priceList.validFrom,
+          validTo: input.priceList.validTo ?? null,
+        })
+        .onDuplicateKeyUpdate({
+          set: {
+            ownerLabel: input.priceList.ownerLabel,
+            currencyCode: input.priceList.currencyCode,
+            validFrom: input.priceList.validFrom,
+            validTo: input.priceList.validTo ?? null,
+          },
+        });
+      for (const entry of input.entries)
+        await tx
+          .insert(priceListEntries)
+          .values({
+            id: entry.id,
+            priceListId: entry.priceListId,
+            commercialVariantId: entry.commercialVariantId,
+            saleUnit: entry.saleUnit,
+            netAmountMinor: entry.netAmountMinor,
+            sourceAmountBasis: entry.sourceAmountBasis ?? null,
+            sourceVatRateBps: entry.sourceVatRateBps ?? null,
+            validFrom: entry.validFrom,
+            validTo: entry.validTo ?? null,
+          })
+          .onDuplicateKeyUpdate({
+            set: {
+              netAmountMinor: entry.netAmountMinor,
+              saleUnit: entry.saleUnit,
+              sourceAmountBasis: entry.sourceAmountBasis ?? null,
+              sourceVatRateBps: entry.sourceVatRateBps ?? null,
+            },
+          });
+    });
+  }
+}
+
+function toFacts(row: {
+  productId: string;
+  productName: string;
+  manufacturerId: string;
+  manufacturerName: string;
+  kind: string;
+  currentRevisionId: string | null;
+  variantId: string;
+  variantName: string;
+  variantSku: string | null;
+}): AssortmentCatalogFacts[] {
+  // A product family with no revision cannot be displayed as a real product.
+  if (!row.currentRevisionId) return [];
+  return [
+    {
+      productId: row.productId,
+      productName: row.productName,
+      manufacturerId: row.manufacturerId,
+      manufacturerName: row.manufacturerName,
+      kind: row.kind,
+      currentRevisionId: row.currentRevisionId,
+      variantId: row.variantId,
+      variantName: row.variantName,
+      ...(row.variantSku ? { variantSku: row.variantSku } : {}),
+    },
+  ];
+}

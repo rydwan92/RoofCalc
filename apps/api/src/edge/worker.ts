@@ -3,6 +3,8 @@ import { createConnection, type Connection } from 'mysql2/promise';
 import { CatalogService } from '../catalog/service';
 import { DrizzleCatalogRepository } from '../db/catalog-repository';
 import { DrizzlePricingRepository } from '../db/pricing-repository';
+import { DrizzleBusinessRepository } from '../db/business-repository';
+import { BusinessService } from '../business/service';
 import { schema } from '../db/schema-bundle';
 import { handleApiRequest, type ApiResult } from '../http/handler';
 import { PricingService } from '../pricing/service';
@@ -95,7 +97,8 @@ export function createWorker(connect: ConnectDatabase = connectHyperdrive) {
       const needsDatabase =
         (request.method === 'GET' || request.method === 'HEAD') &&
         (url.pathname.startsWith('/api/catalog/') ||
-          url.pathname.startsWith('/api/pricing/'));
+          url.pathname.startsWith('/api/pricing/') ||
+          url.pathname.startsWith('/api/business/'));
       if (!needsDatabase)
         return respond(
           request,
@@ -116,6 +119,7 @@ export function createWorker(connect: ConnectDatabase = connectHyperdrive) {
         });
         const catalog = new CatalogService(new DrizzleCatalogRepository(db));
         const pricing = new PricingService(new DrizzlePricingRepository(db));
+        const businessRepository = new DrizzleBusinessRepository(db);
         return respond(
           request,
           await handleApiRequest(
@@ -125,6 +129,18 @@ export function createWorker(connect: ConnectDatabase = connectHyperdrive) {
             catalog,
             pricing,
             { runtime: 'cloudflare-worker' },
+            /**
+             * Read service only, and deliberately **no `admin`** (§33, §53):
+             * admin mutations require the local/dev capability, which no edge
+             * request can satisfy. A POST to /api/business/* is therefore
+             * `404 not-found` here, with no write path to reach at all.
+             */
+            {
+              service: new BusinessService(
+                businessRepository,
+                businessRepository,
+              ),
+            },
           ),
         );
       } catch {

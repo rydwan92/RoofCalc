@@ -1,0 +1,130 @@
+{
+  "schemaVersion": 1,
+  "note": "DEMO / TEST DATA. Not a real company and not real market pricing. The assortment references commercial variants that already exist in the global technical catalogue; no technical data is invented here. Membrane and drainage rows are deliberately left unmatched, because the catalogue currently holds no commercial variants for those product families - that is the truthful state, not a gap to paper over.",
+  "organization": {
+    "id": "org:demo-hurtownia",
+    "slug": "demo-hurtownia",
+    "name": "DEMO Hurtownia (dane testowe)",
+    "currencyCode": "PLN",
+    "active": true
+  },
+  "priceList": {
+    "id": "price-list:org:demo-hurtownia:2026-09",
+    "ownerLabel": "DEMO Hurtownia — cennik testowy (DANE DEMO, nie ceny rynkowe)",
+    "currencyCode": "PLN",
+    "regionCode": "PL",
+    "taxContext": "DEMO / TEST DATA — kwoty netto wymyślone na potrzeby demonstracji, nie są ofertą ani obserwacją rynkową",
+    "validFrom": "2026-09-01"
+  },
+  "assortment": [
+    {
+      "externalKey": "DACH-00384",
+      "sourceName": "Dachówka KODA antracytowa angoba",
+      "commercialVariantId": "variant:swissporton:koda:antracytowa-angoba",
+      "preferred": true,
+      "netAmountMinor": 482,
+      "saleUnit": "piece"
+    },
+    {
+      "externalKey": "DACH-00385",
+      "sourceName": "Dachówka KODA czarna glazura",
+      "commercialVariantId": "variant:swissporton:koda:czarna-glazura",
+      "netAmountMinor": 531,
+      "saleUnit": "piece"
+    },
+    {
+      "externalKey": "DACH-00386",
+      "sourceName": "Dachówka KODA miedziana angoba",
+      "commercialVariantId": "variant:swissporton:koda:miedziana-angoba",
+      "netAmountMinor": 498,
+      "saleUnit": "piece"
+    },
+    {
+      "externalKey": "DACH-00401",
+      "sourceName": "Dachówka TITANIA antracytowa angoba",
+      "commercialVariantId": "variant:swissporton:titania:antracytowa-angoba",
+      "netAmountMinor": 465,
+      "saleUnit": "piece"
+    },
+    {
+      "externalKey": "DACH-00410",
+      "sourceName": "Dachówka SIMPLA czarna glazura",
+      "commercialVariantId": "variant:swissporton:simpla:czarna-glazura",
+      "note": "matched but deliberately without a price, so the dashboard 'Bez ceny' count is real"
+    },
+    {
+      "externalKey": "DACH-00120",
+      "sourceName": "Dachówka CREATON KODA antracytowa NUANCE",
+      "commercialVariantId": "variant:creaton:koda:anthracite-nuance",
+      "netAmountMinor": 889,
+      "saleUnit": "piece"
+    },
+    {
+      "externalKey": "BLA-00021",
+      "sourceName": "Blachodachówka FIORD 0,5 mm",
+      "commercialVariantId": "variant:pruszynski:fiord:mat-0-5",
+      "netAmountMinor": 4290,
+      "saleUnit": "m2"
+    },
+    {
+      "externalKey": "DRE-00044",
+      "sourceName": "Łata konstrukcyjna 40x60x4000 impregnowana",
+      "commercialVariantId": "variant:timber:bat-lata-40x60x4000:standard",
+      "preferred": true,
+      "netAmountMinor": 1354,
+      "saleUnit": "piece"
+    },
+    {
+      "externalKey": "DRE-00045",
+      "sourceName": "Łata Complex suszona impregnowana 40x60x4000",
+      "commercialVariantId": "variant:timber:complex-lata-40x60x4000:standard",
+      "netAmountMinor": 1612,
+      "saleUnit": "piece"
+    },
+    {
+      "externalKey": "DRE-00046",
+      "sourceName": "Kontrłata / tarcica impregnowana 25x50x4000",
+      "commercialVariantId": "variant:timber:bat-tarcica-25x50x4000:standard",
+      "netAmountMinor": 731,
+      "saleUnit": "piece"
+    },
+    {
+      "externalKey": "MEM-00901",
+      "sourceName": "Membrana dachowa wysokoparoprzepuszczalna 150 g/m2",
+      "netAmountMinor": 1190,
+      "saleUnit": "m2",
+      "note": "UNMATCHED on purpose: no commercial variant exists for a membrane in the global catalogue yet"
+    },
+    {
+      "externalKey": "MEM-00902",
+      "sourceName": "Taśma uszczelniająca do membran 60 mm",
+      "netAmountMinor": 2450,
+      "saleUnit": "roll",
+      "note": "UNMATCHED on purpose"
+    },
+    {
+      "externalKey": "RYN-00310",
+      "sourceName": "Rynna stalowa 150 mm dł. 3 m",
+      "note": "UNMATCHED on purpose: drainage components exist as product families but have no commercial variants"
+    },
+    {
+      "externalKey": "RYN-00311",
+      "sourceName": "Rura spustowa 100 mm dł. 3 m",
+      "note": "UNMATCHED on purpose"
+    },
+    {
+      "externalKey": "AKC-00550",
+      "sourceName": "Wkręt ciesielski 6x120 (opak. 100 szt.)",
+      "netAmountMinor": 8900,
+      "saleUnit": "pack",
+      "note": "UNMATCHED on purpose: a real wholesale assortment always contains rows RoofCalc cannot map"
+    },
+    {
+      "externalKey": "DACH-00299",
+      "sourceName": "Dachówka wycofana z oferty (archiwum)",
+      "commercialVariantId": "variant:swissporton:balance:czerwona-naturalna",
+      "active": false,
+      "note": "inactive rather than deleted, so commercial history survives"
+    }
+  ]
+}

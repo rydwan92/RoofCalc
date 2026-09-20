@@ -12,6 +12,7 @@ export default defineConfig({
   schema: [
     './apps/api/src/db/schema.ts',
     './apps/api/src/db/pricing-schema.ts',
+    './apps/api/src/db/business-schema.ts',
   ],
   out: './migrations',
   dbCredentials: credentials,

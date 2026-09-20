@@ -1,4 +1,4 @@
-import { inArray } from 'drizzle-orm';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
 import {
   priceListEntrySchema,
   priceListSchema,
@@ -50,13 +50,25 @@ export class DrizzlePricingRepository
 {
   constructor(private readonly db: CatalogDatabase) {}
 
+  /**
+   * V54: joined to `price_lists` and restricted to `organization_id IS NULL`,
+   * so the unscoped catalogue pricing endpoint can never return a
+   * wholesaler's own prices (§10). Organization prices have their own,
+   * tenant-scoped route.
+   */
   async entriesForVariants(variantIds: string[]): Promise<PriceListEntry[]> {
     if (!variantIds.length) return [];
     const rows = await this.db
-      .select()
+      .select({ entry: priceListEntries })
       .from(priceListEntries)
-      .where(inArray(priceListEntries.commercialVariantId, variantIds));
-    return rows.map(entryFromRow);
+      .innerJoin(priceLists, eq(priceListEntries.priceListId, priceLists.id))
+      .where(
+        and(
+          inArray(priceListEntries.commercialVariantId, variantIds),
+          isNull(priceLists.organizationId),
+        ),
+      );
+    return rows.map((row) => entryFromRow(row.entry));
   }
 
   async priceListsForIds(priceListIds: string[]): Promise<PriceList[]> {

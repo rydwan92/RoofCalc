@@ -21,3 +21,17 @@ pnpm dev:full
 
 # Wariant B — istniejący XAMPP (port 3306, ustaw DATABASE_URL w .env)
 pnpm db:bootstrap && pnpm dev
+
+
+
+
+
+
+DATABASE_URL=mysql://catalog_user:roofcalc_local_2026@127.0.0.1:3306/cieslacalc
+HOST=127.0.0.1
+PORT=3001
+
+
+
+API HEALTH CONNECTED CLOUDFLARE
+https://roofcalc.michal-rydwanski.workers.dev/api/health

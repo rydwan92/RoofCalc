@@ -9,18 +9,20 @@
     "preview": "vite preview --host 127.0.0.1 --port 4173 --strictPort"
   },
   "dependencies": {
+    "@cieslacalc/business-core": "workspace:*",
     "@cieslacalc/calculator-core": "workspace:*",
     "@cieslacalc/catalog-core": "workspace:*",
     "@cieslacalc/cost-core": "workspace:*",
     "@cieslacalc/covering-core": "workspace:*",
     "@cieslacalc/document-core": "workspace:*",
     "@cieslacalc/drawing-engine": "workspace:*",
-    "@cieslacalc/pricing-core": "workspace:*",
     "@cieslacalc/linear-procurement": "workspace:*",
+    "@cieslacalc/pricing-core": "workspace:*",
     "@cieslacalc/procurement-core": "workspace:*",
     "@cieslacalc/project-core": "workspace:*",
     "@cieslacalc/quantity-core": "workspace:*",
     "@cieslacalc/roof-math": "workspace:*",
+    "@cieslacalc/roof-system-core": "workspace:*",
     "@cieslacalc/shared": "workspace:*",
     "@cieslacalc/technical-scene": "workspace:*",
     "@cieslacalc/tile-procurement": "workspace:*",
@@ -35,8 +37,7 @@
     "react-router-dom": "^7.6.0",
     "three": "0.186.0",
     "zod": "^3.25.0",
-    "zustand": "^5.0.5",
-    "@cieslacalc/roof-system-core": "workspace:*"
+    "zustand": "^5.0.5"
   },
   "devDependencies": {
     "@types/three": "0.186.0",

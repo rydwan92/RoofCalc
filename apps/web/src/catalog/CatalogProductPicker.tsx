@@ -19,6 +19,9 @@ import { useTranslation } from 'react-i18next';
 import { MobileSheet } from '../assembly/MobileSheet';
 import { useMobileWorkbench } from '../assembly/mobile-workbench';
 import { catalogClient, type CatalogClient } from './client';
+import { useBusiness } from '../business/context';
+import { businessCopy } from '../business/copy';
+import { BusinessAssortmentPicker } from '../business/BusinessAssortmentPicker';
 
 const copy = {
   pl: {
@@ -444,14 +447,66 @@ export function CatalogProductPicker({
 }) {
   const { i18n } = useTranslation();
   const m = copy[i18n.language.startsWith('pl') ? 'pl' : 'en'];
+  const bm = businessCopy(i18n.language);
   const mobile = useMobileWorkbench();
+  const business = useBusiness();
+  /**
+   * V54 §15/§44: in BUSINESS mode the picker opens on the company assortment,
+   * because a salesperson should search the few hundred products their own
+   * company sells rather than five thousand global ones. The full technical
+   * catalogue stays one click away for expert and admin use. In STANDARD mode
+   * neither the tabs nor the business tab exist, and the picker is unchanged.
+   */
+  const businessMode =
+    business.mode === 'business' && Boolean(business.organization);
+  const [tab, setTab] = useState<'assortment' | 'catalog'>(
+    businessMode ? 'assortment' : 'catalog',
+  );
+  const activeTab = businessMode ? tab : 'catalog';
   const body = (
-    <PickerBody
-      kind={kind}
-      client={client}
-      onApply={onApply}
-      onManual={onManual}
-    />
+    <>
+      {businessMode && (
+        <div
+          className="bz-picker-tabs"
+          role="tablist"
+          aria-label={bm.companyAssortment}
+        >
+          <button
+            type="button"
+            role="tab"
+            data-tab="assortment"
+            aria-selected={activeTab === 'assortment'}
+            onClick={() => setTab('assortment')}
+          >
+            {bm.companyAssortment}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            data-tab="catalog"
+            aria-selected={activeTab === 'catalog'}
+            onClick={() => setTab('catalog')}
+          >
+            {bm.wholeCatalog}
+          </button>
+        </div>
+      )}
+      {activeTab === 'assortment' ? (
+        <BusinessAssortmentPicker
+          kind={kind}
+          onApply={onApply}
+          onBrowseCatalog={() => setTab('catalog')}
+          catalog={client}
+        />
+      ) : (
+        <PickerBody
+          kind={kind}
+          client={client}
+          onApply={onApply}
+          onManual={onManual}
+        />
+      )}
+    </>
   );
   if (mobile)
     return (

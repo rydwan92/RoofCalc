@@ -27,6 +27,14 @@ export const priceLists = mysqlTable(
   'price_lists',
   {
     id: varchar('id', { length: 128 }).primaryKey(),
+    /**
+     * V54 (§9): `NULL` = a global / source-backed list, visible to everyone —
+     * which is exactly what every pre-V54 row is. A value scopes the list to
+     * one organization, and no query may return it to another (§10, §58).
+     * Deliberately additive here rather than a new table: a wholesaler's price
+     * list *is* a price list; only its owner changed.
+     */
+    organizationId: varchar('organization_id', { length: 128 }),
     ownerLabel: varchar('owner_label', { length: 240 }).notNull(),
     currencyCode: varchar('currency_code', { length: 3 }).notNull(),
     regionCode: varchar('region_code', { length: 16 }),
@@ -38,6 +46,10 @@ export const priceLists = mysqlTable(
   (table) => [
     index('price_lists_currency_idx').on(table.currencyCode),
     index('price_lists_valid_idx').on(table.validFrom, table.validTo),
+    index('price_lists_organization_idx').on(
+      table.organizationId,
+      table.validFrom,
+    ),
   ],
 );
 
