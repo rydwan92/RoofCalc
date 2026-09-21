@@ -51,6 +51,11 @@ const copy = {
     fixedSheet: 'Stały arkusz',
     cutSheet: 'Cięta na długość',
     more: 'Pokaż więcej produktów',
+    replacementTitle: 'Zmiana produktu przeliczy projekt',
+    replacementImpact:
+      'Zmiana wpłynie na układ pokrycia, rozstaw łat, ilości materiałów i kosztorys.',
+    replacementConfirm: 'Zmień produkt',
+    replacementCancel: 'Wróć',
     kind: {
       'roof-tile': 'Dachówka',
       'modular-sheet': 'Blacha',
@@ -84,6 +89,11 @@ const copy = {
     fixedSheet: 'Fixed sheet',
     cutSheet: 'Cut to length',
     more: 'Show more products',
+    replacementTitle: 'Changing the product will recalculate the project',
+    replacementImpact:
+      'The change affects covering layout, batten gauge, material quantities, and costing.',
+    replacementConfirm: 'Change product',
+    replacementCancel: 'Back',
     kind: {
       'roof-tile': 'Roof tile',
       'modular-sheet': 'Metal sheet',
@@ -438,18 +448,21 @@ export function CatalogProductPicker({
   onManual,
   onClose,
   client = catalogClient,
+  confirmReplacementImpact = false,
 }: {
   kind: CoveringKind;
   onApply: (selection: CoveringProductSelection) => void;
   onManual: () => void;
   onClose: () => void;
   client?: CatalogClient;
+  confirmReplacementImpact?: boolean;
 }) {
   const { i18n } = useTranslation();
   const m = copy[i18n.language.startsWith('pl') ? 'pl' : 'en'];
   const bm = businessCopy(i18n.language);
   const mobile = useMobileWorkbench();
   const business = useBusiness();
+  const [pending, setPending] = useState<CoveringProductSelection>();
   /**
    * V54 §15/§44: in BUSINESS mode the picker opens on the company assortment,
    * because a salesperson should search the few hundred products their own
@@ -457,13 +470,41 @@ export function CatalogProductPicker({
    * catalogue stays one click away for expert and admin use. In STANDARD mode
    * neither the tabs nor the business tab exist, and the picker is unchanged.
    */
-  const businessMode =
-    business.mode === 'business' && Boolean(business.organization);
+  // Keep the business picker mounted even when the organization request is
+  // unavailable. It owns the scoped outage message and the explicit route to
+  // the global technical catalogue; silently falling back to the catalogue
+  // would hide the commercial outage from the user.
+  const businessMode = business.mode === 'business';
   const [tab, setTab] = useState<'assortment' | 'catalog'>(
     businessMode ? 'assortment' : 'catalog',
   );
   const activeTab = businessMode ? tab : 'catalog';
-  const body = (
+  const apply = (selection: CoveringProductSelection) => {
+    if (confirmReplacementImpact) setPending(selection);
+    else onApply(selection);
+  };
+  const body = pending ? (
+    <section className="a-catalog-picker-body" role="alertdialog">
+      <h3>{m.replacementTitle}</h3>
+      <p>{m.replacementImpact}</p>
+      <div className="a-catalog-actions">
+        <button
+          type="button"
+          className="a-button a-primary"
+          onClick={() => onApply(pending)}
+        >
+          {m.replacementConfirm}
+        </button>
+        <button
+          type="button"
+          className="a-button"
+          onClick={() => setPending(undefined)}
+        >
+          {m.replacementCancel}
+        </button>
+      </div>
+    </section>
+  ) : (
     <>
       {businessMode && (
         <div
@@ -494,7 +535,7 @@ export function CatalogProductPicker({
       {activeTab === 'assortment' ? (
         <BusinessAssortmentPicker
           kind={kind}
-          onApply={onApply}
+          onApply={apply}
           onBrowseCatalog={() => setTab('catalog')}
           catalog={client}
         />
@@ -502,7 +543,7 @@ export function CatalogProductPicker({
         <PickerBody
           kind={kind}
           client={client}
-          onApply={onApply}
+          onApply={apply}
           onManual={onManual}
         />
       )}

@@ -21,6 +21,9 @@ import {
 import { downloadMaterialCsv } from './material-csv';
 import { MembraneMaterialCard } from './MembraneMaterialCard';
 import { CommercialBadge } from '../business/CommercialBadge';
+import { OutsideAssortmentNotice } from '../business/OutsideAssortment';
+import { useBusiness } from '../business/context';
+import { useOrganizationPrices } from '../business/use-assortment';
 import type { ExportFacts } from './export-adapter';
 import type {
   ProjectReadiness,
@@ -191,6 +194,26 @@ export function MaterialPlan({
   };
   const rs = roofSystemCopy(locale);
   const rows = createMaterialPlanRows(facts, membrane);
+  const business = useBusiness();
+  const commercial = useOrganizationPrices(
+    rows.flatMap((row) =>
+      row.product?.variantId ? [row.product.variantId] : [],
+    ),
+  );
+  const hasTechnicalIssue = (row: MaterialPlanRow) =>
+    row.partial || row.suitability === 'manual-required';
+  const hasCommercialIssue = (row: MaterialPlanRow) => {
+    if (
+      business.mode !== 'business' ||
+      commercial.isPending ||
+      !row.product?.variantId
+    )
+      return false;
+    const result = commercial.byVariantId.get(row.product.variantId);
+    return !result?.price;
+  };
+  const needsAttention = (row: MaterialPlanRow) =>
+    hasTechnicalIssue(row) || hasCommercialIssue(row);
   const options = usePriceOptions(
     rows.flatMap((row) =>
       row.product?.variantId ? [row.product.variantId] : [],
@@ -351,7 +374,9 @@ export function MaterialPlan({
       <small>{m.incomplete}</small>
       {rows.length > 0 &&
         (() => {
-          const attention = rows.filter((row) => row.partial).length;
+          const technicalAttention = rows.filter(hasTechnicalIssue).length;
+          const commercialAttention = rows.filter(hasCommercialIssue).length;
+          const attention = rows.filter(needsAttention).length;
           return (
             <div
               className="mp-filter"
@@ -367,6 +392,12 @@ export function MaterialPlan({
                     <strong className="is-attention">⚠ {attention}</strong>{' '}
                     {m.filterAttentionCount}
                   </>
+                )}
+                {business.mode === 'business' && (
+                  <small>
+                    {m.technicalProblems}: {technicalAttention} ·{' '}
+                    {m.commercialProblems}: {commercialAttention}
+                  </small>
                 )}
               </span>
               <span className="mp-filter-tabs">
@@ -474,7 +505,11 @@ export function MaterialPlan({
                 onAction={onReadinessAction}
               />
               {row.labelKey === 'membrane' ? (
-                <MembraneMaterialCard row={row} locale={locale} />
+                <MembraneMaterialCard
+                  row={row}
+                  locale={locale}
+                  onFindReplacement={() => setPicker(true)}
+                />
               ) : (
                 <>
                   <div className="mp-row-main">
@@ -564,6 +599,19 @@ export function MaterialPlan({
                        * Renders nothing in Standard mode.
                        */}
                       <CommercialBadge variantId={row.product?.variantId} />
+                      {row.product?.variantId && (
+                        <OutsideAssortmentNotice
+                          variantId={row.product.variantId}
+                          productName={row.product.name || label}
+                          onFindReplacement={
+                            row.category === 'timber'
+                              ? onOpenCutting
+                              : row.category === 'covering'
+                                ? onOpenCovering
+                                : undefined
+                          }
+                        />
+                      )}
                     </div>
                     <strong
                       className="mp-quantity"
@@ -876,7 +924,8 @@ export function MaterialPlan({
         return MATERIAL_CATEGORY_ORDER.map((category) => {
           const categoryRows = rows.filter(
             (row) =>
-              row.category === category && (filter === 'all' || row.partial),
+              row.category === category &&
+              (filter === 'all' || needsAttention(row)),
           );
           if (
             category === 'drainage' &&

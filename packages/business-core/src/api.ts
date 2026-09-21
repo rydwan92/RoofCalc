@@ -86,6 +86,7 @@ export const assortmentSummarySchema = z
     withoutPrice: z.number().int().min(0),
   })
   .strict();
+export type AssortmentSummary = z.infer<typeof assortmentSummarySchema>;
 
 export const organizationAssortmentResponseSchema = z
   .object({
@@ -105,17 +106,31 @@ export const ASSORTMENT_FILTERS = [
   'active',
   'unmatched',
   'without-price',
+  'inactive',
+  'preferred',
 ] as const;
 export type AssortmentFilter = (typeof ASSORTMENT_FILTERS)[number];
+
+const queryBoolean = z.preprocess((value) => {
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+  return value;
+}, z.boolean());
 
 export const assortmentQuerySchema = z
   .object({
     q: z.string().trim().max(120).optional(),
     filter: z.enum(ASSORTMENT_FILTERS).default('all'),
+    state: assortmentCommercialStateSchema.optional(),
+    active: queryBoolean.optional(),
+    preferred: queryBoolean.optional(),
+    hasPrice: queryBoolean.optional(),
     kind: z.string().trim().max(32).optional(),
     manufacturerId: businessIdSchema.optional(),
-    preferredOnly: z.coerce.boolean().optional(),
-    limit: z.coerce.number().int().min(1).max(200).default(50),
+    manufacturer: z.string().trim().max(240).optional(),
+    /** Backward-compatible alias; new clients use `preferred`. */
+    preferredOnly: queryBoolean.optional(),
+    limit: z.coerce.number().int().min(1).max(200).default(40),
     cursor: z.string().max(200).optional(),
   })
   .strict();
@@ -187,6 +202,65 @@ export const assortmentFlagsRequestSchema = z
       .optional(),
   })
   .strict();
+
+export const assortmentBulkFlagsRequestSchema = z
+  .object({
+    itemIds: z.array(businessIdSchema).min(1).max(500),
+    active: z.boolean().optional(),
+    preferred: z.boolean().optional(),
+  })
+  .strict()
+  .refine(
+    (value) => value.active !== undefined || value.preferred !== undefined,
+    { message: 'at least one flag is required' },
+  );
+
+const manualPriceFields = {
+  netAmountMinor: z.number().int().min(0),
+  saleUnit: saleUnitSchema,
+  validFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  vatRateBps: z.number().int().min(0).max(10_000).optional(),
+} as const;
+
+export const assortmentCreateRequestSchema = z
+  .object({
+    externalKey: z.string().trim().min(1).max(160),
+    sourceName: z.string().trim().min(1).max(240),
+    ean: z
+      .string()
+      .trim()
+      .regex(/^\d{8}$|^\d{12,14}$/)
+      .optional(),
+    commercialVariantId: businessIdSchema.optional(),
+    active: z.boolean().default(true),
+    preferred: z.boolean().default(false),
+    price: z.object(manualPriceFields).strict().optional(),
+  })
+  .strict()
+  .refine((value) => !value.price || Boolean(value.commercialVariantId), {
+    message: 'a price requires a matched commercial variant',
+    path: ['price'],
+  });
+export type AssortmentCreateRequest = z.infer<
+  typeof assortmentCreateRequestSchema
+>;
+
+export const assortmentPriceCreateRequestSchema = z
+  .object({ itemId: businessIdSchema, ...manualPriceFields })
+  .strict();
+export type AssortmentPriceCreateRequest = z.infer<
+  typeof assortmentPriceCreateRequestSchema
+>;
+
+export const assortmentDetailResponseSchema = z
+  .object({
+    row: organizationAssortmentRowSchema,
+    priceHistory: z.array(assortmentPriceSchema),
+  })
+  .strict();
+export type AssortmentDetailResponse = z.infer<
+  typeof assortmentDetailResponseSchema
+>;
 
 export const assortmentImportRequestSchema = z
   .object({

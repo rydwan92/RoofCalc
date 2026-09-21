@@ -115,9 +115,14 @@ function stubClient(overrides: Partial<BusinessClient> = {}): BusinessClient {
               },
         ),
       } satisfies OrganizationPricesResponse),
+    assortmentDetail: () =>
+      Promise.resolve({ row: MATCHED, priceHistory: [MATCHED.price!] }),
     link: () => Promise.reject(new Error('not-found')),
     unlink: () => Promise.reject(new Error('not-found')),
     setFlags: () => Promise.reject(new Error('not-found')),
+    setFlagsBulk: () => Promise.reject(new Error('not-found')),
+    createItem: () => Promise.reject(new Error('not-found')),
+    addPrice: () => Promise.reject(new Error('not-found')),
     importCsv: () => Promise.reject(new Error('not-found')),
     ...overrides,
   };
@@ -250,6 +255,7 @@ describe('business product picker', () => {
   });
 
   it('searches the assortment by warehouse code', async () => {
+    const assortment = vi.fn(stubClient().assortment);
     const user = userEvent.setup();
     renderBusiness(
       <BusinessAssortmentPicker
@@ -258,10 +264,67 @@ describe('business product picker', () => {
         onBrowseCatalog={vi.fn()}
         catalog={catalogStub as never}
       />,
+      { client: stubClient({ assortment }) },
     );
     await screen.findAllByTestId('business-picker-row');
     await user.type(screen.getByRole('textbox'), 'ZZZ');
     expect(await screen.findByTestId('business-picker-empty')).toBeTruthy();
+    await waitFor(() =>
+      expect(assortment).toHaveBeenCalledWith(
+        'org:demo',
+        expect.objectContaining({ q: 'ZZZ', limit: 40 }),
+        expect.anything(),
+      ),
+    );
+  });
+
+  it('loads the next bounded page without replacing the first page', async () => {
+    const second = {
+      ...MATCHED,
+      item: {
+        ...MATCHED.item,
+        id: 'oai:late',
+        externalKey: 'DACH-09999',
+        sourceName: 'KODA późna pozycja',
+        preferred: false,
+      },
+    };
+    const assortment: BusinessClient['assortment'] = vi.fn(
+      (_organizationId, query) =>
+        Promise.resolve({
+          organization: ORGANIZATION,
+          items: query.cursor ? [second] : [MATCHED],
+          summary: {
+            total: 2,
+            matched: 2,
+            unmatched: 0,
+            inactive: 0,
+            withoutPrice: 0,
+          },
+          ...(query.cursor ? {} : { nextCursor: '40' }),
+        }),
+    );
+    const user = userEvent.setup();
+    renderBusiness(
+      <BusinessAssortmentPicker
+        kind="roof-tile"
+        onApply={vi.fn()}
+        onBrowseCatalog={vi.fn()}
+        catalog={catalogStub as never}
+      />,
+      { client: stubClient({ assortment }) },
+    );
+    expect(await screen.findAllByTestId('business-picker-row')).toHaveLength(1);
+    await user.click(
+      screen.getByRole('button', { name: /Załaduj więcej|Load more/i }),
+    );
+    await waitFor(() =>
+      expect(screen.getAllByTestId('business-picker-row')).toHaveLength(2),
+    );
+    expect(vi.mocked(assortment).mock.calls[1]?.[1]).toMatchObject({
+      cursor: '40',
+      limit: 40,
+    });
   });
 
   it('offers the full technical catalogue as a secondary route', async () => {
@@ -376,6 +439,26 @@ describe('admin assortment', () => {
     );
   });
 
+  it('bulk-marks selected assortment rows as preferred', async () => {
+    const setFlagsBulk = vi.fn(() => Promise.resolve([MATCHED.item]));
+    const user = userEvent.setup();
+    renderBusiness(<AdminAssortment onClose={vi.fn()} />, {
+      client: stubClient({ setFlagsBulk }),
+    });
+    await screen.findAllByTestId('admin-row');
+    await user.click(screen.getByRole('checkbox', { name: /DACH-00384/ }));
+    await user.click(
+      screen.getByRole('button', {
+        name: /Oznacz jako preferowane|Mark preferred/i,
+      }),
+    );
+    await waitFor(() =>
+      expect(setFlagsBulk).toHaveBeenCalledWith('org:demo', ['oai:1'], {
+        preferred: true,
+      }),
+    );
+  });
+
   it('opens a row detail with the internal SKU and the match', async () => {
     const user = userEvent.setup();
     renderBusiness(<AdminAssortment onClose={vi.fn()} />);
@@ -387,6 +470,85 @@ describe('admin assortment', () => {
     ).toContain('swissporTON');
     expect(detail.textContent ?? '').toContain('DACH-00384');
     expect(within(detail).getByTestId('detail-unlink')).toBeTruthy();
+  });
+
+  it('appends a new price version and shows price history', async () => {
+    const addPrice: BusinessClient['addPrice'] = vi.fn(async (_org, input) => ({
+      id: 'price:new',
+      priceListId: 'price-list:demo',
+      commercialVariantId: KODA,
+      saleUnit: input.saleUnit,
+      netAmountMinor: input.netAmountMinor,
+      validFrom: input.validFrom,
+    }));
+    const user = userEvent.setup();
+    renderBusiness(<AdminAssortment onClose={vi.fn()} />, {
+      client: stubClient({ addPrice }),
+    });
+    await user.click((await screen.findAllByTestId('admin-row'))[0]!);
+    const editor = await screen.findByTestId('price-editor');
+    expect(within(editor).getByTestId('price-history')).toBeTruthy();
+    await user.type(
+      within(editor).getByLabelText(/Cena netto|Net price/i),
+      '5,25',
+    );
+    await user.click(
+      within(editor).getByRole('button', {
+        name: /Zapisz nową cenę|Save new price/i,
+      }),
+    );
+    await waitFor(() =>
+      expect(addPrice).toHaveBeenCalledWith(
+        'org:demo',
+        expect.objectContaining({
+          itemId: 'oai:1',
+          netAmountMinor: 525,
+          saleUnit: 'piece',
+        }),
+      ),
+    );
+  });
+
+  it('adds one assortment row without requiring a CSV file', async () => {
+    const createItem: BusinessClient['createItem'] = vi.fn(
+      async (_org, input) => ({
+        id: 'oai:manual',
+        organizationId: 'org:demo',
+        externalKey: input.externalKey,
+        sourceName: input.sourceName,
+        active: input.active,
+        preferred: input.preferred,
+      }),
+    );
+    const user = userEvent.setup();
+    renderBusiness(<AdminAssortment onClose={vi.fn()} />, {
+      client: stubClient({ createItem }),
+    });
+    await screen.findAllByTestId('admin-row');
+    await user.click(screen.getByTestId('admin-manual-open'));
+    const form = await screen.findByTestId('manual-assortment-entry');
+    await user.type(
+      within(form).getByLabelText(/Kod hurtowni|Internal SKU/i),
+      'NOWY-1',
+    );
+    await user.type(
+      within(form).getByLabelText(/Nazwa z importu|Imported name/i),
+      'Nowy produkt',
+    );
+    await user.click(
+      within(form).getByRole('button', {
+        name: /Dodaj produkt|Add product/i,
+      }),
+    );
+    await waitFor(() =>
+      expect(createItem).toHaveBeenCalledWith(
+        'org:demo',
+        expect.objectContaining({
+          externalKey: 'NOWY-1',
+          sourceName: 'Nowy produkt',
+        }),
+      ),
+    );
   });
 
   it('warns that an unmatched row is not a technical product', async () => {
@@ -541,6 +703,17 @@ describe('CSV import screen', () => {
     expect(vi.mocked(importCsv).mock.calls[1]?.[1]).toMatchObject({
       apply: true,
     });
+  });
+
+  it('invalidates a preview when the column mapping changes', async () => {
+    const user = await openImport(
+      stubClient({ importCsv: () => Promise.resolve(PREVIEW) }),
+    );
+    await user.click(screen.getByTestId('import-dry-run'));
+    await screen.findByTestId('import-preview');
+    await user.selectOptions(screen.getByTestId('map-netAmount'), '');
+    expect(screen.queryByTestId('import-preview')).toBeNull();
+    expect(screen.queryByTestId('import-apply')).toBeNull();
   });
 
   it('lists the rows that need attention', async () => {

@@ -33,7 +33,10 @@ const TILE_SPEC = {
       coverWidthMm: 260,
       gaugeRangeMm: { min: 390, max: 430 },
       minPitchDeg: 10,
-      coursePattern: 'aligned',
+      coursePattern: {
+        layers: [{ id: 'base', horizontalOffsetFraction: 0 }],
+        battenRowOffsetCycle: [0],
+      },
     },
   ],
 };
@@ -154,7 +157,9 @@ async function stubBusinessApi(
       return;
     }
     if (url.pathname.endsWith('/prices')) {
-      const ids = (url.searchParams.get('ids') ?? '').split(',').filter(Boolean);
+      const ids = (url.searchParams.get('ids') ?? '')
+        .split(',')
+        .filter(Boolean);
       await route.fulfill({
         json: {
           organizationId: ORGANIZATION.id,
@@ -171,7 +176,10 @@ async function stubBusinessApi(
       });
       return;
     }
-    await route.fulfill({ status: 404, json: { error: { code: 'not-found' } } });
+    await route.fulfill({
+      status: 404,
+      json: { error: { code: 'not-found' } },
+    });
   });
 }
 
@@ -229,7 +237,10 @@ async function openBuilder(page: Page, mode: 'standard' | 'business') {
 async function openCoveringPicker(page: Page) {
   await page.locator('[data-perspective="project"]').click();
   await page.locator('[data-task="covering"]').click();
-  await page.getByRole('button', { name: /Dachówka/ }).first().click();
+  await page
+    .getByRole('button', { name: /Dachówka/ })
+    .first()
+    .click();
   await page.getByRole('button', { name: /Wybierz z katalogu/ }).click();
 }
 
@@ -270,6 +281,73 @@ test.describe('V54 business mode', () => {
     );
   });
 
+  test('searches a late item and pages a 5000-row assortment server-side', async ({
+    page,
+  }) => {
+    const seenQueries: string[] = [];
+    await page.route('**/api/business/**', async (route) => {
+      const url = new URL(route.request().url());
+      if (url.pathname.endsWith('/organizations')) {
+        await route.fulfill({ json: { items: [ORGANIZATION] } });
+        return;
+      }
+      if (url.pathname.endsWith('/assortment')) {
+        const q = url.searchParams.get('q') ?? '';
+        const offset = Number(url.searchParams.get('cursor') ?? '0');
+        seenQueries.push(q);
+        const indexes = q
+          ? q === 'DACH-04999'
+            ? [4999]
+            : []
+          : Array.from({ length: 40 }, (_, index) => offset + index);
+        await route.fulfill({
+          json: {
+            organization: ORGANIZATION,
+            items: indexes.map((index) =>
+              assortmentRow({
+                item: {
+                  id: `oai:${index}`,
+                  organizationId: ORGANIZATION.id,
+                  commercialVariantId: KODA_VARIANT,
+                  externalKey: `DACH-${String(index).padStart(5, '0')}`,
+                  sourceName: `Dachówka KODA ${index}`,
+                  active: true,
+                  preferred: index === 0,
+                },
+              }),
+            ),
+            summary: {
+              total: 5000,
+              matched: 5000,
+              unmatched: 0,
+              inactive: 0,
+              withoutPrice: 0,
+            },
+            ...(!q && offset < 80 ? { nextCursor: String(offset + 40) } : {}),
+          },
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 404,
+        json: { error: { code: 'not-found' } },
+      });
+    });
+    await openBuilder(page, 'business');
+    await openCoveringPicker(page);
+    await expect(page.getByTestId('business-picker-row')).toHaveCount(40);
+    await page.getByRole('button', { name: /Załaduj więcej/ }).click();
+    await expect(page.getByTestId('business-picker-row')).toHaveCount(80);
+    await page
+      .getByPlaceholder(/Szukaj w asortymencie firmy/)
+      .fill('DACH-04999');
+    await expect(page.getByTestId('business-picker-row')).toHaveCount(1);
+    await expect(page.getByTestId('business-picker-row')).toContainText(
+      'DACH-04999',
+    );
+    expect(seenQueries).toContain('DACH-04999');
+  });
+
   test('the full technical catalogue stays reachable from the picker', async ({
     page,
   }) => {
@@ -292,30 +370,30 @@ test.describe('V54 business mode', () => {
       .first()
       .getByRole('button', { name: /Użyj produktu/ })
       .click();
-    await expect(page.getByTestId('covering-product-card')).toBeVisible();
-
-    await page.locator('[data-perspective="materials"]').click();
-    const quantitiesBefore = await page
-      .locator('[data-testid^="material-quantity-"]')
-      .allInnerTexts();
-    expect(quantitiesBefore.length).toBeGreaterThan(0);
+    const productCard = page.getByTestId('covering-product-card');
+    await expect(productCard).toBeVisible();
+    const technicalFactsBefore = await productCard
+      .locator('.a-covering-product-facts > div:not([data-price-state])')
+      .allTextContents();
+    await expect(page.getByTestId('tile-layout-drawing')).toBeVisible();
+    // Project persistence intentionally batches edits after 800 ms.
+    await page.waitForTimeout(1_500);
 
     // The wholesaler stops selling it; everything technical must be unchanged.
     await stubBusinessApi(page, { sells: [] });
     await page.reload();
     await page.locator('[data-mode="builder"]').click();
-    await page.locator('[data-perspective="materials"]').click();
-
-    await expect(page.getByTestId('material-commercial')).toContainText(
-      /Brak w asortymencie/,
-    );
-    expect(
-      await page.locator('[data-testid^="material-quantity-"]').allInnerTexts(),
-    ).toEqual(quantitiesBefore);
-
-    // §17/§18: an explicit choice, never an automatic substitution.
     await page.locator('[data-perspective="project"]').click();
+    // §17/§18: an explicit choice, never an automatic substitution.
     await page.locator('[data-task="covering"]').click();
+    const technicalFactsAfter = page
+      .getByTestId('covering-product-card')
+      .locator('.a-covering-product-facts > div:not([data-price-state])');
+    await expect(technicalFactsAfter).toHaveCount(technicalFactsBefore.length);
+    expect(await technicalFactsAfter.allTextContents()).toEqual(
+      technicalFactsBefore,
+    );
+    await expect(page.getByTestId('tile-layout-drawing')).toBeVisible();
     const notice = page.getByTestId('outside-assortment');
     await expect(notice).toContainText(/Obliczenia techniczne pozostają ważne/);
     await expect(notice.getByTestId('outside-find-replacement')).toBeVisible();

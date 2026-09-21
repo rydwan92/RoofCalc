@@ -13,9 +13,13 @@ import {
   priceListEntrySchema,
 } from '@cieslacalc/pricing-core';
 import {
+  assortmentBulkFlagsRequestSchema,
+  assortmentCreateRequestSchema,
+  assortmentDetailResponseSchema,
   assortmentFlagsRequestSchema,
   assortmentImportRequestSchema,
   assortmentLinkRequestSchema,
+  assortmentPriceCreateRequestSchema,
   assortmentPreviewResponseSchema,
   assortmentQuerySchema,
   assortmentUnlinkRequestSchema,
@@ -265,6 +269,15 @@ async function handleBusinessRead(
     const result = await service.assortment(organizationId, query, atDate);
     return json(organizationAssortmentResponseSchema.parse(result));
   }
+  if (segments[5] === 'assortment-detail') {
+    const itemId = search.get('itemId');
+    if (!itemId) return errorResult(400, 'business-invalid-request');
+    return json(
+      assortmentDetailResponseSchema.parse(
+        await service.assortmentDetail(organizationId, itemId),
+      ),
+    );
+  }
   if (segments[5] === 'prices') {
     const ids = (search.get('ids') ?? '')
       .split(',')
@@ -325,6 +338,21 @@ async function handleBusinessAdmin(
       return json({
         item: await admin.setFlags(organizationId, itemId, flags),
       });
+    }
+    if (action === 'bulk-flags') {
+      const { itemIds, ...flags } =
+        assortmentBulkFlagsRequestSchema.parse(body);
+      return json({
+        items: await admin.setFlagsBulk(organizationId, itemIds, flags),
+      });
+    }
+    if (action === 'create') {
+      const request = assortmentCreateRequestSchema.parse(body);
+      return json({ item: await admin.createItem(organizationId, request) });
+    }
+    if (action === 'price') {
+      const request = assortmentPriceCreateRequestSchema.parse(body);
+      return json({ entry: await admin.addPrice(organizationId, request) });
     }
     if (action === 'import') {
       const request = assortmentImportRequestSchema.parse(body);

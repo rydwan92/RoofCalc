@@ -8,6 +8,9 @@ import {
   parseAssortmentCsv,
   validateAssortmentUniqueness,
   type AssortmentImportPreview,
+  type AssortmentImportAudit,
+  type AssortmentCreateRequest,
+  type AssortmentPriceCreateRequest,
   type AssortmentPreviewResponse,
   type Organization,
   type OrganizationAssortmentItem,
@@ -27,6 +30,7 @@ export class BusinessAdminError extends Error {
       | 'organization-not-found'
       | 'assortment-item-not-found'
       | 'commercial-variant-not-found'
+      | 'duplicate-external-key'
       | 'duplicate-active-variant',
   ) {
     super(code);
@@ -155,6 +159,96 @@ export class BusinessAdminService {
     return updated;
   }
 
+  async setFlagsBulk(
+    organizationId: string,
+    itemIds: string[],
+    flags: { active?: boolean; preferred?: boolean },
+  ): Promise<OrganizationAssortmentItem[]> {
+    await this.requireOrganization(organizationId);
+    const ids = [...new Set(itemIds)];
+    if (
+      ids.length === 0 ||
+      (flags.active === undefined && flags.preferred === undefined)
+    )
+      throw new BusinessAdminError('business-invalid-request');
+    const items =
+      await this.repository.assortmentForOrganization(organizationId);
+    if (ids.some((id) => !items.some((item) => item.id === id)))
+      throw new BusinessAdminError('assortment-item-not-found');
+    if (flags.active === true) {
+      const wanted = new Set(ids);
+      const issues = validateAssortmentUniqueness(
+        items.map((item) =>
+          wanted.has(item.id) ? { ...item, active: true } : item,
+        ),
+      );
+      if (issues.some((issue) => issue.code === 'duplicate-active-variant'))
+        throw new BusinessAdminError('duplicate-active-variant');
+    }
+    return this.admin.updateAssortmentItemsFlags(organizationId, ids, flags);
+  }
+
+  async createItem(
+    organizationId: string,
+    input: AssortmentCreateRequest,
+  ): Promise<OrganizationAssortmentItem> {
+    const organization = await this.requireOrganization(organizationId);
+    const items =
+      await this.repository.assortmentForOrganization(organizationId);
+    if (items.some((item) => item.externalKey === input.externalKey))
+      throw new BusinessAdminError('duplicate-external-key');
+    if (
+      input.commercialVariantId &&
+      !(await this.catalog.variantExists(input.commercialVariantId))
+    )
+      throw new BusinessAdminError('commercial-variant-not-found');
+    const item: OrganizationAssortmentItem = {
+      id: `oai:manual:${randomUUID()}`,
+      organizationId,
+      ...(input.commercialVariantId
+        ? { commercialVariantId: input.commercialVariantId }
+        : {}),
+      externalKey: input.externalKey,
+      ...(input.ean ? { ean: input.ean } : {}),
+      sourceName: input.sourceName,
+      active: input.active,
+      preferred: input.preferred,
+    };
+    const issues = validateAssortmentUniqueness([...items, item]);
+    if (issues.some((issue) => issue.code === 'duplicate-active-variant'))
+      throw new BusinessAdminError('duplicate-active-variant');
+    const price = input.price
+      ? manualPrice(organization, input.commercialVariantId!, input.price)
+      : undefined;
+    await this.admin.createAssortmentItemWithPrice({
+      item,
+      ...(price
+        ? { priceList: price.priceList, priceEntry: price.priceEntry }
+        : {}),
+    });
+    return item;
+  }
+
+  async addPrice(
+    organizationId: string,
+    input: AssortmentPriceCreateRequest,
+  ): Promise<PriceListEntry> {
+    const organization = await this.requireOrganization(organizationId);
+    const item = await this.repository.assortmentItemForOrganization(
+      organizationId,
+      input.itemId,
+    );
+    if (!item) throw new BusinessAdminError('assortment-item-not-found');
+    if (!item.commercialVariantId)
+      throw new BusinessAdminError('business-invalid-request');
+    const price = manualPrice(organization, item.commercialVariantId, input);
+    await this.admin.upsertOrganizationPrices({
+      priceList: price.priceList,
+      entries: [price.priceEntry],
+    });
+    return price.priceEntry;
+  }
+
   /**
    * CSV import (§23–§30). `apply: false` is a real dry run: it reads, maps,
    * matches and reports, and writes nothing at all. Only an explicit
@@ -198,8 +292,7 @@ export class BusinessAdminService {
 
     if (input.apply) {
       const startedAt = new Date().toISOString();
-      await this.applyPreview(organization, existing, preview);
-      await this.admin.recordImport({
+      const audit = {
         id: `import:${organizationId}:${randomUUID()}`,
         organizationId,
         sourceLabel: input.sourceLabel,
@@ -212,7 +305,8 @@ export class BusinessAdminService {
         completedAt: new Date().toISOString(),
         status: 'completed',
         counts: preview.counts,
-      });
+      } as const;
+      await this.applyPreview(organization, existing, preview, audit);
     }
     return toPreviewResponse(preview, input.apply);
   }
@@ -227,6 +321,7 @@ export class BusinessAdminService {
     organization: Organization,
     existing: readonly OrganizationAssortmentItem[],
     preview: AssortmentImportPreview,
+    audit: AssortmentImportAudit,
   ): Promise<void> {
     const byKey = new Map(existing.map((item) => [item.externalKey, item]));
     const applicable = applicablePreviewRows(preview);
@@ -256,13 +351,9 @@ export class BusinessAdminService {
         };
       },
     );
-    if (items.length)
-      await this.admin.upsertAssortmentItems(organization.id, items);
-
     const priced = applicable.filter(
       ({ row }) => row.netAmountMinor !== undefined,
     );
-    if (!priced.length) return;
     const validFrom = new Date().toISOString().slice(0, 10);
     const priceList: OrganizationPriceList = {
       id: `price-list:${organization.id}:import`,
@@ -296,9 +387,59 @@ export class BusinessAdminService {
         },
       ];
     });
-    if (entries.length)
-      await this.admin.upsertOrganizationPrices({ priceList, entries });
+    await this.admin.applyAssortmentImport({
+      organizationId: organization.id,
+      items,
+      ...(entries.length ? { priceList } : {}),
+      entries,
+      audit,
+    });
   }
+}
+
+function manualPrice(
+  organization: Organization,
+  commercialVariantId: string,
+  input: {
+    netAmountMinor: number;
+    saleUnit: PriceListEntry['saleUnit'];
+    validFrom: string;
+    vatRateBps?: number;
+  },
+): { priceList: OrganizationPriceList; priceEntry: PriceListEntry } {
+  const listHash = createHash('sha256')
+    .update(organization.id)
+    .digest('hex')
+    .slice(0, 32);
+  const priceList: OrganizationPriceList = {
+    id: `price-list:manual:${listHash}`,
+    organizationId: organization.id,
+    ownerLabel: `${organization.name} — cennik ręczny`,
+    currencyCode: organization.currencyCode,
+    taxContext: 'net; optional VAT rate recorded as source provenance',
+    validFrom: '2000-01-01',
+  };
+  // `pricing-core` resolves equal-date entries by the lexicographically
+  // smallest ID. A reverse timestamp keeps a correction made later that day
+  // current without mutating the previous immutable entry.
+  const reverseTimestamp = String(
+    9_999_999_999_999_999_999n - process.hrtime.bigint(),
+  ).padStart(19, '0');
+  return {
+    priceList,
+    priceEntry: {
+      id: `price:manual:${reverseTimestamp}:${randomUUID()}`,
+      priceListId: priceList.id,
+      commercialVariantId,
+      saleUnit: input.saleUnit,
+      netAmountMinor: input.netAmountMinor,
+      sourceAmountBasis: 'net',
+      ...(input.vatRateBps !== undefined
+        ? { sourceVatRateBps: input.vatRateBps }
+        : {}),
+      validFrom: input.validFrom,
+    },
+  };
 }
 
 function toPreviewResponse(

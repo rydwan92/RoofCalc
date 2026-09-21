@@ -360,4 +360,42 @@ describe('import preview', () => {
     expect(unmatched?.match.state).toBe('no-match');
     expect(unmatched?.match.commercialVariantId).toBeUndefined();
   });
+
+  it('parses, maps and matches a generated 5,000-row price list in linear time', () => {
+    const size = 5_000;
+    const candidates: AssortmentMatchCandidate[] = Array.from(
+      { length: size },
+      (_, index) => ({
+        commercialVariantId: `variant:bulk:${index}`,
+        sku: `SKU-${String(index).padStart(5, '0')}`,
+        productName: `Produkt ${index}`,
+      }),
+    );
+    const csv = [
+      'KOD_TOW;NAZWA;CENA_NETTO',
+      ...Array.from(
+        { length: size },
+        (_, index) =>
+          `SKU-${String(index).padStart(5, '0')};Produkt ${index};4,82`,
+      ),
+    ].join('\n');
+    const startedAt = performance.now();
+    const parsed = parseAssortmentCsv(csv);
+    const mapped = mapAssortmentRows(parsed, {
+      externalKey: 'KOD_TOW',
+      sourceName: 'NAZWA',
+      netAmount: 'CENA_NETTO',
+    });
+    const result = buildAssortmentImportPreview({
+      organizationId: 'org:bulk',
+      rows: mapped.rows,
+      issues: mapped.issues,
+      existing: [],
+      candidates,
+    });
+    const elapsedMs = performance.now() - startedAt;
+
+    expect(result.counts).toMatchObject({ total: size, matched: size });
+    expect(elapsedMs).toBeLessThan(2_000);
+  });
 });

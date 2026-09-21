@@ -78,6 +78,14 @@ describe('business read API', () => {
     expect(response.body.summary).toMatchObject({ total: 1, unmatched: 1 });
   });
 
+  it('parses explicit false boolean filters without coercing them to true', async () => {
+    const response = await request(api().app).get(
+      '/api/business/organizations/org%3Aa/assortment?active=false&preferred=false&hasPrice=false',
+    );
+    expect(response.status).toBe(200);
+    expect(response.body.items).toHaveLength(0);
+  });
+
   it('returns 404 for an unknown organization', async () => {
     const response = await request(api().app).get(
       '/api/business/organizations/org%3Azzz/assortment',
@@ -109,6 +117,16 @@ describe('business read API', () => {
       commercialVariantId: KODA,
       missing: 'not-in-assortment',
     });
+  });
+
+  it('returns one organization-scoped detail with price history', async () => {
+    const { app } = api();
+    const response = await request(app).get(
+      '/api/business/organizations/org%3Aa/assortment-detail?itemId=oai%3Aa%3A1',
+    );
+    expect(response.status).toBe(200);
+    expect(response.body.row.item.id).toBe('oai:a:1');
+    expect(response.body.priceHistory).toEqual([]);
   });
 
   it('reports the business layer as unavailable when no database is configured', async () => {
@@ -164,6 +182,53 @@ describe('admin write gate', () => {
     expect(response.status).toBe(200);
     expect(response.body.item.commercialVariantId).toBe(KODA);
     expect(repository.state.assortment[0]?.commercialVariantId).toBe(KODA);
+  });
+
+  it('applies a bounded bulk flag action behind the same write gate', async () => {
+    const { app, repository } = api({ admin: true, devMode: true });
+    const response = await request(app)
+      .post('/api/business/organizations/org%3Aa/assortment/bulk-flags')
+      .send({ itemIds: ['oai:a:1'], preferred: true });
+    expect(response.status).toBe(200);
+    expect(response.body.items).toHaveLength(1);
+    expect(repository.state.assortment[0]?.preferred).toBe(true);
+  });
+
+  it('creates a manual item and appends price versions behind the write gate', async () => {
+    const { app, repository } = api({ admin: true, devMode: true });
+    const created = await request(app)
+      .post('/api/business/organizations/org%3Aa/assortment/create')
+      .send({
+        externalKey: 'A-DACH-002',
+        sourceName: 'KODA ręcznie',
+        commercialVariantId: KODA,
+        price: {
+          netAmountMinor: 482,
+          saleUnit: 'piece',
+          validFrom: '2026-09-20',
+        },
+      });
+    expect(created.status).toBe(200);
+    const itemId = created.body.item.id as string;
+    const price = await request(app)
+      .post('/api/business/organizations/org%3Aa/assortment/price')
+      .send({
+        itemId,
+        netAmountMinor: 499,
+        saleUnit: 'piece',
+        validFrom: '2026-09-21',
+      });
+    expect(price.status).toBe(200);
+    expect(repository.state.entries).toHaveLength(2);
+
+    const detail = await request(app).get(
+      `/api/business/organizations/org%3Aa/assortment-detail?itemId=${encodeURIComponent(itemId)}`,
+    );
+    expect(
+      detail.body.priceHistory.map(
+        (row: { netAmountMinor: number }) => row.netAmountMinor,
+      ),
+    ).toEqual([499, 482]);
   });
 
   it('rejects a mutation whose Host is not loopback', async () => {

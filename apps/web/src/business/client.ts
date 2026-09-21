@@ -1,16 +1,24 @@
 import {
   assortmentPreviewResponseSchema,
+  assortmentDetailResponseSchema,
   businessApiErrorSchema,
   organizationAssortmentResponseSchema,
   organizationPricesResponseSchema,
   organizationsResponseSchema,
   type AssortmentPreviewResponse,
+  type AssortmentCreateRequest,
+  type AssortmentDetailResponse,
+  type AssortmentPriceCreateRequest,
   type AssortmentQuery,
   type Organization,
   type OrganizationAssortmentItem,
   type OrganizationAssortmentResponse,
   type OrganizationPricesResponse,
 } from '@cieslacalc/business-core';
+import {
+  priceListEntrySchema,
+  type PriceListEntry,
+} from '@cieslacalc/pricing-core';
 import { z } from 'zod';
 import { resolveApiBaseUrl } from '../api-base';
 
@@ -31,6 +39,8 @@ export class BusinessClientError extends Error {
 }
 
 const itemResponseSchema = z.object({ item: z.unknown() });
+const itemsResponseSchema = z.object({ items: z.array(z.unknown()) });
+const entryResponseSchema = z.object({ entry: priceListEntrySchema });
 
 async function requestJson<T>(
   url: string,
@@ -76,6 +86,11 @@ export interface BusinessClient {
     variantIds: readonly string[],
     signal?: AbortSignal,
   ): Promise<OrganizationPricesResponse>;
+  assortmentDetail(
+    organizationId: string,
+    itemId: string,
+    signal?: AbortSignal,
+  ): Promise<AssortmentDetailResponse>;
   /** Admin: only answers when the server's local/dev capability is enabled. */
   link(
     organizationId: string,
@@ -95,6 +110,19 @@ export interface BusinessClient {
       displayNameOverride?: string | null;
     },
   ): Promise<OrganizationAssortmentItem>;
+  setFlagsBulk(
+    organizationId: string,
+    itemIds: string[],
+    flags: { active?: boolean; preferred?: boolean },
+  ): Promise<OrganizationAssortmentItem[]>;
+  createItem(
+    organizationId: string,
+    input: AssortmentCreateRequest,
+  ): Promise<OrganizationAssortmentItem>;
+  addPrice(
+    organizationId: string,
+    input: AssortmentPriceCreateRequest,
+  ): Promise<PriceListEntry>;
   importCsv(
     organizationId: string,
     input: {
@@ -131,10 +159,18 @@ export class HttpBusinessClient implements BusinessClient {
     const params = new URLSearchParams();
     if (query.q) params.set('q', query.q);
     if (query.filter) params.set('filter', query.filter);
+    if (query.state) params.set('state', query.state);
+    if (query.active !== undefined) params.set('active', String(query.active));
+    if (query.preferred !== undefined)
+      params.set('preferred', String(query.preferred));
+    if (query.hasPrice !== undefined)
+      params.set('hasPrice', String(query.hasPrice));
     if (query.kind) params.set('kind', query.kind);
     if (query.manufacturerId)
       params.set('manufacturerId', query.manufacturerId);
-    if (query.preferredOnly) params.set('preferredOnly', 'true');
+    if (query.manufacturer) params.set('manufacturer', query.manufacturer);
+    if (query.preferredOnly !== undefined)
+      params.set('preferredOnly', String(query.preferredOnly));
     if (query.limit) params.set('limit', String(query.limit));
     if (query.cursor) params.set('cursor', query.cursor);
     return requestJson(
@@ -153,6 +189,19 @@ export class HttpBusinessClient implements BusinessClient {
     return requestJson(
       `${this.organizationUrl(organizationId)}/prices?${params}`,
       organizationPricesResponseSchema,
+      { signal },
+    );
+  }
+
+  assortmentDetail(
+    organizationId: string,
+    itemId: string,
+    signal?: AbortSignal,
+  ) {
+    const params = new URLSearchParams({ itemId });
+    return requestJson(
+      `${this.organizationUrl(organizationId)}/assortment-detail?${params}`,
+      assortmentDetailResponseSchema,
       { signal },
     );
   }
@@ -188,6 +237,36 @@ export class HttpBusinessClient implements BusinessClient {
     },
   ) {
     return this.mutate(organizationId, 'flags', { itemId, ...flags });
+  }
+
+  async setFlagsBulk(
+    organizationId: string,
+    itemIds: string[],
+    flags: { active?: boolean; preferred?: boolean },
+  ): Promise<OrganizationAssortmentItem[]> {
+    const result = await requestJson(
+      `${this.organizationUrl(organizationId)}/assortment/bulk-flags`,
+      itemsResponseSchema,
+      { method: 'POST', body: JSON.stringify({ itemIds, ...flags }) },
+    );
+    return result.items as OrganizationAssortmentItem[];
+  }
+
+  createItem(organizationId: string, input: AssortmentCreateRequest) {
+    return this.mutate(organizationId, 'create', input);
+  }
+
+  async addPrice(
+    organizationId: string,
+    input: AssortmentPriceCreateRequest,
+  ): Promise<PriceListEntry> {
+    return (
+      await requestJson(
+        `${this.organizationUrl(organizationId)}/assortment/price`,
+        entryResponseSchema,
+        { method: 'POST', body: JSON.stringify(input) },
+      )
+    ).entry;
   }
 
   importCsv(

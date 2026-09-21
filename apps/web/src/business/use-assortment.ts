@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import type {
   AssortmentQuery,
   OrganizationAssortmentRow,
@@ -22,6 +23,35 @@ export function useAssortment(query: Partial<AssortmentQuery> = {}) {
     retry: false,
     staleTime: 30_000,
   });
+}
+
+export function useInfiniteAssortment(
+  query: Omit<Partial<AssortmentQuery>, 'cursor'> = {},
+) {
+  const { organizationId, client, mode } = useBusiness();
+  return useInfiniteQuery({
+    queryKey: ['business', 'assortment-infinite', organizationId, query],
+    queryFn: ({ signal, pageParam }) =>
+      client.assortment(
+        organizationId!,
+        { ...query, ...(pageParam ? { cursor: pageParam } : {}) },
+        signal,
+      ),
+    initialPageParam: '' as string,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    enabled: mode === 'business' && Boolean(organizationId),
+    retry: false,
+    staleTime: 30_000,
+  });
+}
+
+export function useDebouncedValue<T>(value: T, delayMs = 250): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setDebounced(value), delayMs);
+    return () => window.clearTimeout(timeout);
+  }, [delayMs, value]);
+  return debounced;
 }
 
 /**

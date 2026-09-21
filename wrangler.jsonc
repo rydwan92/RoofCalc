@@ -25,8 +25,9 @@
       "binding": "HYPERDRIVE",
       "id": "2d7f0a9beaee47219f9e7a6a0aeabeaf",
 
-      // Optional. Can be used to connect to a local database for local development with `wrangler dev`
-      "localConnectionString": "mysql://catalog_user:roofcalc_local_2026@127.0.0.1:3306/cieslacalc",
+      // For local `wrangler dev`, set the ignored environment variable
+      // CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE.
+      // Never place a database URL in this tracked configuration.
     },
   ],
 }

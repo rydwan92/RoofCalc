@@ -740,6 +740,7 @@ export function CoveringWorkspace({
     <Suspense fallback={<div className="a-loading-panel" />}>
       <CatalogProductPicker
         kind={catalogKind}
+        confirmReplacementImpact={Boolean(catalogReplacementId)}
         onClose={() => {
           setCatalogKind(undefined);
           setCatalogReplacementId(undefined);

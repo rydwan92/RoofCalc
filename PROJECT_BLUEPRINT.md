@@ -1297,7 +1297,29 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
-**Iteration:** `053 — guided project experience and UX consolidation`
+**Iteration:** `055 — wholesale workbench MVP`
+
+**Status:** `IMPLEMENTED — validated, uncommitted`
+
+**Completed:** removed the tracked Wrangler connection string and added a production-config secret regression test; restored the V54 formatting baseline. Assortment reads are bounded server-side queries with debounced prefix search, explicit filters, deterministic preferred-first ordering, aggregate summary and cursor paging. The reusable business picker powers covering, membrane and catalogue-backed timber flows; unsupported roof-system/drainage/accessory flows were not given fake catalogue products. Saved technical products remain valid outside the company assortment, with explicit replacement and pre-apply recalculation impact.
+
+**Admin:** scalable table/search/paging, unmatched queue with next-item focus, activate/deactivate/prefer bulk actions, manual item creation with explicit catalogue variant, immutable manual price versions, current-price resolution and compact history. CSV preview is invalidated after input changes; database apply writes assortment, prices and audit in one transaction. Material Plan shows organization SKU/net price and separates technical vs commercial attention; Cost keeps organization-only pricing as the Business default.
+
+**Schema / migration:** `0004_mighty_madrox.sql` adds picker/search indexes and the `price_lists.organization_id → organizations.id` FK; `SCHEMA_REGISTRY.md` updated. Existing project documents are unchanged.
+
+**Validation:** `pnpm verify` green — 145 test files passed + 1 skipped, 1601 tests passed + 11 skipped; web/API/edge builds green. `test:architecture` 41/41, `test:fixtures` 38/38 and `git diff --check` green. Focused Playwright `e2e/v54-business.spec.ts`: 14/14 desktop 1440×900 + mobile 390×844, including 5000-row late search/paging, outage fallback, outside-assortment persistence and Standard-mode isolation.
+
+**Environment findings:** the requested Browser surface exposed no available browser, so real Chromium QA used Playwright. `pnpm db:doctor` reached the configured remote AlwaysData host but authentication was rejected; Docker is unavailable, therefore migration/seed×2/smoke could not run on a disposable live DB.
+
+**Security:** the removed credential remains exposed in Git history and must be rotated manually. Private `.env` was not changed or printed.
+
+**Known / deferred:** quote/customer MVP was intentionally not started—V55 priorities 1–5 were completed first and no half quote engine was left. Live DB application awaits valid isolated credentials or Docker. No commit or push was made.
+
+**NEXT ACTION:** rotate the exposed DB credential, validate migration + seed twice + smoke-check on an isolated database, then begin the standalone `quote-core` MVP.
+
+---
+
+**Previous iteration:** `053 — guided project experience and UX consolidation`
 
 **Status:** `IMPLEMENTED — committed on main`
 

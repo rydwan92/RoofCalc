@@ -73,6 +73,71 @@ function admin() {
 }
 
 describe('manual mapping', () => {
+  it('creates one manual row with an optional immutable organization price', async () => {
+    const { admin: service, repository } = admin();
+    const item = await service.createItem('org:a', {
+      externalKey: 'A-DACH-003',
+      sourceName: 'TITANIA ręcznie',
+      commercialVariantId: TITANIA,
+      active: true,
+      preferred: false,
+      price: {
+        netAmountMinor: 599,
+        saleUnit: 'piece',
+        validFrom: '2026-09-20',
+        vatRateBps: 2300,
+      },
+    });
+    expect(item).toMatchObject({
+      organizationId: 'org:a',
+      externalKey: 'A-DACH-003',
+      commercialVariantId: TITANIA,
+    });
+    expect(repository.state.priceLists[0]).toMatchObject({
+      organizationId: 'org:a',
+      currencyCode: 'PLN',
+    });
+    expect(repository.state.entries[0]).toMatchObject({
+      commercialVariantId: TITANIA,
+      netAmountMinor: 599,
+      sourceVatRateBps: 2300,
+    });
+  });
+
+  it('appends price versions and exposes newest-first history', async () => {
+    const { admin: service, read, repository } = admin();
+    await service.addPrice('org:a', {
+      itemId: 'oai:a:2',
+      netAmountMinor: 450,
+      saleUnit: 'piece',
+      validFrom: '2026-09-20',
+    });
+    await service.addPrice('org:a', {
+      itemId: 'oai:a:2',
+      netAmountMinor: 482,
+      saleUnit: 'piece',
+      validFrom: '2026-09-20',
+    });
+    expect(repository.state.entries).toHaveLength(2);
+    const detail = await read.assortmentDetail('org:a', 'oai:a:2');
+    expect(detail.row.price?.netAmountMinor).toBe(482);
+    expect(detail.priceHistory.map((price) => price.netAmountMinor)).toEqual([
+      482, 450,
+    ]);
+  });
+
+  it('rejects a duplicate manual warehouse code', async () => {
+    const { admin: service } = admin();
+    await expect(
+      service.createItem('org:a', {
+        externalKey: 'A-DACH-002',
+        sourceName: 'Duplicate',
+        active: true,
+        preferred: false,
+      }),
+    ).rejects.toMatchObject({ code: 'duplicate-external-key' });
+  });
+
   it('links a row to a catalogue variant without touching the catalogue', async () => {
     const { admin: service, repository } = admin();
     const before = structuredClone(repository.state.catalog);
@@ -132,6 +197,19 @@ describe('manual mapping', () => {
     expect(
       repository.state.assortment.find((item) => item.id === 'oai:a:2')?.active,
     ).toBe(false);
+  });
+
+  it('applies safe flags to an explicit organization-scoped selection', async () => {
+    const { admin: service, repository } = admin();
+    const updated = await service.setFlagsBulk(
+      'org:a',
+      ['oai:a:1', 'oai:a:2'],
+      { preferred: true },
+    );
+    expect(updated).toHaveLength(2);
+    expect(repository.state.assortment.every((item) => item.preferred)).toBe(
+      true,
+    );
   });
 
   it('rejects an empty flags patch', async () => {
@@ -244,7 +322,11 @@ describe('CSV import', () => {
     );
     expect(membrane).toBeDefined();
     expect(membrane?.commercialVariantId).toBeUndefined();
-    const prices = await read.pricesForVariants('org:a', [KODA], '2026-09-20');
+    const prices = await read.pricesForVariants(
+      'org:a',
+      [KODA],
+      new Date().toISOString().slice(0, 10),
+    );
     expect(prices.items[0]?.price).toBeDefined();
   });
 

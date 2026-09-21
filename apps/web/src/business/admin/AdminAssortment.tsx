@@ -1,17 +1,18 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Upload } from 'lucide-react';
+import { ArrowLeft, Plus, Upload } from 'lucide-react';
 import {
   ASSORTMENT_FILTERS,
   type AssortmentFilter,
   type OrganizationAssortmentRow,
 } from '@cieslacalc/business-core';
 import { useBusiness } from '../context';
-import { useAssortment } from '../use-assortment';
+import { useDebouncedValue, useInfiniteAssortment } from '../use-assortment';
 import { businessCopy, type BusinessCopy } from '../copy';
 import { AssortmentDetail } from './AssortmentDetail';
 import { AssortmentImport } from './AssortmentImport';
+import { ManualAssortmentEntry } from './ManualAssortmentEntry';
 
 /**
  * ADMINISTRACJA → ASORTYMENT (§19, §37).
@@ -28,23 +29,55 @@ import { AssortmentImport } from './AssortmentImport';
 export function AdminAssortment({ onClose }: { onClose: () => void }) {
   const { i18n } = useTranslation();
   const m = businessCopy(i18n.language);
-  const { organization, unavailable } = useBusiness();
+  const { organization, organizationId, client, unavailable } = useBusiness();
   const [filter, setFilter] = useState<AssortmentFilter>('all');
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebouncedValue(search.trim());
   const [selectedId, setSelectedId] = useState<string>();
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkError, setBulkError] = useState<string>();
   const [importing, setImporting] = useState(false);
+  const [creating, setCreating] = useState(false);
   const queryClient = useQueryClient();
-  const assortment = useAssortment({
+  const assortment = useInfiniteAssortment({
     filter,
-    ...(search.trim() ? { q: search.trim() } : {}),
-    limit: 200,
+    ...(debouncedSearch ? { q: debouncedSearch } : {}),
+    limit: 50,
   });
 
-  const rows = useMemo(() => assortment.data?.items ?? [], [assortment.data]);
+  const rows = useMemo(
+    () => assortment.data?.pages.flatMap((page) => page.items) ?? [],
+    [assortment.data],
+  );
   const selected = rows.find((row) => row.item.id === selectedId);
-  const summary = assortment.data?.summary;
+  const summary = assortment.data?.pages[0]?.summary;
   const refresh = () =>
     void queryClient.invalidateQueries({ queryKey: ['business'] });
+
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [debouncedSearch, filter, organizationId]);
+
+  async function applyBulk(flags: { active?: boolean; preferred?: boolean }) {
+    if (!organizationId || selectedIds.size === 0) return;
+    setBulkBusy(true);
+    setBulkError(undefined);
+    try {
+      await client.setFlagsBulk(organizationId, [...selectedIds], flags);
+      setSelectedIds(new Set());
+      refresh();
+    } catch (cause) {
+      const code = cause instanceof Error ? cause.message : '';
+      setBulkError(
+        code === 'not-found'
+          ? m.adminDisabled
+          : (m.errorCode[code] ?? m.actionFailed),
+      );
+    } finally {
+      setBulkBusy(false);
+    }
+  }
 
   if (unavailable)
     return (
@@ -70,6 +103,20 @@ export function AdminAssortment({ onClose }: { onClose: () => void }) {
       </section>
     );
 
+  if (creating)
+    return (
+      <section className="bz-admin" data-testid="admin-assortment">
+        <AdminHeader m={m} name={organization?.name} onClose={onClose} />
+        <ManualAssortmentEntry
+          onDone={() => {
+            setCreating(false);
+            refresh();
+          }}
+          onCancel={() => setCreating(false)}
+        />
+      </section>
+    );
+
   if (selected)
     return (
       <section className="bz-admin" data-testid="admin-assortment">
@@ -81,7 +128,20 @@ export function AdminAssortment({ onClose }: { onClose: () => void }) {
         >
           <ArrowLeft size={16} aria-hidden="true" /> {m.back}
         </button>
-        <AssortmentDetail row={selected} onChanged={refresh} />
+        <AssortmentDetail
+          row={selected}
+          onChanged={(action) => {
+            if (action === 'linked') {
+              const unresolved = rows.filter(
+                (candidate) =>
+                  candidate.state === 'unmatched' &&
+                  candidate.item.id !== selected.item.id,
+              );
+              setSelectedId(unresolved[0]?.item.id);
+            }
+            refresh();
+          }}
+        />
       </section>
     );
 
@@ -139,7 +199,53 @@ export function AdminAssortment({ onClose }: { onClose: () => void }) {
         >
           <Upload size={15} aria-hidden="true" /> {m.adminImport}
         </button>
+        <button
+          type="button"
+          className="a-button"
+          onClick={() => setCreating(true)}
+          data-testid="admin-manual-open"
+        >
+          <Plus size={15} aria-hidden="true" /> {m.manualEntry}
+        </button>
       </div>
+      {selectedIds.size > 0 && (
+        <div className="bz-bulk-actions" data-testid="admin-bulk-actions">
+          <strong>{m.selectedCount(selectedIds.size)}</strong>
+          <button
+            type="button"
+            className="a-button"
+            disabled={bulkBusy}
+            onClick={() => void applyBulk({ active: true })}
+          >
+            {m.bulkActivate}
+          </button>
+          <button
+            type="button"
+            className="a-button"
+            disabled={bulkBusy}
+            onClick={() => void applyBulk({ active: false })}
+          >
+            {m.bulkDeactivate}
+          </button>
+          <button
+            type="button"
+            className="a-button"
+            disabled={bulkBusy}
+            onClick={() => void applyBulk({ preferred: true })}
+          >
+            {m.bulkPrefer}
+          </button>
+          <button
+            type="button"
+            className="a-button"
+            disabled={bulkBusy}
+            onClick={() => void applyBulk({ preferred: false })}
+          >
+            {m.bulkUnprefer}
+          </button>
+        </div>
+      )}
+      {bulkError && <p role="alert">{bulkError}</p>}
       {assortment.isPending ? (
         <p aria-live="polite">{m.loading}</p>
       ) : assortment.isError ? (
@@ -150,6 +256,23 @@ export function AdminAssortment({ onClose }: { onClose: () => void }) {
         <table className="bz-admin-table" data-testid="admin-table">
           <thead>
             <tr>
+              <th scope="col">
+                <input
+                  type="checkbox"
+                  aria-label={m.selectAllVisible}
+                  checked={
+                    rows.length > 0 &&
+                    rows.every((row) => selectedIds.has(row.item.id))
+                  }
+                  onChange={(event) =>
+                    setSelectedIds(
+                      event.target.checked
+                        ? new Set(rows.map((row) => row.item.id))
+                        : new Set(),
+                    )
+                  }
+                />
+              </th>
               <th scope="col">{m.columnCode}</th>
               <th scope="col">{m.columnName}</th>
               <th scope="col">{m.columnMatch}</th>
@@ -174,6 +297,22 @@ export function AdminAssortment({ onClose }: { onClose: () => void }) {
                   }
                 }}
               >
+                <td onClick={(event) => event.stopPropagation()}>
+                  <input
+                    type="checkbox"
+                    aria-label={`${m.selectRow}: ${row.item.externalKey}`}
+                    checked={selectedIds.has(row.item.id)}
+                    onChange={(event) => {
+                      const checked = event.target.checked;
+                      setSelectedIds((current) => {
+                        const next = new Set(current);
+                        if (checked) next.add(row.item.id);
+                        else next.delete(row.item.id);
+                        return next;
+                      });
+                    }}
+                  />
+                </td>
                 <td>
                   <code>{row.item.externalKey}</code>
                 </td>
@@ -201,6 +340,16 @@ export function AdminAssortment({ onClose }: { onClose: () => void }) {
       )}
       {!assortment.isPending && rows.length === 0 && (
         <p className="bz-empty">{m.noSearchResults}</p>
+      )}
+      {assortment.hasNextPage && (
+        <button
+          type="button"
+          className="a-button bz-load-more"
+          disabled={assortment.isFetchingNextPage}
+          onClick={() => void assortment.fetchNextPage()}
+        >
+          {assortment.isFetchingNextPage ? m.loadingMore : m.loadMore}
+        </button>
       )}
     </section>
   );
@@ -252,7 +401,11 @@ function filterLabel(m: BusinessCopy, filter: AssortmentFilter): string {
       ? m.filterActive
       : filter === 'unmatched'
         ? m.filterUnmatched
-        : m.filterWithoutPrice;
+        : filter === 'without-price'
+          ? m.filterWithoutPrice
+          : filter === 'inactive'
+            ? m.filterInactive
+            : m.filterPreferred;
 }
 
 function stateLabel(

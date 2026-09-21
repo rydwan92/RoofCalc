@@ -102,7 +102,20 @@ export const organizationAssortmentItems = mysqlTable(
       table.organizationId,
       table.active,
     ),
-    index('organization_assortment_items_ean_idx').on(table.ean),
+    index('organization_assortment_items_picker_idx').on(
+      table.organizationId,
+      table.active,
+      table.preferred,
+      table.sourceName,
+    ),
+    index('organization_assortment_items_ean_idx').on(
+      table.organizationId,
+      table.ean,
+    ),
+    index('organization_assortment_items_display_name_idx').on(
+      table.organizationId,
+      table.displayNameOverride,
+    ),
     foreignKey({
       name: 'organization_assortment_item_organization_fk',
       columns: [table.organizationId],

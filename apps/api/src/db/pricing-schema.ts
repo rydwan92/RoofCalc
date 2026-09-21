@@ -11,6 +11,7 @@ import {
   varchar,
 } from 'drizzle-orm/mysql-core';
 import { utcDateTime } from './sql-datetime';
+import { organizations } from './business-schema';
 import { commercialVariants } from './schema';
 
 /**
@@ -50,6 +51,11 @@ export const priceLists = mysqlTable(
       table.organizationId,
       table.validFrom,
     ),
+    foreignKey({
+      name: 'price_list_organization_fk',
+      columns: [table.organizationId],
+      foreignColumns: [organizations.id],
+    }).onDelete('restrict'),
   ],
 );
 

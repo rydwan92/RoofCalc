@@ -1,6 +1,8 @@
 import { materialCopy, materialText } from './material-copy';
 import type { MaterialPlanRow } from './material-plan';
 import { MEMBRANE_LIMITATION_CODES } from './membrane-limitations';
+import { CommercialBadge } from '../business/CommercialBadge';
+import { OutsideAssortmentNotice } from '../business/OutsideAssortment';
 
 const BREAKDOWN = [
   'overlapArea',
@@ -17,9 +19,11 @@ const BREAKDOWN = [
 export function MembraneMaterialCard({
   row,
   locale,
+  onFindReplacement,
 }: {
   row: MaterialPlanRow;
   locale: string;
+  onFindReplacement?: () => void;
 }) {
   const m = materialCopy(locale);
   const metric = (key: string) =>
@@ -86,6 +90,16 @@ export function MembraneMaterialCard({
                   ? `${m.catalogue}${row.membraneRoll?.revisionCode ? ` · ${m.catalogRevision} ${row.membraneRoll.revisionCode}` : ''}`
                   : m.manualData}
               </span>
+              {row.product.variantId && (
+                <>
+                  <CommercialBadge variantId={row.product.variantId} />
+                  <OutsideAssortmentNotice
+                    variantId={row.product.variantId}
+                    productName={row.product.name || m.membrane}
+                    onFindReplacement={onFindReplacement}
+                  />
+                </>
+              )}
             </>
           ) : (
             <span>{m.noProduct}</span>

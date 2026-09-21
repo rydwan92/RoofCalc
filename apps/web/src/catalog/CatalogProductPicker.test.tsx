@@ -103,6 +103,7 @@ function renderPicker(
   api: CatalogClient,
   onApply = vi.fn(),
   onManual = vi.fn(),
+  confirmReplacementImpact = false,
 ) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -115,6 +116,7 @@ function renderPicker(
         onApply={onApply}
         onManual={onManual}
         onClose={() => undefined}
+        confirmReplacementImpact={confirmReplacementImpact}
       />
     </QueryClientProvider>,
   );
@@ -225,6 +227,32 @@ describe('catalogue product picker', () => {
         technicalSpecSnapshot: expect.objectContaining({ kind: 'roof-tile' }),
       }),
     );
+  });
+
+  it('explains recalculation impact before replacing an existing product', async () => {
+    const api = client();
+    const onApply = vi.fn();
+    renderPicker(api, onApply, vi.fn(), true);
+    fireEvent.click(
+      await screen.findByRole('button', { name: /Szczegóły|Details/i }),
+    );
+    const product = await screen.findByTestId('catalog-detail');
+    fireEvent.click(
+      await within(product).findByRole('button', {
+        name: /Użyj produktu|Use product/i,
+      }),
+    );
+    expect(onApply).not.toHaveBeenCalled();
+    const confirmation = await screen.findByRole('alertdialog');
+    expect(confirmation.textContent ?? '').toMatch(
+      /układ pokrycia|covering layout/i,
+    );
+    fireEvent.click(
+      within(confirmation).getByRole('button', {
+        name: /Zmień produkt|Change product/i,
+      }),
+    );
+    await waitFor(() => expect(onApply).toHaveBeenCalledTimes(1));
   });
 
   it('offers a manual fallback without exposing a raw network error', async () => {

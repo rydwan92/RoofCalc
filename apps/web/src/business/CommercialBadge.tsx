@@ -45,7 +45,13 @@ export function CommercialBadge({ variantId }: { variantId?: string }) {
       )}
       <span>
         {state.kind === 'priced'
-          ? `✓ ${m.priceAvailable}`
+          ? `✓ ${m.organizationPrice(
+              new Intl.NumberFormat(i18n.language, {
+                style: 'currency',
+                currency: state.price.currencyCode,
+              }).format(state.price.netAmountMinor / 100),
+              m.saleUnit[state.price.saleUnit] ?? state.price.saleUnit,
+            )}`
           : `⚠ ${m.noWholesalePrice}`}
       </span>
     </p>

@@ -2,7 +2,10 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { AlertTriangle, Link2, Link2Off, Search } from 'lucide-react';
-import type { OrganizationAssortmentRow } from '@cieslacalc/business-core';
+import {
+  SALE_UNITS,
+  type OrganizationAssortmentRow,
+} from '@cieslacalc/business-core';
 import { catalogClient } from '../../catalog/client';
 import { useBusiness } from '../context';
 import { businessCopy } from '../copy';
@@ -25,7 +28,7 @@ export function AssortmentDetail({
   onChanged,
 }: {
   row: OrganizationAssortmentRow;
-  onChanged: () => void;
+  onChanged: (action?: 'linked') => void;
 }) {
   const { i18n } = useTranslation();
   const m = businessCopy(i18n.language);
@@ -33,6 +36,13 @@ export function AssortmentDetail({
   const [search, setSearch] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
+  const details = useQuery({
+    queryKey: ['business', organizationId, 'assortment-detail', row.item.id],
+    queryFn: ({ signal }) =>
+      client.assortmentDetail(organizationId!, row.item.id, signal),
+    enabled: Boolean(organizationId),
+    retry: false,
+  });
 
   const candidates = useQuery({
     queryKey: ['catalog', 'products', 'admin-link', search.trim()],
@@ -46,12 +56,12 @@ export function AssortmentDetail({
     staleTime: 60_000,
   });
 
-  async function run(action: () => Promise<unknown>) {
+  async function run(action: () => Promise<unknown>, completed?: 'linked') {
     setBusy(true);
     setError(undefined);
     try {
       await action();
-      onChanged();
+      onChanged(completed);
     } catch (cause) {
       // The client throws with the server's stable error code as its message,
       // so the operator is told what actually went wrong rather than a
@@ -155,7 +165,11 @@ export function AssortmentDetail({
             )
           }
         >
-          {row.item.active ? m.deactivate : m.activate}
+          {row.item.active
+            ? row.state === 'unmatched'
+              ? m.skip
+              : m.deactivate
+            : m.activate}
         </button>
         {row.item.commercialVariantId && (
           <button
@@ -171,6 +185,23 @@ export function AssortmentDetail({
           </button>
         )}
       </div>
+
+      {row.item.commercialVariantId && (
+        <PriceEditor
+          busy={busy}
+          currencyCode={details.data?.row.price?.currencyCode ?? 'PLN'}
+          history={details.data?.priceHistory ?? []}
+          onSave={(input) =>
+            void run(async () => {
+              await client.addPrice(organizationId!, {
+                itemId: row.item.id,
+                ...input,
+              });
+              await details.refetch();
+            })
+          }
+        />
+      )}
 
       <section className="bz-link" aria-label={m.link}>
         <h4>{m.link}</h4>
@@ -198,8 +229,9 @@ export function AssortmentDetail({
                 productId={product.id}
                 busy={busy}
                 onLink={(variantId) =>
-                  void run(() =>
-                    client.link(organizationId!, row.item.id, variantId),
+                  void run(
+                    () => client.link(organizationId!, row.item.id, variantId),
+                    'linked',
                   )
                 }
               />
@@ -216,14 +248,14 @@ export function AssortmentDetail({
  * *variant*, never at a product family: colour and finish are commercial
  * identity, and the wholesaler's code refers to one of them specifically.
  */
-function LinkVariants({
+export function LinkVariants({
   productId,
   busy,
   onLink,
 }: {
   productId: string;
   busy: boolean;
-  onLink: (variantId: string) => void;
+  onLink: (variantId: string, label: string) => void;
 }) {
   const { i18n } = useTranslation();
   const m = businessCopy(i18n.language);
@@ -265,7 +297,7 @@ function LinkVariants({
             className="a-button a-primary"
             disabled={busy}
             data-testid="link-confirm"
-            onClick={() => onLink(variant.id)}
+            onClick={() => onLink(variant.id, variant.name)}
           >
             {variant.name} — {m.linkConfirm}
           </button>
@@ -273,4 +305,132 @@ function LinkVariants({
       )}
     </div>
   );
+}
+
+function PriceEditor({
+  busy,
+  currencyCode,
+  history,
+  onSave,
+}: {
+  busy: boolean;
+  currencyCode: string;
+  history: Array<{
+    entryId: string;
+    netAmountMinor: number;
+    currencyCode: string;
+    saleUnit: (typeof SALE_UNITS)[number];
+    validFrom: string;
+  }>;
+  onSave: (input: {
+    netAmountMinor: number;
+    saleUnit: (typeof SALE_UNITS)[number];
+    validFrom: string;
+    vatRateBps?: number;
+  }) => void;
+}) {
+  const { i18n } = useTranslation();
+  const m = businessCopy(i18n.language);
+  const [amount, setAmount] = useState('');
+  const [saleUnit, setSaleUnit] =
+    useState<(typeof SALE_UNITS)[number]>('piece');
+  const [vat, setVat] = useState('');
+  const [validFrom, setValidFrom] = useState(
+    new Date().toISOString().slice(0, 10),
+  );
+  const parsedAmount = Number(amount.replace(',', '.'));
+  const parsedVat = vat ? Number(vat.replace(',', '.')) : undefined;
+  const valid =
+    Number.isFinite(parsedAmount) &&
+    parsedAmount >= 0 &&
+    (parsedVat === undefined ||
+      (Number.isFinite(parsedVat) && parsedVat >= 0 && parsedVat <= 100));
+  return (
+    <section className="bz-price-editor" data-testid="price-editor">
+      <h4>{m.priceEditor}</h4>
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!valid) return;
+          onSave({
+            netAmountMinor: Math.round(parsedAmount * 100),
+            saleUnit,
+            validFrom,
+            ...(parsedVat !== undefined
+              ? { vatRateBps: Math.round(parsedVat * 100) }
+              : {}),
+          });
+          setAmount('');
+        }}
+      >
+        <label>
+          {m.netPrice}
+          <input
+            inputMode="decimal"
+            required
+            value={amount}
+            onChange={(event) => setAmount(event.target.value)}
+          />
+        </label>
+        <label>
+          {m.saleUnitLabel}
+          <select
+            value={saleUnit}
+            onChange={(event) =>
+              setSaleUnit(event.target.value as (typeof SALE_UNITS)[number])
+            }
+          >
+            {SALE_UNITS.map((unit) => (
+              <option key={unit} value={unit}>
+                {m.saleUnit[unit]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          {m.vatRate}
+          <input
+            inputMode="decimal"
+            value={vat}
+            onChange={(event) => setVat(event.target.value)}
+          />
+        </label>
+        <label>
+          {m.validFrom}
+          <input
+            type="date"
+            required
+            value={validFrom}
+            onChange={(event) => setValidFrom(event.target.value)}
+          />
+        </label>
+        <button className="a-button a-primary" disabled={busy || !valid}>
+          {m.saveNewPrice}
+        </button>
+      </form>
+      <h4>{m.priceHistory}</h4>
+      {detailsMessage(history, m.noPriceHistory)}
+      {history.length > 0 && (
+        <ol className="bz-price-history" data-testid="price-history">
+          {history.map((price) => (
+            <li key={price.entryId}>
+              <time dateTime={price.validFrom}>{price.validFrom}</time>
+              <strong>
+                {formatMoney(
+                  price.netAmountMinor,
+                  price.currencyCode || currencyCode,
+                  i18n.language,
+                )}{' '}
+                / {m.saleUnit[price.saleUnit]}
+              </strong>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  );
+}
+
+function detailsMessage(history: readonly unknown[], empty: string) {
+  return history.length === 0 ? <p className="bz-hint">{empty}</p> : null;
 }

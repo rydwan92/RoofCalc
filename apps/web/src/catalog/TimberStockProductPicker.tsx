@@ -9,6 +9,8 @@ import type { CatalogProductDetail } from '@cieslacalc/catalog-core';
 import { useTranslation } from 'react-i18next';
 import { MobileSheet } from '../assembly/MobileSheet';
 import { useMobileWorkbench } from '../assembly/mobile-workbench';
+import { BusinessAssortmentSearch } from '../business/BusinessAssortmentSearch';
+import { useBusiness } from '../business/context';
 import { catalogClient, type CatalogClient } from './client';
 import { usePriceOptions } from '../pricing/use-prices';
 import { materialCopy } from '../assembly/material-copy';
@@ -516,14 +518,63 @@ export function TimberStockProductPicker({
   const { i18n } = useTranslation();
   const m = copy[i18n.language.startsWith('pl') ? 'pl' : 'en'];
   const mobile = useMobileWorkbench();
-  const body = (
-    <PickerBody
-      client={client}
-      requiredSection={requiredSection}
-      onApply={onApply}
-      onManual={onClose}
-    />
-  );
+  const business = useBusiness();
+  const queryClient = useQueryClient();
+  const [browseCatalog, setBrowseCatalog] = useState(false);
+  const businessMode =
+    business.mode === 'business' && Boolean(business.organization);
+  const body =
+    businessMode && !browseCatalog ? (
+      <BusinessAssortmentSearch
+        kind="timber-stock"
+        onBrowseCatalog={() => setBrowseCatalog(true)}
+        onSelect={async (row) => {
+          if (!row.catalog) return;
+          const exact = await queryClient.fetchQuery({
+            queryKey: [
+              'catalog',
+              'revision',
+              row.catalog.productId,
+              row.catalog.currentRevisionId,
+            ],
+            queryFn: ({ signal }) =>
+              client.getRevision(
+                row.catalog!.productId,
+                row.catalog!.currentRevisionId,
+                signal,
+              ),
+            staleTime: Infinity,
+          });
+          const spec = exact.revision.technicalSpec;
+          if (
+            spec.kind !== 'timber-stock' ||
+            !matchesSection(requiredSection, spec.widthMm, spec.depthMm)
+          )
+            throw new Error('incompatible-section');
+          onApply({
+            lengthMm: spec.lengthMm,
+            widthMm: spec.widthMm,
+            depthMm: spec.depthMm,
+            sourceLabel: [
+              exact.manufacturer.name,
+              exact.product.name,
+              exact.revision.revisionCode,
+            ].join(' · '),
+            commercialFacts: facts(spec, m).map(
+              ([label, value]) => `${label}: ${value}`,
+            ),
+            commercialVariantId: row.catalog.variantId,
+          });
+        }}
+      />
+    ) : (
+      <PickerBody
+        client={client}
+        requiredSection={requiredSection}
+        onApply={onApply}
+        onManual={onClose}
+      />
+    );
   if (mobile)
     return (
       <MobileSheet title={m.title} onClose={onClose} expanded>

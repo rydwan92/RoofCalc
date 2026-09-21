@@ -13,6 +13,8 @@ import type { MembraneProductSelection } from '@cieslacalc/covering-core';
 import { useTranslation } from 'react-i18next';
 import { MobileSheet } from '../assembly/MobileSheet';
 import { useMobileWorkbench } from '../assembly/mobile-workbench';
+import { BusinessAssortmentSearch } from '../business/BusinessAssortmentSearch';
+import { useBusiness } from '../business/context';
 import { catalogClient, type CatalogClient } from './client';
 
 /**
@@ -395,9 +397,57 @@ export function MembraneProductPicker({
   const { i18n } = useTranslation();
   const m = copy[i18n.language.startsWith('pl') ? 'pl' : 'en'];
   const mobile = useMobileWorkbench();
-  const body = (
-    <PickerBody client={client} onApply={onApply} onManual={onManual} />
-  );
+  const business = useBusiness();
+  const queryClient = useQueryClient();
+  const [browseCatalog, setBrowseCatalog] = useState(false);
+  const businessMode =
+    business.mode === 'business' && Boolean(business.organization);
+  const body =
+    businessMode && !browseCatalog ? (
+      <BusinessAssortmentSearch
+        kind="membrane"
+        onBrowseCatalog={() => setBrowseCatalog(true)}
+        onSelect={async (row) => {
+          if (!row.catalog) return;
+          const [exact, detail] = await Promise.all([
+            queryClient.fetchQuery({
+              queryKey: [
+                'catalog',
+                'revision',
+                row.catalog.productId,
+                row.catalog.currentRevisionId,
+              ],
+              queryFn: ({ signal }) =>
+                client.getRevision(
+                  row.catalog!.productId,
+                  row.catalog!.currentRevisionId,
+                  signal,
+                ),
+              staleTime: Infinity,
+            }),
+            queryClient.fetchQuery({
+              queryKey: ['catalog', 'product', row.catalog.productId],
+              queryFn: ({ signal }) =>
+                client.getProduct(row.catalog!.productId, signal),
+              staleTime: 60_000,
+            }),
+          ]);
+          const variant = detail.variants.find(
+            (candidate) => candidate.id === row.catalog!.variantId,
+          );
+          onApply(
+            createMembraneProductSelection({
+              manufacturer: exact.manufacturer,
+              product: exact.product,
+              revision: exact.revision,
+              variant,
+            }),
+          );
+        }}
+      />
+    ) : (
+      <PickerBody client={client} onApply={onApply} onManual={onManual} />
+    );
   if (mobile)
     return (
       <MobileSheet title={m.title} onClose={onClose} expanded>

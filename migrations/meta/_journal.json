@@ -29,6 +29,13 @@
       "when": 1789934338932,
       "tag": "0003_smooth_vampiro",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1789938525101,
+      "tag": "0004_mighty_madrox",
+      "breakpoints": true
     }
   ]
 }

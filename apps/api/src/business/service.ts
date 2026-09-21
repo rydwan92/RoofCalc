@@ -1,9 +1,8 @@
 import {
   assortmentState,
-  assortmentSummary,
   resolveOrganizationItemPrice,
-  sortForPicker,
   type AssortmentQuery,
+  type AssortmentDetailResponse,
   type Organization,
   type OrganizationAssortmentItem,
   type OrganizationAssortmentResponse,
@@ -70,30 +69,78 @@ export class BusinessService {
     atDate?: string,
   ): Promise<OrganizationAssortmentResponse> {
     const organization = await this.requireOrganization(organizationId);
-    const items =
-      await this.repository.assortmentForOrganization(organizationId);
-    const { rows } = await this.decorate(organization, items, atDate);
-
-    const filtered = rows
-      .filter((row) => matchesFilter(row, query))
-      .filter((row) => matchesSearch(row, query.q));
-    const ordered = sortForPicker(
-      filtered.map((row) => row.item),
-      (item) => item.displayNameOverride ?? item.sourceName,
-    ).map((item) => filtered.find((row) => row.item.id === item.id)!);
-
     const offset = decodeCursor(query.cursor);
-    const page = ordered.slice(offset, offset + query.limit);
-    const nextOffset = offset + query.limit;
+    const effectiveDate = atDate ?? new Date().toISOString().slice(0, 10);
+    const [page, summary] = await Promise.all([
+      this.repository.searchAssortment(
+        organizationId,
+        query,
+        offset,
+        effectiveDate,
+      ),
+      this.repository.assortmentSummaryForOrganization(
+        organizationId,
+        effectiveDate,
+      ),
+    ]);
+    const { rows } = await this.decorate(
+      organization,
+      page.items,
+      effectiveDate,
+    );
     return {
       organization,
-      items: page,
-      summary: assortmentSummary(items, organizationId, (item) =>
-        rows.some((row) => row.item.id === item.id && row.price !== undefined),
-      ),
-      ...(nextOffset < ordered.length
-        ? { nextCursor: String(nextOffset) }
-        : {}),
+      items: rows,
+      summary,
+      ...(page.nextCursor ? { nextCursor: page.nextCursor } : {}),
+    };
+  }
+
+  async assortmentDetail(
+    organizationId: string,
+    itemId: string,
+  ): Promise<AssortmentDetailResponse> {
+    const organization = await this.requireOrganization(organizationId);
+    const item = await this.repository.assortmentItemForOrganization(
+      organizationId,
+      itemId,
+    );
+    if (!item) throw new BusinessServiceError('assortment-item-not-found');
+    const { rows } = await this.decorate(organization, [item]);
+    const ownLists = (
+      await this.repository.visiblePriceLists(organizationId)
+    ).filter((list) => list.organizationId === organizationId);
+    const entries = item.commercialVariantId
+      ? await this.repository.entriesForPriceLists(
+          ownLists.map((list) => list.id),
+          [item.commercialVariantId],
+        )
+      : [];
+    const lists = new Map(ownLists.map((list) => [list.id, list]));
+    return {
+      row: rows[0]!,
+      priceHistory: entries
+        .map((entry) => {
+          const list = lists.get(entry.priceListId);
+          return list
+            ? {
+                priceListId: list.id,
+                priceListLabel: list.ownerLabel,
+                entryId: entry.id,
+                netAmountMinor: entry.netAmountMinor,
+                currencyCode: list.currencyCode,
+                saleUnit: entry.saleUnit,
+                validFrom: entry.validFrom,
+                ...(entry.validTo ? { validTo: entry.validTo } : {}),
+              }
+            : undefined;
+        })
+        .filter((price): price is NonNullable<typeof price> => Boolean(price))
+        .sort(
+          (a, b) =>
+            b.validFrom.localeCompare(a.validFrom) ||
+            a.entryId.localeCompare(b.entryId),
+        ),
     };
   }
 
@@ -117,8 +164,10 @@ export class BusinessService {
       organization,
       pricePolicy: 'organization-only',
     };
-    const { priceLists, entries } = await this.priceData(organizationId);
     const wanted = new Set(variantIds);
+    const { priceLists, entries } = await this.priceData(organizationId, [
+      ...wanted,
+    ]);
     return {
       organizationId,
       items: [...wanted].map((commercialVariantId) => {
@@ -149,10 +198,11 @@ export class BusinessService {
     };
   }
 
-  private async priceData(organizationId: string) {
+  private async priceData(organizationId: string, variantIds?: string[]) {
     const priceLists = await this.repository.visiblePriceLists(organizationId);
     const entries = await this.repository.entriesForPriceLists(
       priceLists.map((list) => list.id),
+      variantIds,
     );
     return { priceLists, entries };
   }
@@ -176,7 +226,10 @@ export class BusinessService {
     const byVariant = new Map<string, AssortmentCatalogFacts>(
       facts.map((entry) => [entry.variantId, entry]),
     );
-    const { priceLists, entries } = await this.priceData(organization.id);
+    const { priceLists, entries } = await this.priceData(
+      organization.id,
+      variantIds,
+    );
     const context: OrganizationContext = {
       organization,
       pricePolicy: 'organization-only',
@@ -215,51 +268,6 @@ function toPricePayload(price: ResolvedOrganizationPrice) {
     validFrom: price.validFrom,
     ...(price.validTo ? { validTo: price.validTo } : {}),
   };
-}
-
-function matchesFilter(
-  row: OrganizationAssortmentRow,
-  query: AssortmentQuery,
-): boolean {
-  if (query.kind && row.catalog?.kind !== query.kind) return false;
-  if (
-    query.manufacturerId &&
-    row.catalog?.manufacturerId !== query.manufacturerId
-  )
-    return false;
-  if (query.preferredOnly && !row.item.preferred) return false;
-  switch (query.filter) {
-    case 'active':
-      return row.state !== 'inactive';
-    case 'unmatched':
-      return row.state === 'unmatched';
-    case 'without-price':
-      return row.state !== 'inactive' && row.price === undefined;
-    case 'all':
-      return true;
-  }
-}
-
-/**
- * Searches the organization's own words *and* the catalogue identity, because
- * a salesperson types either the warehouse code or the product name (§15).
- */
-function matchesSearch(
-  row: OrganizationAssortmentRow,
-  q: string | undefined,
-): boolean {
-  if (!q) return true;
-  const needle = q.toLowerCase();
-  return [
-    row.item.externalKey,
-    row.item.sourceName,
-    row.item.displayNameOverride,
-    row.item.ean,
-    row.catalog?.productName,
-    row.catalog?.manufacturerName,
-    row.catalog?.variantName,
-    row.catalog?.variantSku,
-  ].some((value) => value?.toLowerCase().includes(needle));
 }
 
 /** Opaque offset cursor, same convention as the catalogue search API. */

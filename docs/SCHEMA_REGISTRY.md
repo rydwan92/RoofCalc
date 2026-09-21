@@ -282,9 +282,9 @@ revision.technicalSpec.kind`) generalizes for free once both enums widen.
 
 | | |
 | --- | --- |
-| Owner | `apps/api/src/db/schema.ts` + `apps/api/src/db/pricing-schema.ts` (Drizzle), generated into `migrations/` |
-| Current state | three migrations: `0000_catalog_platform`, `0001_spooky_rocket_racer` (V34C pricing tables), `0002_colorful_stranger` (V35 pricing provenance columns); journal `migrations/meta/_journal.json` |
-| Tables | `manufacturers`, `technical_product_families`, `technical_product_revisions`, `commercial_variants`, `catalog_import_batches`, `price_lists`, `price_list_entries`, `pricing_import_batches` |
+| Owner | `apps/api/src/db/schema.ts` + `apps/api/src/db/pricing-schema.ts` + `apps/api/src/db/business-schema.ts` (Drizzle), generated into `migrations/` |
+| Current state | five migrations through `0004_mighty_madrox`; journal `migrations/meta/_journal.json` |
+| Tables | Global catalogue/pricing tables plus `organizations`, `organization_assortment_items`, and `organization_import_batches` |
 | Commands | `pnpm --filter @cieslacalc/api db:generate` / `db:migrate` |
 
 **Compatibility expectations**
@@ -309,6 +309,11 @@ revision.technicalSpec.kind`) generalizes for free once both enums widen.
 `price_list_entries` — `source_amount_basis varchar(8)` and
 `source_vat_rate_bps int` (§11's `sourceAmountBasis`/`sourceVatRateBps`).
 Purely additive; every pre-V35 row reads back with both `undefined`.
+
+**V54/V55 note**: `0003_smooth_vampiro` adds organization-owned assortment and
+price-list ownership. `0004_mighty_madrox` adds bounded-search indexes and the
+missing `price_lists.organization_id → organizations.id` ownership constraint;
+it changes no project document or stored technical snapshot.
 
 ---
 

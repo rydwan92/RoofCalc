@@ -273,6 +273,38 @@ describe('assortment filters and search', () => {
     ]);
   });
 
+  it('supports explicit state, active, preferred, price and manufacturer filters', async () => {
+    const { store, service: api } = service();
+    store.state.assortment[2]!.active = false;
+    expect(
+      (
+        await api.assortment(
+          'org:a',
+          query({ state: 'inactive', active: 'false' }),
+          '2026-09-20',
+        )
+      ).items.map((row) => row.item.externalKey),
+    ).toEqual(['A-DACH-002']);
+    expect(
+      (
+        await api.assortment(
+          'org:a',
+          query({ preferred: 'true', hasPrice: 'true' }),
+          '2026-09-20',
+        )
+      ).items.map((row) => row.item.externalKey),
+    ).toEqual(['A-DACH-001']);
+    expect(
+      (
+        await api.assortment(
+          'org:a',
+          query({ manufacturer: 'swiss' }),
+          '2026-09-20',
+        )
+      ).items.map((row) => row.item.externalKey),
+    ).toEqual(['A-DACH-001', 'A-DACH-002']);
+  });
+
   it('pages with an opaque cursor and rejects a malformed one', async () => {
     const { service: api } = service();
     const first = await api.assortment(
@@ -292,6 +324,30 @@ describe('assortment filters and search', () => {
     await expect(
       api.assortment('org:a', query({ cursor: 'nope' }), '2026-09-20'),
     ).rejects.toMatchObject({ code: 'business-invalid-request' });
+  });
+
+  it('finds an SKU near the end of a 5,000-row assortment without returning the dataset', async () => {
+    const { store, service: api } = service();
+    store.state.assortment.push(
+      ...Array.from({ length: 5_000 }, (_, index) => ({
+        id: `oai:a:bulk:${index}`,
+        organizationId: 'org:a',
+        externalKey: `BULK-${String(index).padStart(5, '0')}`,
+        sourceName: `Produkt hurtowni ${index}`,
+        active: true,
+        preferred: false,
+      })),
+    );
+    const result = await api.assortment(
+      'org:a',
+      query({ q: 'BULK-04999', limit: 40 }),
+      '2026-09-20',
+    );
+    expect(result.items.map((row) => row.item.externalKey)).toEqual([
+      'BULK-04999',
+    ]);
+    expect(result.nextCursor).toBeUndefined();
+    expect(result.summary.total).toBe(5_003);
   });
 });
 

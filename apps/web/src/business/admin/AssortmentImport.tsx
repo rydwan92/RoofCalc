@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ASSORTMENT_IMPORT_FIELDS,
@@ -40,6 +40,11 @@ export function AssortmentImport({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const [applied, setApplied] = useState(false);
+
+  useEffect(() => {
+    setPreview(undefined);
+    setApplied(false);
+  }, [organizationId]);
 
   async function readFile(file: File) {
     const text = await readFileText(file);
@@ -128,12 +133,14 @@ export function AssortmentImport({
                 <select
                   value={mapping[field] ?? ''}
                   data-testid={`map-${field}`}
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    setPreview(undefined);
+                    setApplied(false);
                     setMapping((current) => ({
                       ...current,
                       [field]: event.target.value || undefined,
-                    }))
-                  }
+                    }));
+                  }}
                 >
                   <option value="">{m.mappingIgnore}</option>
                   {headers.map((header) => (
