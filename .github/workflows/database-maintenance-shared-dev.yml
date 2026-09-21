@@ -1,0 +1,88 @@
+name: Database maintenance - shared DEV
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Read-only check or explicit shared-DEV mutation
+        required: true
+        type: choice
+        default: doctor
+        options:
+          - doctor
+          - migrate
+          - seed
+          - bootstrap
+          - smoke
+      apply_confirmation:
+        description: Type shared-dev for migrate, seed or bootstrap
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  maintain:
+    name: ${{ inputs.operation }} shared DEV
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: shared-dev
+    env:
+      DATABASE_URL: ${{ secrets.ROOFCALC_DEV_DATABASE_URL }}
+      ROOFCALC_DB_ENV: shared-dev
+      ROOFCALC_DEV_APP_URL: ${{ vars.ROOFCALC_DEV_APP_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Validate shared-DEV mutation acknowledgement
+        if: contains(fromJSON('["migrate","seed","bootstrap"]'), inputs.operation)
+        shell: bash
+        run: |
+          test "${{ inputs.apply_confirmation }}" = "shared-dev" || {
+            echo "Mutating operations require apply_confirmation=shared-dev."
+            exit 1
+          }
+          pnpm --filter @cieslacalc/api exec tsx src/cli/setup-target.ts shared-dev --apply --confirm shared-dev
+
+      - name: Doctor
+        if: inputs.operation == 'doctor'
+        run: pnpm db:doctor
+
+      - name: Migrate
+        if: inputs.operation == 'migrate'
+        run: pnpm --filter @cieslacalc/api db:migrate
+
+      - name: Seed catalogue, prices and business demo twice
+        if: inputs.operation == 'seed'
+        run: |
+          pnpm --filter @cieslacalc/api db:seed
+          pnpm --filter @cieslacalc/api db:seed-business
+          pnpm --filter @cieslacalc/api db:seed
+          pnpm --filter @cieslacalc/api db:seed-business
+
+      - name: Bootstrap shared DEV
+        if: inputs.operation == 'bootstrap'
+        run: pnpm db:setup:shared-dev -- --apply --confirm shared-dev
+
+      - name: Smoke check
+        if: inputs.operation == 'smoke'
+        run: pnpm --filter @cieslacalc/api db:smoke-check
+
+      - name: Read-only final status
+        run: pnpm db:status
+
+      - name: Verify deployed Worker reads the same seeded database
+        if: inputs.operation == 'bootstrap' && env.ROOFCALC_DEV_APP_URL != ''
+        shell: bash
+        run: |
+          health="$(curl --fail --silent --show-error "$ROOFCALC_DEV_APP_URL/api/health")"
+          node -e 'const value=JSON.parse(process.argv[1]); if(value.database!=="connected") process.exit(1)' "$health"
+          catalogue="$(curl --fail --silent --show-error "$ROOFCALC_DEV_APP_URL/api/catalog/products?kind=roof-tile&limit=1")"
+          node -e 'const value=JSON.parse(process.argv[1]); if(!Array.isArray(value.items)||value.items.length<1) process.exit(1)' "$catalogue"

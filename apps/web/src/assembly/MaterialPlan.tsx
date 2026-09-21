@@ -549,6 +549,19 @@ export function MaterialPlan({
                           ? m.procurement
                           : basis(row)}
                       </span>
+                      {row.battenSource && (
+                        <p data-testid="material-batten-source">
+                          <small>{m.installationRequirement}</small>{' '}
+                          <strong>
+                            {row.battenSource.owner === 'auto'
+                              ? m.sourceAutoBadge
+                              : m.sourceManualBadge}
+                            {row.battenSource.productLabel
+                              ? ` — ${row.battenSource.productLabel}`
+                              : ''}
+                          </strong>
+                        </p>
+                      )}
                       {row.partial && (
                         <span className="mp-badge" data-status="warning">
                           {m.partial}

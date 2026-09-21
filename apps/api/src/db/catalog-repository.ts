@@ -300,6 +300,36 @@ export class DrizzleCatalogRepository
       : undefined;
   }
 
+  async status() {
+    const [products, revisions, variants, lastImport] = await Promise.all([
+      this.db
+        .select({ count: sql<number>`count(*)` })
+        .from(technicalProductFamilies)
+        .where(eq(technicalProductFamilies.active, true)),
+      this.db
+        .select({ count: sql<number>`count(*)` })
+        .from(technicalProductRevisions),
+      this.db
+        .select({ count: sql<number>`count(*)` })
+        .from(commercialVariants)
+        .where(eq(commercialVariants.active, true)),
+      this.db
+        .select({ completedAt: catalogImportBatches.completedAt })
+        .from(catalogImportBatches)
+        .where(eq(catalogImportBatches.status, 'completed'))
+        .orderBy(desc(catalogImportBatches.completedAt))
+        .limit(1),
+    ]);
+    return {
+      technicalProducts: Number(products[0]?.count ?? 0),
+      technicalRevisions: Number(revisions[0]?.count ?? 0),
+      commercialVariants: Number(variants[0]?.count ?? 0),
+      ...(lastImport[0]?.completedAt
+        ? { lastImportAt: lastImport[0].completedAt }
+        : {}),
+    };
+  }
+
   async readImportState(ids: {
     manufacturerIds: string[];
     productIds: string[];

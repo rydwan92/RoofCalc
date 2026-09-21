@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Plus, Upload } from 'lucide-react';
 import {
@@ -13,6 +13,7 @@ import { businessCopy, type BusinessCopy } from '../copy';
 import { AssortmentDetail } from './AssortmentDetail';
 import { AssortmentImport } from './AssortmentImport';
 import { ManualAssortmentEntry } from './ManualAssortmentEntry';
+import { catalogClient, type CatalogClient } from '../../catalog/client';
 
 /**
  * ADMINISTRACJA → ASORTYMENT (§19, §37).
@@ -26,7 +27,13 @@ import { ManualAssortmentEntry } from './ManualAssortmentEntry';
  * that gate is closed the screen still works as a read-only view and says so,
  * rather than offering buttons that will fail.
  */
-export function AdminAssortment({ onClose }: { onClose: () => void }) {
+export function AdminAssortment({
+  onClose,
+  catalog = catalogClient,
+}: {
+  onClose: () => void;
+  catalog?: CatalogClient;
+}) {
   const { i18n } = useTranslation();
   const m = businessCopy(i18n.language);
   const { organization, organizationId, client, unavailable } = useBusiness();
@@ -44,6 +51,12 @@ export function AdminAssortment({ onClose }: { onClose: () => void }) {
     filter,
     ...(debouncedSearch ? { q: debouncedSearch } : {}),
     limit: 50,
+  });
+  const catalogStatus = useQuery({
+    queryKey: ['catalog', 'system-status'],
+    queryFn: ({ signal }) => catalog.status!(signal),
+    enabled: Boolean(catalog.status),
+    retry: false,
   });
 
   const rows = useMemo(
@@ -148,6 +161,47 @@ export function AdminAssortment({ onClose }: { onClose: () => void }) {
   return (
     <section className="bz-admin" data-testid="admin-assortment">
       <AdminHeader m={m} name={organization?.name} onClose={onClose} />
+      <section className="bz-system-status" data-testid="catalog-system-status">
+        <div>
+          <strong>{m.catalogData}</strong>
+          <span>
+            {catalogStatus.isError
+              ? m.databaseUnavailable
+              : catalogStatus.data
+                ? m.databaseConnected
+                : '…'}
+          </span>
+        </div>
+        <Count
+          label={m.technicalProducts}
+          value={catalogStatus.data?.technicalProducts}
+        />
+        <Count
+          label={m.technicalRevisions}
+          value={catalogStatus.data?.technicalRevisions}
+        />
+        <Count
+          label={m.commercialVariants}
+          value={catalogStatus.data?.commercialVariants}
+        />
+        <Count
+          label={m.priceEntries}
+          value={
+            summary
+              ? Math.max(
+                  0,
+                  summary.total - summary.inactive - summary.withoutPrice,
+                )
+              : undefined
+          }
+        />
+        <Count label={m.countAssortment} value={summary?.total} />
+        {catalogStatus.data?.lastImportAt && (
+          <small>
+            {m.lastImport}: {catalogStatus.data.lastImportAt}
+          </small>
+        )}
+      </section>
       <div className="bz-dashboard" data-testid="admin-dashboard">
         <Count label={m.countAssortment} value={summary?.total} />
         <Count label={m.countMatched} value={summary?.matched} />

@@ -33,6 +33,14 @@ export interface CatalogRepository {
     productId: string,
     revisionId: string,
   ): Promise<CatalogRevisionDetail | undefined>;
+  status(): Promise<CatalogStatus>;
+}
+
+export interface CatalogStatus {
+  technicalProducts: number;
+  technicalRevisions: number;
+  commercialVariants: number;
+  lastImportAt?: string;
 }
 
 export interface CatalogImportState {

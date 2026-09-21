@@ -28,6 +28,9 @@
     "db:down": "docker compose down",
     "db:bootstrap": "pnpm --filter @cieslacalc/api db:bootstrap",
     "db:doctor": "pnpm --filter @cieslacalc/api db:doctor",
+    "db:status": "pnpm --filter @cieslacalc/api db:status",
+    "db:setup:local": "pnpm --filter @cieslacalc/api db:setup:local",
+    "db:setup:shared-dev": "pnpm --filter @cieslacalc/api db:setup:shared-dev",
     "dev:full": "pnpm db:bootstrap && pnpm dev",
     "dev:remote": "pnpm db:doctor && pnpm dev",
     "deploy:cloudflare": "pnpm build:edge && pnpm --filter @cieslacalc/api deploy:cloudflare"

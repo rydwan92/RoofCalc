@@ -157,6 +157,7 @@ const pl = {
   piecePricingInCost: 'Cenę za sztukę każdej długości ustalisz w kosztorysie.',
   sourceCatalogueBadge: 'KATALOG',
   sourceManualBadge: 'RĘCZNIE',
+  sourceAutoBadge: 'AUTO',
   // V48 purchase-plan metrics.
   installationRequirement: 'Wymaganie montażowe',
   purchasedLength: 'Kupiona długość',
@@ -431,6 +432,7 @@ const en: typeof pl = {
   piecePricingInCost: 'Price each commercial length per piece in the estimate.',
   sourceCatalogueBadge: 'CATALOGUE',
   sourceManualBadge: 'MANUAL',
+  sourceAutoBadge: 'AUTO',
   // V48 purchase-plan metrics.
   installationRequirement: 'Installation requirement',
   purchasedLength: 'Purchased length',

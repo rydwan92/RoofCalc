@@ -24,6 +24,7 @@ import { BusinessAssortmentPicker } from './BusinessAssortmentPicker';
 import { BusinessHeader } from './BusinessHeader';
 import { OutsideAssortmentNotice } from './OutsideAssortment';
 import { guessMapping } from './admin/AssortmentImport';
+import { createCatalogProductSelection } from '@cieslacalc/catalog-core';
 
 const ORGANIZATION: Organization = {
   id: 'org:demo',
@@ -364,6 +365,80 @@ describe('business product picker', () => {
       await screen.findByText(/chwilowo niedostępne|temporarily unavailable/i),
     ).toBeTruthy();
   });
+
+  it('creates the same technical selection as the global catalogue path', async () => {
+    const exact = {
+      manufacturer: {
+        id: 'manufacturer:swissporton',
+        slug: 'swissporton',
+        name: 'swissporTON',
+        active: true,
+      },
+      product: {
+        id: 'product:swissporton:koda',
+        manufacturerId: 'manufacturer:swissporton',
+        slug: 'koda',
+        name: 'KODA',
+        coveringKind: 'roof-tile' as const,
+        active: true,
+      },
+      revision: {
+        id: 'revision:koda:1',
+        productId: 'product:swissporton:koda',
+        revisionCode: 'r1',
+        technicalSpec: {
+          schemaVersion: 1 as const,
+          kind: 'roof-tile' as const,
+          physicalWidthMm: 304,
+          physicalLengthMm: 503,
+          installationModes: [
+            {
+              id: 'standard',
+              coverWidthMm: 260,
+              gaugeRangeMm: { min: 390, max: 430 },
+            },
+          ],
+        },
+      },
+      variant: {
+        id: KODA,
+        productId: 'product:swissporton:koda',
+        name: 'Antracytowa angoba',
+        active: true,
+      },
+    };
+    const onApply = vi.fn();
+    const user = userEvent.setup();
+    renderBusiness(
+      <BusinessAssortmentPicker
+        kind="roof-tile"
+        onApply={onApply}
+        onBrowseCatalog={vi.fn()}
+        catalog={
+          {
+            ...catalogStub,
+            getRevision: () => Promise.resolve(exact),
+            getProduct: () =>
+              Promise.resolve({
+                manufacturer: exact.manufacturer,
+                product: exact.product,
+                currentRevision: exact.revision,
+                variants: [exact.variant],
+              }),
+          } as never
+        }
+      />,
+    );
+    const row = (await screen.findAllByTestId('business-picker-row'))[0]!;
+    await user.click(within(row).getByRole('button', { name: /Użyj|Use/i }));
+    await waitFor(() => expect(onApply).toHaveBeenCalledTimes(1));
+    const businessSelection = onApply.mock.calls[0]![0];
+    const globalSelection = createCatalogProductSelection(exact);
+    expect(businessSelection).toEqual(globalSelection);
+    expect(businessSelection.technicalSpecSnapshot).toEqual(
+      globalSelection.technicalSpecSnapshot,
+    );
+  });
 });
 
 describe('outside assortment', () => {
@@ -410,6 +485,32 @@ describe('outside assortment', () => {
 });
 
 describe('admin assortment', () => {
+  it('shows read-only catalogue/database status beside business counts', async () => {
+    renderBusiness(
+      <AdminAssortment
+        onClose={vi.fn()}
+        catalog={
+          {
+            status: () =>
+              Promise.resolve({
+                technicalProducts: 52,
+                technicalRevisions: 52,
+                commercialVariants: 40,
+                lastImportAt: '2026-09-21T12:00:00.000Z',
+              }),
+          } as never
+        }
+      />,
+    );
+    const status = await screen.findByTestId('catalog-system-status');
+    await waitFor(() =>
+      expect(status.textContent ?? '').toMatch(/Połączona|Connected/i),
+    );
+    expect(status.textContent ?? '').toContain('52');
+    expect(status.textContent ?? '').toContain('40');
+    expect(status.textContent ?? '').toContain('2026-09-21');
+  });
+
   it('shows the dashboard counts and every row', async () => {
     renderBusiness(<AdminAssortment onClose={vi.fn()} />);
     const rows = await screen.findAllByTestId('admin-row');

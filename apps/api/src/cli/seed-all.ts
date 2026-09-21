@@ -8,6 +8,10 @@ import { PricingImporter } from '../pricing/importer';
 import { createCatalogDatabase } from '../db/client';
 import { DrizzleCatalogRepository } from '../db/catalog-repository';
 import { DrizzlePricingRepository } from '../db/pricing-repository';
+import {
+  CATALOGUE_SEED_BATCHES,
+  PRICING_SEED_BATCHES,
+} from '../data/seed-manifest';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const BATCH_DIR = resolve(here, '../data/import-batches');
@@ -24,37 +28,6 @@ const BATCH_DIR = resolve(here, '../data/import-batches');
  * Earlier V35 batches may temporarily update mutable family/variant rows
  * before the later correction batch restores their final values.
  */
-const CATALOG_BATCHES = [
-  'tiles-2026-09.json',
-  'tiles-2026-09-v35.json',
-  'membranes-2026-09.json',
-  'timber-stock-2026-09.json',
-  // V39: the first real metal roofing products. The modular-sheet catalogue
-  // was empty before this, so the covering picker could only offer manual
-  // entry for blachodachówka and blacha trapezowa.
-  'metal-sheets-2026-09.json',
-  'metal-roofing-additions-2026-09-v42.json',
-  // V49: verified batten-sized timber with source-declared applications.
-  // Additive to the V35 timber batch, which it never touches.
-  'timber-linear-stock-2026-09.json',
-  // V50: tile colour variants with source-backed packaging, and system
-  // accessories (ridge demand, verge tiles) as their own catalogue kind.
-  'tiles-commercial-2026-09-v50.json',
-  // V51: one real gutter system (Galeco STAL²) as roof-drainage-component
-  // revisions, technical data only. No price batch: no net price was found.
-  'drainage-galeco-stal2-2026-09-v51.json',
-  // V52: ridge tape / ridge starter (swissporTON) and a first roof-window
-  // slice (VELUX MK04/MK06, EDW/EDS). Technical only; no price batch.
-  'roof-system-2026-09-v52.json',
-] as const;
-const PRICING_BATCHES = [
-  'prices-2026-09.json',
-  'timber-prices-2026-09.json',
-  'metal-prices-ruukki-2026-04-28.json',
-  // V49: only prices whose source stated the tax basis (BAT, VAT 23%).
-  'timber-linear-prices-2026-09-18.json',
-] as const;
-
 async function main() {
   const apply = process.argv.includes('--apply');
   const connection = createCatalogDatabase();
@@ -65,7 +38,7 @@ async function main() {
     const catalogImporter = new CatalogImporter(
       new DrizzleCatalogRepository(connection.db),
     );
-    for (const file of CATALOG_BATCHES) {
+    for (const file of CATALOGUE_SEED_BATCHES) {
       const contents = await readFile(resolve(BATCH_DIR, file), 'utf8');
       const batch = catalogImportBatchV1Schema.parse(JSON.parse(contents));
       const report = await catalogImporter.import(batch, { apply });
@@ -76,7 +49,7 @@ async function main() {
     const pricingImporter = new PricingImporter(
       new DrizzlePricingRepository(connection.db),
     );
-    for (const file of PRICING_BATCHES) {
+    for (const file of PRICING_SEED_BATCHES) {
       const contents = await readFile(resolve(BATCH_DIR, file), 'utf8');
       const batch = priceImportBatchV1Schema.parse(JSON.parse(contents));
       const report = await pricingImporter.import(batch, { apply });

@@ -45,6 +45,10 @@ export class CatalogService {
     return this.repository.listManufacturers();
   }
 
+  status() {
+    return this.repository.status();
+  }
+
   async searchProducts(
     input: CatalogSearchQuery,
   ): Promise<{ items: CatalogProductSummary[]; nextCursor?: string }> {

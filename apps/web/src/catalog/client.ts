@@ -9,7 +9,7 @@ import {
   type CatalogSearchQuery,
   type Manufacturer,
 } from '@cieslacalc/catalog-core';
-import type { z } from 'zod';
+import { z } from 'zod';
 import { resolveApiBaseUrl } from '../api-base';
 
 export class CatalogClientError extends Error {
@@ -19,6 +19,7 @@ export class CatalogClientError extends Error {
 }
 
 export interface CatalogClient {
+  status?(signal?: AbortSignal): Promise<CatalogSystemStatus>;
   listManufacturers(signal?: AbortSignal): Promise<Manufacturer[]>;
   searchProducts(
     query: CatalogSearchQuery,
@@ -31,6 +32,16 @@ export interface CatalogClient {
     signal?: AbortSignal,
   ): Promise<CatalogRevisionDetail>;
 }
+
+export const catalogSystemStatusSchema = z
+  .object({
+    technicalProducts: z.number().int().nonnegative(),
+    technicalRevisions: z.number().int().nonnegative(),
+    commercialVariants: z.number().int().nonnegative(),
+    lastImportAt: z.string().optional(),
+  })
+  .strict();
+export type CatalogSystemStatus = z.infer<typeof catalogSystemStatusSchema>;
 
 async function requestJson<T>(
   url: string,
@@ -71,6 +82,14 @@ export class HttpCatalogClient implements CatalogClient {
         signal,
       )
     ).items;
+  }
+
+  status(signal?: AbortSignal) {
+    return requestJson(
+      `${this.baseUrl}/status`,
+      catalogSystemStatusSchema,
+      signal,
+    );
   }
 
   searchProducts(query: CatalogSearchQuery, signal?: AbortSignal) {

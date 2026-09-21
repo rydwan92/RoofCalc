@@ -13,10 +13,13 @@
     "pricing:import": "tsx src/cli/import-pricing.ts",
     "db:wait": "tsx src/cli/wait-for-db.ts",
     "db:doctor": "tsx src/cli/doctor.ts",
+    "db:status": "tsx src/cli/status.ts",
     "db:seed": "tsx src/cli/seed-all.ts --apply",
     "db:seed-business": "tsx src/cli/seed-business.ts --apply",
     "db:smoke-check": "tsx src/cli/smoke-check.ts",
-    "db:bootstrap": "pnpm db:wait && pnpm db:migrate && pnpm db:seed && pnpm db:seed-business && pnpm db:smoke-check",
+    "db:bootstrap": "pnpm db:wait && pnpm db:migrate && pnpm db:seed && pnpm db:seed-business && pnpm db:smoke-check && pnpm db:status",
+    "db:setup:local": "tsx src/cli/setup-database.ts local",
+    "db:setup:shared-dev": "tsx src/cli/setup-database.ts shared-dev",
     "deploy:cloudflare": "wrangler deploy --config ../../wrangler.jsonc"
   },
   "dependencies": {

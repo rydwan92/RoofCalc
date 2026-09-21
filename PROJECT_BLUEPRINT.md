@@ -1297,25 +1297,44 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
-**Iteration:** `055 — wholesale workbench MVP`
+**Iteration:** `056 — covering/batten reliability and database bootstrap`
 
-**Status:** `IMPLEMENTED — validated, uncommitted`
+**Status:** `IMPLEMENTED — green locally; shared-DEV bootstrap awaits valid credentials`
 
-**Completed:** removed the tracked Wrangler connection string and added a production-config secret regression test; restored the V54 formatting baseline. Assortment reads are bounded server-side queries with debounced prefix search, explicit filters, deterministic preferred-first ordering, aggregate summary and cursor paging. The reusable business picker powers covering, membrane and catalogue-backed timber flows; unsupported roof-system/drainage/accessory flows were not given fake catalogue products. Saved technical products remain valid outside the company assortment, with explicit replacement and pre-apply recalculation impact.
+**Starting point:** clean `main` at `b5a137596a4ab80e2602c53a078f51bb1d9a371b` (`v55`). Baseline `pnpm verify` passed (145 files + 1 skipped; 1601 tests + 11 skipped; web/API/edge builds green) and `pnpm test:architecture` passed 41/41.
 
-**Admin:** scalable table/search/paging, unmatched queue with next-item focus, activate/deactivate/prefer bulk actions, manual item creation with explicit catalogue variant, immutable manual price versions, current-price resolution and compact history. CSV preview is invalidated after input changes; database apply writes assortment, prices and audit in one transaction. Material Plan shows organization SKU/net price and separates technical vs commercial attention; Cost keeps organization-only pricing as the Business default.
+**Definition of Ready:**
 
-**Schema / migration:** `0004_mighty_madrox.sql` adds picker/search indexes and the `price_lists.organization_id → organizations.id` FK; `SCHEMA_REGISTRY.md` updated. Existing project documents are unchanged.
+1. **User problem:** a roofer must be able to choose or replace a real covering and immediately trust that battens, material evidence and commercial planning describe that same product; developers need one safe, obvious way to inspect and initialize local/shared-DEV data.
+2. **Domain owner:** existing `covering-core`, `roof-math` and the web `batten-workflow` composition keep technical ownership; `apps/api` owns seed manifests, target safety, status and smoke checks. No second workflow or geometry engine is introduced.
+3. **Canonical persistence:** covering selection and the existing batten intent remain canonical; all status, compatibility, seed state and admin database health are derived/read-only. Transient picker and status UI stay out of the document.
+4. **Schema / migration:** no project-document or SQL schema change is planned. Existing V1 projects must still open; seed batches and migrations 0001–0004 remain immutable.
+5. **Undo / Redo / history:** first covering + safe Auto setup and product replacement remain one `setCoveringAssignments` history entry. Picker previews and DB/status reads create none; no gesture transaction is needed.
+6. **Quantity:** the existing resolved batten layout remains the only source. Downstream quantities are trusted only when the shared workflow is complete; unresolved Auto must not retain an exact commercial result.
+7. **Procurement:** no new allowance or fabrication-blank meaning. Linear procurement receives only existing explicit installable-piece evidence and infers no covering rule.
+8. **Catalogue:** real existing import batches are the starter data. Project calculations continue from stored technical snapshots; organization assortment may add SKU/price/status only, never change the technical snapshot.
+9. **Future cost layer:** gauge/layout stay upstream of commerce. Price, currency, waste and margin do not enter geometry, quantity or procurement.
+10. **Offline behaviour:** saved snapshots, manual covering and local solvers continue to work without SQL/network; only catalogue/business browsing and read-only database status degrade.
+11. **Mobile UX:** the same covering, Auto/manual batten status, exact manual gauge, catalogue empty/unavailable fallback and material-plan source are reachable at 390×844.
+12. **Domain research:** no new geometry, overlap or connection semantic is introduced. Existing V34A/V43B/V46 and the execution-semantics audit govern this reliability pass.
+13. **Regression strategy:** add one seeded-style covering→support→Auto→layout→material contract test, global/business technical parity, product change/manual/remove/roof-type cases, DB target/status/seed-usefulness tests, focused Playwright, then full gates and fixtures.
+14. **Future multi-structure compatibility:** plane IDs remain opaque supplied references; no ID parsing or new single-roof meaning is introduced.
 
-**Validation:** `pnpm verify` green — 145 test files passed + 1 skipped, 1601 tests passed + 11 skipped; web/API/edge builds green. `test:architecture` 41/41, `test:fixtures` 38/38 and `git diff --check` green. Focused Playwright `e2e/v54-business.spec.ts`: 14/14 desktop 1440×900 + mobile 390×844, including 5000-row late search/paging, outage fallback, outside-assortment persistence and Standard-mode isolation.
+**Completed:** audited the existing covering → installation mode → support capability → batten workflow → layout → quantity path and kept its single resolver. Added a seeded-style KODA/SIMPLA cross-layer contract for gable/hip, product replacement and business/global technical parity; Material Plan now exposes `AUTO — <product>` / Manual provenance. Existing first-covering transaction, Manual preservation/validation, removed-covering invalidation and roof-type scope repair remained authoritative. Added connected-empty catalogue guidance/manual fallback and a read-only Business/Admin catalogue status surface.
 
-**Environment findings:** the requested Browser surface exposed no available browser, so real Chromium QA used Playwright. `pnpm db:doctor` reached the configured remote AlwaysData host but authentication was rejected; Docker is unavailable, therefore migration/seed×2/smoke could not run on a disposable live DB.
+**Database operations:** extracted one catalogue/pricing/business seed manifest; added read-only `pnpm db:status`, loopback-only `pnpm db:setup:local`, and guarded `pnpm db:setup:shared-dev -- --apply --confirm shared-dev`. Both setup paths run doctor → migrate → catalogue/pricing seed → business seed → both seeds again → domain smoke → status. Added target redaction/safety and empty/partial/full/outdated seed-status tests, stronger usable-tile smoke assertions, and the manual `Database maintenance - shared DEV` workflow with Environment/secret/confirmation gates plus optional Worker health/catalogue verification. No migration or persisted-project schema changed.
 
-**Security:** the removed credential remains exposed in Git history and must be rotated manually. Private `.env` was not changed or printed.
+**Changed files:** V56 API DB/CLI/catalogue status modules, root/API scripts, shared-DEV workflow, catalogue/business/material UI and tests, `e2e/v43b-installation.spec.ts`, `.env.example`, and this checkpoint. No WIP files remain.
 
-**Known / deferred:** quote/customer MVP was intentionally not started—V55 priorities 1–5 were completed first and no half quote engine was left. Live DB application awaits valid isolated credentials or Docker. No commit or push was made.
+**Assumptions:** the checked-in import batches remain the canonical starter set; organization context may change SKU/price/assortment only; the existing project snapshots remain the offline technical source. The current private remote URL identifies shared DEV only when `ROOFCALC_DB_ENV=shared-dev` and the explicit confirmation are also supplied.
 
-**NEXT ACTION:** rotate the exposed DB credential, validate migration + seed twice + smoke-check on an isolated database, then begin the standalone `quote-core` MVP.
+**Validation:** `pnpm verify` passed (148 files + 1 skipped; 1625 tests + 11 skipped; web/API/edge builds green), `pnpm test:architecture` 41/41, `pnpm test:fixtures` 38/38, `pnpm build:edge`, and `git diff --check`. Focused desktop E2E passed 13 with 3 environment/project skips; full Playwright passed 114 with 26 intentional DB/project skips across desktop 1440×900 and mobile 390×844. The requested Browser connector exposed no active browser surface, so real-browser QA used Playwright Chromium.
+
+**Database / deployment status:** the configured remote host is reachable but authentication is still rejected; `db:status` reports the target without credentials and cannot read counts/seeds. Local MariaDB also rejected the configured example login. Therefore local bootstrap was not executed — authentication unavailable; remote bootstrap not executed — authentication unavailable. No seeded row/category counts or Cloudflare same-database verification are claimed.
+
+**Known limitation:** admin price-entry count is derived read-only from the existing organization summary; bootstrap remains an ops/CLI workflow and is intentionally unavailable in the browser. The historical exposed credential still requires manual rotation if that has not already happened.
+
+**NEXT ACTION:** repair/rotate the private shared-DEV credential, run the guarded shared-DEV bootstrap twice, confirm `db:status` is fully current, then verify Worker `/api/health` and a catalogue read through Hyperdrive. Only after that operational proof should V57 scope the next product area; do not start quote/customer work from this checkpoint automatically.
 
 ---
 

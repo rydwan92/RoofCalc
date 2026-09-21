@@ -59,6 +59,8 @@ export interface MaterialPlanRow {
   }[];
   warnings: string[];
   sourceReferences: string[];
+  /** Batten workflow provenance; never a timber-product identity. */
+  battenSource?: { owner: 'auto' | 'manual'; productLabel?: string };
   costSuggestionKey?: string;
   /** Membrane only: a roll plan exists once every plane resolved courses. */
   membranePlan?: 'roll-plan' | 'net-only';
@@ -203,6 +205,18 @@ export function createMaterialPlanRows(
             (suggestion.kind === 'battens' ? 'batten' : 'counter-batten'),
         )
         .map((item) => item.id),
+      ...(suggestion.kind === 'battens' &&
+      facts.battenWorkflow &&
+      facts.battenWorkflow.owner !== 'none'
+        ? {
+            battenSource: {
+              owner: facts.battenWorkflow.owner,
+              ...(facts.battenWorkflow.productLabel
+                ? { productLabel: facts.battenWorkflow.productLabel }
+                : {}),
+            },
+          }
+        : {}),
     };
     if (suggestion.kind === 'membrane') {
       const surfaces = facts.schedule.surfaceBuildUpRows;

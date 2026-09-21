@@ -165,6 +165,16 @@ const multiKindApp = () =>
   );
 
 describe('catalogue read API', () => {
+  it('reports read-only catalogue counts for the admin status surface', async () => {
+    const response = await request(app()).get('/api/catalog/status');
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      technicalProducts: 3,
+      technicalRevisions: 3,
+      commercialVariants: 1,
+    });
+  });
+
   it('lists manufacturers and searches by query/kind/manufacturer', async () => {
     const manufacturers = await request(app()).get(
       '/api/catalog/manufacturers',

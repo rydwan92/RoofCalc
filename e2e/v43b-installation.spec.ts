@@ -20,8 +20,14 @@ const tiles = JSON.parse(
 const revision = tiles.revisions.find(
   (item) => item.productId === 'product:swissporton:koda',
 )!;
+const replacementRevision = tiles.revisions.find(
+  (item) => item.productId === 'product:swissporton:simpla',
+)!;
 const productSeed = tiles.products.find(
   (item) => item.id === revision.productId,
+)!;
+const replacementProductSeed = tiles.products.find(
+  (item) => item.id === replacementRevision.productId,
 )!;
 const manufacturerSeed = tiles.manufacturers.find(
   (item) => item.id === productSeed.manufacturerId,
@@ -46,6 +52,20 @@ const currentRevision = {
   productId: revision.productId,
   revisionCode: revision.revisionCode,
   technicalSpec: revision.technicalSpec,
+};
+const replacementProduct = {
+  id: replacementProductSeed.id,
+  manufacturerId: replacementProductSeed.manufacturerId,
+  slug: replacementProductSeed.slug,
+  name: replacementProductSeed.name,
+  coveringKind: 'roof-tile' as const,
+  active: true,
+};
+const replacementCurrentRevision = {
+  id: replacementRevision.id,
+  productId: replacementRevision.productId,
+  revisionCode: replacementRevision.revisionCode,
+  technicalSpec: replacementRevision.technicalSpec,
 };
 
 async function stubCatalogue(page: Page) {
@@ -72,17 +92,45 @@ async function stubCatalogue(page: Page) {
                     variantCount: 0,
                     technicalPreview: {},
                   },
+                  {
+                    id: replacementProduct.id,
+                    manufacturer: {
+                      id: manufacturer.id,
+                      name: manufacturer.name,
+                    },
+                    name: replacementProduct.name,
+                    kind: 'roof-tile',
+                    currentRevisionId: replacementRevision.id,
+                    variantCount: 0,
+                    technicalPreview: {},
+                  },
                 ]
               : [],
         },
       });
+    const replacement = path.includes('simpla');
     if (path.includes('/revisions/'))
       return route.fulfill({
-        json: { item: { manufacturer, product, revision: currentRevision } },
+        json: {
+          item: {
+            manufacturer,
+            product: replacement ? replacementProduct : product,
+            revision: replacement
+              ? replacementCurrentRevision
+              : currentRevision,
+          },
+        },
       });
     return route.fulfill({
       json: {
-        item: { manufacturer, product, currentRevision, variants: [] },
+        item: {
+          manufacturer,
+          product: replacement ? replacementProduct : product,
+          currentRevision: replacement
+            ? replacementCurrentRevision
+            : currentRevision,
+          variants: [],
+        },
       },
     });
   });
@@ -169,6 +217,75 @@ async function capture(page: Page, testInfo: TestInfo, name: string) {
 }
 
 test.describe('V43B — covering installation workflow', () => {
+  test('connected-empty catalogue explains initialization and keeps manual fallback', async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Desktop flow.');
+    await page.route('**/api/catalog/**', (route) => {
+      const path = new URL(route.request().url()).pathname;
+      return route.fulfill({
+        json: path.endsWith('/manufacturers') ? { items: [] } : { items: [] },
+      });
+    });
+    await page.goto('/#/calculators/common-rafter');
+    await page.locator('[data-mode="builder"]').click();
+    await page.getByTestId('project-start-advanced').click();
+    await openTask(page, 'covering');
+    const assistant = page.getByTestId('covering-add-assistant');
+    await assistant.locator('[data-covering-family="roof-tile"]').click();
+    await assistant.locator('[data-covering-source="catalogue"]').click();
+    await expect(
+      page.getByText('Katalog nie został jeszcze zasilony.'),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'Użyj parametrów ręcznych' }),
+    ).toBeVisible();
+  });
+
+  test('Auto product replacement refreshes battens and Undo restores one coherent product', async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Desktop flow.');
+    const block = await createHipWithCatalogueTile(page);
+    const status = block.getByTestId('batten-workflow-status');
+    const oldGauge = await status.locator('[data-batten-gauge]').textContent();
+    const oldLength = await status
+      .locator('[data-batten-total-length]')
+      .getAttribute('data-batten-total-length');
+
+    await page
+      .getByRole('button', { name: 'Zmień produkt', exact: true })
+      .click();
+    const replacementCard = page.locator('.a-catalog-card', {
+      hasText: 'SIMPLA',
+    });
+    await replacementCard.getByRole('button', { name: 'Szczegóły' }).click();
+    await page.locator('.a-catalog-apply').click();
+    await page
+      .getByRole('alertdialog')
+      .getByRole('button', { name: 'Zmień produkt', exact: true })
+      .click();
+
+    await expect(status).toHaveAttribute('data-workflow-state', 'auto-ready');
+    await expect(block).toContainText('SIMPLA');
+    await expect(status.locator('[data-batten-gauge]')).not.toHaveText(
+      oldGauge ?? '',
+    );
+    await expect(
+      status.locator('[data-batten-total-length]'),
+    ).not.toHaveAttribute('data-batten-total-length', oldLength ?? '');
+
+    await page.getByRole('button', { name: 'Cofnij zmianę' }).click();
+    await expect(block).toContainText('KODA');
+    await expect(status.locator('[data-batten-gauge]')).toHaveText(
+      oldGauge ?? '',
+    );
+    await expect(status.locator('[data-batten-total-length]')).toHaveAttribute(
+      'data-batten-total-length',
+      oldLength ?? '',
+    );
+  });
+
   test('normal user: catalogue tile → Auto battens → hip detail → Material Plan', async ({
     page,
   }, testInfo) => {

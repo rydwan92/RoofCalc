@@ -272,6 +272,22 @@ describe('catalogue product picker', () => {
     expect(onManual).toHaveBeenCalledTimes(1);
   });
 
+  it('distinguishes a connected but unseeded catalogue from an empty search', async () => {
+    const api = client({
+      listManufacturers: vi.fn(async () => []),
+      searchProducts: vi.fn(async () => ({ items: [] })),
+    });
+    const { onManual } = renderPicker(api);
+    expect(
+      await screen.findByText('Katalog nie został jeszcze zasilony.'),
+    ).toBeTruthy();
+    expect(screen.getByText(/możesz użyć danych ręcznych/i)).toBeTruthy();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Użyj parametrów ręcznych' }),
+    );
+    expect(onManual).toHaveBeenCalledTimes(1);
+  });
+
   it('shows a clear empty state for a valid search with no matches', async () => {
     renderPicker(
       client({

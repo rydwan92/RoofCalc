@@ -142,6 +142,20 @@ export class MemoryCatalogRepository
     });
   }
 
+  async status() {
+    const last = this.audits.at(-1) as { completedAt?: string } | undefined;
+    return {
+      technicalProducts: [...this.products.values()].filter(
+        (item) => item.active,
+      ).length,
+      technicalRevisions: this.revisions.size,
+      commercialVariants: [...this.variants.values()].filter(
+        (item) => item.active,
+      ).length,
+      ...(last?.completedAt ? { lastImportAt: last.completedAt } : {}),
+    };
+  }
+
   async readImportState(ids: {
     manufacturerIds: string[];
     productIds: string[];

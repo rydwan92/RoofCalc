@@ -392,6 +392,23 @@
   gap: 0.5rem;
 }
 
+.bz-system-status {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.45rem;
+  padding: 0.65rem;
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+  background: var(--ui-surface-muted);
+}
+
+.bz-system-status > div:first-child,
+.bz-system-status > small {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
 .bz-count {
   display: flex;
   flex-direction: column;

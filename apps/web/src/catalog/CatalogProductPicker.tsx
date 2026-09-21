@@ -33,6 +33,9 @@ const copy = {
     all: 'Wszyscy producenci',
     loading: 'Ładowanie katalogu…',
     empty: 'Brak produktów spełniających kryteria.',
+    unseeded: 'Katalog nie został jeszcze zasilony.',
+    unseededHint: 'Brak produktów w katalogu — możesz użyć danych ręcznych.',
+    unseededAdmin: 'Dane katalogowe wymagają inicjalizacji.',
     unavailable: 'Katalog jest obecnie niedostępny.',
     manual: 'Użyj parametrów ręcznych',
     choose: 'Szczegóły',
@@ -71,6 +74,10 @@ const copy = {
     all: 'All manufacturers',
     loading: 'Loading catalogue…',
     empty: 'No products match these filters.',
+    unseeded: 'The catalogue has not been initialized yet.',
+    unseededHint:
+      'There are no catalogue products yet — you can use manual data.',
+    unseededAdmin: 'Catalogue data requires initialization.',
     unavailable: 'The catalogue is currently unavailable.',
     manual: 'Use manual parameters',
     choose: 'Details',
@@ -156,6 +163,7 @@ function PickerBody({
 }) {
   const { i18n } = useTranslation();
   const m = copy[i18n.language.startsWith('pl') ? 'pl' : 'en'];
+  const business = useBusiness();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const q = useDebounced(search.trim());
@@ -415,6 +423,16 @@ function PickerBody({
               {products.isFetchingNextPage ? m.loading : m.more}
             </button>
           )}
+        </div>
+      ) : !q && !manufacturerId ? (
+        <div className="a-catalog-unavailable" role="status">
+          <p>{m.unseeded}</p>
+          <span>
+            {business.mode === 'business' ? m.unseededAdmin : m.unseededHint}
+          </span>
+          <button className="a-button" onClick={onManual}>
+            {m.manual}
+          </button>
         </div>
       ) : (
         <div className="a-catalog-empty">{m.empty}</div>

@@ -151,6 +151,8 @@ export async function handleApiRequest(
           items: await catalog!.listManufacturers(),
         }),
       );
+    if (pathname === '/api/catalog/status')
+      return json(await catalog!.status());
     if (pathname === '/api/catalog/products') {
       const query = catalogSearchQuerySchema.parse(
         Object.fromEntries(search.entries()),

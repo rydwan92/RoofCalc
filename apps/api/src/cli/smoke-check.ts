@@ -45,6 +45,22 @@ async function main() {
     if (!koda) problems.push('product:swissporton:koda missing');
     else if (koda.currentRevision.technicalSpec.kind !== 'roof-tile')
       problems.push('product:swissporton:koda technical spec kind mismatch');
+    else if (
+      !koda.currentRevision.technicalSpec.installationModes.some(
+        (mode) =>
+          Number.isFinite(mode.coverWidthMm) &&
+          mode.coverWidthMm > 0 &&
+          Number.isFinite(mode.gaugeRangeMm.min) &&
+          Number.isFinite(mode.gaugeRangeMm.max) &&
+          mode.gaugeRangeMm.min > 0 &&
+          mode.gaugeRangeMm.max >= mode.gaugeRangeMm.min,
+      )
+    )
+      problems.push(
+        'product:swissporton:koda has no usable installation mode, cover width and gauge range',
+      );
+    else if (!koda.variants.length)
+      problems.push('product:swissporton:koda has no selectable variant');
     // V50: a tile variant carries its source-backed packaging, and the
     // SIMPLA ridge tile round-trips with its declared compatibility.
     else if (
