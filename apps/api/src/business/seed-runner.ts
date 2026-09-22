@@ -58,13 +58,12 @@ export async function seedBusinessOrganization(
   );
 
   if (options.apply) {
-    await admin.upsertOrganization(seed.organization);
-    await admin.upsertAssortmentItems(seed.organization.id, assortment);
-    if (entries.length)
-      await admin.upsertOrganizationPrices({
-        priceList: seed.priceList,
-        entries,
-      });
+    await admin.ensureStarterData({
+      organization: seed.organization,
+      assortment,
+      priceList: seed.priceList,
+      entries,
+    });
   }
 
   return {

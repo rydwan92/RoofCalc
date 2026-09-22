@@ -370,6 +370,7 @@ describe('commercial boundary', () => {
           'apps/api/src/db/pricing-repository.ts',
           'apps/api/src/db/business-schema.ts',
           'apps/api/src/db/business-repository.ts',
+          'apps/api/src/db/workspace-schema.ts',
         ],
       }),
     ).toEqual([]);

@@ -35,10 +35,15 @@ export function BusinessHeader() {
     loading,
     estimation,
     setHomeOpen,
+    session,
+    signOut,
   } = useBusiness();
   const [admin, setAdmin] = useState(false);
 
   if (mode !== 'business') return null;
+  const canManage = session?.memberships
+    .find((item) => item.organizationId === organization?.id)
+    ?.capabilities.includes('assortment.manage');
 
   return (
     <div className="bz-header" data-testid="business-header">
@@ -91,17 +96,25 @@ export function BusinessHeader() {
           </span>
         </span>
       )}
-      <button
-        type="button"
-        className="bz-admin-entry"
-        data-testid="business-admin-entry"
-        onClick={() => setAdmin(true)}
-        title={m.admin}
-      >
-        <Settings size={15} aria-hidden="true" />
-        <span>{m.admin}</span>
-      </button>
-      {admin && (
+      {canManage && (
+        <button
+          type="button"
+          className="bz-admin-entry"
+          data-testid="business-admin-entry"
+          onClick={() => setAdmin(true)}
+          title={m.admin}
+        >
+          <Settings size={15} aria-hidden="true" />
+          <span>{m.admin}</span>
+        </button>
+      )}
+      {session && (
+        <button className="bz-admin-entry" onClick={() => void signOut?.()}>
+          {i18n.language.startsWith('pl') ? 'Wyloguj' : 'Sign out'} ·{' '}
+          {session.user.name}
+        </button>
+      )}
+      {admin && canManage && (
         <div className="bz-admin-layer">
           <button
             className="bz-admin-backdrop"

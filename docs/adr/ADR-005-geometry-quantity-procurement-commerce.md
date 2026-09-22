@@ -53,6 +53,12 @@ discount, VAT, supplier terms, availability *policy*) belong to commerce.
 
 ## Consequences
 
+V58 extends the existing commerce persistence exception to
+`apps/api/src/db/workspace-schema.ts`: customer/estimation/quote/auth tables
+are separate from catalogue-technical tables. Quote JSON and currency belong
+there; technical project snapshots remain unmodified documents. This changes
+no dependency direction and allows no money in geometry or catalogue schema.
+
 - The Cost Engine (`cost-core`, `pricing-core`) was added without touching a
   solver, confirming the layering held under real pressure.
 - Quantity output is *geometric evidence*, not a purchase list; procurement

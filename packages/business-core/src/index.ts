@@ -13,6 +13,8 @@
  * reference, exactly as it is in `pricing-core`.
  */
 
+export * from './workspace';
+
 export type {
   AssortmentCommercialState,
   AssortmentImportAction,

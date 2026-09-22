@@ -47,10 +47,9 @@ async function main() {
   if (!target) throw new Error('Expected setup target: local or shared-dev.');
   console.log(`Verified ${target.environment}: ${target.description}`);
   for (const script of [
+    'db:wait',
     'db:doctor',
     'db:migrate',
-    'db:seed',
-    'db:seed-business',
     'db:seed',
     'db:seed-business',
     'db:smoke-check',

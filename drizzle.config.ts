@@ -13,6 +13,7 @@ export default defineConfig({
     './apps/api/src/db/schema.ts',
     './apps/api/src/db/pricing-schema.ts',
     './apps/api/src/db/business-schema.ts',
+    './apps/api/src/db/workspace-schema.ts',
   ],
   out: './migrations',
   dbCredentials: credentials,

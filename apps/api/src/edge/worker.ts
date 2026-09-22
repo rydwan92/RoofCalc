@@ -8,6 +8,16 @@ import { BusinessService } from '../business/service';
 import { schema } from '../db/schema-bundle';
 import { handleApiRequest, type ApiResult } from '../http/handler';
 import { PricingService } from '../pricing/service';
+import {
+  createBusinessAuth,
+  type AuthConfiguration,
+} from '../business/auth/auth';
+import {
+  businessOriginAllowed,
+  resolveBusinessAccess,
+} from '../business/auth/access';
+import { BusinessAdminService } from '../business/admin-service';
+import { DrizzleWorkspaceRepository } from '../business/workspace/drizzle-repository';
 
 /** The subset of Cloudflare's Hyperdrive binding that mysql2 needs. */
 export interface HyperdriveBinding {
@@ -18,7 +28,7 @@ export interface HyperdriveBinding {
   port: number;
 }
 
-export interface WorkerEnv {
+export interface WorkerEnv extends AuthConfiguration {
   HYPERDRIVE?: HyperdriveBinding;
   ASSETS: { fetch(request: Request): Promise<Response> };
 }
@@ -95,10 +105,11 @@ export function createWorker(connect: ConnectDatabase = connectHyperdrive) {
       }
 
       const needsDatabase =
-        (request.method === 'GET' || request.method === 'HEAD') &&
-        (url.pathname.startsWith('/api/catalog/') ||
-          url.pathname.startsWith('/api/pricing/') ||
-          url.pathname.startsWith('/api/business/'));
+        ((request.method === 'GET' || request.method === 'HEAD') &&
+          (url.pathname.startsWith('/api/catalog/') ||
+            url.pathname.startsWith('/api/pricing/'))) ||
+        url.pathname.startsWith('/api/business/') ||
+        url.pathname.startsWith('/api/auth/');
       if (!needsDatabase)
         return respond(
           request,
@@ -117,6 +128,55 @@ export function createWorker(connect: ConnectDatabase = connectHyperdrive) {
           schema,
           mode: 'default',
         });
+        const auth = createBusinessAuth(db, env);
+        if (url.pathname.startsWith('/api/auth/')) {
+          if (!auth)
+            return respond(request, {
+              status: 503,
+              body: { error: { code: 'auth-unavailable' } },
+            });
+          return await auth.handler(request);
+        }
+        const isBusiness = url.pathname.startsWith('/api/business/');
+        if (
+          isBusiness &&
+          !businessOriginAllowed(
+            request.method,
+            request.headers.get('Origin') ?? undefined,
+            env.BETTER_AUTH_URL,
+          )
+        )
+          return respond(request, {
+            status: 403,
+            body: { error: { code: 'business-origin-forbidden' } },
+          });
+        const access = isBusiness
+          ? await resolveBusinessAccess(db, auth, request.headers)
+          : undefined;
+        let body: unknown;
+        if (isBusiness && !['GET', 'HEAD'].includes(request.method)) {
+          if (
+            !request.headers.get('Content-Type')?.startsWith('application/json')
+          )
+            return respond(request, {
+              status: 415,
+              body: { error: { code: 'json-required' } },
+            });
+          const bytes = await request.arrayBuffer();
+          if (bytes.byteLength > 8 * 1024 * 1024)
+            return respond(request, {
+              status: 413,
+              body: { error: { code: 'body-too-large' } },
+            });
+          try {
+            body = JSON.parse(new TextDecoder().decode(bytes));
+          } catch {
+            return respond(request, {
+              status: 400,
+              body: { error: { code: 'invalid-json' } },
+            });
+          }
+        }
         const catalog = new CatalogService(new DrizzleCatalogRepository(db));
         const pricing = new PricingService(new DrizzlePricingRepository(db));
         const businessRepository = new DrizzleBusinessRepository(db);
@@ -136,11 +196,19 @@ export function createWorker(connect: ConnectDatabase = connectHyperdrive) {
              * `404 not-found` here, with no write path to reach at all.
              */
             {
+              access,
+              workspace: new DrizzleWorkspaceRepository(db),
+              admin: new BusinessAdminService(
+                businessRepository,
+                businessRepository,
+                businessRepository,
+              ),
               service: new BusinessService(
                 businessRepository,
                 businessRepository,
               ),
             },
+            body,
           ),
         );
       } catch {

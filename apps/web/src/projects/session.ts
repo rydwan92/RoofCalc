@@ -6,6 +6,7 @@ import {
   nextProjectName,
   newProjectId,
   projectSummary,
+  projectRecordV1Schema,
   renameProject,
   type ProjectRecordV1,
   type ProjectRepository,
@@ -67,6 +68,26 @@ export class ProjectSession {
     return () => this.listeners.delete(listener);
   };
   snapshot = () => this.state;
+
+  /** Business synchronization carries a normal technical record, never commerce. */
+  exportRecord(): ProjectRecordV1 | undefined {
+    if (!this.record) return undefined;
+    return projectRecordV1Schema.parse({
+      ...this.record,
+      document: this.workingDocument ?? this.record.document,
+    });
+  }
+
+  async openRemote(record: ProjectRecordV1): Promise<void> {
+    const validated = projectRecordV1Schema.parse(record);
+    await this.persistNow();
+    await this.repository.save(validated);
+    await this.activate(validated, true);
+    this.update({
+      projects: await this.repository.list(),
+      freshProject: false,
+    });
+  }
 
   private update(patch: Partial<ProjectSessionState>) {
     if (

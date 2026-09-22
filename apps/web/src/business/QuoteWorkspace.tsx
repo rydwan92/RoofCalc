@@ -13,6 +13,7 @@ import {
   type QuoteLineGroup,
 } from '@cieslacalc/quote-core';
 import { parseDecimal } from '../format';
+import type { RemoteSaveStatus } from './workspace/autosave';
 
 const GROUPS: readonly QuoteLineGroup[] = [
   'covering',
@@ -39,6 +40,10 @@ export function QuoteWorkspace({
   onRefresh,
   onOpenMaterials,
   onClose,
+  saveStatus,
+  onRetrySave,
+  onReload,
+  comparison,
 }: {
   draft: QuoteDraft;
   currentFingerprint: string;
@@ -47,6 +52,10 @@ export function QuoteWorkspace({
   onRefresh: () => void;
   onOpenMaterials: () => void;
   onClose: () => void;
+  saveStatus?: RemoteSaveStatus;
+  onRetrySave?: () => Promise<void>;
+  onReload?: () => Promise<void>;
+  comparison?: QuoteDraft;
 }) {
   const pl = locale.startsWith('pl');
   const [preview, setPreview] = useState(false);
@@ -97,6 +106,41 @@ export function QuoteWorkspace({
       />
       <article className="bz-quote-shell" data-preview={preview}>
         <header className="bz-quote-toolbar bz-no-print">
+          {saveStatus && (
+            <span role="status" data-testid="quote-save-status">
+              {saveStatus === 'saved'
+                ? pl
+                  ? 'Zapisano'
+                  : 'Saved'
+                : saveStatus === 'saving'
+                  ? pl
+                    ? 'Zapisywanie…'
+                    : 'Saving…'
+                  : saveStatus === 'conflict'
+                    ? pl
+                      ? 'Oferta została zmieniona gdzie indziej.'
+                      : 'Quote changed elsewhere.'
+                    : pl
+                      ? 'Błąd zapisu'
+                      : 'Save failed'}
+              {saveStatus === 'error' && (
+                <button
+                  className="a-button"
+                  onClick={() => void onRetrySave?.().catch(() => undefined)}
+                >
+                  {pl ? 'Spróbuj ponownie' : 'Retry'}
+                </button>
+              )}
+              {saveStatus === 'conflict' && (
+                <button
+                  className="a-button"
+                  onClick={() => void onReload?.().catch(() => undefined)}
+                >
+                  {pl ? 'Wczytaj wersję serwera' : 'Load server version'}
+                </button>
+              )}
+            </span>
+          )}
           <button className="a-button" type="button" onClick={onClose}>
             <ArrowLeft size={16} aria-hidden="true" />{' '}
             {pl ? 'Wróć do wyceny' : 'Back to estimate'}
@@ -150,16 +194,28 @@ export function QuoteWorkspace({
             <dl>
               <div>
                 <dt>{pl ? 'Numer' : 'Number'}</dt>
-                <dd>{draft.id}</dd>
+                <dd>
+                  {draft.number ??
+                    (pl ? 'Numer po zapisaniu' : 'Number after saving')}
+                </dd>
               </div>
               <div>
                 <dt>{pl ? 'Data' : 'Date'}</dt>
-                <dd>{new Date(draft.createdAt).toLocaleDateString(locale)}</dd>
+                <dd>
+                  {draft.issuedOn ??
+                    new Date(draft.createdAt).toLocaleDateString(locale)}
+                </dd>
               </div>
               {draft.validUntil && (
                 <div>
                   <dt>{pl ? 'Ważna do' : 'Valid until'}</dt>
                   <dd>{draft.validUntil}</dd>
+                </div>
+              )}
+              {draft.preparedBy && (
+                <div>
+                  <dt>{pl ? 'Przygotował/a' : 'Prepared by'}</dt>
+                  <dd>{draft.preparedBy}</dd>
                 </div>
               )}
               <div>
@@ -235,7 +291,58 @@ export function QuoteWorkspace({
               )}
             </section>
           )}
-          {stale && (
+          {!preview && (
+            <section
+              className="bz-form-grid bz-no-print"
+              aria-label={pl ? 'Dane oferty' : 'Quote details'}
+            >
+              <label>
+                {pl ? 'Data oferty' : 'Issue date'}
+                <input
+                  type="date"
+                  value={draft.issuedOn ?? draft.createdAt.slice(0, 10)}
+                  onChange={(event) => {
+                    if (event.target.value)
+                      onChange({ ...draft, issuedOn: event.target.value });
+                  }}
+                />
+              </label>
+              <label>
+                {pl ? 'Ważna do' : 'Valid until'}
+                <input
+                  type="date"
+                  value={draft.validUntil ?? ''}
+                  onChange={(event) =>
+                    onChange({
+                      ...draft,
+                      validUntil: event.target.value || undefined,
+                    })
+                  }
+                />
+              </label>
+              <label>
+                {pl ? 'Przygotował/a' : 'Prepared by'}
+                <input
+                  value={draft.preparedBy ?? ''}
+                  maxLength={240}
+                  onChange={(event) =>
+                    onChange({ ...draft, preparedBy: event.target.value })
+                  }
+                />
+              </label>
+              <label>
+                {pl ? 'Notatki / warunki' : 'Notes / terms'}
+                <textarea
+                  value={draft.notes ?? ''}
+                  maxLength={16000}
+                  onChange={(event) =>
+                    onChange({ ...draft, notes: event.target.value })
+                  }
+                />
+              </label>
+            </section>
+          )}
+          {stale && !preview && (
             <section
               className="bz-quote-stale bz-no-print"
               role="status"
@@ -251,6 +358,42 @@ export function QuoteWorkspace({
                     : 'Quote values remain unchanged. Refresh explicitly after reviewing materials.'}
                 </p>
               </div>
+              {comparison && (
+                <details>
+                  <summary>
+                    {pl ? 'Porównaj zmiany' : 'Compare changes'}
+                  </summary>
+                  <ul>
+                    {comparison.lines
+                      .filter(
+                        (line) =>
+                          draft.lines.find((old) => old.id === line.id)
+                            ?.technicalQuantity.value !==
+                          line.technicalQuantity.value,
+                      )
+                      .map((line) => (
+                        <li key={line.id}>
+                          {line.description}:{' '}
+                          {draft.lines.find((old) => old.id === line.id)
+                            ?.technicalQuantity.value ?? '—'}{' '}
+                          → {line.technicalQuantity.value}{' '}
+                          {unit(line.technicalQuantity.unit)}
+                        </li>
+                      ))}
+                    {draft.lines
+                      .filter(
+                        (line) =>
+                          !comparison.lines.some((next) => next.id === line.id),
+                      )
+                      .map((line) => (
+                        <li key={line.id}>
+                          {line.description}: {line.technicalQuantity.value} →{' '}
+                          {pl ? 'usunięto' : 'removed'}
+                        </li>
+                      ))}
+                  </ul>
+                </details>
+              )}
               <button
                 className="a-button a-primary"
                 type="button"
@@ -327,6 +470,36 @@ export function QuoteWorkspace({
                                 line.organizationUnitNetAmountMinor !==
                                   undefined && (
                                   <small className="bz-no-preview">
+                                    {!preview && (
+                                      <button
+                                        className="a-button"
+                                        type="button"
+                                        onClick={() =>
+                                          onChange({
+                                            ...withQuoteUnitPrice(
+                                              draft,
+                                              line.id,
+                                              line.organizationUnitNetAmountMinor!,
+                                            ),
+                                            lines: draft.lines.map((entry) =>
+                                              entry.id === line.id
+                                                ? {
+                                                    ...entry,
+                                                    unitNetAmountMinor:
+                                                      entry.organizationUnitNetAmountMinor,
+                                                    priceSource:
+                                                      'organization-price-list' as const,
+                                                  }
+                                                : entry,
+                                            ),
+                                          })
+                                        }
+                                      >
+                                        {pl
+                                          ? 'Przywróć cenę firmową'
+                                          : 'Restore company price'}
+                                      </button>
+                                    )}
                                     {pl ? 'Cena cennikowa' : 'List price'}:{' '}
                                     {money(
                                       line.organizationUnitNetAmountMinor,

@@ -9,7 +9,9 @@ import { PricingService } from './pricing/service';
 import { DrizzleBusinessRepository } from './db/business-repository';
 import { BusinessService } from './business/service';
 import { BusinessAdminService } from './business/admin-service';
-import { adminDevModeEnabled } from './business/capability';
+import { createBusinessAuth } from './business/auth/auth';
+import { resolveBusinessAccess } from './business/auth/access';
+import { DrizzleWorkspaceRepository } from './business/workspace/drizzle-repository';
 
 const port = Number(process.env.PORT ?? 3001);
 if (!Number.isInteger(port) || port < 1 || port > 65535)
@@ -46,19 +48,18 @@ const pricingService = catalogDatabase
 const businessRepository = catalogDatabase
   ? new DrizzleBusinessRepository(catalogDatabase.db)
   : undefined;
-const adminDevMode = adminDevModeEnabled();
+const auth = catalogDatabase
+  ? createBusinessAuth(catalogDatabase.db, process.env)
+  : undefined;
 const business = businessRepository
   ? {
       service: new BusinessService(businessRepository, businessRepository),
-      ...(adminDevMode
-        ? {
-            admin: new BusinessAdminService(
-              businessRepository,
-              businessRepository,
-              businessRepository,
-            ),
-          }
-        : {}),
+      workspace: new DrizzleWorkspaceRepository(catalogDatabase!.db),
+      admin: new BusinessAdminService(
+        businessRepository,
+        businessRepository,
+        businessRepository,
+      ),
     }
   : undefined;
 const server = createApp(
@@ -74,15 +75,23 @@ const server = createApp(
       : undefined,
   },
   business,
+  {
+    auth,
+    baseURL: process.env.BETTER_AUTH_URL,
+    resolve: (headers) =>
+      catalogDatabase
+        ? resolveBusinessAccess(catalogDatabase.db, auth, headers)
+        : Promise.resolve(undefined),
+  },
 ).listen(port, process.env.HOST ?? '127.0.0.1', () => {
   console.log(`CieślaCalc: http://127.0.0.1:${port}`);
   console.log(
     `Catalogue database: ${catalogDatabase ? describeDatabaseTarget(catalogDatabase.options) : 'not configured (geometry works offline)'}`,
   );
   console.log(
-    adminDevMode
-      ? 'Business admin: LOCAL DEV MODE — write endpoints enabled for loopback requests only. Not authenticated.'
-      : 'Business admin: disabled (read-only). Set BUSINESS_ADMIN_DEV_MODE=true for the local admin MVP.',
+    auth
+      ? 'Business: authenticated organization workspace enabled.'
+      : 'Business: auth not configured; business access fails closed.',
   );
 });
 for (const signal of ['SIGINT', 'SIGTERM'])

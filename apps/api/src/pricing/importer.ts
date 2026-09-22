@@ -8,6 +8,7 @@ import {
   type PriceListEntry,
 } from '@cieslacalc/pricing-core';
 import type { PricingImportRepository, PricingImportState } from './repository';
+import { preserveSeedRows } from '../data/ensure-seed';
 
 export interface PricingImportCounts {
   total: number;
@@ -112,7 +113,7 @@ export class PricingImporter {
 
   async import(
     input: unknown,
-    options: { apply?: boolean } = {},
+    options: { apply?: boolean; protectedIds?: ReadonlySet<string> } = {},
   ): Promise<PricingImportReport> {
     const batch = priceImportBatchV1Schema.parse(input);
     const checksum = createHash('sha256')
@@ -123,7 +124,10 @@ export class PricingImporter {
       priceListIds: batch.priceLists.map((item) => item.id),
       entryIds: batch.entries.map((item) => item.id),
     });
-    const plan = createPlan(batch, state);
+    const plan = createPlan({ ...batch,
+      priceLists: preserveSeedRows(batch.priceLists, state.priceLists, options.protectedIds),
+      entries: preserveSeedRows(batch.entries, state.entries, options.protectedIds),
+    }, state);
     const base = {
       batchId,
       checksum,

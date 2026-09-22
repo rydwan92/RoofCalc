@@ -120,17 +120,9 @@ import { BusinessContextProvider } from '../business/context';
 import { useBusiness } from '../business/context';
 import { useEffectiveVariantPrices } from '../business/use-effective-prices';
 import { BusinessHeader, BusinessModeToggle } from '../business/BusinessHeader';
-import {
-  BusinessHome,
-  type NewEstimationInput,
-} from '../business/BusinessHome';
-import { useOrganizationPrices } from '../business/use-assortment';
-import { deriveCommercialReadiness } from '../business/commercial-readiness';
+import { BusinessHome } from '../business/BusinessHome';
+import { useBusinessWorkspace } from '../business/workspace/useBusinessWorkspace';
 import { BusinessJourney } from '../business/BusinessJourney';
-import {
-  commercialProjectionFingerprint,
-  createQuoteFromMaterialPlan,
-} from '../business/quote-adapter';
 import { QuoteWorkspace } from '../business/QuoteWorkspace';
 import { createTilePurchasePlans } from './tile-purchase';
 import { resolveRoofSystemFacts, ridgeTileCount } from './roof-system';
@@ -178,9 +170,6 @@ import {
 import type { LinearPlanSurface } from './MaterialPlan';
 import { useInstallationActions } from './InstallationWorkflow';
 import { summarizeCostScenario } from '@cieslacalc/cost-core';
-import type { QuoteDraft } from '@cieslacalc/quote-core';
-import { newProjectId } from '@cieslacalc/project-core';
-import { materialText } from './material-copy';
 import { ProjectManager, projectStatusLabel } from '../projects/ProjectManager';
 import { ProjectSession } from '../projects/session';
 import {
@@ -383,10 +372,6 @@ function AssemblyPageContent() {
   );
   const [projectStartMode, setProjectStartMode] = useState<ProjectStartMode>();
   const [reuseFreshProject, setReuseFreshProject] = useState(false);
-  const [quoteDrafts, setQuoteDrafts] = useState<Record<string, QuoteDraft>>(
-    {},
-  );
-  const [quoteOpen, setQuoteOpen] = useState(false);
   const workbench = state.workbench;
   const mobile = useMobileWorkbench();
   const drawer = workbench.detailDrawer;
@@ -1147,34 +1132,33 @@ function AssemblyPageContent() {
     ...materialScenarioPrices(costScenario, materialRows),
     ...materialPrices,
   };
-  const materialVariantIds = materialRows.flatMap((row) =>
-    row.product?.variantId ? [row.product.variantId] : [],
-  );
-  const commercialPrices = useOrganizationPrices(materialVariantIds);
-  const activeProjectId = projectSessionState.active?.id;
-  const currentQuoteDraft = activeProjectId
-    ? quoteDrafts[activeProjectId]
-    : undefined;
-  const currentCommercialFingerprint = costScenario
-    ? commercialProjectionFingerprint({
-        rows: materialRows,
-        scenario: costScenario,
-        prices: effectiveMaterialPrices,
-        organizationPrices: commercialPrices.items,
-      })
-    : '';
-  const costSummary = costScenario
-    ? summarizeCostScenario(costScenario)
-    : undefined;
-  const commercialReadiness = deriveCommercialReadiness({
-    rows: materialRows,
-    priceStateByVariant: commercialPrices.byVariantId,
+  const {
+    currentQuoteDraft,
+    currentCommercialFingerprint,
+    commercialReadiness,
+    quoteOpen,
+    setQuoteOpen,
+    openQuote,
+    refreshQuote,
+    runCommercialAction,
+    startBusinessEstimation,
+    openBusinessProject,
+    changeQuote,
+    saveStatus,
+    retrySave,
+    reloadRemote,
+    compareDraft,
+  } = useBusinessWorkspace({
+    state,
+    projectSession,
+    projectSessionState,
+    materialRows,
+    effectiveMaterialPrices,
+    costScenario,
     hasCovering: coveringAssignments.length > 0,
-    cost: costSummary,
-    quoteExists: !!currentQuoteDraft,
-    quoteStale:
-      !!currentQuoteDraft &&
-      currentQuoteDraft.sourceFingerprint !== currentCommercialFingerprint,
+    locale: i18n.language,
+    setReuseFreshProject,
+    setProjectStartMode,
   });
   const documentFacts: ExportFacts = {
     ...materialFacts,
@@ -1989,122 +1973,6 @@ function AssemblyPageContent() {
     state.setMode(mode);
     if (mode === 'builder' && mobile) state.setInspectorOpen(false);
     state.setMobilePanel('none');
-  };
-  const createCurrentQuote = (existing?: QuoteDraft) => {
-    const active = projectSessionState.active;
-    const estimation = business.estimation;
-    const organization = business.organization;
-    if (!active || !estimation || !organization || !costScenario)
-      return undefined;
-    const createdAt = existing?.createdAt ?? new Date().toISOString();
-    const validUntil = new Date(
-      new Date(createdAt).getTime() + 14 * 24 * 60 * 60 * 1000,
-    )
-      .toISOString()
-      .slice(0, 10);
-    return createQuoteFromMaterialPlan({
-      draft: {
-        id: existing?.id ?? `OF-${newProjectId().slice(0, 8).toUpperCase()}`,
-        organizationSnapshot: {
-          id: organization.id,
-          name: organization.name,
-          ...(organization.taxId ? { taxId: organization.taxId } : {}),
-          ...(organization.address ? { address: organization.address } : {}),
-        },
-        customerSnapshot: estimation.customer,
-        projectReference: {
-          id: active.id,
-          name: estimation.projectName,
-          ...(estimation.location ? { location: estimation.location } : {}),
-        },
-        createdAt,
-        validUntil,
-        currencyCode: organization.currencyCode,
-        ...(existing?.notes ? { notes: existing.notes } : {}),
-      },
-      rows: materialRows,
-      scenario: costScenario,
-      prices: effectiveMaterialPrices,
-      organizationPrices: commercialPrices.items,
-      label: (row) =>
-        `${materialText(i18n.language, row.labelKey)}${
-          row.description ? ` · ${row.description}` : ''
-        }`,
-    });
-  };
-  const openQuote = () => {
-    const active = projectSessionState.active;
-    if (!active) return;
-    if (
-      !business.estimation ||
-      business.estimation.projectId !== active.id ||
-      !business.organization
-    ) {
-      business.setHomeOpen(true);
-      return;
-    }
-    let draft = quoteDrafts[active.id];
-    if (!draft) {
-      draft = createCurrentQuote();
-      if (!draft) return;
-      setQuoteDrafts((current) => ({ ...current, [active.id]: draft! }));
-    }
-    setQuoteOpen(true);
-  };
-  const refreshQuote = () => {
-    const active = projectSessionState.active;
-    if (!active) return;
-    const next = createCurrentQuote(quoteDrafts[active.id]);
-    if (!next) return;
-    setQuoteDrafts((current) => ({ ...current, [active.id]: next }));
-  };
-  const runCommercialAction = (
-    action: (typeof commercialReadiness)['primaryAction'],
-  ) => {
-    business.setHomeOpen(false);
-    if (action === 'choose-covering') {
-      state.navigateTo(workbenchLocation('covering'));
-      return;
-    }
-    if (
-      action === 'complete-technical' ||
-      action === 'match-assortment' ||
-      action === 'fill-prices'
-    ) {
-      state.navigateTo(workbenchLocation('materials', 'plan'));
-      return;
-    }
-    if (action === 'refresh-quote') refreshQuote();
-    openQuote();
-  };
-  const startBusinessEstimation = async (input: NewEstimationInput) => {
-    state.setMode('builder');
-    await projectSession.initialize();
-    const before = projectSession.snapshot();
-    if (!before.freshProject) await projectSession.create();
-    else projectSession.acknowledgeFreshProject();
-    await projectSession.rename(input.projectName);
-    const active = projectSession.snapshot().active;
-    if (!active) throw new Error('project-unavailable');
-    business.setEstimation({
-      id: `estimation:${newProjectId()}`,
-      projectId: active.id,
-      projectName: input.projectName,
-      ...(input.location ? { location: input.location } : {}),
-      customer: input.customer,
-      createdAt: new Date().toISOString(),
-    });
-    setReuseFreshProject(true);
-    setProjectStartMode('new');
-    business.setHomeOpen(false);
-  };
-  const openBusinessProject = async (id: string) => {
-    state.setMode('builder');
-    await projectSession.initialize();
-    await projectSession.open(id);
-    if (business.estimation?.projectId !== id)
-      business.setEstimation(undefined);
-    business.setHomeOpen(false);
   };
   useEffect(() => {
     if (workbench.mode === 'builder')
@@ -3311,15 +3179,13 @@ function AssemblyPageContent() {
       {quoteOpen && currentQuoteDraft && (
         <QuoteWorkspace
           draft={currentQuoteDraft}
+          saveStatus={saveStatus}
+          onRetrySave={retrySave}
+          onReload={reloadRemote}
+          comparison={compareDraft}
           currentFingerprint={currentCommercialFingerprint}
           locale={i18n.language}
-          onChange={(draft) => {
-            if (!activeProjectId) return;
-            setQuoteDrafts((current) => ({
-              ...current,
-              [activeProjectId]: draft,
-            }));
-          }}
+          onChange={changeQuote}
           onRefresh={refreshQuote}
           onOpenMaterials={() => {
             setQuoteOpen(false);

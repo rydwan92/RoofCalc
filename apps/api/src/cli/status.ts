@@ -5,7 +5,6 @@ import { createCatalogDatabase } from '../db/client';
 import { databaseFailureReason } from '../db/doctor';
 import { describeDatabaseTarget, isLoopbackHost } from '../db/config';
 import { classifySeedStatus, type ObservedSeed } from '../db/seed-status';
-import { BUSINESS_SEED } from '../data/seed-manifest';
 import { loadExpectedSeeds } from '../data/seed-manifest-loader';
 import { findWorkspaceRoot } from '../environment';
 
@@ -83,24 +82,16 @@ async function main() {
         checksum: String(row.checksum),
       })),
     ];
-    const businessExists = Number(
-      rows(
-        await connection.pool.query(
-          'SELECT COUNT(*) AS count FROM organizations WHERE id = ?',
-          [BUSINESS_SEED.organizationId],
-        ),
-      )[0]?.count ?? 0,
-    );
-    const businessExpected = expected.find(
-      (seed) => seed.category === 'business',
-    );
-    if (businessExists && businessExpected)
-      observed.push({
-        category: 'business',
-        sourceId: businessExpected.sourceId,
-        checksum: businessExpected.checksum,
-      });
+    observed.push(...rows(await connection.pool.query(
+      "SELECT organization_id, checksum FROM organization_import_batches WHERE source_label = 'roofcalc-starter-business' AND status = 'completed'",
+    )).map((row) => ({ category: 'business' as const, sourceId: String(row.organization_id), checksum: String(row.checksum) })));
     console.log('SEED STATUS:');
+    const states = classifySeedStatus(expected, observed);
+    for (const category of ['catalogue', 'pricing', 'business'] as const) {
+      const group = states.filter((entry) => entry.category === category);
+      const current = group.filter((entry) => entry.state === 'current').length;
+      console.log(`  ${category}: ${current === group.length ? 'current' : 'incomplete'} (${current}/${group.length})`);
+    }
     for (const seed of classifySeedStatus(expected, observed))
       console.log(
         `  ${seed.state === 'current' ? '✓' : seed.state === 'outdated' ? '!' : '—'} ${seed.file}${seed.state === 'current' ? '' : ` — ${seed.state}`}`,

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import request from 'supertest';
+import supertest from 'supertest';
+import { roleCapabilities } from '@cieslacalc/business-core';
+const request = (app: Parameters<typeof supertest>[0]) => supertest.agent(app).set('Origin', 'http://localhost');
 import { createApp } from '../app';
 import { InMemoryBusinessRepository } from './memory-repository';
 import { BusinessService } from './service';
@@ -43,6 +45,8 @@ function api(options: { admin?: boolean; devMode?: boolean } = {}) {
   });
   if (options.devMode) process.env.BUSINESS_ADMIN_DEV_MODE = 'true';
   else delete process.env.BUSINESS_ADMIN_DEV_MODE;
+  const access = { user: { id: 'test-user', name: 'Test', email: 'test@example.test' },
+    memberships: [{ organizationId: 'org:a', capabilities: roleCapabilities(options.devMode === false ? 'sales' : 'admin') }] };
   const app = createApp(
     undefined,
     undefined,
@@ -56,6 +60,7 @@ function api(options: { admin?: boolean; devMode?: boolean } = {}) {
           }
         : {}),
     },
+    { baseURL: 'http://localhost', resolve: async () => access },
   );
   return { app, repository };
 }
@@ -86,13 +91,13 @@ describe('business read API', () => {
     expect(response.body.items).toHaveLength(0);
   });
 
-  it('returns 404 for an unknown organization', async () => {
+  it('rejects an organization without membership', async () => {
     const response = await request(api().app).get(
       '/api/business/organizations/org%3Azzz/assortment',
     );
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(403);
     expect(response.body).toEqual({
-      error: { code: 'organization-not-found' },
+      error: { code: 'business-forbidden' },
     });
   });
 
@@ -147,11 +152,7 @@ describe('business read API', () => {
   });
 });
 
-/**
- * PRODUCTION ADMIN AUTH IS NOT IMPLEMENTED YET. These tests pin the two gates
- * that stand in for it, so a future change cannot open the write surface by
- * accident.
- */
+/** The authenticated capability and same-origin boundary replaces the old DEV gate. */
 describe('admin write gate', () => {
   const linkBody = { itemId: 'oai:a:1', commercialVariantId: KODA };
 
@@ -164,17 +165,17 @@ describe('admin write gate', () => {
     expect(repository.state.assortment[0]?.commercialVariantId).toBeUndefined();
   });
 
-  it('rejects a mutation when the dev capability is disabled', async () => {
+  it('rejects an assortment mutation by sales', async () => {
     const { app, repository } = api({ admin: true, devMode: false });
     const response = await request(app)
       .post('/api/business/organizations/org%3Aa/assortment/link')
       .send(linkBody);
-    expect(response.status).toBe(404);
-    expect(response.body).toEqual({ error: { code: 'not-found' } });
+    expect(response.status).toBe(403);
+    expect(response.body).toEqual({ error: { code: 'business-forbidden' } });
     expect(repository.state.assortment[0]?.commercialVariantId).toBeUndefined();
   });
 
-  it('allows a loopback mutation when the dev capability is on', async () => {
+  it('allows an authenticated admin mutation', async () => {
     const { app, repository } = api({ admin: true, devMode: true });
     const response = await request(app)
       .post('/api/business/organizations/org%3Aa/assortment/link')
@@ -231,13 +232,13 @@ describe('admin write gate', () => {
     ).toEqual([499, 482]);
   });
 
-  it('rejects a mutation whose Host is not loopback', async () => {
+  it('rejects a cross-origin mutation', async () => {
     const { app } = api({ admin: true, devMode: true });
     const response = await request(app)
       .post('/api/business/organizations/org%3Aa/assortment/link')
-      .set('Host', 'roofcalc.example.com')
+      .set('Origin', 'https://untrusted.example')
       .send(linkBody);
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(403);
   });
 
   it('still rejects every other write method on the business path', async () => {

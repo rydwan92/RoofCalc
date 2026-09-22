@@ -1297,6 +1297,37 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+## V58 — persistent business workspace (in progress)
+
+Baseline: clean `main` at `d5cd66f2024c079363ed82703b4f714bb13dbe42`.
+`pnpm verify` passed: 151 files / 1639 tests passed, 1 file / 11 tests
+skipped; Node, web and Worker builds passed. Shared DEV authentication is
+unavailable; no migration or deployment success is claimed.
+
+Definition of Ready:
+1. User: salesperson needs a saved customer → estimation → quote workflow.
+2. Owner: business-core contracts, API repositories/services, web business controller;
+   quote-core retains money arithmetic; no technical-domain dependencies on business.
+3. Persistence: business records and technical snapshots are separate from the
+   unchanged canonical RoofProjectDocument.
+4. Schema: additive SQL tables and versioned quote snapshots; existing local projects open.
+5. History: commercial edits do not enter roof undo; refresh is explicit.
+6. Quantity: consume trusted technical results only; overrides remain commercial.
+7. Procurement: no change to blank lengths or allowance rules.
+8. Catalogue: keep stored technical snapshots; starter seeds preserve manual changes.
+9. Cost: integer minor units/basis points stay downstream of geometry.
+10. Offline: anonymous technical tools/local projects work; remote business reports unavailable.
+11. Mobile: customer search/create, estimation opening and exact quote inputs at 390×844.
+12. Research: no new geometry or installation semantics, so no domain research needed.
+13. Regression: persistence, tenant rejection, conflict/reload, non-destructive seeds,
+    focused desktop/mobile business E2E plus verify/architecture/edge gates.
+14. Multi-structure: opaque IDs and unchanged technical schema; no ID parsing.
+
+NEXT ACTION: implement guarded automatic DEV sync and ensure-only business seeds,
+then persistent business/auth/API/UI vertical slices. V57 historical checkpoint follows.
+
+## V57 — previous completed iteration
+
 **Iteration:** `057 — wholesale workbench and commercial quote flow`
 
 **Status:** `IMPLEMENTED — green locally; shared-DEV authentication unavailable`

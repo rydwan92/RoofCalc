@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "business:create-user": "tsx src/cli/create-business-user.ts",
     "dev": "tsx watch src/server.ts",
     "build": "tsup --config tsup.config.ts",
     "build:edge": "wrangler deploy --dry-run --config ../../wrangler.jsonc --outdir .wrangler/v42-dryrun && node ../../tools/check-edge-bundle.mjs",
@@ -23,13 +24,17 @@
     "deploy:cloudflare": "wrangler deploy --config ../../wrangler.jsonc"
   },
   "dependencies": {
+    "@better-auth/drizzle-adapter": "1.7.5",
     "@cieslacalc/business-core": "workspace:*",
     "@cieslacalc/catalog-core": "workspace:*",
     "@cieslacalc/covering-core": "workspace:*",
     "@cieslacalc/pricing-core": "workspace:*",
+    "@cieslacalc/project-core": "workspace:*",
+    "@cieslacalc/quote-core": "workspace:*",
     "@cieslacalc/roof-system-core": "workspace:*",
     "@cieslacalc/shared": "workspace:*",
-    "drizzle-orm": "0.44.0",
+    "better-auth": "1.7.5",
+    "drizzle-orm": "0.45.2",
     "express": "^4.21.2",
     "mysql2": "3.14.0",
     "zod": "^3.25.0"
@@ -37,7 +42,7 @@
   "devDependencies": {
     "@types/express": "^4.17.21",
     "@types/supertest": "^6.0.3",
-    "drizzle-kit": "0.31.0",
+    "drizzle-kit": "0.31.10",
     "supertest": "^7.1.0",
     "tsup": "^8.5.0",
     "tsx": "^4.20.0",

@@ -10,6 +10,7 @@ import {
   type TechnicalProductRevision,
 } from '@cieslacalc/catalog-core';
 import type { CatalogImportRepository, CatalogImportState } from './repository';
+import { preserveSeedRows } from '../data/ensure-seed';
 
 export interface CatalogImportCounts {
   total: number;
@@ -163,7 +164,7 @@ export class CatalogImporter {
 
   async import(
     input: unknown,
-    options: { apply?: boolean } = {},
+    options: { apply?: boolean; protectedIds?: ReadonlySet<string> } = {},
   ): Promise<CatalogImportReport> {
     // Full schema and cross-reference validation always precede repository writes.
     const batch = catalogImportBatchV1Schema.parse(input);
@@ -177,7 +178,12 @@ export class CatalogImporter {
       revisionIds: batch.revisions.map((item) => item.id),
       variantIds: batch.variants.map((item) => item.id),
     });
-    const plan = createPlan(batch, state);
+    const plan = createPlan({ ...batch,
+      manufacturers: preserveSeedRows(batch.manufacturers, state.manufacturers, options.protectedIds),
+      products: preserveSeedRows(batch.products, state.products, options.protectedIds),
+      revisions: preserveSeedRows(batch.revisions, state.revisions, options.protectedIds),
+      variants: preserveSeedRows(batch.variants, state.variants, options.protectedIds),
+    }, state);
     const base = {
       batchId,
       checksum,

@@ -42,7 +42,7 @@ const itemResponseSchema = z.object({ item: z.unknown() });
 const itemsResponseSchema = z.object({ items: z.array(z.unknown()) });
 const entryResponseSchema = z.object({ entry: priceListEntrySchema });
 
-async function requestJson<T>(
+export async function requestJson<T>(
   url: string,
   schema: { parse(value: unknown): T },
   init?: RequestInit,
@@ -50,6 +50,7 @@ async function requestJson<T>(
   let response: Response;
   try {
     response = await fetch(url, {
+      credentials: 'same-origin',
       ...init,
       headers: {
         Accept: 'application/json',

@@ -32,6 +32,13 @@ scenario D:
 
 ## Consequences
 
+V58 adds an optional authenticated business workspace beside the public
+catalogue: customer, estimation, quote and membership persistence. Standard
+calculators and local technical projects still require neither a session nor
+a database. Business mutations require same-origin requests, a live session,
+active organization membership and a capability. No calculation moves to the
+server; its technical snapshot validation invokes no geometry solver.
+
 - No feature may move a calculation server-side.
 - The catalogue picker must always offer the manual fallback.
 - A future project sync service is additive; it must not become a prerequisite

@@ -82,6 +82,13 @@ export interface BusinessCatalogReader {
 }
 
 export interface BusinessAdminRepository {
+  /** Insert missing starter rows only; never reuse interactive import upserts. */
+  ensureStarterData(input: {
+    organization: Organization;
+    assortment: OrganizationAssortmentItem[];
+    priceList: OrganizationPriceList;
+    entries: PriceListEntry[];
+  }): Promise<void>;
   /** Used by the demo seeder; never reachable from an HTTP route. */
   upsertOrganization(organization: Organization): Promise<void>;
   upsertAssortmentItems(

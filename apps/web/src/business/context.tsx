@@ -6,12 +6,13 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   Organization,
   OrganizationPricePolicy,
 } from '@cieslacalc/business-core';
 import { businessClient, type BusinessClient } from './client';
+import { sessionClient, type BusinessSession } from './auth/client';
 
 /**
  * The **application's** business context (§12, §49).
@@ -72,6 +73,10 @@ function writeStored(key: string, value: string | undefined) {
 }
 
 export interface BusinessContextValue {
+  session?: BusinessSession;
+  authenticationRequired?: boolean;
+  retry?: () => Promise<unknown>;
+  signOut?: () => Promise<void>;
   mode: AppMode;
   setMode: (mode: AppMode) => void;
   /** Undefined in STANDARD mode, or before an organization is chosen. */
@@ -124,12 +129,36 @@ export function BusinessContextProvider({
   );
   const [homeOpen, setHomeOpen] = useState(mode === 'business');
   const [estimation, setEstimation] = useState<CommercialEstimation>();
+  const queryClient = useQueryClient();
+  const sessionQuery = useQuery({
+    queryKey: ['business', 'session'],
+    queryFn: sessionClient.session,
+    enabled: mode === 'business',
+    retry: false,
+    staleTime: 30_000,
+  });
+  const authenticationRequired =
+    sessionQuery.isError &&
+    'code' in sessionQuery.error &&
+    sessionQuery.error.code === 'authentication-required';
+  const refetchSession = sessionQuery.refetch;
+  const retry = useCallback(async () => {
+    await refetchSession();
+    await queryClient.invalidateQueries({ queryKey: ['business'] });
+  }, [refetchSession, queryClient]);
+  const signOut = useCallback(async () => {
+    await sessionClient.signOut();
+    setEstimation(undefined);
+    setHomeOpen(true);
+    queryClient.removeQueries({ queryKey: ['business'] });
+    await refetchSession();
+  }, [queryClient, refetchSession]);
 
   /** No business request is ever issued in STANDARD mode. */
   const organizationsQuery = useQuery({
     queryKey: ['business', 'organizations'],
     queryFn: ({ signal }) => client.listOrganizations(signal),
-    enabled: mode === 'business',
+    enabled: mode === 'business' && !!sessionQuery.data,
     retry: false,
     staleTime: 5 * 60_000,
   });
@@ -146,6 +175,8 @@ export function BusinessContextProvider({
   }, []);
 
   const setOrganizationId = useCallback((next: string | undefined) => {
+    setEstimation(undefined);
+    setHomeOpen(true);
     setOrganizationIdState(next);
     writeStored(ORGANIZATION_KEY, next);
   }, []);
@@ -171,6 +202,10 @@ export function BusinessContextProvider({
   const value = useMemo<BusinessContextValue>(
     () => ({
       mode,
+      session: sessionQuery.isError ? undefined : sessionQuery.data,
+      authenticationRequired,
+      retry,
+      signOut,
       setMode,
       ...(organization
         ? { organization, organizationId: organization.id }
@@ -183,11 +218,23 @@ export function BusinessContextProvider({
       setHomeOpen,
       ...(estimation ? { estimation } : {}),
       setEstimation,
-      loading: mode === 'business' && organizationsQuery.isPending,
-      unavailable: mode === 'business' && organizationsQuery.isError,
+      loading:
+        mode === 'business' &&
+        (sessionQuery.isPending ||
+          (!!sessionQuery.data && organizationsQuery.isPending)),
+      unavailable:
+        mode === 'business' &&
+        (organizationsQuery.isError ||
+          (sessionQuery.isError && !authenticationRequired)),
       client,
     }),
     [
+      sessionQuery.data,
+      sessionQuery.isPending,
+      sessionQuery.isError,
+      authenticationRequired,
+      retry,
+      signOut,
       client,
       estimation,
       homeOpen,

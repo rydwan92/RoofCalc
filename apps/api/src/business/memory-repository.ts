@@ -238,6 +238,30 @@ export class InMemoryBusinessRepository
     return Promise.resolve();
   }
 
+  async ensureStarterData(
+    input: Parameters<BusinessAdminRepository['ensureStarterData']>[0],
+  ): Promise<void> {
+    if (
+      !this.state.organizations.some((row) => row.id === input.organization.id)
+    )
+      this.state.organizations.push(structuredClone(input.organization));
+    for (const item of input.assortment)
+      if (
+        !this.state.assortment.some(
+          (row) =>
+            row.id === item.id ||
+            (row.organizationId === item.organizationId &&
+              row.externalKey === item.externalKey),
+        )
+      )
+        this.state.assortment.push(structuredClone(item));
+    if (!this.state.priceLists.some((row) => row.id === input.priceList.id))
+      this.state.priceLists.push(structuredClone(input.priceList));
+    for (const entry of input.entries)
+      if (!this.state.entries.some((row) => row.id === entry.id))
+        this.state.entries.push(structuredClone(entry));
+  }
+
   upsertAssortmentItems(
     organizationId: string,
     items: OrganizationAssortmentItem[],

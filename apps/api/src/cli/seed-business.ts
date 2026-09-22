@@ -5,6 +5,9 @@ import { createCatalogDatabase } from '../db/client';
 import { DrizzleBusinessRepository } from '../db/business-repository';
 import { businessSeedSchema, resolveBusinessSeed } from '../business/seed';
 import { seedBusinessOrganization } from '../business/seed-runner';
+import { loadExpectedSeeds } from '../data/seed-manifest-loader';
+import { organizationImportBatches } from '../db/business-schema';
+import { sql } from 'drizzle-orm';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const SEED_FILE = resolve(here, '../data/business/demo-wholesaler.v1.json');
@@ -30,6 +33,15 @@ async function main() {
       resolveBusinessSeed(seed),
       { apply },
     );
+    if (apply && report.droppedVariantReferences.length === 0) {
+      const expected = (await loadExpectedSeeds()).find((entry) => entry.category === 'business')!;
+      const now = new Date().toISOString();
+      await connection.db.insert(organizationImportBatches).values({
+        id: `starter:${expected.checksum}`, organizationId: report.organizationId,
+        sourceLabel: 'roofcalc-starter-business', checksum: expected.checksum,
+        status: 'completed', counts: report.counts, startedAt: now, completedAt: now,
+      }).onDuplicateKeyUpdate({ set: { id: sql`${organizationImportBatches.id}` } });
+    }
     console.log(JSON.stringify({ apply, ...report }, null, 2));
   } finally {
     await connection.close();

@@ -34,10 +34,13 @@ import {
   BusinessAdminError,
   BusinessAdminService,
 } from '../business/admin-service';
+import { type AdminRequestContext } from '../business/capability';
+import { can, type BusinessAccess } from '../business/auth/access';
+import { workspaceRoute } from '../business/workspace/routes';
 import {
-  adminWritesAllowed,
-  type AdminRequestContext,
-} from '../business/capability';
+  WorkspaceError,
+  type WorkspaceRepository,
+} from '../business/workspace/contracts';
 
 export interface ApiResult {
   status: number;
@@ -69,6 +72,8 @@ const pricingVariantsResponseSchema = z.object({
  */
 export interface BusinessApi {
   service: BusinessService;
+  access?: BusinessAccess;
+  workspace?: WorkspaceRepository;
   admin?: BusinessAdminService;
   /** Per-request transport facts the capability gate needs. */
   request?: AdminRequestContext;
@@ -131,8 +136,8 @@ export async function handleApiRequest(
   body?: unknown,
 ): Promise<ApiResult> {
   const businessPath = pathname.startsWith('/api/business/');
-  if (method === 'POST' && businessPath)
-    return handleBusinessAdmin(pathname, business, body);
+  if (businessPath)
+    return handleAuthorizedBusiness(method, pathname, search, business, body);
   if (method !== 'GET' && method !== 'HEAD')
     return errorResult(404, 'not-found');
   if (pathname === '/api/health') return healthResult(health);
@@ -237,6 +242,81 @@ export async function handleApiRequest(
   return errorResult(404, 'not-found');
 }
 
+async function handleAuthorizedBusiness(
+  method: string,
+  pathname: string,
+  search: URLSearchParams,
+  business: BusinessApi | undefined,
+  body: unknown,
+): Promise<ApiResult> {
+  if (!business) return errorResult(503, 'business-unavailable');
+  if (!business.access) return errorResult(401, 'authentication-required');
+  try {
+    if (pathname === '/api/business/session' && method === 'GET')
+      return json(business.access);
+    if (
+      pathname === '/api/business/organizations' &&
+      (method === 'GET' || method === 'HEAD')
+    )
+      return json({
+        items: (await business.service.listOrganizations()).filter((org) =>
+          can(business.access, org.id, 'business.read'),
+        ),
+      });
+    const segments = pathname.split('/').map(decodeURIComponent);
+    const org = segments[4];
+    if (segments[3] !== 'organizations' || !org)
+      return errorResult(404, 'not-found');
+    const read = method === 'GET' || method === 'HEAD';
+    const capability = read
+      ? 'business.read'
+      : segments[5] === 'customers'
+        ? 'customers.write'
+        : segments[5] === 'estimations'
+          ? 'quote.write'
+          : segments[6] === 'price'
+            ? 'prices.manage'
+            : 'assortment.manage';
+    if (!can(business.access, org, capability))
+      return errorResult(403, 'business-forbidden');
+    // Import/create may carry prices as well as assortment changes.
+    if (
+      !read &&
+      ['import', 'create'].includes(segments[6] ?? '') &&
+      !can(business.access, org, 'prices.manage')
+    )
+      return errorResult(403, 'business-forbidden');
+    if (business.workspace) {
+      const result = await workspaceRoute(
+        business.workspace,
+        business.access.user.id,
+        org,
+        segments,
+        method,
+        search,
+        body,
+      );
+      if (result) return result;
+    }
+    if (read)
+      return await handleBusinessRead(pathname, search, business.service);
+    if (method === 'POST')
+      return await handleBusinessAdmin(pathname, business, body);
+    return errorResult(404, 'not-found');
+  } catch (error) {
+    if (error instanceof WorkspaceError)
+      return errorResult(error.status, error.code);
+    if (error instanceof ZodError || error instanceof URIError)
+      return errorResult(400, 'business-invalid-request');
+    if (error instanceof BusinessServiceError)
+      return errorResult(
+        error.code.endsWith('not-found') ? 404 : 400,
+        error.code,
+      );
+    return errorResult(503, 'business-unavailable');
+  }
+}
+
 /**
  * `GET /api/business/...` — organization reads. Edge-compatible: the same
  * services run under Node and the Cloudflare Worker (§53).
@@ -307,8 +387,7 @@ async function handleBusinessAdmin(
   body: unknown,
 ): Promise<ApiResult> {
   const admin = business?.admin;
-  if (!admin || !adminWritesAllowed(business?.request ?? {}))
-    return errorResult(404, 'not-found');
+  if (!admin) return errorResult(404, 'not-found');
   const segments = pathname.split('/');
   if (
     segments[1] !== 'api' ||

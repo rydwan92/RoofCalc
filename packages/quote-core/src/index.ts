@@ -70,6 +70,9 @@ export interface QuoteLine {
 }
 
 export interface QuoteDraft {
+  number?: string;
+  issuedOn?: string;
+  preparedBy?: string;
   schemaVersion: 1;
   id: string;
   status: 'draft';
@@ -83,6 +86,8 @@ export interface QuoteDraft {
   lines: QuoteLine[];
   notes?: string;
 }
+
+export { quoteDraftSchema } from './schema';
 
 export interface ComputedQuoteLine {
   line: QuoteLine;
@@ -236,7 +241,7 @@ export function summarizeQuote(draft: QuoteDraft): QuoteSummary {
       0,
     ),
     netMinor: priced.reduce((sum, line) => sum + (line.netMinor ?? 0), 0),
-    ...(missingVatCount === 0
+    ...(missingVatCount === 0 && missingPriceCount === 0
       ? {
           taxMinor: withVat.reduce((sum, line) => sum + line.taxMinor, 0),
           grossMinor: withVat.reduce((sum, line) => sum + line.grossMinor, 0),
@@ -249,6 +254,9 @@ export function summarizeQuote(draft: QuoteDraft): QuoteSummary {
 }
 
 export interface CreateQuoteDraftInput {
+  number?: string;
+  issuedOn?: string;
+  preparedBy?: string;
   id: string;
   organizationSnapshot: QuoteOrganizationSnapshot;
   customerSnapshot: QuoteCustomerSnapshot;
@@ -275,6 +283,9 @@ export function createQuoteDraft(input: CreateQuoteDraftInput): QuoteDraft {
     schemaVersion: 1,
     id: input.id,
     status: 'draft',
+    ...(input.number ? { number: input.number } : {}),
+    ...(input.issuedOn ? { issuedOn: input.issuedOn } : {}),
+    ...(input.preparedBy ? { preparedBy: input.preparedBy } : {}),
     organizationSnapshot: { ...input.organizationSnapshot },
     customerSnapshot: { ...input.customerSnapshot },
     projectReference: { ...input.projectReference },
