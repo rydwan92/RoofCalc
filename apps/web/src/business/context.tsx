@@ -30,6 +30,25 @@ import { businessClient, type BusinessClient } from './client';
 
 export type AppMode = 'standard' | 'business';
 
+export interface CustomerSnapshot {
+  name: string;
+  companyName?: string;
+  taxId?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+}
+
+/** Session-owned business context. It is never written into the roof document. */
+export interface CommercialEstimation {
+  id: string;
+  projectId: string;
+  projectName: string;
+  location?: string;
+  customer: CustomerSnapshot;
+  createdAt: string;
+}
+
 const MODE_KEY = 'cieslacalc.businessMode.v1';
 const ORGANIZATION_KEY = 'cieslacalc.activeOrganization.v1';
 const POLICY_KEY = 'cieslacalc.organizationPricePolicy.v1';
@@ -62,6 +81,10 @@ export interface BusinessContextValue {
   organizations: Organization[];
   pricePolicy: OrganizationPricePolicy;
   setPricePolicy: (policy: OrganizationPricePolicy) => void;
+  homeOpen: boolean;
+  setHomeOpen: (open: boolean) => void;
+  estimation?: CommercialEstimation;
+  setEstimation: (estimation: CommercialEstimation | undefined) => void;
   /** True while the organization list is still loading in business mode. */
   loading: boolean;
   /**
@@ -99,6 +122,8 @@ export function BusinessContextProvider({
         ? 'organization-then-catalogue'
         : 'organization-only',
   );
+  const [homeOpen, setHomeOpen] = useState(mode === 'business');
+  const [estimation, setEstimation] = useState<CommercialEstimation>();
 
   /** No business request is ever issued in STANDARD mode. */
   const organizationsQuery = useQuery({
@@ -116,6 +141,7 @@ export function BusinessContextProvider({
 
   const setMode = useCallback((next: AppMode) => {
     setModeState(next);
+    setHomeOpen(next === 'business');
     writeStored(MODE_KEY, next === 'business' ? 'business' : undefined);
   }, []);
 
@@ -153,12 +179,18 @@ export function BusinessContextProvider({
       organizations,
       pricePolicy,
       setPricePolicy,
+      homeOpen,
+      setHomeOpen,
+      ...(estimation ? { estimation } : {}),
+      setEstimation,
       loading: mode === 'business' && organizationsQuery.isPending,
       unavailable: mode === 'business' && organizationsQuery.isError,
       client,
     }),
     [
       client,
+      estimation,
+      homeOpen,
       mode,
       organization,
       organizations,
@@ -194,6 +226,9 @@ export function useBusiness(): BusinessContextValue {
       organizations: [],
       pricePolicy: 'organization-only' as const,
       setPricePolicy: () => undefined,
+      homeOpen: false,
+      setHomeOpen: () => undefined,
+      setEstimation: () => undefined,
       loading: false,
       unavailable: false,
       client: businessClient,

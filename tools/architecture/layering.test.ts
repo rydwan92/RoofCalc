@@ -218,6 +218,14 @@ describe('package dependency direction', () => {
     ).toEqual([]);
   });
 
+  it('quote-core is a pure downstream snapshot and depends on no workspace package', () => {
+    expect(forbiddenImports('packages/quote-core', PURE_DOMAIN)).toEqual([]);
+    expect(forbiddenImports('packages/quote-core', [/^@cieslacalc\//])).toEqual(
+      [],
+    );
+    expect(forbiddenText('packages/quote-core', BROWSER_GLOBALS)).toEqual([]);
+  });
+
   it('procurement-core depends on no workspace package at all', () => {
     expect(
       forbiddenImports('packages/procurement-core', [/^@cieslacalc\//]),
@@ -279,6 +287,7 @@ describe('package dependency direction', () => {
       'packages/timber-model',
       'packages/drawing-engine',
       'packages/technical-scene',
+      'packages/quote-core',
     ])
       expect({
         directory,

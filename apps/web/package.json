@@ -20,6 +20,7 @@
     "@cieslacalc/pricing-core": "workspace:*",
     "@cieslacalc/procurement-core": "workspace:*",
     "@cieslacalc/project-core": "workspace:*",
+    "@cieslacalc/quote-core": "workspace:*",
     "@cieslacalc/quantity-core": "workspace:*",
     "@cieslacalc/roof-math": "workspace:*",
     "@cieslacalc/roof-system-core": "workspace:*",

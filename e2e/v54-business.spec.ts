@@ -123,6 +123,7 @@ async function stubBusinessApi(
   options: { sells?: string[]; unavailable?: boolean } = {},
 ) {
   const sells = options.sells ?? [KODA_VARIANT];
+  let unmatchedActive = true;
   await page.route('**/api/business/**', async (route: Route) => {
     if (options.unavailable) {
       await route.fulfill({
@@ -132,6 +133,28 @@ async function stubBusinessApi(
       return;
     }
     const url = new URL(route.request().url());
+    if (
+      url.pathname.endsWith('/assortment/bulk-flags') &&
+      route.request().method() === 'POST'
+    ) {
+      const input = route.request().postDataJSON() as {
+        itemIds: string[];
+        active?: boolean;
+      };
+      if (input.itemIds.includes(UNMATCHED_ROW.item.id) && input.active != null)
+        unmatchedActive = input.active;
+      await route.fulfill({
+        json: {
+          items: [
+            {
+              ...UNMATCHED_ROW.item,
+              active: unmatchedActive,
+            },
+          ],
+        },
+      });
+      return;
+    }
     if (url.pathname.endsWith('/organizations')) {
       await route.fulfill({ json: { items: [ORGANIZATION] } });
       return;
@@ -139,7 +162,14 @@ async function stubBusinessApi(
     if (url.pathname.endsWith('/assortment')) {
       const items = [
         ...(sells.includes(KODA_VARIANT) ? [assortmentRow()] : []),
-        ...(url.searchParams.get('kind') ? [] : [UNMATCHED_ROW]),
+        ...(url.searchParams.get('kind')
+          ? []
+          : [
+              {
+                ...UNMATCHED_ROW,
+                item: { ...UNMATCHED_ROW.item, active: unmatchedActive },
+              },
+            ]),
       ];
       await route.fulfill({
         json: {
@@ -149,7 +179,7 @@ async function stubBusinessApi(
             total: items.length,
             matched: items.filter((row) => row.state === 'matched').length,
             unmatched: items.filter((row) => row.state === 'unmatched').length,
-            inactive: 0,
+            inactive: items.filter((row) => !row.item.active).length,
             withoutPrice: 0,
           },
         },
@@ -231,6 +261,8 @@ async function openBuilder(page: Page, mode: 'standard' | 'business') {
   }, mode);
   await page.goto('/#/calculators/common-rafter');
   await page.locator('[data-mode="builder"]').click();
+  if (mode === 'business')
+    await page.getByTestId('business-home-continue').click();
 }
 
 /** Project → Pokrycie → Dachówka → Wybierz z katalogu. */
@@ -268,8 +300,12 @@ test.describe('V54 business mode', () => {
     const row = page.getByTestId('business-picker-row').first();
     // §16: the wholesaler's own code, not only a RoofCalc ID.
     await expect(row).toContainText('DACH-00384');
-    await expect(row).toContainText(/Cena: dostępna/);
-    await row.getByRole('button', { name: /Użyj produktu/ }).click();
+    await expect(row).toContainText(/4,82/);
+    await row.getByRole('button', { name: /Sprawdź i wybierz/ }).click();
+    await page
+      .getByTestId('business-product-detail')
+      .getByRole('button', { name: /Użyj produktu/ })
+      .click();
 
     // The technical engine still produced the layout: a business pick is a
     // normal catalogue pick with a wholesaler's code attached (§71).
@@ -368,6 +404,10 @@ test.describe('V54 business mode', () => {
     await page
       .getByTestId('business-picker-row')
       .first()
+      .getByRole('button', { name: /Sprawdź i wybierz/ })
+      .click();
+    await page
+      .getByTestId('business-product-detail')
       .getByRole('button', { name: /Użyj produktu/ })
       .click();
     const productCard = page.getByTestId('covering-product-card');
@@ -383,6 +423,7 @@ test.describe('V54 business mode', () => {
     await stubBusinessApi(page, { sells: [] });
     await page.reload();
     await page.locator('[data-mode="builder"]').click();
+    await page.getByTestId('business-home-continue').click();
     await page.locator('[data-perspective="project"]').click();
     // §17/§18: an explicit choice, never an automatic substitution.
     await page.locator('[data-task="covering"]').click();
@@ -429,9 +470,18 @@ test.describe('V54 business mode', () => {
     await page.getByTestId('business-admin-entry').click();
 
     await expect(page.getByTestId('admin-dashboard')).toBeVisible();
+    await expect(page.getByTestId('admin-data-quality')).toContainText(
+      'Jakość danych',
+    );
     await expect(page.getByTestId('admin-row')).toHaveCount(2);
     await page.getByRole('tab', { name: 'Niepowiązane' }).click();
     await expect(page.getByTestId('admin-row')).toHaveCount(2);
+
+    await page.getByLabel(/MEM-00901/).check();
+    await page.getByRole('button', { name: 'Dezaktywuj' }).click();
+    await expect(page.getByTestId('admin-data-quality')).toContainText(
+      /Nieaktywne\s*1/,
+    );
 
     await page.getByTestId('admin-row').nth(1).click();
     const detail = page.getByTestId('assortment-detail');

@@ -71,6 +71,7 @@ export function useOrganizationPrices(variantIds: readonly string[]) {
     staleTime: 60_000,
   });
   return {
+    items: query.data?.items ?? [],
     byVariantId: new Map(
       (query.data?.items ?? []).map((item) => [item.commercialVariantId, item]),
     ),

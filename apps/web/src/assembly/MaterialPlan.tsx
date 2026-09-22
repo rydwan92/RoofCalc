@@ -212,6 +212,24 @@ export function MaterialPlan({
     const result = commercial.byVariantId.get(row.product.variantId);
     return !result?.price;
   };
+  const isOutsideAssortment = (row: MaterialPlanRow) => {
+    const result = row.product?.variantId
+      ? commercial.byVariantId.get(row.product.variantId)
+      : undefined;
+    return (
+      !!row.product?.variantId &&
+      (!result ||
+        result.missing === 'not-in-assortment' ||
+        result.missing === 'assortment-inactive' ||
+        result.missing === 'assortment-unmatched')
+    );
+  };
+  const isMissingCompanyPrice = (row: MaterialPlanRow) => {
+    const result = row.product?.variantId
+      ? commercial.byVariantId.get(row.product.variantId)
+      : undefined;
+    return !!result && !result.price && !isOutsideAssortment(row);
+  };
   const needsAttention = (row: MaterialPlanRow) =>
     hasTechnicalIssue(row) || hasCommercialIssue(row);
   const options = usePriceOptions(
@@ -333,43 +351,69 @@ export function MaterialPlan({
           <button onClick={onOpenExport}>{m.export}</button>
         </div>
       </header>
-      <div className="mp-summary">
+      <div className="mp-summary" data-business={business.mode === 'business'}>
         <span>
           {m.count}
           <strong>{rows.length}</strong>
         </span>
-        <span>
-          {m.purchaseCount}
-          <strong>
-            {rows.filter((row) => statusOf(row) === 'purchase').length}
-          </strong>
-        </span>
-        <span>
-          {m.geometryCount}
-          <strong>
-            {rows.filter((row) => statusOf(row) === 'geometry').length}
-          </strong>
-        </span>
-        <span>
-          {m.estimates}
-          <strong>
-            {rows.filter((row) => statusOf(row) === 'estimate').length}
-          </strong>
-        </span>
-        <span>
-          {m.needsData}
-          <strong>
-            {rows.filter((row) => statusOf(row) === 'needs-data').length}
-          </strong>
-        </span>
-        <span>
-          {m.known}
-          <strong>
-            {totalMin === totalMax
-              ? money(totalMin)
-              : `${money(totalMin)}–${money(totalMax)}`}
-          </strong>
-        </span>
+        {business.mode === 'business' ? (
+          <>
+            <span>
+              {m.commercialReady}
+              <strong>
+                {
+                  rows.filter(
+                    (row) =>
+                      !hasTechnicalIssue(row) && !hasCommercialIssue(row),
+                  ).length
+                }
+              </strong>
+            </span>
+            <span>
+              {m.missingCompanyPrice}
+              <strong>{rows.filter(isMissingCompanyPrice).length}</strong>
+            </span>
+            <span>
+              {m.outsideCompanyAssortment}
+              <strong>{rows.filter(isOutsideAssortment).length}</strong>
+            </span>
+          </>
+        ) : (
+          <>
+            <span>
+              {m.purchaseCount}
+              <strong>
+                {rows.filter((row) => statusOf(row) === 'purchase').length}
+              </strong>
+            </span>
+            <span>
+              {m.geometryCount}
+              <strong>
+                {rows.filter((row) => statusOf(row) === 'geometry').length}
+              </strong>
+            </span>
+            <span>
+              {m.estimates}
+              <strong>
+                {rows.filter((row) => statusOf(row) === 'estimate').length}
+              </strong>
+            </span>
+            <span>
+              {m.needsData}
+              <strong>
+                {rows.filter((row) => statusOf(row) === 'needs-data').length}
+              </strong>
+            </span>
+            <span>
+              {m.known}
+              <strong>
+                {totalMin === totalMax
+                  ? money(totalMin)
+                  : `${money(totalMin)}–${money(totalMax)}`}
+              </strong>
+            </span>
+          </>
+        )}
       </div>
       <small>{m.incomplete}</small>
       {rows.length > 0 &&

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Plus, Upload } from 'lucide-react';
+import { ArrowLeft, Plus, Upload, X } from 'lucide-react';
 import {
   ASSORTMENT_FILTERS,
   type AssortmentFilter,
@@ -202,6 +202,13 @@ export function AdminAssortment({
           </small>
         )}
       </section>
+      {catalogStatus.data?.technicalProducts === 0 && (
+        <section className="bz-catalog-empty">
+          <strong>{m.catalogEmpty}</strong>
+          <span>{m.initializationGuide}</span>
+          {import.meta.env.DEV && <code>pnpm db:setup:local</code>}
+        </section>
+      )}
       <div className="bz-dashboard" data-testid="admin-dashboard">
         <Count label={m.countAssortment} value={summary?.total} />
         <Count label={m.countMatched} value={summary?.matched} />
@@ -217,6 +224,34 @@ export function AdminAssortment({
         />
         <Count label={m.countInactive} value={summary?.inactive} />
       </div>
+      <section className="bz-quality" data-testid="admin-data-quality">
+        <h3>{m.dataQuality}</h3>
+        <div>
+          <Count
+            label={m.qualityUnmatched}
+            value={summary?.unmatched}
+            tone={summary?.unmatched ? 'warning' : undefined}
+          />
+          <Count
+            label={m.qualityMatchedWithoutPrice}
+            value={summary?.withoutPrice}
+            tone={summary?.withoutPrice ? 'warning' : undefined}
+          />
+          <Count label={m.qualityWithoutSku} value={0} />
+          <Count label={m.qualityInactive} value={summary?.inactive} />
+          <Count
+            label={m.qualityUnavailableToCompany}
+            value={
+              catalogStatus.data && summary
+                ? Math.max(
+                    0,
+                    catalogStatus.data.technicalProducts - summary.matched,
+                  )
+                : undefined
+            }
+          />
+        </div>
+      </section>
       <div className="bz-admin-toolbar">
         <label>
           <span className="bz-visually-hidden">{m.searchAssortment}</span>
@@ -225,7 +260,23 @@ export function AdminAssortment({
             placeholder={m.searchAssortment}
             onChange={(event) => setSearch(event.target.value)}
             data-testid="admin-search"
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && rows[0]) {
+                event.preventDefault();
+                setSelectedId(rows[0].item.id);
+              }
+            }}
           />
+          {search && (
+            <button
+              type="button"
+              className="bz-search-clear"
+              aria-label={m.clearSearch}
+              onClick={() => setSearch('')}
+            >
+              <X size={15} aria-hidden="true" />
+            </button>
+          )}
         </label>
         <div
           className="bz-filters"

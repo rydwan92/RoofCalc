@@ -250,9 +250,7 @@ describe('business product picker', () => {
     expect(rows[0]!.textContent ?? '').toContain('DACH-00384');
     expect(rows[0]!.textContent ?? '').toMatch(/Kod hurtowni|Wholesaler code/i);
     expect(rows[0]!.textContent ?? '').toMatch(/Preferowany|Preferred/i);
-    expect(rows[0]!.textContent ?? '').toMatch(
-      /Cena: dostępna|Price: available/i,
-    );
+    expect(rows[0]!.textContent ?? '').toMatch(/4,82|4\.82/);
   });
 
   it('searches the assortment by warehouse code', async () => {
@@ -430,7 +428,13 @@ describe('business product picker', () => {
       />,
     );
     const row = (await screen.findAllByTestId('business-picker-row'))[0]!;
-    await user.click(within(row).getByRole('button', { name: /Użyj|Use/i }));
+    await user.click(
+      within(row).getByRole('button', { name: /Sprawdź|Review/i }),
+    );
+    const detail = await screen.findByTestId('business-product-detail');
+    expect(detail.textContent ?? '').toMatch(/304 × 503 mm/);
+    expect(detail.textContent ?? '').toMatch(/390–430 mm/);
+    await user.click(within(detail).getByRole('button', { name: /Użyj|Use/i }));
     await waitFor(() => expect(onApply).toHaveBeenCalledTimes(1));
     const businessSelection = onApply.mock.calls[0]![0];
     const globalSelection = createCatalogProductSelection(exact);
@@ -504,7 +508,7 @@ describe('admin assortment', () => {
     );
     const status = await screen.findByTestId('catalog-system-status');
     await waitFor(() =>
-      expect(status.textContent ?? '').toMatch(/Połączona|Connected/i),
+      expect(status.textContent ?? '').toMatch(/Połączono|Connected/i),
     );
     expect(status.textContent ?? '').toContain('52');
     expect(status.textContent ?? '').toContain('40');

@@ -1,6 +1,6 @@
 import { lazy, Suspense, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Building2, Settings } from 'lucide-react';
+import { Building2, Home, Settings } from 'lucide-react';
 import { useBusiness } from './context';
 import { businessCopy } from './copy';
 
@@ -33,6 +33,8 @@ export function BusinessHeader() {
     setOrganizationId,
     unavailable,
     loading,
+    estimation,
+    setHomeOpen,
   } = useBusiness();
   const [admin, setAdmin] = useState(false);
 
@@ -41,6 +43,16 @@ export function BusinessHeader() {
   return (
     <div className="bz-header" data-testid="business-header">
       <Building2 size={15} aria-hidden="true" />
+      <button
+        type="button"
+        className="bz-admin-entry"
+        data-testid="business-home-entry"
+        onClick={() => setHomeOpen(true)}
+        title={m.salesDesk}
+      >
+        <Home size={15} aria-hidden="true" />
+        <span>{m.salesDesk}</span>
+      </button>
       <span className="bz-header-label">{m.priceListLabel}:</span>
       {unavailable ? (
         <strong data-testid="business-header-offline">{m.unavailable}</strong>
@@ -65,6 +77,19 @@ export function BusinessHeader() {
         <strong data-testid="business-organization-name">
           {organization?.name ?? m.chooseOrganization}
         </strong>
+      )}
+      {estimation && (
+        <span
+          className="bz-estimation-context"
+          data-testid="business-estimation-context"
+        >
+          <span>
+            {m.estimation}: <strong>{estimation.projectName}</strong>
+          </span>
+          <span>
+            {m.customer}: <strong>{estimation.customer.name}</strong>
+          </span>
+        </span>
       )}
       <button
         type="button"

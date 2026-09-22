@@ -32,6 +32,7 @@ import {
 import { downloadCostEstimateCsv } from './cost-csv';
 import type { ExportFacts } from './export-adapter';
 import { materialCopy, materialText } from './material-copy';
+import { useBusiness } from '../business/context';
 
 const QUANTITY_UNITS: readonly QuantityUnit[] = [
   'piece',
@@ -136,6 +137,7 @@ export function CostWorkspace({
   onOpenDocuments,
   materialsAttention = 0,
   onOpenMaterials,
+  onOpenQuote,
 }: {
   facts: ExportFacts;
   scenario: CostScenario;
@@ -144,9 +146,12 @@ export function CostWorkspace({
   /** V53: material rows still needing a decision (guides an empty estimate). */
   materialsAttention?: number;
   onOpenMaterials?: () => void;
+  onOpenQuote?: () => void;
 }) {
   const { t, i18n } = useTranslation();
   const locale = i18n.language;
+  const business = useBusiness();
+  const businessMode = business.mode === 'business';
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const [addingManual, setAddingManual] = useState(false);
   // V53: an empty estimate first points at unfinished materials (transient).
@@ -238,6 +243,13 @@ export function CostWorkspace({
     <div className="cw-workspace">
       <header className="cw-summary">
         <div className="cw-summary-main">
+          <h2>
+            {businessMode
+              ? locale.startsWith('pl')
+                ? 'Wycena materiałów'
+                : 'Material estimate'
+              : t('assembly.cost.title')}
+          </h2>
           <span>{t('assembly.cost.totalNet')}</span>
           <strong data-testid="cost-total-net">
             {money(summary.netMinor, scenario.currencyCode, locale)}
@@ -275,6 +287,16 @@ export function CostWorkspace({
               {t('assembly.cost.fillPrices', {
                 count: summary.needsPriceCount,
               })}
+            </button>
+          )}
+          {businessMode && onOpenQuote && (
+            <button
+              type="button"
+              className="a-button a-primary"
+              data-testid="cost-prepare-quote"
+              onClick={onOpenQuote}
+            >
+              {locale.startsWith('pl') ? 'Przygotuj ofertę' : 'Prepare quote'}
             </button>
           )}
           {summary.needsPriceCount > 0 &&

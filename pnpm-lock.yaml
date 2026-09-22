@@ -186,6 +186,9 @@ importers:
       '@cieslacalc/quantity-core':
         specifier: workspace:*
         version: link:../../packages/quantity-core
+      '@cieslacalc/quote-core':
+        specifier: workspace:*
+        version: link:../../packages/quote-core
       '@cieslacalc/roof-math':
         specifier: workspace:*
         version: link:../../packages/roof-math
@@ -345,6 +348,8 @@ importers:
       '@cieslacalc/roof-math':
         specifier: workspace:*
         version: link:../roof-math
+
+  packages/quote-core: {}
 
   packages/roof-math:
     dependencies:

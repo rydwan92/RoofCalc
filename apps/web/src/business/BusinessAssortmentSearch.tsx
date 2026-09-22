@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Search, Star } from 'lucide-react';
+import { Search, Star, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { OrganizationAssortmentRow } from '@cieslacalc/business-core';
 import { useBusiness } from './context';
@@ -98,7 +98,23 @@ export function BusinessAssortmentSearch({
           value={search}
           placeholder={m.searchAssortment}
           onChange={(event) => setSearch(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && visible[0]) {
+              event.preventDefault();
+              void select(visible[0]);
+            }
+          }}
         />
+        {search && (
+          <button
+            type="button"
+            className="bz-search-clear"
+            aria-label={m.clearSearch}
+            onClick={() => setSearch('')}
+          >
+            <X size={15} aria-hidden="true" />
+          </button>
+        )}
       </label>
       {error && <p role="alert">{error}</p>}
       {assortment.isPending ? (
@@ -139,14 +155,22 @@ export function BusinessAssortmentSearch({
                   className="bz-price-state"
                   data-has-price={row.price ? 'yes' : 'no'}
                 >
-                  {row.price ? m.priceAvailable : m.priceMissing}
+                  {row.price
+                    ? m.organizationPrice(
+                        new Intl.NumberFormat(i18n.language, {
+                          style: 'currency',
+                          currency: row.price.currencyCode,
+                        }).format(row.price.netAmountMinor / 100),
+                        m.saleUnit[row.price.saleUnit] ?? row.price.saleUnit,
+                      )
+                    : m.priceMissing}
                 </span>
                 <button
                   className="a-button a-primary"
                   disabled={applyingId !== undefined}
                   onClick={() => void select(row)}
                 >
-                  {applyingId === row.item.id ? m.applying : m.use}
+                  {applyingId === row.item.id ? m.applying : m.detailsAndChoose}
                 </button>
               </div>
             </li>

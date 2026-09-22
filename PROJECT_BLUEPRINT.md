@@ -1297,6 +1297,53 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+**Iteration:** `057 — wholesale workbench and commercial quote flow`
+
+**Status:** `IMPLEMENTED — green locally; shared-DEV authentication unavailable`
+
+**Starting point:** clean `main` at `16c36cc084bf1567f1f6a0757e43d2b3279aba2c` (`V56`). Baseline `pnpm verify` passed (148 files + 1 skipped; 1625 tests + 11 skipped; web/API/edge builds green) and `pnpm test:architecture` passed 41/41. `pnpm db:status` reached the configured shared target but authentication was rejected; no bootstrap was attempted and deterministic repositories remain the development source.
+
+**Definition of Ready:**
+
+1. **User problem:** a wholesaler salesperson needs to start from a customer/job, see technical versus commercial gaps, price the material plan and prepare a customer-facing draft without navigating the engineering architecture or Admin for every exception.
+2. **Domain owner:** a new pure `quote-core` owns commercial snapshots and integer-money totals; the web business application layer owns readiness/journey composition over existing technical facts. Geometry and quantity packages remain unchanged.
+3. **Canonical persistence:** the technical `RoofProjectDocument` stays portable and unchanged. Customer/estimation/quote data is a downstream business sidecar or local session state, never canonical roof construction state.
+4. **Schema / migration:** start with a versioned local/in-memory commercial draft and no SQL migration; existing saved projects open unchanged. If a persisted shape is added, it will be additive and registered before use.
+5. **Undo / Redo / history:** roof edits keep existing history. Customer, price, discount, quote inclusion and offered-quantity overrides create no roof history entries; quote refresh is one explicit commercial snapshot replacement.
+6. **Quantity:** commercial projections consume existing trusted material-plan facts. Offered quantity overrides remain downstream and never mutate the technical requirement.
+7. **Procurement:** no allowance or blank semantics change; procurement remains authoritative upstream evidence and commerce infers no installation rule.
+8. **Catalogue:** organization assortment/price data is joined downstream. Technical calculations continue from stored snapshots; quote lines snapshot commercial identity and price.
+9. **Future cost layer:** money stays in `cost-core`/`quote-core` and business composition, using integer minor units and basis points only; no geometry, quantity or procurement price dependency.
+10. **Offline behaviour:** the full technical workflow, deterministic assortment fixtures, manual per-estimation prices and local quote draft remain usable without the database/network.
+11. **Mobile UX:** the same new-estimation setup, business context, attention list and quote preview remain reachable at 390×844; complex tables own controlled horizontal scrolling.
+12. **Domain research:** not applicable because V57 adds no geometry, coverage, overlap or connection semantics.
+13. **Regression strategy:** pure quote/readiness tests, business UI tests, focused salesperson/commercial-gap/override/staleness Playwright flows, then architecture, fixtures, edge build and full browser suite.
+14. **Future multi-structure compatibility:** project references and material identities remain opaque supplied fields; no meaning is parsed from technical IDs and a quote snapshots display/commercial data only.
+
+**Completed:** Business mode now opens a sales desk instead of an engineering dashboard: organization summary, `Nowa wycena dachu`, compact customer/investment setup, recent projects, assortment/price entry points and a quiet return to the open project. The existing project-start assistant remains the roof entry. A six-step business journey composes the existing technical readiness with a separate commercial projection and one next action. The header carries organization, estimate, customer and price-list context without adding customer data to `RoofProjectDocument`.
+
+Material Plan adds business-only total/ready/no-company-price/outside-assortment counts, attention filtering and contextual fixes; per-estimation manual prices are explicitly labelled and never update the company catalogue. The organization picker shows SKU and actual net price, supports clear/Enter keyboard flow and confirms useful covering facts before applying a product. Business costing is presented as `Wycena materiałów` and opens the quote flow without forking the cost engine. Admin adds data-quality counts, clearer connected/empty catalogue states, DEV-only setup guidance and keyboard-first search while keeping writes behind the existing capability gate.
+
+New pure `packages/quote-core` owns customer/organization/project snapshots, technical versus offered quantities, company versus manual quote price, optional line discount and explicit per-line VAT, all in integer minor units/basis points. The local draft editor supports inclusion, downstream quantity override, unit price, discount and VAT; missing VAT suppresses final gross. A deterministic material-commercial fingerprint freezes old values after roof/material changes until explicit refresh. The customer preview and print stylesheet group lines, show quote/customer/project headers and totals, hide editing provenance, reset horizontal position and use the existing browser Print / Save PDF path. Drafts remain in-memory per open project; no SQL/project schema changed and no public quote write API was added.
+
+**Changed / WIP:** new `packages/quote-core`; new Business home/journey/readiness/quote components and tests; business context/header/picker/Admin/Material Plan/Cost/Page composition and styles; V54/V57 Playwright coverage; architecture boundary rule; package lock and this checkpoint. No WIP files remain.
+
+**Assumptions:** a quote draft is a downstream commercial snapshot, not technical project truth; the active organization price is the only automatic Business price source; manual quote quantity/price/discount never mutates technical BOM or organization catalogue; browser printing is sufficient for this MVP. Customer/quote persistence was deliberately deferred rather than shipping unauthenticated writes.
+
+**Validation:** baseline and final `pnpm verify` passed. Final suite: 151 test files passed + 1 skipped, 1639 tests passed + 11 skipped; `pnpm test:architecture` 42/42; `pnpm test:fixtures` 38/38; web/API/edge builds, `pnpm build:edge` and `git diff --check` passed. Focused V43B/V54/V57 Chromium: 23 passed / 7 intentional skips. Full Playwright: 117 passed / 27 intentional environment/project skips across desktop and mobile.
+
+**Visual/mobile QA:** Playwright Chromium exercised the full salesperson and Admin paths at 1440×900 and 390×844 plus explicit dashboard checks at 1920×1080 and 1024×768. Screenshots were inspected for the sales desk and customer quote; the inspection caught and fixed preview provenance/horizontal-position leakage. The separate Windows Browser connector exposed no browser surfaces, so no additional interactive connector session was possible.
+
+**Database / fixture status:** `pnpm db:status` reached the configured shared target but authentication was rejected: `SHARED DEV AUTHENTICATION UNAVAILABLE`. No setup/bootstrap was attempted, no TLS/security setting changed and no DB-real workflow is claimed. Deterministic API fixtures/in-memory repositories prove tile selection, Auto-derived material evidence, organization pricing, override/staleness and Admin quality updates.
+
+**Known limitations / security:** customer, estimation and quote drafts are session-local and are not searchable or persisted; this is intentionally not CRM/order/invoice functionality. Production authentication is still incomplete, therefore V57 adds no public production write API for quotes or Admin. Customer preview may use controlled horizontal table scrolling on small screens; print output is the primary customer document layout.
+
+**NEXT ACTION:** V58 should first restore/rotate the shared-DEV credential and prove the V56 bootstrap/API path; then add authenticated, organization-scoped quote draft persistence plus a recent-drafts list and explicit schema migration, reusing `quote-core` snapshots unchanged. Do not start V58 from this checkpoint automatically.
+
+---
+
+**Previous checkpoint — Iteration 056:**
+
 **Iteration:** `056 — covering/batten reliability and database bootstrap`
 
 **Status:** `IMPLEMENTED — green locally; shared-DEV bootstrap awaits valid credentials`
