@@ -7,6 +7,7 @@ const sessionSchema = z.object({
   memberships: z.array(
     z.object({
       organizationId: z.string(),
+      role: z.enum(['owner', 'admin', 'sales']).optional(),
       capabilities: z.array(
         z.enum([
           'business.read',

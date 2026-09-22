@@ -5,9 +5,10 @@
   "type": "module",
   "packageManager": "pnpm@10.15.1",
   "engines": {
-    "node": ">=20.16.0"
+    "node": ">=22.0.0"
   },
   "scripts": {
+    "business:create-user": "pnpm --filter @cieslacalc/api business:create-user",
     "dev": "node tools/dev.mjs",
     "build": "pnpm --filter @cieslacalc/web build && pnpm --filter @cieslacalc/api build && pnpm --filter @cieslacalc/api build:edge",
     "build:edge": "pnpm --filter @cieslacalc/web build && pnpm --filter @cieslacalc/api build:edge",

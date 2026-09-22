@@ -9,7 +9,7 @@ import {
   summarizeCostScenario,
   type CostScenario,
 } from '@cieslacalc/cost-core';
-import { newProjectId } from '@cieslacalc/project-core';
+import { createProjectRecord, newProjectId } from '@cieslacalc/project-core';
 import type { QuoteDraft } from '@cieslacalc/quote-core';
 import { useBusiness } from '../context';
 import { useOrganizationPrices } from '../use-assortment';
@@ -23,7 +23,10 @@ import type {
   ProjectSession,
   ProjectSessionState,
 } from '../../projects/session';
-import type { AssemblyState } from '../../assembly/store';
+import {
+  createDefaultProjectDocument,
+  type AssemblyState,
+} from '../../assembly/store';
 import type {
   MaterialPlanRow,
   MaterialPriceSelection,
@@ -66,6 +69,7 @@ export function useBusinessWorkspace({
   const scope =
     org && business.session ? business.session.user.id + ':' + org : '';
   const scopeRef = useRef(scope);
+  const ownerScope = useRef('');
   scopeRef.current = scope;
   const lastKey = scope ? 'roofcalc.businessEstimation.v1:' + scope : '';
   const quoteQueue = useMemo(
@@ -74,9 +78,9 @@ export function useBusinessWorkspace({
         detail?.quote?.snapshot,
         detail?.quote?.version,
         async (snapshot, version) => {
-          if (!org || !detail) throw new Error('estimation-required');
+          if (!detail) throw new Error('estimation-required');
           const saved = await workspaceClient.saveQuote(
-            org,
+            detail.estimation.organizationId,
             detail.estimation.id,
             snapshot,
             version,
@@ -90,7 +94,7 @@ export function useBusinessWorkspace({
           createdAt: saved.createdAt,
         }),
       ),
-    [org, detail],
+    [detail],
   );
   const projectQueue = useMemo(
     () =>
@@ -98,12 +102,11 @@ export function useBusinessWorkspace({
         detail?.project,
         detail?.estimation.version,
         async (project, version) => {
-          if (!org || !detail || !version)
-            throw new Error('estimation-required');
+          if (!detail || !version) throw new Error('estimation-required');
           return {
             value: project,
             version: await workspaceClient.saveProject(
-              org,
+              detail.estimation.organizationId,
               detail.estimation.id,
               version,
               project,
@@ -111,7 +114,7 @@ export function useBusinessWorkspace({
           };
         },
       ),
-    [org, detail],
+    [detail],
   );
   const quoteState = useSyncExternalStore(
     quoteQueue.subscribe,
@@ -126,6 +129,8 @@ export function useBusinessWorkspace({
     await quoteQueue.flush();
   };
   useEffect(() => {
+    quoteQueue.resume();
+    projectQueue.resume();
     const warn = (event: BeforeUnloadEvent) => {
       if (quoteQueue.dirty() || projectQueue.dirty()) {
         event.preventDefault();
@@ -139,6 +144,15 @@ export function useBusinessWorkspace({
       window.removeEventListener('beforeunload', warn);
     };
   }, [quoteQueue, projectQueue]);
+  useEffect(() => {
+    if (scope && scope === ownerScope.current) {
+      quoteQueue.resume();
+      projectQueue.resume();
+    } else {
+      quoteQueue.suspend();
+      projectQueue.suspend();
+    }
+  }, [scope, quoteQueue, projectQueue]);
   useEffect(() => {
     if (
       !detail ||
@@ -172,7 +186,9 @@ export function useBusinessWorkspace({
     await projectSession.initialize();
     if (scopeRef.current !== expectedScope) return;
     await projectSession.openRemote(next.project);
+    ownerScope.current = expectedScope;
     setDetail(next);
+    setQuoteOpen(false);
     business.setEstimation({
       id: next.estimation.id,
       projectId: next.project.id,
@@ -198,11 +214,15 @@ export function useBusinessWorkspace({
   // Scope changes discard all previous tenant state. The stored value is only
   // an opaque pointer; the server authorizes every restore.
   useEffect(() => {
+    // An expired session must not throw away queued roof/quote edits. A renewed
+    // session for the same user resumes the existing queues and their versions.
+    if (!scope || scope === ownerScope.current) return;
     setDetail(undefined);
     setQuoteOpen(false);
     setWorkspaceError('');
     business.setEstimation(undefined);
-    if (!scope || !org) return;
+    ownerScope.current = scope;
+    if (!org) return;
     let last: string | null = null;
     try {
       last = localStorage.getItem(lastKey);
@@ -350,15 +370,10 @@ export function useBusinessWorkspace({
           ...input.customer,
           type: input.customer.companyName ? 'company' : 'person',
         });
-    state.setMode('builder');
-    await projectSession.initialize();
-    const before = projectSession.snapshot();
-    if (!before.freshProject) await projectSession.create();
-    else projectSession.acknowledgeFreshProject();
-    await projectSession.rename(input.projectName);
-    await projectSession.persistNow();
-    const project = projectSession.exportRecord();
-    if (!project) throw new Error('project-unavailable');
+    const project = createProjectRecord(
+      createDefaultProjectDocument(),
+      input.projectName,
+    );
     const next = await workspaceClient.createEstimation(
       org,
       {
@@ -404,16 +419,67 @@ export function useBusinessWorkspace({
     await activate(next, scope);
     setQuoteOpen(!!next.quote);
   };
-  const saveStatus: RemoteSaveStatus = [quoteState.status, projectState.status].includes(
-    'conflict',
-  )
+  const saveStatus: RemoteSaveStatus = [
+    quoteState.status,
+    projectState.status,
+  ].includes('conflict')
     ? 'conflict'
     : [quoteState.status, projectState.status].includes('error')
       ? 'error'
       : [quoteState.status, projectState.status].includes('saving')
         ? 'saving'
         : 'saved';
+
+  const exportRecovery = () => {
+    const blob = new Blob(
+      [
+        JSON.stringify(
+          {
+            schemaVersion: 1,
+            estimation: detail?.estimation,
+            project: projectQueue.snapshot().value,
+            quote: quoteQueue.snapshot().value,
+          },
+          null,
+          2,
+        ),
+      ],
+      { type: 'application/json' },
+    );
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'roofcalc-business-recovery.json';
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  };
+  const guardRef = useRef<() => Promise<boolean>>(async () => true);
+  guardRef.current = async () => {
+    if (!projectQueue.dirty() && !quoteQueue.dirty()) return true;
+    try {
+      await flush();
+      return true;
+    } catch {
+      const leave = window.confirm(
+        locale.startsWith('pl')
+          ? 'Nie zapisano wszystkich zmian. Pobrać kopię JSON bieżącej wyceny i kontynuować?'
+          : 'Some changes are unsaved. Download a JSON recovery copy and continue?',
+      );
+      if (leave) exportRecovery();
+      return leave;
+    }
+  };
+  const registerLeaveGuard = business.registerLeaveGuard;
+  useEffect(
+    () => registerLeaveGuard?.(() => guardRef.current()),
+    [registerLeaveGuard],
+  );
   return {
+    activeEstimation:
+      detail && detail.project.id === activeProjectId
+        ? detail.estimation
+        : undefined,
+    exportRecovery,
     currentQuoteDraft,
     currentCommercialFingerprint,
     commercialReadiness,

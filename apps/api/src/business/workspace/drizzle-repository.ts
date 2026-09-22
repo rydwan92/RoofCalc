@@ -39,15 +39,22 @@ function clean(row: object) {
 }
 const customerFrom = (row: typeof customers.$inferSelect) =>
   businessCustomerSchema.parse(clean(row));
-const estimationFrom = (row: typeof estimations.$inferSelect) =>
-  commercialEstimationSchema.parse(clean(row));
+const estimationFrom = (row: typeof estimations.$inferSelect) => {
+  const metadata = clean(row);
+  delete metadata.projectSnapshot;
+  return commercialEstimationSchema.parse(metadata);
+};
+// MariaDB exposes JSON as text; native MySQL exposes an object. Both pass
+// through the same strict snapshot validator after decoding.
+const decodeJson = (value: unknown): unknown =>
+  typeof value === 'string' ? JSON.parse(value) : value;
 const quoteFrom = (row: typeof quotes.$inferSelect): SavedQuote => ({
   id: row.id,
   commercialEstimationId: row.commercialEstimationId,
   number: row.number,
   version: row.version,
   updatedAt: row.updatedAt.toISOString(),
-  snapshot: quoteDraftSchema.parse(row.snapshotJson),
+  snapshot: quoteDraftSchema.parse(decodeJson(row.snapshotJson)),
 });
 
 export class DrizzleWorkspaceRepository implements WorkspaceRepository {
@@ -96,15 +103,13 @@ export class DrizzleWorkspaceRepository implements WorkspaceRepository {
   async createCustomer(org: string, input: CustomerInput) {
     const id = crypto.randomUUID(),
       now = new Date();
-    await this.db
-      .insert(customers)
-      .values({
-        ...input,
-        id,
-        organizationId: org,
-        createdAt: now,
-        updatedAt: now,
-      });
+    await this.db.insert(customers).values({
+      ...input,
+      id,
+      organizationId: org,
+      createdAt: now,
+      updatedAt: now,
+    });
     return (await this.getCustomer(org, id))!;
   }
   async updateCustomer(org: string, id: string, input: CustomerInput) {
@@ -158,7 +163,7 @@ export class DrizzleWorkspaceRepository implements WorkspaceRepository {
             quoteNumber: row.quote.number,
             quoteFingerprint: row.quote.sourceFingerprint,
             missingPrices: summarizeQuote(
-              quoteDraftSchema.parse(row.quote.snapshotJson),
+              quoteDraftSchema.parse(decodeJson(row.quote.snapshotJson)),
             ).missingPriceCount,
           }
         : {}),
@@ -186,7 +191,7 @@ export class DrizzleWorkspaceRepository implements WorkspaceRepository {
     return {
       estimation: estimationFrom(row),
       customer,
-      project: projectRecordV1Schema.parse(row.projectSnapshot),
+      project: projectRecordV1Schema.parse(decodeJson(row.projectSnapshot)),
       ...(quote ? { quote: quoteFrom(quote) } : {}),
     };
   }
@@ -198,17 +203,15 @@ export class DrizzleWorkspaceRepository implements WorkspaceRepository {
   ) {
     const id = crypto.randomUUID(),
       now = new Date();
-    await this.db
-      .insert(estimations)
-      .values({
-        ...input,
-        id,
-        organizationId: org,
-        createdBy: userId,
-        createdAt: now,
-        updatedAt: now,
-        projectSnapshot: project,
-      });
+    await this.db.insert(estimations).values({
+      ...input,
+      id,
+      organizationId: org,
+      createdBy: userId,
+      createdAt: now,
+      updatedAt: now,
+      projectSnapshot: project,
+    });
     return (await this.getEstimation(org, id))!;
   }
   async saveProject(
@@ -284,19 +287,17 @@ export class DrizzleWorkspaceRepository implements WorkspaceRepository {
         number,
         createdAt: now.toISOString(),
       });
-      await tx
-        .insert(quotes)
-        .values({
-          id,
-          organizationId: org,
-          commercialEstimationId: estimationId,
-          number,
-          currencyCode: snapshot.currencyCode,
-          snapshotJson: snapshot,
-          sourceFingerprint: snapshot.sourceFingerprint,
-          createdAt: now,
-          updatedAt: now,
-        });
+      await tx.insert(quotes).values({
+        id,
+        organizationId: org,
+        commercialEstimationId: estimationId,
+        number,
+        currencyCode: snapshot.currencyCode,
+        snapshotJson: snapshot,
+        sourceFingerprint: snapshot.sourceFingerprint,
+        createdAt: now,
+        updatedAt: now,
+      });
       await tx
         .update(estimations)
         .set({ status: 'quoted', updatedAt: now })
@@ -333,7 +334,7 @@ export class DrizzleWorkspaceRepository implements WorkspaceRepository {
         throw new WorkspaceError('quote-version-conflict', 409);
       if (draft.currencyCode !== row.currencyCode)
         throw new WorkspaceError('quote-currency-immutable');
-      const previous = quoteDraftSchema.parse(row.snapshotJson),
+      const previous = quoteDraftSchema.parse(decodeJson(row.snapshotJson)),
         now = new Date();
       const snapshot = quoteDraftSchema.parse({
         ...draft,

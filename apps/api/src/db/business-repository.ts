@@ -470,23 +470,47 @@ export class DrizzleBusinessRepository
       });
   }
 
-  async ensureStarterData(input: Parameters<BusinessAdminRepository['ensureStarterData']>[0]): Promise<void> {
-    if (input.priceList.organizationId !== input.organization.id ||
-      input.assortment.some((item) => item.organizationId !== input.organization.id) ||
-      input.entries.some((entry) => entry.priceListId !== input.priceList.id))
+  async ensureStarterData(
+    input: Parameters<BusinessAdminRepository['ensureStarterData']>[0],
+  ): Promise<void> {
+    if (
+      input.priceList.organizationId !== input.organization.id ||
+      input.assortment.some(
+        (item) => item.organizationId !== input.organization.id,
+      ) ||
+      input.entries.some((entry) => entry.priceListId !== input.priceList.id)
+    )
       throw new Error('organization-mismatch');
     await this.db.transaction(async (tx) => {
       // Duplicate-key no-ops are atomic, preserve user edits and do not mask
       // foreign-key/validation errors as INSERT IGNORE would.
-      await tx.insert(organizations).values(input.organization)
-        .onDuplicateKeyUpdate({ set: { id: sql`${organizations.id}`, updatedAt: sql`${organizations.updatedAt}` } });
+      await tx
+        .insert(organizations)
+        .values(input.organization)
+        .onDuplicateKeyUpdate({
+          set: {
+            id: sql`${organizations.id}`,
+            updatedAt: sql`${organizations.updatedAt}`,
+          },
+        });
       for (const item of input.assortment)
-        await tx.insert(organizationAssortmentItems).values(item)
-          .onDuplicateKeyUpdate({ set: { id: sql`${organizationAssortmentItems.id}`, updatedAt: sql`${organizationAssortmentItems.updatedAt}` } });
-      await tx.insert(priceLists).values(input.priceList)
+        await tx
+          .insert(organizationAssortmentItems)
+          .values(item)
+          .onDuplicateKeyUpdate({
+            set: {
+              id: sql`${organizationAssortmentItems.id}`,
+              updatedAt: sql`${organizationAssortmentItems.updatedAt}`,
+            },
+          });
+      await tx
+        .insert(priceLists)
+        .values(input.priceList)
         .onDuplicateKeyUpdate({ set: { id: sql`${priceLists.id}` } });
       for (const entry of input.entries)
-        await tx.insert(priceListEntries).values(entry)
+        await tx
+          .insert(priceListEntries)
+          .values(entry)
           .onDuplicateKeyUpdate({ set: { id: sql`${priceListEntries.id}` } });
     });
   }

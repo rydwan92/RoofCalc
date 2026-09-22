@@ -1,4 +1,5 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
+import { mockBusinessWorkspace } from './business-workspace-fixture';
 
 const ORGANIZATION = {
   id: 'org:v57',
@@ -167,6 +168,7 @@ async function stubApis(page: Page) {
   await page.route('**/api/pricing/**', (route) =>
     route.fulfill({ json: { items: [] } }),
   );
+  await mockBusinessWorkspace(page, ORGANIZATION.id);
 }
 
 async function perspective(page: Page, name: string) {
@@ -194,7 +196,7 @@ test('V57 salesperson: customer → roof → company tile → materials → draf
   await home.getByLabel(/Klient — nazwa lub firma/).fill('Jan Kowalski');
   await home.getByLabel('Nazwa inwestycji').fill('Dom Kowalski');
   await home.getByLabel(/Lokalizacja/).fill('Kraków');
-  await home.getByRole('button', { name: /Utwórz i przejdź do dachu/ }).click();
+  await home.getByRole('button', { name: /Utwórz wycenę/ }).click();
 
   const creator = page.getByTestId('project-start-assistant');
   await expect(creator).toBeVisible();

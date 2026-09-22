@@ -37,8 +37,17 @@ async function main() {
   const results: Array<{ file: string; status: string }> = [];
   try {
     const protectedIds = new Set<string>();
-    for (const table of ['manufacturers', 'technical_product_families', 'technical_product_revisions', 'commercial_variants', 'price_lists', 'price_list_entries']) {
-      const [rows] = await connection.pool.query<RowDataPacket[]>(`SELECT id FROM ${table}`);
+    for (const table of [
+      'manufacturers',
+      'technical_product_families',
+      'technical_product_revisions',
+      'commercial_variants',
+      'price_lists',
+      'price_list_entries',
+    ]) {
+      const [rows] = await connection.pool.query<RowDataPacket[]>(
+        `SELECT id FROM ${table}`,
+      );
       for (const row of rows) protectedIds.add(String(row.id));
     }
     const catalogImporter = new CatalogImporter(
@@ -47,7 +56,10 @@ async function main() {
     for (const file of CATALOGUE_SEED_BATCHES) {
       const contents = await readFile(resolve(BATCH_DIR, file), 'utf8');
       const batch = catalogImportBatchV1Schema.parse(JSON.parse(contents));
-      const report = await catalogImporter.import(batch, { apply, protectedIds });
+      const report = await catalogImporter.import(batch, {
+        apply,
+        protectedIds,
+      });
       results.push({ file, ...report });
       if (report.status === 'conflict')
         throw new Error(`${file}: import conflict — see report above`);
@@ -58,7 +70,10 @@ async function main() {
     for (const file of PRICING_SEED_BATCHES) {
       const contents = await readFile(resolve(BATCH_DIR, file), 'utf8');
       const batch = priceImportBatchV1Schema.parse(JSON.parse(contents));
-      const report = await pricingImporter.import(batch, { apply, protectedIds });
+      const report = await pricingImporter.import(batch, {
+        apply,
+        protectedIds,
+      });
       results.push({ file, ...report });
       if (report.status === 'conflict')
         throw new Error(`${file}: import conflict — see report above`);

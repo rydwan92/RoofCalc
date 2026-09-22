@@ -247,6 +247,11 @@ export function Customers({
                           .filter(Boolean)
                           .join(' · ')}
                       </small>
+                      <small>
+                        {[customer.phone, customer.email]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </small>
                     </span>
                   </button>
                 </li>

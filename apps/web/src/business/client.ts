@@ -63,9 +63,19 @@ export async function requestJson<T>(
   }
   const payload: unknown = await response.json().catch(() => undefined);
   if (!response.ok) {
+    if (response.status === 401 && url.includes('/business/'))
+      globalThis.window?.dispatchEvent(
+        new Event('roofcalc:business-session-expired'),
+      );
     const parsed = businessApiErrorSchema.safeParse(payload);
+    const authError =
+      !parsed.success && url.includes('/auth/') && response.status === 401;
     throw new BusinessClientError(
-      parsed.success ? parsed.data.error.code : 'business-unavailable',
+      parsed.success
+        ? parsed.data.error.code
+        : authError
+          ? 'invalid-credentials'
+          : 'business-unavailable',
     );
   }
   try {

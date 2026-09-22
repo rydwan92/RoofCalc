@@ -124,10 +124,22 @@ export class PricingImporter {
       priceListIds: batch.priceLists.map((item) => item.id),
       entryIds: batch.entries.map((item) => item.id),
     });
-    const plan = createPlan({ ...batch,
-      priceLists: preserveSeedRows(batch.priceLists, state.priceLists, options.protectedIds),
-      entries: preserveSeedRows(batch.entries, state.entries, options.protectedIds),
-    }, state);
+    const plan = createPlan(
+      {
+        ...batch,
+        priceLists: preserveSeedRows(
+          batch.priceLists,
+          state.priceLists,
+          options.protectedIds,
+        ),
+        entries: preserveSeedRows(
+          batch.entries,
+          state.entries,
+          options.protectedIds,
+        ),
+      },
+      state,
+    );
     const base = {
       batchId,
       checksum,

@@ -15,7 +15,11 @@ export interface AuthConfiguration {
 }
 export interface BusinessAuth {
   handler: (request: Request) => Promise<Response>;
-  api: { getSession: (input: { headers: Headers }) => Promise<{ user: { id: string; name: string; email: string } } | null> };
+  api: {
+    getSession: (input: {
+      headers: Headers;
+    }) => Promise<{ user: { id: string; name: string; email: string } } | null>;
+  };
 }
 export function createBusinessAuth(
   db: CatalogDatabase,
@@ -24,10 +28,20 @@ export function createBusinessAuth(
   const secret = configuration.BETTER_AUTH_SECRET,
     baseURL = configuration.BETTER_AUTH_URL;
   if (!secret || secret.length < 32 || !baseURL) return undefined;
-  const url = new URL(baseURL);
+  let url: URL;
+  try {
+    url = new URL(baseURL);
+  } catch {
+    return undefined;
+  }
   if (
-    url.protocol !== 'https:' &&
-    !['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)
+    url.username ||
+    url.password ||
+    (url.protocol !== 'https:' &&
+      !(
+        url.protocol === 'http:' &&
+        ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)
+      ))
   )
     return undefined;
   return betterAuth({

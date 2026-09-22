@@ -144,7 +144,21 @@ function renderBusiness(
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  queryClient.setQueryData(['business', 'session'], { user: { id: 'test-user', name: 'Test User', email: 'test@example.test' }, memberships: [{ organizationId: ORGANIZATION.id, capabilities: ['business.read', 'quote.write', 'customers.write', 'assortment.manage', 'prices.manage'] }] });
+  queryClient.setQueryData(['business', 'session'], {
+    user: { id: 'test-user', name: 'Test User', email: 'test@example.test' },
+    memberships: [
+      {
+        organizationId: ORGANIZATION.id,
+        capabilities: [
+          'business.read',
+          'quote.write',
+          'customers.write',
+          'assortment.manage',
+          'prices.manage',
+        ],
+      },
+    ],
+  });
   return render(
     <QueryClientProvider client={queryClient}>
       <BusinessContextProvider client={client} initialMode={mode}>

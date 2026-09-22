@@ -1297,7 +1297,16 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
-## V58 — persistent business workspace (in progress)
+## V58 — closeout of existing persistent business workspace (in progress)
+
+Closeout starts on clean `main` at `ee491ed989d1bd41d234c1a7b7d6ddb1b6b60583`.
+The explicit V58 CLOSEOUT request supersedes the old NEXT ACTION below. Preserve
+Better Auth, business/quote cores and migration 0005. Baseline after frozen-lockfile
+installation: typecheck/lint pass; format:check fails in 19 committed WIP files,
+matching GitHub CI run 35781887283. Initial local typecheck also exposed stale
+node_modules, repaired by `pnpm install --frozen-lockfile` without lockfile changes.
+NEXT ACTION: restore full verify, finish and test auth/tenant/persistence/autosave,
+then real SQL sales workflow and browser QA; commit/push only a coherent checkpoint.
 
 Baseline: clean `main` at `d5cd66f2024c079363ed82703b4f714bb13dbe42`.
 `pnpm verify` passed: 151 files / 1639 tests passed, 1 file / 11 tests

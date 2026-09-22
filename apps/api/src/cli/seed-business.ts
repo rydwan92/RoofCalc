@@ -34,13 +34,25 @@ async function main() {
       { apply },
     );
     if (apply && report.droppedVariantReferences.length === 0) {
-      const expected = (await loadExpectedSeeds()).find((entry) => entry.category === 'business')!;
+      const expected = (await loadExpectedSeeds()).find(
+        (entry) => entry.category === 'business',
+      )!;
       const now = new Date().toISOString();
-      await connection.db.insert(organizationImportBatches).values({
-        id: `starter:${expected.checksum}`, organizationId: report.organizationId,
-        sourceLabel: 'roofcalc-starter-business', checksum: expected.checksum,
-        status: 'completed', counts: report.counts, startedAt: now, completedAt: now,
-      }).onDuplicateKeyUpdate({ set: { id: sql`${organizationImportBatches.id}` } });
+      await connection.db
+        .insert(organizationImportBatches)
+        .values({
+          id: `starter:${expected.checksum}`,
+          organizationId: report.organizationId,
+          sourceLabel: 'roofcalc-starter-business',
+          checksum: expected.checksum,
+          status: 'completed',
+          counts: report.counts,
+          startedAt: now,
+          completedAt: now,
+        })
+        .onDuplicateKeyUpdate({
+          set: { id: sql`${organizationImportBatches.id}` },
+        });
     }
     console.log(JSON.stringify({ apply, ...report }, null, 2));
   } finally {

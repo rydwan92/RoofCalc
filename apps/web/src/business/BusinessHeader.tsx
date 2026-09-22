@@ -39,6 +39,7 @@ export function BusinessHeader() {
     signOut,
   } = useBusiness();
   const [admin, setAdmin] = useState(false);
+  const [logoutError, setLogoutError] = useState(false);
 
   if (mode !== 'business') return null;
   const canManage = session?.memberships
@@ -109,10 +110,23 @@ export function BusinessHeader() {
         </button>
       )}
       {session && (
-        <button className="bz-admin-entry" onClick={() => void signOut?.()}>
+        <button
+          className="bz-admin-entry"
+          onClick={() => {
+            setLogoutError(false);
+            void signOut?.().catch(() => setLogoutError(true));
+          }}
+        >
           {i18n.language.startsWith('pl') ? 'Wyloguj' : 'Sign out'} ·{' '}
           {session.user.name}
         </button>
+      )}
+      {logoutError && (
+        <span role="alert">
+          {i18n.language.startsWith('pl')
+            ? 'Nie udało się wylogować. Spróbuj ponownie.'
+            : 'Sign out failed. Try again.'}
+        </span>
       )}
       {admin && canManage && (
         <div className="bz-admin-layer">

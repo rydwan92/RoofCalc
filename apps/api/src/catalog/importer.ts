@@ -178,12 +178,32 @@ export class CatalogImporter {
       revisionIds: batch.revisions.map((item) => item.id),
       variantIds: batch.variants.map((item) => item.id),
     });
-    const plan = createPlan({ ...batch,
-      manufacturers: preserveSeedRows(batch.manufacturers, state.manufacturers, options.protectedIds),
-      products: preserveSeedRows(batch.products, state.products, options.protectedIds),
-      revisions: preserveSeedRows(batch.revisions, state.revisions, options.protectedIds),
-      variants: preserveSeedRows(batch.variants, state.variants, options.protectedIds),
-    }, state);
+    const plan = createPlan(
+      {
+        ...batch,
+        manufacturers: preserveSeedRows(
+          batch.manufacturers,
+          state.manufacturers,
+          options.protectedIds,
+        ),
+        products: preserveSeedRows(
+          batch.products,
+          state.products,
+          options.protectedIds,
+        ),
+        revisions: preserveSeedRows(
+          batch.revisions,
+          state.revisions,
+          options.protectedIds,
+        ),
+        variants: preserveSeedRows(
+          batch.variants,
+          state.variants,
+          options.protectedIds,
+        ),
+      },
+      state,
+    );
     const base = {
       batchId,
       checksum,

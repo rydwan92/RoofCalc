@@ -121,6 +121,7 @@ import { useBusiness } from '../business/context';
 import { useEffectiveVariantPrices } from '../business/use-effective-prices';
 import { BusinessHeader, BusinessModeToggle } from '../business/BusinessHeader';
 import { BusinessHome } from '../business/BusinessHome';
+import { WorkspaceStatus } from '../business/workspace/WorkspaceStatus';
 import { useBusinessWorkspace } from '../business/workspace/useBusinessWorkspace';
 import { BusinessJourney } from '../business/BusinessJourney';
 import { QuoteWorkspace } from '../business/QuoteWorkspace';
@@ -1148,6 +1149,8 @@ function AssemblyPageContent() {
     retrySave,
     reloadRemote,
     compareDraft,
+    activeEstimation,
+    exportRecovery,
   } = useBusinessWorkspace({
     state,
     projectSession,
@@ -2331,6 +2334,16 @@ function AssemblyPageContent() {
           <BusinessModeToggle />
         </div>
       </header>
+      {business.mode === 'business' && activeEstimation && (
+        <WorkspaceStatus
+          status={saveStatus}
+          locale={i18n.language}
+          onRetry={retrySave}
+          onReload={reloadRemote}
+          onExport={exportRecovery}
+          onQuote={openQuote}
+        />
+      )}
       {business.mode === 'business' && business.homeOpen ? (
         <BusinessHome
           projects={projectSessionState.projects}

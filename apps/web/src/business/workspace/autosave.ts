@@ -3,6 +3,7 @@ export interface SaveState<T> {
   value?: T;
   version?: number;
   status: RemoteSaveStatus;
+  errorCode?: string;
 }
 
 /** One in-flight write, latest edits queued, no retry over a version conflict. */
@@ -12,6 +13,8 @@ export class AutosaveQueue<T> {
   private timer?: ReturnType<typeof setTimeout>;
   private pending?: Promise<void>;
   private listeners = new Set<() => void>();
+  private suspended = false;
+  private disposed = false;
   constructor(
     initial: T | undefined,
     version: number | undefined,
@@ -40,10 +43,17 @@ export class AutosaveQueue<T> {
     if (JSON.stringify(value) === JSON.stringify(this.state.value)) return;
     this.update({
       value,
-      status: this.state.status === 'conflict' ? 'conflict' : 'saving',
+      status:
+        this.state.status === 'conflict'
+          ? 'conflict'
+          : this.suspended
+            ? 'error'
+            : JSON.stringify(value) === this.saved
+              ? 'saved'
+              : 'saving',
     });
     clearTimeout(this.timer);
-    if (this.state.status !== 'conflict')
+    if (!this.suspended && !this.disposed && this.state.status === 'saving')
       this.timer = setTimeout(() => {
         void this.flush().catch(() => undefined);
       }, this.debounceMs);
@@ -51,6 +61,9 @@ export class AutosaveQueue<T> {
   dirty = () => JSON.stringify(this.state.value) !== this.saved;
   flush = async (): Promise<void> => {
     clearTimeout(this.timer);
+    if (this.disposed) return;
+    if (this.suspended && this.dirty())
+      throw new Error('authentication-required');
     if (this.pending) {
       await this.pending;
       return this.flush();
@@ -59,7 +72,7 @@ export class AutosaveQueue<T> {
     if (this.state.status === 'conflict') throw new Error('version-conflict');
     const sent = this.state.value,
       serialized = JSON.stringify(sent);
-    this.update({ status: 'saving' });
+    this.update({ status: 'saving', errorCode: undefined });
     this.pending = this.save(sent, this.state.version)
       .then((result) => {
         const latest =
@@ -76,16 +89,28 @@ export class AutosaveQueue<T> {
       .catch((error: unknown) => {
         const conflict =
           error instanceof Error && error.message.includes('version-conflict');
-        this.update({ status: conflict ? 'conflict' : 'error' });
+        const errorCode =
+          error instanceof Error ? error.message : 'business-unavailable';
+        if (errorCode === 'authentication-required') this.suspended = true;
+        this.update({ status: conflict ? 'conflict' : 'error', errorCode });
         throw error;
       })
       .finally(() => {
         this.pending = undefined;
       });
     await this.pending;
-    if (this.dirty()) await this.flush();
+    if (!this.disposed && this.dirty()) await this.flush();
   };
+  suspend() {
+    this.suspended = true;
+    clearTimeout(this.timer);
+  }
+  resume() {
+    this.disposed = false;
+    this.suspended = false;
+  }
   dispose() {
+    this.disposed = true;
     clearTimeout(this.timer);
   }
 }

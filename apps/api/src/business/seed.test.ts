@@ -133,13 +133,19 @@ describe('seed runner', () => {
   });
 
   it('preserves user-created rows and manual edits to seeded organization, assortment and prices', async () => {
-    const store = new InMemoryBusinessRepository({ catalog: catalogFor(declared) });
+    const store = new InMemoryBusinessRepository({
+      catalog: catalogFor(declared),
+    });
     await seedBusinessOrganization(store, store, resolved, { apply: true });
     store.state.organizations[0]!.name = 'My edited organization';
     store.state.assortment[0]!.preferred = false;
     store.state.assortment[0]!.sourceName = 'My name';
     store.state.entries[0]!.netAmountMinor = 123;
-    store.state.assortment.push({ ...store.state.assortment[0]!, id: 'manual-item', externalKey: 'manual-item' });
+    store.state.assortment.push({
+      ...store.state.assortment[0]!,
+      id: 'manual-item',
+      externalKey: 'manual-item',
+    });
     const before = structuredClone(store.state);
     await seedBusinessOrganization(store, store, resolved, { apply: true });
     await seedBusinessOrganization(store, store, resolved, { apply: true });

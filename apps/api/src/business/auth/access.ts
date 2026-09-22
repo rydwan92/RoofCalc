@@ -11,7 +11,11 @@ import type { BusinessAuth } from './auth';
 
 export interface BusinessAccess {
   user: { id: string; name: string; email: string };
-  memberships: { organizationId: string; capabilities: BusinessCapability[] }[];
+  memberships: {
+    organizationId: string;
+    role?: 'owner' | 'admin' | 'sales';
+    capabilities: BusinessCapability[];
+  }[];
 }
 export async function resolveBusinessAccess(
   db: CatalogDatabase,
@@ -49,6 +53,7 @@ export async function resolveBusinessAccess(
         ? [
             {
               organizationId: row.organizationId,
+              role: role.data,
               capabilities: roleCapabilities(role.data),
             },
           ]

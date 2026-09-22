@@ -1,4 +1,5 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
+import { mockBusinessWorkspace } from './business-workspace-fixture';
 
 /**
  * V54 Business mode, end to end in a real browser.
@@ -253,6 +254,7 @@ async function stubCatalogApi(page: Page) {
 }
 
 async function openBuilder(page: Page, mode: 'standard' | 'business') {
+  await mockBusinessWorkspace(page, ORGANIZATION.id);
   await page.addInitScript((value) => {
     localStorage.setItem('cieslacalc.creatorStartSeen.v1', '1');
     if (value === 'business')

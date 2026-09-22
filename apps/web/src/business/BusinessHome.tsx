@@ -155,7 +155,7 @@ export function BusinessHome({
             <RecentEstimations onOpen={onOpenProject} />
             <section className="bz-home-section">
               <div className="bz-section-heading">
-                <h2>{m.adminAssortment}</h2>
+                <h2>{pl ? 'Wymaga uwagi' : 'Needs attention'}</h2>
                 {canManage && (
                   <button
                     className="a-button"

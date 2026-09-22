@@ -4,6 +4,8 @@ import {
   useContext,
   useMemo,
   useState,
+  useEffect,
+  useRef,
   type ReactNode,
 } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -77,6 +79,8 @@ export interface BusinessContextValue {
   authenticationRequired?: boolean;
   retry?: () => Promise<unknown>;
   signOut?: () => Promise<void>;
+  sessionExpired?: boolean;
+  registerLeaveGuard?: (guard: () => Promise<boolean>) => () => void;
   mode: AppMode;
   setMode: (mode: AppMode) => void;
   /** Undefined in STANDARD mode, or before an organization is chosen. */
@@ -129,6 +133,14 @@ export function BusinessContextProvider({
   );
   const [homeOpen, setHomeOpen] = useState(mode === 'business');
   const [estimation, setEstimation] = useState<CommercialEstimation>();
+  const [sessionExpired, setSessionExpired] = useState(false);
+  const leaveGuard = useRef<() => Promise<boolean>>(async () => true);
+  const registerLeaveGuard = useCallback((guard: () => Promise<boolean>) => {
+    leaveGuard.current = guard;
+    return () => {
+      leaveGuard.current = async () => true;
+    };
+  }, []);
   const queryClient = useQueryClient();
   const sessionQuery = useQuery({
     queryKey: ['business', 'session'],
@@ -138,16 +150,27 @@ export function BusinessContextProvider({
     staleTime: 30_000,
   });
   const authenticationRequired =
-    sessionQuery.isError &&
-    'code' in sessionQuery.error &&
-    sessionQuery.error.code === 'authentication-required';
+    sessionExpired ||
+    (sessionQuery.isError &&
+      'code' in sessionQuery.error &&
+      sessionQuery.error.code === 'authentication-required');
   const refetchSession = sessionQuery.refetch;
+  useEffect(() => {
+    const expired = () =>
+      setSessionExpired(!!queryClient.getQueryData(['business', 'session']));
+    window.addEventListener('roofcalc:business-session-expired', expired);
+    return () =>
+      window.removeEventListener('roofcalc:business-session-expired', expired);
+  }, [queryClient]);
   const retry = useCallback(async () => {
-    await refetchSession();
+    const result = await refetchSession();
+    if (result.isSuccess) setSessionExpired(false);
     await queryClient.invalidateQueries({ queryKey: ['business'] });
   }, [refetchSession, queryClient]);
   const signOut = useCallback(async () => {
+    if (!(await leaveGuard.current())) return;
     await sessionClient.signOut();
+    setSessionExpired(false);
     setEstimation(undefined);
     setHomeOpen(true);
     queryClient.removeQueries({ queryKey: ['business'] });
@@ -158,7 +181,8 @@ export function BusinessContextProvider({
   const organizationsQuery = useQuery({
     queryKey: ['business', 'organizations'],
     queryFn: ({ signal }) => client.listOrganizations(signal),
-    enabled: mode === 'business' && !!sessionQuery.data,
+    enabled:
+      mode === 'business' && !!sessionQuery.data && !authenticationRequired,
     retry: false,
     staleTime: 5 * 60_000,
   });
@@ -169,16 +193,22 @@ export function BusinessContextProvider({
   );
 
   const setMode = useCallback((next: AppMode) => {
-    setModeState(next);
-    setHomeOpen(next === 'business');
-    writeStored(MODE_KEY, next === 'business' ? 'business' : undefined);
+    void (async () => {
+      if (!(await leaveGuard.current())) return;
+      setModeState(next);
+      setHomeOpen(next === 'business');
+      writeStored(MODE_KEY, next === 'business' ? 'business' : undefined);
+    })();
   }, []);
 
   const setOrganizationId = useCallback((next: string | undefined) => {
-    setEstimation(undefined);
-    setHomeOpen(true);
-    setOrganizationIdState(next);
-    writeStored(ORGANIZATION_KEY, next);
+    void (async () => {
+      if (!(await leaveGuard.current())) return;
+      setEstimation(undefined);
+      setHomeOpen(true);
+      setOrganizationIdState(next);
+      writeStored(ORGANIZATION_KEY, next);
+    })();
   }, []);
 
   const setPricePolicy = useCallback((next: OrganizationPricePolicy) => {
@@ -202,7 +232,12 @@ export function BusinessContextProvider({
   const value = useMemo<BusinessContextValue>(
     () => ({
       mode,
-      session: sessionQuery.isError ? undefined : sessionQuery.data,
+      session:
+        sessionQuery.isError || authenticationRequired
+          ? undefined
+          : sessionQuery.data,
+      sessionExpired,
+      registerLeaveGuard,
       authenticationRequired,
       retry,
       signOut,
@@ -230,6 +265,8 @@ export function BusinessContextProvider({
     }),
     [
       sessionQuery.data,
+      sessionExpired,
+      registerLeaveGuard,
       sessionQuery.isPending,
       sessionQuery.isError,
       authenticationRequired,

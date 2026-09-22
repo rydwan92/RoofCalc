@@ -567,6 +567,86 @@
   gap: 1rem;
 }
 
+.bz-estimation-form > label,
+.bz-customers label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+}
+
+.bz-estimation-form input,
+.bz-estimation-form select,
+.bz-estimation-form textarea,
+.bz-customers input,
+.bz-customers select,
+.bz-customers textarea,
+.bz-form-grid textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0.65rem;
+  font: inherit;
+  color: var(--ui-text);
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+}
+
+.bz-estimation-form > .a-primary {
+  justify-self: start;
+}
+.bz-login {
+  display: grid;
+  place-items: start center;
+  padding-top: clamp(2rem, 8vh, 6rem);
+}
+.bz-login .bz-estimation-form {
+  width: min(460px, 100%);
+  padding: clamp(1rem, 4vw, 2.5rem);
+  box-sizing: border-box;
+}
+.bz-login h1 {
+  margin: 0;
+  font-size: 1.6rem;
+}
+.bz-login p {
+  margin: 0;
+  color: var(--ui-text-muted);
+  line-height: 1.6;
+}
+.bz-login .bz-form-grid {
+  grid-template-columns: 1fr;
+}
+.bz-login-brand {
+  color: var(--ui-accent);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+.bz-workspace-status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.45rem clamp(0.7rem, 2vw, 1.2rem);
+  border-bottom: 1px solid var(--ui-border);
+  background: var(--ui-surface);
+  font-size: 0.82rem;
+}
+.bz-workspace-status > [role='status'] {
+  flex: 1;
+  min-width: min(240px, 100%);
+}
+.bz-home > .bz-section-heading {
+  width: min(1180px, 100%);
+  margin-inline: auto;
+}
+.bz-recent-list strong,
+.bz-recent-list small {
+  overflow-wrap: anywhere;
+}
+
 .bz-form-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

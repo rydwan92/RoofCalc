@@ -1,8 +1,14 @@
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { BusinessCustomer } from '@cieslacalc/business-core';
+import {
+  customerInputSchema,
+  type BusinessCustomer,
+} from '@cieslacalc/business-core';
+import { useQueryClient } from '@tanstack/react-query';
 import { businessCopy } from '../copy';
-import { useCustomers } from '../customers/Customers';
+import { customerFields, useCustomers } from '../customers/Customers';
+import { useBusiness } from '../context';
+import { workspaceClient } from '../workspace/client';
 import type { NewEstimationInput } from '../BusinessHome';
 
 export function NewEstimationForm({
@@ -22,6 +28,8 @@ export function NewEstimationForm({
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(false);
   const query = useCustomers(search);
+  const business = useBusiness(),
+    cache = useQueryClient();
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -29,18 +37,32 @@ export function NewEstimationForm({
     setError(false);
     const value = (key: string) => String(form.get(key) ?? '').trim();
     try {
+      let customer = selected;
+      if (!customer) {
+        if (!business.organizationId) throw new Error('organization-required');
+        customer = await workspaceClient.createCustomer(
+          business.organizationId,
+          customerInputSchema.parse({
+            ...Object.fromEntries(
+              customerFields.map(([key]) => [
+                key,
+                value(key === 'name' ? 'customerName' : key),
+              ]),
+            ),
+            type: value('type'),
+            notes: value('notes'),
+          }),
+        );
+        setSelected(customer);
+        await cache.invalidateQueries({
+          queryKey: ['business', business.organizationId],
+        });
+      }
       await onCreate({
         projectName: value('projectName'),
         location: value('location') || undefined,
-        customerId: selected?.id,
-        customer: selected ?? {
-          name: value('customerName'),
-          companyName: value('companyName') || undefined,
-          email: value('email') || undefined,
-          phone: value('phone') || undefined,
-          taxId: value('taxId') || undefined,
-          address: value('address') || undefined,
-        },
+        customerId: customer.id,
+        customer,
       });
     } catch {
       setError(true);
@@ -52,7 +74,12 @@ export function NewEstimationForm({
     <form className="bz-estimation-form" onSubmit={submit}>
       <div className="bz-section-heading">
         <h2>{m.customerAndProject}</h2>
-        <button type="button" className="a-button" onClick={onCancel}>
+        <button
+          type="button"
+          className="a-button"
+          onClick={onCancel}
+          disabled={busy}
+        >
           {m.cancel}
         </button>
       </div>
@@ -81,6 +108,20 @@ export function NewEstimationForm({
           ))}
         </ul>
       )}
+      {search && query.isError && (
+        <p role="alert">
+          {pl
+            ? 'Nie można pobrać klientów. Spróbuj ponownie.'
+            : 'Customers unavailable. Try again.'}
+        </p>
+      )}
+      {search && query.data?.items.length === 0 && (
+        <p>
+          {pl
+            ? 'Nie znaleziono klienta. Dodaj nowego poniżej.'
+            : 'No matching customer. Add a customer below.'}
+        </p>
+      )}
       {selected ? (
         <p>
           {selected.name}{' '}
@@ -89,11 +130,18 @@ export function NewEstimationForm({
             className="a-button"
             onClick={() => setSelected(undefined)}
           >
-            {pl ? 'Zmień / nowy klient' : 'Change / new customer'}
+            {pl ? '+ Nowy klient' : '+ New customer'}
           </button>
         </p>
       ) : (
         <>
+          <label>
+            {pl ? 'Typ klienta' : 'Customer type'}
+            <select name="type" defaultValue="person">
+              <option value="person">{pl ? 'Osoba' : 'Person'}</option>
+              <option value="company">{pl ? 'Firma' : 'Company'}</option>
+            </select>
+          </label>
           <label>
             {m.customerName}
             <input name="customerName" required maxLength={240} autoFocus />
@@ -101,14 +149,32 @@ export function NewEstimationForm({
           <details className="bz-customer-details">
             <summary>{m.customerDetailsOptional}</summary>
             <div className="bz-form-grid">
-              {(
-                ['companyName', 'taxId', 'email', 'phone', 'address'] as const
-              ).map((key) => (
-                <label key={key}>
-                  {m[key]}
-                  <input name={key} type={key === 'email' ? 'email' : 'text'} />
-                </label>
-              ))}
+              {customerFields
+                .filter(([key]) => key !== 'name')
+                .map(([key, pol, en]) => (
+                  <label key={key}>
+                    {pl ? pol : en}
+                    <input
+                      name={key}
+                      type={key === 'email' ? 'email' : 'text'}
+                      maxLength={
+                        key === 'address'
+                          ? 400
+                          : key === 'phone' || key === 'taxId'
+                            ? 64
+                            : key === 'postalCode'
+                              ? 32
+                              : key === 'email'
+                                ? 254
+                                : 240
+                      }
+                    />
+                  </label>
+                ))}
+              <label>
+                {pl ? 'Notatki' : 'Notes'}
+                <textarea name="notes" maxLength={8000} />
+              </label>
             </div>
           </details>
         </>

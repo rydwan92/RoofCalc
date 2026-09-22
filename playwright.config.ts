@@ -11,6 +11,7 @@ import { defineConfig, devices } from '@playwright/test';
  * tests. No per-pixel screenshot assertions: they go stale and get muted.
  */
 const PORT = 4173;
+const externalUrl = process.env.ROOFCALC_E2E_BASE_URL;
 
 export default defineConfig({
   testDir: './e2e',
@@ -27,7 +28,7 @@ export default defineConfig({
   timeout: 60_000,
   expect: { timeout: 10_000 },
   use: {
-    baseURL: `http://127.0.0.1:${PORT}`,
+    baseURL: externalUrl ?? `http://127.0.0.1:${PORT}`,
     trace: 'on-first-retry',
     video: 'off',
   },
@@ -50,10 +51,12 @@ export default defineConfig({
       },
     },
   ],
-  webServer: {
-    command: 'pnpm --filter @cieslacalc/web preview',
-    url: `http://127.0.0.1:${PORT}`,
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
-  },
+  webServer: externalUrl
+    ? undefined
+    : {
+        command: 'pnpm --filter @cieslacalc/web preview',
+        url: `http://127.0.0.1:${PORT}`,
+        reuseExistingServer: !process.env.CI,
+        timeout: 120_000,
+      },
 });

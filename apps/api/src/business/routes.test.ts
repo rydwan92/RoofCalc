@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import supertest from 'supertest';
 import { roleCapabilities } from '@cieslacalc/business-core';
-const request = (app: Parameters<typeof supertest>[0]) => supertest.agent(app).set('Origin', 'http://localhost');
+const request = (app: Parameters<typeof supertest>[0]) =>
+  supertest.agent(app).set('Origin', 'http://localhost');
 import { createApp } from '../app';
 import { InMemoryBusinessRepository } from './memory-repository';
 import { BusinessService } from './service';
@@ -45,8 +46,17 @@ function api(options: { admin?: boolean; devMode?: boolean } = {}) {
   });
   if (options.devMode) process.env.BUSINESS_ADMIN_DEV_MODE = 'true';
   else delete process.env.BUSINESS_ADMIN_DEV_MODE;
-  const access = { user: { id: 'test-user', name: 'Test', email: 'test@example.test' },
-    memberships: [{ organizationId: 'org:a', capabilities: roleCapabilities(options.devMode === false ? 'sales' : 'admin') }] };
+  const access = {
+    user: { id: 'test-user', name: 'Test', email: 'test@example.test' },
+    memberships: [
+      {
+        organizationId: 'org:a',
+        capabilities: roleCapabilities(
+          options.devMode === false ? 'sales' : 'admin',
+        ),
+      },
+    ],
+  };
   const app = createApp(
     undefined,
     undefined,
