@@ -197,7 +197,7 @@ test('V57 salesperson: customer → roof → company tile → materials → draf
   const home = page.getByTestId('business-home');
   await expect(home).toBeVisible();
   await home
-    .getByRole('button', { name: 'Ustawienia firmy', exact: true })
+    .getByRole('button', { name: 'Administracja', exact: true })
     .click();
   const settings = page.getByTestId('company-settings');
   await settings.getByLabel('Telefon').fill('71 123 45 67');
@@ -207,12 +207,39 @@ test('V57 salesperson: customer → roof → company tile → materials → draf
     .fill('Transport po uzgodnieniu.');
   await settings.getByRole('button', { name: 'Zapisz', exact: true }).click();
   await expect(settings).toContainText('Zapisano ustawienia firmy.');
+  const admin = page.getByTestId('admin-workspace');
+  await admin.getByRole('button', { name: 'Użytkownicy', exact: true }).click();
+  const team = page.getByTestId('business-team');
+  await team.getByRole('button', { name: '+ Dodaj użytkownika' }).click();
+  await team.getByLabel('Imię i nazwisko').fill('Anna Sprzedaż');
+  await team.getByLabel('E-mail', { exact: true }).fill('anna@example.test');
+  await team.getByRole('button', { name: 'Utwórz i wygeneruj hasło' }).click();
+  await expect(team.getByRole('status')).toContainText('Użytkownik utworzony.');
+  await team.getByRole('button', { name: 'Zamknij', exact: true }).click();
+  await expect(
+    team.getByText('Hasło tymczasowe', { exact: false }),
+  ).toHaveCount(0);
+  await team.getByLabel('Rola Anna Sprzedaż').selectOption('admin');
+  await team
+    .getByRole('row')
+    .filter({ hasText: 'anna@example.test' })
+    .getByRole('button', { name: 'Dezaktywuj dostęp' })
+    .click();
+  await expect(
+    team.getByRole('row').filter({ hasText: 'anna@example.test' }),
+  ).toContainText('Nieaktywny');
+  if (process.env.V57_VISUAL_QA === '1')
+    await admin.screenshot({
+      path: `test-results/v60-team-${testInfo.project.name}.png`,
+    });
+  await admin.getByRole('button', { name: 'Dane firmy', exact: true }).click();
   if (process.env.V57_VISUAL_QA === '1')
     await settings.screenshot({
       path: `test-results/v59-settings-${testInfo.project.name}.png`,
     });
-  await home
-    .getByRole('button', { name: 'Strona główna', exact: true })
+  await page
+    .getByTestId('admin-workspace')
+    .getByRole('button', { name: '← Sprzedaż', exact: true })
     .click();
   if (process.env.V57_VISUAL_QA === '1')
     await page.screenshot({

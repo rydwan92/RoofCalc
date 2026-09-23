@@ -91,6 +91,8 @@ export interface BusinessContextValue {
   pricePolicy: OrganizationPricePolicy;
   setPricePolicy: (policy: OrganizationPricePolicy) => void;
   homeOpen: boolean;
+  adminOpen: boolean;
+  setAdminOpen: (open: boolean) => void;
   setHomeOpen: (open: boolean) => void;
   estimation?: CommercialEstimation;
   setEstimation: (estimation: CommercialEstimation | undefined) => void;
@@ -132,6 +134,7 @@ export function BusinessContextProvider({
         : 'organization-only',
   );
   const [homeOpen, setHomeOpen] = useState(mode === 'business');
+  const [adminOpen, setAdminOpen] = useState(false);
   const [estimation, setEstimation] = useState<CommercialEstimation>();
   const [sessionExpired, setSessionExpired] = useState(false);
   const leaveGuard = useRef<() => Promise<boolean>>(async () => true);
@@ -181,6 +184,7 @@ export function BusinessContextProvider({
     setSessionExpired(false);
     setEstimation(undefined);
     setHomeOpen(true);
+    setAdminOpen(false);
     queryClient.removeQueries({ queryKey: ['business'] });
     await refetchSession();
   }, [queryClient, refetchSession]);
@@ -205,6 +209,7 @@ export function BusinessContextProvider({
       if (!(await leaveGuard.current())) return;
       setModeState(next);
       setHomeOpen(next === 'business');
+      setAdminOpen(false);
       writeStored(MODE_KEY, next === 'business' ? 'business' : undefined);
     })();
   }, []);
@@ -214,6 +219,7 @@ export function BusinessContextProvider({
       if (!(await leaveGuard.current())) return;
       setEstimation(undefined);
       setHomeOpen(true);
+      setAdminOpen(false);
       setOrganizationIdState(next);
       writeStored(ORGANIZATION_KEY, next);
     })();
@@ -258,6 +264,8 @@ export function BusinessContextProvider({
       pricePolicy,
       setPricePolicy,
       homeOpen,
+      adminOpen,
+      setAdminOpen,
       setHomeOpen,
       ...(estimation ? { estimation } : {}),
       setEstimation,
@@ -283,6 +291,7 @@ export function BusinessContextProvider({
       client,
       estimation,
       homeOpen,
+      adminOpen,
       mode,
       organization,
       organizations,
@@ -319,6 +328,8 @@ export function useBusiness(): BusinessContextValue {
       pricePolicy: 'organization-only' as const,
       setPricePolicy: () => undefined,
       homeOpen: false,
+      adminOpen: false,
+      setAdminOpen: () => undefined,
       setHomeOpen: () => undefined,
       setEstimation: () => undefined,
       loading: false,

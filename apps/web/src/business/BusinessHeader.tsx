@@ -1,14 +1,8 @@
-import { lazy, Suspense, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Building2, Home, Settings } from 'lucide-react';
 import { useBusiness } from './context';
 import { businessCopy } from './copy';
-
-const AdminAssortment = lazy(() =>
-  import('./admin/AdminAssortment').then((module) => ({
-    default: module.AdminAssortment,
-  })),
-);
 
 /**
  * The quiet header presence of Business mode (§38, §39).
@@ -34,10 +28,10 @@ export function BusinessHeader({ onHome }: { onHome?: () => Promise<void> }) {
     unavailable,
     loading,
     setHomeOpen,
+    setAdminOpen,
     session,
     signOut,
   } = useBusiness();
-  const [admin, setAdmin] = useState(false);
   const [logoutError, setLogoutError] = useState(false);
 
   if (mode !== 'business') return null;
@@ -53,6 +47,7 @@ export function BusinessHeader({ onHome }: { onHome?: () => Promise<void> }) {
         className="bz-admin-entry"
         data-testid="business-home-entry"
         onClick={() => {
+          setAdminOpen(false);
           if (onHome) void onHome();
           else setHomeOpen(true);
         }}
@@ -91,7 +86,13 @@ export function BusinessHeader({ onHome }: { onHome?: () => Promise<void> }) {
           type="button"
           className="bz-admin-entry"
           data-testid="business-admin-entry"
-          onClick={() => setAdmin(true)}
+          onClick={() => {
+            void (async () => {
+              await onHome?.();
+              setHomeOpen(true);
+              setAdminOpen(true);
+            })();
+          }}
           title={m.admin}
         >
           <Settings size={15} aria-hidden="true" />
@@ -116,25 +117,6 @@ export function BusinessHeader({ onHome }: { onHome?: () => Promise<void> }) {
             ? 'Nie udało się wylogować. Spróbuj ponownie.'
             : 'Sign out failed. Try again.'}
         </span>
-      )}
-      {admin && canManage && (
-        <div className="bz-admin-layer">
-          <button
-            className="bz-admin-backdrop"
-            aria-label={m.back}
-            onClick={() => setAdmin(false)}
-          />
-          <section
-            role="dialog"
-            aria-modal="true"
-            aria-label={m.admin}
-            className="bz-admin-dialog"
-          >
-            <Suspense fallback={<div className="a-loading-panel" />}>
-              <AdminAssortment onClose={() => setAdmin(false)} />
-            </Suspense>
-          </section>
-        </div>
       )}
     </div>
   );

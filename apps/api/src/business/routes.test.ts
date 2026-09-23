@@ -7,6 +7,7 @@ import { createApp } from '../app';
 import { InMemoryBusinessRepository } from './memory-repository';
 import { BusinessService } from './service';
 import { BusinessAdminService } from './admin-service';
+import { assertTeamChange } from './auth/team-policy';
 
 const KODA = 'variant:swissporton:koda:antracytowa-angoba';
 
@@ -76,6 +77,30 @@ function api(options: { admin?: boolean; devMode?: boolean } = {}) {
 }
 
 describe('business read API', () => {
+  it('refuses sales team access and protects the final active owner', async () => {
+    const sales = api({ devMode: false });
+    for (const method of ['get', 'post', 'patch'] as const) {
+      const path =
+        '/api/business/organizations/org%3Aa/users' +
+        (method === 'patch' ? '/user' : '');
+      expect((await request(sales.app)[method](path).send({})).status).toBe(
+        403,
+      );
+    }
+    const owner = { role: 'owner' as const, active: true };
+    expect(() =>
+      assertTeamChange('owner', owner, { role: 'sales', active: true }, 1),
+    ).toThrow('last-owner-required');
+    expect(() =>
+      assertTeamChange('owner', owner, { ...owner, active: false }, 1),
+    ).toThrow('last-owner-required');
+    expect(() => assertTeamChange('admin', owner, owner, 2)).toThrow(
+      'owner-management-required',
+    );
+    expect(() =>
+      assertTeamChange('owner', owner, { role: 'admin', active: true }, 2),
+    ).not.toThrow();
+  });
   it('allows company profile changes only for the authorized owner/admin tenant', async () => {
     const profile = {
       name: 'Hurtownia Nowa',

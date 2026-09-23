@@ -16,6 +16,10 @@ import {
   type EstimationInput,
   estimationListQuerySchema,
   type EstimationListQuery,
+  type TeamCreate,
+  type TeamChange,
+  teamUserSchema,
+  businessRoleSchema,
 } from '@cieslacalc/business-core';
 import {
   projectRecordV1Schema,
@@ -28,6 +32,12 @@ import {
 } from '@cieslacalc/quote-core';
 import type { CatalogDatabase } from '../../db/client';
 import { organizations } from '../../db/business-schema';
+import {
+  authUsers,
+  organizationMemberships as memberships,
+} from '../../db/workspace-schema';
+import { provisionBusinessUser } from '../auth/provision';
+import { assertTeamChange } from '../auth/team-policy';
 import {
   businessCustomers as customers,
   commercialEstimations as estimations,
@@ -74,6 +84,95 @@ const quoteFrom = (row: typeof quotes.$inferSelect): SavedQuote => ({
 
 export class DrizzleWorkspaceRepository implements WorkspaceRepository {
   constructor(private readonly db: CatalogDatabase) {}
+  async listTeam(org: string, search: string, offset: number) {
+    const pattern = `%${search.replace(/[\\%_]/g, '\\$&')}%`;
+    const rows = await this.db
+      .select({
+        id: authUsers.id,
+        name: authUsers.name,
+        email: authUsers.email,
+        role: memberships.role,
+        active: memberships.active,
+      })
+      .from(memberships)
+      .innerJoin(authUsers, eq(authUsers.id, memberships.userId))
+      .where(
+        and(
+          eq(memberships.organizationId, org),
+          search
+            ? or(like(authUsers.name, pattern), like(authUsers.email, pattern))
+            : undefined,
+        ),
+      )
+      .orderBy(authUsers.name, authUsers.id)
+      .limit(50)
+      .offset(offset);
+    const [count] = await this.db
+      .select({ value: sql<number>`count(*)` })
+      .from(memberships)
+      .where(
+        and(eq(memberships.organizationId, org), eq(memberships.active, true)),
+      );
+    return {
+      items: rows.map((row) => teamUserSchema.parse(row)),
+      activeUsers: Number(count?.value ?? 0),
+      ...(rows.length === 50 ? { nextOffset: offset + 50 } : {}),
+    };
+  }
+  async createTeamUser(org: string, actorId: string, input: TeamCreate) {
+    const password =
+      'Rc!' +
+      Array.from(crypto.getRandomValues(new Uint8Array(18)), (byte) =>
+        byte.toString(16).padStart(2, '0'),
+      ).join('');
+    const result = await provisionBusinessUser(
+      this.db,
+      { ...input, organizationId: org, password },
+      actorId,
+    );
+    return {
+      status: result.status,
+      ...(result.status === 'user-created'
+        ? { temporaryPassword: password }
+        : {}),
+    };
+  }
+  async changeTeamUser(
+    org: string,
+    actorId: string,
+    id: string,
+    input: TeamChange,
+  ) {
+    await this.db.transaction(async (tx) => {
+      const [organization] = await tx
+        .select({ id: organizations.id })
+        .from(organizations)
+        .where(eq(organizations.id, org))
+        .for('update');
+      if (!organization)
+        throw new WorkspaceError('organization-not-found', 404);
+      const team = await tx
+        .select()
+        .from(memberships)
+        .where(eq(memberships.organizationId, org))
+        .for('update');
+      const actor = team.find((row) => row.userId === actorId && row.active),
+        target = team.find((row) => row.userId === id);
+      if (!target) throw new WorkspaceError('team-user-not-found', 404);
+      assertTeamChange(
+        actor ? businessRoleSchema.parse(actor.role) : undefined,
+        { role: businessRoleSchema.parse(target.role), active: target.active },
+        input,
+        team.filter((row) => row.role === 'owner' && row.active).length,
+      );
+      await tx
+        .update(memberships)
+        .set(input)
+        .where(
+          and(eq(memberships.organizationId, org), eq(memberships.userId, id)),
+        );
+    });
+  }
   async listCustomers(
     org: string,
     search: string,

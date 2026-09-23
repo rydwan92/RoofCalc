@@ -93,6 +93,7 @@ export const organizationMemberships = mysqlTable(
       .notNull()
       .references(() => authUsers.id),
     role: varchar('role', { length: 16 }).notNull(),
+    active: boolean('active').notNull().default(true),
   },
   (t) => [
     primaryKey({ columns: [t.organizationId, t.userId] }),

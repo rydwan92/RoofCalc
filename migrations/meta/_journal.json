@@ -50,6 +50,13 @@
       "when": 1790173860498,
       "tag": "0006_daily_chamber",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1790193009383,
+      "tag": "0007_brainy_mandarin",
+      "breakpoints": true
     }
   ]
 }

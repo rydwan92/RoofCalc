@@ -268,17 +268,20 @@ async function handleAuthorizedBusiness(
     if (segments[3] !== 'organizations' || !org)
       return errorResult(404, 'not-found');
     const read = method === 'GET' || method === 'HEAD';
-    const capability = read
-      ? 'business.read'
-      : segments[5] === 'profile'
-        ? 'organization.manage'
-        : segments[5] === 'customers'
-          ? 'customers.write'
-          : segments[5] === 'estimations'
-            ? 'quote.write'
-            : segments[6] === 'price'
-              ? 'prices.manage'
-              : 'assortment.manage';
+    const capability =
+      segments[5] === 'users'
+        ? 'users.manage'
+        : read
+          ? 'business.read'
+          : segments[5] === 'profile'
+            ? 'organization.manage'
+            : segments[5] === 'customers'
+              ? 'customers.write'
+              : segments[5] === 'estimations'
+                ? 'quote.write'
+                : segments[6] === 'price'
+                  ? 'prices.manage'
+                  : 'assortment.manage';
     if (!can(business.access, org, capability))
       return errorResult(403, 'business-forbidden');
     if (

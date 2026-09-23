@@ -2157,3 +2157,121 @@
     width: 48%;
   }
 }
+
+.bz-admin-workspace {
+  padding: 24px;
+  max-width: 1560px;
+  margin: auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+.bz-admin-layout {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.bz-admin-layout > nav {
+  display: grid;
+  gap: 6px;
+  position: sticky;
+  top: 16px;
+}
+.bz-admin-layout > nav button {
+  text-align: left;
+  padding: 12px;
+  border: 0;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.bz-admin-layout > nav button[aria-current] {
+  background: #e5eee8;
+  color: #165d38;
+  font-weight: 700;
+}
+.bz-admin-content {
+  min-width: 0;
+}
+.bz-admin-workspace > .bz-section-heading > div {
+  display: block;
+}
+.bz-admin-workspace > .bz-section-heading h1 {
+  margin: 0 0 6px;
+  font-size: 1.4rem;
+}
+.bz-admin-workspace > .bz-section-heading p {
+  margin: 0 0 16px;
+}
+.bz-team > .bz-section-heading .a-button {
+  flex: none;
+  width: auto;
+}
+.bz-setup {
+  padding: 16px;
+  margin-bottom: 20px;
+  background: #f2f6f3;
+  border: 1px solid #dbe6de;
+  border-radius: 8px;
+}
+.bz-setup ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  list-style: none;
+  padding: 0;
+}
+.bz-team {
+  display: grid;
+  gap: 18px;
+}
+.bz-team label,
+.bz-team-create {
+  display: grid;
+  gap: 8px;
+}
+.bz-team input,
+.bz-team select {
+  min-height: 40px;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.bz-team-create {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 18px;
+  background: #f5f7f6;
+  border-radius: 8px;
+  align-items: end;
+}
+.bz-team-result {
+  padding: 18px;
+  border: 1px solid #9ebba9;
+  display: grid;
+  gap: 12px;
+}
+.bz-team td {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 700px) {
+  .bz-admin-workspace {
+    padding: 12px;
+  }
+  .bz-admin-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+  .bz-admin-layout > nav {
+    display: flex;
+    overflow-x: auto;
+    position: static;
+  }
+  .bz-admin-layout > nav button {
+    flex-shrink: 0;
+  }
+  .bz-team-create {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .bz-team .bz-desk-table {
+    min-width: 0;
+  }
+}

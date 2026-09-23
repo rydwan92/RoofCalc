@@ -494,6 +494,10 @@ test.describe('V54 business mode', () => {
     await stubBusinessApi(page);
     await openBuilder(page, 'business');
     await page.getByTestId('business-admin-entry').click();
+    await page
+      .getByRole('navigation', { name: 'Administracja hurtowni' })
+      .getByRole('button', { name: 'Asortyment', exact: true })
+      .click();
 
     await expect(page.getByTestId('admin-dashboard')).toBeVisible();
     await expect(page.getByTestId('admin-data-quality')).toContainText(

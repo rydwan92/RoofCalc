@@ -1297,19 +1297,14 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
-## V58 — wholesale workspace UX and persistence closeout
+## V60 - wholesale operations (in progress)
 
-- Latest product closeout starts at `128db727ad180c22055b32556cbec42dc0fbfdaf`; its clean baseline verify passed on Node 22.
-- Completed: sales home, inline customer search/create, recent estimations, mobile customer/project/save strip and return to sales home.
-- Material prices save into the current estimation; manual prices resolve commercial attention without changing the company price list.
-- Quote editor shows product names, missing-price/VAT filter, live gross total and explicit quantity differences; mobile customer preview has readable labelled values.
-- Queued edits resume after reauthentication; returning home flushes pending work, and reopening/reloading preserves the quote.
-- Scope: web business/MaterialPlan/Page and existing business E2E fixtures; no new migration, geometry engine or canonical roof schema.
-- Validation: verify 1644 passed / 13 intentionally skipped; architecture 42 passed; web/API/Worker builds and diff check passed. Final repeat/full browser run recorded below if different.
-- Browser QA: repaired V54 company-unavailable/outside-assortment scenarios; V57 sales flow passes desktop/mobile including manual material price → quote → home → reopen → reload. Screens inspected at 390, 1024, 1440 and 1920 widths.
-- SQL integration passed earlier (6 tests including autosave); latest real-SQL browser rerun could not start because local SQL/API startup was rejected by automatic tool policy. Fixture E2E is not presented as SQL proof.
-- SHARED DEV AUTH UNAVAILABLE: inspected workflow 35785702912 once; `DATABASE_URL is required for database setup.` No shared migration/deployment success claimed.
-- NEXT ACTION: finish final gates and push this coherent V58 closeout; shared DEV requires the missing deployment credentials before its separate smoke check. No V59 work.
+- Current iteration supersedes the earlier checkpoint; baseline main `63dc5a033002d843574863e84fc0ad3b7084703e` was clean, verify passed, latest CI green.
+- V60A: dedicated administration workspace, derived setup status, company settings and team management; server-side roles and last active owner protection; generated password returned once. Membership disabling preserves auth accounts and history.
+- Migration `0007_brainy_mandarin.sql`: membership active flag and optional organization assortment VAT, ready for V60B. No edits to prior migrations.
+- Scope/ready: business-core contracts, API and web application own commercial/team state; no roof schema, geometry, history gestures, quantities, procurement, cost-domain or multi-structure changes. No new domain research required. Standard remains offline; business administration requires its API. Mobile uses the same fields and secondary navigation at 390px. Existing focused API/E2E scenarios cover roles, last owner, sales flow and later VAT/import snapshots.
+- Validation: V60A verify passed (1649 tests, 13 intentional skips; web/API/Worker builds). Browser team and sales flow passed desktop/mobile; one concurrent-build timeout passed on focused repeat (5 passed, 1 viewport-only skip). Mobile team layout visually checked. No shared DEV or SQL deployment claimed.
+- NEXT ACTION: implement V60B commercial VAT, price-only CSV and actionable data quality.
 
 Baseline: clean `main` at `d5cd66f2024c079363ed82703b4f714bb13dbe42`.
 `pnpm verify` passed: 151 files / 1639 tests passed, 1 file / 11 tests

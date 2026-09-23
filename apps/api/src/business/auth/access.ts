@@ -39,6 +39,7 @@ export async function resolveBusinessAccess(
       and(
         eq(organizationMemberships.userId, session.user.id),
         eq(organizations.active, true),
+        eq(organizationMemberships.active, true),
       ),
     );
   return {

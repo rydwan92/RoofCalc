@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ProjectSummary } from '@cieslacalc/project-core';
 import type { BusinessCustomer } from '@cieslacalc/business-core';
@@ -10,13 +10,7 @@ import { Customers } from './customers/Customers';
 import { NewEstimationForm } from './estimations/NewEstimationForm';
 import { RecentEstimations } from './estimations/RecentEstimations';
 import { EstimationDesk } from './estimations/EstimationDesk';
-import { CompanySettings } from './CompanySettings';
-
-const AdminAssortment = lazy(() =>
-  import('./admin/AdminAssortment').then((module) => ({
-    default: module.AdminAssortment,
-  })),
-);
+import { AdminWorkspace, SetupStatus } from './admin/AdminWorkspace';
 export interface NewEstimationInput {
   projectName: string;
   location?: string;
@@ -41,7 +35,7 @@ export function BusinessHome({
   const { organization, unavailable, estimation } = business;
   const assortment = useAssortment({ limit: 1 });
   const [screen, setScreen] = useState<
-    'home' | 'new' | 'customers' | 'admin' | 'estimations' | 'settings'
+    'home' | 'new' | 'customers' | 'estimations'
   >('home');
   const [customer, setCustomer] = useState<BusinessCustomer>();
   const capabilities =
@@ -49,7 +43,6 @@ export function BusinessHome({
       (item) => item.organizationId === organization?.id,
     )?.capabilities ?? [];
   const canManage = capabilities.includes('assortment.manage');
-  const canManageOrganization = capabilities.includes('organization.manage');
   if (business.authenticationRequired) return <BusinessLogin />;
   if (business.loading)
     return (
@@ -96,13 +89,12 @@ export function BusinessHome({
         </button>
       </main>
     );
-  if (screen === 'admin' && canManage)
+  if (business.adminOpen && canManage)
     return (
-      <div className="bz-home bz-home-admin">
-        <Suspense fallback={<p>…</p>}>
-          <AdminAssortment onClose={() => setScreen('home')} />
-        </Suspense>
-      </div>
+      <AdminWorkspace
+        key={organization.id}
+        onClose={() => business.setAdminOpen(false)}
+      />
     );
   return (
     <main className="bz-home" data-testid="business-home">
@@ -148,25 +140,13 @@ export function BusinessHome({
         {canManage && (
           <button
             className="bz-sales-secondary"
-            onClick={() => setScreen('admin')}
+            onClick={() => business.setAdminOpen(true)}
           >
-            {pl ? 'Asortyment i cennik' : 'Assortment and prices'}
+            {pl ? 'Administracja' : 'Administration'}
           </button>
         )}
       </nav>
-      {canManageOrganization && (
-        <div className="bz-sales-settings-link">
-          <button
-            className="bz-back-link"
-            onClick={() => setScreen('settings')}
-          >
-            {pl ? 'Ustawienia firmy' : 'Company settings'}
-          </button>
-        </div>
-      )}
-      {screen === 'settings' && canManageOrganization ? (
-        <CompanySettings key={organization.id} />
-      ) : screen === 'estimations' ? (
+      {screen === 'estimations' ? (
         <EstimationDesk
           key={organization.id}
           onOpen={onOpenProject}
@@ -192,6 +172,30 @@ export function BusinessHome({
         />
       ) : (
         <>
+          <SetupStatus onContinue={() => business.setAdminOpen(true)} />
+          {assortment.data?.summary.total === 0 && (
+            <section className="bz-setup">
+              <p>
+                {pl
+                  ? 'Nie zaimportowano asortymentu.'
+                  : 'No assortment imported yet.'}
+              </p>
+              {canManage ? (
+                <button
+                  className="a-button"
+                  onClick={() => business.setAdminOpen(true)}
+                >
+                  {pl ? 'Importuj asortyment' : 'Import assortment'}
+                </button>
+              ) : (
+                <p>
+                  {pl
+                    ? 'Skontaktuj się z administratorem — asortyment firmy nie jest jeszcze gotowy.'
+                    : 'Contact your administrator — the company assortment is not ready yet.'}
+                </p>
+              )}
+            </section>
+          )}
           <section className="bz-section-heading">
             <button
               className="bz-new-estimation"
@@ -215,7 +219,7 @@ export function BusinessHome({
                 {canManage && (
                   <button
                     className="a-button"
-                    onClick={() => setScreen('admin')}
+                    onClick={() => business.setAdminOpen(true)}
                   >
                     {m.openAssortment}
                   </button>

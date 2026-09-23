@@ -1,5 +1,9 @@
 import { z } from 'zod';
-import { estimationListQuerySchema } from '@cieslacalc/business-core';
+import {
+  estimationListQuerySchema,
+  teamCreateSchema,
+  teamChangeSchema,
+} from '@cieslacalc/business-core';
 import type { WorkspaceRepository } from './contracts';
 import { CustomerService } from '../customers/service';
 import { EstimationService } from '../estimations/service';
@@ -17,6 +21,41 @@ export async function workspaceRoute(
 ): Promise<ApiResult | undefined> {
   const resource = segments[5],
     id = segments[6];
+  if (resource === 'users') {
+    if (segments.length === 6 && method === 'GET') {
+      const query = z
+        .object({
+          q: z.string().max(240).default(''),
+          offset: z.coerce.number().int().min(0).max(50000).default(0),
+        })
+        .parse(Object.fromEntries(search));
+      return {
+        status: 200,
+        body: await repository.listTeam(org, query.q, query.offset),
+      };
+    }
+    if (segments.length === 6 && method === 'POST')
+      return {
+        status: 201,
+        body: {
+          item: await repository.createTeamUser(
+            org,
+            userId,
+            teamCreateSchema.parse(body),
+          ),
+        },
+      };
+    if (segments.length === 7 && id && method === 'PATCH') {
+      await repository.changeTeamUser(
+        org,
+        userId,
+        id,
+        teamChangeSchema.parse(body),
+      );
+      return { status: 200, body: { item: { saved: true } } };
+    }
+    return { status: 404, body: { error: { code: 'not-found' } } };
+  }
   if (resource !== 'customers' && resource !== 'estimations') return undefined;
   const customers = new CustomerService(repository),
     estimations = new EstimationService(repository),

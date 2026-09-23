@@ -554,3 +554,8 @@ new quotes use the company's validity default (14 days when absent). Roof/projec
 6. Does it turn a runtime contract into a persisted one (§6)? If yes, version it first.
 7. Add or update a reference fixture in `fixtures/projects/` so the change is covered.
 8. Update this registry in the same change.
+
+V60: migration `0007_brainy_mandarin.sql` adds `organization_memberships.active`
+(default true) and nullable organization-owned `organization_assortment_items.vat_rate_bps`.
+Existing memberships retain access; unknown VAT stays unknown. No technical revision,
+roof document or quote schema version changes. Quote VAT remains a commercial snapshot.

@@ -4,6 +4,9 @@ import type {
   CustomerInput,
   EstimationInput,
   EstimationListQuery,
+  TeamUser,
+  TeamCreate,
+  TeamChange,
 } from '@cieslacalc/business-core';
 import type { ProjectRecordV1 } from '@cieslacalc/project-core';
 import type { QuoteDraft } from '@cieslacalc/quote-core';
@@ -41,6 +44,22 @@ export interface EstimationSummary extends CommercialEstimation {
   missingVat?: number;
 }
 export interface WorkspaceRepository {
+  listTeam(
+    org: string,
+    search: string,
+    offset: number,
+  ): Promise<{ items: TeamUser[]; nextOffset?: number; activeUsers: number }>;
+  createTeamUser(
+    org: string,
+    actorId: string,
+    input: TeamCreate,
+  ): Promise<{ status: string; temporaryPassword?: string }>;
+  changeTeamUser(
+    org: string,
+    actorId: string,
+    id: string,
+    input: TeamChange,
+  ): Promise<void>;
   listCustomers(
     org: string,
     search: string,

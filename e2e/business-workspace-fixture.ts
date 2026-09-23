@@ -7,6 +7,15 @@ export async function mockBusinessWorkspace(
   organizationId: string,
 ) {
   const customers: Record<string, unknown>[] = [];
+  const users = [
+    {
+      id: 'user:fixture',
+      name: 'Owner fixture',
+      email: 'fixture@example.test',
+      role: 'owner',
+      active: true,
+    },
+  ];
   const estimations: {
     estimation: Record<string, unknown>;
     project: Record<string, unknown>;
@@ -27,7 +36,7 @@ export async function mockBusinessWorkspace(
           memberships: [
             {
               organizationId,
-              role: 'admin',
+              role: 'owner',
               capabilities: [
                 'business.read',
                 'quote.write',
@@ -35,6 +44,7 @@ export async function mockBusinessWorkspace(
                 'assortment.manage',
                 'prices.manage',
                 'organization.manage',
+                'users.manage',
               ],
             },
           ],
@@ -45,6 +55,37 @@ export async function mockBusinessWorkspace(
     const path = url.pathname.split('/').map(decodeURIComponent),
       resource = path[5],
       id = path[6];
+    if (resource === 'users') {
+      if (request.method() === 'POST') {
+        users.push({
+          ...request.postDataJSON(),
+          id: `user:${users.length}`,
+          active: true,
+        });
+        await route.fulfill({
+          status: 201,
+          json: {
+            item: {
+              status: 'user-created',
+              temporaryPassword: 'Fixture-only-not-a-real-password',
+            },
+          },
+        });
+      } else if (request.method() === 'PATCH') {
+        Object.assign(
+          users.find((user) => user.id === id)!,
+          request.postDataJSON(),
+        );
+        await route.fulfill({ json: { item: { saved: true } } });
+      } else
+        await route.fulfill({
+          json: {
+            items: users,
+            activeUsers: users.filter((user) => user.active).length,
+          },
+        });
+      return;
+    }
     if (!['customers', 'estimations'].includes(resource ?? '')) {
       await route.fallback();
       return;

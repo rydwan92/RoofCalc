@@ -84,6 +84,7 @@ export const organizationAssortmentItems = mysqlTable(
     ean: varchar('ean', { length: 32 }),
     sourceName: varchar('source_name', { length: 240 }).notNull(),
     displayNameOverride: varchar('display_name_override', { length: 240 }),
+    vatRateBps: int('vat_rate_bps'),
     active: boolean('active').default(true).notNull(),
     preferred: boolean('preferred').default(false).notNull(),
     metadata: json('metadata').$type<Record<string, unknown>>(),

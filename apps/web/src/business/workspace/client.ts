@@ -4,6 +4,9 @@ import {
   commercialEstimationSchema,
   organizationSchema,
   type OrganizationProfile,
+  teamUserSchema,
+  type TeamCreate,
+  type TeamChange,
   type CustomerInput,
   type EstimationInput,
   type EstimationListQuery,
@@ -52,6 +55,34 @@ const json = (method: string, body: unknown) => ({
   body: JSON.stringify(body),
 });
 export const workspaceClient = {
+  team: (org: string, q = '', offset = 0) =>
+    requestJson(
+      `${path(org, 'users')}?${new URLSearchParams({ q, offset: String(offset) })}`,
+      z.object({
+        items: z.array(teamUserSchema),
+        activeUsers: z.number(),
+        nextOffset: z.number().optional(),
+      }),
+    ),
+  createTeamUser: async (org: string, input: TeamCreate) =>
+    (
+      await requestJson(
+        path(org, 'users'),
+        item(
+          z.object({
+            status: z.string(),
+            temporaryPassword: z.string().optional(),
+          }),
+        ),
+        json('POST', input),
+      )
+    ).item,
+  changeTeamUser: (org: string, id: string, input: TeamChange) =>
+    requestJson(
+      path(org, `users/${encodeURIComponent(id)}`),
+      item(z.object({ saved: z.boolean() })),
+      json('PATCH', input),
+    ),
   updateOrganizationProfile: async (
     org: string,
     profile: OrganizationProfile,

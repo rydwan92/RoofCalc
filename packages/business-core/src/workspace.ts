@@ -61,7 +61,8 @@ export type BusinessCapability =
   | 'customers.write'
   | 'assortment.manage'
   | 'prices.manage'
-  | 'organization.manage';
+  | 'organization.manage'
+  | 'users.manage';
 export function roleCapabilities(role: BusinessRole): BusinessCapability[] {
   return role === 'sales'
     ? ['business.read', 'quote.write', 'customers.write']
@@ -72,5 +73,26 @@ export function roleCapabilities(role: BusinessRole): BusinessCapability[] {
         'assortment.manage',
         'prices.manage',
         'organization.manage',
+        'users.manage',
       ];
 }
+export const teamUserSchema = z.object({
+  id,
+  name: z.string(),
+  email: z.string(),
+  role: businessRoleSchema,
+  active: z.boolean(),
+});
+export type TeamUser = z.infer<typeof teamUserSchema>;
+export const teamCreateSchema = z
+  .object({
+    name: z.string().trim().min(1).max(240),
+    email: z.string().trim().toLowerCase().email().max(254),
+    role: businessRoleSchema,
+  })
+  .strict();
+export type TeamCreate = z.infer<typeof teamCreateSchema>;
+export const teamChangeSchema = z
+  .object({ role: businessRoleSchema, active: z.boolean() })
+  .strict();
+export type TeamChange = z.infer<typeof teamChangeSchema>;
