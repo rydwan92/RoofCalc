@@ -193,6 +193,9 @@ test('V57 salesperson: customer → roof → company tile → materials → draf
       fullPage: true,
     });
   await home.getByTestId('business-new-estimation').click();
+  await home
+    .getByRole('button', { name: '+ Nowy klient', exact: true })
+    .click();
   await home.getByLabel(/Klient — nazwa lub firma/).fill('Jan Kowalski');
   await home.getByLabel('Nazwa inwestycji').fill('Dom Kowalski');
   await home.getByLabel(/Lokalizacja/).fill('Kraków');
@@ -248,6 +251,12 @@ test('V57 salesperson: customer → roof → company tile → materials → draf
   await expect(materialPlan).toContainText('DACH-00384');
   await materialPlan.getByTestId('tile-purchase-prepare').click();
   await expect(materialPlan.getByTestId('tile-purchase-status')).toBeVisible();
+  const battens = materialPlan.getByTestId('material-row-battens');
+  await battens
+    .getByRole('button', { name: 'Cena dla tej wyceny', exact: true })
+    .click();
+  await battens.getByLabel(/Cena ręczna netto/).fill('3,25');
+  await battens.getByLabel(/Cena ręczna netto/).blur();
 
   await perspective(page, 'costing');
   await expect(
@@ -265,6 +274,12 @@ test('V57 salesperson: customer → roof → company tile → materials → draf
   await expect(quote).toContainText('Jan Kowalski');
   await expect(quote).toContainText('Dom Kowalski');
   await expect(quote.getByTestId('quote-precheck')).toBeVisible();
+  await expect(
+    quote
+      .getByTestId('quote-line')
+      .filter({ hasText: 'Łaty' })
+      .getByLabel(/Cena netto/),
+  ).toHaveValue('3,25');
   await expect(quote.getByTestId('quote-line').first()).toBeVisible();
   const coveringQuoteLine = quote
     .getByTestId('quote-line')
@@ -325,6 +340,18 @@ test('V57 salesperson: customer → roof → company tile → materials → draf
     await page.getByRole('button', { name: 'Odśwież ofertę' }).click();
     await expect(page.getByTestId('quote-stale')).toBeHidden();
   }
+  await quote.getByRole('button', { name: /Wróć do wyceny/ }).click();
+  await page.getByRole('button', { name: '← Wyceny', exact: true }).click();
+  await expect(home).toBeVisible();
+  await home
+    .getByRole('button', { name: /^Dom Kowalski Jan Kowalski/ })
+    .click();
+  await expect(quote).toBeVisible();
+  await expect(quote).toContainText('Jan Kowalski');
+  await expect(quote.getByTestId('quote-save-status')).toHaveText('Zapisano');
+  await page.reload();
+  await expect(quote).toBeVisible();
+  await expect(quote).toContainText('Dom Kowalski');
 });
 
 test('V57 sales dashboard fits the required desktop viewports', async ({

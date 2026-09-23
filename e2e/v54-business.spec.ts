@@ -126,6 +126,30 @@ async function stubBusinessApi(
   const sells = options.sells ?? [KODA_VARIANT];
   let unmatchedActive = true;
   await page.route('**/api/business/**', async (route: Route) => {
+    if (new URL(route.request().url()).pathname.endsWith('/session')) {
+      await route.fulfill({
+        json: {
+          user: {
+            id: 'fixture-user',
+            name: 'Sales fixture',
+            email: 'sales@example.test',
+          },
+          memberships: [
+            {
+              organizationId: ORGANIZATION.id,
+              capabilities: [
+                'business.read',
+                'quote.write',
+                'customers.write',
+                'assortment.manage',
+                'prices.manage',
+              ],
+            },
+          ],
+        },
+      });
+      return;
+    }
     if (options.unavailable) {
       await route.fulfill({
         status: 503,

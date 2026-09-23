@@ -41,7 +41,7 @@ export async function mockBusinessWorkspace(
       });
       return;
     }
-    const path = url.pathname.split('/'),
+    const path = url.pathname.split('/').map(decodeURIComponent),
       resource = path[5],
       id = path[6];
     if (!['customers', 'estimations'].includes(resource ?? '')) {

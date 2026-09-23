@@ -59,9 +59,19 @@ export function QuoteWorkspace({
 }) {
   const pl = locale.startsWith('pl');
   const [preview, setPreview] = useState(false);
+  const [attentionOnly, setAttentionOnly] = useState(false);
+  const shellRef = useRef<HTMLElement>(null);
   const tableWrapRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = overflow;
+    };
+  }, []);
+  useEffect(() => {
     if (preview && tableWrapRef.current) tableWrapRef.current.scrollLeft = 0;
+    if (shellRef.current) shellRef.current.scrollTop = 0;
   }, [preview]);
   const printQuote = () => {
     setPreview(true);
@@ -104,7 +114,7 @@ export function QuoteWorkspace({
         aria-label={pl ? 'Zamknij ofertę' : 'Close quote'}
         onClick={onClose}
       />
-      <article className="bz-quote-shell" data-preview={preview}>
+      <article className="bz-quote-shell" data-preview={preview} ref={shellRef}>
         <header className="bz-quote-toolbar bz-no-print">
           {saveStatus && (
             <span role="status" data-testid="quote-save-status">
@@ -146,6 +156,10 @@ export function QuoteWorkspace({
             {pl ? 'Wróć do wyceny' : 'Back to estimate'}
           </button>
           <div>
+            <strong className="bz-quote-live-total">
+              {pl ? 'Brutto' : 'Gross'}:{' '}
+              {money(summary.grossMinor, draft.currencyCode, locale)}
+            </strong>
             <button
               className="a-button"
               type="button"
@@ -229,7 +243,7 @@ export function QuoteWorkspace({
             <div>
               <span>{pl ? 'Klient' : 'Customer'}</span>
               <strong>
-                {draft.customerSnapshot.companyName ??
+                {draft.customerSnapshot.companyName ||
                   draft.customerSnapshot.name}
               </strong>
               {draft.customerSnapshot.companyName && (
@@ -284,7 +298,7 @@ export function QuoteWorkspace({
                 <button
                   className="a-button"
                   type="button"
-                  onClick={onOpenMaterials}
+                  onClick={() => setAttentionOnly(true)}
                 >
                   {pl ? 'Uzupełnij braki' : 'Complete missing data'}
                 </button>
@@ -406,6 +420,36 @@ export function QuoteWorkspace({
           )}
 
           <div className="bz-quote-table-wrap" ref={tableWrapRef}>
+            {!preview && (
+              <div className="bz-quote-filters bz-no-print">
+                <button
+                  className="a-button"
+                  aria-pressed={!attentionOnly}
+                  onClick={() => setAttentionOnly(false)}
+                >
+                  {pl ? 'Wszystkie pozycje' : 'All items'}
+                </button>
+                <button
+                  className="a-button"
+                  aria-pressed={attentionOnly}
+                  onClick={() => setAttentionOnly(true)}
+                >
+                  {pl ? 'Wymaga uwagi' : 'Needs attention'} (
+                  {
+                    draft.lines.filter(
+                      (line) =>
+                        line.included &&
+                        (line.unitNetAmountMinor === undefined ||
+                          line.vatRateBps === undefined),
+                    ).length
+                  }
+                  )
+                </button>
+                <button className="a-button" onClick={onOpenMaterials}>
+                  {pl ? 'Materiały wyceny' : 'Estimate materials'}
+                </button>
+              </div>
+            )}
             <table className="bz-quote-table">
               <thead>
                 <tr>
@@ -421,7 +465,14 @@ export function QuoteWorkspace({
               <tbody>
                 {GROUPS.map((group) => {
                   const lines = draft.lines.filter(
-                    (line) => line.group === group,
+                    (line) =>
+                      line.group === group &&
+                      (preview
+                        ? line.included
+                        : !attentionOnly ||
+                          (line.included &&
+                            (line.unitNetAmountMinor === undefined ||
+                              line.vatRateBps === undefined))),
                   );
                   if (!lines.length) return null;
                   return (
@@ -509,8 +560,10 @@ export function QuoteWorkspace({
                                   </small>
                                 )}
                             </td>
-                            <td>{line.organizationSku ?? '—'}</td>
-                            <td>
+                            <td data-label={pl ? 'Kod' : 'Code'}>
+                              {line.organizationSku ?? '—'}
+                            </td>
+                            <td data-label={pl ? 'Ilość' : 'Quantity'}>
                               <span className="bz-quote-technical bz-no-preview">
                                 {pl ? 'Techniczna' : 'Technical'}:{' '}
                                 {line.technicalQuantity.value.toLocaleString(
@@ -551,14 +604,20 @@ export function QuoteWorkspace({
                                 </label>
                               )}
                               {line.quantityOverridden && (
-                                <small className="bz-quote-warning">
+                                <small className="bz-quote-warning bz-no-preview">
                                   {pl
                                     ? 'Różni się od zapotrzebowania RoofCalc.'
                                     : 'Differs from the RoofCalc requirement.'}
+                                  {' Δ '}
+                                  {(
+                                    line.offerQuantity.value -
+                                    line.technicalQuantity.value
+                                  ).toLocaleString(locale)}{' '}
+                                  {unit(line.offerQuantity.unit)}
                                 </small>
                               )}
                             </td>
-                            <td>
+                            <td data-label={pl ? 'Cena netto' : 'Net price'}>
                               {preview ? (
                                 money(
                                   line.unitNetAmountMinor,
@@ -594,7 +653,7 @@ export function QuoteWorkspace({
                                 />
                               )}
                             </td>
-                            <td>
+                            <td data-label={pl ? 'Rabat' : 'Discount'}>
                               {preview ? (
                                 `${(line.discountBps ?? 0) / 100}%`
                               ) : (
@@ -623,7 +682,7 @@ export function QuoteWorkspace({
                                 />
                               )}
                             </td>
-                            <td>
+                            <td data-label="VAT">
                               {preview ? (
                                 line.vatRateBps === undefined ? (
                                   '—'
@@ -654,7 +713,7 @@ export function QuoteWorkspace({
                                 </select>
                               )}
                             </td>
-                            <td>
+                            <td data-label={pl ? 'Netto' : 'Net'}>
                               <strong>
                                 {money(
                                   calculated.netMinor,

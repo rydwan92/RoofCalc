@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import type { CostScenarioSummary } from '@cieslacalc/cost-core';
 import type {
   CommercialPrimaryAction,
   CommercialReadiness,
@@ -16,9 +17,11 @@ const stages = [
 export function BusinessJourney({
   readiness,
   onAction,
+  summary,
 }: {
   readiness: CommercialReadiness;
   onAction: (action: CommercialPrimaryAction) => void;
+  summary?: CostScenarioSummary;
 }) {
   const { i18n } = useTranslation();
   const pl = i18n.language.startsWith('pl');
@@ -65,6 +68,18 @@ export function BusinessJourney({
         </button>
       </div>
       <div className="bz-readiness-split">
+        {summary && (
+          <span>
+            <strong>{pl ? 'Wycena netto' : 'Net estimate'}</strong>{' '}
+            {new Intl.NumberFormat(i18n.language, {
+              style: 'currency',
+              currency: summary.currencyCode,
+            }).format(summary.netMinor / 100)}
+            {!summary.complete && (
+              <small> · {pl ? 'niepełna' : 'incomplete'}</small>
+            )}
+          </span>
+        )}
         <span>
           <strong>{pl ? 'Technicznie' : 'Technical'}</strong>{' '}
           {readiness.technicalIssues ? `⚠ ${readiness.technicalIssues}` : '✓'}

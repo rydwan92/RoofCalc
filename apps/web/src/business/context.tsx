@@ -163,10 +163,18 @@ export function BusinessContextProvider({
       window.removeEventListener('roofcalc:business-session-expired', expired);
   }, [queryClient]);
   const retry = useCallback(async () => {
+    const previousUser = queryClient.getQueryData<BusinessSession>([
+      'business',
+      'session',
+    ])?.user.id;
     const result = await refetchSession();
-    if (result.isSuccess) setSessionExpired(false);
+    if (result.isSuccess) {
+      setSessionExpired(false);
+      if (sessionExpired && estimation && previousUser === result.data.user.id)
+        setHomeOpen(false);
+    }
     await queryClient.invalidateQueries({ queryKey: ['business'] });
-  }, [refetchSession, queryClient]);
+  }, [refetchSession, queryClient, sessionExpired, estimation]);
   const signOut = useCallback(async () => {
     if (!(await leaveGuard.current())) return;
     await sessionClient.signOut();

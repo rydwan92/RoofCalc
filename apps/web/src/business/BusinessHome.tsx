@@ -67,6 +67,13 @@ export function BusinessHome({
         </button>
         <button
           className="a-button"
+          data-testid="business-home-continue"
+          onClick={onContinue}
+        >
+          {m.openTechnicalProject}
+        </button>
+        <button
+          className="a-button"
           onClick={() => business.setMode('standard')}
         >
           Standard
@@ -98,7 +105,7 @@ export function BusinessHome({
     <main className="bz-home" data-testid="business-home">
       <header className="bz-home-hero">
         <div>
-          <span>{m.salesDesk}</span>
+          <span>ROOFCALC BUSINESS</span>
           <h1>{organization.name}</h1>
           <p>
             {pl
@@ -143,12 +150,9 @@ export function BusinessHome({
               }}
             >
               <span>
-                <strong>+ {m.newRoofEstimation}</strong>
+                <strong>+ {pl ? 'Nowa wycena' : 'New estimation'}</strong>
                 <small>{m.newRoofEstimationHint}</small>
               </span>
-            </button>
-            <button className="a-button" onClick={() => setScreen('customers')}>
-              {pl ? 'Klienci' : 'Customers'}
             </button>
           </section>
           <div className="bz-home-grid">
@@ -192,6 +196,33 @@ export function BusinessHome({
               )}
             </section>
           </div>
+          <nav
+            className="bz-home-shortcuts"
+            aria-label={pl ? 'Narzędzia hurtowni' : 'Business tools'}
+          >
+            <button onClick={() => setScreen('customers')}>
+              <strong>{pl ? 'Klienci' : 'Customers'}</strong>
+              <span>
+                {pl
+                  ? 'Dane kontaktowe i wyceny klientów'
+                  : 'Contact details and customer estimations'}
+              </span>
+              <b>{pl ? 'Otwórz →' : 'Open →'}</b>
+            </button>
+            {canManage && (
+              <button onClick={() => setScreen('admin')}>
+                <strong>
+                  {pl ? 'Asortyment i cennik' : 'Assortment and prices'}
+                </strong>
+                <span>
+                  {pl
+                    ? 'Produkty, powiązania i ceny hurtowni'
+                    : 'Company products, matching and prices'}
+                </span>
+                <b>{pl ? 'Otwórz →' : 'Open →'}</b>
+              </button>
+            )}
+          </nav>
         </>
       )}
     </main>

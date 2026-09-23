@@ -1151,6 +1151,8 @@ function AssemblyPageContent() {
     compareDraft,
     activeEstimation,
     exportRecovery,
+    returnHome,
+    commercialSummary,
   } = useBusinessWorkspace({
     state,
     projectSession,
@@ -2219,7 +2221,7 @@ function AssemblyPageContent() {
           </button>
         )}
         {exportError && <span role="alert">{exportError}</span>}
-        <BusinessHeader />
+        <BusinessHeader onHome={returnHome} />
         <div className="a-settings">
           <div className="a-units" role="group" aria-label={t('assembly.unit')}>
             {lengthUnits.map((unit) => (
@@ -2334,16 +2336,22 @@ function AssemblyPageContent() {
           <BusinessModeToggle />
         </div>
       </header>
-      {business.mode === 'business' && activeEstimation && (
-        <WorkspaceStatus
-          status={saveStatus}
-          locale={i18n.language}
-          onRetry={retrySave}
-          onReload={reloadRemote}
-          onExport={exportRecovery}
-          onQuote={openQuote}
-        />
-      )}
+      {business.mode === 'business' &&
+        activeEstimation &&
+        !business.homeOpen && (
+          <WorkspaceStatus
+            status={saveStatus}
+            locale={i18n.language}
+            onRetry={retrySave}
+            onReload={reloadRemote}
+            onExport={exportRecovery}
+            onQuote={openQuote}
+            onHome={returnHome}
+            onMaterials={() =>
+              state.navigateTo(workbenchLocation('materials', 'plan'))
+            }
+          />
+        )}
       {business.mode === 'business' && business.homeOpen ? (
         <BusinessHome
           projects={projectSessionState.projects}
@@ -2470,6 +2478,7 @@ function AssemblyPageContent() {
             <>
               {business.mode === 'business' && (
                 <BusinessJourney
+                  summary={commercialSummary}
                   readiness={commercialReadiness}
                   onAction={runCommercialAction}
                 />

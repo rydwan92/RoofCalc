@@ -54,16 +54,15 @@ export function RecentEstimations({
             <li key={entry.id}>
               <button disabled={busy} onClick={() => void open(entry.id)}>
                 <span>
-                  <strong>
-                    {entry.customerName} — {entry.name}
-                  </strong>
+                  <strong>{entry.name}</strong>
+                  <span>{entry.customerName}</span>
                   <small>
                     {new Date(entry.updatedAt).toLocaleDateString(
                       i18n.language,
                     )}{' '}
                     ·{' '}
                     {entry.quoteNumber ??
-                      (pl ? 'Szkic wyceny' : 'Estimation draft')}
+                      (pl ? 'Robocza · brak oferty' : 'Draft · no quote')}
                     {entry.missingPrices
                       ? ` · ${pl ? 'Brak cen' : 'Missing prices'}: ${entry.missingPrices}`
                       : ''}

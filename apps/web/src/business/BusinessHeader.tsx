@@ -23,7 +23,7 @@ const AdminAssortment = lazy(() =>
  * In STANDARD mode this renders **nothing at all**: no badge, no selector, no
  * Admin entry (§65).
  */
-export function BusinessHeader() {
+export function BusinessHeader({ onHome }: { onHome?: () => Promise<void> }) {
   const { i18n } = useTranslation();
   const m = businessCopy(i18n.language);
   const {
@@ -33,7 +33,6 @@ export function BusinessHeader() {
     setOrganizationId,
     unavailable,
     loading,
-    estimation,
     setHomeOpen,
     session,
     signOut,
@@ -53,7 +52,10 @@ export function BusinessHeader() {
         type="button"
         className="bz-admin-entry"
         data-testid="business-home-entry"
-        onClick={() => setHomeOpen(true)}
+        onClick={() => {
+          if (onHome) void onHome();
+          else setHomeOpen(true);
+        }}
         title={m.salesDesk}
       >
         <Home size={15} aria-hidden="true" />
@@ -83,19 +85,6 @@ export function BusinessHeader() {
         <strong data-testid="business-organization-name">
           {organization?.name ?? m.chooseOrganization}
         </strong>
-      )}
-      {estimation && (
-        <span
-          className="bz-estimation-context"
-          data-testid="business-estimation-context"
-        >
-          <span>
-            {m.estimation}: <strong>{estimation.projectName}</strong>
-          </span>
-          <span>
-            {m.customer}: <strong>{estimation.customer.name}</strong>
-          </span>
-        </span>
       )}
       {canManage && (
         <button

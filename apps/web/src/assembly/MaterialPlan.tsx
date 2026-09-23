@@ -203,6 +203,13 @@ export function MaterialPlan({
   const hasTechnicalIssue = (row: MaterialPlanRow) =>
     row.partial || row.suitability === 'manual-required';
   const hasCommercialIssue = (row: MaterialPlanRow) => {
+    const selected = prices[row.id];
+    if (
+      selected?.source === 'manual' &&
+      selected.valid !== false &&
+      selected.currencyCode === scenario?.currencyCode
+    )
+      return false;
     if (
       business.mode !== 'business' ||
       commercial.isPending ||
@@ -233,7 +240,7 @@ export function MaterialPlan({
   const needsAttention = (row: MaterialPlanRow) =>
     hasTechnicalIssue(row) || hasCommercialIssue(row);
   const options = usePriceOptions(
-    rows.flatMap((row) =>
+    (business.mode === 'business' ? [] : rows).flatMap((row) =>
       row.product?.variantId ? [row.product.variantId] : [],
     ),
   );
@@ -755,6 +762,28 @@ export function MaterialPlan({
                 </p>
               ) : (
                 <div className="mp-price">
+                  {business.mode === 'business' &&
+                    price?.source !== 'manual' && (
+                      <button
+                        className="a-button"
+                        onClick={() =>
+                          onPricesChange({
+                            ...prices,
+                            [row.id]: {
+                              source: 'manual',
+                              amountMinor: price?.amountMinor ?? 0,
+                              currencyCode: currency,
+                              provenance: m.manual,
+                              valid: false,
+                            },
+                          })
+                        }
+                      >
+                        {locale.startsWith('pl')
+                          ? 'Cena dla tej wyceny'
+                          : 'Price for this estimate'}
+                      </button>
+                    )}
                   <label>
                     {m.selectPrice}
                     <select
@@ -847,17 +876,39 @@ export function MaterialPlan({
                         }
                         onBlur={(event) => {
                           const parsed = parseDecimal(event.target.value);
-                          if (parsed !== null && parsed >= 0)
+                          if (parsed !== null && parsed >= 0) {
+                            const nextPrice = {
+                              ...price,
+                              amountMinor: Math.round(parsed * 100),
+                              valid: true,
+                            };
                             onPricesChange({
                               ...prices,
-                              [row.id]: {
-                                ...price,
-                                amountMinor: Math.round(parsed * 100),
-                                valid: true,
-                              },
+                              [row.id]: nextPrice,
                             });
+                            if (
+                              business.mode === 'business' &&
+                              scenario &&
+                              !row.range
+                            )
+                              onScenarioChange(
+                                acceptMaterialRow(
+                                  scenario,
+                                  row,
+                                  nextPrice,
+                                  label,
+                                ),
+                              );
+                          }
                         }}
                       />
+                      {business.mode === 'business' && (
+                        <small>
+                          {locale.startsWith('pl')
+                            ? 'Zapis automatyczny w tej wycenie. Cennik hurtowni pozostaje bez zmian.'
+                            : 'Saved automatically in this estimate. Company price list stays unchanged.'}
+                        </small>
+                      )}
                     </label>
                   )}
                   {price && (

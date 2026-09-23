@@ -54,6 +54,9 @@ test('V58 SQL sales workflow survives reload, detects stale writes and preserves
     await page.setViewportSize({ width: 1440, height: 900 });
   }
   await home.getByTestId('business-new-estimation').click();
+  await home
+    .getByRole('button', { name: '+ Nowy klient', exact: true })
+    .click();
   const name = `Dom V58 ${info.project.name} ${Date.now()}`;
   await home.getByLabel(/Klient — nazwa lub firma/).fill('Jan Kowalski');
   await home.getByLabel('Nazwa inwestycji').fill(name);

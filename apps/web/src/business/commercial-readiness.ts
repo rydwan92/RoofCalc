@@ -31,6 +31,7 @@ export function deriveCommercialReadiness(input: {
   cost?: CostScenarioSummary;
   quoteExists: boolean;
   quoteStale: boolean;
+  manuallyPricedRows?: ReadonlySet<string>;
 }): CommercialReadiness {
   const technicalIssues = input.rows.filter(
     (row) => row.partial || row.suitability === 'manual-required',
@@ -41,6 +42,10 @@ export function deriveCommercialReadiness(input: {
   let readyItems = 0;
   for (const row of input.rows) {
     if (row.partial || row.suitability === 'manual-required') continue;
+    if (input.manuallyPricedRows?.has(row.id)) {
+      readyItems++;
+      continue;
+    }
     const variantId = row.product?.variantId;
     if (!variantId) {
       identityIssues++;

@@ -25,6 +25,7 @@ export function NewEstimationForm({
     m = businessCopy(i18n.language);
   const [selected, setSelected] = useState(customer),
     [search, setSearch] = useState('');
+  const [creating, setCreating] = useState(false);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(false);
   const query = useCustomers(search);
@@ -49,7 +50,7 @@ export function NewEstimationForm({
                 value(key === 'name' ? 'customerName' : key),
               ]),
             ),
-            type: value('type'),
+            type: value('type') || 'person',
             notes: value('notes'),
           }),
         );
@@ -73,7 +74,7 @@ export function NewEstimationForm({
   return (
     <form className="bz-estimation-form" onSubmit={submit}>
       <div className="bz-section-heading">
-        <h2>{m.customerAndProject}</h2>
+        <h2>{pl ? 'Nowa wycena' : 'New estimation'}</h2>
         <button
           type="button"
           className="a-button"
@@ -84,7 +85,7 @@ export function NewEstimationForm({
         </button>
       </div>
       <label>
-        {pl ? 'Wyszukaj istniejącego klienta' : 'Find existing customer'}
+        {pl ? 'Wyszukaj klienta' : 'Find customer'}
         <input
           type="search"
           value={search}
@@ -92,7 +93,7 @@ export function NewEstimationForm({
         />
       </label>
       {search && query.data && (
-        <ul className="bz-recent-list">
+        <ul className="bz-recent-list bz-customer-results">
           {query.data.items.map((entry) => (
             <li key={entry.id}>
               <button
@@ -100,9 +101,21 @@ export function NewEstimationForm({
                 onClick={() => {
                   setSelected(entry);
                   setSearch('');
+                  setCreating(false);
                 }}
               >
-                {entry.name} {entry.companyName}
+                <span>
+                  <strong>{entry.companyName || entry.name}</strong>
+                  <small>
+                    {[entry.taxId ? `NIP ${entry.taxId}` : '', entry.city]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </small>
+                  <small>
+                    {[entry.phone, entry.email].filter(Boolean).join(' · ')}
+                  </small>
+                </span>
+                <b>{pl ? 'Wybierz' : 'Select'}</b>
               </button>
             </li>
           ))}
@@ -123,34 +136,62 @@ export function NewEstimationForm({
         </p>
       )}
       {selected ? (
-        <p>
-          {selected.name}{' '}
+        <div className="bz-selected-customer">
+          <span>
+            <strong>{selected.companyName || selected.name}</strong>
+            <small>
+              {[selected.city, selected.phone, selected.email]
+                .filter(Boolean)
+                .join(' · ')}
+            </small>
+          </span>
           <button
             type="button"
             className="a-button"
-            onClick={() => setSelected(undefined)}
+            onClick={() => {
+              setSelected(undefined);
+              setCreating(false);
+            }}
           >
-            {pl ? '+ Nowy klient' : '+ New customer'}
+            {pl ? 'Zmień klienta' : 'Change customer'}
           </button>
-        </p>
+        </div>
+      ) : !creating ? (
+        <button
+          type="button"
+          className="a-button bz-inline-create"
+          onClick={() => setCreating(true)}
+        >
+          {pl ? '+ Nowy klient' : '+ New customer'}
+        </button>
       ) : (
         <>
-          <label>
-            {pl ? 'Typ klienta' : 'Customer type'}
-            <select name="type" defaultValue="person">
-              <option value="person">{pl ? 'Osoba' : 'Person'}</option>
-              <option value="company">{pl ? 'Firma' : 'Company'}</option>
-            </select>
-          </label>
           <label>
             {m.customerName}
             <input name="customerName" required maxLength={240} autoFocus />
           </label>
+          <div className="bz-form-grid bz-form-two">
+            <label>
+              {pl ? 'Telefon' : 'Phone'}
+              <input name="phone" type="tel" maxLength={64} />
+            </label>
+            <label>
+              E-mail
+              <input name="email" type="email" maxLength={254} />
+            </label>
+          </div>
           <details className="bz-customer-details">
-            <summary>{m.customerDetailsOptional}</summary>
+            <summary>{pl ? 'Więcej danych' : 'More details'}</summary>
             <div className="bz-form-grid">
+              <label>
+                {pl ? 'Typ klienta' : 'Customer type'}
+                <select name="type" defaultValue="person">
+                  <option value="person">{pl ? 'Osoba' : 'Person'}</option>
+                  <option value="company">{pl ? 'Firma' : 'Company'}</option>
+                </select>
+              </label>
               {customerFields
-                .filter(([key]) => key !== 'name')
+                .filter(([key]) => !['name', 'phone', 'email'].includes(key))
                 .map(([key, pol, en]) => (
                   <label key={key}>
                     {pl ? pol : en}
@@ -179,7 +220,7 @@ export function NewEstimationForm({
           </details>
         </>
       )}
-      <div className="bz-form-grid">
+      <div className="bz-form-grid bz-form-two">
         <label>
           {m.investmentName}
           <input name="projectName" required maxLength={240} />
@@ -190,7 +231,10 @@ export function NewEstimationForm({
         </label>
       </div>
       {error && <p role="alert">{m.estimationCreateFailed}</p>}
-      <button className="a-button a-primary" disabled={busy}>
+      <button
+        className="a-button a-primary"
+        disabled={busy || (!selected && !creating)}
+      >
         {busy ? '…' : pl ? 'Utwórz wycenę' : 'Create estimation'}
       </button>
     </form>

@@ -9,6 +9,8 @@ export function WorkspaceStatus({
   onReload,
   onExport,
   onQuote,
+  onHome,
+  onMaterials,
 }: {
   status: RemoteSaveStatus;
   locale: string;
@@ -16,6 +18,8 @@ export function WorkspaceStatus({
   onReload: () => Promise<void>;
   onExport: () => void;
   onQuote: () => void;
+  onHome: () => Promise<void>;
+  onMaterials: () => void;
 }) {
   const business = useBusiness(),
     pl = locale.startsWith('pl');
@@ -29,7 +33,26 @@ export function WorkspaceStatus({
     }
   };
   return (
-    <div className="bz-workspace-status" data-testid="business-save-bar">
+    <div
+      className="bz-workspace-status"
+      data-testid="business-save-bar"
+      data-state={business.sessionExpired ? 'error' : status}
+    >
+      <button className="bz-back-link" onClick={() => void run(onHome)}>
+        {pl ? '← Wyceny' : '← Estimations'}
+      </button>
+      {business.estimation && (
+        <div
+          className="bz-estimation-context"
+          data-testid="business-estimation-context"
+        >
+          <strong>{business.estimation.projectName}</strong>
+          <span>
+            {business.estimation.customer.companyName ||
+              business.estimation.customer.name}
+          </span>
+        </div>
+      )}
       <span role="status" data-testid="business-save-status">
         {business.sessionExpired
           ? pl
@@ -37,7 +60,7 @@ export function WorkspaceStatus({
             : 'Session expired. Sign in again to save business data.'
           : status === 'conflict'
             ? pl
-              ? 'Ta wycena została zmieniona w innym miejscu.'
+              ? 'Wycena została zmieniona w innym miejscu.'
               : 'This estimation changed elsewhere.'
             : status === 'error'
               ? pl
@@ -79,6 +102,9 @@ export function WorkspaceStatus({
             : 'Connection failed. Your edits remain open.'}
         </span>
       )}
+      <button className="a-button" onClick={onMaterials}>
+        {pl ? 'Materiały' : 'Materials'}
+      </button>
       <button
         className="a-button"
         onClick={onQuote}

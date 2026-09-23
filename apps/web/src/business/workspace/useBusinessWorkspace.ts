@@ -128,6 +128,15 @@ export function useBusinessWorkspace({
     await projectQueue.flush();
     await quoteQueue.flush();
   };
+  const returnHome = async () => {
+    try {
+      await flush();
+    } catch {
+      /* Keep both queues and expose recovery on return. */
+    }
+    setQuoteOpen(false);
+    business.setHomeOpen(true);
+  };
   useEffect(() => {
     quoteQueue.resume();
     projectQueue.resume();
@@ -148,6 +157,8 @@ export function useBusinessWorkspace({
     if (scope && scope === ownerScope.current) {
       quoteQueue.resume();
       projectQueue.resume();
+      void projectQueue.flush().catch(() => undefined);
+      void quoteQueue.flush().catch(() => undefined);
     } else {
       quoteQueue.suspend();
       projectQueue.suspend();
@@ -271,6 +282,16 @@ export function useBusinessWorkspace({
     : undefined;
   const commercialReadiness = deriveCommercialReadiness({
     rows: materialRows,
+    manuallyPricedRows: new Set(
+      Object.entries(effectiveMaterialPrices)
+        .filter(
+          ([, price]) =>
+            price.source === 'manual' &&
+            price.valid !== false &&
+            price.currencyCode === costScenario?.currencyCode,
+        )
+        .map(([id]) => id),
+    ),
     priceStateByVariant: commercialPrices.byVariantId,
     hasCovering: hasCovering,
     cost: costSummary,
@@ -320,7 +341,7 @@ export function useBusinessWorkspace({
       prices: effectiveMaterialPrices,
       organizationPrices: commercialPrices.items,
       label: (row) =>
-        `${materialText(locale, row.labelKey)}${
+        `${row.product?.name || materialText(locale, row.labelKey)}${
           row.description ? ` · ${row.description}` : ''
         }`,
     });
@@ -475,6 +496,8 @@ export function useBusinessWorkspace({
     [registerLeaveGuard],
   );
   return {
+    returnHome,
+    commercialSummary: costSummary,
     activeEstimation:
       detail && detail.project.id === activeProjectId
         ? detail.estimation

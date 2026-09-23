@@ -1297,16 +1297,19 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
-## V58 — closeout of existing persistent business workspace (in progress)
+## V58 — wholesale workspace UX and persistence closeout
 
-Closeout starts on clean `main` at `ee491ed989d1bd41d234c1a7b7d6ddb1b6b60583`.
-The explicit V58 CLOSEOUT request supersedes the old NEXT ACTION below. Preserve
-Better Auth, business/quote cores and migration 0005. Baseline after frozen-lockfile
-installation: typecheck/lint pass; format:check fails in 19 committed WIP files,
-matching GitHub CI run 35781887283. Initial local typecheck also exposed stale
-node_modules, repaired by `pnpm install --frozen-lockfile` without lockfile changes.
-NEXT ACTION: restore full verify, finish and test auth/tenant/persistence/autosave,
-then real SQL sales workflow and browser QA; commit/push only a coherent checkpoint.
+- Latest product closeout starts at `128db727ad180c22055b32556cbec42dc0fbfdaf`; its clean baseline verify passed on Node 22.
+- Completed: sales home, inline customer search/create, recent estimations, mobile customer/project/save strip and return to sales home.
+- Material prices save into the current estimation; manual prices resolve commercial attention without changing the company price list.
+- Quote editor shows product names, missing-price/VAT filter, live gross total and explicit quantity differences; mobile customer preview has readable labelled values.
+- Queued edits resume after reauthentication; returning home flushes pending work, and reopening/reloading preserves the quote.
+- Scope: web business/MaterialPlan/Page and existing business E2E fixtures; no new migration, geometry engine or canonical roof schema.
+- Validation: verify 1644 passed / 13 intentionally skipped; architecture 42 passed; web/API/Worker builds and diff check passed. Final repeat/full browser run recorded below if different.
+- Browser QA: repaired V54 company-unavailable/outside-assortment scenarios; V57 sales flow passes desktop/mobile including manual material price → quote → home → reopen → reload. Screens inspected at 390, 1024, 1440 and 1920 widths.
+- SQL integration passed earlier (6 tests including autosave); latest real-SQL browser rerun could not start because local SQL/API startup was rejected by automatic tool policy. Fixture E2E is not presented as SQL proof.
+- SHARED DEV AUTH UNAVAILABLE: inspected workflow 35785702912 once; `DATABASE_URL is required for database setup.` No shared migration/deployment success claimed.
+- NEXT ACTION: finish final gates and push this coherent V58 closeout; shared DEV requires the missing deployment credentials before its separate smoke check. No V59 work.
 
 Baseline: clean `main` at `d5cd66f2024c079363ed82703b4f714bb13dbe42`.
 `pnpm verify` passed: 151 files / 1639 tests passed, 1 file / 11 tests
