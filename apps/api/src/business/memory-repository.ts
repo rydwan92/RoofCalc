@@ -65,6 +65,15 @@ export class InMemoryBusinessRepository
       ),
     );
   }
+  async updateOrganizationProfile(
+    organizationId: string,
+    profile: import('@cieslacalc/business-core').OrganizationProfile,
+  ) {
+    const organization = this.state.organizations.find(
+      (item) => item.id === organizationId,
+    );
+    if (organization) Object.assign(organization, structuredClone(profile));
+  }
 
   assortmentForOrganization(
     organizationId: string,

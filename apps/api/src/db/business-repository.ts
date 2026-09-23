@@ -19,6 +19,7 @@ import {
   type AssortmentImportAudit,
   type AssortmentSummary,
   type Organization,
+  type OrganizationProfile,
   type OrganizationAssortmentItem,
   type OrganizationPriceList,
 } from '@cieslacalc/business-core';
@@ -58,6 +59,11 @@ function organizationFromRow(
     taxId: row.taxId ?? undefined,
     address: row.address ?? undefined,
     logoUrl: row.logoUrl ?? undefined,
+    phone: row.phone ?? undefined,
+    email: row.email ?? undefined,
+    website: row.website ?? undefined,
+    defaultValidityDays: row.defaultValidityDays ?? undefined,
+    offerFooter: row.offerFooter ?? undefined,
   });
 }
 
@@ -165,6 +171,18 @@ export class DrizzleBusinessRepository
       .where(eq(organizations.id, organizationId))
       .limit(1);
     return rows[0] ? organizationFromRow(rows[0]) : undefined;
+  }
+  async updateOrganizationProfile(
+    organizationId: string,
+    profile: OrganizationProfile,
+  ) {
+    await this.db
+      .update(organizations)
+      .set({
+        ...profile,
+        updatedAt: new Date().toISOString().slice(0, 19).replace('T', ' '),
+      })
+      .where(eq(organizations.id, organizationId));
   }
 
   async assortmentForOrganization(

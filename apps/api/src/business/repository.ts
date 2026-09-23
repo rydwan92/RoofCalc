@@ -3,6 +3,7 @@ import type {
   AssortmentImportAudit,
   AssortmentSummary,
   Organization,
+  OrganizationProfile,
   OrganizationAssortmentItem,
   OrganizationPriceList,
 } from '@cieslacalc/business-core';
@@ -21,6 +22,10 @@ import type { PriceListEntry } from '@cieslacalc/pricing-core';
 export interface BusinessRepository {
   listOrganizations(): Promise<Organization[]>;
   getOrganization(organizationId: string): Promise<Organization | undefined>;
+  updateOrganizationProfile(
+    organizationId: string,
+    profile: OrganizationProfile,
+  ): Promise<void>;
   /** Every row this organization owns. Never another organization's rows. */
   assortmentForOrganization(
     organizationId: string,

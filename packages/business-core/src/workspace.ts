@@ -60,7 +60,8 @@ export type BusinessCapability =
   | 'quote.write'
   | 'customers.write'
   | 'assortment.manage'
-  | 'prices.manage';
+  | 'prices.manage'
+  | 'organization.manage';
 export function roleCapabilities(role: BusinessRole): BusinessCapability[] {
   return role === 'sales'
     ? ['business.read', 'quote.write', 'customers.write']
@@ -70,5 +71,6 @@ export function roleCapabilities(role: BusinessRole): BusinessCapability[] {
         'customers.write',
         'assortment.manage',
         'prices.manage',
+        'organization.manage',
       ];
 }

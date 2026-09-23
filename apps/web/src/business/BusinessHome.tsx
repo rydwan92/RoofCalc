@@ -10,6 +10,7 @@ import { Customers } from './customers/Customers';
 import { NewEstimationForm } from './estimations/NewEstimationForm';
 import { RecentEstimations } from './estimations/RecentEstimations';
 import { EstimationDesk } from './estimations/EstimationDesk';
+import { CompanySettings } from './CompanySettings';
 
 const AdminAssortment = lazy(() =>
   import('./admin/AdminAssortment').then((module) => ({
@@ -40,7 +41,7 @@ export function BusinessHome({
   const { organization, unavailable, estimation } = business;
   const assortment = useAssortment({ limit: 1 });
   const [screen, setScreen] = useState<
-    'home' | 'new' | 'customers' | 'admin' | 'estimations'
+    'home' | 'new' | 'customers' | 'admin' | 'estimations' | 'settings'
   >('home');
   const [customer, setCustomer] = useState<BusinessCustomer>();
   const capabilities =
@@ -48,6 +49,7 @@ export function BusinessHome({
       (item) => item.organizationId === organization?.id,
     )?.capabilities ?? [];
   const canManage = capabilities.includes('assortment.manage');
+  const canManageOrganization = capabilities.includes('organization.manage');
   if (business.authenticationRequired) return <BusinessLogin />;
   if (business.loading)
     return (
@@ -152,7 +154,19 @@ export function BusinessHome({
           </button>
         )}
       </nav>
-      {screen === 'estimations' ? (
+      {canManageOrganization && (
+        <div className="bz-sales-settings-link">
+          <button
+            className="bz-back-link"
+            onClick={() => setScreen('settings')}
+          >
+            {pl ? 'Ustawienia firmy' : 'Company settings'}
+          </button>
+        </div>
+      )}
+      {screen === 'settings' && canManageOrganization ? (
+        <CompanySettings key={organization.id} />
+      ) : screen === 'estimations' ? (
         <EstimationDesk
           key={organization.id}
           onOpen={onOpenProject}

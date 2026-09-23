@@ -23,6 +23,28 @@ const slugSchema = z
 
 const nonBlank = z.string().trim().min(1).max(240);
 const currencyCode = z.string().regex(/^[A-Z]{3}$/);
+const webUrl = z.union([
+  z.literal(''),
+  z
+    .string()
+    .url()
+    .max(2048)
+    .refine((value) => /^https?:\/\//i.test(value)),
+]);
+export const organizationProfileSchema = z
+  .object({
+    name: nonBlank,
+    taxId: z.string().trim().max(64).optional(),
+    address: z.string().trim().max(400).optional(),
+    logoUrl: webUrl.optional(),
+    phone: z.string().trim().max(64).optional(),
+    email: z.union([z.literal(''), z.string().email().max(254)]).optional(),
+    website: webUrl.optional(),
+    defaultValidityDays: z.number().int().min(1).max(365).optional(),
+    offerFooter: z.string().max(16000).optional(),
+  })
+  .strict();
+export type OrganizationProfile = z.infer<typeof organizationProfileSchema>;
 
 const jsonValueSchema: z.ZodType<unknown> = z.lazy(() =>
   z.union([
@@ -51,14 +73,12 @@ export const saleUnitSchema = z.enum(SALE_UNITS);
 
 export const organizationSchema = z
   .object({
+    ...organizationProfileSchema.shape,
     id: businessIdSchema,
     slug: slugSchema,
     name: nonBlank,
     currencyCode,
     active: z.boolean(),
-    taxId: z.string().trim().min(1).max(64).optional(),
-    address: z.string().trim().min(1).max(400).optional(),
-    logoUrl: z.string().url().max(2048).optional(),
   })
   .strict();
 

@@ -76,6 +76,52 @@ function api(options: { admin?: boolean; devMode?: boolean } = {}) {
 }
 
 describe('business read API', () => {
+  it('allows company profile changes only for the authorized owner/admin tenant', async () => {
+    const profile = {
+      name: 'Hurtownia Nowa',
+      phone: '123456789',
+      email: 'biuro@example.test',
+      website: 'https://example.test',
+      defaultValidityDays: 21,
+      offerFooter: 'Odbiór własny.',
+    };
+    const sales = api({ devMode: false });
+    expect(
+      (
+        await request(sales.app)
+          .patch('/api/business/organizations/org%3Aa/profile')
+          .send(profile)
+      ).status,
+    ).toBe(403);
+    const admin = api({ admin: true });
+    expect(
+      (
+        await request(admin.app)
+          .patch('/api/business/organizations/org%3Ab/profile')
+          .send(profile)
+      ).status,
+    ).toBe(403);
+    const response = await request(admin.app)
+      .patch('/api/business/organizations/org%3Aa/profile')
+      .send(profile);
+    expect(response.status).toBe(200);
+    expect(response.body.item).toMatchObject({
+      ...profile,
+      id: 'org:a',
+      currencyCode: 'PLN',
+    });
+    expect(
+      (
+        await request(admin.app)
+          .patch('/api/business/organizations/org%3Aa/profile')
+          .send({ ...profile, id: 'org:b' })
+      ).status,
+    ).toBe(400);
+    expect(
+      (await request(sales.app).get('/api/business/organizations')).body
+        .items[0].name,
+    ).toBe('Hurtownia A');
+  });
   it('lists organizations', async () => {
     const response = await request(api().app).get(
       '/api/business/organizations',

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   calculateQuoteLine,
   createQuoteDraft,
+  quoteDraftSchema,
   quoteIsStale,
   quoteSourceFingerprint,
   summarizeQuote,
@@ -44,6 +45,32 @@ function draft(lines = [line]) {
 }
 
 describe('quote-core', () => {
+  it('freezes the organization offer profile while accepting old quote snapshots', () => {
+    const profile = {
+      id: 'org:1',
+      name: 'Original',
+      phone: '111',
+      email: 'original@example.test',
+      logoUrl: 'https://example.test/logo.png',
+    };
+    const saved = createQuoteDraft({
+      ...draft(),
+      organizationSnapshot: profile,
+      footer: 'Original terms',
+    });
+    profile.name = 'Changed';
+    profile.phone = '222';
+    profile.logoUrl = 'https://example.test/new.png';
+    expect(quoteDraftSchema.parse(saved)).toMatchObject({
+      organizationSnapshot: {
+        name: 'Original',
+        phone: '111',
+        logoUrl: 'https://example.test/logo.png',
+      },
+      footer: 'Original terms',
+    });
+    expect(quoteDraftSchema.safeParse(draft()).success).toBe(true);
+  });
   it('compares frozen variants using rounded quote money and refuses incomplete/cross-currency differences', () => {
     const first = draft(),
       second = withQuoteUnitPrice(first, line.id, 500);

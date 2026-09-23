@@ -66,10 +66,19 @@ const PRICE = {
 };
 
 async function stubApis(page: Page) {
+  let organization = { ...ORGANIZATION };
   await page.route('**/api/business/**', async (route: Route) => {
     const url = new URL(route.request().url());
+    if (
+      url.pathname.endsWith('/profile') &&
+      route.request().method() === 'PATCH'
+    ) {
+      organization = { ...organization, ...route.request().postDataJSON() };
+      await route.fulfill({ json: { item: organization } });
+      return;
+    }
     if (url.pathname.endsWith('/organizations')) {
-      await route.fulfill({ json: { items: [ORGANIZATION] } });
+      await route.fulfill({ json: { items: [organization] } });
       return;
     }
     if (url.pathname.endsWith('/assortment')) {
@@ -98,7 +107,7 @@ async function stubApis(page: Page) {
       };
       await route.fulfill({
         json: {
-          organization: ORGANIZATION,
+          organization,
           items: [row],
           summary: {
             total: 1,
@@ -187,6 +196,24 @@ test('V57 salesperson: customer → roof → company tile → materials → draf
 
   const home = page.getByTestId('business-home');
   await expect(home).toBeVisible();
+  await home
+    .getByRole('button', { name: 'Ustawienia firmy', exact: true })
+    .click();
+  const settings = page.getByTestId('company-settings');
+  await settings.getByLabel('Telefon').fill('71 123 45 67');
+  await settings.getByLabel('Domyślna ważność (dni)').fill('21');
+  await settings
+    .getByLabel('Stopka / warunki')
+    .fill('Transport po uzgodnieniu.');
+  await settings.getByRole('button', { name: 'Zapisz', exact: true }).click();
+  await expect(settings).toContainText('Zapisano ustawienia firmy.');
+  if (process.env.V57_VISUAL_QA === '1')
+    await settings.screenshot({
+      path: `test-results/v59-settings-${testInfo.project.name}.png`,
+    });
+  await home
+    .getByRole('button', { name: 'Strona główna', exact: true })
+    .click();
   if (process.env.V57_VISUAL_QA === '1')
     await page.screenshot({
       path: `test-results/v57-home-${testInfo.project.name}.png`,
@@ -297,6 +324,11 @@ test('V57 salesperson: customer → roof → company tile → materials → draf
     snapshottedTechnicalQuantity ?? '',
   );
   await quote.getByRole('button', { name: /Podgląd dla klienta/ }).click();
+  await expect(quote).toContainText('71 123 45 67');
+  await expect(quote).toContainText('Transport po uzgodnieniu.');
+  await expect(quote.locator('.bz-quote-head')).not.toContainText(
+    'Oferta robocza',
+  );
   await expect(page.locator('.bz-quote-shell')).toHaveAttribute(
     'data-preview',
     'true',
@@ -317,6 +349,20 @@ test('V57 salesperson: customer → roof → company tile → materials → draf
         document.documentElement.clientWidth + 1,
     ),
   ).toBe(true);
+  if (
+    process.env.V57_VISUAL_QA === '1' &&
+    testInfo.project.name === 'desktop'
+  ) {
+    await page.emulateMedia({ media: 'print' });
+    await expect(quote.locator('.bz-quote-toolbar')).toBeHidden();
+    await page.pdf({
+      path: 'test-results/v59-offer-a4.pdf',
+      format: 'A4',
+      printBackground: true,
+    });
+    await quote.screenshot({ path: 'test-results/v59-offer-print.png' });
+    await page.emulateMedia({ media: 'screen' });
+  }
 
   if (testInfo.project.name === 'desktop') {
     await quote.getByRole('button', { name: /Wróć do wyceny/ }).click();

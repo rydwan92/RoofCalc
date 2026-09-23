@@ -50,6 +50,8 @@ export {
   organizationAssortmentItemSchema,
   organizationPricePolicySchema,
   organizationSchema,
+  organizationProfileSchema,
+  type OrganizationProfile,
   SALE_UNITS,
   saleUnitSchema,
   type AssortmentColumnMapping,

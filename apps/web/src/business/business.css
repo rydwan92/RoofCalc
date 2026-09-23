@@ -2043,3 +2043,117 @@
 .bz-desk > .bz-section-heading:first-child p {
   margin: 0.4rem 0;
 }
+.bz-sales-settings-link {
+  width: min(1440px, 100%);
+  margin: -0.75rem auto 0.75rem;
+  text-align: right;
+  color: var(--ui-text-muted);
+  font-size: 0.8rem;
+}
+.bz-company-settings {
+  width: min(1000px, 100%);
+  margin: 1rem auto;
+}
+.bz-company-settings h3 {
+  padding-top: 1rem;
+  border-top: 1px solid var(--ui-border);
+}
+.bz-company-settings input,
+.bz-company-settings textarea {
+  padding: 0.6rem;
+  font: inherit;
+  color: var(--ui-text);
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: 6px;
+  width: 100%;
+}
+.bz-company-settings .bz-section-heading {
+  margin-top: 1rem;
+}
+.bz-company-settings .a-primary {
+  width: auto;
+}
+.bz-company-logo {
+  display: block;
+  max-width: 180px;
+  max-height: 72px;
+  object-fit: contain;
+  object-position: left center;
+  margin-bottom: 0.7rem;
+}
+.bz-offer-terms,
+.bz-quote-footer p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+  .bz-quote-document {
+    padding: 0;
+    min-height: 0;
+  }
+  .bz-quote-head {
+    padding-bottom: 5mm;
+    margin-bottom: 5mm;
+  }
+  .bz-quote-head h1 {
+    font-size: 18pt;
+  }
+  .bz-quote-head small {
+    font-size: 9pt;
+  }
+  .bz-quote-parties {
+    margin-bottom: 5mm;
+  }
+  .bz-quote-table {
+    table-layout: fixed;
+    font-size: 8pt;
+  }
+  .bz-quote-table th,
+  .bz-quote-table td {
+    padding: 2mm 1mm;
+    overflow-wrap: anywhere;
+  }
+  .bz-quote-table th:first-child {
+    width: 32%;
+  }
+  .bz-quote-table thead {
+    display: table-header-group;
+  }
+  .bz-quote-table tr {
+    break-inside: avoid;
+  }
+  .bz-quote-group {
+    break-after: avoid;
+  }
+  .bz-quote-footer {
+    break-inside: avoid;
+    gap: 5mm;
+  }
+  .bz-quote-footer dl {
+    font-size: 10pt;
+    min-width: 65mm;
+  }
+  .bz-company-logo {
+    max-height: 18mm;
+    max-width: 45mm;
+  }
+}
+@media print {
+  .bz-quote-head,
+  .bz-quote-parties,
+  .bz-quote-footer {
+    flex-direction: row;
+  }
+  .bz-quote-head dl {
+    width: auto;
+    min-width: 65mm;
+  }
+  .bz-quote-parties > div {
+    width: 48%;
+  }
+}

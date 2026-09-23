@@ -46,6 +46,20 @@ export const quoteDraftSchema: z.ZodType<QuoteDraft> = z
         name: text.min(1),
         taxId: text.optional(),
         address: text.optional(),
+        phone: z.string().max(64).optional(),
+        email: z.string().max(254).optional(),
+        website: z
+          .string()
+          .url()
+          .max(2048)
+          .refine((value) => /^https?:\/\//i.test(value))
+          .optional(),
+        logoUrl: z
+          .string()
+          .url()
+          .max(2048)
+          .refine((value) => /^https?:\/\//i.test(value))
+          .optional(),
       })
       .strict(),
     customerSnapshot: z
@@ -66,6 +80,7 @@ export const quoteDraftSchema: z.ZodType<QuoteDraft> = z
     currencyCode: z.string().regex(/^[A-Z]{3}$/),
     sourceFingerprint: z.string().min(1).max(128),
     notes: z.string().max(16000).optional(),
+    footer: z.string().max(16000).optional(),
     lines: z
       .array(
         z

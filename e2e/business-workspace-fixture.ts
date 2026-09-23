@@ -34,6 +34,7 @@ export async function mockBusinessWorkspace(
                 'customers.write',
                 'assortment.manage',
                 'prices.manage',
+                'organization.manage',
               ],
             },
           ],

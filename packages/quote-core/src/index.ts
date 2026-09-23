@@ -23,6 +23,10 @@ export interface QuoteOrganizationSnapshot {
   name: string;
   taxId?: string;
   address?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  logoUrl?: string;
 }
 
 export interface QuoteCustomerSnapshot {
@@ -85,6 +89,7 @@ export interface QuoteDraft {
   sourceFingerprint: string;
   lines: QuoteLine[];
   notes?: string;
+  footer?: string;
 }
 
 export { quoteDraftSchema } from './schema';
@@ -254,6 +259,7 @@ export function summarizeQuote(draft: QuoteDraft): QuoteSummary {
 }
 
 export interface CreateQuoteDraftInput {
+  footer?: string;
   number?: string;
   issuedOn?: string;
   preparedBy?: string;
@@ -292,6 +298,7 @@ export function createQuoteDraft(input: CreateQuoteDraftInput): QuoteDraft {
     createdAt: input.createdAt,
     ...(input.validUntil ? { validUntil: input.validUntil } : {}),
     currencyCode: input.currencyCode,
+    ...(input.footer ? { footer: input.footer } : {}),
     sourceFingerprint: input.sourceFingerprint,
     lines: input.lines.map((line) => structuredClone(line)),
     ...(input.notes ? { notes: input.notes } : {}),

@@ -30,6 +30,11 @@ export interface Organization {
   taxId?: string;
   address?: string;
   logoUrl?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  defaultValidityDays?: number;
+  offerFooter?: string;
 }
 
 /**

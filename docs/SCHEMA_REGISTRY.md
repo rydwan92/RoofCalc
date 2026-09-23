@@ -539,6 +539,13 @@ reference and marks the price manual. Quantity ownership remains independent.
 
 ## 12. Checklist for any schema change
 
+V59: migration `0006_daily_chamber.sql` adds nullable `phone`, `email`, `website`,
+`default_validity_days` and `offer_footer` to `organizations`; migration 0005 is unchanged.
+`Organization` and `QuoteOrganizationSnapshot` gain optional contact/logo fields;
+`QuoteDraft` gains optional `footer`. Version 1 readers continue accepting old drafts.
+Company identity/footer are frozen on first quote save and preserved on subsequent saves;
+new quotes use the company's validity default (14 days when absent). Roof/project schemas are unchanged.
+
 1. Which registry entry does this touch?
 2. Does an existing valid document still parse? If no → new version + explicit reader.
 3. Does it change the meaning of an existing field? If yes → new version, never a silent reinterpretation.

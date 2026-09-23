@@ -270,15 +270,25 @@ async function handleAuthorizedBusiness(
     const read = method === 'GET' || method === 'HEAD';
     const capability = read
       ? 'business.read'
-      : segments[5] === 'customers'
-        ? 'customers.write'
-        : segments[5] === 'estimations'
-          ? 'quote.write'
-          : segments[6] === 'price'
-            ? 'prices.manage'
-            : 'assortment.manage';
+      : segments[5] === 'profile'
+        ? 'organization.manage'
+        : segments[5] === 'customers'
+          ? 'customers.write'
+          : segments[5] === 'estimations'
+            ? 'quote.write'
+            : segments[6] === 'price'
+              ? 'prices.manage'
+              : 'assortment.manage';
     if (!can(business.access, org, capability))
       return errorResult(403, 'business-forbidden');
+    if (
+      segments.length === 6 &&
+      segments[5] === 'profile' &&
+      method === 'PATCH'
+    )
+      return json({
+        item: await business.service.updateOrganizationProfile(org, body),
+      });
     // Import/create may carry prices as well as assortment changes.
     if (
       !read &&

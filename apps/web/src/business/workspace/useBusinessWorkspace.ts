@@ -309,7 +309,8 @@ export function useBusinessWorkspace({
       return undefined;
     const createdAt = existing?.createdAt ?? new Date().toISOString();
     const validUntil = new Date(
-      new Date(createdAt).getTime() + 14 * 24 * 60 * 60 * 1000,
+      new Date(createdAt).getTime() +
+        (organization.defaultValidityDays ?? 14) * 24 * 60 * 60 * 1000,
     )
       .toISOString()
       .slice(0, 10);
@@ -319,11 +320,15 @@ export function useBusinessWorkspace({
         issuedOn: existing?.issuedOn ?? createdAt.slice(0, 10),
         preparedBy: existing?.preparedBy ?? business.session?.user.name,
         id: existing?.id ?? newProjectId(),
-        organizationSnapshot: {
+        organizationSnapshot: existing?.organizationSnapshot ?? {
           id: organization.id,
           name: organization.name,
           ...(organization.taxId ? { taxId: organization.taxId } : {}),
           ...(organization.address ? { address: organization.address } : {}),
+          ...(organization.phone ? { phone: organization.phone } : {}),
+          ...(organization.email ? { email: organization.email } : {}),
+          ...(organization.website ? { website: organization.website } : {}),
+          ...(organization.logoUrl ? { logoUrl: organization.logoUrl } : {}),
         },
         customerSnapshot: estimation.customer,
         projectReference: {
@@ -335,6 +340,7 @@ export function useBusinessWorkspace({
         validUntil: existing?.validUntil ?? validUntil,
         currencyCode: organization.currencyCode,
         ...(existing?.notes ? { notes: existing.notes } : {}),
+        footer: existing ? existing.footer : organization.offerFooter,
       },
       rows: materialRows,
       scenario: costScenario,

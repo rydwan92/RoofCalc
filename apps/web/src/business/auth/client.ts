@@ -15,6 +15,7 @@ const sessionSchema = z.object({
           'customers.write',
           'assortment.manage',
           'prices.manage',
+          'organization.manage',
         ]),
       ),
     }),

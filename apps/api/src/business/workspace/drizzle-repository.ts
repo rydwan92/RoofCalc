@@ -27,6 +27,7 @@ import {
   type QuoteDraft,
 } from '@cieslacalc/quote-core';
 import type { CatalogDatabase } from '../../db/client';
+import { organizations } from '../../db/business-schema';
 import {
   businessCustomers as customers,
   commercialEstimations as estimations,
@@ -353,8 +354,32 @@ export class DrizzleWorkspaceRepository implements WorkspaceRepository {
       await tx.update(counters).set({ value }).where(counterScope);
       const id = crypto.randomUUID(),
         number = `OF/${year}/${String(value).padStart(6, '0')}`;
+      const [organization] = await tx
+        .select()
+        .from(organizations)
+        .where(eq(organizations.id, org));
+      if (!organization)
+        throw new WorkspaceError('organization-not-found', 404);
       const snapshot = quoteDraftSchema.parse({
         ...draft,
+        organizationSnapshot: {
+          id: org,
+          name: organization.name,
+          ...Object.fromEntries(
+            [
+              'taxId',
+              'address',
+              'phone',
+              'email',
+              'website',
+              'logoUrl',
+            ].flatMap((key) => {
+              const value = organization[key as keyof typeof organization];
+              return value ? [[key, value]] : [];
+            }),
+          ),
+        },
+        footer: organization.offerFooter || undefined,
         id,
         number,
         createdAt: now.toISOString(),
@@ -413,6 +438,8 @@ export class DrizzleWorkspaceRepository implements WorkspaceRepository {
         now = new Date();
       const snapshot = quoteDraftSchema.parse({
         ...draft,
+        organizationSnapshot: previous.organizationSnapshot,
+        footer: previous.footer,
         id: row.id,
         number: row.number,
         createdAt: previous.createdAt,

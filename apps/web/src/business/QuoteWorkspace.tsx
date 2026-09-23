@@ -13,6 +13,7 @@ import {
   type QuoteLineGroup,
 } from '@cieslacalc/quote-core';
 import { parseDecimal } from '../format';
+import { CompanyLogo } from './CompanySettings';
 import type { RemoteSaveStatus } from './workspace/autosave';
 
 const GROUPS: readonly QuoteLineGroup[] = [
@@ -196,7 +197,19 @@ export function QuoteWorkspace({
         <div className="bz-quote-document">
           <header className="bz-quote-head">
             <div>
-              <span>{pl ? 'Oferta robocza' : 'Draft quote'}</span>
+              <CompanyLogo
+                url={draft.organizationSnapshot.logoUrl}
+                name={draft.organizationSnapshot.name}
+              />
+              <span>
+                {preview
+                  ? pl
+                    ? 'Oferta'
+                    : 'Quote'
+                  : pl
+                    ? 'Oferta robocza'
+                    : 'Draft quote'}
+              </span>
               <h1>{draft.organizationSnapshot.name}</h1>
               {draft.organizationSnapshot.taxId && (
                 <small>NIP: {draft.organizationSnapshot.taxId}</small>
@@ -204,6 +217,15 @@ export function QuoteWorkspace({
               {draft.organizationSnapshot.address && (
                 <small>{draft.organizationSnapshot.address}</small>
               )}
+              <small>
+                {[
+                  draft.organizationSnapshot.phone,
+                  draft.organizationSnapshot.email,
+                  draft.organizationSnapshot.website,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </small>
             </div>
             <dl>
               <div>
@@ -456,10 +478,11 @@ export function QuoteWorkspace({
                   <th>{pl ? 'Produkt' : 'Product'}</th>
                   <th>{pl ? 'Kod' : 'Code'}</th>
                   <th>{pl ? 'Ilość' : 'Quantity'}</th>
+                  <th>{pl ? 'JM' : 'Unit'}</th>
                   <th>{pl ? 'Cena netto' : 'Net price'}</th>
                   <th>{pl ? 'Rabat' : 'Discount'}</th>
-                  <th>VAT</th>
-                  <th>{pl ? 'Netto' : 'Net'}</th>
+                  <th className="bz-no-preview">VAT</th>
+                  <th>{pl ? 'Wartość netto' : 'Net value'}</th>
                 </tr>
               </thead>
               <tbody>
@@ -478,7 +501,7 @@ export function QuoteWorkspace({
                   return (
                     <Fragment key={group}>
                       <tr className="bz-quote-group">
-                        <th colSpan={7}>{groupLabel[group]}</th>
+                        <th colSpan={preview ? 7 : 8}>{groupLabel[group]}</th>
                       </tr>
                       {lines.map((line) => {
                         const calculated = calculateQuoteLine(line);
@@ -575,8 +598,7 @@ export function QuoteWorkspace({
                                 <strong>
                                   {line.offerQuantity.value.toLocaleString(
                                     locale,
-                                  )}{' '}
-                                  {unit(line.offerQuantity.unit)}
+                                  )}
                                 </strong>
                               ) : (
                                 <label>
@@ -617,6 +639,9 @@ export function QuoteWorkspace({
                                 </small>
                               )}
                             </td>
+                            <td data-label={pl ? 'JM' : 'Unit'}>
+                              {unit(line.offerQuantity.unit)}
+                            </td>
                             <td data-label={pl ? 'Cena netto' : 'Net price'}>
                               {preview ? (
                                 money(
@@ -655,7 +680,11 @@ export function QuoteWorkspace({
                             </td>
                             <td data-label={pl ? 'Rabat' : 'Discount'}>
                               {preview ? (
-                                `${(line.discountBps ?? 0) / 100}%`
+                                line.discountBps ? (
+                                  `${line.discountBps / 100}%`
+                                ) : (
+                                  '—'
+                                )
                               ) : (
                                 <input
                                   aria-label={`${pl ? 'Rabat' : 'Discount'} ${line.description}`}
@@ -682,7 +711,7 @@ export function QuoteWorkspace({
                                 />
                               )}
                             </td>
-                            <td data-label="VAT">
+                            <td data-label="VAT" className="bz-no-preview">
                               {preview ? (
                                 line.vatRateBps === undefined ? (
                                   '—'
@@ -734,8 +763,12 @@ export function QuoteWorkspace({
 
           <footer className="bz-quote-footer">
             <div>
+              {(draft.notes || draft.footer) && (
+                <h3>{pl ? 'Warunki / uwagi' : 'Terms / notes'}</h3>
+              )}
               {draft.notes && <p>{draft.notes}</p>}
-              <small>
+              {draft.footer && <p className="bz-offer-terms">{draft.footer}</p>}
+              <small className="bz-no-preview">
                 {pl
                   ? 'Oferta robocza — wymaga weryfikacji przed wysłaniem.'
                   : 'Draft quote — verify before sending.'}

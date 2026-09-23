@@ -2,6 +2,8 @@ import { z } from 'zod';
 import {
   businessCustomerSchema,
   commercialEstimationSchema,
+  organizationSchema,
+  type OrganizationProfile,
   type CustomerInput,
   type EstimationInput,
   type EstimationListQuery,
@@ -50,6 +52,17 @@ const json = (method: string, body: unknown) => ({
   body: JSON.stringify(body),
 });
 export const workspaceClient = {
+  updateOrganizationProfile: async (
+    org: string,
+    profile: OrganizationProfile,
+  ) =>
+    (
+      await requestJson(
+        path(org, 'profile'),
+        item(organizationSchema),
+        json('PATCH', profile),
+      )
+    ).item,
   customers: (org: string, q = '', offset = 0) =>
     requestJson(
       `${path(org, 'customers')}?${new URLSearchParams({ q, offset: String(offset), limit: '30' })}`,

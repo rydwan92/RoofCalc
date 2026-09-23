@@ -1,5 +1,6 @@
 import {
   assortmentState,
+  organizationProfileSchema,
   resolveOrganizationItemPrice,
   type AssortmentQuery,
   type AssortmentDetailResponse,
@@ -45,6 +46,12 @@ export class BusinessService {
 
   listOrganizations(): Promise<Organization[]> {
     return this.repository.listOrganizations();
+  }
+  async updateOrganizationProfile(org: string, body: unknown) {
+    await this.requireOrganization(org);
+    const profile = organizationProfileSchema.parse(body);
+    await this.repository.updateOrganizationProfile(org, profile);
+    return this.requireOrganization(org);
   }
 
   private async requireOrganization(

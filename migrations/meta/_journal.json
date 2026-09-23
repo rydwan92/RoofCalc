@@ -43,6 +43,13 @@
       "when": 1790108195341,
       "tag": "0005_damp_squadron_supreme",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1790173860498,
+      "tag": "0006_daily_chamber",
+      "breakpoints": true
     }
   ]
 }
