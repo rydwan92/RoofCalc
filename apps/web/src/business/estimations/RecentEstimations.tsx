@@ -56,6 +56,17 @@ export function RecentEstimations({
                 <span>
                   <strong>{entry.name}</strong>
                   <span>{entry.customerName}</span>
+                  {entry.netMinor !== undefined && (
+                    <span>
+                      {new Intl.NumberFormat(i18n.language, {
+                        style: 'currency',
+                        currency: entry.currencyCode ?? 'PLN',
+                      }).format(
+                        (entry.grossMinor ?? entry.netMinor) / 100,
+                      )}{' '}
+                      {entry.grossMinor === undefined ? 'netto' : 'brutto'}
+                    </span>
+                  )}
                   <small>
                     {new Date(entry.updatedAt).toLocaleDateString(
                       i18n.language,

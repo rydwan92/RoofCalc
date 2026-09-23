@@ -5,6 +5,8 @@ import {
   quoteIsStale,
   quoteSourceFingerprint,
   summarizeQuote,
+  summarizeQuoteByGroup,
+  compareQuoteTotals,
   withQuoteDiscount,
   withQuoteQuantity,
   withQuoteUnitPrice,
@@ -42,6 +44,21 @@ function draft(lines = [line]) {
 }
 
 describe('quote-core', () => {
+  it('compares frozen variants using rounded quote money and refuses incomplete/cross-currency differences', () => {
+    const first = draft(),
+      second = withQuoteUnitPrice(first, line.id, 500);
+    expect(summarizeQuoteByGroup(first).covering?.netMinor).toBe(54948);
+    expect(compareQuoteTotals(first, second)).toEqual({
+      netDifferenceMinor: 2052,
+      grossDifferenceMinor: 2524,
+    });
+    expect(
+      compareQuoteTotals(first, { ...second, currencyCode: 'EUR' }),
+    ).toBeUndefined();
+    expect(
+      compareQuoteTotals(first, withQuoteUnitPrice(second, line.id, undefined)),
+    ).toBeUndefined();
+  });
   it('calculates money with integer minor units and per-line rounding', () => {
     expect(calculateQuoteLine(line)).toMatchObject({
       netBeforeDiscountMinor: 57_840,

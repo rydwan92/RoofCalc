@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { estimationListQuerySchema } from '@cieslacalc/business-core';
 import type { WorkspaceRepository } from './contracts';
 import { CustomerService } from '../customers/service';
 import { EstimationService } from '../estimations/service';
@@ -43,6 +44,7 @@ export async function workspaceRoute(
             search.get('customerId') ?? undefined,
             page.limit,
             page.offset,
+            estimationListQuerySchema.parse(Object.fromEntries(search)),
           );
     return {
       status: 200,
@@ -82,6 +84,22 @@ export async function workspaceRoute(
           resource === 'customers'
             ? await customers.update(org, id, body)
             : await estimations.save(org, id, body),
+      },
+    };
+  if (
+    resource === 'estimations' &&
+    segments.length === 8 &&
+    id &&
+    method === 'POST' &&
+    (segments[7] === 'duplicate' || segments[7] === 'archive')
+  )
+    return {
+      status: segments[7] === 'duplicate' ? 201 : 200,
+      body: {
+        item:
+          segments[7] === 'duplicate'
+            ? await estimations.duplicate(org, userId, id, body)
+            : await estimations.archive(org, id),
       },
     };
   if (

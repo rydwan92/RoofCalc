@@ -44,6 +44,15 @@ export const commercialEstimationSchema = estimationInputSchema.extend({
 });
 export type CommercialEstimation = z.infer<typeof commercialEstimationSchema>;
 export type EstimationInput = z.infer<typeof estimationInputSchema>;
+export const estimationListQuerySchema = z.object({
+  q: z.string().trim().max(240).default(''),
+  status: z
+    .enum(['active', 'all', 'draft', 'quoted', 'archived'])
+    .default('active'),
+  quote: z.enum(['all', 'with', 'without']).default('all'),
+  sort: z.enum(['updated', 'customer', 'name']).default('updated'),
+});
+export type EstimationListQuery = z.infer<typeof estimationListQuerySchema>;
 export const businessRoleSchema = z.enum(['owner', 'admin', 'sales']);
 export type BusinessRole = z.infer<typeof businessRoleSchema>;
 export type BusinessCapability =

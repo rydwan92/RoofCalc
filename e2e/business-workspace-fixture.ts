@@ -93,6 +93,7 @@ export async function mockBusinessWorkspace(
           items: estimations.map((entry) => ({
             ...entry.estimation,
             customerName: entry.customer.name,
+            quoteNumber: entry.quote?.number,
           })),
         },
       });
@@ -107,6 +108,7 @@ export async function mockBusinessWorkspace(
       return;
     }
     if (path[7] === 'quote') {
+      entry.estimation.status = 'quoted';
       entry.quote = {
         id: 'quote:fixture',
         commercialEstimationId: id,
@@ -120,6 +122,25 @@ export async function mockBusinessWorkspace(
         },
       };
       await route.fulfill({ json: { item: entry.quote } });
+      return;
+    }
+    if (path[7] === 'duplicate') {
+      const clone = structuredClone(entry);
+      clone.estimation.id = `estimation:${estimations.length + 1}`;
+      clone.estimation.name = (body as unknown as { newName: string }).newName;
+      clone.estimation.status = 'draft';
+      clone.estimation.version = 1;
+      clone.project.id = crypto.randomUUID();
+      clone.project.name = clone.estimation.name;
+      clone.estimation.roofProjectId = clone.project.id;
+      delete clone.quote;
+      estimations.push(clone);
+      await route.fulfill({ status: 201, json: { item: clone } });
+      return;
+    }
+    if (path[7] === 'archive') {
+      entry.estimation.status = 'archived';
+      await route.fulfill({ json: { item: { archived: true } } });
       return;
     }
     if (request.method() === 'PATCH') {

@@ -352,6 +352,47 @@ test('V57 salesperson: customer → roof → company tile → materials → draf
   await page.reload();
   await expect(quote).toBeVisible();
   await expect(quote).toContainText('Dom Kowalski');
+  await quote.getByRole('button', { name: /Wróć do wyceny/ }).click();
+  await page.getByRole('button', { name: '← Wyceny', exact: true }).click();
+  await home.getByRole('button', { name: 'Wyceny', exact: true }).click();
+  const desk = page.getByTestId('estimation-desk');
+  await desk.getByLabel('Szukaj wyceny').fill('Dom Kowalski');
+  await desk.getByLabel('Działania Dom Kowalski', { exact: true }).click();
+  await desk.getByRole('button', { name: 'Duplikuj jako wariant' }).click();
+  await desk
+    .getByLabel('Nazwa nowego wariantu')
+    .fill('Dom Kowalski — wariant 2');
+  await desk
+    .getByRole('button', { name: 'Utwórz wariant', exact: true })
+    .click();
+  await expect(page.getByTestId('business-estimation-context')).toContainText(
+    'wariant 2',
+  );
+  await expect(quote).toBeHidden();
+  await page
+    .getByTestId('business-save-bar')
+    .getByRole('button', { name: 'Oferta', exact: true })
+    .click();
+  await expect(quote).toBeVisible();
+  await quote.getByRole('button', { name: /Wróć do wyceny/ }).click();
+  await page.getByRole('button', { name: '← Wyceny', exact: true }).click();
+  await home.getByRole('button', { name: 'Wyceny', exact: true }).click();
+  await desk.getByRole('checkbox').nth(0).check();
+  await desk.getByRole('checkbox').nth(1).check();
+  await desk.getByRole('button', { name: /Porównaj wyceny/ }).click();
+  await expect(page.getByTestId('estimation-comparison')).toContainText(
+    'Różnica netto',
+  );
+  if (process.env.V57_VISUAL_QA === '1') {
+    await desk.screenshot({
+      path: `test-results/v59-desk-${testInfo.project.name}.png`,
+    });
+    if (testInfo.project.name === 'desktop')
+      for (const width of [1920, 1024]) {
+        await page.setViewportSize({ width, height: 900 });
+        await desk.screenshot({ path: `test-results/v59-desk-${width}.png` });
+      }
+  }
 });
 
 test('V57 sales dashboard fits the required desktop viewports', async ({

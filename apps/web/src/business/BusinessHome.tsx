@@ -9,6 +9,7 @@ import { BusinessLogin } from './auth/BusinessLogin';
 import { Customers } from './customers/Customers';
 import { NewEstimationForm } from './estimations/NewEstimationForm';
 import { RecentEstimations } from './estimations/RecentEstimations';
+import { EstimationDesk } from './estimations/EstimationDesk';
 
 const AdminAssortment = lazy(() =>
   import('./admin/AdminAssortment').then((module) => ({
@@ -38,9 +39,9 @@ export function BusinessHome({
   const business = useBusiness();
   const { organization, unavailable, estimation } = business;
   const assortment = useAssortment({ limit: 1 });
-  const [screen, setScreen] = useState<'home' | 'new' | 'customers' | 'admin'>(
-    'home',
-  );
+  const [screen, setScreen] = useState<
+    'home' | 'new' | 'customers' | 'admin' | 'estimations'
+  >('home');
   const [customer, setCustomer] = useState<BusinessCustomer>();
   const capabilities =
     business.session?.memberships.find(
@@ -123,7 +124,44 @@ export function BusinessHome({
             : m.openTechnicalProject}
         </button>
       </header>
-      {screen === 'customers' ? (
+      <nav
+        className="bz-sales-nav"
+        aria-label={pl ? 'Pulpit sprzedaży' : 'Sales desk'}
+      >
+        {(
+          [
+            ['home', pl ? 'Strona główna' : 'Home'],
+            ['customers', pl ? 'Klienci' : 'Customers'],
+            ['estimations', pl ? 'Wyceny' : 'Estimations'],
+          ] as const
+        ).map(([value, label]) => (
+          <button
+            key={value}
+            aria-current={screen === value ? 'page' : undefined}
+            onClick={() => setScreen(value)}
+          >
+            {label}
+          </button>
+        ))}
+        {canManage && (
+          <button
+            className="bz-sales-secondary"
+            onClick={() => setScreen('admin')}
+          >
+            {pl ? 'Asortyment i cennik' : 'Assortment and prices'}
+          </button>
+        )}
+      </nav>
+      {screen === 'estimations' ? (
+        <EstimationDesk
+          key={organization.id}
+          onOpen={onOpenProject}
+          onNew={() => {
+            setCustomer(undefined);
+            setScreen('new');
+          }}
+        />
+      ) : screen === 'customers' ? (
         <Customers
           onClose={() => setScreen('home')}
           onNewEstimation={(selected) => {
@@ -209,19 +247,15 @@ export function BusinessHome({
               </span>
               <b>{pl ? 'Otwórz →' : 'Open →'}</b>
             </button>
-            {canManage && (
-              <button onClick={() => setScreen('admin')}>
-                <strong>
-                  {pl ? 'Asortyment i cennik' : 'Assortment and prices'}
-                </strong>
-                <span>
-                  {pl
-                    ? 'Produkty, powiązania i ceny hurtowni'
-                    : 'Company products, matching and prices'}
-                </span>
-                <b>{pl ? 'Otwórz →' : 'Open →'}</b>
-              </button>
-            )}
+            <button onClick={() => setScreen('estimations')}>
+              <strong>{pl ? 'Wszystkie wyceny' : 'All estimations'}</strong>
+              <span>
+                {pl
+                  ? 'Wyszukiwanie, warianty i porównanie ofert'
+                  : 'Search, variants and quote comparison'}
+              </span>
+              <b>{pl ? 'Otwórz →' : 'Open →'}</b>
+            </button>
           </nav>
         </>
       )}

@@ -1,6 +1,12 @@
 import { z } from 'zod';
-import { estimationInputSchema } from '@cieslacalc/business-core';
-import { projectRecordV1Schema } from '@cieslacalc/project-core';
+import {
+  estimationInputSchema,
+  type EstimationListQuery,
+} from '@cieslacalc/business-core';
+import {
+  projectRecordV1Schema,
+  duplicateProject,
+} from '@cieslacalc/project-core';
 import {
   WorkspaceError,
   type WorkspaceRepository,
@@ -13,8 +19,15 @@ export class EstimationService {
     customerId: string | undefined,
     limit: number,
     offset: number,
+    query?: EstimationListQuery,
   ) {
-    return this.repository.listEstimations(org, customerId, limit, offset);
+    return this.repository.listEstimations(
+      org,
+      customerId,
+      limit,
+      offset,
+      query,
+    );
   }
   async get(org: string, id: string) {
     const detail = await this.repository.getEstimation(org, id);
@@ -46,5 +59,31 @@ export class EstimationService {
     return {
       version: await this.repository.saveProject(org, id, version, project),
     };
+  }
+  async duplicate(org: string, userId: string, id: string, body: unknown) {
+    const { newName } = z
+      .object({ newName: z.string().trim().min(1).max(240) })
+      .strict()
+      .parse(body);
+    const source = await this.get(org, id);
+    const project = duplicateProject(source.project, newName);
+    // Project snapshot and estimation are one inserted SQL record: atomic;
+    // no separate project row or quote is created/copied.
+    return this.repository.createEstimation(
+      org,
+      userId,
+      {
+        customerId: source.estimation.customerId,
+        roofProjectId: project.id,
+        name: newName,
+        location: source.estimation.location,
+      },
+      project,
+    );
+  }
+  async archive(org: string, id: string) {
+    await this.get(org, id);
+    await this.repository.archiveEstimation(org, id);
+    return { archived: true };
   }
 }

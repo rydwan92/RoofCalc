@@ -1,9 +1,21 @@
-import { and, desc, eq, isNull, like, or, sql } from 'drizzle-orm';
+import {
+  and,
+  desc,
+  eq,
+  isNull,
+  isNotNull,
+  ne,
+  like,
+  or,
+  sql,
+} from 'drizzle-orm';
 import {
   businessCustomerSchema,
   commercialEstimationSchema,
   type CustomerInput,
   type EstimationInput,
+  estimationListQuerySchema,
+  type EstimationListQuery,
 } from '@cieslacalc/business-core';
 import {
   projectRecordV1Schema,
@@ -39,7 +51,9 @@ function clean(row: object) {
 }
 const customerFrom = (row: typeof customers.$inferSelect) =>
   businessCustomerSchema.parse(clean(row));
-const estimationFrom = (row: typeof estimations.$inferSelect) => {
+const estimationFrom = (
+  row: Omit<typeof estimations.$inferSelect, 'projectSnapshot'>,
+) => {
   const metadata = clean(row);
   delete metadata.projectSnapshot;
   return commercialEstimationSchema.parse(metadata);
@@ -124,11 +138,25 @@ export class DrizzleWorkspaceRepository implements WorkspaceRepository {
     customerId: string | undefined,
     limit: number,
     offset: number,
+    query: EstimationListQuery = estimationListQuerySchema.parse({}),
   ) {
+    const pattern = `%${query.q.replace(/[\\%_]/g, '\\$&')}%`;
     const rows = await this.db
       .select({
-        estimation: estimations,
-        customerName: customers.name,
+        estimation: {
+          id: estimations.id,
+          organizationId: estimations.organizationId,
+          customerId: estimations.customerId,
+          roofProjectId: estimations.roofProjectId,
+          name: estimations.name,
+          location: estimations.location,
+          status: estimations.status,
+          version: estimations.version,
+          createdBy: estimations.createdBy,
+          createdAt: estimations.createdAt,
+          updatedAt: estimations.updatedAt,
+        },
+        customerName: sql<string>`coalesce(nullif(${customers.companyName}, ''), ${customers.name})`,
         quote: quotes,
       })
       .from(estimations)
@@ -150,24 +178,68 @@ export class DrizzleWorkspaceRepository implements WorkspaceRepository {
         and(
           eq(estimations.organizationId, org),
           customerId ? eq(estimations.customerId, customerId) : undefined,
+          query.status === 'active'
+            ? ne(estimations.status, 'archived')
+            : query.status === 'all'
+              ? undefined
+              : eq(estimations.status, query.status),
+          query.quote === 'with'
+            ? isNotNull(quotes.id)
+            : query.quote === 'without'
+              ? isNull(quotes.id)
+              : undefined,
+          query.q
+            ? or(
+                ...[
+                  estimations.name,
+                  customers.name,
+                  customers.companyName,
+                  estimations.location,
+                  quotes.number,
+                ].map((column) => like(column, pattern)),
+              )
+            : undefined,
         ),
       )
-      .orderBy(desc(estimations.updatedAt), estimations.id)
+      .orderBy(
+        query.sort === 'name'
+          ? estimations.name
+          : query.sort === 'customer'
+            ? sql`coalesce(nullif(${customers.companyName}, ''), ${customers.name})`
+            : desc(estimations.updatedAt),
+        estimations.id,
+      )
       .limit(limit)
       .offset(offset);
-    return rows.map((row) => ({
-      ...estimationFrom(row.estimation),
-      customerName: row.customerName,
-      ...(row.quote
-        ? {
-            quoteNumber: row.quote.number,
-            quoteFingerprint: row.quote.sourceFingerprint,
-            missingPrices: summarizeQuote(
-              quoteDraftSchema.parse(decodeJson(row.quote.snapshotJson)),
-            ).missingPriceCount,
-          }
-        : {}),
-    }));
+    return rows.map((row) => {
+      const draft = row.quote
+        ? quoteDraftSchema.parse(decodeJson(row.quote.snapshotJson))
+        : undefined;
+      const totals = draft ? summarizeQuote(draft) : undefined;
+      return {
+        ...estimationFrom(row.estimation),
+        customerName: row.customerName,
+        ...(row.quote
+          ? {
+              quoteNumber: row.quote.number,
+              quoteFingerprint: row.quote.sourceFingerprint,
+              missingPrices: summarizeQuote(
+                quoteDraftSchema.parse(decodeJson(row.quote.snapshotJson)),
+              ).missingPriceCount,
+              netMinor: totals!.netMinor,
+              grossMinor: totals!.grossMinor,
+              currencyCode: draft!.currencyCode,
+              missingVat: totals!.missingVatCount,
+            }
+          : {}),
+      };
+    });
+  }
+  async archiveEstimation(org: string, id: string) {
+    await this.db
+      .update(estimations)
+      .set({ status: 'archived', updatedAt: new Date() })
+      .where(and(eq(estimations.organizationId, org), eq(estimations.id, id)));
   }
   async getEstimation(org: string, id: string) {
     const [row] = await this.db
@@ -300,7 +372,10 @@ export class DrizzleWorkspaceRepository implements WorkspaceRepository {
       });
       await tx
         .update(estimations)
-        .set({ status: 'quoted', updatedAt: now })
+        .set({
+          status: parent.status === 'archived' ? 'archived' : 'quoted',
+          updatedAt: now,
+        })
         .where(
           and(
             eq(estimations.organizationId, org),
@@ -351,6 +426,15 @@ export class DrizzleWorkspaceRepository implements WorkspaceRepository {
           version: version + 1,
         })
         .where(and(scope, eq(quotes.version, version)));
+      await tx
+        .update(estimations)
+        .set({ updatedAt: now })
+        .where(
+          and(
+            eq(estimations.organizationId, org),
+            eq(estimations.id, estimationId),
+          ),
+        );
       return {
         id: row.id,
         commercialEstimationId: estimationId,

@@ -383,6 +383,39 @@ export function quoteIsStale(
 ): boolean {
   return draft.sourceFingerprint !== currentFingerprint;
 }
+/** Commercial comparison consumes frozen quotes, never live roof geometry. */
+export function summarizeQuoteByGroup(
+  draft: QuoteDraft,
+): Partial<Record<QuoteLineGroup, QuoteSummary>> {
+  return Object.fromEntries(
+    [
+      ...new Set(
+        draft.lines.filter((line) => line.included).map((line) => line.group),
+      ),
+    ].map((group) => [
+      group,
+      summarizeQuote({
+        ...draft,
+        lines: draft.lines.filter((line) => line.group === group),
+      }),
+    ]),
+  );
+}
+export function compareQuoteTotals(
+  base: QuoteDraft,
+  variant: QuoteDraft,
+): { netDifferenceMinor: number; grossDifferenceMinor?: number } | undefined {
+  if (base.currencyCode !== variant.currencyCode) return undefined;
+  const a = summarizeQuote(base),
+    b = summarizeQuote(variant);
+  if (a.missingPriceCount || b.missingPriceCount) return undefined;
+  return {
+    netDifferenceMinor: b.netMinor - a.netMinor,
+    ...(a.grossMinor !== undefined && b.grossMinor !== undefined
+      ? { grossDifferenceMinor: b.grossMinor - a.grossMinor }
+      : {}),
+  };
+}
 
 function canonicalJson(value: unknown): string {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);

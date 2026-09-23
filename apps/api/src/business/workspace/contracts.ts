@@ -3,6 +3,7 @@ import type {
   CommercialEstimation,
   CustomerInput,
   EstimationInput,
+  EstimationListQuery,
 } from '@cieslacalc/business-core';
 import type { ProjectRecordV1 } from '@cieslacalc/project-core';
 import type { QuoteDraft } from '@cieslacalc/quote-core';
@@ -34,6 +35,10 @@ export interface EstimationSummary extends CommercialEstimation {
   quoteNumber?: string;
   quoteFingerprint?: string;
   missingPrices?: number;
+  netMinor?: number;
+  grossMinor?: number;
+  currencyCode?: string;
+  missingVat?: number;
 }
 export interface WorkspaceRepository {
   listCustomers(
@@ -54,7 +59,9 @@ export interface WorkspaceRepository {
     customerId: string | undefined,
     limit: number,
     offset: number,
+    query?: EstimationListQuery,
   ): Promise<EstimationSummary[]>;
+  archiveEstimation(org: string, id: string): Promise<void>;
   getEstimation(org: string, id: string): Promise<EstimationDetail | undefined>;
   createEstimation(
     org: string,

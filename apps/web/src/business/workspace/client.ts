@@ -4,6 +4,7 @@ import {
   commercialEstimationSchema,
   type CustomerInput,
   type EstimationInput,
+  type EstimationListQuery,
 } from '@cieslacalc/business-core';
 import {
   projectRecordV1Schema,
@@ -32,6 +33,10 @@ export const estimationSummarySchema = commercialEstimationSchema.extend({
   quoteNumber: z.string().optional(),
   quoteFingerprint: z.string().optional(),
   missingPrices: z.number().optional(),
+  netMinor: z.number().optional(),
+  grossMinor: z.number().optional(),
+  currencyCode: z.string().optional(),
+  missingVat: z.number().optional(),
 });
 export type EstimationDetail = z.infer<typeof estimationDetailSchema>;
 export type SavedQuote = z.infer<typeof savedQuoteSchema>;
@@ -66,10 +71,29 @@ export const workspaceClient = {
         json('PATCH', input),
       )
     ).item,
-  estimations: (org: string, customerId?: string, offset = 0) =>
+  estimations: (
+    org: string,
+    customerId?: string,
+    offset = 0,
+    query: Partial<EstimationListQuery> = {},
+  ) =>
     requestJson(
-      `${path(org, 'estimations')}?${new URLSearchParams({ offset: String(offset), limit: '30', ...(customerId ? { customerId } : {}) })}`,
+      `${path(org, 'estimations')}?${new URLSearchParams({ ...query, offset: String(offset), limit: '30', ...(customerId ? { customerId } : {}) })}`,
       page(estimationSummarySchema),
+    ),
+  duplicateEstimation: async (org: string, id: string, newName: string) =>
+    (
+      await requestJson(
+        path(org, `estimations/${encodeURIComponent(id)}/duplicate`),
+        item(estimationDetailSchema),
+        json('POST', { newName }),
+      )
+    ).item,
+  archiveEstimation: (org: string, id: string) =>
+    requestJson(
+      path(org, `estimations/${encodeURIComponent(id)}/archive`),
+      item(z.object({ archived: z.boolean() })),
+      json('POST', {}),
     ),
   estimation: async (org: string, id: string) =>
     (
