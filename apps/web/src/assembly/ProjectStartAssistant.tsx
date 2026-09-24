@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import type { ProjectSummary } from '@cieslacalc/project-core';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -201,7 +202,17 @@ export function ProjectStartAssistant({
   onClose,
   onExample,
   onAdvanced,
+  onQuick,
+  onBeginProject,
+  onImportIfc,
+  projects = [],
+  onOpenProject,
 }: {
+  onQuick?: () => void;
+  onBeginProject?: () => void;
+  onImportIfc?: () => void;
+  projects?: readonly ProjectSummary[];
+  onOpenProject?: (id: string) => Promise<void>;
   mode: ProjectStartMode;
   template: RoofTemplateSpec;
   onSubmit: (template: RoofTemplateSpec) => void | Promise<void>;
@@ -511,35 +522,111 @@ export function ProjectStartAssistant({
               className="a-start-path is-primary"
               data-start-path="guided"
               data-testid="project-start-guided"
-              onClick={() => setStage(1)}
+              onClick={() => {
+                onBeginProject?.();
+                setStage(1);
+              }}
             >
               <Sparkles size={24} aria-hidden="true" />
-              <strong>{t('assembly.creator.start.guided.title')}</strong>
-              <span>{t('assembly.creator.start.guided.text')}</span>
+              <strong>{t('assembly.journey.start.new')}</strong>
+              <span>{t('assembly.journey.start.newHint')}</span>
             </button>
-            <button
-              type="button"
-              className="a-start-path"
-              data-start-path="example"
-              data-testid="project-start-examples"
-              onClick={() => setStage('examples')}
-            >
-              <BookOpen size={24} aria-hidden="true" />
-              <strong>{t('assembly.creator.start.example.title')}</strong>
-              <span>{t('assembly.creator.start.example.text')}</span>
-            </button>
-            <button
-              type="button"
-              className="a-start-path"
-              data-start-path="advanced"
-              data-testid="project-start-advanced"
-              disabled={busy}
-              onClick={() => onAdvanced && run(onAdvanced)}
-            >
-              <PencilRuler size={24} aria-hidden="true" />
-              <strong>{t('assembly.creator.start.advanced.title')}</strong>
-              <span>{t('assembly.creator.start.advanced.text')}</span>
-            </button>
+            {onQuick && (
+              <button
+                type="button"
+                className="a-start-path"
+                data-testid="project-start-quick"
+                onClick={onQuick}
+              >
+                <PencilRuler size={24} aria-hidden="true" />
+                <strong>{t('assembly.journey.start.quick')}</strong>
+                <span>{t('assembly.journey.start.quickHint')}</span>
+              </button>
+            )}
+            {onImportIfc && (
+              <button
+                type="button"
+                className="a-start-path"
+                data-testid="project-start-ifc"
+                onClick={onImportIfc}
+              >
+                <BookOpen size={24} aria-hidden="true" />
+                <strong>{t('assembly.journey.start.ifc')}</strong>
+                <span>{t('assembly.journey.start.ifcHint')}</span>
+              </button>
+            )}
+            <section className="a-start-recent">
+              <h3>{t('assembly.journey.start.recent')}</h3>
+              <p>
+                {t(
+                  projects.length
+                    ? 'assembly.journey.start.recentHint'
+                    : 'assembly.journey.start.empty',
+                )}
+              </p>
+              <div className="a-start-recent-list">
+                {projects.slice(0, 3).map((project) => (
+                  <button
+                    type="button"
+                    className="a-button"
+                    key={project.id}
+                    disabled={busy}
+                    onClick={() =>
+                      onOpenProject && run(() => onOpenProject(project.id))
+                    }
+                  >
+                    {project.name}
+                  </button>
+                ))}
+              </div>
+              <details data-testid="start-all-projects">
+                <summary>
+                  {t('assembly.journey.start.all')} ({projects.length})
+                </summary>
+                <div className="a-start-recent-list">
+                  {projects.map((project) => (
+                    <button
+                      type="button"
+                      className="a-button"
+                      key={project.id}
+                      disabled={busy}
+                      onClick={() =>
+                        onOpenProject && run(() => onOpenProject(project.id))
+                      }
+                    >
+                      {project.name}
+                    </button>
+                  ))}
+                </div>
+              </details>
+            </section>
+            <details className="a-start-secondary">
+              <summary>{t('assembly.journey.start.more')}</summary>
+              <button
+                type="button"
+                className="a-start-path"
+                data-start-path="example"
+                data-testid="project-start-examples"
+                onClick={() => setStage('examples')}
+              >
+                <BookOpen size={24} aria-hidden="true" />
+                <strong>{t('assembly.creator.start.example.title')}</strong>
+                <span>{t('assembly.creator.start.example.text')}</span>
+              </button>
+              <button
+                type="button"
+                className="a-start-path"
+                data-start-path="advanced"
+                data-testid="project-start-advanced"
+                disabled={busy}
+                onClick={() => onAdvanced && run(onAdvanced)}
+              >
+                <PencilRuler size={24} aria-hidden="true" />
+                <strong>{t('assembly.creator.start.advanced.title')}</strong>
+                <span>{t('assembly.creator.start.advanced.text')}</span>
+              </button>
+            </details>
+            {error && <p role="alert">{error}</p>}
           </div>
         )}
 
@@ -655,6 +742,9 @@ export function ProjectStartAssistant({
               )}
               {stage === 3 && (
                 <>
+                  <p className="a-journey-feedback" role="status">
+                    {t('assembly.journey.start.geometryDone')}
+                  </p>
                   {field('spacing')}
                   <div className="a-start-section-pair">
                     <ParameterIllustration
@@ -731,6 +821,13 @@ export function ProjectStartAssistant({
                   className="a-start-review"
                   data-testid="project-start-review"
                 >
+                  <p className="a-journey-feedback" role="status">
+                    {t(
+                      readiness?.k1Cutting === 'ready'
+                        ? 'assembly.journey.start.structureDone'
+                        : 'assembly.journey.next.construction.title',
+                    )}
+                  </p>
                   <dl className="a-start-summary">
                     {(
                       [

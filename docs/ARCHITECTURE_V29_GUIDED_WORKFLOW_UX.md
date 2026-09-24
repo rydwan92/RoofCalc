@@ -51,3 +51,13 @@ Desktop keeps the technical drawing dominant; data tasks may use more width.
 Mobile uses one task at a time, scrollable stage status, a clear next action and
 the existing sheet routing. New text is translated in Polish and English, and
 status is communicated by words as well as color.
+
+
+## Guided Workbench update after V61B
+
+The current six-stage visible overview, root start, device-local recent-project
+list and direct geometry/structure input routing extend V47/V53 rather than the
+historical V29 status vocabulary. See
+[Guided Workbench / Project Journey](ARCHITECTURE_GUIDED_WORKBENCH_JOURNEY.md).
+The existing Materials summary now includes dimensions, cost/document status,
+readiness warnings and the same central next action. All status remains derived.

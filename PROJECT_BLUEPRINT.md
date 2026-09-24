@@ -1297,6 +1297,14 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+## Guided Workbench UX / Project Journey — validation in progress
+
+- User prompt after V61B supersedes the previous NEXT ACTION; UX only.
+- Clean main baseline: typecheck, lint, format, 1687 tests passed (13 skipped), web/API built. Worker dry-run requires Node 22; shell is Node 20.16.
+- Reuse V47 readiness and V53 journey; no canonical status, SQL, Business, IFC engine, geometry, quantity or costing changes.
+- NEXT ACTION: implement six-stage overview and start paths, validate desktop/mobile and update this checkpoint.
+
+
 ## V61B — completed and validated locally
 
 - Latest user attachment explicitly resumes V61B from clean `main` at `0b1ae88`, superseding

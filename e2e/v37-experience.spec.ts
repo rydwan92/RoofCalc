@@ -146,6 +146,7 @@ test.describe('V37 — example project', () => {
     await page.goto('/#/calculators/common-rafter');
     await page.locator('[data-mode="builder"]').click();
     const assistant = page.getByTestId('project-start-assistant');
+    await page.locator('.a-start-secondary > summary').click();
     await assistant.getByTestId('project-start-advanced').click();
     await expect(assistant).toBeHidden();
     const countProjects = () =>
@@ -161,6 +162,7 @@ test.describe('V37 — example project', () => {
     await page.getByRole('button', { name: 'Projekty' }).first().click();
     await page.getByRole('button', { name: 'Nowy projekt' }).click();
     const start = page.getByTestId('project-start-assistant');
+    await page.locator('.a-start-secondary > summary').click();
     await start.getByTestId('project-start-examples').click();
     await expect(start).toContainText(
       'Projekt przykładowy — nie projekt konstrukcyjny.',
@@ -193,6 +195,7 @@ test.describe('V37 — covering edge behaviour', () => {
     const mobile = testInfo.project.name === 'mobile';
     await page.goto('/#/calculators/common-rafter');
     await page.locator('[data-mode="builder"]').click();
+    await page.locator('.a-start-secondary > summary').click();
     await page.getByTestId('project-start-advanced').click();
     await openPerspectiveTask(page, 'project', 'covering');
     await addManualTile(page);

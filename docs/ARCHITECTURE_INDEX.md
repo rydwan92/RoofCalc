@@ -614,6 +614,7 @@ pnpm e2e      # real-browser smoke, desktop 1440x900 and mobile 390x844 (pnpm e2
 
 | Document | Read when |
 | --- | --- |
+| `ARCHITECTURE_GUIDED_WORKBENCH_JOURNEY` | root start, six-stage overview, central next action, recent local projects and direct input routing after V61B |
 | `ARCHITECTURE_V36_MATERIAL_PLAN` | Materials plan, price selection/provenance, BOM/CSV and DB runtime diagnostics |
 | `ARCHITECTURE_V37_PRODUCT_EXPERIENCE_AND_COVERING_STUDIO` | perspective navigation and return trail, Document Hub, guided Creator and examples, Covering Studio technical/visual views |
 | `ARCHITECTURE_V38_TECHNICAL_3D_MVP` | the technical scene contract, coordinate convention, roof→scene adapter, Three.js viewport, 2D/3D selection identity and renderer boundary |

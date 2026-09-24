@@ -176,7 +176,7 @@ export function MaterialPlan({
   onOpenCosting: () => void;
   onOpenExport: () => void;
 }) {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const locale = i18n.language;
   const m = materialCopy(locale);
   const state = useAssembly();
@@ -482,7 +482,20 @@ export function MaterialPlan({
             </div>
           );
         })()}
-      {!rows.length && <p>{m.empty}</p>}
+      {!rows.length && (
+        <div data-testid="materials-empty-state">
+          <p>{t('assembly.journey.materialsEmpty')}</p>
+          {onReadinessAction && (
+            <button
+              type="button"
+              className="a-button a-primary"
+              onClick={() => onReadinessAction('review-structure')}
+            >
+              {t('assembly.readiness.action.review-structure')}
+            </button>
+          )}
+        </div>
+      )}
       <RoofSystemSummary
         facts={facts}
         locale={locale}

@@ -1935,6 +1935,45 @@ export const assemblyPl = {
   },
   // V53 project journey: where am I, what is ready, what next and why.
   journey: {
+    overview: 'Przebieg projektu',
+    overviewStatus: {
+      complete: 'Gotowe',
+      'needs-action': 'Do uzupełnienia',
+      'not-started': 'Nie rozpoczęto',
+    },
+    overviewStage: {
+      geometry: 'Geometria',
+      construction: 'Konstrukcja',
+      covering: 'Pokrycie',
+      materials: 'Materiały',
+      cost: 'Koszty',
+      documents: 'Dokumentacja',
+    },
+    completed: '{{stage}} — gotowe. Następny krok poniżej.',
+    overviewHint:
+      'Statusy wynikają z danych projektu. Gotowa konstrukcja oznacza obliczoną geometrię, nie sprawdzenie nośności.',
+    start: {
+      new: 'Nowy projekt',
+      newHint: 'Wprowadź wymiary dachu i przygotuj projekt krok po kroku.',
+      quick: 'Szybkie obliczenie',
+      quickHint: 'Oblicz pojedynczą krokiew bez zakładania projektu.',
+      ifc: 'Import projektu IFC',
+      ifcHint: 'Otwórz model IFC i potwierdź wymiary obsługiwanego dachu.',
+      recent: 'Ostatnio otwierane projekty',
+      recentHint:
+        'Projekty z tego urządzenia. Starsze projekty bez historii otwierania są uporządkowane według ostatniej zmiany.',
+      all: 'Wszystkie projekty',
+      empty:
+        'Nie masz jeszcze zapisanych projektów. Zacznij od Nowego projektu powyżej.',
+      more: 'Przykłady i opcje zaawansowane',
+      geometryDone:
+        'Geometria dachu jest gotowa. Następny krok: ustaw konstrukcję.',
+      structureDone:
+        'Dane konstrukcji są uzupełnione. Sprawdź projekt i przejdź do pokrycia.',
+    },
+    materialsEmpty:
+      'Zestawienie materiałów pojawi się po zdefiniowaniu konstrukcji.',
+
     now: 'Co teraz',
     title: 'Przygotowanie dachu',
     counts: '{{ready}} gotowe · {{decisions}} do decyzji',
@@ -4388,6 +4427,44 @@ export const assemblyEn: typeof assemblyPl = {
   // V47 project readiness: problem → consequence → action.
   // V53 project journey: where am I, what is ready, what next and why.
   journey: {
+    overview: 'Project journey',
+    overviewStatus: {
+      complete: 'Complete',
+      'needs-action': 'Needs action',
+      'not-started': 'Not started',
+    },
+    overviewStage: {
+      geometry: 'Geometry',
+      construction: 'Structure',
+      covering: 'Covering',
+      materials: 'Materials',
+      cost: 'Costs',
+      documents: 'Documentation',
+    },
+    completed: '{{stage}} — complete. Your next step is below.',
+    overviewHint:
+      'Statuses follow project data. A complete structure means resolved geometry, not verified load capacity.',
+    start: {
+      new: 'New project',
+      newHint: 'Enter roof dimensions and prepare a project step by step.',
+      quick: 'Quick calculation',
+      quickHint: 'Calculate a single rafter without creating a project.',
+      ifc: 'Import IFC project',
+      ifcHint:
+        'Open an IFC model and confirm the dimensions of a supported roof.',
+      recent: 'Recently opened projects',
+      recentHint:
+        'Projects on this device. Older projects without visit history are sorted by their last edit.',
+      all: 'All projects',
+      empty: 'No saved projects yet. Choose New project above to get started.',
+      more: 'Examples and advanced options',
+      geometryDone: 'Roof geometry is ready. Next step: set up the structure.',
+      structureDone:
+        'Structure inputs are complete. Review the project, then add covering.',
+    },
+    materialsEmpty:
+      'The material schedule appears once the structure is defined.',
+
     now: 'Next',
     title: 'Roof preparation',
     counts: '{{ready}} ready · {{decisions}} to decide',

@@ -114,6 +114,7 @@ async function startProject(page: Page, hip: boolean) {
   await page.goto('/#/calculators/common-rafter');
   if (hip) await page.getByRole('button', { name: 'Krokiew narożna' }).click();
   await page.locator('[data-mode="builder"]').click();
+  await page.locator('.a-start-secondary > summary').click();
   await page.getByTestId('project-start-advanced').click();
 }
 

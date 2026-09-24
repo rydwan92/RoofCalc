@@ -10,6 +10,7 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <HashRouter>
       <Routes>
+        <Route path="/" element={<App startAtHome />} />
         <Route path="/calculators/common-rafter" element={<App />} />
         <Route
           path="*"

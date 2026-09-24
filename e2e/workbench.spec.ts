@@ -23,6 +23,7 @@ async function openBuilder(page: Page) {
   const assistant = page.getByTestId('project-start-assistant');
   await expect(assistant).toBeVisible();
   // V37: "Od razu do edycji" is the expert path with template defaults.
+  await page.locator('.a-start-secondary > summary').click();
   await assistant.getByTestId('project-start-advanced').click();
   await expect(assistant).toBeHidden();
   await expect(page.getByTestId('skeleton-drawing')).toBeVisible();
@@ -578,6 +579,7 @@ test.describe('F — K1 physical blank to cutting plan', () => {
     await page.locator(BUILDER).click();
     const assistant = page.getByTestId('project-start-assistant');
     await expect(assistant).toBeVisible();
+    await page.locator('.a-start-secondary > summary').click();
     await assistant.getByTestId('project-start-advanced').click();
     await expect(assistant).toBeHidden();
     await openTask(page, 'materials');
@@ -602,6 +604,7 @@ test.describe('F — K1 physical blank to cutting plan', () => {
     await page.getByRole('button', { name: 'Krokiew narożna' }).click();
     await page.locator(BUILDER).click();
     const assistant = page.getByTestId('project-start-assistant');
+    await page.locator('.a-start-secondary > summary').click();
     await assistant.getByTestId('project-start-advanced').click();
     await openTask(page, 'layers');
     const tools =
@@ -684,6 +687,7 @@ test.describe('V33 — build-up closeout', () => {
     await page.goto('/#/calculators/common-rafter');
     await page.getByRole('button', { name: 'Krokiew narożna' }).click();
     await page.locator(BUILDER).click();
+    await page.locator('.a-start-secondary > summary').click();
     await page.getByTestId('project-start-advanced').click();
     await addTile(page, '33', '36');
     // The project starts with one selected plane. Explicitly apply the tile to the roof.

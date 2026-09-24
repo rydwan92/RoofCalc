@@ -11,6 +11,8 @@ import type {
 const messages = {
   pl: {
     projects: 'Projekty',
+    empty:
+      'Nie masz jeszcze zapisanych projektów. Wybierz Nowy projekt, aby rozpocząć.',
     new: 'Nowy projekt',
     editBasics: 'Edytuj podstawowe wymiary',
     rename: 'Zmień nazwę',
@@ -35,6 +37,7 @@ const messages = {
   },
   en: {
     projects: 'Projects',
+    empty: 'No saved projects yet. Choose New project to get started.',
     new: 'New project',
     editBasics: 'Edit basic dimensions',
     rename: 'Rename',
@@ -145,6 +148,7 @@ export function ProjectManager({
       >
         <Plus size={17} /> {m.new}
       </button>
+      {state.projects.length === 0 && <p>{m.empty}</p>}
       <div className="a-project-list">
         {state.projects.map((project) => (
           <div className="a-project-row" key={project.id}>

@@ -54,6 +54,7 @@ export function ProjectReadinessBar({
   onAction,
   onJourneyAction,
   onOpenPanel,
+  onOverview,
   currentStage,
 }: {
   readiness: ProjectReadiness;
@@ -65,12 +66,48 @@ export function ProjectReadinessBar({
   onAction: (action: ReadinessAction) => void;
   onJourneyAction?: (action: JourneyAction) => void;
   onOpenPanel: () => void;
+  onOverview?: () => void;
 }) {
   const { t, i18n } = useTranslation();
+  const previous = useRef(journey?.overview);
+  const [completed, setCompleted] = useState<string>();
+  useEffect(() => {
+    const newlyComplete = journey?.overview.find(
+      (stage) =>
+        stage.status === 'complete' &&
+        previous.current?.some(
+          (old) => old.key === stage.key && old.status !== 'complete',
+        ),
+    );
+    previous.current = journey?.overview;
+    if (!newlyComplete) return;
+    setCompleted(newlyComplete.key);
+  }, [journey?.overview]);
+  useEffect(() => {
+    if (!completed) return;
+    const timer = setTimeout(() => setCompleted(undefined), 8000);
+    return () => clearTimeout(timer);
+  }, [completed]);
+  const progress = journey
+    ? {
+        ready: journey.overview.filter((stage) => stage.status === 'complete')
+          .length,
+        total: journey.overview.length,
+      }
+    : readiness.progress;
   const recommended = journey?.recommended;
   const here = currentStage
     ? journey?.stages.find((stage) => stage.key === currentStage)
     : undefined;
+  const hereOverview = journey?.overview.find(
+    (stage) =>
+      stage.key ===
+      (currentStage === 'layers'
+        ? 'covering'
+        : currentStage === 'roof-system'
+          ? 'materials'
+          : currentStage),
+  );
   const primary = journey ? recommended?.issue : readiness.primary;
   const rest = readiness.issues.filter(
     (issue) => issue.id !== primary?.id && issue.severity !== 'info',
@@ -79,120 +116,166 @@ export function ProjectReadinessBar({
     ? readinessIssueText(t, primary, unit, i18n.language)
     : undefined;
   return (
-    <section
-      className="a-readiness-bar"
-      aria-label={t('assembly.readiness.panelTitle')}
-      data-testid="project-readiness-bar"
-      data-state={primary?.severity ?? 'ready'}
-    >
-      <button
-        type="button"
-        className="a-readiness-progress"
-        data-testid="project-progress"
-        aria-label={t('assembly.readiness.progressLabel', readiness.progress)}
-        onClick={onOpenPanel}
-      >
-        {here && (
-          <span
-            className="a-journey-here"
-            data-testid="journey-here"
-            data-state={here.state}
-          >
-            {here.state === 'ready' ? '✓ ' : ''}
-            {t(`assembly.journey.stage.${here.key}`)} ·{' '}
-            {t(`assembly.journey.state.${here.state}`)}
-          </span>
+    <>
+      {journey && onJourneyAction && (
+        <JourneyOverview
+          journey={journey}
+          currentStage={currentStage}
+          onAction={onJourneyAction}
+        />
+      )}
+      {completed &&
+        journey?.overview.some(
+          (stage) => stage.key === completed && stage.status === 'complete',
+        ) && (
+          <p className="a-journey-feedback" role="status">
+            {t('assembly.journey.completed', {
+              stage: t(`assembly.journey.overviewStage.${completed}`),
+            })}
+          </p>
         )}
-        <span className="a-readiness-dots" aria-hidden="true">
-          {readiness.areas
-            .filter((area) => area.counted)
-            .map((area) => (
-              <i key={area.area} data-state={area.state} />
-            ))}
-        </span>
-        {t('assembly.readiness.progress', readiness.progress)}
-      </button>
-      {primary && text ? (
-        <div
-          className="a-readiness-primary"
-          data-testid="project-primary-issue"
-          data-issue={primary.code}
-          data-severity={primary.severity}
+      <section
+        className="a-readiness-bar"
+        aria-label={t('assembly.readiness.panelTitle')}
+        data-testid="project-readiness-bar"
+        data-state={primary?.severity ?? 'ready'}
+      >
+        <button
+          type="button"
+          className="a-readiness-progress"
+          data-testid="project-progress"
+          aria-label={t('assembly.readiness.progressLabel', progress)}
+          onClick={onOpenPanel}
         >
-          <SeverityIcon severity={primary.severity} />
-          <div>
-            {journey && (
+          {here && (
+            <span
+              className="a-journey-here"
+              data-testid="journey-here"
+              data-state={here.state}
+            >
+              {here.state === 'ready' ? '✓ ' : ''}
+              {t(`assembly.journey.stage.${here.key}`)} ·{' '}
+              {hereOverview
+                ? t(`assembly.journey.overviewStatus.${hereOverview.status}`)
+                : t(`assembly.journey.state.${here.state}`)}
+            </span>
+          )}
+          <span className="a-readiness-dots" aria-hidden="true">
+            {journey
+              ? journey.overview.map((stage) => (
+                  <i
+                    key={stage.key}
+                    data-state={
+                      stage.status === 'complete'
+                        ? 'ready'
+                        : stage.status === 'needs-action'
+                          ? 'attention'
+                          : 'pending'
+                    }
+                  />
+                ))
+              : readiness.areas
+                  .filter((area) => area.counted)
+                  .map((area) => <i key={area.area} data-state={area.state} />)}
+          </span>
+          {t('assembly.readiness.progress', progress)}
+        </button>
+        {primary && text ? (
+          <div
+            className="a-readiness-primary"
+            data-testid="project-primary-issue"
+            data-issue={primary.code}
+            data-severity={primary.severity}
+          >
+            <SeverityIcon severity={primary.severity} />
+            <div>
+              {journey && (
+                <small className="a-journey-now">
+                  {t('assembly.journey.now')}
+                </small>
+              )}
+              <strong>{text.title}</strong>
+              <span>{text.description}</span>
+            </div>
+          </div>
+        ) : recommended?.reasonKey ? (
+          <div
+            className="a-readiness-primary is-next"
+            data-testid="project-journey-next"
+            data-stage={recommended.stage}
+          >
+            <Circle size={16} aria-hidden="true" />
+            <div>
               <small className="a-journey-now">
                 {t('assembly.journey.now')}
               </small>
-            )}
-            <strong>{text.title}</strong>
-            <span>{text.description}</span>
+              <strong>
+                {t(`assembly.journey.next.${recommended.reasonKey}.title`)}
+              </strong>
+              <span>
+                {t(
+                  `assembly.journey.next.${recommended.reasonKey}.description`,
+                )}
+              </span>
+            </div>
           </div>
-        </div>
-      ) : recommended?.reasonKey ? (
-        <div
-          className="a-readiness-primary is-next"
-          data-testid="project-journey-next"
-          data-stage={recommended.stage}
-        >
-          <Circle size={16} aria-hidden="true" />
-          <div>
-            <small className="a-journey-now">{t('assembly.journey.now')}</small>
-            <strong>
-              {t(`assembly.journey.next.${recommended.reasonKey}.title`)}
-            </strong>
-            <span>
-              {t(`assembly.journey.next.${recommended.reasonKey}.description`)}
-            </span>
-          </div>
-        </div>
-      ) : (
-        <div
-          className="a-readiness-primary is-quiet"
-          data-testid="project-all-ready"
-        >
-          <CheckCircle2 size={16} aria-hidden="true" />
-          <strong>{t('assembly.readiness.allReady')}</strong>
-        </div>
-      )}
-      <div className="a-readiness-actions">
-        {recommended && onJourneyAction ? (
-          <button
-            type="button"
-            className="a-button a-primary"
-            data-testid="project-next-action"
-            data-readiness-action={recommended.action}
-            onClick={() => onJourneyAction(recommended)}
-          >
-            {t(`assembly.readiness.action.${recommended.action}`)}
-          </button>
         ) : (
-          primary?.action && (
+          <div
+            className="a-readiness-primary is-quiet"
+            data-testid="project-all-ready"
+          >
+            <CheckCircle2 size={16} aria-hidden="true" />
+            <strong>{t('assembly.readiness.allReady')}</strong>
+          </div>
+        )}
+        <div className="a-readiness-actions">
+          {onOverview && (
+            <button
+              type="button"
+              className="a-button a-ghost"
+              data-testid="project-overview-action"
+              onClick={onOverview}
+            >
+              {t('assembly.workflow.summaryTitle')}
+            </button>
+          )}
+          {recommended && onJourneyAction ? (
             <button
               type="button"
               className="a-button a-primary"
               data-testid="project-next-action"
-              data-readiness-action={primary.action}
-              onClick={() => onAction(primary.action!)}
+              data-readiness-action={recommended.action}
+              onClick={() => onJourneyAction(recommended)}
             >
-              {t(`assembly.readiness.action.${primary.action}`)}
+              {t(`assembly.readiness.action.${recommended.action}`)}
             </button>
-          )
-        )}
-        {rest > 0 && (
-          <button
-            type="button"
-            className="a-button a-readiness-more"
-            data-testid="project-readiness-more"
-            aria-label={t('assembly.readiness.moreLabel', { count: rest })}
-            onClick={onOpenPanel}
-          >
-            {t('assembly.readiness.more', { count: rest })}
-          </button>
-        )}
-      </div>
-    </section>
+          ) : (
+            primary?.action && (
+              <button
+                type="button"
+                className="a-button a-primary"
+                data-testid="project-next-action"
+                data-readiness-action={primary.action}
+                onClick={() => onAction(primary.action!)}
+              >
+                {t(`assembly.readiness.action.${primary.action}`)}
+              </button>
+            )
+          )}
+          {rest > 0 && (
+            <button
+              type="button"
+              className="a-button a-readiness-more"
+              data-testid="project-readiness-more"
+              aria-label={t('assembly.readiness.moreLabel', { count: rest })}
+              onClick={onOpenPanel}
+            >
+              {t('assembly.readiness.more', { count: rest })}
+            </button>
+          )}
+        </div>
+      </section>
+    </>
   );
 }
 
@@ -533,5 +616,56 @@ export function ActionFeedback({
         ×
       </button>
     </div>
+  );
+}
+
+/** Shared by the compact workbench strip and the project overview. */
+export function JourneyOverview({
+  journey,
+  currentStage,
+  onAction,
+  expanded = false,
+}: {
+  journey: ProjectJourney;
+  currentStage?: JourneyStageKey;
+  onAction: (action: JourneyAction) => void;
+  expanded?: boolean;
+}) {
+  const { t } = useTranslation();
+  const current =
+    currentStage === 'layers'
+      ? 'covering'
+      : currentStage === 'roof-system'
+        ? 'materials'
+        : currentStage;
+  return (
+    <nav
+      className={`a-journey-overview${expanded ? ' is-expanded' : ''}`}
+      aria-label={t('assembly.journey.overview')}
+      data-testid={expanded ? 'journey-dashboard' : 'journey-overview'}
+    >
+      <ol>
+        {journey.overview.map((stage) => (
+          <li key={stage.key} data-status={stage.status}>
+            <button
+              type="button"
+              data-journey-step={stage.key}
+              aria-current={current === stage.key ? 'step' : undefined}
+              onClick={() => onAction(stage.target)}
+            >
+              <strong>
+                {stage.status === 'complete' ? '✓ ' : ''}
+                {t(`assembly.journey.overviewStage.${stage.key}`)}
+              </strong>
+              <span>
+                {t(`assembly.journey.overviewStatus.${stage.status}`)}
+              </span>
+              {expanded && stage.summary && <small>{stage.summary}</small>}
+            </button>
+          </li>
+        ))}
+      </ol>
+      {expanded && <p>{t('assembly.journey.overviewHint')}</p>}
+    </nav>
   );
 }

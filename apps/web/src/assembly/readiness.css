@@ -602,3 +602,132 @@
     display: none;
   }
 }
+
+/* Six primary tasks remain visible; the detailed readiness is a disclosure. */
+.a-journey-overview {
+  margin: 0 0 8px;
+  min-width: 0;
+}
+.a-journey-overview ol {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  list-style: none;
+  gap: 4px;
+  padding: 0;
+  margin: 0;
+}
+.a-journey-overview li {
+  min-width: 0;
+}
+.a-journey-overview button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  width: 100%;
+  height: 100%;
+  min-height: 48px;
+  border: 1px solid var(--a-border, #cbd9cd);
+  border-radius: 8px;
+  background: var(--a-panel, #fff);
+  padding: 8px;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.a-journey-overview button[aria-current] {
+  border-color: var(--a-green, #317356);
+  box-shadow: inset 0 -3px var(--a-green, #317356);
+}
+.a-journey-overview span {
+  font-size: 11px;
+  color: var(--a-muted, #59685f);
+}
+.a-journey-overview strong {
+  font-size: 12px;
+}
+.a-journey-overview [data-status='complete'] strong {
+  color: var(--a-green-dark, #214e40);
+}
+.a-journey-overview.is-expanded ol {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.a-journey-feedback {
+  margin: 4px 0 8px;
+  padding: 8px 12px;
+  background: #edf6ee;
+  color: #214e40;
+  border-radius: 8px;
+  font-size: 13px;
+}
+@media (max-width: 800px) {
+  .a-journey-overview ol,
+  .a-journey-overview.is-expanded ol {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .a-journey-overview button {
+    padding: 6px;
+  }
+}
+.a-start-secondary,
+.a-start-recent {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+.a-start-secondary summary,
+.a-start-recent summary {
+  cursor: pointer;
+  padding: 12px 0;
+}
+.a-start-secondary .a-start-path {
+  margin-bottom: 8px;
+}
+.a-start-recent-list {
+  display: grid;
+  gap: 6px;
+}
+.a-start-recent-list button {
+  min-height: 44px;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.a-start-paths {
+  overflow-y: auto;
+}
+@media (max-width: 800px) {
+  .a-start-paths .a-start-path {
+    min-height: 120px !important;
+    padding: 14px;
+  }
+}
+
+@media (max-width: 800px) {
+  .a-readiness-bar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .a-readiness-progress {
+    justify-self: start;
+    flex-wrap: wrap;
+    white-space: normal;
+  }
+  .a-readiness-progress .a-journey-here {
+    display: inline;
+    padding-left: 0;
+  }
+  .a-readiness-dots {
+    display: none;
+  }
+  .a-readiness-primary > div {
+    display: grid;
+    gap: 2px;
+  }
+  .a-readiness-primary .a-journey-now {
+    display: none;
+  }
+  .a-readiness-primary span {
+    white-space: normal;
+  }
+}

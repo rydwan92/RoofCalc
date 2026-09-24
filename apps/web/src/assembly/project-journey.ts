@@ -61,8 +61,59 @@ export interface JourneyStage {
 
 export interface ProjectJourney {
   stages: JourneyStage[];
+  overview: JourneyOverviewStage[];
   recommended?: JourneyAction & { stage: JourneyStageKey };
   counts: { ready: number; decisions: number };
+}
+
+export type JourneyOverviewKey = Exclude<
+  JourneyStageKey,
+  'layers' | 'roof-system'
+>;
+export interface JourneyOverviewStage {
+  key: JourneyOverviewKey;
+  status: 'complete' | 'needs-action' | 'not-started';
+  target: JourneyAction;
+  summary?: string;
+}
+
+/** Six user-facing stages, composed from the detailed readiness journey. */
+export function projectJourneyOverview(
+  stages: readonly JourneyStage[],
+): JourneyOverviewStage[] {
+  const groups: readonly [JourneyOverviewKey, readonly JourneyStageKey[]][] = [
+    ['geometry', ['geometry']],
+    ['construction', ['construction']],
+    ['covering', ['covering', 'layers']],
+    ['materials', ['materials', 'roof-system']],
+    ['cost', ['cost']],
+    ['documents', ['documents']],
+  ];
+  return groups.map(([key, keys]) => {
+    const children = keys.flatMap((child) =>
+      stages.filter((stage) => stage.key === child),
+    );
+    const main = children[0]!;
+    const unfinished =
+      children.find((stage) => stage.state === 'fix') ??
+      children.find(
+        (stage) => stage.state === 'decision' || stage.state === 'in-progress',
+      );
+    const target = unfinished ?? main;
+    const absent =
+      main.state === 'optional' ||
+      main.state === 'waiting' ||
+      main.issues.some((issue) => issue.code === 'covering-missing');
+    return {
+      key,
+      status: absent ? 'not-started' : unfinished ? 'needs-action' : 'complete',
+      target: {
+        action: unfinished ? target.action : STAGE_ACTION[main.key],
+        ...(target.focus ? { focus: target.focus } : {}),
+      },
+      ...(main.summary ? { summary: main.summary } : {}),
+    };
+  });
 }
 
 export interface JourneyFacts {
@@ -250,7 +301,8 @@ export function deriveProjectJourney(facts: JourneyFacts): ProjectJourney {
       execution.state === 'blocked' || !hasCovering
         ? 'waiting'
         : execution.state === 'ready' &&
-            readiness.documents.materials.state === 'ready'
+            readiness.documents.materials.state === 'ready' &&
+            (!costStarted || readiness.documents.cost.state === 'ready')
           ? 'ready'
           : 'in-progress',
     ...(execution.state === 'blocked' || !hasCovering
@@ -266,6 +318,11 @@ export function deriveProjectJourney(facts: JourneyFacts): ProjectJourney {
 
   // V47's primary issue already encodes the tested priorities (geometry
   // and blockers first); the journey adds guidance when it has none.
+  const unfinishedFoundation = stages.find(
+    (stage) =>
+      (stage.key === 'geometry' || stage.key === 'construction') &&
+      ['fix', 'decision', 'in-progress'].includes(stage.state),
+  );
   const primary = readiness.primary;
   const primaryStage = primary
     ? stages.find((stage) =>
@@ -274,8 +331,10 @@ export function deriveProjectJourney(facts: JourneyFacts): ProjectJourney {
     : undefined;
   return {
     stages,
-    recommended:
-      primary && primaryStage
+    overview: projectJourneyOverview(stages),
+    recommended: unfinishedFoundation
+      ? pickFor(unfinishedFoundation, facts)
+      : primary && primaryStage
         ? pickFor(primaryStage, facts, primary)
         : recommend(stages, facts),
     counts: {

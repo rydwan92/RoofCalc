@@ -146,6 +146,7 @@ async function createHipWithCatalogueTile(page: Page) {
   await page.goto('/#/calculators/common-rafter');
   await page.getByRole('button', { name: 'Krokiew narożna' }).click();
   await page.locator('[data-mode="builder"]').click();
+  await page.locator('.a-start-secondary > summary').click();
   await page.getByTestId('project-start-advanced').click();
   await openTask(page, 'covering');
   const assistant = page.getByTestId('covering-add-assistant');
@@ -229,6 +230,7 @@ test.describe('V43B — covering installation workflow', () => {
     });
     await page.goto('/#/calculators/common-rafter');
     await page.locator('[data-mode="builder"]').click();
+    await page.locator('.a-start-secondary > summary').click();
     await page.getByTestId('project-start-advanced').click();
     await openTask(page, 'covering');
     const assistant = page.getByTestId('covering-add-assistant');
@@ -415,6 +417,7 @@ test.describe('V43B — covering installation workflow', () => {
     await page.goto('/#/calculators/common-rafter');
     await page.getByRole('button', { name: 'Krokiew narożna' }).click();
     await page.locator('[data-mode="builder"]').click();
+    await page.locator('.a-start-secondary > summary').click();
     await page.getByTestId('project-start-advanced').click();
     const fillTile = async (
       name: string,

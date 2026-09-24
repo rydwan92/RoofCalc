@@ -180,6 +180,7 @@ async function gableWithTile(page: Page, options?: { timberDown?: boolean }) {
   await stub(page, options);
   await page.goto('/#/calculators/common-rafter');
   await page.locator('[data-mode="builder"]').click();
+  await page.locator('.a-start-secondary > summary').click();
   await page.getByTestId('project-start-advanced').click();
   await openPerspective(page, 'project');
   await page.locator('[data-task="covering"]:visible').first().click();

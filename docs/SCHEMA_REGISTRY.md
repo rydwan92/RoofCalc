@@ -559,3 +559,12 @@ V60: migration `0007_brainy_mandarin.sql` adds `organization_memberships.active`
 (default true) and nullable organization-owned `organization_assortment_items.vat_rate_bps`.
 Existing memberships retain access; unknown VAT stays unknown. No technical revision,
 roof document or quote schema version changes. Quote VAT remains a commercial snapshot.
+
+## Device-local recent-project preference (Guided Workbench)
+
+`cieslacalc.recentProjects.v1` is a best-effort localStorage string array of up to
+20 opaque project IDs in last-opened order, owned by `apps/web/src/projects/recent-projects.ts`.
+Missing, invalid or inaccessible storage falls back to existing project update
+order. Deleted IDs are ignored by intersection with the repository list. This
+is a device navigation preference, never part of RoofProjectDocumentV1,
+ProjectRecordV1, SQL, Business, export or canonical Undo history. No migration.

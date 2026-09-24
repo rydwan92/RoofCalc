@@ -14,6 +14,7 @@ async function openBuilder(page: Page) {
   await page.locator('[data-mode="builder"]').click();
   const assistant = page.getByTestId('project-start-assistant');
   await expect(assistant).toBeVisible();
+  await page.locator('.a-start-secondary > summary').click();
   await assistant.getByTestId('project-start-advanced').click();
   await expect(assistant).toBeHidden();
   await expect(page.getByTestId('skeleton-drawing')).toBeVisible();
@@ -26,6 +27,7 @@ async function openExample(
   await page.goto('/#/calculators/common-rafter');
   await page.locator('[data-mode="builder"]').click();
   const start = page.getByTestId('project-start-assistant');
+  await page.locator('.a-start-secondary > summary').click();
   await start.getByTestId('project-start-examples').click();
   await start.getByTestId(`project-example-${example}`).click();
   await expect(start).toBeHidden();

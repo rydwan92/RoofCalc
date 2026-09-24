@@ -8,6 +8,7 @@ for (const unit of ['metre', 'millimetre'] as const) {
   }, testInfo) => {
     await page.goto('/#/calculators/common-rafter');
     await page.locator('[data-mode="builder"]').click();
+    await page.locator('.a-start-secondary > summary').click();
     await page.getByTestId('project-start-advanced').click();
     const before = await page.evaluate(() =>
       Object.fromEntries(
@@ -133,6 +134,7 @@ test('pyramid IFC is rejected with a clear reason and cannot create a project', 
 }) => {
   await page.goto('/#/calculators/common-rafter');
   await page.locator('[data-mode="builder"]').click();
+  await page.locator('.a-start-secondary > summary').click();
   await page.getByTestId('project-start-advanced').click();
   await page.getByRole('button', { name: 'Projekty', exact: true }).click();
   await page.getByTestId('project-import-ifc').click();
@@ -160,6 +162,7 @@ test('local IFC reference import shows a roof without changing the project', asy
   await page.goto('/#/calculators/common-rafter');
   await page.locator('[data-mode="builder"]').click();
   const assistant = page.getByTestId('project-start-assistant');
+  await page.locator('.a-start-secondary > summary').click();
   await assistant.getByTestId('project-start-advanced').click();
   await expect(assistant).toBeHidden();
   await page.getByRole('button', { name: 'Projekty' }).click();
@@ -187,6 +190,7 @@ test('unsupported IFC file fails safely and remains in the importer', async ({
 }) => {
   await page.goto('/#/calculators/common-rafter');
   await page.locator('[data-mode="builder"]').click();
+  await page.locator('.a-start-secondary > summary').click();
   await page
     .getByTestId('project-start-assistant')
     .getByTestId('project-start-advanced')

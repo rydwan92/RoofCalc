@@ -172,6 +172,12 @@ import type { LinearPlanSurface } from './MaterialPlan';
 import { useInstallationActions } from './InstallationWorkflow';
 import { summarizeCostScenario } from '@cieslacalc/cost-core';
 import { ProjectManager, projectStatusLabel } from '../projects/ProjectManager';
+import { LocalProjectRepository } from '../projects/local-repository';
+import {
+  recentProjects,
+  rememberProjectVisit,
+} from '../projects/recent-projects';
+import type { ProjectSummary as SavedProjectSummary } from '@cieslacalc/project-core';
 import { ProjectSession } from '../projects/session';
 import {
   ProjectStartAssistant,
@@ -338,7 +344,11 @@ function isStandingSeamAssignment(
   return assignment.product.technicalSpecSnapshot.kind === 'standing-seam';
 }
 
-function AssemblyPageContent() {
+function AssemblyPageContent({
+  startAtHome = false,
+}: {
+  startAtHome?: boolean;
+}) {
   const state = useAssembly(),
     { t, i18n } = useTranslation();
   const business = useBusiness();
@@ -353,6 +363,9 @@ function AssemblyPageContent() {
     (typeof allDetailPreviews)[number] | undefined
   >();
   const [readinessOpen, setReadinessOpen] = useState(false);
+  const [foundationFocus, setFoundationFocus] = useState<
+    'geometry' | 'construction'
+  >('construction');
   const [actionFeedback, setActionFeedback] = useState<{
     message: string;
     historyLength: number;
@@ -377,6 +390,18 @@ function AssemblyPageContent() {
     projectSessionState.active?.id,
   );
   const [projectStartMode, setProjectStartMode] = useState<ProjectStartMode>();
+  const [homeProjects, setHomeProjects] = useState<SavedProjectSummary[]>([]);
+  useEffect(() => {
+    if (startAtHome) {
+      setProjectStartMode('new');
+      void new LocalProjectRepository().list().then(setHomeProjects);
+    }
+  }, [startAtHome]);
+  const activeProjectId = projectSessionState.active?.id;
+  useEffect(() => {
+    if (activeProjectId && !projectSessionState.freshProject)
+      rememberProjectVisit(activeProjectId);
+  }, [activeProjectId, projectSessionState.freshProject]);
   const [ifcImportOpen, setIfcImportOpen] = useState(false);
   const [reuseFreshProject, setReuseFreshProject] = useState(false);
   const workbench = state.workbench;
@@ -1874,7 +1899,24 @@ function AssemblyPageContent() {
     switch (action) {
       case 'review-geometry':
       case 'review-structure':
+        setFoundationFocus(
+          action === 'review-geometry' ? 'geometry' : 'construction',
+        );
         runProjectAction('completeGeometry');
+        state.select('roof');
+        state.setInspectorOpen(true);
+        requestAnimationFrame(() => {
+          const settings = document.querySelector<HTMLDetailsElement>(
+            '[data-testid="structure-settings"]',
+          );
+          if (settings) settings.open = action === 'review-structure';
+          const field =
+            action === 'review-structure'
+              ? settings?.querySelector('input')
+              : document.getElementById('roof.runMm');
+          field?.focus();
+          field?.scrollIntoView({ block: 'nearest' });
+        });
         return;
       case 'review-openings':
         runProjectAction('reviewOpenings');
@@ -2184,7 +2226,16 @@ function AssemblyPageContent() {
       }}
     >
       <header className="a-header">
-        <a className="a-brand" href="#/calculators/common-rafter">
+        <a
+          className="a-brand"
+          href="#/"
+          onClick={(event) => {
+            event.preventDefault();
+            setProjectStartMode('new');
+            if (!projectSessionState.initialized)
+              void new LocalProjectRepository().list().then(setHomeProjects);
+          }}
+        >
           <House size={24} />
           <span>{brand}</span>
         </a>
@@ -2491,12 +2542,13 @@ function AssemblyPageContent() {
                 />
               )}
               <ProjectReadinessBar
+                key={projectSessionState.active?.id ?? 'unsaved'}
                 readiness={projectReadiness}
                 journey={projectJourney}
                 currentStage={
                   (
                     {
-                      construction: 'construction',
+                      construction: foundationFocus,
                       openings: 'geometry',
                       layers: 'layers',
                       covering: 'covering',
@@ -2515,6 +2567,7 @@ function AssemblyPageContent() {
                 onAction={runReadinessAction}
                 onJourneyAction={runJourneyAction}
                 onOpenPanel={() => setReadinessOpen(true)}
+                onOverview={() => runProjectAction('openSummary')}
               />
               {readinessOpen && (
                 <ProjectReadinessPanel
@@ -2817,6 +2870,10 @@ function AssemblyPageContent() {
                       <div data-material-surface="summary">
                         <ProjectSummary
                           facts={projectSummary}
+                          journey={projectJourney}
+                          onJourneyAction={runJourneyAction}
+                          readiness={projectReadiness}
+                          unit={state.unit}
                           onOpenCutting={openCutting}
                           onOpenCovering={() =>
                             state.navigateTo(workbenchLocation('covering'))
@@ -3223,10 +3280,39 @@ function AssemblyPageContent() {
           onClose={() => setQuoteOpen(false)}
         />
       )}
-      {projectStartMode && workbench.mode === 'builder' && (
+      {projectStartMode && (
         <ProjectStartAssistant
           mode={projectStartMode}
           template={state.template}
+          projects={recentProjects(
+            (projectSessionState.initialized
+              ? projectSessionState.projects
+              : homeProjects
+            ).filter(
+              (project) =>
+                !projectSessionState.freshProject ||
+                project.id !== projectSessionState.active?.id,
+            ),
+          )}
+          onBeginProject={() => state.setMode('builder')}
+          onQuick={() => {
+            setProjectStartMode(undefined);
+            state.setMode('quick');
+          }}
+          onImportIfc={() => {
+            state.setMode('builder');
+            setProjectStartMode(undefined);
+            setIfcImportOpen(true);
+          }}
+          onOpenProject={async (id) => {
+            await projectSession.initialize();
+            await projectSession.open(id);
+            state.setMode('builder');
+            rememberCreatorStart();
+            setReuseFreshProject(false);
+            setProjectStartMode(undefined);
+            state.navigatePerspective('project');
+          }}
           onClose={() => {
             rememberCreatorStart();
             projectSession.acknowledgeFreshProject();
@@ -3250,9 +3336,16 @@ function AssemblyPageContent() {
             state.setViewPreset('construction');
           }}
           onAdvanced={async () => {
+            const initialized = projectSession.snapshot().initialized;
+            await projectSession.initialize();
+            state.setMode('builder');
             // A fresh, untouched session project is reused; otherwise a new
             // record is created so an existing project is never replaced.
-            if (!reuseFreshProject) await projectSession.create();
+            if (
+              !reuseFreshProject &&
+              (initialized || !projectSession.snapshot().freshProject)
+            )
+              await projectSession.create();
             rememberCreatorStart();
             projectSession.acknowledgeFreshProject();
             setReuseFreshProject(false);
@@ -3261,6 +3354,8 @@ function AssemblyPageContent() {
             state.setViewPreset('construction');
           }}
           onExample={async (id) => {
+            await projectSession.initialize();
+            state.setMode('builder');
             const title = t(`assembly.creator.examples.item.${id}.title`);
             await projectSession.createFromDocument(
               projectExampleDocument(id),
@@ -3319,7 +3414,11 @@ function AssemblyPageContent() {
   );
 }
 
-export function AssemblyPage() {
+export function AssemblyPage({
+  startAtHome = false,
+}: {
+  startAtHome?: boolean;
+}) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -3335,7 +3434,7 @@ export function AssemblyPage() {
        * issues no request and renders no business UI at all (§65).
        */}
       <BusinessContextProvider>
-        <AssemblyPageContent />
+        <AssemblyPageContent startAtHome={startAtHome} />
       </BusinessContextProvider>
     </QueryClientProvider>
   );

@@ -200,7 +200,10 @@ export function Inspector({
                   />
                 ))}
               </section>
-              <details className="a-inspector-advanced">
+              <details
+                className="a-inspector-advanced"
+                data-testid="structure-settings"
+              >
                 <summary>{t('assembly.advanced')}</summary>
                 <div>
                   <h3>K1 · {t('assembly.commonRafter')}</h3>

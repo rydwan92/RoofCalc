@@ -17,6 +17,7 @@ async function openHipExample(page: Page) {
   await page.goto('/#/calculators/common-rafter');
   await page.locator('[data-mode="builder"]').click();
   const start = page.getByTestId('project-start-assistant');
+  await page.locator('.a-start-secondary > summary').click();
   await start.getByTestId('project-start-examples').click();
   await start.getByTestId('project-example-hip').click();
   await expect(start).toBeHidden();

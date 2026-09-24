@@ -1,5 +1,10 @@
 import { useTranslation } from 'react-i18next';
 import type { ProjectWorkflow } from './project-workflow';
+import type { ProjectJourney, JourneyAction } from './project-journey';
+import type { ProjectReadiness } from './project-readiness';
+import type { LengthUnit } from '@cieslacalc/roof-math';
+import { JourneyOverview } from './ProjectReadiness';
+import { readinessIssueText } from './readiness-copy';
 
 export interface ProjectSummaryFacts {
   roofType: 'gable' | 'hip';
@@ -17,10 +22,18 @@ export interface ProjectSummaryFacts {
 
 export function ProjectSummary({
   facts,
+  journey,
+  readiness,
+  onJourneyAction,
+  unit,
   onOpenCutting,
   onOpenCovering,
 }: {
   facts: ProjectSummaryFacts;
+  journey?: ProjectJourney;
+  readiness?: ProjectReadiness;
+  onJourneyAction?: (action: JourneyAction) => void;
+  unit?: LengthUnit;
   onOpenCutting: () => void;
   onOpenCovering: () => void;
 }) {
@@ -38,6 +51,50 @@ export function ProjectSummary({
         <h2>{t('assembly.workflow.summaryTitle')}</h2>
         <p>{t('assembly.workflow.summaryDescription')}</p>
       </header>
+      {journey && onJourneyAction && (
+        <>
+          <JourneyOverview
+            journey={journey}
+            onAction={onJourneyAction}
+            expanded
+          />
+          {journey.recommended && (
+            <button
+              type="button"
+              className="a-button a-primary"
+              onClick={() => onJourneyAction(journey.recommended!)}
+            >
+              {t(`assembly.readiness.action.${journey.recommended.action}`)}
+            </button>
+          )}
+          {readiness && (
+            <ul>
+              {readiness.issues
+                .filter((issue) => issue.severity !== 'info')
+                .slice(0, 3)
+                .map((issue) => (
+                  <li key={issue.id}>
+                    {
+                      readinessIssueText(t, issue, unit ?? 'cm', i18n.language)
+                        .title
+                    }
+                    {issue.action && (
+                      <button
+                        type="button"
+                        className="a-link-button"
+                        onClick={() =>
+                          onJourneyAction({ action: issue.action! })
+                        }
+                      >
+                        {t(`assembly.readiness.action.${issue.action}`)}
+                      </button>
+                    )}
+                  </li>
+                ))}
+            </ul>
+          )}
+        </>
+      )}
       <div className="a-project-summary-grid">
         <article>
           <span>{t('assembly.workflow.roof')}</span>

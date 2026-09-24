@@ -235,3 +235,133 @@ describe('V53 project journey', () => {
     expect(value.counts.decisions).toBe(0);
   });
 });
+
+describe('Guided Workbench six-stage lifecycle', () => {
+  const missingCovering = issue(
+    'covering-missing',
+    'covering',
+    'info',
+    'choose-covering',
+  );
+  const states = (value: ReturnType<typeof journey>) =>
+    value.overview.map((stage) => stage.status);
+  it('empty/invalid geometry leads to exact dimensions; downstream stages are not started', () => {
+    const value = journey({
+      readiness: readiness(
+        [
+          issue(
+            'geometry-invalid',
+            'construction',
+            'blocker',
+            'review-geometry',
+          ),
+          missingCovering,
+        ],
+        { construction: 'blocked' },
+        'blocked',
+      ),
+      checklist: checklist({}, false),
+      cost: { started: false, missingPrices: 0 },
+    });
+    expect(states(value)).toEqual([
+      'needs-action',
+      'not-started',
+      'not-started',
+      'not-started',
+      'not-started',
+      'not-started',
+    ]);
+    expect(value.recommended?.action).toBe('review-geometry');
+  });
+  it('geometry alone leads to structure before the missing covering', () => {
+    const value = journey({
+      readiness: readiness([missingCovering], { construction: 'pending' }),
+      checklist: checklist({}, false),
+      cost: { started: false, missingPrices: 0 },
+    });
+    expect(states(value)).toEqual([
+      'complete',
+      'needs-action',
+      'not-started',
+      'not-started',
+      'not-started',
+      'not-started',
+    ]);
+    expect(value.recommended?.action).toBe('review-structure');
+  });
+  it('geometry and structure lead to covering', () => {
+    const value = journey({
+      readiness: readiness([missingCovering]),
+      checklist: checklist({}, false),
+      cost: { started: false, missingPrices: 0 },
+    });
+    expect(states(value)).toEqual([
+      'complete',
+      'complete',
+      'not-started',
+      'not-started',
+      'not-started',
+      'not-started',
+    ]);
+    expect(value.recommended?.action).toBe('choose-covering');
+  });
+  it('structure and covering lead to incomplete materials', () => {
+    const value = journey({
+      readiness: readiness([], { materials: 'pending' }),
+      materials: { attention: 2, total: 5 },
+      cost: { started: false, missingPrices: 0 },
+    });
+    expect(states(value)).toEqual([
+      'complete',
+      'complete',
+      'complete',
+      'needs-action',
+      'not-started',
+      'complete',
+    ]);
+    expect(value.recommended?.action).toBe('open-materials');
+  });
+  it('almost complete project points to the missing price', () => {
+    const facts = readiness([
+      issue('cost-prices-missing', 'cost', 'warning', 'open-cost'),
+    ]);
+    facts.documents.cost.state = 'warning';
+    const value = journey({
+      readiness: facts,
+      cost: { started: true, missingPrices: 1 },
+    });
+    expect(states(value)).toEqual([
+      'complete',
+      'complete',
+      'complete',
+      'complete',
+      'needs-action',
+      'needs-action',
+    ]);
+    expect(value.recommended?.action).toBe('open-cost');
+  });
+  it('complete project offers documentation and keeps all six statuses derived', () => {
+    const facts = {
+      readiness: readiness([]),
+      cost: { started: true, missingPrices: 0 },
+    };
+    const before = JSON.stringify(facts);
+    const value = journey(facts);
+    expect(states(value)).toEqual(Array(6).fill('complete'));
+    expect(value.recommended?.action).toBe('open-documents');
+    expect(JSON.stringify(facts)).toBe(before);
+  });
+  it('covering overview preserves the actionable layer gap', () => {
+    const value = journey({
+      readiness: readiness([
+        issue('hip-detail-required', 'layers', 'warning', 'choose-hip-detail'),
+      ]),
+    });
+    expect(
+      value.overview.find((stage) => stage.key === 'covering'),
+    ).toMatchObject({
+      status: 'needs-action',
+      target: { action: 'choose-hip-detail' },
+    });
+  });
+});
