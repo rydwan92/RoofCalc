@@ -36,10 +36,14 @@ console.log(`API: ${apiUrl}/api/health`);
 if (apiRunning) console.log('API already running — reusing it.');
 if (webRunning) console.log('Vite already running — reusing it.');
 if (filters.length) {
-  const child = spawn('pnpm', ['--parallel', ...filters, 'dev'], {
-    stdio: 'inherit',
-    shell: process.platform === 'win32',
-  });
+  const pnpm = process.env.npm_execpath;
+  const args = ['--parallel', ...filters, 'dev'];
+  const child = pnpm?.endsWith('.cjs')
+    ? spawn(process.execPath, [pnpm, ...args], { stdio: 'inherit' })
+    : spawn('pnpm', args, {
+        stdio: 'inherit',
+        shell: process.platform === 'win32',
+      });
   child.on('error', (error) => {
     console.error(error.message);
     process.exitCode = 1;

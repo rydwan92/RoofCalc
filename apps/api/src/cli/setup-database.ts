@@ -12,14 +12,23 @@ function valueAfter(name: string): string | undefined {
 
 function runScript(script: string, args: string[] = []): Promise<void> {
   return new Promise((resolvePromise, reject) => {
-    const child = spawn('pnpm', [script, ...args], {
-      cwd: process.cwd(),
-      env: process.env,
-      stdio: 'inherit',
-      // Windows cannot execute a .cmd shim directly through spawn(). The
-      // command and argument are both internal constants, never user input.
-      shell: process.platform === 'win32',
-    });
+    // Re-use the pnpm that launched this command (npm_execpath) so a broken
+    // global shim cannot stall setup; fall back to the shim otherwise.
+    const pnpm = process.env.npm_execpath;
+    const child = pnpm?.endsWith('.cjs')
+      ? spawn(process.execPath, [pnpm, script, ...args], {
+          cwd: process.cwd(),
+          env: process.env,
+          stdio: 'inherit',
+        })
+      : spawn('pnpm', [script, ...args], {
+          cwd: process.cwd(),
+          env: process.env,
+          stdio: 'inherit',
+          // Windows cannot execute a .cmd shim directly through spawn(). The
+          // command and argument are both internal constants, never user input.
+          shell: process.platform === 'win32',
+        });
     child.once('error', reject);
     child.once('exit', (code) =>
       code === 0

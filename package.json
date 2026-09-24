@@ -33,7 +33,7 @@
     "db:setup:local": "pnpm --filter @cieslacalc/api db:setup:local",
     "db:setup:shared-dev": "pnpm --filter @cieslacalc/api db:setup:shared-dev",
     "dev:full": "pnpm db:bootstrap && pnpm dev",
-    "dev:remote": "pnpm db:doctor && pnpm dev",
+    "dev:remote": "pnpm db:doctor && pnpm db:status -- --require-ready && pnpm dev",
     "deploy:cloudflare": "pnpm build:edge && pnpm --filter @cieslacalc/api deploy:cloudflare"
   },
   "devDependencies": {
