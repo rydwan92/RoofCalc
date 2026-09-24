@@ -6,6 +6,7 @@ import {
   Color,
   DirectionalLight,
   DoubleSide,
+  EdgesGeometry,
   ExtrudeGeometry,
   Group,
   HemisphereLight,
@@ -203,6 +204,8 @@ export class TechnicalViewport {
   private fittedBounds?: SceneBounds;
   private fittedPreset: SceneViewPreset = 'isometric';
   private fittedPadding?: number;
+  /** Optional external reference (IFC roof surface). Never pickable. */
+  private reference?: Group;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     this.renderer = new WebGLRenderer({
@@ -828,6 +831,58 @@ export class TechnicalViewport {
     this.requestFrame();
   }
 
+  /**
+   * Shows a display-only reference surface (for example the architect's IFC
+   * roof) in the same frame as the roof: subdued, translucent, with its own
+   * outline. It is not part of the technical scene, selection or bounds.
+   */
+  setReference(mesh?: { positions: Float32Array; indices: Uint32Array }) {
+    if (this.reference) {
+      this.scene.remove(this.reference);
+      this.reference.traverse((object) => {
+        if (object instanceof Mesh || object instanceof LineSegments)
+          object.geometry.dispose();
+      });
+      this.reference = undefined;
+    }
+    if (mesh) {
+      const geometry = new BufferGeometry();
+      geometry.setAttribute('position', new BufferAttribute(mesh.positions, 3));
+      geometry.setIndex(new BufferAttribute(mesh.indices, 1));
+      const group = new Group();
+      group.add(
+        new Mesh(
+          geometry,
+          this.track(
+            new MeshBasicMaterial({
+              color: 0x5f86b8,
+              transparent: true,
+              opacity: 0.2,
+              side: DoubleSide,
+              depthWrite: false,
+            }),
+          ),
+        ),
+      );
+      group.add(
+        new LineSegments(
+          new EdgesGeometry(geometry, 1),
+          this.track(
+            new LineBasicMaterial({
+              color: 0x3d6ea8,
+              transparent: true,
+              opacity: 0.75,
+            }),
+          ),
+        ),
+      );
+      group.renderOrder = 5;
+      this.reference = group;
+      this.scene.add(group);
+    }
+    this.requestFrame();
+  }
+
   private requestFrame() {
     if (this.frameRequested || this.disposed) return;
     this.frameRequested = true;
@@ -840,6 +895,7 @@ export class TechnicalViewport {
 
   dispose() {
     this.disposed = true;
+    this.setReference(undefined);
     this.controls.dispose();
     this.clearSolids();
     this.edges.geometry.dispose();

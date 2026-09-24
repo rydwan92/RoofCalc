@@ -1679,6 +1679,14 @@ export const assemblyPl = {
   workspaceRenderer2DTitle: 'Rysunek techniczny 2D',
   workspaceRenderer3DTitle: 'Techniczna scena 3D tego samego projektu',
   scene3d: {
+    ifcModel: 'Model IFC',
+    ifcModelHint:
+      'Dach z importowanego IFC — tylko odniesienie, nie źródło ilości.',
+    ifcCompare: 'IFC a RoofCalc',
+    ifcOutline: 'Obrys dachu',
+    ifcRidge: 'Długość kalenicy',
+    ifcDifference: 'różnica',
+    ifcNoPlanes: 'Porównanie wymiarów wymaga połaci RoofCalc (dach kopertowy).',
     title: 'Scena techniczna 3D',
     loading: 'Ładowanie widoku 3D...',
     canvasLabel:
@@ -4206,6 +4214,14 @@ export const assemblyEn: typeof assemblyPl = {
   workspaceRenderer2DTitle: '2D technical drawing',
   workspaceRenderer3DTitle: 'Technical 3D scene of the same project',
   scene3d: {
+    ifcModel: 'IFC model',
+    ifcModelHint:
+      'Roof from the imported IFC — reference only, never a quantity source.',
+    ifcCompare: 'IFC vs RoofCalc',
+    ifcOutline: 'Roof outline',
+    ifcRidge: 'Ridge length',
+    ifcDifference: 'difference',
+    ifcNoPlanes: 'Dimension comparison needs RoofCalc roof planes (hip roof).',
     title: 'Technical 3D scene',
     loading: 'Loading the 3D view...',
     canvasLabel:

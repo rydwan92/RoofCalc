@@ -1,4 +1,5 @@
 import type { IfcRoofCandidate } from './index';
+import { recognizeRegularHip } from './hip-analysis';
 
 /** Physical IFC Z-up coordinates in source length units; never display data. */
 export interface IfcAnalysisGeometry {
@@ -20,7 +21,7 @@ export type IfcRoofAnalysis = {
 } & (
   | {
       status: 'supported';
-      roofType: 'gable';
+      roofType: 'gable' | 'hip';
       proposed: {
         buildingLengthMm: number;
         buildingWidthMm: number;
@@ -32,6 +33,10 @@ export type IfcRoofAnalysis = {
         eaveLevelMm: number;
         ridgeLevelMm: number;
         halfRunMm: number;
+        /** Plan centre of the roof outline, in the same frame as the levels. */
+        planCentreMm: readonly [number, number];
+        /** Hip only: horizontal ridge length between the hip apexes. */
+        ridgeLengthMm?: number;
       };
     }
   | {
@@ -106,6 +111,20 @@ export function analyzeIfcRoof(input: IfcRoofAnalysisInput): IfcRoofAnalysis {
   const tolerance = Math.max(0.5, ...max.map((v, i) => (v - min[i]!) * 1e-6));
   if (!Number.isFinite(tolerance)) return reject('insufficient-geometry');
   const near = (a: number, b: number) => Math.abs(a - b) <= tolerance;
+  // A surface that is not a regular gable may still be a regular hip.
+  const hipOrReject = (): IfcRoofAnalysis => {
+    const hip = recognizeRegularHip(points, triangles, min, max, tolerance);
+    return hip
+      ? {
+          ...common,
+          status: 'supported',
+          roofType: 'hip',
+          evidence: [...common.evidence, ...hip.evidence],
+          proposed: hip.proposed,
+          geometry: hip.geometry,
+        }
+      : reject('unsupported-roof-shape');
+  };
   const top = points.filter((p) => near(p[2], max[2]!));
   const first = top[0]!;
   // Farthest from any ridge point gives one endpoint; no quadratic search.
@@ -122,8 +141,7 @@ export function analyzeIfcRoof(input: IfcRoofAnalysisInput): IfcRoofAnalysis {
   const b = farthest(a);
   const length = Math.hypot(b[0] - a[0], b[1] - a[1]);
   const rise = max[2]! - min[2]!;
-  if (length <= tolerance * 10 || rise <= tolerance * 10)
-    return reject('unsupported-roof-shape');
+  if (length <= tolerance * 10 || rise <= tolerance * 10) return hipOrReject();
   const dx = (b[0] - a[0]) / length;
   const dy = (b[1] - a[1]) / length;
   const projected: Point[] = points.map((p) => [
@@ -138,8 +156,7 @@ export function analyzeIfcRoof(input: IfcRoofAnalysisInput): IfcRoofAnalysis {
     high = Math.max(high, p[1]);
   }
   const halfRun = (high - low) / 2;
-  if (halfRun <= tolerance * 10 || !near(low, -high))
-    return reject('unsupported-roof-shape');
+  if (halfRun <= tolerance * 10 || !near(low, -high)) return hipOrReject();
   if (
     projected.some(
       ([u, v, z]) =>
@@ -148,7 +165,7 @@ export function analyzeIfcRoof(input: IfcRoofAnalysisInput): IfcRoofAnalysis {
         !near(z, rise * (1 - Math.abs(v) / halfRun)),
     )
   )
-    return reject('unsupported-roof-shape');
+    return hipOrReject();
 
   // Weld parser's per-face duplicate vertices. Surface topology plus area is
   // required: a few extreme points must not make a partial roof convertible.
@@ -169,17 +186,17 @@ export function analyzeIfcRoof(input: IfcRoofAnalysisInput): IfcRoofAnalysis {
       .map((id) => vertexIds[id]!)
       .sort((x, y) => x - y)
       .join(':');
-    if (faces.has(faceKey)) return reject('unsupported-roof-shape');
+    if (faces.has(faceKey)) return hipOrReject();
     faces.add(faceKey);
     const [p, q, r] = ids.map((id) => projected[id]!) as [Point, Point, Point];
     const positive = [p, q, r].some((v) => v[1] > tolerance);
     const negative = [p, q, r].some((v) => v[1] < -tolerance);
-    if (positive === negative) return reject('unsupported-roof-shape');
+    if (positive === negative) return hipOrReject();
     const side = positive ? 1 : 0;
     const area =
       Math.abs((q[0] - p[0]) * (r[1] - p[1]) - (r[0] - p[0]) * (q[1] - p[1])) /
       2;
-    if (area <= tolerance * tolerance) return reject('unsupported-roof-shape');
+    if (area <= tolerance * tolerance) return hipOrReject();
     areas[side]! += area;
     for (let i = 0; i < 3; i++) {
       const start = ids[i]!;
@@ -202,7 +219,7 @@ export function analyzeIfcRoof(input: IfcRoofAnalysisInput): IfcRoofAnalysis {
       Math.abs(areas[side]! - length * halfRun) >
       tolerance * (length + halfRun) * 2
     )
-      return reject('unsupported-roof-shape');
+      return hipOrReject();
     const eave = side === 0 ? -halfRun : halfRun;
     for (const edge of edges[side]!.values()) {
       if (edge.count === 2) continue;
@@ -215,7 +232,7 @@ export function analyzeIfcRoof(input: IfcRoofAnalysisInput): IfcRoofAnalysis {
           (near(edge.a[1], eave) && near(edge.b[1], eave))
         )
       )
-        return reject('unsupported-roof-shape');
+        return hipOrReject();
     }
   }
   return {
@@ -235,6 +252,10 @@ export function analyzeIfcRoof(input: IfcRoofAnalysisInput): IfcRoofAnalysis {
     },
     geometry: {
       ridgeDirection: [dx, dy],
+      planCentreMm: [
+        a[0] + dx * (length / 2) - dy * ((low + high) / 2),
+        a[1] + dy * (length / 2) + dx * ((low + high) / 2),
+      ],
       eaveLevelMm: min[2]!,
       ridgeLevelMm: max[2]!,
       halfRunMm: halfRun,

@@ -206,3 +206,57 @@ test('unsupported IFC file fails safely and remains in the importer', async ({
   await expect(importer.getByRole('alert')).toContainText('nagłówka IFC');
   await expect(page.getByTestId('skeleton-drawing')).toBeVisible();
 });
+
+test('regular hip IFC converts to one hip project and overlays as reference', async ({
+  page,
+}, testInfo) => {
+  await page.goto('/');
+  await page.getByTestId('home-import-ifc').click();
+  const importer = page.getByTestId('ifc-import-workspace');
+  await importer
+    .locator('input[type="file"]')
+    .setInputFiles(resolve('fixtures/ifc/hip.ifc'));
+  await importer
+    .getByRole('button', { name: 'Hip roof IfcRoof' })
+    .click({ timeout: 30_000 });
+  await importer
+    .getByRole('button', { name: 'Analizuj dach', exact: true })
+    .click();
+  await expect(importer.getByTestId('ifc-recognized-roof')).toHaveAttribute(
+    'data-roof-type',
+    'hip',
+  );
+  for (const [field, expected] of [
+    ['buildingLength', 12000],
+    ['buildingWidth', 8000],
+    ['pitch', 35],
+  ] as const)
+    expect(
+      Number(await importer.getByTestId(`ifc-${field}`).inputValue()),
+    ).toBeCloseTo(expected, 2);
+  await importer.getByRole('checkbox').check();
+  await importer
+    .getByRole('button', { name: 'Utwórz projekt RoofCalc', exact: true })
+    .click();
+  await expect(importer).toBeHidden();
+  const records = await page.evaluate(() =>
+    Object.entries(localStorage)
+      .filter(([key]) => key.startsWith('cieslacalc.projects.v1.record.'))
+      .map(([, value]) => JSON.parse(value).document.project.roof),
+  );
+  expect(records).toHaveLength(1);
+  expect(records[0]).toMatchObject({
+    type: 'hip',
+    buildingLengthMm: 12000,
+    halfRunMm: 4000,
+  });
+  // The 3D overlay is checked where the renderer switch is in the toolbar.
+  if (testInfo.project.name === 'mobile') return;
+  await page.locator('[data-workspace-renderer="3d"]').first().click();
+  await expect(page.getByTestId('technical-scene-3d')).toBeVisible();
+  const toggle = page.locator('[data-scene-action="ifc-reference"]');
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('scene-3d-ifc-compare')).toBeVisible();
+  await toggle.click();
+  await expect(page.getByTestId('scene-3d-ifc-compare')).toBeHidden();
+});

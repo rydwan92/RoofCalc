@@ -5,6 +5,7 @@ import type {
   IfcSpatialNode,
 } from '@cieslacalc/bim-import-core';
 import type { RoofTemplateSpec } from '@cieslacalc/timber-model';
+import type { IfcRoofSource } from '@cieslacalc/bim-import-core';
 import { IfcRoofConfirmation } from './IfcRoofConfirmation';
 import { loadIfcFile } from './ifc-loader';
 import type { IfcReferenceModel } from './ifc-runtime-types';
@@ -133,7 +134,10 @@ export function IfcImportWorkspace({
   onCreate,
 }: {
   onClose: () => void;
-  onCreate: (template: RoofTemplateSpec) => Promise<void>;
+  onCreate: (
+    template: RoofTemplateSpec,
+    source?: IfcRoofSource,
+  ) => Promise<void>;
 }) {
   const { i18n } = useTranslation();
   const m = copy[i18n.language.startsWith('pl') ? 'pl' : 'en'];

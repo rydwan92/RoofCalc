@@ -4,6 +4,7 @@ import {
   analyzeIfcRoof,
   type IfcRoofAnalysis,
   type IfcRoofCandidate,
+  type IfcRoofSource,
 } from '@cieslacalc/bim-import-core';
 import type { RoofTemplateSpec } from '@cieslacalc/timber-model';
 import { createDefaultProjectDocument } from '../../assembly/store';
@@ -21,7 +22,11 @@ const copy = {
   pl: {
     analyze: 'Analizuj dach',
     title: 'Parametry projektu RoofCalc',
-    gable: 'Dach dwuspadowy',
+    gable: 'Rozpoznany dach dwuspadowy',
+    hip: 'Rozpoznany dach kopertowy',
+    confirmNeeded: 'Wymaga potwierdzenia',
+    hipProof:
+      'Cztery płaskie połacie o jednakowym kącie, pozioma kalenica w osi, prostokątny obrys i cztery zgodne naroża.',
     source: 'Odczytano z modelu IFC',
     defaults: 'Wartość RoofCalc — sprawdź przed utworzeniem projektu',
     user: 'Twoja wartość',
@@ -33,7 +38,7 @@ const copy = {
     summary:
       'Model IFC jest używany tylko jako źródło parametrów. Po utworzeniu projektu obliczenia wykonuje RoofCalc.',
     blocked:
-      'Ten kształt dachu nie jest jeszcze wspierany. Obsługujemy tylko kompletne, regularne dachy dwuspadowe bez otworów i grubości połaci.',
+      'Ten kształt dachu nie jest jeszcze wspierany. Obsługujemy kompletne, regularne dachy dwuspadowe i kopertowe (jeden kąt, jedna kalenica) bez otworów i grubości połaci.',
     missing:
       'Nie rozpoznano jednostki długości IFC. Nie można utworzyć projektu.',
     insufficient:
@@ -48,7 +53,11 @@ const copy = {
   en: {
     analyze: 'Analyze roof',
     title: 'RoofCalc project parameters',
-    gable: 'Gable roof',
+    gable: 'Recognized gable roof',
+    hip: 'Recognized hip roof',
+    confirmNeeded: 'Needs confirmation',
+    hipProof:
+      'Four planar faces with one pitch, a centred horizontal ridge, a rectangular outline and four consistent hip edges.',
     source: 'Read from IFC model',
     defaults: 'RoofCalc value — check before creating the project',
     user: 'Your value',
@@ -61,7 +70,7 @@ const copy = {
     summary:
       'The IFC model is used only as a parameter source. After project creation, RoofCalc performs all calculations.',
     blocked:
-      'This roof shape is not supported yet. Only complete, regular gable surfaces without openings or slab thickness are supported.',
+      'This roof shape is not supported yet. Complete, regular gable and hip surfaces (one pitch, one ridge) without openings or slab thickness are supported.',
     missing: 'The IFC length unit is unknown. A project cannot be created.',
     insufficient:
       'There is not enough geometry to identify this roof reliably. Select another roof or create a project manually.',
@@ -92,12 +101,17 @@ export function IfcRoofConfirmation({
 }: {
   model: IfcReferenceModel;
   candidate: IfcRoofCandidate;
-  onCreate: (template: RoofTemplateSpec) => Promise<void>;
+  onCreate: (
+    template: RoofTemplateSpec,
+    source?: IfcRoofSource,
+  ) => Promise<void>;
 }) {
   const { i18n } = useTranslation();
   const m = copy[i18n.language.startsWith('pl') ? 'pl' : 'en'];
   const [base] = useState(() => createDefaultProjectDocument().project.roof);
   const [analysis, setAnalysis] = useState<IfcRoofAnalysis>();
+  const geometry = model.analysisGeometry[candidate.expressId] ?? [];
+  const sourceToMillimetres = model.summary.metadata.sourceToMillimetres;
   return (
     <section className="ifc-analysis" aria-label={m.title}>
       {!analysis ? (
@@ -111,8 +125,8 @@ export function IfcRoofConfirmation({
             setAnalysis(
               analyzeIfcRoof({
                 sourceRoof: candidate,
-                sourceToMillimetres: model.summary.metadata.sourceToMillimetres,
-                geometry: model.analysisGeometry[candidate.expressId] ?? [],
+                sourceToMillimetres,
+                geometry,
                 semanticEvidence: element?.predefinedType
                   ? [element.predefinedType]
                   : [],
@@ -131,7 +145,13 @@ export function IfcRoofConfirmation({
               : m.blocked}
         </p>
       ) : (
-        <ConfirmationForm analysis={analysis} base={base} onCreate={onCreate} />
+        <ConfirmationForm
+          analysis={analysis}
+          base={base}
+          onCreate={(template) =>
+            onCreate(template, { geometry, sourceToMillimetres, analysis })
+          }
+        />
       )}
       <span className="ifc-source-name">{candidate.name}</span>
     </section>
@@ -145,7 +165,10 @@ function ConfirmationForm({
 }: {
   analysis: Extract<IfcRoofAnalysis, { status: 'supported' }>;
   base: RoofTemplateSpec;
-  onCreate: (template: RoofTemplateSpec) => Promise<void>;
+  onCreate: (
+    template: RoofTemplateSpec,
+    source?: IfcRoofSource,
+  ) => Promise<void>;
 }) {
   const { t, i18n } = useTranslation();
   const m = copy[i18n.language.startsWith('pl') ? 'pl' : 'en'];
@@ -157,7 +180,7 @@ function ConfirmationForm({
     buildingLengthMm: Number(analysis.proposed.buildingLengthMm.toFixed(1)),
     buildingWidthMm: Number(analysis.proposed.buildingWidthMm.toFixed(1)),
     pitchDeg: Number(analysis.proposed.pitchDeg.toFixed(2)),
-    roofType: 'gable' as const,
+    roofType: analysis.roofType,
   }));
   const [draft, setDraft] = useState(
     () =>
@@ -178,7 +201,7 @@ function ConfirmationForm({
     fields.map((field) => [field, parseDecimal(draft[field])]),
   ) as Record<ProjectStartField, number | null>;
   const issues = validateProjectStart(
-    { ...numbers, roofType: 'gable' },
+    { ...numbers, roofType: analysis.roofType },
     fields,
   );
   let template: RoofTemplateSpec | undefined;
@@ -219,7 +242,12 @@ function ConfirmationForm({
       }}
     >
       <h2 tabIndex={-1}>{m.title}</h2>
-      <strong>{m.gable}</strong>
+      <strong
+        data-testid="ifc-recognized-roof"
+        data-roof-type={analysis.roofType}
+      >
+        {analysis.roofType === 'hip' ? m.hip : m.gable}
+      </strong>
       <p className="ifc-notice">{m.extents}</p>
       <fieldset disabled={busy}>
         {fields.map((field) => {
@@ -228,7 +256,9 @@ function ConfirmationForm({
             ? m.user
             : ['buildingLength', 'buildingWidth', 'pitch'].includes(field)
               ? m.source
-              : m.defaults;
+              : field === 'eave'
+                ? m.confirmNeeded
+                : m.defaults;
           return (
             <label className="ifc-field" key={field}>
               <span>
@@ -259,26 +289,28 @@ function ConfirmationForm({
             </label>
           );
         })}
-        <label className="ifc-field">
-          <span>{t('assembly.creator.field.structure')}</span>
-          <select
-            value={construction.structureSystem}
-            onChange={(event) => {
-              setConstruction({
-                ...construction,
-                structureSystem: event.target
-                  .value as ProjectStartValues['structureSystem'],
-              });
-              markChanged('structure');
-            }}
-          >
-            <option value="rafter">{t('assembly.rafterSystem')}</option>
-            <option value="rafter-collar-tie">
-              {t('assembly.rafterCollarTieSystem')}
-            </option>
-          </select>
-          <small>{changed.has('structure') ? m.user : m.defaults}</small>
-        </label>
+        {analysis.roofType === 'gable' && (
+          <label className="ifc-field">
+            <span>{t('assembly.creator.field.structure')}</span>
+            <select
+              value={construction.structureSystem}
+              onChange={(event) => {
+                setConstruction({
+                  ...construction,
+                  structureSystem: event.target
+                    .value as ProjectStartValues['structureSystem'],
+                });
+                markChanged('structure');
+              }}
+            >
+              <option value="rafter">{t('assembly.rafterSystem')}</option>
+              <option value="rafter-collar-tie">
+                {t('assembly.rafterCollarTieSystem')}
+              </option>
+            </select>
+            <small>{changed.has('structure') ? m.user : m.defaults}</small>
+          </label>
+        )}
         <label className="ifc-field">
           <span>{t('assembly.ridgeConnection')}</span>
           <select
@@ -309,7 +341,7 @@ function ConfirmationForm({
         )}
         <details>
           <summary>{m.evidence}</summary>
-          <p>{m.proof}</p>
+          <p>{analysis.roofType === 'hip' ? m.hipProof : m.proof}</p>
         </details>
         <p>{m.summary}</p>
         <label className="ifc-check">

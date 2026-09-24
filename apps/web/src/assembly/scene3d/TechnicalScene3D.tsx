@@ -20,6 +20,10 @@ import {
 } from 'lucide-react';
 import type { RoofSkeleton } from '@cieslacalc/timber-model';
 import {
+  placeIfcRoofReference,
+  type IfcRoofSource,
+} from '@cieslacalc/bim-import-core';
+import {
   DEFAULT_SCENE_VISIBILITY_POLICY,
   SCENE_VIEW_PRESETS,
   boundsOfEntities,
@@ -59,7 +63,10 @@ export function TechnicalScene3D({
   finishedMembers,
   onReturnTo2D,
   onOpenPreparation,
+  ifcReference,
 }: {
+  /** V62: the imported IFC roof, shown as a subdued reference only. */
+  ifcReference?: IfcRoofSource;
   skeleton: RoofSkeleton;
   relatedIds?: ReadonlySet<string>;
   counterBattens?: readonly SceneCounterBattenInput[];
@@ -86,6 +93,7 @@ export function TechnicalScene3D({
   const [showBuildUp, setShowBuildUp] = useState(false);
   const [finishedGeometry, setFinishedGeometry] = useState(true);
   const [hiddenGroups, setHiddenGroups] = useState<SceneSemanticGroup[]>([]);
+  const [showIfc, setShowIfc] = useState(true);
 
   const workbench = state.workbench;
   const isolate = workbench.isolateSelection;
@@ -110,6 +118,53 @@ export function TechnicalScene3D({
     ],
   );
   const families = useMemo(() => sceneFamilyFacets(scene), [scene]);
+  // IFC reference: placed rigidly onto RoofCalc's own roof-plane ridge level.
+  const roofPlanePoints = useMemo(
+    () =>
+      scene.entities.flatMap((entity) =>
+        entity.kind === 'roof-plane' && entity.geometry.kind === 'polygon'
+          ? entity.geometry.points
+          : [],
+      ),
+    [scene],
+  );
+  const ifcPlaced = useMemo(() => {
+    if (!ifcReference) return undefined;
+    const ridgeLevelMm = roofPlanePoints.length
+      ? Math.max(...roofPlanePoints.map((point) => point.z))
+      : scene.bounds.max.z;
+    return placeIfcRoofReference(ifcReference, ifcReference.analysis, {
+      buildingLengthMm: state.template.buildingLengthMm,
+      ridgeLevelMm,
+    });
+  }, [
+    ifcReference,
+    roofPlanePoints,
+    scene.bounds,
+    state.template.buildingLengthMm,
+  ]);
+  // Factual differences only where RoofCalc has explicit roof planes.
+  const ifcComparison = useMemo(() => {
+    if (!ifcPlaced || !roofPlanePoints.length) return undefined;
+    const xs = roofPlanePoints.map((point) => point.x);
+    const ys = roofPlanePoints.map((point) => point.y);
+    const top = Math.max(...roofPlanePoints.map((point) => point.z));
+    const ridgeYs = roofPlanePoints
+      .filter((point) => Math.abs(point.z - top) < 1)
+      .map((point) => point.y);
+    return {
+      ifc: {
+        length: ifcPlaced.outline.lengthMm,
+        width: ifcPlaced.outline.widthMm,
+        ridge: ifcPlaced.ridgeLengthMm,
+      },
+      roofcalc: {
+        length: Math.max(...ys) - Math.min(...ys),
+        width: Math.max(...xs) - Math.min(...xs),
+        ridge: ridgeYs.length ? Math.max(...ridgeYs) - Math.min(...ridgeYs) : 0,
+      },
+    };
+  }, [ifcPlaced, roofPlanePoints]);
   // Only hip skeletons carry roof-plane guides today, so the toggle appears
   // only where there is actually a plane to show.
   const hasRoofPlanes = useMemo(
@@ -195,6 +250,11 @@ export function TechnicalScene3D({
     viewportRef.current?.setProjection(projection);
   }, [projection, ready]);
 
+  useEffect(() => {
+    if (!ready) return;
+    viewportRef.current?.setReference(showIfc ? ifcPlaced : undefined);
+  }, [ifcPlaced, ready, showIfc]);
+
   const applyPreset = useCallback(
     (next: SceneViewPreset) => {
       setPreset(next);
@@ -275,6 +335,10 @@ export function TechnicalScene3D({
 
   const length = (valueMm: number) =>
     formatLength(valueMm, state.unit, i18n.language);
+  const signed = (valueMm: number) =>
+    Math.abs(valueMm) < 0.5
+      ? length(0)
+      : `${valueMm > 0 ? '+' : ''}${length(valueMm)}`;
 
   if (failed)
     return (
@@ -399,6 +463,18 @@ export function TechnicalScene3D({
               `assembly.scene3d.${finishedGeometry ? 'executionGeometry' : 'referenceGeometryShort'}`,
             )}
           </button>
+          {ifcPlaced && (
+            <button
+              className="a-button a-ghost a-scene3d-ifc-toggle"
+              data-scene-action="ifc-reference"
+              aria-pressed={showIfc}
+              title={t('assembly.scene3d.ifcModelHint')}
+              onClick={() => setShowIfc((current) => !current)}
+            >
+              <Box size={15} aria-hidden="true" />
+              {t('assembly.scene3d.ifcModel')}
+            </button>
+          )}
           <button
             className="a-button a-ghost"
             data-scene-action="xray"
@@ -452,6 +528,47 @@ export function TechnicalScene3D({
           onPointerLeave={onPointerLeave}
           onDoubleClick={onDoubleClick}
         />
+        {ifcPlaced && showIfc && (
+          <div className="a-scene3d-ifc" data-testid="scene-3d-ifc-compare">
+            <strong>{t('assembly.scene3d.ifcCompare')}</strong>
+            {ifcComparison ? (
+              <>
+                <span data-compare="outline">
+                  <i>{t('assembly.scene3d.ifcOutline')}</i>
+                  IFC {length(ifcComparison.ifc.length)} ×{' '}
+                  {length(ifcComparison.ifc.width)} · RoofCalc{' '}
+                  {length(ifcComparison.roofcalc.length)} ×{' '}
+                  {length(ifcComparison.roofcalc.width)} {state.unit}
+                  <em>
+                    {t('assembly.scene3d.ifcDifference')}{' '}
+                    {signed(
+                      ifcComparison.roofcalc.length - ifcComparison.ifc.length,
+                    )}{' '}
+                    ×{' '}
+                    {signed(
+                      ifcComparison.roofcalc.width - ifcComparison.ifc.width,
+                    )}{' '}
+                    {state.unit}
+                  </em>
+                </span>
+                <span data-compare="ridge">
+                  <i>{t('assembly.scene3d.ifcRidge')}</i>
+                  IFC {length(ifcComparison.ifc.ridge)} · RoofCalc{' '}
+                  {length(ifcComparison.roofcalc.ridge)} {state.unit}
+                  <em>
+                    {t('assembly.scene3d.ifcDifference')}{' '}
+                    {signed(
+                      ifcComparison.roofcalc.ridge - ifcComparison.ifc.ridge,
+                    )}{' '}
+                    {state.unit}
+                  </em>
+                </span>
+              </>
+            ) : (
+              <span>{t('assembly.scene3d.ifcNoPlanes')}</span>
+            )}
+          </div>
+        )}
         {facts && (
           <div className="a-scene3d-hud" data-testid="scene-3d-hud">
             <strong>

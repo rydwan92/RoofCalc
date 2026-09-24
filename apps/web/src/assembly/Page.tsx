@@ -181,6 +181,7 @@ import {
 import type { ProjectSummary as SavedProjectSummary } from '@cieslacalc/project-core';
 import { ProjectSession } from '../projects/session';
 import { AppHome } from '../home/AppHome';
+import type { IfcRoofSource } from '@cieslacalc/bim-import-core';
 import {
   ProjectStartAssistant,
   type ProjectStartMode,
@@ -460,6 +461,11 @@ function AssemblyPageContent({
       rememberProjectVisit(activeProjectId);
   }, [activeProjectId, projectSessionState.freshProject]);
   const [ifcImportOpen, setIfcImportOpen] = useState(false);
+  // Session-only IFC reference for the project it created; never canonical.
+  const [ifcReference, setIfcReference] = useState<{
+    projectId: string;
+    source: IfcRoofSource;
+  }>();
   const [reuseFreshProject, setReuseFreshProject] = useState(false);
   const workbench = state.workbench;
   const mobile = useMobileWorkbench();
@@ -3295,6 +3301,10 @@ function AssemblyPageContent({
                                 state.setWorkspaceRenderer('2d')
                               }
                               onOpenPreparation={openInstancePreparation}
+                              {...(ifcReference &&
+                              ifcReference.projectId === activeProjectId
+                                ? { ifcReference: ifcReference.source }
+                                : {})}
                             />
                           </Suspense>
                         ) : (
@@ -3595,7 +3605,7 @@ function AssemblyPageContent({
         <Suspense fallback={<p>Uruchamianie importera IFC…</p>}>
           <IfcImportWorkspace
             onClose={() => setIfcImportOpen(false)}
-            onCreate={async (template) => {
+            onCreate={async (template, source) => {
               const name = i18n.language.startsWith('pl')
                 ? 'Projekt z IFC'
                 : 'Project from IFC';
@@ -3603,15 +3613,24 @@ function AssemblyPageContent({
               await projectSession.initialize();
               // Reuse the placeholder a first initialization just created.
               if (!initialized && projectSession.snapshot().freshProject) {
+                // Builder mode first: the session persists the Builder document.
+                useAssembly.getState().setMode('builder');
                 useAssembly
                   .getState()
                   .replaceProjectDocument(createRoofProjectDocument(template));
                 await projectSession.rename(name);
+                await projectSession.persistNow();
               } else
                 await projectSession.createFromDocument(
                   createRoofProjectDocument(template),
                   name,
                 );
+              const createdId = projectSession.snapshot().active?.id;
+              setIfcReference(
+                source && createdId
+                  ? { projectId: createdId, source }
+                  : undefined,
+              );
               setIfcImportOpen(false);
               enterProject();
               state.setViewPreset('construction');
