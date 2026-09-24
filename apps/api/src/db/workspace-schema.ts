@@ -197,3 +197,16 @@ export const quoteDrafts = mysqlTable(
     }),
   ],
 );
+
+/**
+ * RoofCalc operators. Deliberately without `organization_id`: platform
+ * administration is a separate authority from any organization role, and an
+ * organization owner is never implicitly a platform admin.
+ */
+export const platformAdmins = mysqlTable('platform_admins', {
+  userId: id('user_id')
+    .primaryKey()
+    .references(() => authUsers.id),
+  active: boolean('active').notNull().default(true),
+  createdAt: time('created_at').notNull(),
+});

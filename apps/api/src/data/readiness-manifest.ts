@@ -4,7 +4,7 @@ import type { ExpectedSeed } from '../db/seed-status';
  * The parity test fails when either source changes without updating this file. */
 export const EXPECTED_MIGRATION_TIMES = [
   1789321526420, 1789475192686, 1789494166959, 1789934338932, 1789938525101,
-  1790108195341, 1790173860498, 1790193009383,
+  1790108195341, 1790173860498, 1790193009383, 1790286386802,
 ] as const;
 
 export const EXPECTED_SEEDS: readonly ExpectedSeed[] = [

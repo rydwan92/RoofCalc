@@ -15,8 +15,8 @@ describe('system readiness projection', () => {
     const current = projectSystemStatus(EXPECTED_MIGRATION_TIMES, observed);
     expect(current.migrations).toEqual({
       state: 'current',
-      applied: 8,
-      expected: 8,
+      applied: 9,
+      expected: 9,
     });
     expect(current.seeds.catalogue).toEqual({
       state: 'current',

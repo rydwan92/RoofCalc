@@ -560,6 +560,11 @@ V60: migration `0007_brainy_mandarin.sql` adds `organization_memberships.active`
 Existing memberships retain access; unknown VAT stays unknown. No technical revision,
 roof document or quote schema version changes. Quote VAT remains a commercial snapshot.
 
+V62: migration `0008_platform_admins.sql` adds `platform_admins(user_id PK → auth_users,
+active, created_at)` with no organization column. Additive; existing sessions resolve
+`platformAdmin: false` until a row exists (also before the migration). The first-owner
+bootstrap inserts the first row; `pnpm platform:grant-admin` grants an existing account.
+
 ## Device-local recent-project preference (Guided Workbench)
 
 `cieslacalc.recentProjects.v1` is a best-effort localStorage string array of up to

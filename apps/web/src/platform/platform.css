@@ -1,0 +1,456 @@
+/* System console: operator tone (slate), distinct from wholesaler green. */
+.p-console {
+  --p-ink: #1f2a37;
+  --p-muted: #5f6b7a;
+  --p-line: #dde3ea;
+  --p-bg: #f4f6f9;
+  --p-accent: #2d4a6b;
+  --p-good: #2f7a4f;
+  --p-bad: #b35b2d;
+  display: grid;
+  grid-template-columns: 236px minmax(0, 1fr);
+  min-height: 100dvh;
+  background: var(--p-bg);
+  color: var(--p-ink);
+}
+.p-nav {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100dvh;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 12px;
+  background: #1f2a37;
+  color: #e7edf4;
+}
+.p-nav button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.p-nav nav {
+  display: grid;
+  gap: 2px;
+}
+.p-nav nav button:hover {
+  background: #2b3a4c;
+}
+.p-nav nav button[aria-current] {
+  background: #3b5577;
+  font-weight: 700;
+}
+.p-back {
+  color: #b8c4d3 !important;
+  font-size: 13px !important;
+}
+.p-brand {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin: 8px 12px 14px;
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.p-user {
+  margin: auto 12px 0;
+  display: grid;
+  font-size: 13px;
+}
+.p-user small {
+  color: #9fb0c4;
+}
+.p-main {
+  min-width: 0;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  box-sizing: border-box;
+  padding: 22px 28px 40px;
+}
+.p-header {
+  margin-bottom: 18px;
+}
+.p-header h1 {
+  margin: 0;
+  font-size: 24px;
+  letter-spacing: -0.3px;
+}
+.p-header p {
+  margin: 4px 0 0;
+  color: var(--p-muted);
+  font-size: 13px;
+}
+.p-card {
+  background: #fff;
+  border: 1px solid var(--p-line);
+  border-radius: 12px;
+  padding: 18px;
+  min-width: 0;
+}
+.p-card h2 {
+  margin: 0 0 12px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--p-muted);
+}
+.p-card h3 {
+  margin: 18px 0 8px;
+  font-size: 14px;
+}
+.p-dashboard {
+  display: grid;
+  grid-template-columns: minmax(280px, 380px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.p-status-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-top: 1px solid var(--p-line);
+  font-size: 14px;
+}
+.p-status-row:first-of-type {
+  border-top: 0;
+}
+.p-status-row strong {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.p-status-row i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--p-bad);
+}
+.p-status-row[data-good='true'] i {
+  background: var(--p-good);
+}
+.p-counts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+}
+.p-counts > div {
+  display: grid;
+  gap: 2px;
+  padding: 14px;
+  border-radius: 10px;
+  background: var(--p-bg);
+}
+.p-counts strong {
+  font-size: 26px;
+  font-variant-numeric: tabular-nums;
+}
+.p-counts span {
+  color: var(--p-muted);
+  font-size: 13px;
+}
+.p-counts.is-compact strong {
+  font-size: 20px;
+}
+.p-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+  gap: 16px;
+  align-items: start;
+}
+.p-side {
+  display: grid;
+  gap: 10px;
+  position: sticky;
+  top: 16px;
+}
+.p-stack {
+  display: grid;
+  gap: 16px;
+}
+.p-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.p-toolbar h2 {
+  margin: 0;
+}
+.p-search,
+.p-card .p-search {
+  display: flex;
+  margin: 0;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  max-width: 360px;
+  padding: 0 12px;
+  border: 1px solid var(--p-line);
+  border-radius: 8px;
+  background: #fff;
+}
+.p-search input {
+  flex: 1;
+  min-height: 38px;
+  border: 0;
+  outline: 0;
+  font: inherit;
+}
+.p-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.p-table th {
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--p-muted);
+  padding: 8px;
+  border-bottom: 1px solid var(--p-line);
+}
+.p-table td {
+  padding: 8px;
+  border-bottom: 1px solid var(--p-line);
+  vertical-align: middle;
+}
+.p-table .n {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.p-table tbody tr {
+  cursor: pointer;
+}
+.p-table tbody tr:hover {
+  background: #f7f9fb;
+}
+.p-table tbody tr[aria-selected='true'] {
+  background: #e9f0f8;
+}
+.p-row-link {
+  display: grid;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+.p-row-link small,
+.p-list small,
+.p-muted {
+  color: var(--p-muted);
+  font-size: 12.5px;
+}
+.p-muted {
+  margin: -6px 0 12px;
+}
+.p-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #fbe9dd;
+  color: var(--p-bad);
+}
+.p-pill[data-active='true'] {
+  background: #e3f2e8;
+  color: var(--p-good);
+}
+.p-pill.is-admin {
+  background: #e3ebf5;
+  color: var(--p-accent);
+}
+.p-card label {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+.p-card label > span {
+  color: var(--p-muted);
+}
+.p-card input:not([type='checkbox']),
+.p-card select {
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--p-line);
+  border-radius: 8px;
+  font: inherit;
+  background: #fff;
+}
+.p-button {
+  min-height: 38px;
+  padding: 0 16px;
+  border: 1px solid var(--p-accent);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--p-accent);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.p-button.is-primary {
+  background: var(--p-accent);
+  color: #fff;
+}
+.p-button.is-quiet {
+  border-color: var(--p-line);
+  color: var(--p-ink);
+}
+.p-button:disabled {
+  opacity: 0.6;
+}
+.p-link {
+  justify-self: start;
+  border: 0;
+  background: none;
+  color: var(--p-accent);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.p-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.p-list li {
+  display: grid;
+}
+.p-member-forms {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+.p-member-forms form {
+  padding: 12px;
+  border-radius: 10px;
+  background: var(--p-bg);
+}
+.p-member-forms h4 {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+.p-membership {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 0;
+  border-top: 1px solid var(--p-line);
+}
+.p-card .p-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+.p-feedback {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--p-bad);
+}
+.p-feedback[data-ok='true'] {
+  color: var(--p-good);
+}
+.p-kinds {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 6px 16px;
+}
+.p-kinds li {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--p-line);
+  font-size: 14px;
+}
+.p-spec {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  font-size: 13px;
+}
+.p-spec div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px dashed var(--p-line);
+  padding: 3px 0;
+}
+.p-spec dt {
+  color: var(--p-muted);
+}
+.p-spec dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.p-gate {
+  max-width: 560px;
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+}
+.p-gate p {
+  margin: 0;
+}
+@media (max-width: 1100px) {
+  .p-split,
+  .p-dashboard {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .p-side {
+    position: static;
+  }
+}
+@media (max-width: 760px) {
+  .p-console {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .p-nav {
+    position: static;
+    height: auto;
+  }
+  .p-nav nav {
+    grid-auto-flow: column;
+    overflow-x: auto;
+  }
+  .p-main {
+    padding: 16px;
+  }
+  .p-table th:nth-child(n + 3),
+  .p-table td:nth-child(n + 3) {
+    display: none;
+  }
+}
+.p-list strong {
+  font-size: 14px;
+}

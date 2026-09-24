@@ -13,6 +13,7 @@ import { createBusinessAuth } from './business/auth/auth';
 import { resolveBusinessAccess } from './business/auth/access';
 import { DrizzleWorkspaceRepository } from './business/workspace/drizzle-repository';
 import { readSystemStatus } from './db/system-status';
+import { PlatformService } from './business/platform/service';
 
 const port = Number(process.env.PORT ?? 3001);
 if (!Number.isInteger(port) || port < 1 || port > 65535)
@@ -52,6 +53,8 @@ const business = businessRepository
       service: new BusinessService(businessRepository, businessRepository),
       workspace: new DrizzleWorkspaceRepository(catalogDatabase!.db),
       systemStatus: () => readSystemStatus(catalogDatabase!.db),
+      platform: new PlatformService(catalogDatabase!.db),
+      deployment: { gitSha: process.env.ROOFCALC_GIT_SHA },
       admin: new BusinessAdminService(
         businessRepository,
         businessRepository,

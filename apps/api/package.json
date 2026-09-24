@@ -21,7 +21,8 @@
     "db:bootstrap": "pnpm db:wait && pnpm db:migrate && pnpm db:seed && pnpm db:seed-business && pnpm db:smoke-check && pnpm db:status",
     "db:setup:local": "tsx src/cli/setup-database.ts local",
     "db:setup:shared-dev": "tsx src/cli/setup-database.ts shared-dev",
-    "deploy:cloudflare": "wrangler deploy --config ../../wrangler.jsonc"
+    "deploy:cloudflare": "wrangler deploy --config ../../wrangler.jsonc",
+    "platform:grant-admin": "tsx src/cli/grant-platform-admin.ts"
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "1.7.5",

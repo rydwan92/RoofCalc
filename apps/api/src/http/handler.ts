@@ -39,6 +39,10 @@ import {
 import { type AdminRequestContext } from '../business/capability';
 import { can, type BusinessAccess } from '../business/auth/access';
 import { workspaceRoute } from '../business/workspace/routes';
+import {
+  PlatformError,
+  type PlatformService,
+} from '../business/platform/service';
 import type { SystemStatus } from '../db/system-status';
 import {
   WorkspaceError,
@@ -76,6 +80,10 @@ export interface BusinessApi {
   systemStatus?: () => Promise<SystemStatus>;
   /** Per-request transport facts the capability gate needs. */
   request?: AdminRequestContext;
+  /** RoofCalc system console services (platform admins only). */
+  platform?: PlatformService;
+  /** Deployment facts shown in the system console; never secrets. */
+  deployment?: { gitSha?: string };
 }
 
 /** Shared endpoint semantics for Express and Cloudflare Fetch transports. */
@@ -136,6 +144,8 @@ export async function handleApiRequest(
   /** Parsed JSON body, supplied by the transport for admin mutations only. */
   body?: unknown,
 ): Promise<ApiResult> {
+  if (pathname.startsWith('/api/platform/'))
+    return handlePlatform(method, pathname, search, business, health, body);
   const businessPath = pathname.startsWith('/api/business/');
   if (businessPath)
     return handleAuthorizedBusiness(method, pathname, search, business, body);
@@ -488,4 +498,90 @@ async function handleBusinessAdmin(
     return errorResult(500, 'business-internal-error');
   }
   return errorResult(404, 'not-found');
+}
+
+/** Paths whose transport must resolve the session and check write origin. */
+export function isSessionApiPath(pathname: string): boolean {
+  return (
+    pathname.startsWith('/api/business/') ||
+    pathname.startsWith('/api/platform/')
+  );
+}
+
+/**
+ * `/api/platform/*` — the RoofCalc system console. Authorization is an
+ * authenticated session **and** an active platform admin; organization roles
+ * and capabilities are never consulted here.
+ */
+async function handlePlatform(
+  method: string,
+  pathname: string,
+  search: URLSearchParams,
+  business: BusinessApi | undefined,
+  health: HealthContext,
+  body: unknown,
+): Promise<ApiResult> {
+  if (!business?.access) return errorResult(401, 'authentication-required');
+  if (!business.access.platformAdmin)
+    return errorResult(403, 'platform-forbidden');
+  const platform = business.platform;
+  if (!platform) return errorResult(503, 'platform-unavailable');
+  const segments = pathname.split('/').slice(3).map(decodeURIComponent);
+  const resource =
+    segments[0] === 'organizations' && segments[1]
+      ? 'organizations/:id'
+      : segments.join('/');
+  const query = search.get('q') ?? undefined;
+  const system = async () => {
+    const status = business.systemStatus
+      ? await business.systemStatus().catch(() => undefined)
+      : undefined;
+    const serverVersion = status ? await platform.serverVersion() : undefined;
+    return {
+      database: status ? ('connected' as const) : ('unavailable' as const),
+      auth: health.auth ?? 'unconfigured',
+      runtime: health.runtime,
+      appVersion: '0.1.0',
+      ...(business.deployment?.gitSha
+        ? { gitSha: business.deployment.gitSha.slice(0, 12) }
+        : {}),
+      ...(serverVersion ? { serverVersion } : {}),
+      ...(status ? { migrations: status.migrations, seeds: status.seeds } : {}),
+    };
+  };
+  try {
+    switch (`${method} ${resource}`) {
+      case 'GET overview':
+        return json({
+          system: await system(),
+          counts: await platform.counts(),
+        });
+      case 'GET database/status':
+        return json(await system());
+      case 'GET organizations':
+        return json({ items: await platform.organizations(query) });
+      case 'POST organizations':
+        return json({ item: await platform.createOrganization(body) }, 201);
+      case 'PATCH organizations/:id':
+        return json({
+          item: await platform.setOrganizationActive(segments[1]!, body),
+        });
+      case 'GET users':
+        return json({ items: await platform.users(query) });
+      case 'POST users':
+        return json({ item: await platform.createUser(body) }, 201);
+      case 'POST memberships':
+        return json({ item: await platform.setMembership(body) });
+      case 'GET catalogue/status':
+        return json(await platform.catalogue());
+      default:
+        return errorResult(404, 'not-found');
+    }
+  } catch (error) {
+    if (error instanceof PlatformError)
+      return errorResult(error.status, error.code);
+    if (error instanceof ZodError || error instanceof URIError)
+      return errorResult(400, 'platform-invalid-request');
+    return errorResult(503, 'platform-unavailable');
+  }
 }

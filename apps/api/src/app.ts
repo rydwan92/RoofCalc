@@ -12,6 +12,7 @@ import type { CatalogService } from './catalog/service';
 import type { PricingService } from './pricing/service';
 import {
   handleApiRequest,
+  isSessionApiPath,
   type BusinessApi,
   type HealthContext,
 } from './http/handler';
@@ -124,11 +125,12 @@ export function createApp(
   });
   /** Business JSON writes are checked against origin, session and capability. */
   app.use('/api/business', express.json({ limit: JSON_BODY_LIMIT }));
+  app.use('/api/platform', express.json({ limit: '64kb' }));
   app.use('/api', async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     const url = new URL(req.originalUrl, 'http://localhost');
     let access = business?.access;
-    if (url.pathname.startsWith('/api/business/')) {
+    if (isSessionApiPath(url.pathname)) {
       if (
         !businessOriginAllowed(
           req.method,

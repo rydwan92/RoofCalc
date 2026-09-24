@@ -8,6 +8,7 @@ import {
   authRateLimits,
   authUsers,
   organizationMemberships,
+  platformAdmins,
 } from '../../db/workspace-schema';
 
 const inputSchema = z
@@ -271,6 +272,11 @@ export async function bootstrapFirstOwner(
       userId,
       role: 'owner',
     });
+    // The bootstrap secret is platform-level, so its first owner is also the
+    // first platform admin. Later organization owners never are implicitly.
+    await tx
+      .insert(platformAdmins)
+      .values({ userId, active: true, createdAt: timestamp });
     await markBootstrapConsumed(tx as CatalogDatabase);
     return { status: 201 as const, body: { created: true as const } };
   });

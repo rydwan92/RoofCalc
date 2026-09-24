@@ -209,6 +209,11 @@ function rememberCreatorStart() {
   }
 }
 
+const PlatformConsole = lazy(() =>
+  import('../platform/PlatformConsole').then((module) => ({
+    default: module.PlatformConsole,
+  })),
+);
 const MaterialSchedule = lazy(() =>
   import('./MaterialSchedule').then((module) => ({
     default: module.MaterialSchedule,
@@ -2346,7 +2351,18 @@ function AssemblyPageContent({
         }
       }}
     >
-      {home || platform ? (
+      {platform ? (
+        <Suspense fallback={<p className="a-loading">…</p>}>
+          <PlatformConsole
+            onHome={() => navigate('home')}
+            onSignIn={() => {
+              business.setMode('business');
+              business.setHomeOpen(true);
+              navigate('workbench');
+            }}
+          />
+        </Suspense>
+      ) : home ? (
         <AppHome
           brand={brand}
           projects={recentProjects(homeProjects)}

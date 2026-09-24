@@ -6,7 +6,11 @@ import { DrizzlePricingRepository } from '../db/pricing-repository';
 import { DrizzleBusinessRepository } from '../db/business-repository';
 import { BusinessService } from '../business/service';
 import { schema } from '../db/schema-bundle';
-import { handleApiRequest, type ApiResult } from '../http/handler';
+import {
+  handleApiRequest,
+  isSessionApiPath,
+  type ApiResult,
+} from '../http/handler';
 import { PricingService } from '../pricing/service';
 import {
   createBusinessAuth,
@@ -18,6 +22,7 @@ import {
   resolveBusinessAccess,
 } from '../business/auth/access';
 import { BusinessAdminService } from '../business/admin-service';
+import { PlatformService } from '../business/platform/service';
 import { DrizzleWorkspaceRepository } from '../business/workspace/drizzle-repository';
 import {
   bootstrapFirstOwner,
@@ -37,6 +42,8 @@ export interface HyperdriveBinding {
 export interface WorkerEnv extends AuthConfiguration {
   HYPERDRIVE?: HyperdriveBinding;
   ROOFCALC_BOOTSTRAP_TOKEN?: string;
+  /** Optional plain variable: the deployed commit, shown to platform admins. */
+  ROOFCALC_GIT_SHA?: string;
   ASSETS: { fetch(request: Request): Promise<Response> };
 }
 
@@ -166,7 +173,7 @@ export function createWorker(connect: ConnectDatabase = connectHyperdrive) {
         ((request.method === 'GET' || request.method === 'HEAD') &&
           (url.pathname.startsWith('/api/catalog/') ||
             url.pathname.startsWith('/api/pricing/'))) ||
-        url.pathname.startsWith('/api/business/') ||
+        isSessionApiPath(url.pathname) ||
         url.pathname.startsWith('/api/auth/');
       if (!needsDatabase)
         return respond(
@@ -232,7 +239,7 @@ export function createWorker(connect: ConnectDatabase = connectHyperdrive) {
             });
           return await auth.handler(request);
         }
-        const isBusiness = url.pathname.startsWith('/api/business/');
+        const isBusiness = isSessionApiPath(url.pathname);
         if (
           isBusiness &&
           !businessOriginAllowed(
@@ -293,6 +300,8 @@ export function createWorker(connect: ConnectDatabase = connectHyperdrive) {
               access,
               workspace: new DrizzleWorkspaceRepository(db),
               systemStatus: () => readSystemStatus(db),
+              platform: new PlatformService(db),
+              deployment: { gitSha: env.ROOFCALC_GIT_SHA },
               admin: new BusinessAdminService(
                 businessRepository,
                 businessRepository,

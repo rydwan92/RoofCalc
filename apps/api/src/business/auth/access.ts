@@ -5,7 +5,10 @@ import {
   type BusinessCapability,
 } from '@cieslacalc/business-core';
 import type { CatalogDatabase } from '../../db/client';
-import { organizationMemberships } from '../../db/workspace-schema';
+import {
+  organizationMemberships,
+  platformAdmins,
+} from '../../db/workspace-schema';
 import { organizations } from '../../db/business-schema';
 import type { BusinessAuth } from './auth';
 
@@ -16,6 +19,27 @@ export interface BusinessAccess {
     role?: 'owner' | 'admin' | 'sales';
     capabilities: BusinessCapability[];
   }[];
+  /** Platform operator; independent of every organization membership. */
+  platformAdmin?: boolean;
+}
+
+/** Active platform admin, or false — including before migration 0008. */
+export async function isPlatformAdmin(
+  db: CatalogDatabase,
+  userId: string,
+): Promise<boolean> {
+  try {
+    const rows = await db
+      .select({ userId: platformAdmins.userId })
+      .from(platformAdmins)
+      .where(
+        and(eq(platformAdmins.userId, userId), eq(platformAdmins.active, true)),
+      )
+      .limit(1);
+    return rows.length > 0;
+  } catch {
+    return false;
+  }
 }
 export async function resolveBusinessAccess(
   db: CatalogDatabase,
@@ -42,7 +66,9 @@ export async function resolveBusinessAccess(
         eq(organizationMemberships.active, true),
       ),
     );
+  const platformAdmin = await isPlatformAdmin(db, session.user.id);
   return {
+    ...(platformAdmin ? { platformAdmin } : {}),
     user: {
       id: session.user.id,
       name: session.user.name,
