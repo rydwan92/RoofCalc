@@ -2718,7 +2718,10 @@ function AssemblyPageContent({
                   </section>
                 </div>
               ) : (
-                <div className="a-project-shell">
+                <div
+                  className="a-project-shell"
+                  data-renderer={workbench.workspaceRenderer}
+                >
                   <JourneyRail
                     journey={projectJourney}
                     currentStage={currentJourneyStage}

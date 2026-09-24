@@ -59,7 +59,7 @@ test('admin sees live readiness categories without a mutation control', async ({
     }),
   );
   await mockBusinessWorkspace(page, 'org:demo');
-  await page.goto('/');
+  await page.goto('/#/calculators/common-rafter');
   await page.getByTestId('business-admin-entry').click();
   await page.getByRole('button', { name: 'Stan systemu' }).click();
   const status = page.getByTestId('business-system-status');

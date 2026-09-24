@@ -687,7 +687,14 @@ export function JourneyRail({
                   )}
                 </span>
                 <span className="a-rail-text">
-                  <strong>{t(`assembly.journey.stage.${stage.key}`)}</strong>
+                  <strong>
+                    {t(`assembly.journey.stage.${stage.key}`)}
+                    {journey.recommended?.stage === stage.key && (
+                      <em className="a-rail-next">
+                        {t('assembly.journey.nextShort')}
+                      </em>
+                    )}
+                  </strong>
                   {stage.summary && <small>{stage.summary}</small>}
                 </span>
                 <span className="a-visually-hidden">

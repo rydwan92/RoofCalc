@@ -23,27 +23,28 @@ test('home → new project → eight-stage rail → next action, no overflow', a
   await start.getByTestId('project-start-next').click();
   await start.getByTestId('project-start-submit').click();
   await expect(start).toBeHidden();
-  const rail = page.getByTestId('journey-rail');
-  await expect(rail.locator('li')).toHaveCount(8);
   await expect(page.getByTestId('project-next-action')).toHaveAttribute(
     'data-readiness-action',
     'choose-covering',
   );
-  await rail.locator('[data-journey-step="construction"]').click();
-  await expect(page.getByTestId('structure-settings')).toHaveAttribute(
-    'open',
-    '',
-  );
-  if (testInfo.project.name === 'mobile')
-    await page
-      .locator('.a-mobile-sheet-header')
-      .getByRole('button', { name: 'Zamknij', exact: true })
-      .click();
-  await page.getByTestId('journey-rail-overview').click();
-  await expect(page.getByTestId('journey-dashboard').locator('li')).toHaveCount(
-    8,
-  );
-  await page.getByTestId('overview-continue').click();
+  if (testInfo.project.name === 'mobile') {
+    // Phones navigate with their task dock; the stage rail is desktop-only.
+    await expect(page.getByTestId('journey-rail')).toBeHidden();
+    await page.getByTestId('project-next-action').click();
+  } else {
+    const rail = page.getByTestId('journey-rail');
+    await expect(rail.locator('li')).toHaveCount(8);
+    await rail.locator('[data-journey-step="construction"]').click();
+    await expect(page.getByTestId('structure-settings')).toHaveAttribute(
+      'open',
+      '',
+    );
+    await page.getByTestId('journey-rail-overview').click();
+    await expect(
+      page.getByTestId('journey-dashboard').locator('li'),
+    ).toHaveCount(8);
+    await page.getByTestId('overview-continue').click();
+  }
   await expect(page.getByTestId('covering-add-assistant')).toBeVisible();
   expect(
     await page.evaluate(
@@ -89,7 +90,7 @@ test('home lists local projects, reopens one and the quick path saves nothing', 
     .getByTestId('home-recent-project')
     .filter({ hasText: 'Second roof' })
     .click();
-  await expect(page.getByTestId('journey-rail')).toBeVisible();
+  await expect(page.getByTestId('project-next-action')).toBeVisible();
   await page.locator('.a-brand').click();
   await expect(page.getByTestId('home-recent-project').first()).toContainText(
     'Second roof',

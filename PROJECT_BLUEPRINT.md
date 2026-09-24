@@ -1297,12 +1297,16 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
-## Guided Workbench UX / Project Journey — validation in progress
+## V62 — productization, platform admin, IFC hip (branch claude/roofcalc-v62-productization-d1625c)
 
-- User prompt after V61B supersedes the previous NEXT ACTION; UX only.
-- Clean main baseline: typecheck, lint, format, 1687 tests passed (13 skipped), web/API built. Worker dry-run requires Node 22; shell is Node 20.16.
-- Reuse V47 readiness and V53 journey; no canonical status, SQL, Business, IFC engine, geometry, quantity or costing changes.
-- NEXT ACTION: implement six-stage overview and start paths, validate desktop/mobile and update this checkpoint.
+- V62A: home `#/` (Standard / Business entry with real setup state), 8-stage journey rail (desktop; compact in 3D; hidden on phones), project overview. The WIP six-stage overview was removed.
+- V62B: migrator works on MariaDB < 10.10 (explicit timestamp DDL); nested pnpm spawns reuse the launching pnpm; `dev:remote` requires a ready DB.
+- V62C: `platform_admins` (0008), `/api/platform/*` (session + active platform admin only), `#/platform` console. Existing owners: `pnpm platform:grant-admin -- --email … --apply`.
+- V62D: regular hip IFC recognition and conversion; IFC reference overlay with outline/ridge comparison in 3D. Also: pitch-fit hints in the catalogue picker.
+- Real DB verified only on local XAMPP MariaDB 10.4 (fresh schema): migrations 9/9, seeds current, integration 11/11, bootstrap → sign-in → owner session → platform console.
+- BLOCKER shared DEV: no DATABASE_URL on this machine, Wrangler not logged in, GitHub env `shared-dev` has no secrets or variables. Local + Worker same-DB is unverified.
+- Validation: typecheck, lint, format, 1726 unit tests, `build:edge` on Node 24, `git diff --check`. The Worker dry-run inside `pnpm build` needs Node 22+ (this shell has 20).
+- NEXT ACTION: put the shared DEV DATABASE_URL in the root `.env`, run `pnpm db:setup:shared-dev -- --apply --confirm shared-dev`, then plan V63 (ProjectDocumentV2 for joined structures).
 
 
 ## V61B — completed and validated locally

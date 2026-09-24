@@ -26,7 +26,7 @@ test('first owner form stays usable at desktop and mobile widths', async ({
       }),
     }),
   );
-  await page.goto('/');
+  await page.goto('/#/calculators/common-rafter');
   const login = page.getByTestId('business-login');
   await expect(login).toBeVisible();
   await login

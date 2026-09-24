@@ -1945,6 +1945,7 @@ export const assemblyPl = {
   journey: {
     overview: 'Przebieg projektu',
     projectOverview: 'Przegląd projektu',
+    nextShort: 'Teraz',
     continue: 'Kontynuuj pracę',
     railStatus: {
       ready: 'Gotowe',
@@ -4470,6 +4471,7 @@ export const assemblyEn: typeof assemblyPl = {
   journey: {
     overview: 'Project journey',
     projectOverview: 'Project overview',
+    nextShort: 'Next',
     continue: 'Continue work',
     railStatus: {
       ready: 'Ready',

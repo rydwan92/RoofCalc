@@ -740,6 +740,7 @@ export function CoveringWorkspace({
     <Suspense fallback={<div className="a-loading-panel" />}>
       <CatalogProductPicker
         kind={catalogKind}
+        roofPitchDeg={state.template.pitchDeg}
         confirmReplacementImpact={Boolean(catalogReplacementId)}
         onClose={() => {
           setCatalogKind(undefined);

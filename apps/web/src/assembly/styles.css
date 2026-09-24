@@ -2169,12 +2169,13 @@
   cursor: pointer;
   padding: 8px 10px;
   color: var(--a-muted);
-  font-size: 9px;
+  font-size: 10.5px;
   font-weight: 800;
   letter-spacing: 0.8px;
   text-transform: uppercase;
 }
 .a-dynamic-legend summary span {
+  display: inline;
   margin-left: 8px;
   color: var(--a-green);
   letter-spacing: 0;
@@ -2190,7 +2191,7 @@
   align-items: center;
   gap: 5px;
   color: #476158;
-  font-size: 9px;
+  font-size: 11px;
 }
 .a-dynamic-legend span i {
   width: 10px;
@@ -8539,4 +8540,19 @@ button.a-quick-fact[aria-pressed='true'] {
     font-size: 18px;
     letter-spacing: -0.3px;
   }
+}
+/* V62: catalogue products marked against the roof's own pitch. */
+.a-catalog-fit {
+  display: inline-block;
+  margin: 4px 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #e5f3ea;
+  color: #2f7a4f;
+}
+.a-catalog-fit[data-fit='too-flat'] {
+  background: var(--a-warning-fill, #fff0df);
+  color: var(--a-warning, #b35b2d);
 }

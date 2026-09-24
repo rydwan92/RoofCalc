@@ -21,6 +21,7 @@ import { useMobileWorkbench } from '../assembly/mobile-workbench';
 import { catalogClient, type CatalogClient } from './client';
 import { useBusiness } from '../business/context';
 import { businessCopy } from '../business/copy';
+import { orderByPitchFit, pitchFit } from './pitch-fit';
 import { BusinessAssortmentPicker } from '../business/BusinessAssortmentPicker';
 
 const copy = {
@@ -49,6 +50,8 @@ const copy = {
     width: 'Szerokość krycia',
     gauge: 'Rozstaw łat',
     pitch: 'Minimalny kąt',
+    fits: 'Pasuje do kąta dachu {{pitch}}°',
+    tooFlat: 'Dach za płaski: wymaga min. {{min}}°, dach ma {{pitch}}°',
     panelLength: 'Zakres długości',
     sheetFormat: 'Format',
     fixedSheet: 'Stały arkusz',
@@ -91,6 +94,8 @@ const copy = {
     width: 'Cover width',
     gauge: 'Batten gauge',
     pitch: 'Minimum pitch',
+    fits: 'Fits the roof pitch {{pitch}}°',
+    tooFlat: 'Roof too flat: needs at least {{min}}°, roof is {{pitch}}°',
     panelLength: 'Length range',
     sheetFormat: 'Format',
     fixedSheet: 'Fixed sheet',
@@ -150,12 +155,35 @@ function facts(spec: CoveringTechnicalSpec, m: (typeof copy)['pl']) {
   ].filter(Boolean) as string[][];
 }
 
+function PitchFitBadge({
+  minPitchDeg,
+  roofPitchDeg,
+  m,
+}: {
+  minPitchDeg?: number;
+  roofPitchDeg?: number;
+  m: (typeof copy)['pl'];
+}) {
+  const fit = pitchFit(minPitchDeg, roofPitchDeg);
+  if (fit === 'unknown') return null;
+  const pitch = String(Math.round(roofPitchDeg! * 10) / 10);
+  return (
+    <span className="a-catalog-fit" data-fit={fit}>
+      {(fit === 'fits' ? m.fits : m.tooFlat)
+        .replace('{{pitch}}', pitch)
+        .replace('{{min}}', String(minPitchDeg))}
+    </span>
+  );
+}
+
 function PickerBody({
   kind,
   client,
   onApply,
   onManual,
+  roofPitchDeg,
 }: {
+  roofPitchDeg?: number;
   kind: CoveringKind;
   client: CatalogClient;
   onApply: (selection: CoveringProductSelection) => void;
@@ -202,7 +230,18 @@ function PickerBody({
   });
 
   const unavailable = manufacturers.isError || products.isError;
-  const productItems = products.data?.pages.flatMap((page) => page.items);
+  const [selectedMinPitch, setSelectedMinPitch] = useState<number>();
+  // Suitable for this roof's pitch first; nothing is hidden (catalogue data only).
+  const productItems = useMemo(
+    () =>
+      products.data &&
+      orderByPitchFit(
+        products.data.pages.flatMap((page) => page.items),
+        (item) => item.technicalPreview.minPitchDeg,
+        roofPitchDeg,
+      ),
+    [products.data, roofPitchDeg],
+  );
   const selectedVariant = detail.data?.variants.find(
     (item) => item.id === variantId,
   );
@@ -272,6 +311,11 @@ function PickerBody({
                 </span>
               )}
             </header>
+            <PitchFitBadge
+              minPitchDeg={selectedMinPitch}
+              roofPitchDeg={roofPitchDeg}
+              m={m}
+            />
             <dl className="a-catalog-facts">
               {detailFacts.map(([label, value]) => (
                 <div key={label}>
@@ -358,6 +402,11 @@ function PickerBody({
               <span className="a-catalog-revision-badge">
                 {m.currentRevision}
               </span>
+              <PitchFitBadge
+                minPitchDeg={product.technicalPreview.minPitchDeg}
+                roofPitchDeg={roofPitchDeg}
+                m={m}
+              />
               <dl>
                 {product.technicalPreview.effectiveWidthMm && (
                   <div>
@@ -407,6 +456,7 @@ function PickerBody({
                 className="a-button"
                 onClick={() => {
                   setVariantId('');
+                  setSelectedMinPitch(product.technicalPreview.minPitchDeg);
                   setProductId(product.id);
                 }}
               >
@@ -467,7 +517,10 @@ export function CatalogProductPicker({
   onClose,
   client = catalogClient,
   confirmReplacementImpact = false,
+  roofPitchDeg,
 }: {
+  /** The roof's pitch, to mark and order products by their minimum pitch. */
+  roofPitchDeg?: number;
   kind: CoveringKind;
   onApply: (selection: CoveringProductSelection) => void;
   onManual: () => void;
@@ -559,6 +612,7 @@ export function CatalogProductPicker({
         />
       ) : (
         <PickerBody
+          {...(roofPitchDeg !== undefined ? { roofPitchDeg } : {})}
           kind={kind}
           client={client}
           onApply={apply}

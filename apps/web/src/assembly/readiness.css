@@ -768,9 +768,31 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.a-journey-rail [data-recommended] .a-rail-text strong::after {
-  content: ' •';
-  color: var(--a-accent, #235344);
+.a-rail-next {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--a-accent, #235344);
+  color: #fff;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  vertical-align: 1px;
+}
+@media (min-width: 1280px) {
+  .a-rail-text small {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+}
+@media (min-width: 1680px) {
+  .a-project-shell {
+    grid-template-columns: 236px minmax(0, 1fr);
+  }
 }
 .a-visually-hidden {
   position: absolute;
@@ -973,4 +995,25 @@
 }
 .a-overview-fact small[data-kind='waiting'] {
   color: var(--a-muted, #667b71);
+}
+/* The 3D model gets the width: the rail keeps only numbered status marks. */
+@media (min-width: 1280px) {
+  .a-project-shell[data-renderer='3d'] {
+    grid-template-columns: 58px minmax(0, 1fr);
+  }
+  .a-project-shell[data-renderer='3d'] .a-rail-text,
+  .a-project-shell[data-renderer='3d'] .a-rail-overview {
+    display: none;
+  }
+  .a-project-shell[data-renderer='3d'] .a-journey-rail button {
+    grid-template-columns: 26px;
+    justify-content: center;
+    padding: 6px 4px;
+  }
+}
+/* Phones keep their own task dock; the stage list would push the drawing down. */
+@media (max-width: 800px) {
+  .a-journey-rail {
+    display: none;
+  }
 }
