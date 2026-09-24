@@ -29,21 +29,28 @@ import { catalogClient, type CatalogClient } from '../../catalog/client';
  */
 export function AdminAssortment({
   onClose,
+  initialFilter = 'all',
   catalog = catalogClient,
 }: {
   onClose: () => void;
+  initialFilter?: AssortmentFilter;
   catalog?: CatalogClient;
 }) {
   const { i18n } = useTranslation();
   const m = businessCopy(i18n.language);
-  const { organization, organizationId, client, unavailable } = useBusiness();
-  const [filter, setFilter] = useState<AssortmentFilter>('all');
+  const { organization, organizationId, client, unavailable, session } =
+    useBusiness();
+  const canManagePrices = !!session?.memberships
+    .find((membership) => membership.organizationId === organizationId)
+    ?.capabilities.includes('prices.manage');
+  const [filter, setFilter] = useState<AssortmentFilter>(initialFilter);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search.trim());
   const [selectedId, setSelectedId] = useState<string>();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkError, setBulkError] = useState<string>();
+  const [bulkVat, setBulkVat] = useState('23,00');
   const [importing, setImporting] = useState(false);
   const [creating, setCreating] = useState(false);
   const queryClient = useQueryClient();
@@ -72,7 +79,11 @@ export function AdminAssortment({
     setSelectedIds(new Set());
   }, [debouncedSearch, filter, organizationId]);
 
-  async function applyBulk(flags: { active?: boolean; preferred?: boolean }) {
+  async function applyBulk(flags: {
+    active?: boolean;
+    preferred?: boolean;
+    vatRateBps?: number;
+  }) {
     if (!organizationId || selectedIds.size === 0) return;
     setBulkBusy(true);
     setBulkError(undefined);
@@ -222,6 +233,11 @@ export function AdminAssortment({
           value={summary?.withoutPrice}
           tone={summary?.withoutPrice ? 'warning' : undefined}
         />
+        <Count
+          label={m.countWithoutVat}
+          value={summary?.withoutVat}
+          tone={summary?.withoutVat ? 'warning' : undefined}
+        />
         <Count label={m.countInactive} value={summary?.inactive} />
       </div>
       <section className="bz-quality" data-testid="admin-data-quality">
@@ -236,6 +252,11 @@ export function AdminAssortment({
             label={m.qualityMatchedWithoutPrice}
             value={summary?.withoutPrice}
             tone={summary?.withoutPrice ? 'warning' : undefined}
+          />
+          <Count
+            label={m.countWithoutVat}
+            value={summary?.withoutVat}
+            tone={summary?.withoutVat ? 'warning' : undefined}
           />
           <Count label={m.qualityWithoutSku} value={0} />
           <Count label={m.qualityInactive} value={summary?.inactive} />
@@ -348,6 +369,38 @@ export function AdminAssortment({
           >
             {m.bulkUnprefer}
           </button>
+          {canManagePrices && (
+            <label>
+              {m.vatRate}
+              <input
+                inputMode="decimal"
+                value={bulkVat}
+                onChange={(event) => setBulkVat(event.target.value)}
+              />
+            </label>
+          )}
+          {canManagePrices && (
+            <button
+              type="button"
+              className="a-button"
+              disabled={
+                bulkBusy ||
+                bulkVat.trim() === '' ||
+                !Number.isFinite(Number(bulkVat.replace(',', '.'))) ||
+                Number(bulkVat.replace(',', '.')) < 0 ||
+                Number(bulkVat.replace(',', '.')) > 100
+              }
+              onClick={() =>
+                void applyBulk({
+                  vatRateBps: Math.round(
+                    Number(bulkVat.replace(',', '.')) * 100,
+                  ),
+                })
+              }
+            >
+              {m.bulkSetVat}
+            </button>
+          )}
         </div>
       )}
       {bulkError && <p role="alert">{bulkError}</p>}
@@ -508,9 +561,11 @@ function filterLabel(m: BusinessCopy, filter: AssortmentFilter): string {
         ? m.filterUnmatched
         : filter === 'without-price'
           ? m.filterWithoutPrice
-          : filter === 'inactive'
-            ? m.filterInactive
-            : m.filterPreferred;
+          : filter === 'without-vat'
+            ? m.filterWithoutVat
+            : filter === 'inactive'
+              ? m.filterInactive
+              : m.filterPreferred;
 }
 
 function stateLabel(

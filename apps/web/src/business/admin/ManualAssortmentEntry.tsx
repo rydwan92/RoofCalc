@@ -61,6 +61,9 @@ export function ManualAssortmentEntry({
       ...(variant ? { commercialVariantId: variant.id } : {}),
       active: true,
       preferred: false,
+      ...(vatPercent !== undefined
+        ? { vatRateBps: Math.round(vatPercent * 100) }
+        : {}),
       ...(net !== undefined
         ? {
             price: {

@@ -5,6 +5,9 @@ import {
   buildAssortmentImportPreview,
   canonicalJson,
   mapAssortmentRows,
+  mapPriceImportRows,
+  priceImportMappingSchema,
+  resolveOrganizationItemPrice,
   parseAssortmentCsv,
   validateAssortmentUniqueness,
   type AssortmentImportPreview,
@@ -15,8 +18,13 @@ import {
   type Organization,
   type OrganizationAssortmentItem,
   type OrganizationPriceList,
+  type PriceImportPreviewResponse,
+  type PriceImportRequest,
 } from '@cieslacalc/business-core';
-import type { PriceListEntry } from '@cieslacalc/pricing-core';
+import {
+  isValidDateString,
+  type PriceListEntry,
+} from '@cieslacalc/pricing-core';
 import type {
   BusinessAdminRepository,
   BusinessCatalogReader,
@@ -127,6 +135,7 @@ export class BusinessAdminService {
     flags: {
       active?: boolean;
       preferred?: boolean;
+      vatRateBps?: number;
       displayNameOverride?: string | null;
     },
   ): Promise<OrganizationAssortmentItem> {
@@ -134,6 +143,7 @@ export class BusinessAdminService {
     if (
       flags.active === undefined &&
       flags.preferred === undefined &&
+      flags.vatRateBps === undefined &&
       flags.displayNameOverride === undefined
     )
       throw new BusinessAdminError('business-invalid-request');
@@ -162,13 +172,15 @@ export class BusinessAdminService {
   async setFlagsBulk(
     organizationId: string,
     itemIds: string[],
-    flags: { active?: boolean; preferred?: boolean },
+    flags: { active?: boolean; preferred?: boolean; vatRateBps?: number },
   ): Promise<OrganizationAssortmentItem[]> {
     await this.requireOrganization(organizationId);
     const ids = [...new Set(itemIds)];
     if (
       ids.length === 0 ||
-      (flags.active === undefined && flags.preferred === undefined)
+      (flags.active === undefined &&
+        flags.preferred === undefined &&
+        flags.vatRateBps === undefined)
     )
       throw new BusinessAdminError('business-invalid-request');
     const items =
@@ -213,6 +225,9 @@ export class BusinessAdminService {
       sourceName: input.sourceName,
       active: input.active,
       preferred: input.preferred,
+      ...((input.vatRateBps ?? input.price?.vatRateBps) !== undefined
+        ? { vatRateBps: input.vatRateBps ?? input.price?.vatRateBps }
+        : {}),
     };
     const issues = validateAssortmentUniqueness([...items, item]);
     if (issues.some((issue) => issue.code === 'duplicate-active-variant'))
@@ -242,11 +257,135 @@ export class BusinessAdminService {
     if (!item.commercialVariantId)
       throw new BusinessAdminError('business-invalid-request');
     const price = manualPrice(organization, item.commercialVariantId, input);
-    await this.admin.upsertOrganizationPrices({
+    await this.admin.applyPriceImport({
+      organizationId,
       priceList: price.priceList,
       entries: [price.priceEntry],
+      vatUpdates:
+        input.vatRateBps === undefined
+          ? []
+          : [{ itemId: item.id, vatRateBps: input.vatRateBps }],
     });
     return price.priceEntry;
+  }
+
+  async importPricesCsv(
+    organizationId: string,
+    input: PriceImportRequest,
+  ): Promise<PriceImportPreviewResponse> {
+    const organization = await this.requireOrganization(organizationId);
+    const mapping = priceImportMappingSchema.safeParse(input.mapping);
+    if (!mapping.success || !isValidDateString(input.validFrom))
+      throw new BusinessAdminError('business-invalid-request');
+    let mapped: ReturnType<typeof mapPriceImportRows>;
+    try {
+      mapped = mapPriceImportRows(input.csv, mapping.data);
+    } catch {
+      throw new BusinessAdminError('business-invalid-request');
+    }
+    const [items, visible] = await Promise.all([
+      this.repository.assortmentForOrganization(organizationId),
+      this.repository.visiblePriceLists(organizationId),
+    ]);
+    const entries = await this.repository.entriesForPriceLists(
+      visible.map((list) => list.id),
+    );
+    const byKey = new Map(items.map((item) => [item.externalKey, item]));
+    const rows: PriceImportPreviewResponse['rows'] = mapped.problems.map(
+      (problem) => ({
+        sourceLine: problem.sourceLine,
+        externalKey: problem.externalKey,
+        status: 'invalid',
+      }),
+    );
+    const priceList: OrganizationPriceList = {
+      id: `price-list:${organizationId}:import`,
+      organizationId,
+      ownerLabel: `${organization.name} — cennik (import)`,
+      currencyCode: organization.currencyCode,
+      validFrom: '2000-01-01',
+    };
+    const newEntries: PriceListEntry[] = [];
+    const vatUpdates: Array<{ itemId: string; vatRateBps: number }> = [];
+    for (const row of mapped.rows) {
+      const item = byKey.get(row.externalKey);
+      if (!item) {
+        rows.push({
+          sourceLine: row.sourceLine,
+          externalKey: row.externalKey,
+          netAmountMinor: row.netAmountMinor,
+          ...(row.vatRateBps !== undefined
+            ? { vatRateBps: row.vatRateBps }
+            : {}),
+          status: 'unknown-sku',
+        });
+        continue;
+      }
+      if (!item.active || !item.commercialVariantId) {
+        rows.push({
+          sourceLine: row.sourceLine,
+          externalKey: row.externalKey,
+          status: 'invalid',
+        });
+        continue;
+      }
+      const current = resolveOrganizationItemPrice({
+        context: { organization, pricePolicy: 'organization-only' },
+        item,
+        priceLists: visible,
+        entries,
+        atDate: input.validFrom,
+      }).price;
+      const saleUnit = row.saleUnit ?? current?.saleUnit ?? 'piece';
+      const priceChanged =
+        current?.netAmountMinor !== row.netAmountMinor ||
+        current?.saleUnit !== saleUnit;
+      const vatChanged =
+        row.vatRateBps !== undefined && row.vatRateBps !== item.vatRateBps;
+      if (priceChanged)
+        newEntries.push({
+          id: newPriceEntryId(),
+          priceListId: priceList.id,
+          commercialVariantId: item.commercialVariantId,
+          saleUnit,
+          netAmountMinor: row.netAmountMinor,
+          sourceAmountBasis: 'net',
+          ...(row.vatRateBps !== undefined
+            ? { sourceVatRateBps: row.vatRateBps }
+            : {}),
+          validFrom: input.validFrom,
+        });
+      if (vatChanged)
+        vatUpdates.push({ itemId: item.id, vatRateBps: row.vatRateBps! });
+      rows.push({
+        sourceLine: row.sourceLine,
+        externalKey: row.externalKey,
+        netAmountMinor: row.netAmountMinor,
+        ...(row.vatRateBps !== undefined ? { vatRateBps: row.vatRateBps } : {}),
+        status: priceChanged || vatChanged ? 'changed' : 'unchanged',
+      });
+    }
+    rows.sort((a, b) => a.sourceLine - b.sourceLine);
+    if (input.apply && (newEntries.length || vatUpdates.length))
+      await this.admin.applyPriceImport({
+        organizationId,
+        priceList,
+        entries: newEntries,
+        vatUpdates,
+      });
+    return {
+      applied: input.apply,
+      counts: {
+        total: rows.length,
+        changed: rows.filter((row) => row.status === 'changed').length,
+        unchanged: rows.filter((row) => row.status === 'unchanged').length,
+        unknown: rows.filter((row) => row.status === 'unknown-sku').length,
+        invalid: rows.filter((row) => row.status === 'invalid').length,
+        withVat: rows.filter((row) => row.vatRateBps !== undefined).length,
+        withoutVat: rows.filter((row) => row.vatRateBps === undefined).length,
+      },
+      rows,
+    };
   }
 
   /**
@@ -348,45 +487,70 @@ export class BusinessAdminService {
           active: row.active ?? previous?.active ?? true,
           // An import never overwrites an admin's own commercial preference.
           preferred: previous?.preferred ?? row.preferred ?? false,
+          ...((row.vatRateBps ?? previous?.vatRateBps) !== undefined
+            ? { vatRateBps: row.vatRateBps ?? previous?.vatRateBps }
+            : {}),
         };
       },
     );
-    const priced = applicable.filter(
-      ({ row }) => row.netAmountMinor !== undefined,
-    );
     const validFrom = new Date().toISOString().slice(0, 10);
+    const visible = await this.repository.visiblePriceLists(organization.id);
+    const previousEntries = await this.repository.entriesForPriceLists(
+      visible.map((list) => list.id),
+    );
     const priceList: OrganizationPriceList = {
       id: `price-list:${organization.id}:import`,
       organizationId: organization.id,
       ownerLabel: `${organization.name} — cennik (import)`,
       currencyCode: organization.currencyCode,
       taxContext: 'net, imported from the organization price file',
-      validFrom,
+      validFrom: '2000-01-01',
     };
-    const entries: PriceListEntry[] = priced.flatMap(({ row, match }) => {
-      const variantId =
-        match.commercialVariantId ??
-        byKey.get(row.externalKey)?.commercialVariantId;
-      // A price entry references a catalogue variant, so an unmatched row has
-      // nowhere to attach a price yet. The row itself is still imported.
-      if (!variantId) return [];
-      return [
-        {
-          id: `price:${organization.id}:${validFrom}:${row.externalKey}`,
-          priceListId: priceList.id,
-          commercialVariantId: variantId,
-          saleUnit: row.saleUnit ?? 'piece',
-          netAmountMinor: row.netAmountMinor!,
-          ...(row.vatRateBps !== undefined
-            ? {
-                sourceAmountBasis: 'gross' as const,
-                sourceVatRateBps: row.vatRateBps,
-              }
-            : { sourceAmountBasis: 'net' as const }),
-          validFrom,
-        },
-      ];
-    });
+    const entries: PriceListEntry[] = preview.rows.flatMap(
+      ({ row, match, action }) => {
+        if (action === 'skip' || row.netAmountMinor === undefined) return [];
+        const variantId =
+          match.commercialVariantId ??
+          byKey.get(row.externalKey)?.commercialVariantId;
+        // A price entry references a catalogue variant, so an unmatched row has
+        // nowhere to attach a price yet. The row itself is still imported.
+        if (!variantId) return [];
+        const item =
+          items.find(
+            (candidate) => candidate.externalKey === row.externalKey,
+          ) ?? byKey.get(row.externalKey);
+        if (!item || !item.active) return [];
+        const current = resolveOrganizationItemPrice({
+          context: { organization, pricePolicy: 'organization-only' },
+          item,
+          priceLists: visible,
+          entries: previousEntries,
+          atDate: validFrom,
+        }).price;
+        const saleUnit = row.saleUnit ?? current?.saleUnit ?? 'piece';
+        if (
+          current?.netAmountMinor === row.netAmountMinor &&
+          current.saleUnit === saleUnit
+        )
+          return [];
+        return [
+          {
+            id: newPriceEntryId(),
+            priceListId: priceList.id,
+            commercialVariantId: variantId,
+            saleUnit,
+            netAmountMinor: row.netAmountMinor!,
+            ...(row.vatRateBps !== undefined
+              ? {
+                  sourceAmountBasis: 'net' as const,
+                  sourceVatRateBps: row.vatRateBps,
+                }
+              : { sourceAmountBasis: 'net' as const }),
+            validFrom,
+          },
+        ];
+      },
+    );
     await this.admin.applyAssortmentImport({
       organizationId: organization.id,
       items,
@@ -419,16 +583,10 @@ function manualPrice(
     taxContext: 'net; optional VAT rate recorded as source provenance',
     validFrom: '2000-01-01',
   };
-  // `pricing-core` resolves equal-date entries by the lexicographically
-  // smallest ID. A reverse timestamp keeps a correction made later that day
-  // current without mutating the previous immutable entry.
-  const reverseTimestamp = String(
-    9_999_999_999_999_999_999n - process.hrtime.bigint(),
-  ).padStart(19, '0');
   return {
     priceList,
     priceEntry: {
-      id: `price:manual:${reverseTimestamp}:${randomUUID()}`,
+      id: newPriceEntryId(),
       priceListId: priceList.id,
       commercialVariantId,
       saleUnit: input.saleUnit,
@@ -440,6 +598,17 @@ function manualPrice(
       validFrom: input.validFrom,
     },
   };
+}
+
+/** Sorts ahead of legacy IDs and makes the latest accepted same-day entry current. */
+let lastPriceTimestamp = 0;
+function newPriceEntryId(): string {
+  lastPriceTimestamp = Math.max(Date.now(), lastPriceTimestamp + 1);
+  const reverse = String(9_999_999_999_999 - lastPriceTimestamp).padStart(
+    13,
+    '0',
+  );
+  return `0:price:${reverse}:${randomUUID()}`;
 }
 
 function toPreviewResponse(
@@ -465,6 +634,7 @@ function toPreviewResponse(
       ...(row.netAmountMinor !== undefined
         ? { netAmountMinor: row.netAmountMinor }
         : {}),
+      ...(row.vatRateBps !== undefined ? { vatRateBps: row.vatRateBps } : {}),
       issues: issues.map((issue) => ({
         code: issue.code,
         severity: issue.severity,

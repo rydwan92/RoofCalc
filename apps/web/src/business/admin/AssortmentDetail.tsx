@@ -36,6 +36,11 @@ export function AssortmentDetail({
   const [search, setSearch] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
+  const [vat, setVat] = useState(
+    row.item.vatRateBps === undefined
+      ? ''
+      : String(row.item.vatRateBps / 100).replace('.', ','),
+  );
   const details = useQuery({
     queryKey: ['business', organizationId, 'assortment-detail', row.item.id],
     queryFn: ({ signal }) =>
@@ -86,6 +91,9 @@ export function AssortmentDetail({
           {row.state === 'unmatched' ? m.stateUnmatched : m.stateMatched}
         </span>
       </header>
+      <h4>
+        {i18n.language.startsWith('pl') ? 'Dane hurtowni' : 'Wholesaler data'}
+      </h4>
       <dl className="bz-detail-facts">
         <div>
           <dt>{m.internalSku}</dt>
@@ -104,6 +112,73 @@ export function AssortmentDetail({
           </div>
         )}
         <div>
+          <dt>{m.columnPrice}</dt>
+          <dd data-testid="detail-price">
+            {row.price
+              ? `${formatMoney(row.price.netAmountMinor, row.price.currencyCode, i18n.language)} / ${row.price.saleUnit}`
+              : m.noWholesalePrice}
+          </dd>
+        </div>
+        <div>
+          <dt>VAT</dt>
+          <dd>
+            {row.item.vatRateBps === undefined
+              ? i18n.language.startsWith('pl')
+                ? 'BRAK VAT'
+                : 'NO VAT'
+              : `${row.item.vatRateBps / 100}%`}
+          </dd>
+        </div>
+        <div>
+          <dt>{m.saleUnitLabel}</dt>
+          <dd>{row.price?.saleUnit ?? '—'}</dd>
+        </div>
+      </dl>
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          const parsed = Number(vat.replace(',', '.'));
+          if (
+            vat.trim() !== '' &&
+            Number.isFinite(parsed) &&
+            parsed >= 0 &&
+            parsed <= 100
+          )
+            void run(() =>
+              client.setFlags(organizationId!, row.item.id, {
+                vatRateBps: Math.round(parsed * 100),
+              }),
+            );
+        }}
+      >
+        <label>
+          {m.vatRate}
+          <input
+            inputMode="decimal"
+            value={vat}
+            onChange={(event) => setVat(event.target.value)}
+          />
+        </label>
+        <button
+          className="a-button"
+          disabled={
+            busy ||
+            vat.trim() === '' ||
+            !Number.isFinite(Number(vat.replace(',', '.'))) ||
+            Number(vat.replace(',', '.')) < 0 ||
+            Number(vat.replace(',', '.')) > 100
+          }
+        >
+          {i18n.language.startsWith('pl') ? 'Zapisz VAT' : 'Save VAT'}
+        </button>
+      </form>
+      <h4>
+        {i18n.language.startsWith('pl')
+          ? 'Dane techniczne RoofCalc'
+          : 'RoofCalc technical data'}
+      </h4>
+      <dl className="bz-detail-facts">
+        <div>
           <dt>{m.matchedProduct}</dt>
           <dd data-testid="detail-match">
             {row.catalog
@@ -120,14 +195,6 @@ export function AssortmentDetail({
             </dd>
           </div>
         )}
-        <div>
-          <dt>{m.columnPrice}</dt>
-          <dd data-testid="detail-price">
-            {row.price
-              ? `${formatMoney(row.price.netAmountMinor, row.price.currencyCode, i18n.language)} / ${row.price.saleUnit}`
-              : m.noWholesalePrice}
-          </dd>
-        </div>
       </dl>
 
       {row.state === 'unmatched' && (

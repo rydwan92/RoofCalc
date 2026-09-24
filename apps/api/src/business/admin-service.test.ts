@@ -309,6 +309,115 @@ describe('CSV import', () => {
     });
   });
 
+  it('persists imported VAT and preserves it when the next CSV omits VAT', async () => {
+    const { admin: service, repository, read } = admin();
+    await service.importCsv('org:a', {
+      sourceLabel: 'vat.csv',
+      csv: 'SKU;Name;VAT\nA-DACH-002;KODA;23',
+      mapping: { externalKey: 'SKU', sourceName: 'Name', vatRate: 'VAT' },
+      apply: true,
+    });
+    expect(
+      repository.state.assortment.find(
+        (item) => item.externalKey === 'A-DACH-002',
+      )?.vatRateBps,
+    ).toBe(2300);
+    await service.importCsv('org:a', {
+      sourceLabel: 'later.csv',
+      csv: 'SKU;Name\nA-DACH-002;KODA newer',
+      mapping: { externalKey: 'SKU', sourceName: 'Name' },
+      apply: true,
+    });
+    expect(
+      repository.state.assortment.find(
+        (item) => item.externalKey === 'A-DACH-002',
+      )?.vatRateBps,
+    ).toBe(2300);
+    expect(
+      (await read.pricesForVariants('org:a', [KODA])).items[0]?.vatRateBps,
+    ).toBe(2300);
+  });
+
+  it('previews and applies price-only CSV by organization SKU with immutable history', async () => {
+    const { admin: service, repository, read } = admin();
+    const beforeCatalog = structuredClone(repository.state.catalog);
+    const input = {
+      csv: 'SKU;Cena netto;VAT\nA-DACH-002;4,82;23\nUNKNOWN;5,10;8',
+      mapping: { externalKey: 'SKU', netAmount: 'Cena netto', vatRate: 'VAT' },
+      validFrom: '2026-09-24',
+    };
+    const preview = await service.importPricesCsv('org:a', {
+      ...input,
+      apply: false,
+    });
+    expect(preview.counts).toMatchObject({
+      changed: 1,
+      unknown: 1,
+      withVat: 2,
+    });
+    expect(repository.state.entries).toHaveLength(0);
+    await service.importPricesCsv('org:a', { ...input, apply: true });
+    expect(repository.state.catalog).toEqual(beforeCatalog);
+    expect(
+      repository.state.assortment.find(
+        (item) => item.externalKey === 'A-DACH-002',
+      )?.vatRateBps,
+    ).toBe(2300);
+    expect(
+      (await read.pricesForVariants('org:a', [KODA], '2026-09-24')).items[0]
+        ?.price?.netAmountMinor,
+    ).toBe(482);
+    await service.importPricesCsv('org:a', { ...input, apply: true });
+    expect(repository.state.entries).toHaveLength(1);
+    await service.importPricesCsv('org:a', {
+      ...input,
+      csv: 'SKU;Cena netto;VAT\nA-DACH-002;5,10;5',
+      apply: true,
+    });
+    expect(repository.state.entries).toHaveLength(2);
+    expect(
+      (await read.pricesForVariants('org:a', [KODA], '2026-09-24')).items[0]
+        ?.price?.netAmountMinor,
+    ).toBe(510);
+    expect(
+      (await read.assortmentDetail('org:a', 'oai:a:2')).priceHistory.map(
+        (price) => price.netAmountMinor,
+      ),
+    ).toEqual([510, 482]);
+  });
+
+  it('makes a same-day correction current ahead of a legacy price entry', async () => {
+    const { admin: service, repository, read } = admin();
+    repository.state.priceLists.push({
+      id: 'legacy-list',
+      organizationId: 'org:a',
+      ownerLabel: 'Legacy',
+      currencyCode: 'PLN',
+      validFrom: '2000-01-01',
+    });
+    repository.state.entries.push({
+      id: 'price:legacy:1',
+      priceListId: 'legacy-list',
+      commercialVariantId: KODA,
+      saleUnit: 'piece',
+      netAmountMinor: 450,
+      validFrom: '2026-09-24',
+    });
+    await service.importPricesCsv('org:a', {
+      csv: 'SKU;Cena\nA-DACH-002;4,82',
+      mapping: { externalKey: 'SKU', netAmount: 'Cena' },
+      validFrom: '2026-09-24',
+      apply: true,
+    });
+    expect(
+      repository.state.entries.map((entry) => entry.netAmountMinor),
+    ).toEqual([450, 482]);
+    expect(
+      (await read.pricesForVariants('org:a', [KODA], '2026-09-24')).items[0]
+        ?.price?.netAmountMinor,
+    ).toBe(482);
+  });
+
   it('keeps an unmatched row without ever calling it a technical product', async () => {
     const { admin: service, repository, read } = admin();
     await service.importCsv('org:a', {

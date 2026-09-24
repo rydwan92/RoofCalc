@@ -153,7 +153,8 @@ function parseBoolean(raw: string): boolean | undefined {
 function parseRateBps(raw: string): number | undefined {
   const cleaned = raw.replace(/\s|%/g, '').replace(',', '.');
   if (!/^\d+(?:\.\d+)?$/.test(cleaned)) return undefined;
-  return Math.round(Number(cleaned) * 100);
+  const value = Math.round(Number(cleaned) * 100);
+  return value <= 10_000 ? value : undefined;
 }
 
 export interface MappedAssortmentRows {
@@ -220,6 +221,13 @@ export function mapAssortmentRows(
     const vatRaw = read(mapping.vatRate).trim();
     const vatRateBps = vatRaw ? parseRateBps(vatRaw) : undefined;
     if (vatRateBps !== undefined) row.vatRateBps = vatRateBps;
+    else if (vatRaw)
+      issues.push({
+        sourceLine: record.sourceLine,
+        externalKey,
+        code: 'invalid-vat-rate',
+        severity: 'warning',
+      });
 
     const netRaw = read(mapping.netAmount).trim();
     const grossRaw = read(mapping.grossAmount).trim();
@@ -405,12 +413,14 @@ function unchanged(
       ean: previous.ean,
       active: previous.active,
       commercialVariantId: previous.commercialVariantId,
+      vatRateBps: previous.vatRateBps,
     }) ===
     canonicalJson({
       sourceName: row.sourceName,
       ean: row.ean,
       active: row.active ?? previous.active,
       commercialVariantId: matchedVariantId ?? previous.commercialVariantId,
+      vatRateBps: row.vatRateBps ?? previous.vatRateBps,
     })
   );
 }

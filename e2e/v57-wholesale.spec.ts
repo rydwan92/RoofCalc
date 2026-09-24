@@ -115,6 +115,7 @@ async function stubApis(page: Page) {
             unmatched: 0,
             inactive: 0,
             withoutPrice: 0,
+            withoutVat: 0,
           },
         },
       });
@@ -130,6 +131,7 @@ async function stubApis(page: Page) {
           items: ids.map((commercialVariantId) => ({
             commercialVariantId,
             externalKey: 'DACH-00384',
+            vatRateBps: 2300,
             price: PRICE,
           })),
         },

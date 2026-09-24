@@ -308,6 +308,7 @@ describe('uniqueness and dashboard counts', () => {
       unmatched: 1,
       inactive: 1,
       withoutPrice: 1,
+      withoutVat: 1,
     });
     expect(summary.matched + summary.unmatched + summary.inactive).toBe(
       summary.total,

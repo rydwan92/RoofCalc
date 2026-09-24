@@ -36,7 +36,7 @@ export function AssortmentImport({
   const [headers, setHeaders] = useState<string[]>([]);
   const [mapping, setMapping] = useState<Partial<Record<string, string>>>({});
   const [preview, setPreview] = useState<AssortmentPreviewResponse>();
-  const [showProblems, setShowProblems] = useState(false);
+  const [showProblems, setShowProblems] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const [applied, setApplied] = useState(false);
@@ -195,6 +195,36 @@ export function AssortmentImport({
             {m.importUpdate} · {preview.counts.unchanged} {m.importUnchanged} ·{' '}
             {preview.counts.skip} {m.importSkip}
           </p>
+          <p>
+            {preview.rows.filter((row) => row.vatRateBps !== undefined).length}{' '}
+            {i18n.language.startsWith('pl') ? 'wierszy z VAT' : 'rows with VAT'}{' '}
+            ·{' '}
+            {
+              preview.rows.filter((row) => row.netAmountMinor !== undefined)
+                .length
+            }{' '}
+            {i18n.language.startsWith('pl')
+              ? 'wierszy z ceną'
+              : 'rows with price'}
+          </p>
+          <ul className="bz-preview-counts">
+            {preview.rows
+              .filter(
+                (row) =>
+                  row.vatRateBps !== undefined ||
+                  row.netAmountMinor !== undefined,
+              )
+              .slice(0, 5)
+              .map((row) => (
+                <li key={row.sourceLine}>
+                  <code>{row.externalKey}</code> {row.sourceName}
+                  {row.netAmountMinor !== undefined &&
+                    ` · ${m.columnPrice}: ${(row.netAmountMinor / 100).toFixed(2)}`}
+                  {row.vatRateBps !== undefined &&
+                    ` · VAT: ${row.vatRateBps / 100}%`}
+                </li>
+              ))}
+          </ul>
           {problems.length > 0 && (
             <button
               type="button"
@@ -216,10 +246,12 @@ export function AssortmentImport({
                   <th scope="col">{m.columnCode}</th>
                   <th scope="col">{m.columnName}</th>
                   <th scope="col">{m.columnStatus}</th>
+                  <th scope="col">{m.columnPrice}</th>
+                  <th scope="col">VAT</th>
                 </tr>
               </thead>
               <tbody>
-                {problems.map((row) => (
+                {problems.slice(0, 100).map((row) => (
                   <tr key={`${row.sourceLine}:${row.externalKey}`}>
                     <td>{row.sourceLine}</td>
                     <td>
@@ -234,6 +266,16 @@ export function AssortmentImport({
                           · {m.issue[issue.code] ?? issue.code}
                         </small>
                       ))}
+                    </td>
+                    <td>
+                      {row.netAmountMinor === undefined
+                        ? '—'
+                        : `${(row.netAmountMinor / 100).toFixed(2)}`}
+                    </td>
+                    <td>
+                      {row.vatRateBps === undefined
+                        ? '—'
+                        : `${row.vatRateBps / 100}%`}
                     </td>
                   </tr>
                 ))}

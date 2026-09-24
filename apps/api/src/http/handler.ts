@@ -21,6 +21,8 @@ import {
   assortmentLinkRequestSchema,
   assortmentPriceCreateRequestSchema,
   assortmentPreviewResponseSchema,
+  priceImportRequestSchema,
+  priceImportPreviewResponseSchema,
   assortmentQuerySchema,
   assortmentUnlinkRequestSchema,
   organizationAssortmentResponseSchema,
@@ -279,7 +281,13 @@ async function handleAuthorizedBusiness(
               ? 'customers.write'
               : segments[5] === 'estimations'
                 ? 'quote.write'
-                : segments[6] === 'price'
+                : segments[6] === 'price' ||
+                    segments[6] === 'price-import' ||
+                    ((segments[6] === 'flags' ||
+                      segments[6] === 'bulk-flags') &&
+                      body !== null &&
+                      typeof body === 'object' &&
+                      'vatRateBps' in body)
                   ? 'prices.manage'
                   : 'assortment.manage';
     if (!can(business.access, org, capability))
@@ -447,6 +455,14 @@ async function handleBusinessAdmin(
     if (action === 'price') {
       const request = assortmentPriceCreateRequestSchema.parse(body);
       return json({ entry: await admin.addPrice(organizationId, request) });
+    }
+    if (action === 'price-import') {
+      const request = priceImportRequestSchema.parse(body);
+      return json(
+        priceImportPreviewResponseSchema.parse(
+          await admin.importPricesCsv(organizationId, request),
+        ),
+      );
     }
     if (action === 'import') {
       const request = assortmentImportRequestSchema.parse(body);

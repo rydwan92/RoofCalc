@@ -92,8 +92,8 @@ function quoteLineFromMaterial(input: {
         : selectedManual
           ? 'manual-estimation'
           : 'organization-price-list',
-    ...(scenario.taxRateBps !== undefined
-      ? { vatRateBps: scenario.taxRateBps }
+    ...(organization?.vatRateBps !== undefined
+      ? { vatRateBps: organization.vatRateBps }
       : {}),
     included: costLine?.included ?? true,
   };

@@ -206,6 +206,7 @@ async function stubBusinessApi(
             unmatched: items.filter((row) => row.state === 'unmatched').length,
             inactive: items.filter((row) => !row.item.active).length,
             withoutPrice: 0,
+            withoutVat: 0,
           },
         },
       });
@@ -223,6 +224,7 @@ async function stubBusinessApi(
               ? {
                   commercialVariantId,
                   externalKey: 'DACH-00384',
+                  vatRateBps: 2300,
                   price: PRICE,
                 }
               : { commercialVariantId, missing: 'not-in-assortment' },
@@ -384,6 +386,7 @@ test.describe('V54 business mode', () => {
               unmatched: 0,
               inactive: 0,
               withoutPrice: 0,
+              withoutVat: 0,
             },
             ...(!q && offset < 80 ? { nextCursor: String(offset + 40) } : {}),
           },

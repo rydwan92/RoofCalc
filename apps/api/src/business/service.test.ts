@@ -206,6 +206,7 @@ describe('BusinessService reads', () => {
       unmatched: 1,
       inactive: 0,
       withoutPrice: 2,
+      withoutVat: 2,
     });
     expect(summary.matched + summary.unmatched + summary.inactive).toBe(
       summary.total,

@@ -198,6 +198,9 @@ export class BusinessService {
         return {
           commercialVariantId,
           externalKey: item.externalKey,
+          ...(item.vatRateBps !== undefined
+            ? { vatRateBps: item.vatRateBps }
+            : {}),
           ...(result.price ? { price: toPricePayload(result.price) } : {}),
           ...(result.missing ? { missing: result.missing } : {}),
         };

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useBusiness } from '../context';
+import type { AssortmentFilter } from '@cieslacalc/business-core';
 import { useAssortment } from '../use-assortment';
 import { workspaceClient } from '../workspace/client';
 import { CompanySettings } from '../CompanySettings';
@@ -57,11 +58,19 @@ export function AdminWorkspace({ onClose }: { onClose: () => void }) {
   const { i18n } = useTranslation(),
     pl = i18n.language.startsWith('pl');
   const business = useBusiness();
-  const [tab, setTab] = useState<'company' | 'team' | 'assortment'>('company');
   const capabilities =
     business.session?.memberships.find(
       (item) => item.organizationId === business.organizationId,
     )?.capabilities ?? [];
+  const [tab, setTab] = useState<'company' | 'team' | 'assortment' | 'quality'>(
+    capabilities.includes('organization.manage') ? 'company' : 'assortment',
+  );
+  const [assortmentFilter, setAssortmentFilter] =
+    useState<AssortmentFilter>('all');
+  const openAssortment = (filter: AssortmentFilter) => {
+    setAssortmentFilter(filter);
+    setTab('assortment');
+  };
   if (
     !capabilities.includes('organization.manage') &&
     !capabilities.includes('assortment.manage')
@@ -96,6 +105,11 @@ export function AdminWorkspace({ onClose }: { onClose: () => void }) {
                 pl ? 'Asortyment' : 'Assortment',
                 'assortment.manage',
               ],
+              [
+                'quality',
+                pl ? 'Jakość danych' : 'Data quality',
+                'assortment.manage',
+              ],
             ] as const
           )
             .filter(([, , capability]) => capabilities.includes(capability))
@@ -114,11 +128,56 @@ export function AdminWorkspace({ onClose }: { onClose: () => void }) {
             <CompanySettings key={business.organizationId} />
           ) : tab === 'team' ? (
             <Team key={business.organizationId} />
+          ) : tab === 'quality' ? (
+            <DataQuality onOpen={openAssortment} />
           ) : (
-            <AdminAssortment onClose={onClose} />
+            <AdminAssortment
+              key={assortmentFilter}
+              onClose={onClose}
+              initialFilter={assortmentFilter}
+            />
           )}
         </div>
       </div>
     </main>
+  );
+}
+
+function DataQuality({
+  onOpen,
+}: {
+  onOpen: (filter: AssortmentFilter) => void;
+}) {
+  const { i18n } = useTranslation();
+  const pl = i18n.language.startsWith('pl');
+  const assortment = useAssortment({ limit: 1 });
+  const summary = assortment.data?.summary;
+  return (
+    <section className="bz-quality" data-testid="admin-quality-workspace">
+      <h2>{pl ? 'Jakość danych' : 'Data quality'}</h2>
+      {assortment.isError && (
+        <p role="alert">{pl ? 'Dane niedostępne' : 'Data unavailable'}</p>
+      )}
+      <p>
+        {summary?.total ?? '—'} {pl ? 'produktów' : 'products'}
+      </p>
+      <div>
+        <span>
+          ✓ {summary?.matched ?? '—'} {pl ? 'powiązanych' : 'matched'}
+        </span>
+        <button type="button" onClick={() => onOpen('without-price')}>
+          ⚠ {summary?.withoutPrice ?? '—'} {pl ? 'bez ceny' : 'without price'}
+        </button>
+        <button type="button" onClick={() => onOpen('without-vat')}>
+          ⚠ {summary?.withoutVat ?? '—'} {pl ? 'bez VAT' : 'without VAT'}
+        </button>
+        <button type="button" onClick={() => onOpen('unmatched')}>
+          ⚠ {summary?.unmatched ?? '—'} {pl ? 'niepowiązanych' : 'unmatched'}
+        </button>
+        <span>
+          {summary?.inactive ?? '—'} {pl ? 'nieaktywnych' : 'inactive'}
+        </span>
+      </div>
+    </section>
   );
 }

@@ -112,13 +112,14 @@ export interface BusinessAdminRepository {
       commercialVariantId?: string | null;
       active?: boolean;
       preferred?: boolean;
+      vatRateBps?: number;
       displayNameOverride?: string | null;
     },
   ): Promise<OrganizationAssortmentItem | undefined>;
   updateAssortmentItemsFlags(
     organizationId: string,
     itemIds: string[],
-    flags: { active?: boolean; preferred?: boolean },
+    flags: { active?: boolean; preferred?: boolean; vatRateBps?: number },
   ): Promise<OrganizationAssortmentItem[]>;
   recordImport(audit: AssortmentImportAudit): Promise<void>;
   applyAssortmentImport(input: {
@@ -135,5 +136,11 @@ export interface BusinessAdminRepository {
   upsertOrganizationPrices(input: {
     priceList: OrganizationPriceList;
     entries: PriceListEntry[];
+  }): Promise<void>;
+  applyPriceImport(input: {
+    organizationId: string;
+    priceList: OrganizationPriceList;
+    entries: PriceListEntry[];
+    vatUpdates: Array<{ itemId: string; vatRateBps: number }>;
   }): Promise<void>;
 }

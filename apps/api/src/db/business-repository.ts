@@ -78,6 +78,7 @@ function itemFromRow(
     ean: row.ean ?? undefined,
     sourceName: row.sourceName,
     displayNameOverride: row.displayNameOverride ?? undefined,
+    vatRateBps: row.vatRateBps ?? undefined,
     active: row.active,
     preferred: row.preferred,
     metadata: decodeJson(row.metadata) ?? undefined,
@@ -270,6 +271,13 @@ export class DrizzleBusinessRepository
           not(priceExists),
         );
         break;
+      case 'without-vat':
+        conditions.push(
+          eq(organizationAssortmentItems.active, true),
+          isNotNull(organizationAssortmentItems.commercialVariantId),
+          isNull(organizationAssortmentItems.vatRateBps),
+        );
+        break;
       case 'inactive':
         conditions.push(eq(organizationAssortmentItems.active, false));
         break;
@@ -359,6 +367,7 @@ export class DrizzleBusinessRepository
         unmatched: sql<number>`sum(case when ${organizationAssortmentItems.active} = true and ${organizationAssortmentItems.commercialVariantId} is null then 1 else 0 end)`,
         inactive: sql<number>`sum(case when ${organizationAssortmentItems.active} = false then 1 else 0 end)`,
         withoutPrice: sql<number>`sum(case when ${organizationAssortmentItems.active} = true and not ${priceExists} then 1 else 0 end)`,
+        withoutVat: sql<number>`sum(case when ${organizationAssortmentItems.active} = true and ${organizationAssortmentItems.commercialVariantId} is not null and ${organizationAssortmentItems.vatRateBps} is null then 1 else 0 end)`,
       })
       .from(organizationAssortmentItems)
       .where(eq(organizationAssortmentItems.organizationId, organizationId));
@@ -369,6 +378,7 @@ export class DrizzleBusinessRepository
       unmatched: Number(row?.unmatched ?? 0),
       inactive: Number(row?.inactive ?? 0),
       withoutPrice: Number(row?.withoutPrice ?? 0),
+      withoutVat: Number(row?.withoutVat ?? 0),
     };
   }
 
@@ -554,6 +564,7 @@ export class DrizzleBusinessRepository
             displayNameOverride: item.displayNameOverride ?? null,
             active: item.active,
             preferred: item.preferred,
+            vatRateBps: item.vatRateBps ?? null,
             metadata: item.metadata ?? null,
           })
           /**
@@ -571,6 +582,7 @@ export class DrizzleBusinessRepository
               displayNameOverride: item.displayNameOverride ?? null,
               active: item.active,
               preferred: item.preferred,
+              vatRateBps: item.vatRateBps ?? null,
               metadata: item.metadata ?? null,
             },
           });
@@ -595,6 +607,7 @@ export class DrizzleBusinessRepository
         displayNameOverride: input.item.displayNameOverride ?? null,
         active: input.item.active,
         preferred: input.item.preferred,
+        vatRateBps: input.item.vatRateBps ?? null,
         metadata: input.item.metadata ?? null,
       });
       if (!input.priceList || !input.priceEntry) return;
@@ -641,6 +654,7 @@ export class DrizzleBusinessRepository
       set.commercialVariantId = patch.commercialVariantId;
     if (patch.active !== undefined) set.active = patch.active;
     if (patch.preferred !== undefined) set.preferred = patch.preferred;
+    if (patch.vatRateBps !== undefined) set.vatRateBps = patch.vatRateBps;
     if (patch.displayNameOverride !== undefined)
       set.displayNameOverride = patch.displayNameOverride;
     if (!Object.keys(set).length) return undefined;
@@ -660,12 +674,13 @@ export class DrizzleBusinessRepository
   async updateAssortmentItemsFlags(
     organizationId: string,
     itemIds: string[],
-    flags: { active?: boolean; preferred?: boolean },
+    flags: { active?: boolean; preferred?: boolean; vatRateBps?: number },
   ): Promise<OrganizationAssortmentItem[]> {
     if (!itemIds.length) return [];
     const set: Partial<typeof organizationAssortmentItems.$inferInsert> = {};
     if (flags.active !== undefined) set.active = flags.active;
     if (flags.preferred !== undefined) set.preferred = flags.preferred;
+    if (flags.vatRateBps !== undefined) set.vatRateBps = flags.vatRateBps;
     if (!Object.keys(set).length) return [];
     const scope = and(
       eq(organizationAssortmentItems.organizationId, organizationId),
@@ -718,6 +733,7 @@ export class DrizzleBusinessRepository
             displayNameOverride: item.displayNameOverride ?? null,
             active: item.active,
             preferred: item.preferred,
+            vatRateBps: item.vatRateBps ?? null,
             metadata: item.metadata ?? null,
           })
           .onDuplicateKeyUpdate({
@@ -728,6 +744,7 @@ export class DrizzleBusinessRepository
               displayNameOverride: item.displayNameOverride ?? null,
               active: item.active,
               preferred: item.preferred,
+              vatRateBps: item.vatRateBps ?? null,
               metadata: item.metadata ?? null,
             },
           });
@@ -748,8 +765,7 @@ export class DrizzleBusinessRepository
             set: {
               ownerLabel: input.priceList.ownerLabel,
               currencyCode: input.priceList.currencyCode,
-              validFrom: input.priceList.validFrom,
-              validTo: input.priceList.validTo ?? null,
+              validFrom: '2000-01-01',
             },
           });
         for (const entry of input.entries)
@@ -767,12 +783,7 @@ export class DrizzleBusinessRepository
               validTo: entry.validTo ?? null,
             })
             .onDuplicateKeyUpdate({
-              set: {
-                netAmountMinor: entry.netAmountMinor,
-                saleUnit: entry.saleUnit,
-                sourceAmountBasis: entry.sourceAmountBasis ?? null,
-                sourceVatRateBps: entry.sourceVatRateBps ?? null,
-              },
+              set: { id: sql`${priceListEntries.id}` },
             });
       }
       await tx.insert(organizationImportBatches).values({
@@ -812,8 +823,6 @@ export class DrizzleBusinessRepository
           set: {
             ownerLabel: input.priceList.ownerLabel,
             currencyCode: input.priceList.currencyCode,
-            validFrom: input.priceList.validFrom,
-            validTo: input.priceList.validTo ?? null,
           },
         });
       for (const entry of input.entries)
@@ -832,12 +841,56 @@ export class DrizzleBusinessRepository
           })
           .onDuplicateKeyUpdate({
             set: {
-              netAmountMinor: entry.netAmountMinor,
-              saleUnit: entry.saleUnit,
-              sourceAmountBasis: entry.sourceAmountBasis ?? null,
-              sourceVatRateBps: entry.sourceVatRateBps ?? null,
+              id: sql`${priceListEntries.id}`,
             },
           });
+    });
+  }
+
+  async applyPriceImport(
+    input: Parameters<BusinessAdminRepository['applyPriceImport']>[0],
+  ): Promise<void> {
+    if (
+      input.priceList.organizationId !== input.organizationId ||
+      input.entries.some((entry) => entry.priceListId !== input.priceList.id)
+    )
+      throw new Error('organization-mismatch');
+    await this.db.transaction(async (tx) => {
+      for (const update of input.vatUpdates) {
+        const scope = and(
+          eq(organizationAssortmentItems.organizationId, input.organizationId),
+          eq(organizationAssortmentItems.id, update.itemId),
+        );
+        await tx
+          .update(organizationAssortmentItems)
+          .set({ vatRateBps: update.vatRateBps })
+          .where(scope);
+      }
+      if (!input.entries.length) return;
+      await tx
+        .insert(priceLists)
+        .values({
+          id: input.priceList.id,
+          organizationId: input.organizationId,
+          ownerLabel: input.priceList.ownerLabel,
+          currencyCode: input.priceList.currencyCode,
+          validFrom: input.priceList.validFrom,
+        })
+        .onDuplicateKeyUpdate({ set: { validFrom: '2000-01-01' } });
+      for (const entry of input.entries)
+        await tx
+          .insert(priceListEntries)
+          .values({
+            id: entry.id,
+            priceListId: entry.priceListId,
+            commercialVariantId: entry.commercialVariantId,
+            saleUnit: entry.saleUnit,
+            netAmountMinor: entry.netAmountMinor,
+            sourceAmountBasis: 'net',
+            sourceVatRateBps: entry.sourceVatRateBps ?? null,
+            validFrom: entry.validFrom,
+          })
+          .onDuplicateKeyUpdate({ set: { id: sql`${priceListEntries.id}` } });
     });
   }
 }

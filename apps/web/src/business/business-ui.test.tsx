@@ -98,6 +98,7 @@ function stubClient(overrides: Partial<BusinessClient> = {}): BusinessClient {
           unmatched: 1,
           inactive: 0,
           withoutPrice: 1,
+          withoutVat: 0,
         },
       } satisfies OrganizationAssortmentResponse),
     pricesForVariants: (_organizationId, ids) =>
@@ -125,6 +126,7 @@ function stubClient(overrides: Partial<BusinessClient> = {}): BusinessClient {
     createItem: () => Promise.reject(new Error('not-found')),
     addPrice: () => Promise.reject(new Error('not-found')),
     importCsv: () => Promise.reject(new Error('not-found')),
+    importPricesCsv: () => Promise.reject(new Error('not-found')),
     ...overrides,
   };
 }
@@ -314,6 +316,7 @@ describe('business product picker', () => {
             unmatched: 0,
             inactive: 0,
             withoutPrice: 0,
+            withoutVat: 0,
           },
           ...(query.cursor ? {} : { nextCursor: '40' }),
         }),
@@ -842,7 +845,6 @@ describe('CSV import screen', () => {
     );
     await user.click(screen.getByTestId('import-dry-run'));
     await screen.findByTestId('import-preview');
-    await user.click(screen.getByTestId('import-show-problems'));
     const problems = await screen.findByTestId('import-problems');
     expect(problems.textContent ?? '').toContain('MEM-00901');
     expect(problems.textContent ?? '').toMatch(/BRAK DOPASOWANIA|NO MATCH/i);

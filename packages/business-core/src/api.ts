@@ -84,6 +84,7 @@ export const assortmentSummarySchema = z
     unmatched: z.number().int().min(0),
     inactive: z.number().int().min(0),
     withoutPrice: z.number().int().min(0),
+    withoutVat: z.number().int().min(0),
   })
   .strict();
 export type AssortmentSummary = z.infer<typeof assortmentSummarySchema>;
@@ -106,6 +107,7 @@ export const ASSORTMENT_FILTERS = [
   'active',
   'unmatched',
   'without-price',
+  'without-vat',
   'inactive',
   'preferred',
 ] as const;
@@ -145,6 +147,7 @@ export const organizationPricesResponseSchema = z
           commercialVariantId: businessIdSchema,
           /** Absent when the organization has no row for this variant. */
           externalKey: z.string().min(1).max(160).optional(),
+          vatRateBps: z.number().int().min(0).max(10_000).optional(),
           price: assortmentPriceSchema.optional(),
           missing: z
             .enum([
@@ -193,6 +196,7 @@ export const assortmentFlagsRequestSchema = z
     itemId: businessIdSchema,
     active: z.boolean().optional(),
     preferred: z.boolean().optional(),
+    vatRateBps: z.number().int().min(0).max(10_000).optional(),
     displayNameOverride: z
       .string()
       .trim()
@@ -208,10 +212,14 @@ export const assortmentBulkFlagsRequestSchema = z
     itemIds: z.array(businessIdSchema).min(1).max(500),
     active: z.boolean().optional(),
     preferred: z.boolean().optional(),
+    vatRateBps: z.number().int().min(0).max(10_000).optional(),
   })
   .strict()
   .refine(
-    (value) => value.active !== undefined || value.preferred !== undefined,
+    (value) =>
+      value.active !== undefined ||
+      value.preferred !== undefined ||
+      value.vatRateBps !== undefined,
     { message: 'at least one flag is required' },
   );
 
@@ -234,6 +242,7 @@ export const assortmentCreateRequestSchema = z
     commercialVariantId: businessIdSchema.optional(),
     active: z.boolean().default(true),
     preferred: z.boolean().default(false),
+    vatRateBps: z.number().int().min(0).max(10_000).optional(),
     price: z.object(manualPriceFields).strict().optional(),
   })
   .strict()
@@ -300,6 +309,7 @@ export const assortmentPreviewResponseSchema = z
           commercialVariantId: businessIdSchema.optional(),
           candidateIds: z.array(businessIdSchema).optional(),
           netAmountMinor: z.number().int().min(0).optional(),
+          vatRateBps: z.number().int().min(0).max(10_000).optional(),
           issues: z.array(
             z
               .object({
@@ -315,4 +325,51 @@ export const assortmentPreviewResponseSchema = z
   .strict();
 export type AssortmentPreviewResponse = z.infer<
   typeof assortmentPreviewResponseSchema
+>;
+
+export const priceImportRequestSchema = z
+  .object({
+    csv: z.string().min(1).max(4_000_000),
+    mapping: z
+      .object({
+        externalKey: z.string().min(1),
+        netAmount: z.string().min(1),
+        vatRate: z.string().min(1).optional(),
+        saleUnit: z.string().min(1).optional(),
+      })
+      .strict(),
+    validFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    apply: z.boolean().default(false),
+  })
+  .strict();
+export type PriceImportRequest = z.infer<typeof priceImportRequestSchema>;
+export const priceImportPreviewResponseSchema = z
+  .object({
+    applied: z.boolean(),
+    counts: z
+      .object({
+        total: z.number(),
+        changed: z.number(),
+        unchanged: z.number(),
+        unknown: z.number(),
+        invalid: z.number(),
+        withVat: z.number(),
+        withoutVat: z.number(),
+      })
+      .strict(),
+    rows: z.array(
+      z
+        .object({
+          sourceLine: z.number(),
+          externalKey: z.string(),
+          netAmountMinor: z.number().optional(),
+          vatRateBps: z.number().optional(),
+          status: z.enum(['changed', 'unchanged', 'unknown-sku', 'invalid']),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
+export type PriceImportPreviewResponse = z.infer<
+  typeof priceImportPreviewResponseSchema
 >;

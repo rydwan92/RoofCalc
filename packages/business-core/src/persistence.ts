@@ -100,6 +100,7 @@ export const organizationAssortmentItemSchema = z
       .optional(),
     sourceName: nonBlank,
     displayNameOverride: nonBlank.optional(),
+    vatRateBps: z.number().int().min(0).max(10_000).optional(),
     active: z.boolean(),
     preferred: z.boolean(),
     metadata: z.record(jsonValueSchema).optional(),

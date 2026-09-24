@@ -171,10 +171,13 @@ export class InMemoryBusinessRepository
       unmatched: 0,
       inactive: 0,
       withoutPrice: 0,
+      withoutVat: 0,
     };
     for (const item of items) {
       const state = assortmentState(item);
       summary[state] += 1;
+      if (state === 'matched' && item.vatRateBps === undefined)
+        summary.withoutVat += 1;
       if (
         item.active &&
         (!organization || !this.hasCurrentPrice(item, organization, atDate))
@@ -322,6 +325,7 @@ export class InMemoryBusinessRepository
       item.commercialVariantId = patch.commercialVariantId;
     if (patch.active !== undefined) item.active = patch.active;
     if (patch.preferred !== undefined) item.preferred = patch.preferred;
+    if (patch.vatRateBps !== undefined) item.vatRateBps = patch.vatRateBps;
     if (patch.displayNameOverride === null) delete item.displayNameOverride;
     else if (patch.displayNameOverride !== undefined)
       item.displayNameOverride = patch.displayNameOverride;
@@ -331,7 +335,7 @@ export class InMemoryBusinessRepository
   updateAssortmentItemsFlags(
     organizationId: string,
     itemIds: string[],
-    flags: { active?: boolean; preferred?: boolean },
+    flags: { active?: boolean; preferred?: boolean; vatRateBps?: number },
   ): Promise<OrganizationAssortmentItem[]> {
     const wanted = new Set(itemIds);
     const updated: OrganizationAssortmentItem[] = [];
@@ -340,6 +344,7 @@ export class InMemoryBusinessRepository
         continue;
       if (flags.active !== undefined) item.active = flags.active;
       if (flags.preferred !== undefined) item.preferred = flags.preferred;
+      if (flags.vatRateBps !== undefined) item.vatRateBps = flags.vatRateBps;
       updated.push(structuredClone(item));
     }
     return Promise.resolve(updated);
@@ -384,6 +389,33 @@ export class InMemoryBusinessRepository
     }
     return Promise.resolve();
   }
+
+  async applyPriceImport(
+    input: Parameters<BusinessAdminRepository['applyPriceImport']>[0],
+  ): Promise<void> {
+    if (input.priceList.organizationId !== input.organizationId)
+      throw new Error('organization-mismatch');
+    if (
+      input.vatUpdates.some(
+        (update) =>
+          !this.state.assortment.some(
+            (item) =>
+              item.organizationId === input.organizationId &&
+              item.id === update.itemId,
+          ),
+      )
+    )
+      throw new Error('assortment-item-not-found');
+    for (const update of input.vatUpdates)
+      await this.updateAssortmentItem(input.organizationId, update.itemId, {
+        vatRateBps: update.vatRateBps,
+      });
+    if (input.entries.length)
+      await this.upsertOrganizationPrices({
+        priceList: input.priceList,
+        entries: input.entries,
+      });
+  }
 }
 
 function matchesLegacyFilter(
@@ -399,6 +431,8 @@ function matchesLegacyFilter(
       return state === 'unmatched';
     case 'without-price':
       return item.active && !hasPrice;
+    case 'without-vat':
+      return state === 'matched' && item.vatRateBps === undefined;
     case 'inactive':
       return state === 'inactive';
     case 'preferred':

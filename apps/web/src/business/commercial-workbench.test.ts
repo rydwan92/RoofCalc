@@ -94,6 +94,7 @@ describe('quote adapter', () => {
     {
       commercialVariantId: 'variant:koda',
       externalKey: 'DACH-00384',
+      vatRateBps: 2300,
       price: {
         priceListId: 'list:1',
         priceListLabel: 'Aktualny cennik hurtowni',
@@ -148,5 +149,40 @@ describe('quote adapter', () => {
       organizationPrices,
     });
     expect(changed).not.toBe(original);
+  });
+
+  it('snapshots organization VAT for a new quote', () => {
+    const prices = organizationPrices.map((item) => ({
+      ...item,
+      vatRateBps: 800,
+    }));
+    const input = {
+      draft: {
+        id: 'OF-VAT',
+        organizationSnapshot: { id: 'org:1', name: 'Hurtownia ABC' },
+        customerSnapshot: { name: 'Jan Kowalski' },
+        projectReference: { id: 'project:1', name: 'Dom' },
+        createdAt: '2026-09-24T08:00:00.000Z',
+        currencyCode: 'PLN',
+      },
+      rows: [row],
+      scenario,
+      prices: {},
+      organizationPrices: prices,
+      label: () => 'KODA',
+    };
+    const oldQuote = createQuoteFromMaterialPlan(input);
+    expect(oldQuote.lines[0]?.vatRateBps).toBe(800);
+    const missingVatQuote = createQuoteFromMaterialPlan({
+      ...input,
+      organizationPrices: [{ ...prices[0]!, vatRateBps: undefined }],
+    });
+    expect(missingVatQuote.lines[0]?.vatRateBps).toBeUndefined();
+    const newQuote = createQuoteFromMaterialPlan({
+      ...input,
+      organizationPrices: [{ ...prices[0]!, vatRateBps: 500 }],
+    });
+    expect(newQuote.lines[0]?.vatRateBps).toBe(500);
+    expect(oldQuote.lines[0]?.vatRateBps).toBe(800);
   });
 });

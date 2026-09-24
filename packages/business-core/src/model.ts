@@ -57,6 +57,8 @@ export interface OrganizationAssortmentItem {
   sourceName: string;
   /** An operator-chosen display name that overrides `sourceName` in pickers. */
   displayNameOverride?: string;
+  /** Current organization-owned VAT for new quotes; absent means unknown. */
+  vatRateBps?: number;
   active: boolean;
   /** A commercial preference only. Never a technical recommendation (§45). */
   preferred: boolean;
@@ -158,6 +160,7 @@ export type AssortmentImportIssueCode =
   | 'missing-external-key'
   | 'missing-name'
   | 'invalid-price'
+  | 'invalid-vat-rate'
   | 'gross-price-without-vat-rate'
   | 'invalid-sale-unit'
   | 'duplicate-external-key';

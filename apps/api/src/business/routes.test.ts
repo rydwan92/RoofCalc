@@ -256,6 +256,25 @@ describe('admin write gate', () => {
     expect(repository.state.assortment[0]?.commercialVariantId).toBeUndefined();
   });
 
+  it('rejects price imports and VAT bulk changes by sales', async () => {
+    const { app, repository } = api({ admin: true, devMode: false });
+    const price = await request(app)
+      .post('/api/business/organizations/org%3Aa/assortment/price-import')
+      .send({
+        csv: 'SKU;Cena\nA-DACH-001;4,82',
+        mapping: { externalKey: 'SKU', netAmount: 'Cena' },
+        validFrom: '2026-09-24',
+        apply: true,
+      });
+    const vat = await request(app)
+      .post('/api/business/organizations/org%3Aa/assortment/bulk-flags')
+      .send({ itemIds: ['oai:a:1'], vatRateBps: 2300 });
+    expect(price.status).toBe(403);
+    expect(vat.status).toBe(403);
+    expect(repository.state.entries).toHaveLength(0);
+    expect(repository.state.assortment[0]?.vatRateBps).toBeUndefined();
+  });
+
   it('allows an authenticated admin mutation', async () => {
     const { app, repository } = api({ admin: true, devMode: true });
     const response = await request(app)

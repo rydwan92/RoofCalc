@@ -97,6 +97,8 @@ export {
   assortmentPreviewResponseSchema,
   assortmentPriceCreateRequestSchema,
   assortmentPriceSchema,
+  priceImportRequestSchema,
+  priceImportPreviewResponseSchema,
   assortmentQuerySchema,
   assortmentSummarySchema,
   assortmentUnlinkRequestSchema,
@@ -109,6 +111,8 @@ export {
   type AssortmentCreateRequest,
   type AssortmentDetailResponse,
   type AssortmentPriceCreateRequest,
+  type PriceImportRequest,
+  type PriceImportPreviewResponse,
   type AssortmentPreviewResponse,
   type AssortmentQuery,
   type AssortmentSummary,
@@ -130,3 +134,12 @@ export {
   type MappedAssortmentRows,
   type ParsedCsv,
 } from './csv';
+
+export {
+  mapPriceImportRows,
+  priceImportMappingSchema,
+  priceImportRowSchema,
+  type PriceImportMapping,
+  type PriceImportRow,
+  type PriceImportProblem,
+} from './price-import';

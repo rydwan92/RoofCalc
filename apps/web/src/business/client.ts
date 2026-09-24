@@ -1,5 +1,6 @@
 import {
   assortmentPreviewResponseSchema,
+  priceImportPreviewResponseSchema,
   assortmentDetailResponseSchema,
   businessApiErrorSchema,
   organizationAssortmentResponseSchema,
@@ -10,6 +11,8 @@ import {
   type AssortmentDetailResponse,
   type AssortmentPriceCreateRequest,
   type AssortmentQuery,
+  type PriceImportRequest,
+  type PriceImportPreviewResponse,
   type Organization,
   type OrganizationAssortmentItem,
   type OrganizationAssortmentResponse,
@@ -118,13 +121,14 @@ export interface BusinessClient {
     flags: {
       active?: boolean;
       preferred?: boolean;
+      vatRateBps?: number;
       displayNameOverride?: string | null;
     },
   ): Promise<OrganizationAssortmentItem>;
   setFlagsBulk(
     organizationId: string,
     itemIds: string[],
-    flags: { active?: boolean; preferred?: boolean },
+    flags: { active?: boolean; preferred?: boolean; vatRateBps?: number },
   ): Promise<OrganizationAssortmentItem[]>;
   createItem(
     organizationId: string,
@@ -143,6 +147,10 @@ export interface BusinessClient {
       apply: boolean;
     },
   ): Promise<AssortmentPreviewResponse>;
+  importPricesCsv(
+    organizationId: string,
+    input: PriceImportRequest,
+  ): Promise<PriceImportPreviewResponse>;
 }
 
 export class HttpBusinessClient implements BusinessClient {
@@ -292,6 +300,13 @@ export class HttpBusinessClient implements BusinessClient {
     return requestJson(
       `${this.organizationUrl(organizationId)}/assortment/import`,
       assortmentPreviewResponseSchema,
+      { method: 'POST', body: JSON.stringify(input) },
+    );
+  }
+  importPricesCsv(organizationId: string, input: PriceImportRequest) {
+    return requestJson(
+      `${this.organizationUrl(organizationId)}/assortment/price-import`,
+      priceImportPreviewResponseSchema,
       { method: 'POST', body: JSON.stringify(input) },
     );
   }
