@@ -1297,6 +1297,42 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+## V61B — completed and validated locally
+
+- Latest user attachment explicitly resumes V61B from clean `main` at `0b1ae88`, superseding
+  the older paused checkpoint. No stash recovery, SQL or backend work.
+- Preflight: clean `git status`, empty diff/stat; typecheck, lint, format, 1668
+  tests (13 skipped), web and API builds passed. Baseline Worker build blocked
+  by shell Node 20.16 (Wrangler requires >=22).
+- Implemented: conservative pure two-plane gable analysis, Float64 source-unit
+  DTO, corrected parser Y-up → IFC Z-up adapter, PL/EN exact parameter form,
+  source/default/user provenance, explicit confirmation and standard project
+  creation through `ProjectSession.createFromDocument`. Previous project kept.
+- Changed: `packages/bim-import-core/src/{index,analysis,analysis.test}.ts`,
+  `apps/web/src/bim/ifc/` workspace/worker/runtime/CSS/confirmation component and
+  tests, `apps/web/src/assembly/Page.tsx`, `e2e/ifc-import.spec.ts`, V61 architecture
+  and IFC research document. IFC remains session-only; V1 schema is unchanged.
+- Final `pnpm verify` under temporary Node 22.23.2 completed every gate: 1687
+  tests passed, 13 skipped; web/API/Worker dry-run builds and bundle boundaries
+  passed. Existing Vite chunk-size advisory remains. PowerShell redirection
+  represents the advisory stderr as NativeCommandError despite completed gates.
+- QA: full `pnpm e2e` passed: 131 passed, 31 conditionally skipped, zero failures
+  (desktop 1440×900 and mobile 390×844). All 10 IFC tests passed, including metre
+  and millimetre source units, manual edit, exactly one new project, previous
+  project preservation, no IFC data in V1, reload, pyramid rejection and viewer
+  regression. Manual creator flows also passed. Desktop source parameters and
+  desktop/mobile confirmation screenshots inspected; no horizontal overflow.
+- `git diff --check` passed. Source and docs are complete; no unfinished WIP.
+  User authorized committing and pushing V61B to `origin/main` on 2026-09-24.
+  Local validation logs: `v61b-verify.log`, `v61b-e2e.log` (ignored).
+- Limitations: only complete symmetric rectangular two-plane surfaces. Thick
+  slabs, roof aggregates without own geometry, holes, compound/curved/hip roofs
+  and unknown units are blocked. Roof extents require user confirmation of wall
+  dimensions and overhang. No structural inference or automatic defaults from IFC.
+- NEXT ACTION: user review through Projekty → Import IFC using a regular
+  two-plane roof export. Aggregate/thick-slab support requires a separately
+  scoped extension with real exporter fixtures; do not start V62 automatically.
+
 ## V61.5 — Business production bootstrap (V61C pushed; V61D completed in source)
 
 - Authorized by the latest attached V61.5 prompt, superseding V61A's next action. Started from clean `main` at `1c7f67cefdaf3deb39fb3573e36168a7d06ea5af`; baseline `pnpm verify` passed (1657 tests, 13 skipped, web/API/Worker builds). V61B work is preserved in `stash@{0}` and paused.

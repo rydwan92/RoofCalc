@@ -1,3 +1,5 @@
+export * from './analysis';
+
 export type IfcElementGroup = 'roof' | 'structure' | 'opening' | 'other';
 
 export interface IfcElementSummary {

@@ -3276,7 +3276,25 @@ function AssemblyPageContent() {
       )}
       {ifcImportOpen && (
         <Suspense fallback={<p>Uruchamianie importera IFC…</p>}>
-          <IfcImportWorkspace onClose={() => setIfcImportOpen(false)} />
+          <IfcImportWorkspace
+            onClose={() => setIfcImportOpen(false)}
+            onCreate={async (template) => {
+              await projectSession.createFromDocument(
+                createRoofProjectDocument(template),
+                i18n.language.startsWith('pl')
+                  ? 'Projekt z IFC'
+                  : 'Project from IFC',
+              );
+              rememberCreatorStart();
+              projectSession.acknowledgeFreshProject();
+              setReuseFreshProject(false);
+              setProjectStartMode(undefined);
+              setIfcImportOpen(false);
+              state.setMode('builder');
+              state.navigatePerspective('project');
+              state.setViewPreset('construction');
+            }}
+          />
         </Suspense>
       )}
       {quickDetail && workbench.mode === 'quick' && (

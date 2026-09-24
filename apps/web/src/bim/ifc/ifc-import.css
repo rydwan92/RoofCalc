@@ -90,7 +90,7 @@
 }
 .ifc-main {
   display: grid;
-  grid-template-columns: minmax(195px, 19%) minmax(0, 1fr) minmax(210px, 21%);
+  grid-template-columns: minmax(195px, 19%) minmax(0, 1fr) minmax(280px, 28%);
   min-height: 0;
   flex: 1;
 }
@@ -230,21 +230,23 @@
   .ifc-main {
     display: flex;
     flex-direction: column;
+    overflow-y: auto;
   }
   .ifc-tree {
     order: 2;
-    max-height: 20vh;
+    flex: none;
     border-right: 0;
     border-top: 1px solid #cadbd1;
   }
   .ifc-view {
     order: 1;
-    flex: 1;
+    flex: none;
+    height: 35vh;
     min-height: 35vh;
   }
   .ifc-inspector {
     order: 3;
-    max-height: 20vh;
+    flex: none;
     border-left: 0;
     border-top: 1px solid #cadbd1;
   }
@@ -257,4 +259,91 @@
     max-height: 18vh;
     overflow: auto;
   }
+}
+
+.ifc-steps {
+  margin: 0;
+  padding: 10px 16px;
+  font-size: 0.85rem;
+  background: #e7f4ed;
+}
+.ifc-analysis {
+  border-bottom: 1px solid #cadbd1;
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+}
+.ifc-confirmation fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.ifc-field {
+  display: grid;
+  gap: 5px;
+  margin: 14px 0;
+  font-size: 0.9rem;
+}
+.ifc-field input,
+.ifc-field select {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 8px;
+  border: 1px solid #769e8b;
+  border-radius: 6px;
+  background: white;
+  color: #243b34;
+  font: inherit;
+  font-size: 1rem;
+}
+.ifc-field input[aria-invalid='true'] {
+  border-color: #aa392d;
+}
+.ifc-field small,
+.ifc-source-name {
+  font-size: 0.75rem;
+  color: #53695e;
+}
+.ifc-source-name {
+  display: block;
+  margin-top: 8px;
+  overflow-wrap: anywhere;
+}
+.ifc-notice {
+  padding: 10px;
+  background: #fff7e8;
+  border-radius: 6px;
+}
+.ifc-confirmation p {
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+.ifc-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 0;
+  font-size: 0.85rem;
+}
+.ifc-check input {
+  flex: none;
+  width: 20px;
+  height: 20px;
+}
+.ifc-primary {
+  width: 100%;
+  min-height: 44px;
+  border: 0;
+  border-radius: 6px;
+  padding: 10px;
+  background: #1c493c;
+  color: white;
+  font: inherit;
+  cursor: pointer;
+}
+.ifc-primary:disabled {
+  opacity: 0.5;
+  cursor: default;
 }

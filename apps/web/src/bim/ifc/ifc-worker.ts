@@ -3,6 +3,7 @@ import {
   discoverRoofCandidates,
   siLengthUnitToMillimetres,
   type IfcElementSummary,
+  type IfcAnalysisGeometry,
   type IfcSpatialNode,
 } from '@cieslacalc/bim-import-core';
 import type {
@@ -186,8 +187,15 @@ function elements(api: IfcApi, modelId: number): IfcElementSummary[] {
 function meshBuffers(
   api: IfcApi,
   modelId: number,
-): { meshes: IfcReferenceMesh[]; origin: [number, number, number] } {
+  candidates: ReadonlySet<number>,
+  sourceToMillimetres?: number,
+): {
+  meshes: IfcReferenceMesh[];
+  origin: [number, number, number];
+  analysisGeometry: Record<number, IfcAnalysisGeometry[]>;
+} {
   const meshes: IfcReferenceMesh[] = [];
+  const analysisGeometry: Record<number, IfcAnalysisGeometry[]> = {};
   let bytes = 0;
   let origin: [number, number, number] | undefined;
   api.StreamAllMeshes(modelId, (flat) => {
@@ -208,6 +216,10 @@ function meshBuffers(
           geometry.GetIndexDataSize(),
         );
         const positions = new Float32Array((raw.length / 6) * 3);
+        const sourcePositions =
+          candidates.has(flat.expressID) && sourceToMillimetres
+            ? new Float64Array(positions.length)
+            : undefined;
         const transform = placed.flatTransformation;
         for (let i = 0; i < raw.length / 6; i++) {
           const x = raw[i * 6] ?? 0;
@@ -228,11 +240,31 @@ function meshBuffers(
             (transform[6] ?? 0) * y +
             (transform[10] ?? 1) * z +
             (transform[14] ?? 0);
-          origin ??= [px, py, pz];
-          positions.set([px, py, pz], i * 3);
+          // web-ifc placed geometry is metre/Y-up (x,z,-y). Restore IFC
+          // Z-up axes before any display transform or Float32 narrowing.
+          const physical: [number, number, number] = [px, -pz, py];
+          if (sourcePositions && sourceToMillimetres)
+            sourcePositions.set(
+              physical.map((v) => (v * 1000) / sourceToMillimetres),
+              i * 3,
+            );
+          origin ??= physical;
+          positions.set(
+            physical.map((v, axis) => v - origin![axis]!),
+            i * 3,
+          );
         }
         const indices = new Uint32Array(rawIndices);
-        bytes += positions.byteLength + indices.byteLength;
+        bytes +=
+          positions.byteLength +
+          indices.byteLength +
+          (sourcePositions?.byteLength ?? 0);
+        if (sourcePositions) {
+          (analysisGeometry[flat.expressID] ??= []).push({
+            positions: sourcePositions,
+            indices,
+          });
+        }
         if (bytes > 160 * 1024 * 1024)
           throw new Error('Model IFC przekracza limit pamięci podglądu.');
         meshes.push({
@@ -252,13 +284,7 @@ function meshBuffers(
     }
   });
   const displayOrigin = origin ?? [0, 0, 0];
-  for (const mesh of meshes)
-    for (let i = 0; i < mesh.positions.length; i += 3) {
-      mesh.positions[i] = (mesh.positions[i] ?? 0) - displayOrigin[0];
-      mesh.positions[i + 1] = (mesh.positions[i + 1] ?? 0) - displayOrigin[1];
-      mesh.positions[i + 2] = (mesh.positions[i + 2] ?? 0) - displayOrigin[2];
-    }
-  return { meshes, origin: displayOrigin };
+  return { meshes, origin: displayOrigin, analysisGeometry };
 }
 
 self.onmessage = async (event: MessageEvent<IfcWorkerRequest>) => {
@@ -287,7 +313,12 @@ self.onmessage = async (event: MessageEvent<IfcWorkerRequest>) => {
     const summaries = elements(api, modelId);
     const roofs = discoverRoofCandidates(summaries);
     emit({ kind: 'stage', stage: 'preview' });
-    const geometry = meshBuffers(api, modelId);
+    const geometry = meshBuffers(
+      api,
+      modelId,
+      new Set(roofs.map((roof) => roof.expressId)),
+      unit.toMillimetres,
+    );
     const model: IfcReferenceModel = {
       summary: {
         metadata: {
@@ -307,16 +338,19 @@ self.onmessage = async (event: MessageEvent<IfcWorkerRequest>) => {
           ...(roofs.length > 1 ? [{ code: 'multiple-roofs' as const }] : []),
         ],
       },
+      analysisGeometry: geometry.analysisGeometry,
       meshes: geometry.meshes,
       displayOrigin: geometry.origin,
     };
-    emit(
-      { kind: 'result', model },
-      geometry.meshes.flatMap((mesh) => [
+    emit({ kind: 'result', model }, [
+      ...geometry.meshes.flatMap((mesh) => [
         mesh.positions.buffer,
         mesh.indices.buffer,
       ]),
-    );
+      ...Object.values(geometry.analysisGeometry).flatMap((meshes) =>
+        meshes.map((mesh) => (mesh.positions as Float64Array).buffer),
+      ),
+    ]);
   } catch (error) {
     emit({
       kind: 'error',

@@ -4,6 +4,8 @@ import type {
   IfcElementGroup,
   IfcSpatialNode,
 } from '@cieslacalc/bim-import-core';
+import type { RoofTemplateSpec } from '@cieslacalc/timber-model';
+import { IfcRoofConfirmation } from './IfcRoofConfirmation';
 import { loadIfcFile } from './ifc-loader';
 import type { IfcReferenceModel } from './ifc-runtime-types';
 import type { IfcViewDirection } from '../../assembly/scene3d/IfcReferenceViewport';
@@ -51,6 +53,8 @@ const copy = {
     referenceOnly:
       'Model referencyjny. Geometria IFC nie zasila obliczeń RoofCalc.',
     raw: 'Pokaż właściwości IFC',
+    steps:
+      '1. Wczytaj IFC → 2. Wybierz dach → 3. Sprawdź parametry → 4. Utwórz projekt',
   },
   en: {
     title: 'Import project',
@@ -86,6 +90,8 @@ const copy = {
     referenceOnly:
       'Reference model. IFC geometry does not feed RoofCalc calculations.',
     raw: 'Show IFC properties',
+    steps:
+      '1. Load IFC → 2. Select roof → 3. Check parameters → 4. Create project',
   },
 };
 
@@ -122,7 +128,13 @@ function SpatialBranch({
   );
 }
 
-export function IfcImportWorkspace({ onClose }: { onClose: () => void }) {
+export function IfcImportWorkspace({
+  onClose,
+  onCreate,
+}: {
+  onClose: () => void;
+  onCreate: (template: RoofTemplateSpec) => Promise<void>;
+}) {
   const { i18n } = useTranslation();
   const m = copy[i18n.language.startsWith('pl') ? 'pl' : 'en'];
   const [model, setModel] = useState<IfcReferenceModel>();
@@ -134,6 +146,7 @@ export function IfcImportWorkspace({ onClose }: { onClose: () => void }) {
   const [dragging, setDragging] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const cancelCurrent = useRef<() => void>(null);
+  const loadVersion = useRef(0);
   useEffect(() => () => cancelCurrent.current?.(), []);
 
   const visible = useMemo(
@@ -148,11 +161,15 @@ export function IfcImportWorkspace({ onClose }: { onClose: () => void }) {
   const selected = model?.summary.elements.find(
     (element) => element.expressId === selectedId,
   );
+  const candidate = model?.summary.roofCandidates.find(
+    (roof) => roof.expressId === selectedId,
+  );
   const selectedSpatial = model?.summary.spatialNodes.find(
     (node) => node.expressId === selectedId,
   );
 
   function start(file: File) {
+    const version = ++loadVersion.current;
     cancelCurrent.current?.();
     setModel(undefined);
     setError('');
@@ -161,11 +178,13 @@ export function IfcImportWorkspace({ onClose }: { onClose: () => void }) {
     cancelCurrent.current = task.cancel;
     void task.result
       .then((result) => {
+        if (version !== loadVersion.current) return;
         cancelCurrent.current = null;
         setModel(result);
         setStage('');
       })
       .catch((cause: unknown) => {
+        if (version !== loadVersion.current) return;
         cancelCurrent.current = null;
         if (cause instanceof Error && cause.message === 'Anulowano import.')
           return;
@@ -194,6 +213,7 @@ export function IfcImportWorkspace({ onClose }: { onClose: () => void }) {
             ×
           </button>
         </header>
+        <p className="ifc-steps">{m.steps}</p>
         {!model && (
           <div
             className={`ifc-drop ${dragging ? 'is-dragging' : ''}`}
@@ -379,6 +399,14 @@ export function IfcImportWorkspace({ onClose }: { onClose: () => void }) {
                 </Suspense>
               </div>
               <aside className="ifc-inspector">
+                {candidate && (
+                  <IfcRoofConfirmation
+                    key={candidate.expressId}
+                    model={model}
+                    candidate={candidate}
+                    onCreate={onCreate}
+                  />
+                )}
                 <h2>{m.inspector}</h2>
                 {selected ? (
                   <>

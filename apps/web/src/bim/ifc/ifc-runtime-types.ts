@@ -1,4 +1,7 @@
-import type { IfcReferenceSummary } from '@cieslacalc/bim-import-core';
+import type {
+  IfcAnalysisGeometry,
+  IfcReferenceSummary,
+} from '@cieslacalc/bim-import-core';
 
 export interface IfcReferenceMesh {
   expressId: number;
@@ -10,6 +13,7 @@ export interface IfcReferenceMesh {
 
 export interface IfcReferenceModel {
   summary: IfcReferenceSummary;
+  analysisGeometry: Record<number, IfcAnalysisGeometry[]>;
   meshes: IfcReferenceMesh[];
   /** Metres in IFC's axes, subtracted for display; never canonical roof data. */
   displayOrigin: [number, number, number];
