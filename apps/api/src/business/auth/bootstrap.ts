@@ -33,13 +33,52 @@ export type BootstrapError =
 export interface SetupStatus {
   database: 'connected' | 'unavailable';
   auth: 'configured' | 'unconfigured';
-  firstOwner: 'required' | 'configured';
+  firstOwner: 'required' | 'configured' | 'unknown';
   bootstrap: 'available' | 'unavailable';
   organization: 'existing' | 'new' | 'ambiguous' | 'unknown';
 }
 
 export const bootstrapEnabled = (token?: string) =>
   !!token && token.length >= 32;
+export const BOOTSTRAP_MARKER = 'roofcalc:first-owner-bootstrap';
+
+async function anyOwnerExists(db: CatalogDatabase): Promise<boolean> {
+  const rows = await db
+    .select({ userId: organizationMemberships.userId })
+    .from(organizationMemberships)
+    .where(eq(organizationMemberships.role, 'owner'))
+    .limit(1);
+  return rows.length > 0;
+}
+
+/** The reserved row is the cross-transport serialization point. */
+export async function lockBootstrapMarker(db: CatalogDatabase) {
+  await db
+    .insert(authRateLimits)
+    .values({
+      id: BOOTSTRAP_MARKER,
+      key: BOOTSTRAP_MARKER,
+      count: 0,
+      lastRequest: 0,
+    })
+    .onDuplicateKeyUpdate({ set: { id: sql`${authRateLimits.id}` } });
+  const [marker] = await db
+    .select()
+    .from(authRateLimits)
+    .where(eq(authRateLimits.key, BOOTSTRAP_MARKER))
+    .for('update');
+  return marker;
+}
+
+/** A successful owner creation permanently closes browser bootstrap. */
+export async function markBootstrapConsumed(
+  db: CatalogDatabase,
+): Promise<void> {
+  await db
+    .update(authRateLimits)
+    .set({ count: -1 })
+    .where(eq(authRateLimits.key, BOOTSTRAP_MARKER));
+}
 
 async function activeOwnerExists(db: CatalogDatabase): Promise<boolean> {
   const rows = await db
@@ -69,18 +108,54 @@ export async function readSetupStatus(
     return {
       database: 'unavailable',
       auth: authConfigured ? 'configured' : 'unconfigured',
-      firstOwner: 'required',
+      firstOwner: 'unknown',
       bootstrap: 'unavailable',
       organization: 'unknown',
     };
-  const [owner, activeOrganizations] = await Promise.all([
-    activeOwnerExists(db),
-    db
-      .select({ id: organizations.id })
-      .from(organizations)
-      .where(eq(organizations.active, true))
-      .limit(2),
-  ]);
+  let owner: boolean;
+  let previousOwner: boolean;
+  let consumed: boolean;
+  let activeOrganizations: Array<{ id: string }>;
+  try {
+    const [activeOwner, everOwner, markerRows, organizationsRows] =
+      await Promise.all([
+        activeOwnerExists(db),
+        anyOwnerExists(db),
+        db
+          .select({ count: authRateLimits.count })
+          .from(authRateLimits)
+          .where(eq(authRateLimits.key, BOOTSTRAP_MARKER))
+          .limit(1),
+        db
+          .select({ id: organizations.id })
+          .from(organizations)
+          .where(eq(organizations.active, true))
+          .limit(2),
+      ]);
+    owner = activeOwner;
+    previousOwner = everOwner;
+    consumed = markerRows[0]?.count === -1;
+    activeOrganizations = organizationsRows;
+  } catch {
+    try {
+      await db.execute(sql`SELECT 1`);
+    } catch {
+      return {
+        database: 'unavailable',
+        auth: authConfigured ? 'configured' : 'unconfigured',
+        firstOwner: 'unknown',
+        bootstrap: 'unavailable',
+        organization: 'unknown',
+      };
+    }
+    return {
+      database: 'connected',
+      auth: authConfigured ? 'configured' : 'unconfigured',
+      firstOwner: 'unknown',
+      bootstrap: 'unavailable',
+      organization: 'unknown',
+    };
+  }
   const organization =
     activeOrganizations.length > 1
       ? 'ambiguous'
@@ -93,6 +168,8 @@ export async function readSetupStatus(
     firstOwner: owner ? 'configured' : 'required',
     bootstrap:
       !owner &&
+      !previousOwner &&
+      !consumed &&
       authConfigured &&
       bootstrapEnabled(token) &&
       organization !== 'ambiguous'
@@ -131,27 +208,18 @@ export async function bootstrapFirstOwner(
     body: { error: { code } },
   });
   return db.transaction(async (tx) => {
-    const marker = 'roofcalc:first-owner-bootstrap';
-    await tx
-      .insert(authRateLimits)
-      .values({ id: marker, key: marker, count: 0, lastRequest: 0 })
-      .onDuplicateKeyUpdate({ set: { id: sql`${authRateLimits.id}` } });
-    const [attempts] = await tx
-      .select()
-      .from(authRateLimits)
-      .where(eq(authRateLimits.key, marker))
-      .for('update');
+    const attempts = await lockBootstrapMarker(tx as CatalogDatabase);
     if (!attempts) return reject(503, 'bootstrap-invalid-request');
-    if (await activeOwnerExists(tx as CatalogDatabase))
+    if (attempts.count === -1 || (await anyOwnerExists(tx as CatalogDatabase)))
       return reject(409, 'bootstrap-closed');
-    if (!parsed.success) return reject(400, 'bootstrap-invalid-request');
     const now = Math.floor(Date.now() / 1000);
     const count = now - attempts.lastRequest < 60 ? attempts.count + 1 : 1;
     await tx
       .update(authRateLimits)
       .set({ count, lastRequest: now })
-      .where(eq(authRateLimits.key, marker));
+      .where(eq(authRateLimits.key, BOOTSTRAP_MARKER));
     if (count > 10) return reject(429, 'bootstrap-rate-limited');
+    if (!parsed.success) return reject(400, 'bootstrap-invalid-request');
     if (!(await tokenMatches(parsed.data.token, expectedToken)))
       return reject(403, 'bootstrap-invalid-token');
     const activeOrganizations = await tx
@@ -203,6 +271,7 @@ export async function bootstrapFirstOwner(
       userId,
       role: 'owner',
     });
+    await markBootstrapConsumed(tx as CatalogDatabase);
     return { status: 201 as const, body: { created: true as const } };
   });
 }

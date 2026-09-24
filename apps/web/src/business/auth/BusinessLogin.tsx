@@ -138,6 +138,12 @@ export function BusinessLogin() {
               ? 'Utwórz pierwsze konto administratora.'
               : 'Create the first administrator account.'}
           </p>
+        ) : state?.firstOwner === 'unknown' ? (
+          <p role="alert">
+            {pl
+              ? 'Baza jest połączona, ale stan kont nie jest dostępny. Operator musi sprawdzić migracje.'
+              : 'Database connected, but account status is unavailable. The operator must check migrations.'}
+          </p>
         ) : state?.firstOwner === 'required' ? (
           <p>
             {pl
@@ -161,8 +167,8 @@ export function BusinessLogin() {
                   ? 'W bazie jest więcej niż jedna firma. Poproś operatora o konfigurację konta.'
                   : 'Multiple companies exist. Ask the operator to provision the first account.'
                 : pl
-                  ? 'Operator musi włączyć kod pierwszej konfiguracji na serwerze.'
-                  : 'The operator must enable the first setup code on the server.'}
+                  ? 'Pierwsza konfiguracja w przeglądarce jest niedostępna. Skontaktuj się z operatorem.'
+                  : 'Browser setup is unavailable. Contact the operator.'}
             </p>
           )}
         {!unavailable &&

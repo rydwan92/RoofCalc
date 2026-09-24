@@ -37,7 +37,11 @@ function database(organizationIds: string[], owner = false) {
               ? organizationIds.map((id) => ({ id })).slice(0, 2)
               : table === authUsers
                 ? []
-                : [],
+                : table === authRateLimits
+                  ? [attempts]
+                  : table === organizationMemberships && owner
+                    ? [{ userId: 'owner' }]
+                    : [],
           for: async () => [attempts],
         }),
       }),
@@ -51,9 +55,9 @@ function database(organizationIds: string[], owner = false) {
       },
     }),
     update: () => ({
-      set: (value: typeof attempts) => ({
+      set: (value: Partial<typeof attempts>) => ({
         where: async () => {
-          attempts = value;
+          attempts = { ...attempts, ...value };
         },
       }),
     }),
@@ -63,7 +67,13 @@ function database(organizationIds: string[], owner = false) {
     transaction: (callback: (value: typeof tx) => Promise<unknown>) =>
       callback(tx),
   } as unknown as CatalogDatabase;
-  return { db, inserted };
+  return {
+    db,
+    inserted,
+    setOwner: (value: boolean) => {
+      owner = value;
+    },
+  };
 }
 
 describe('first owner bootstrap', () => {
@@ -105,6 +115,30 @@ describe('first owner bootstrap', () => {
     expect((await readSetupStatus(database([]).db, false, token)).auth).toBe(
       'unconfigured',
     );
+    const incomplete = {
+      select: () => ({
+        from: () => ({
+          innerJoin: () => ({
+            where: () => ({
+              limit: async () => {
+                throw new Error('missing auth table');
+              },
+            }),
+          }),
+          where: () => ({
+            limit: async () => {
+              throw new Error('missing auth table');
+            },
+          }),
+        }),
+      }),
+      execute: async () => [],
+    } as unknown as CatalogDatabase;
+    expect(await readSetupStatus(incomplete, true, token)).toMatchObject({
+      database: 'connected',
+      firstOwner: 'unknown',
+      bootstrap: 'unavailable',
+    });
   });
 
   it('attaches to the single active organization, stores a hashed credential, and closes', async () => {
@@ -123,6 +157,13 @@ describe('first owner bootstrap', () => {
       (item) => item.table === authAccounts,
     )?.values;
     expect(account?.password).not.toBe(input.password);
+    expect((await bootstrapFirstOwner(fixture.db, token, input)).body).toEqual({
+      error: { code: 'bootstrap-closed' },
+    });
+    fixture.setOwner(false);
+    expect((await readSetupStatus(fixture.db, true, token)).bootstrap).toBe(
+      'unavailable',
+    );
     expect((await bootstrapFirstOwner(fixture.db, token, input)).body).toEqual({
       error: { code: 'bootstrap-closed' },
     });
@@ -165,6 +206,24 @@ describe('first owner bootstrap', () => {
     );
     expect(fixture.inserted.some((item) => item.table === authRateLimits)).toBe(
       true,
+    );
+  });
+  it('rate limits repeated setup attempts before checking the token', async () => {
+    const fixture = database(['demo']);
+    for (let attempt = 0; attempt < 10; attempt++)
+      expect(
+        (
+          await bootstrapFirstOwner(fixture.db, token, {
+            ...input,
+            token: 'wrong',
+          })
+        ).status,
+      ).toBe(403);
+    expect((await bootstrapFirstOwner(fixture.db, token, input)).body).toEqual({
+      error: { code: 'bootstrap-rate-limited' },
+    });
+    expect(fixture.inserted.some((item) => item.table === authUsers)).toBe(
+      false,
     );
   });
 });

@@ -9,6 +9,7 @@ import { CompanySettings } from '../CompanySettings';
 import { AdminAssortment } from './AdminAssortment';
 import { Team } from './Team';
 import { PricingWorkspace } from './PricingWorkspace';
+import { SystemStatus } from './SystemStatus';
 
 export function SetupStatus({ onContinue }: { onContinue: () => void }) {
   const { i18n } = useTranslation(),
@@ -64,7 +65,7 @@ export function AdminWorkspace({ onClose }: { onClose: () => void }) {
       (item) => item.organizationId === business.organizationId,
     )?.capabilities ?? [];
   const [tab, setTab] = useState<
-    'company' | 'team' | 'assortment' | 'pricing' | 'quality'
+    'company' | 'team' | 'assortment' | 'pricing' | 'quality' | 'system'
   >(
     capabilities.includes('organization.manage')
       ? 'company'
@@ -119,6 +120,7 @@ export function AdminWorkspace({ onClose }: { onClose: () => void }) {
                 pl ? 'Jakość danych' : 'Data quality',
                 'assortment.manage',
               ],
+              ['system', pl ? 'Stan systemu' : 'System status', 'users.manage'],
             ] as const
           )
             .filter(([, , capability]) => capabilities.includes(capability))
@@ -139,6 +141,8 @@ export function AdminWorkspace({ onClose }: { onClose: () => void }) {
             <Team key={business.organizationId} />
           ) : tab === 'quality' ? (
             <DataQuality onOpen={openAssortment} />
+          ) : tab === 'system' ? (
+            <SystemStatus />
           ) : tab === 'pricing' ? (
             <PricingWorkspace />
           ) : (

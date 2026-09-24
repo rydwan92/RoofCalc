@@ -10,6 +10,7 @@ import {
 } from '../../db/workspace-schema';
 import { organizations } from '../../db/business-schema';
 import { assertTeamChange } from './team-policy';
+import { lockBootstrapMarker, markBootstrapConsumed } from './bootstrap';
 
 export const provisioningInputSchema = z.object({
   email: z.string().trim().toLowerCase().email().max(254),
@@ -19,7 +20,7 @@ export const provisioningInputSchema = z.object({
   role: businessRoleSchema,
 });
 
-/** Explicit operator action only. Existing credentials/roles are never reset. */
+/** Explicit operator or authorized team action. Existing credentials/roles are never reset. */
 export async function provisionBusinessUser(
   db: CatalogDatabase,
   raw: unknown,
@@ -27,6 +28,8 @@ export async function provisionBusinessUser(
 ) {
   const input = provisioningInputSchema.parse(raw);
   return db.transaction(async (tx) => {
+    if (input.role === 'owner')
+      await lockBootstrapMarker(tx as CatalogDatabase);
     const [org] = await tx
       .select()
       .from(organizations)
@@ -90,12 +93,18 @@ export async function provisionBusinessUser(
           eq(organizationMemberships.userId, userId),
         ),
       );
-    if (membership) return { status: 'already-exists' as const, userId };
+    if (membership) {
+      if (membership.role === 'owner')
+        await markBootstrapConsumed(tx as CatalogDatabase);
+      return { status: 'already-exists' as const, userId };
+    }
     await tx.insert(organizationMemberships).values({
       organizationId: input.organizationId,
       userId,
       role: input.role,
     });
+    if (input.role === 'owner')
+      await markBootstrapConsumed(tx as CatalogDatabase);
     return {
       status: existing
         ? ('membership-added' as const)

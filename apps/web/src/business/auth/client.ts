@@ -26,7 +26,7 @@ export type BusinessSession = z.infer<typeof sessionSchema>;
 const setupStatusSchema = z.object({
   database: z.enum(['connected', 'unavailable']),
   auth: z.enum(['configured', 'unconfigured']),
-  firstOwner: z.enum(['required', 'configured']),
+  firstOwner: z.enum(['required', 'configured', 'unknown']),
   bootstrap: z.enum(['available', 'unavailable']),
   organization: z.enum(['existing', 'new', 'ambiguous', 'unknown']),
 });

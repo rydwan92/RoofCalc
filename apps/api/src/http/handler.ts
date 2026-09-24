@@ -39,6 +39,7 @@ import {
 import { type AdminRequestContext } from '../business/capability';
 import { can, type BusinessAccess } from '../business/auth/access';
 import { workspaceRoute } from '../business/workspace/routes';
+import type { SystemStatus } from '../db/system-status';
 import {
   WorkspaceError,
   type WorkspaceRepository,
@@ -72,6 +73,7 @@ export interface BusinessApi {
   access?: BusinessAccess;
   workspace?: WorkspaceRepository;
   admin?: BusinessAdminService;
+  systemStatus?: () => Promise<SystemStatus>;
   /** Per-request transport facts the capability gate needs. */
   request?: AdminRequestContext;
 }
@@ -253,6 +255,18 @@ async function handleAuthorizedBusiness(
   try {
     if (pathname === '/api/business/session' && method === 'GET')
       return json(business.access);
+    if (pathname === '/api/business/system/status' && method === 'GET') {
+      if (
+        !business.access.memberships.some(
+          (membership) =>
+            membership.role === 'owner' || membership.role === 'admin',
+        )
+      )
+        return errorResult(403, 'business-forbidden');
+      if (!business.systemStatus)
+        return errorResult(503, 'business-unavailable');
+      return json(await business.systemStatus());
+    }
     if (
       pathname === '/api/business/organizations' &&
       (method === 'GET' || method === 'HEAD')

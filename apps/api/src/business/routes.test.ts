@@ -52,6 +52,8 @@ function api(options: { admin?: boolean; devMode?: boolean } = {}) {
     memberships: [
       {
         organizationId: 'org:a',
+        role:
+          options.devMode === false ? ('sales' as const) : ('admin' as const),
         capabilities: roleCapabilities(
           options.devMode === false ? 'sales' : 'admin',
         ),
@@ -65,6 +67,15 @@ function api(options: { admin?: boolean; devMode?: boolean } = {}) {
     { runtime: 'node' },
     {
       service: new BusinessService(repository, repository),
+      systemStatus: async () => ({
+        database: 'connected',
+        migrations: { state: 'current', applied: 8, expected: 8 },
+        seeds: {
+          catalogue: { state: 'current', current: 10, expected: 10 },
+          pricing: { state: 'missing', current: 0, expected: 4 },
+          business: { state: 'missing', current: 0, expected: 1 },
+        },
+      }),
       ...(options.admin
         ? {
             admin: new BusinessAdminService(repository, repository, repository),
@@ -77,6 +88,15 @@ function api(options: { admin?: boolean; devMode?: boolean } = {}) {
 }
 
 describe('business read API', () => {
+  it('limits system readiness to owner or admin memberships', async () => {
+    const admin = await request(api().app).get('/api/business/system/status');
+    expect(admin.status).toBe(200);
+    expect(admin.body.seeds.pricing.state).toBe('missing');
+    const sales = await request(api({ devMode: false }).app).get(
+      '/api/business/system/status',
+    );
+    expect(sales.status).toBe(403);
+  });
   it('refuses sales team access and protects the final active owner', async () => {
     const sales = api({ devMode: false });
     for (const method of ['get', 'post', 'patch'] as const) {

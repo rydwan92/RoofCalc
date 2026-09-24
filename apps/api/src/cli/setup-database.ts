@@ -10,9 +10,9 @@ function valueAfter(name: string): string | undefined {
   return index >= 0 ? process.argv[index + 1] : undefined;
 }
 
-function runScript(script: string): Promise<void> {
+function runScript(script: string, args: string[] = []): Promise<void> {
   return new Promise((resolvePromise, reject) => {
-    const child = spawn('pnpm', [script], {
+    const child = spawn('pnpm', [script, ...args], {
       cwd: process.cwd(),
       env: process.env,
       stdio: 'inherit',
@@ -55,8 +55,11 @@ async function main() {
     'db:smoke-check',
     'db:status',
   ])
-    await runScript(script);
-  console.log(`Database setup complete: ${target.environment}.`);
+    await runScript(
+      script,
+      script === 'db:status' ? ['--', '--require-ready'] : [],
+    );
+  console.log(`DATABASE READY: ${target.environment}.`);
 }
 
 void main().catch((error: unknown) => {

@@ -23,6 +23,7 @@ import {
   bootstrapFirstOwner,
   readSetupStatus,
 } from '../business/auth/bootstrap';
+import { readSystemStatus } from '../db/system-status';
 
 /** The subset of Cloudflare's Hyperdrive binding that mysql2 needs. */
 export interface HyperdriveBinding {
@@ -291,6 +292,7 @@ export function createWorker(connect: ConnectDatabase = connectHyperdrive) {
             {
               access,
               workspace: new DrizzleWorkspaceRepository(db),
+              systemStatus: () => readSystemStatus(db),
               admin: new BusinessAdminService(
                 businessRepository,
                 businessRepository,

@@ -145,7 +145,7 @@ describe('Cloudflare Worker routing', () => {
     expect(await status.json()).toEqual({
       database: 'unavailable',
       auth: 'configured',
-      firstOwner: 'required',
+      firstOwner: 'unknown',
       bootstrap: 'unavailable',
       organization: 'unknown',
     });

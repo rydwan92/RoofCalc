@@ -1,35 +1,22 @@
-name: Shared DEV database sync
+name: Shared DEV deployed verification
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
 
-concurrency:
-  group: shared-dev-database
-  cancel-in-progress: false
-
 jobs:
-  sync:
+  verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 5
     environment: shared-dev
     env:
-      DATABASE_URL: ${{ secrets.ROOFCALC_DEV_DATABASE_URL }}
-      ROOFCALC_DB_ENV: shared-dev
       ROOFCALC_DEV_APP_URL: ${{ vars.ROOFCALC_DEV_APP_URL }}
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: Guard, wait, migrate, ensure starter data, smoke and status
-        run: pnpm db:setup:shared-dev -- --apply --confirm shared-dev
-      - name: Verify independently deployed Worker (bounded retry)
+      - name: Verify independently deployed Worker (read only)
         run: node tools/verify-shared-dev.mjs
