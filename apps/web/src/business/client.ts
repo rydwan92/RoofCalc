@@ -32,7 +32,7 @@ import { resolveApiBaseUrl } from '../api-base';
  * Note what is *not* here and never will be: a database connection string, an
  * admin password or any credential. Every write goes browser → API →
  * repository → database (§34); the browser has no privileged path of its own,
- * and the admin routes only answer at all behind the server's local/dev gate.
+ * and all business writes require a live organization capability.
  */
 
 export class BusinessClientError extends Error {
@@ -72,7 +72,9 @@ export async function requestJson<T>(
       );
     const parsed = businessApiErrorSchema.safeParse(payload);
     const authError =
-      !parsed.success && url.includes('/auth/') && response.status === 401;
+      !parsed.success &&
+      url.includes('/auth/sign-in/') &&
+      (response.status === 400 || response.status === 401);
     throw new BusinessClientError(
       parsed.success
         ? parsed.data.error.code

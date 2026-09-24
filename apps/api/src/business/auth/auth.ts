@@ -13,6 +13,26 @@ export interface AuthConfiguration {
   BETTER_AUTH_SECRET?: string;
   BETTER_AUTH_URL?: string;
 }
+export function authConfigured(configuration: AuthConfiguration): boolean {
+  const secret = configuration.BETTER_AUTH_SECRET;
+  const baseURL = configuration.BETTER_AUTH_URL;
+  if (!secret || secret.length < 32 || !baseURL) return false;
+  try {
+    const url = new URL(baseURL);
+    return (
+      !url.username &&
+      !url.password &&
+      !url.search &&
+      !url.hash &&
+      url.pathname === '/' &&
+      (url.protocol === 'https:' ||
+        (url.protocol === 'http:' &&
+          ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)))
+    );
+  } catch {
+    return false;
+  }
+}
 export interface BusinessAuth {
   handler: (request: Request) => Promise<Response>;
   api: {
@@ -27,23 +47,8 @@ export function createBusinessAuth(
 ): BusinessAuth | undefined {
   const secret = configuration.BETTER_AUTH_SECRET,
     baseURL = configuration.BETTER_AUTH_URL;
-  if (!secret || secret.length < 32 || !baseURL) return undefined;
-  let url: URL;
-  try {
-    url = new URL(baseURL);
-  } catch {
-    return undefined;
-  }
-  if (
-    url.username ||
-    url.password ||
-    (url.protocol !== 'https:' &&
-      !(
-        url.protocol === 'http:' &&
-        ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)
-      ))
-  )
-    return undefined;
+  if (!authConfigured(configuration)) return undefined;
+  const url = new URL(baseURL!);
   return betterAuth({
     appName: 'RoofCalc Business',
     secret,

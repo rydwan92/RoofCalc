@@ -43,7 +43,8 @@ export function BusinessHome({
       (item) => item.organizationId === organization?.id,
     )?.capabilities ?? [];
   const canManage = capabilities.includes('assortment.manage');
-  if (business.authenticationRequired) return <BusinessLogin />;
+  if (business.authenticationRequired || (unavailable && !business.session))
+    return <BusinessLogin />;
   if (business.loading)
     return (
       <main className="bz-home" aria-busy="true">

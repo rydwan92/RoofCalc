@@ -39,12 +39,7 @@ const catalogService = catalogDatabase
 const pricingService = catalogDatabase
   ? new PricingService(new DrizzlePricingRepository(catalogDatabase.db))
   : undefined;
-/**
- * V54. The read service is always built when a database exists. The **admin**
- * service is built only when `BUSINESS_ADMIN_DEV_MODE=true`, and every request
- * it serves is re-checked against the loopback gate — see the header comment
- * in `business/capability.ts`: PRODUCTION ADMIN AUTH IS NOT IMPLEMENTED YET.
- */
+/** Read and write services share the authenticated, capability-gated API. */
 const businessRepository = catalogDatabase
   ? new DrizzleBusinessRepository(catalogDatabase.db)
   : undefined;
@@ -68,6 +63,7 @@ const server = createApp(
   pricingService,
   {
     runtime: 'node',
+    auth: auth ? 'configured' : 'unconfigured',
     probeDatabase: catalogDatabase
       ? async () => {
           await catalogDatabase.pool.query('SELECT 1');
@@ -78,6 +74,9 @@ const server = createApp(
   {
     auth,
     baseURL: process.env.BETTER_AUTH_URL,
+    setup: catalogDatabase
+      ? { db: catalogDatabase.db, token: process.env.ROOFCALC_BOOTSTRAP_TOKEN }
+      : undefined,
     resolve: (headers) =>
       catalogDatabase
         ? resolveBusinessAccess(catalogDatabase.db, auth, headers)

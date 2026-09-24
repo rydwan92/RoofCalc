@@ -619,6 +619,30 @@
 .bz-login .bz-form-grid {
   grid-template-columns: 1fr;
 }
+.bz-login .bz-form-grid label {
+  gap: 0.45rem;
+  color: var(--ui-text);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.bz-login .bz-form-grid input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 48px;
+  padding: 0.7rem 0.8rem;
+  border: 1.5px solid var(--ui-text-muted);
+  border-radius: 8px;
+  background: var(--ui-surface-2, var(--ui-surface));
+  color: var(--ui-text);
+}
+.bz-login .bz-form-grid input:focus-visible {
+  outline: 3px solid var(--ui-accent);
+  outline-offset: 2px;
+  border-color: var(--ui-accent);
+}
+.bz-login .a-primary {
+  min-height: 44px;
+}
 .bz-login-brand {
   color: var(--ui-accent);
   font-size: 0.75rem;

@@ -65,13 +65,8 @@ const pricingVariantsResponseSchema = z.object({
   ),
 });
 
-/**
- * V54 business surface. Read services are always safe to pass; `admin` is only
- * constructed by the Node server, and even then every mutation re-checks the
- * local/dev capability gate per request (`business/capability.ts`). The
- * Cloudflare Worker never passes one, so the edge deployment has no write
- * surface at all (§33, §53).
- */
+/** Business services shared by Node and Worker. The transport resolves the
+ * session; this handler checks active membership and each route capability. */
 export interface BusinessApi {
   service: BusinessService;
   access?: BusinessAccess;
@@ -84,6 +79,7 @@ export interface BusinessApi {
 /** Shared endpoint semantics for Express and Cloudflare Fetch transports. */
 export interface HealthContext {
   runtime: HealthResponse['runtime'];
+  auth?: HealthResponse['auth'];
   /** Runs a trivial read; must never throw driver details to the caller. */
   probeDatabase?: () => Promise<void>;
 }
@@ -122,6 +118,7 @@ export async function healthResult(context: HealthContext): Promise<ApiResult> {
     version: '0.1.0',
     runtime: context.runtime,
     database,
+    auth: context.auth ?? 'unconfigured',
   };
   return json(body);
 }
@@ -395,13 +392,7 @@ async function handleBusinessRead(
   return errorResult(404, 'not-found');
 }
 
-/**
- * `POST /api/business/...` — admin mutations, **disabled unless** the
- * local/dev capability gate passes. A refused request is `404 not-found`, not
- * `403`: with no authentication to negotiate, the honest answer is that no
- * such endpoint is available here. Nothing about the admin surface is
- * disclosed to a remote caller.
- */
+/** Admin mutations after transport origin, session and capability checks. */
 async function handleBusinessAdmin(
   pathname: string,
   business: BusinessApi | undefined,

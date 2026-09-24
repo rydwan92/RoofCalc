@@ -10,6 +10,7 @@ import { handleApiRequest, type ApiResult } from '../http/handler';
 import { PricingService } from '../pricing/service';
 import {
   createBusinessAuth,
+  authConfigured,
   type AuthConfiguration,
 } from '../business/auth/auth';
 import {
@@ -18,6 +19,10 @@ import {
 } from '../business/auth/access';
 import { BusinessAdminService } from '../business/admin-service';
 import { DrizzleWorkspaceRepository } from '../business/workspace/drizzle-repository';
+import {
+  bootstrapFirstOwner,
+  readSetupStatus,
+} from '../business/auth/bootstrap';
 
 /** The subset of Cloudflare's Hyperdrive binding that mysql2 needs. */
 export interface HyperdriveBinding {
@@ -30,6 +35,7 @@ export interface HyperdriveBinding {
 
 export interface WorkerEnv extends AuthConfiguration {
   HYPERDRIVE?: HyperdriveBinding;
+  ROOFCALC_BOOTSTRAP_TOKEN?: string;
   ASSETS: { fetch(request: Request): Promise<Response> };
 }
 
@@ -89,6 +95,7 @@ export function createWorker(connect: ConnectDatabase = connectHyperdrive) {
             undefined,
             {
               runtime: 'cloudflare-worker',
+              auth: authConfigured(env) ? 'configured' : 'unconfigured',
               probeDatabase: binding
                 ? async () => {
                     const connection = await connect(binding);
@@ -104,7 +111,57 @@ export function createWorker(connect: ConnectDatabase = connectHyperdrive) {
         );
       }
 
+      const setupStatus = url.pathname === '/api/setup/status';
+      const setupBootstrap = url.pathname === '/api/setup/first-owner';
+      if (setupStatus && request.method !== 'GET' && request.method !== 'HEAD')
+        return respond(request, {
+          status: 404,
+          body: { error: { code: 'not-found' } },
+        });
+      if (setupBootstrap && request.method !== 'POST')
+        return respond(request, {
+          status: 404,
+          body: { error: { code: 'not-found' } },
+        });
+      if (
+        setupBootstrap &&
+        !businessOriginAllowed(
+          request.method,
+          request.headers.get('Origin') ?? undefined,
+          env.BETTER_AUTH_URL,
+        )
+      )
+        return respond(request, {
+          status: 403,
+          body: { error: { code: 'business-origin-forbidden' } },
+        });
+      if (setupStatus && !env.HYPERDRIVE)
+        return respond(request, {
+          status: 200,
+          body: await readSetupStatus(
+            undefined,
+            authConfigured(env),
+            env.ROOFCALC_BOOTSTRAP_TOKEN,
+          ),
+        });
+      if (setupBootstrap && !authConfigured(env))
+        return respond(request, {
+          status: 503,
+          body: { error: { code: 'auth-not-configured' } },
+        });
+      if (
+        setupBootstrap &&
+        (!env.ROOFCALC_BOOTSTRAP_TOKEN ||
+          env.ROOFCALC_BOOTSTRAP_TOKEN.length < 32)
+      )
+        return respond(request, {
+          status: 503,
+          body: { error: { code: 'bootstrap-unavailable' } },
+        });
+
       const needsDatabase =
+        setupStatus ||
+        setupBootstrap ||
         ((request.method === 'GET' || request.method === 'HEAD') &&
           (url.pathname.startsWith('/api/catalog/') ||
             url.pathname.startsWith('/api/pricing/'))) ||
@@ -129,11 +186,48 @@ export function createWorker(connect: ConnectDatabase = connectHyperdrive) {
           mode: 'default',
         });
         const auth = createBusinessAuth(db, env);
+        if (setupStatus)
+          return respond(request, {
+            status: 200,
+            body: await readSetupStatus(
+              db,
+              !!auth,
+              env.ROOFCALC_BOOTSTRAP_TOKEN,
+            ),
+          });
+        if (setupBootstrap) {
+          if (
+            !request.headers.get('Content-Type')?.startsWith('application/json')
+          )
+            return respond(request, {
+              status: 415,
+              body: { error: { code: 'json-required' } },
+            });
+          const bytes = await request.arrayBuffer();
+          if (bytes.byteLength > 16 * 1024)
+            return respond(request, {
+              status: 413,
+              body: { error: { code: 'body-too-large' } },
+            });
+          let body: unknown;
+          try {
+            body = JSON.parse(new TextDecoder().decode(bytes));
+          } catch {
+            return respond(request, {
+              status: 400,
+              body: { error: { code: 'invalid-json' } },
+            });
+          }
+          return respond(
+            request,
+            await bootstrapFirstOwner(db, env.ROOFCALC_BOOTSTRAP_TOKEN!, body),
+          );
+        }
         if (url.pathname.startsWith('/api/auth/')) {
           if (!auth)
             return respond(request, {
               status: 503,
-              body: { error: { code: 'auth-unavailable' } },
+              body: { error: { code: 'auth-not-configured' } },
             });
           return await auth.handler(request);
         }
@@ -188,13 +282,12 @@ export function createWorker(connect: ConnectDatabase = connectHyperdrive) {
             url.searchParams,
             catalog,
             pricing,
-            { runtime: 'cloudflare-worker' },
-            /**
-             * Read service only, and deliberately **no `admin`** (§33, §53):
-             * admin mutations require the local/dev capability, which no edge
-             * request can satisfy. A POST to /api/business/* is therefore
-             * `404 not-found` here, with no write path to reach at all.
-             */
+            {
+              runtime: 'cloudflare-worker',
+              auth: auth ? 'configured' : 'unconfigured',
+            },
+            /** Each mutation is gated by a live session, active membership,
+             * capability and exact same-origin check in the shared handler. */
             {
               access,
               workspace: new DrizzleWorkspaceRepository(db),
@@ -213,6 +306,15 @@ export function createWorker(connect: ConnectDatabase = connectHyperdrive) {
         );
       } catch {
         // Do not forward driver messages: they can contain origin details.
+        if (setupStatus)
+          return respond(request, {
+            status: 200,
+            body: await readSetupStatus(
+              undefined,
+              authConfigured(env),
+              env.ROOFCALC_BOOTSTRAP_TOKEN,
+            ),
+          });
         return databaseUnavailable(request);
       } finally {
         await connection?.end().catch(() => undefined);

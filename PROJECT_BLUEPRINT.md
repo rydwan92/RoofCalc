@@ -1297,6 +1297,14 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+## V61.5 — Business production bootstrap (V61C slice ready)
+
+- Authorized by the latest attached V61.5 prompt, superseding V61A's next action. Started from clean `main` at `1c7f67cefdaf3deb39fb3573e36168a7d06ea5af`; baseline `pnpm verify` passed (1657 tests, 13 skipped, web/API/Worker builds). V61B work is preserved in `stash@{0}` and paused.
+- Ready: a company operator needs the first owner without CLI and a truthful deployed readiness view. API auth/database code owns setup and transactional account creation; web owns login and status display. Auth, memberships and organizations reuse existing SQL tables; no canonical roof schema, migration or project history changes. One owner creation is one database transaction. No quantity, procurement, technical catalogue, geometry, price calculation, or multi-structure ID rule changes. The flow requires a database and server-only token; Standard remains offline. Mobile exposes the same exact text inputs at 390×844. No geometry research is needed. Focused bootstrap/API/UI tests plus browser QA and `pnpm verify` cover regression.
+- V61C: public coarse setup status and auth health field; one-time first-owner transaction serialized on a reserved auth rate-limit row, with global attempt limit, constant-time token digest comparison, existing single-organization attach or explicit new company, and closed/ambiguous failures. Node and Worker use the same bootstrap service. The Worker write path was audited: exact origin, Better Auth session, active membership and route capability. Login now distinguishes DB/auth/first-owner states and has visible labeled and focused fields.
+- Validation: V61C `pnpm verify` passed (1663 tests, 13 skipped; typecheck/lint/format/web/API/Worker build); Playwright first-owner form passed at 1440×900, 1920×1080, 1024×768 and 390×844. The live deployed 1440×900 screenshot confirmed invisible old login inputs; the local focused browser test confirms the new controls have visible focus and at least 44px height. Live database writes have not been exercised; shared DEV mutation remains an explicit operator action.
+- NEXT ACTION: commit/push verified V61C; then implement and validate V61D, commit/push. Keep V61B paused.
+
 ## V61A — IFC reference import (implemented locally; V61B pending)
 
 - Authorized by the attached V61 prompt, which supersedes the V60B checkpoint. Baseline: clean `main` at `6dd147e83004a10cc79cf01d59a73b259bb24f1f`; baseline `pnpm verify` passed (1654 tests, 13 skips). GitHub V60B2 CI #49 was checked once and is successful: Verify passed, Browser QA 117 passed and 31 skipped.

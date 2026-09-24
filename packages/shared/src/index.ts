@@ -14,4 +14,5 @@ export interface HealthResponse {
   version: string;
   runtime: 'node' | 'cloudflare-worker';
   database: DatabaseHealth;
+  auth: 'configured' | 'unconfigured';
 }

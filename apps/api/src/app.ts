@@ -3,6 +3,11 @@ import { fromNodeHeaders, toNodeHandler } from 'better-auth/node';
 import type { BusinessAuth } from './business/auth/auth';
 import type { BusinessAccess } from './business/auth/access';
 import { businessOriginAllowed } from './business/auth/access';
+import {
+  bootstrapFirstOwner,
+  readSetupStatus,
+} from './business/auth/bootstrap';
+import type { CatalogDatabase } from './db/client';
 import type { CatalogService } from './catalog/service';
 import type { PricingService } from './pricing/service';
 import {
@@ -24,15 +29,78 @@ export function createApp(
     auth?: BusinessAuth;
     baseURL?: string;
     resolve: (headers: Headers) => Promise<BusinessAccess | undefined>;
+    setup?: { db: CatalogDatabase; token?: string };
   },
 ) {
   const app = express();
   app.disable('x-powered-by');
+  app.get('/api/setup/status', async (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    try {
+      res.json(
+        await readSetupStatus(
+          authentication?.setup?.db,
+          !!authentication?.auth,
+          authentication?.setup?.token,
+        ),
+      );
+    } catch {
+      res.json(
+        await readSetupStatus(
+          undefined,
+          !!authentication?.auth,
+          authentication?.setup?.token,
+        ),
+      );
+    }
+  });
+  app.post(
+    '/api/setup/first-owner',
+    express.json({ limit: '16kb' }),
+    async (req, res) => {
+      res.setHeader('Cache-Control', 'no-store');
+      if (!authentication?.auth) {
+        res.status(503).json({ error: { code: 'auth-not-configured' } });
+        return;
+      }
+      if (
+        !businessOriginAllowed(
+          req.method,
+          req.get('Origin'),
+          authentication.baseURL,
+        )
+      ) {
+        res.status(403).json({ error: { code: 'business-origin-forbidden' } });
+        return;
+      }
+      if (!authentication.setup?.db) {
+        res.status(503).json({ error: { code: 'database-unavailable' } });
+        return;
+      }
+      if (
+        !authentication.setup.token ||
+        authentication.setup.token.length < 32
+      ) {
+        res.status(503).json({ error: { code: 'bootstrap-unavailable' } });
+        return;
+      }
+      try {
+        const result = await bootstrapFirstOwner(
+          authentication.setup.db,
+          authentication.setup.token,
+          req.body,
+        );
+        res.status(result.status).json(result.body);
+      } catch {
+        res.status(503).json({ error: { code: 'database-unavailable' } });
+      }
+    },
+  );
   if (authentication?.auth)
     app.all('/api/auth/*', toNodeHandler(authentication.auth));
   else
     app.all('/api/auth/*', (_req, res) => {
-      res.status(503).json({ error: { code: 'auth-unavailable' } });
+      res.status(503).json({ error: { code: 'auth-not-configured' } });
     });
   // Local Apache builds keep their own origin and local project storage.
   // Only browser GET/HEAD requests from explicit loopback origins may read API.
@@ -54,12 +122,7 @@ export function createApp(
     }
     next();
   });
-  /**
-   * A body is parsed **only** for the local/dev admin surface. Everything else
-   * stays GET/HEAD-only, so adding the admin route did not widen the write
-   * surface of any existing endpoint. The capability gate in
-   * `business/capability.ts` still decides whether the route answers at all.
-   */
+  /** Business JSON writes are checked against origin, session and capability. */
   app.use('/api/business', express.json({ limit: JSON_BODY_LIMIT }));
   app.use('/api', async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');

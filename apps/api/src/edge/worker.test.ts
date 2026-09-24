@@ -47,6 +47,7 @@ describe('Cloudflare Worker routing', () => {
       version: '0.1.0',
       runtime: 'cloudflare-worker',
       database: 'not-configured',
+      auth: 'unconfigured',
     });
   });
 
@@ -127,5 +128,45 @@ describe('Cloudflare Worker routing', () => {
     );
     expect(response.status).toBe(200);
     expect(await response.text()).toBe('');
+  });
+
+  it('exposes only coarse setup facts without a database and rejects bootstrap writes without an exact origin', async () => {
+    const worker = createWorker(vi.fn());
+    const configuration = {
+      ...env(false).value,
+      BETTER_AUTH_URL: 'https://roofcalc.example.workers.dev',
+      BETTER_AUTH_SECRET: 'test-only-secret-with-more-than-32-characters',
+      ROOFCALC_BOOTSTRAP_TOKEN: 'test-only-bootstrap-token-over-32-characters',
+    };
+    const status = await worker.fetch(
+      request('/api/setup/status'),
+      configuration,
+    );
+    expect(await status.json()).toEqual({
+      database: 'unavailable',
+      auth: 'configured',
+      firstOwner: 'required',
+      bootstrap: 'unavailable',
+      organization: 'unknown',
+    });
+    const denied = await worker.fetch(
+      new Request(
+        'https://roofcalc.example.workers.dev/api/setup/first-owner',
+        { method: 'POST', headers: { Origin: 'https://other.example' } },
+      ),
+      configuration,
+    );
+    expect(denied.status).toBe(403);
+    const unavailable = await worker.fetch(
+      new Request(
+        'https://roofcalc.example.workers.dev/api/setup/first-owner',
+        { method: 'POST', headers: { Origin: configuration.BETTER_AUTH_URL } },
+      ),
+      configuration,
+    );
+    expect(unavailable.status).toBe(503);
+    expect(await unavailable.json()).toEqual({
+      error: { code: 'database-unavailable' },
+    });
   });
 });

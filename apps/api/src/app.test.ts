@@ -39,6 +39,7 @@ describe('API', () => {
       version: '0.1.0',
       runtime: 'node',
       database: 'not-configured',
+      auth: 'unconfigured',
     });
   });
   it('distinguishes a connected database from an unavailable one', async () => {
