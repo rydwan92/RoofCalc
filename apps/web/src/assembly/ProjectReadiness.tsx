@@ -23,6 +23,7 @@ import type {
   JourneyStageKey,
   ProjectJourney,
 } from './project-journey';
+import { STAGE_ACTION } from './project-journey';
 import './readiness.css';
 
 /**
@@ -69,20 +70,20 @@ export function ProjectReadinessBar({
   onOverview?: () => void;
 }) {
   const { t, i18n } = useTranslation();
-  const previous = useRef(journey?.overview);
+  const previous = useRef(journey?.stages);
   const [completed, setCompleted] = useState<string>();
   useEffect(() => {
-    const newlyComplete = journey?.overview.find(
+    const newlyComplete = journey?.stages.find(
       (stage) =>
-        stage.status === 'complete' &&
+        stage.state === 'ready' &&
         previous.current?.some(
-          (old) => old.key === stage.key && old.status !== 'complete',
+          (old) => old.key === stage.key && old.state !== 'ready',
         ),
     );
-    previous.current = journey?.overview;
+    previous.current = journey?.stages;
     if (!newlyComplete) return;
     setCompleted(newlyComplete.key);
-  }, [journey?.overview]);
+  }, [journey?.stages]);
   useEffect(() => {
     if (!completed) return;
     const timer = setTimeout(() => setCompleted(undefined), 8000);
@@ -90,24 +91,14 @@ export function ProjectReadinessBar({
   }, [completed]);
   const progress = journey
     ? {
-        ready: journey.overview.filter((stage) => stage.status === 'complete')
-          .length,
-        total: journey.overview.length,
+        ready: journey.stages.filter((stage) => stage.state === 'ready').length,
+        total: journey.stages.length,
       }
     : readiness.progress;
   const recommended = journey?.recommended;
   const here = currentStage
     ? journey?.stages.find((stage) => stage.key === currentStage)
     : undefined;
-  const hereOverview = journey?.overview.find(
-    (stage) =>
-      stage.key ===
-      (currentStage === 'layers'
-        ? 'covering'
-        : currentStage === 'roof-system'
-          ? 'materials'
-          : currentStage),
-  );
   const primary = journey ? recommended?.issue : readiness.primary;
   const rest = readiness.issues.filter(
     (issue) => issue.id !== primary?.id && issue.severity !== 'info',
@@ -117,20 +108,13 @@ export function ProjectReadinessBar({
     : undefined;
   return (
     <>
-      {journey && onJourneyAction && (
-        <JourneyOverview
-          journey={journey}
-          currentStage={currentStage}
-          onAction={onJourneyAction}
-        />
-      )}
       {completed &&
-        journey?.overview.some(
-          (stage) => stage.key === completed && stage.status === 'complete',
+        journey?.stages.some(
+          (stage) => stage.key === completed && stage.state === 'ready',
         ) && (
           <p className="a-journey-feedback" role="status">
             {t('assembly.journey.completed', {
-              stage: t(`assembly.journey.overviewStage.${completed}`),
+              stage: t(`assembly.journey.stage.${completed}`),
             })}
           </p>
         )}
@@ -155,22 +139,18 @@ export function ProjectReadinessBar({
             >
               {here.state === 'ready' ? '✓ ' : ''}
               {t(`assembly.journey.stage.${here.key}`)} ·{' '}
-              {hereOverview
-                ? t(`assembly.journey.overviewStatus.${hereOverview.status}`)
-                : t(`assembly.journey.state.${here.state}`)}
+              {t(`assembly.journey.railStatus.${journeyStageStatus(here)}`)}
             </span>
           )}
           <span className="a-readiness-dots" aria-hidden="true">
             {journey
-              ? journey.overview.map((stage) => (
+              ? journey.stages.map((stage) => (
                   <i
                     key={stage.key}
                     data-state={
-                      stage.status === 'complete'
-                        ? 'ready'
-                        : stage.status === 'needs-action'
-                          ? 'attention'
-                          : 'pending'
+                      journeyStageStatus(stage) === 'open'
+                        ? 'pending'
+                        : journeyStageStatus(stage)
                     }
                   />
                 ))
@@ -232,11 +212,11 @@ export function ProjectReadinessBar({
           {onOverview && (
             <button
               type="button"
-              className="a-button a-ghost"
+              className="a-button a-ghost a-readiness-overview"
               data-testid="project-overview-action"
               onClick={onOverview}
             >
-              {t('assembly.workflow.summaryTitle')}
+              {t('assembly.journey.projectOverview')}
             </button>
           )}
           {recommended && onJourneyAction ? (
@@ -619,53 +599,105 @@ export function ActionFeedback({
   );
 }
 
-/** Shared by the compact workbench strip and the project overview. */
-export function JourneyOverview({
+/** Three visible states only: ready, needs attention, or neither. */
+export function journeyStageStatus(
+  stage: JourneyStage,
+): 'ready' | 'attention' | 'open' {
+  if (stage.state === 'ready') return 'ready';
+  if (stage.state === 'fix' || stage.state === 'decision') return 'attention';
+  return 'open';
+}
+
+/** What opening a stage does: the recommended action when it is this stage. */
+export function journeyStageTarget(
+  journey: ProjectJourney,
+  stage: JourneyStage,
+): JourneyAction {
+  if (journey.recommended?.stage === stage.key) return journey.recommended;
+  // A stage without a problem opens its own workspace, not an info hint.
+  const action =
+    journeyStageStatus(stage) === 'attention'
+      ? stage.action
+      : STAGE_ACTION[stage.key];
+  return { action, ...(stage.focus ? { focus: stage.focus } : {}) };
+}
+
+/**
+ * The eight project stages as the workbench's left navigation. Every stage
+ * is always clickable — guidance never locks navigation. On narrow screens
+ * the same list becomes a horizontal strip (CSS only).
+ */
+export function JourneyRail({
   journey,
   currentStage,
   onAction,
-  expanded = false,
+  onOverview,
+  overviewActive,
 }: {
   journey: ProjectJourney;
   currentStage?: JourneyStageKey;
   onAction: (action: JourneyAction) => void;
-  expanded?: boolean;
+  onOverview?: () => void;
+  overviewActive?: boolean;
 }) {
   const { t } = useTranslation();
-  const current =
-    currentStage === 'layers'
-      ? 'covering'
-      : currentStage === 'roof-system'
-        ? 'materials'
-        : currentStage;
   return (
     <nav
-      className={`a-journey-overview${expanded ? ' is-expanded' : ''}`}
+      className="a-journey-rail"
       aria-label={t('assembly.journey.overview')}
-      data-testid={expanded ? 'journey-dashboard' : 'journey-overview'}
+      data-testid="journey-rail"
     >
+      {onOverview && (
+        <button
+          type="button"
+          className="a-rail-overview"
+          data-testid="journey-rail-overview"
+          aria-current={overviewActive ? 'page' : undefined}
+          onClick={onOverview}
+        >
+          {t('assembly.journey.projectOverview')}
+        </button>
+      )}
       <ol>
-        {journey.overview.map((stage) => (
-          <li key={stage.key} data-status={stage.status}>
-            <button
-              type="button"
-              data-journey-step={stage.key}
-              aria-current={current === stage.key ? 'step' : undefined}
-              onClick={() => onAction(stage.target)}
+        {journey.stages.map((stage, index) => {
+          const status = journeyStageStatus(stage);
+          const current = !overviewActive && currentStage === stage.key;
+          return (
+            <li
+              key={stage.key}
+              data-status={status}
+              data-recommended={
+                journey.recommended?.stage === stage.key || undefined
+              }
             >
-              <strong>
-                {stage.status === 'complete' ? '✓ ' : ''}
-                {t(`assembly.journey.overviewStage.${stage.key}`)}
-              </strong>
-              <span>
-                {t(`assembly.journey.overviewStatus.${stage.status}`)}
-              </span>
-              {expanded && stage.summary && <small>{stage.summary}</small>}
-            </button>
-          </li>
-        ))}
+              <button
+                type="button"
+                data-journey-step={stage.key}
+                aria-current={current ? 'step' : undefined}
+                title={t(`assembly.journey.railStatus.${status}`)}
+                onClick={() => onAction(journeyStageTarget(journey, stage))}
+              >
+                <span className="a-rail-index" aria-hidden="true">
+                  {status === 'ready' ? (
+                    <CheckCircle2 size={16} />
+                  ) : status === 'attention' ? (
+                    <AlertTriangle size={15} />
+                  ) : (
+                    index + 1
+                  )}
+                </span>
+                <span className="a-rail-text">
+                  <strong>{t(`assembly.journey.stage.${stage.key}`)}</strong>
+                  {stage.summary && <small>{stage.summary}</small>}
+                </span>
+                <span className="a-visually-hidden">
+                  {t(`assembly.journey.railStatus.${status}`)}
+                </span>
+              </button>
+            </li>
+          );
+        })}
       </ol>
-      {expanded && <p>{t('assembly.journey.overviewHint')}</p>}
     </nav>
   );
 }

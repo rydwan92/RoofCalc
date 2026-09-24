@@ -21,6 +21,8 @@ const sessionSchema = z.object({
       ),
     }),
   ),
+  /** Platform operator (system console), independent of any organization role. */
+  platformAdmin: z.boolean().optional(),
 });
 export type BusinessSession = z.infer<typeof sessionSchema>;
 const setupStatusSchema = z.object({

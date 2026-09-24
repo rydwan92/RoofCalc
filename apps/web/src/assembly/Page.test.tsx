@@ -297,9 +297,13 @@ describe('dual-mode parametric workbench', () => {
     act(() => {
       useAssembly.getState().setMaterialsView('summary');
     });
-    expect(screen.getByTestId('project-summary').textContent).toContain(
-      'Wymaga uwagi',
-    );
+    const summary = screen.getByTestId('project-summary');
+    expect(
+      summary
+        .querySelector('[data-stage="layers"]')
+        ?.getAttribute('data-status'),
+    ).toBe('attention');
+    expect(summary.textContent).toContain('Łaty są wyłączone');
   });
 
   it('uses centimetres consistently in Quick Calc and Builder when preferred', async () => {

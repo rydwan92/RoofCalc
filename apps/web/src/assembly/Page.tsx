@@ -153,6 +153,7 @@ import { ProjectSummary } from './ProjectWorkflow';
 import {
   ActionFeedback,
   ProjectReadinessBar,
+  JourneyRail,
   ProjectReadinessPanel,
 } from './ProjectReadiness';
 import {
@@ -179,6 +180,7 @@ import {
 } from '../projects/recent-projects';
 import type { ProjectSummary as SavedProjectSummary } from '@cieslacalc/project-core';
 import { ProjectSession } from '../projects/session';
+import { AppHome } from '../home/AppHome';
 import {
   ProjectStartAssistant,
   type ProjectStartMode,
@@ -344,11 +346,54 @@ function isStandingSeamAssignment(
   return assignment.product.technicalSpecSnapshot.kind === 'standing-seam';
 }
 
+export type AppView = 'home' | 'workbench' | 'platform';
+
+/** "K1 × 26 · P1 × 2" from the resolved schedule — presentation only. */
+function timberFamilySummary(
+  rows: readonly { familyKey: string; quantity: number; memberKind: string }[],
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
+  const families = new Map<string, number>();
+  for (const row of rows)
+    if (row.memberKind !== 'batten' && row.memberKind !== 'counter-batten')
+      families.set(
+        row.familyKey,
+        (families.get(row.familyKey) ?? 0) + row.quantity,
+      );
+  const total = [...families.values()].reduce((sum, value) => sum + value, 0);
+  if (!total) return '';
+  return `${t('assembly.journey.members', { count: total })} · ${[...families]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, quantity]) => `${key} × ${quantity}`)
+    .join(' · ')}`;
+}
+
+function formatArea(areaMm2: number, locale: string): string {
+  return new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(
+    areaMm2 / 1_000_000,
+  );
+}
+
+function costNetSummary(
+  summary: { netMinor: number; currencyCode: string; needsPriceCount: number },
+  locale: string,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
+  const net = new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency: summary.currencyCode,
+    maximumFractionDigits: 0,
+  }).format(summary.netMinor / 100);
+  return summary.needsPriceCount
+    ? `${net} ${t('assembly.journey.net')} · ${t('assembly.journey.missingPrices', { count: summary.needsPriceCount })}`
+    : `${net} ${t('assembly.journey.net')}`;
+}
+
 function AssemblyPageContent({
-  startAtHome = false,
-}: {
-  startAtHome?: boolean;
-}) {
+  home = false,
+  platform = false,
+  onNavigate,
+}: AppRouteProps) {
   const state = useAssembly(),
     { t, i18n } = useTranslation();
   const business = useBusiness();
@@ -390,13 +435,20 @@ function AssemblyPageContent({
     projectSessionState.active?.id,
   );
   const [projectStartMode, setProjectStartMode] = useState<ProjectStartMode>();
+  const [projectStartAt, setProjectStartAt] = useState<'examples' | 1>();
   const [homeProjects, setHomeProjects] = useState<SavedProjectSummary[]>([]);
+  // The home lists saved projects without initializing (or creating) one.
   useEffect(() => {
-    if (startAtHome) {
-      setProjectStartMode('new');
-      void new LocalProjectRepository().list().then(setHomeProjects);
-    }
-  }, [startAtHome]);
+    if (home)
+      void new LocalProjectRepository()
+        .list()
+        .then(setHomeProjects)
+        .catch(() => setHomeProjects([]));
+  }, [home]);
+  const navigate = useCallback(
+    (view: AppView) => onNavigate?.(view),
+    [onNavigate],
+  );
   const activeProjectId = projectSessionState.active?.id;
   useEffect(() => {
     if (activeProjectId && !projectSessionState.freshProject)
@@ -1517,13 +1569,43 @@ function AssemblyPageContent({
       ).toLocaleString(
         i18n.language,
       )} m · ${pitch.toLocaleString(i18n.language)}°`,
-      construction: [
-        ...new Set(memberSchedule.timberRows.map((row) => row.familyKey)),
-      ]
-        .sort()
-        .join(' + '),
+      construction: timberFamilySummary(memberSchedule.timberRows, t),
       ...(primaryCovering
-        ? { covering: tileProductName(primaryCovering) }
+        ? {
+            covering: [
+              tileProductName(primaryCovering),
+              surfaceProjection.status === 'resolved'
+                ? `${formatArea(surfaceProjection.netAreaMm2, i18n.language)} m²`
+                : undefined,
+            ]
+              .filter(Boolean)
+              .join(' · '),
+          }
+        : {}),
+      layers: [
+        membrane?.enabled ? t('assembly.journey.layer.membrane') : undefined,
+        counterBattens?.enabled
+          ? t('assembly.journey.layer.counterBattens')
+          : undefined,
+        battenLayout?.enabled ? t('assembly.journey.layer.battens') : undefined,
+      ]
+        .filter(Boolean)
+        .join(' · '),
+      ...(materialRows.length
+        ? {
+            materials: t('assembly.journey.positions', {
+              count: materialRows.length,
+            }),
+          }
+        : {}),
+      ...(costScenario && costScenario.lines.length
+        ? {
+            cost: costNetSummary(
+              summarizeCostScenario(costScenario),
+              i18n.language,
+              t,
+            ),
+          }
         : {}),
     },
     openingsNeedingFlashing: roofSystem.openingSystems.filter(
@@ -2017,6 +2099,25 @@ function AssemblyPageContent({
     workbench.viewPreset === 'costing' || workbench.viewPreset === 'documents';
   // An empty covering task has nothing to edit: give the space to the
   // "Dodaj pokrycie" empty state instead of a blank Inspector.
+  const overviewActive =
+    workbench.viewPreset === 'materials' &&
+    workbench.materialsView === 'summary';
+  const currentJourneyStage = (
+    {
+      construction: foundationFocus,
+      openings: 'geometry',
+      layers: 'layers',
+      covering: 'covering',
+      cuts: 'construction',
+      materials:
+        workbench.materialsView === 'system' ||
+        workbench.materialsView === 'drainage'
+          ? 'roof-system'
+          : 'materials',
+      costing: 'cost',
+      documents: 'documents',
+    } as Partial<Record<string, JourneyStageKey>>
+  )[workbench.viewPreset];
   const coveringWithoutProduct =
     workbench.viewPreset === 'covering' && !activeCoveringAssignment;
   const drawerPreviews = drawer.pinned
@@ -2026,6 +2127,26 @@ function AssemblyPageContent({
     state.setMode(mode);
     if (mode === 'builder' && mobile) state.setInspectorOpen(false);
     state.setMobilePanel('none');
+  };
+  /** The home's Standard column always means Standard mode. */
+  const standardMode = () => {
+    if (business.mode !== 'standard') business.setMode('standard');
+  };
+  /** Every start path ends in the workbench with no chooser left open. */
+  const enterProject = () => {
+    rememberCreatorStart();
+    projectSession.acknowledgeFreshProject();
+    setReuseFreshProject(false);
+    setProjectStartMode(undefined);
+    setProjectStartAt(undefined);
+    changeMode('builder');
+    state.navigatePerspective('project');
+    navigate('workbench');
+  };
+  const openSavedProject = async (id: string) => {
+    await projectSession.initialize();
+    await projectSession.open(id);
+    enterProject();
   };
   useEffect(() => {
     if (workbench.mode === 'builder')
@@ -2225,1042 +2346,1140 @@ function AssemblyPageContent({
         }
       }}
     >
-      <header className="a-header">
-        <a
-          className="a-brand"
-          href="#/"
-          onClick={(event) => {
-            event.preventDefault();
+      {home || platform ? (
+        <AppHome
+          brand={brand}
+          projects={recentProjects(homeProjects)}
+          onNewProject={() => {
+            standardMode();
+            setReuseFreshProject(false);
+            setProjectStartAt(1);
             setProjectStartMode('new');
-            if (!projectSessionState.initialized)
-              void new LocalProjectRepository().list().then(setHomeProjects);
           }}
-        >
-          <House size={24} />
-          <span>{brand}</span>
-        </a>
-        <nav className="a-modes" aria-label={t('workshop')}>
-          {(['quick', 'builder'] as const).map((mode) => (
-            <button
-              key={mode}
-              data-mode={mode}
-              aria-pressed={workbench.mode === mode}
-              onClick={() => changeMode(mode)}
+          onImportIfc={() => {
+            standardMode();
+            setIfcImportOpen(true);
+          }}
+          onQuick={() => {
+            standardMode();
+            changeMode('quick');
+            navigate('workbench');
+          }}
+          onOpenProject={(id) => {
+            standardMode();
+            void openSavedProject(id);
+          }}
+          onExamples={() => {
+            standardMode();
+            setProjectStartAt('examples');
+            setProjectStartMode('new');
+          }}
+          onBusiness={() => {
+            business.setMode('business');
+            business.setHomeOpen(true);
+            navigate('workbench');
+          }}
+          onPlatform={() => navigate('platform')}
+        />
+      ) : (
+        <>
+          <header className="a-header">
+            <a
+              className="a-brand"
+              href="#/"
+              onClick={(event) => {
+                if (!onNavigate) return;
+                event.preventDefault();
+                navigate('home');
+              }}
             >
-              {t(`assembly.${mode}`)}
-            </button>
-          ))}
-        </nav>
-        {workbench.mode === 'builder' && (
-          <ProjectManager
-            session={projectSession}
-            state={projectSessionState}
-            mobile={mobile}
-            onStartNew={() => {
-              projectSession.acknowledgeFreshProject();
-              setReuseFreshProject(false);
-              setProjectStartMode('new');
-            }}
-            onEditBasics={() => {
-              setReuseFreshProject(false);
-              setProjectStartMode('edit');
-            }}
-            onImportIfc={() => setIfcImportOpen(true)}
-          />
-        )}
-        {workbench.mode === 'builder' && (
-          <button
-            type="button"
-            className="a-export-trigger"
-            data-testid="project-execution-export"
-            onClick={openExecutionExport}
-          >
-            {t('assembly.perspective.documents')}
-          </button>
-        )}
-        {exportError && <span role="alert">{exportError}</span>}
-        <BusinessHeader onHome={returnHome} />
-        <div className="a-settings">
-          <div className="a-units" role="group" aria-label={t('assembly.unit')}>
-            {lengthUnits.map((unit) => (
-              <button
-                key={unit}
-                aria-pressed={state.unit === unit}
-                onClick={() => state.setUnit(unit)}
-              >
-                {unit}
-              </button>
-            ))}
-          </div>
-          {workbench.mode === 'builder' && (
-            <div
-              className="a-history"
-              role="group"
-              aria-label={t('assembly.history')}
-            >
-              <button
-                className="a-icon"
-                aria-label={t('assembly.undoChange')}
-                title={`${t('assembly.undoChange')} (Ctrl+Z)`}
-                disabled={!state.historyPast.length}
-                onClick={state.undo}
-              >
-                <Undo2 size={18} />
-              </button>
-              <button
-                className="a-icon"
-                aria-label={t('assembly.redoChange')}
-                title={`${t('assembly.redoChange')} (Ctrl+Y)`}
-                disabled={!state.historyFuture.length}
-                onClick={state.redo}
-              >
-                <Redo2 size={18} />
-              </button>
-            </div>
-          )}
-          {mobile && (
-            <details className="a-header-overflow">
-              <summary
-                className="a-icon"
-                aria-label={t('assembly.settings')}
-                title={t('assembly.settings')}
-              >
-                <SlidersHorizontal size={18} />
-              </summary>
-              <div>
-                <div
-                  className="a-overflow-units"
-                  role="group"
-                  aria-label={t('assembly.unit')}
-                >
-                  {lengthUnits.map((unit) => (
-                    <button
-                      key={unit}
-                      className="a-button"
-                      aria-pressed={state.unit === unit}
-                      onClick={() => state.setUnit(unit)}
-                    >
-                      {unit}
-                    </button>
-                  ))}
-                </div>
+              <House size={24} />
+              <span>{brand}</span>
+            </a>
+            <nav className="a-modes" aria-label={t('workshop')}>
+              {(['quick', 'builder'] as const).map((mode) => (
                 <button
-                  className="a-button"
+                  key={mode}
+                  data-mode={mode}
+                  aria-pressed={workbench.mode === mode}
+                  onClick={() => changeMode(mode)}
+                >
+                  {t(`assembly.${mode}`)}
+                </button>
+              ))}
+            </nav>
+            {workbench.mode === 'builder' && (
+              <ProjectManager
+                session={projectSession}
+                state={projectSessionState}
+                mobile={mobile}
+                onStartNew={() => {
+                  projectSession.acknowledgeFreshProject();
+                  setReuseFreshProject(false);
+                  setProjectStartMode('new');
+                }}
+                onEditBasics={() => {
+                  setReuseFreshProject(false);
+                  setProjectStartMode('edit');
+                }}
+                onImportIfc={() => setIfcImportOpen(true)}
+              />
+            )}
+            {workbench.mode === 'builder' && (
+              <button
+                type="button"
+                className="a-export-trigger"
+                data-testid="project-execution-export"
+                onClick={openExecutionExport}
+              >
+                {t('assembly.perspective.documents')}
+              </button>
+            )}
+            {exportError && <span role="alert">{exportError}</span>}
+            <BusinessHeader onHome={returnHome} />
+            <div className="a-settings">
+              <div
+                className="a-units"
+                role="group"
+                aria-label={t('assembly.unit')}
+              >
+                {lengthUnits.map((unit) => (
+                  <button
+                    key={unit}
+                    aria-pressed={state.unit === unit}
+                    onClick={() => state.setUnit(unit)}
+                  >
+                    {unit}
+                  </button>
+                ))}
+              </div>
+              {workbench.mode === 'builder' && (
+                <div
+                  className="a-history"
+                  role="group"
+                  aria-label={t('assembly.history')}
+                >
+                  <button
+                    className="a-icon"
+                    aria-label={t('assembly.undoChange')}
+                    title={`${t('assembly.undoChange')} (Ctrl+Z)`}
+                    disabled={!state.historyPast.length}
+                    onClick={state.undo}
+                  >
+                    <Undo2 size={18} />
+                  </button>
+                  <button
+                    className="a-icon"
+                    aria-label={t('assembly.redoChange')}
+                    title={`${t('assembly.redoChange')} (Ctrl+Y)`}
+                    disabled={!state.historyFuture.length}
+                    onClick={state.redo}
+                  >
+                    <Redo2 size={18} />
+                  </button>
+                </div>
+              )}
+              {mobile && (
+                <details className="a-header-overflow">
+                  <summary
+                    className="a-icon"
+                    aria-label={t('assembly.settings')}
+                    title={t('assembly.settings')}
+                  >
+                    <SlidersHorizontal size={18} />
+                  </summary>
+                  <div>
+                    <div
+                      className="a-overflow-units"
+                      role="group"
+                      aria-label={t('assembly.unit')}
+                    >
+                      {lengthUnits.map((unit) => (
+                        <button
+                          key={unit}
+                          className="a-button"
+                          aria-pressed={state.unit === unit}
+                          onClick={() => state.setUnit(unit)}
+                        >
+                          {unit}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      className="a-button"
+                      onClick={() => {
+                        state.reset();
+                        state.setFocusId(undefined);
+                      }}
+                    >
+                      <RotateCcw size={18} />
+                      {t('assembly.reset')}
+                    </button>
+                    <button
+                      className="a-button"
+                      onClick={() => {
+                        void i18n.changeLanguage(
+                          i18n.language === 'pl' ? 'en' : 'pl',
+                        );
+                      }}
+                    >
+                      {t('assembly.language')} · {i18n.language.toUpperCase()}
+                    </button>
+                  </div>
+                </details>
+              )}
+              {!mobile && (
+                <button
+                  className="a-icon a-desktop-setting"
+                  aria-label={t('assembly.reset')}
                   onClick={() => {
                     state.reset();
                     state.setFocusId(undefined);
                   }}
                 >
                   <RotateCcw size={18} />
-                  {t('assembly.reset')}
                 </button>
+              )}
+              {!mobile && (
                 <button
-                  className="a-button"
+                  className="a-icon a-desktop-setting"
+                  aria-label={t('assembly.language')}
                   onClick={() => {
                     void i18n.changeLanguage(
                       i18n.language === 'pl' ? 'en' : 'pl',
                     );
                   }}
                 >
-                  {t('assembly.language')} · {i18n.language.toUpperCase()}
+                  {i18n.language.toUpperCase()}
                 </button>
-              </div>
-            </details>
-          )}
-          {!mobile && (
-            <button
-              className="a-icon a-desktop-setting"
-              aria-label={t('assembly.reset')}
-              onClick={() => {
-                state.reset();
-                state.setFocusId(undefined);
-              }}
-            >
-              <RotateCcw size={18} />
-            </button>
-          )}
-          {!mobile && (
-            <button
-              className="a-icon a-desktop-setting"
-              aria-label={t('assembly.language')}
-              onClick={() => {
-                void i18n.changeLanguage(i18n.language === 'pl' ? 'en' : 'pl');
-              }}
-            >
-              {i18n.language.toUpperCase()}
-            </button>
-          )}
-          {/* An application capability, beside unit and language (§14). */}
-          <BusinessModeToggle />
-        </div>
-      </header>
-      {business.mode === 'business' &&
-        activeEstimation &&
-        !business.homeOpen && (
-          <WorkspaceStatus
-            status={saveStatus}
-            locale={i18n.language}
-            onRetry={retrySave}
-            onReload={reloadRemote}
-            onExport={exportRecovery}
-            onQuote={openQuote}
-            onHome={returnHome}
-            onMaterials={() =>
-              state.navigateTo(workbenchLocation('materials', 'plan'))
-            }
-          />
-        )}
-      {business.mode === 'business' && business.homeOpen ? (
-        <BusinessHome
-          projects={projectSessionState.projects}
-          onCreate={startBusinessEstimation}
-          onOpenProject={openBusinessProject}
-          onContinue={() => business.setHomeOpen(false)}
-        />
-      ) : (
-        <main className="a-main">
-          <div className="a-page-heading">
-            <div>
-              <span className="a-eyebrow">
-                {t('workshop')} / {t('assembly.model')}
-              </span>
-              <h1>{t('assembly.title')}</h1>
-              <strong className="a-member-subtitle">
-                {workbench.mode === 'quick'
-                  ? state.template.type === 'hip'
-                    ? `H1 ${t('assembly.hipRafter')}`
-                    : `K1 ${t('assembly.commonRafter')}`
-                  : state.template.type === 'hip'
-                    ? `${t('assembly.hipRoof')} · ${workbench.selectedPrototypeId === JACK_RAFTER_PROTOTYPE_ID || workbench.selectedId === JACK_RAFTER_PROTOTYPE_ID ? `J1 ${t('assembly.jackRafter')}` : workbench.selectedPrototypeId === HIP_RAFTER_PROTOTYPE_ID || workbench.selectedId === HIP_RAFTER_PROTOTYPE_ID ? `H1 ${t('assembly.hipRafter')}` : workbench.selectedPrototypeId === state.spec.member.id || workbench.selectedId === state.spec.member.id ? `K1 ${t('assembly.commonRafter')}` : t('assembly.skeleton')}`
-                    : `K1 ${t('assembly.commonRafter')}`}
-              </strong>
-              <p>
-                {t(
-                  `assembly.${workbench.mode === 'quick' ? 'quickHint' : 'builderHint'}`,
-                )}
-              </p>
-            </div>
-            <span className="a-live">
-              <i />
-              {t('assembly.local')}
-            </span>
-          </div>
-          {workbench.mode === 'quick' ? (
-            <div className="a-quick-layout">
-              <section className="a-quick-inputs">
-                <RoofTypeSelector context="member" />
-                <div className="a-basic-fields">
-                  <GeometryInputs />
-                </div>
-                <details className="a-more">
-                  <summary>{t('assembly.more')}</summary>
-                  <h3>
-                    {state.template.type === 'hip'
-                      ? t('assembly.hipRafter')
-                      : t('assembly.rafter')}
-                  </h3>
-                  {state.template.type === 'hip' ? (
-                    <HipTimberInputs />
-                  ) : (
-                    <>
-                      <TimberInputs />
-                      <h3>{t('assembly.wall-plate')}</h3>
-                      <SupportInputs support={wall} result={result} />
-                    </>
-                  )}
-                  <NumberField
-                    field="ridge.thicknessMm"
-                    label="ridgeWidth"
-                    max={1000}
-                  />
-                  <NumberField
-                    field="ridge.depthMm"
-                    label="ridgeDepth"
-                    min={1}
-                    max={2000}
-                    optional
-                  />
-                </details>
-                {state.spec.supports.some((s) => s.kind === 'purlin') && (
-                  <p className="a-help">{t('assembly.purlinPresent')}</p>
-                )}
-                <button
-                  className="a-button a-primary"
-                  data-testid="quick-create-project"
-                  onClick={() => {
-                    setReuseFreshProject(false);
-                    setProjectStartMode('quick');
-                    changeMode('builder');
-                  }}
-                >
-                  {t('assembly.projectStart.createFromQuick')} →
-                </button>
-              </section>
-              <section className="a-quick-output">
-                {hip ? (
-                  <QuickH1Result hip={hip} />
-                ) : (
-                  result && (
-                    <QuickK1Result
-                      result={result}
-                      highlight={quickHighlight}
-                      onHighlight={setQuickHighlight}
-                    />
-                  )
-                )}
-                {hip ? (
-                  <HipFabricationSheet hip={hip} compact />
-                ) : (
-                  result && (
-                    <div className="a-quick-drawing">
-                      <AssemblyCanvas
-                        result={result}
-                        compact
-                        readOnly
-                        highlight={quickHighlight}
-                        heightPx={330}
-                      />
-                      <p className="a-help">
-                        {t('assembly.quickResult.drawingHint')}
-                      </p>
-                    </div>
-                  )
-                )}
-                <QuickCutPreviews
-                  previews={quickDetailPreviews}
-                  onOpen={setQuickDetail}
-                />
-              </section>
-            </div>
-          ) : (
-            <>
-              {business.mode === 'business' && (
-                <BusinessJourney
-                  summary={commercialSummary}
-                  readiness={commercialReadiness}
-                  onAction={runCommercialAction}
-                />
               )}
-              <ProjectReadinessBar
-                key={projectSessionState.active?.id ?? 'unsaved'}
-                readiness={projectReadiness}
-                journey={projectJourney}
-                currentStage={
-                  (
-                    {
-                      construction: foundationFocus,
-                      openings: 'geometry',
-                      layers: 'layers',
-                      covering: 'covering',
-                      cuts: 'construction',
-                      materials:
-                        workbench.materialsView === 'system' ||
-                        workbench.materialsView === 'drainage'
-                          ? 'roof-system'
-                          : 'materials',
-                      costing: 'cost',
-                      documents: 'documents',
-                    } as Partial<Record<string, JourneyStageKey>>
-                  )[workbench.viewPreset]
+              {/* An application capability, beside unit and language (§14). */}
+              <BusinessModeToggle />
+            </div>
+          </header>
+          {business.mode === 'business' &&
+            activeEstimation &&
+            !business.homeOpen && (
+              <WorkspaceStatus
+                status={saveStatus}
+                locale={i18n.language}
+                onRetry={retrySave}
+                onReload={reloadRemote}
+                onExport={exportRecovery}
+                onQuote={openQuote}
+                onHome={returnHome}
+                onMaterials={() =>
+                  state.navigateTo(workbenchLocation('materials', 'plan'))
                 }
-                unit={state.unit}
-                onAction={runReadinessAction}
-                onJourneyAction={runJourneyAction}
-                onOpenPanel={() => setReadinessOpen(true)}
-                onOverview={() => runProjectAction('openSummary')}
               />
-              {readinessOpen && (
-                <ProjectReadinessPanel
-                  journey={projectJourney}
-                  onJourneyAction={runJourneyAction}
-                  readiness={projectReadiness}
-                  unit={state.unit}
-                  onAction={runReadinessAction}
-                  onSafeRepair={applySafeRepair}
-                  onClose={() => setReadinessOpen(false)}
-                />
-              )}
-              {actionFeedback && (
-                <ActionFeedback
-                  message={actionFeedback.message}
-                  onUndo={
-                    useAssembly.getState().historyPast.length ===
-                    actionFeedback.historyLength
-                      ? () => state.undo()
-                      : undefined
-                  }
-                  onDismiss={dismissFeedback}
-                />
-              )}
-              <div
-                className={`a-builder-layout ${workbench.toolboxCollapsed ? 'tools-collapsed' : ''} ${workbench.workspaceFocus.active ? 'is-workspace-focus' : ''} ${workbench.viewPreset === 'materials' && !selectedScheduleRow ? 'material-inspector-empty' : ''} ${wideWorkspace ? 'is-wide-workspace' : ''} ${coveringWithoutProduct ? 'no-inspector' : ''}`}
-                data-view-preset={workbench.viewPreset}
-              >
-                {!mobile && !wideWorkspace && (
-                  <Toolbox
-                    result={result}
-                    detailPreviews={selectionDetailPreviews}
-                  />
-                )}
-                <section className="a-canvas-column">
-                  {!mobile && <PerspectiveBar />}
-                  {!mobile && (
-                    <WorkbenchControls
-                      skeleton={skeleton}
-                      k1Ready={k1Requirement.status === 'resolved'}
-                    />
-                  )}
-                  <WorkbenchContextBar
-                    instances={memberInstances}
-                    activeInstance={activeInstance}
-                    roofPackage={fabricationPackage}
-                    activeOperation={activeOperation}
-                    selectedScheduleRow={selectedScheduleRow}
-                    openingSummary={openingSummary}
-                  />
-                  {mobile && (
-                    <ContextualTaskTabs
-                      k1Ready={k1Requirement.status === 'resolved'}
-                    />
-                  )}
-                  {mobile && !wideWorkspace && (
-                    <div className="a-mobile-workspace-actions">
-                      <button
-                        className="a-button"
-                        data-testid="mobile-open-tools"
-                        onClick={() => {
-                          if (workbench.viewPreset === 'covering') {
-                            state.setInspectorOpen(true);
-                            state.setMobilePanel('inspector');
-                          } else state.setMobilePanel('tools');
-                        }}
-                      >
-                        <Wrench size={17} />
-                        {t(
-                          workbench.viewPreset === 'covering'
-                            ? 'assembly.coveringParameters'
-                            : 'assembly.toolbox',
-                        )}
-                      </button>
-                      <button
-                        className="a-button"
-                        onClick={() => state.setMobilePanel('view')}
-                      >
-                        <SlidersHorizontal size={17} />
-                        {t('assembly.view')}
-                      </button>
-                      {workbench.viewPreset === 'layers' && (
-                        <button
-                          className="a-button"
-                          data-testid="mobile-open-inspector"
-                          onClick={() => {
-                            state.setInspectorOpen(true);
-                            state.setMobilePanel('inspector');
-                          }}
-                        >
-                          {t('assembly.editSelection')}
-                        </button>
-                      )}
-                      {/* V38: Fit and Measure act on the 2D drawing; the 3D
-                        viewport carries its own camera controls. */}
-                      {workbench.workspaceRenderer === '2d' &&
-                        workbench.viewPreset !== 'covering' &&
-                        (workbench.viewPreset !== 'materials' ||
-                          workbench.materialsView === 'drawing') && (
-                          <button
-                            className="a-button"
-                            onClick={state.requestFit}
-                          >
-                            <Maximize size={17} />
-                            {t('assembly.fit')}
-                          </button>
-                        )}
-                      {workbench.workspaceRenderer === '2d' &&
-                        workbench.viewPreset !== 'covering' &&
-                        workbench.viewPreset !== 'materials' && (
-                          <button
-                            className="a-button"
-                            aria-pressed={!!workbench.measurement}
-                            onClick={state.toggleMeasurement}
-                          >
-                            {t('assembly.measure')}
-                          </button>
-                        )}
-                    </div>
-                  )}
-                  {workbench.viewPreset === 'layers' && (
-                    <BuildUpSummaryBar
-                      membraneEnabled={!!membrane?.enabled}
-                      membraneAreaMm2={membraneAreaMm2}
-                      installation={installationFacts}
-                      selectedView={workbench.buildUpView}
-                      onSelect={(view) => {
-                        state.setBuildUpView(view);
-                        if (view !== 'overview' && view !== 'installation')
-                          state.select(
-                            `layer:${view === 'counterBattens' ? 'counter-battens' : view}`,
-                          );
-                      }}
-                    />
-                  )}
-                  {workbench.focusId && (
-                    <button
-                      className="a-button a-back"
-                      onClick={() => state.setFocusId(undefined)}
-                    >
-                      <X size={16} />
-                      {t('assembly.back')}
-                    </button>
-                  )}
-                  {!workbench.focusId &&
-                    workbench.canvasView === 'rafter' &&
-                    (workbench.viewPreset === 'construction' ||
-                      workbench.viewPreset === 'cuts') && (
-                      <button
-                        className="a-button a-back"
-                        onClick={() => state.setView('skeleton')}
-                      >
-                        <ArrowLeft size={16} />
-                        {t('assembly.backToSkeleton')}
-                      </button>
+            )}
+          {business.mode === 'business' && business.homeOpen ? (
+            <BusinessHome
+              projects={projectSessionState.projects}
+              onCreate={startBusinessEstimation}
+              onOpenProject={openBusinessProject}
+              onContinue={() => business.setHomeOpen(false)}
+            />
+          ) : (
+            <main className="a-main">
+              <div className="a-page-heading">
+                <div>
+                  <span className="a-eyebrow">
+                    {t('workshop')} / {t('assembly.model')}
+                  </span>
+                  <h1>{t('assembly.title')}</h1>
+                  <strong className="a-member-subtitle">
+                    {workbench.mode === 'quick'
+                      ? state.template.type === 'hip'
+                        ? `H1 ${t('assembly.hipRafter')}`
+                        : `K1 ${t('assembly.commonRafter')}`
+                      : state.template.type === 'hip'
+                        ? `${t('assembly.hipRoof')} · ${workbench.selectedPrototypeId === JACK_RAFTER_PROTOTYPE_ID || workbench.selectedId === JACK_RAFTER_PROTOTYPE_ID ? `J1 ${t('assembly.jackRafter')}` : workbench.selectedPrototypeId === HIP_RAFTER_PROTOTYPE_ID || workbench.selectedId === HIP_RAFTER_PROTOTYPE_ID ? `H1 ${t('assembly.hipRafter')}` : workbench.selectedPrototypeId === state.spec.member.id || workbench.selectedId === state.spec.member.id ? `K1 ${t('assembly.commonRafter')}` : t('assembly.skeleton')}`
+                        : `K1 ${t('assembly.commonRafter')}`}
+                  </strong>
+                  <p>
+                    {t(
+                      `assembly.${workbench.mode === 'quick' ? 'quickHint' : 'builderHint'}`,
                     )}
-                  {workbench.viewPreset === 'materials' ? (
-                    <div
-                      className={`a-material-workspace material-view-${workbench.materialsView}`}
+                  </p>
+                </div>
+                <span className="a-live">
+                  <i />
+                  {t('assembly.local')}
+                </span>
+              </div>
+              {workbench.mode === 'quick' ? (
+                <div className="a-quick-layout">
+                  <section className="a-quick-inputs">
+                    <RoofTypeSelector context="member" />
+                    <div className="a-basic-fields">
+                      <GeometryInputs />
+                    </div>
+                    <details className="a-more">
+                      <summary>{t('assembly.more')}</summary>
+                      <h3>
+                        {state.template.type === 'hip'
+                          ? t('assembly.hipRafter')
+                          : t('assembly.rafter')}
+                      </h3>
+                      {state.template.type === 'hip' ? (
+                        <HipTimberInputs />
+                      ) : (
+                        <>
+                          <TimberInputs />
+                          <h3>{t('assembly.wall-plate')}</h3>
+                          <SupportInputs support={wall} result={result} />
+                        </>
+                      )}
+                      <NumberField
+                        field="ridge.thicknessMm"
+                        label="ridgeWidth"
+                        max={1000}
+                      />
+                      <NumberField
+                        field="ridge.depthMm"
+                        label="ridgeDepth"
+                        min={1}
+                        max={2000}
+                        optional
+                      />
+                    </details>
+                    {state.spec.supports.some((s) => s.kind === 'purlin') && (
+                      <p className="a-help">{t('assembly.purlinPresent')}</p>
+                    )}
+                    <button
+                      className="a-button a-primary"
+                      data-testid="quick-create-project"
+                      onClick={() => {
+                        setReuseFreshProject(false);
+                        setProjectStartMode('quick');
+                        changeMode('builder');
+                      }}
                     >
-                      <div
-                        className="a-material-local-switch"
-                        role="tablist"
-                        aria-label={t('assembly.materialWorkspaceView')}
-                      >
-                        <details className="mp-secondary-views">
-                          <summary>{t('assembly.materialDetailViews')}</summary>
-                          {(['summary', 'drawing'] as const).map((view) => (
-                            <button
-                              key={view}
-                              role="tab"
-                              aria-selected={workbench.materialsView === view}
-                              onClick={() => state.setMaterialsView(view)}
-                            >
-                              {t(`assembly.${view}MaterialView`)}
-                            </button>
-                          ))}
-                        </details>
-                      </div>
-                      <div data-material-surface="plan">
-                        <Suspense
-                          fallback={<div className="a-loading-panel" />}
-                        >
-                          <MaterialPlan
-                            key={projectSessionState.active?.id ?? 'unsaved'}
-                            facts={materialFacts}
-                            membrane={membraneProduct}
-                            scenario={costScenario}
-                            prices={effectiveMaterialPrices}
-                            readiness={projectReadiness}
-                            onReadinessAction={runReadinessAction}
-                            linear={linearSurface}
-                            onPricesChange={setMaterialPrices}
-                            onScenarioChange={setCostScenario}
-                            onOpenCutting={openCutting}
-                            onOpenLayers={() =>
-                              state.navigateTo(workbenchLocation('layers'))
-                            }
-                            onOpenCovering={() =>
-                              state.navigateTo(workbenchLocation('covering'))
-                            }
-                            onOpenCosting={() =>
-                              state.navigateTo(workbenchLocation('costing'))
-                            }
-                            onOpenExport={openExecutionExport}
+                      {t('assembly.projectStart.createFromQuick')} →
+                    </button>
+                  </section>
+                  <section className="a-quick-output">
+                    {hip ? (
+                      <QuickH1Result hip={hip} />
+                    ) : (
+                      result && (
+                        <QuickK1Result
+                          result={result}
+                          highlight={quickHighlight}
+                          onHighlight={setQuickHighlight}
+                        />
+                      )
+                    )}
+                    {hip ? (
+                      <HipFabricationSheet hip={hip} compact />
+                    ) : (
+                      result && (
+                        <div className="a-quick-drawing">
+                          <AssemblyCanvas
+                            result={result}
+                            compact
+                            readOnly
+                            highlight={quickHighlight}
+                            heightPx={330}
                           />
-                        </Suspense>
-                      </div>
-                      <div data-material-surface="system">
-                        {workbench.materialsView === 'system' && (
-                          <Suspense
-                            fallback={<div className="a-loading-panel" />}
-                          >
-                            <RoofSystemWorkspace
-                              surface={surfaceProjection}
-                              facts={materialFacts}
-                              onOpenCovering={() =>
-                                state.navigateTo(workbenchLocation('covering'))
-                              }
-                              onOpenTilePlan={() =>
-                                state.setMaterialsView('plan')
-                              }
-                              onOpenDrainage={() =>
-                                state.setMaterialsView('drainage')
-                              }
-                            />
-                          </Suspense>
+                          <p className="a-help">
+                            {t('assembly.quickResult.drawingHint')}
+                          </p>
+                        </div>
+                      )
+                    )}
+                    <QuickCutPreviews
+                      previews={quickDetailPreviews}
+                      onOpen={setQuickDetail}
+                    />
+                  </section>
+                </div>
+              ) : (
+                <div className="a-project-shell">
+                  <JourneyRail
+                    journey={projectJourney}
+                    currentStage={currentJourneyStage}
+                    overviewActive={overviewActive}
+                    onAction={runJourneyAction}
+                    onOverview={() => runProjectAction('openSummary')}
+                  />
+                  <div className="a-project-body">
+                    {business.mode === 'business' && (
+                      <BusinessJourney
+                        summary={commercialSummary}
+                        readiness={commercialReadiness}
+                        onAction={runCommercialAction}
+                      />
+                    )}
+                    <ProjectReadinessBar
+                      key={projectSessionState.active?.id ?? 'unsaved'}
+                      readiness={projectReadiness}
+                      journey={projectJourney}
+                      currentStage={currentJourneyStage}
+                      unit={state.unit}
+                      onAction={runReadinessAction}
+                      onJourneyAction={runJourneyAction}
+                      onOpenPanel={() => setReadinessOpen(true)}
+                    />
+                    {readinessOpen && (
+                      <ProjectReadinessPanel
+                        journey={projectJourney}
+                        onJourneyAction={runJourneyAction}
+                        readiness={projectReadiness}
+                        unit={state.unit}
+                        onAction={runReadinessAction}
+                        onSafeRepair={applySafeRepair}
+                        onClose={() => setReadinessOpen(false)}
+                      />
+                    )}
+                    {actionFeedback && (
+                      <ActionFeedback
+                        message={actionFeedback.message}
+                        onUndo={
+                          useAssembly.getState().historyPast.length ===
+                          actionFeedback.historyLength
+                            ? () => state.undo()
+                            : undefined
+                        }
+                        onDismiss={dismissFeedback}
+                      />
+                    )}
+                    <div
+                      className={`a-builder-layout ${workbench.toolboxCollapsed ? 'tools-collapsed' : ''} ${workbench.workspaceFocus.active ? 'is-workspace-focus' : ''} ${workbench.viewPreset === 'materials' && !selectedScheduleRow ? 'material-inspector-empty' : ''} ${wideWorkspace ? 'is-wide-workspace' : ''} ${coveringWithoutProduct ? 'no-inspector' : ''}`}
+                      data-view-preset={workbench.viewPreset}
+                    >
+                      {!mobile && !wideWorkspace && (
+                        <Toolbox
+                          result={result}
+                          detailPreviews={selectionDetailPreviews}
+                        />
+                      )}
+                      <section className="a-canvas-column">
+                        {!mobile && <PerspectiveBar />}
+                        {!mobile && (
+                          <WorkbenchControls
+                            skeleton={skeleton}
+                            k1Ready={k1Requirement.status === 'resolved'}
+                          />
                         )}
-                      </div>
-                      <div data-material-surface="drainage">
-                        {workbench.materialsView === 'drainage' && (
-                          <Suspense
-                            fallback={<div className="a-loading-panel" />}
-                          >
-                            <DrainageWorkspace
-                              surface={surfaceProjection}
-                              facts={roofSystem}
-                              onOpenPlan={() => state.setMaterialsView('plan')}
-                            />
-                          </Suspense>
+                        <WorkbenchContextBar
+                          instances={memberInstances}
+                          activeInstance={activeInstance}
+                          roofPackage={fabricationPackage}
+                          activeOperation={activeOperation}
+                          selectedScheduleRow={selectedScheduleRow}
+                          openingSummary={openingSummary}
+                        />
+                        {mobile && (
+                          <ContextualTaskTabs
+                            k1Ready={k1Requirement.status === 'resolved'}
+                          />
                         )}
-                      </div>
-                      <div
-                        data-material-surface="cutting"
-                        data-testid="k1-cutting-surface"
-                      >
-                        {workbench.materialsView === 'cutting' &&
-                          (k1Requirement.status === 'resolved' ? (
-                            <Suspense
-                              fallback={<div className="a-loading-panel" />}
+                        {mobile && !wideWorkspace && (
+                          <div className="a-mobile-workspace-actions">
+                            <button
+                              className="a-button"
+                              data-testid="mobile-open-tools"
+                              onClick={() => {
+                                if (workbench.viewPreset === 'covering') {
+                                  state.setInspectorOpen(true);
+                                  state.setMobilePanel('inspector');
+                                } else state.setMobilePanel('tools');
+                              }}
                             >
-                              <K1CuttingPlan
-                                presentation="inline"
-                                requirement={k1Requirement}
-                                projectName={projectSessionState.active?.name}
+                              <Wrench size={17} />
+                              {t(
+                                workbench.viewPreset === 'covering'
+                                  ? 'assembly.coveringParameters'
+                                  : 'assembly.toolbox',
+                              )}
+                            </button>
+                            <button
+                              className="a-button"
+                              onClick={() => state.setMobilePanel('view')}
+                            >
+                              <SlidersHorizontal size={17} />
+                              {t('assembly.view')}
+                            </button>
+                            {workbench.viewPreset === 'layers' && (
+                              <button
+                                className="a-button"
+                                data-testid="mobile-open-inspector"
+                                onClick={() => {
+                                  state.setInspectorOpen(true);
+                                  state.setMobilePanel('inspector');
+                                }}
+                              >
+                                {t('assembly.editSelection')}
+                              </button>
+                            )}
+                            {/* V38: Fit and Measure act on the 2D drawing; the 3D
+                        viewport carries its own camera controls. */}
+                            {workbench.workspaceRenderer === '2d' &&
+                              workbench.viewPreset !== 'covering' &&
+                              (workbench.viewPreset !== 'materials' ||
+                                workbench.materialsView === 'drawing') && (
+                                <button
+                                  className="a-button"
+                                  onClick={state.requestFit}
+                                >
+                                  <Maximize size={17} />
+                                  {t('assembly.fit')}
+                                </button>
+                              )}
+                            {workbench.workspaceRenderer === '2d' &&
+                              workbench.viewPreset !== 'covering' &&
+                              workbench.viewPreset !== 'materials' && (
+                                <button
+                                  className="a-button"
+                                  aria-pressed={!!workbench.measurement}
+                                  onClick={state.toggleMeasurement}
+                                >
+                                  {t('assembly.measure')}
+                                </button>
+                              )}
+                          </div>
+                        )}
+                        {workbench.viewPreset === 'layers' && (
+                          <BuildUpSummaryBar
+                            membraneEnabled={!!membrane?.enabled}
+                            membraneAreaMm2={membraneAreaMm2}
+                            installation={installationFacts}
+                            selectedView={workbench.buildUpView}
+                            onSelect={(view) => {
+                              state.setBuildUpView(view);
+                              if (
+                                view !== 'overview' &&
+                                view !== 'installation'
+                              )
+                                state.select(
+                                  `layer:${view === 'counterBattens' ? 'counter-battens' : view}`,
+                                );
+                            }}
+                          />
+                        )}
+                        {workbench.focusId && (
+                          <button
+                            className="a-button a-back"
+                            onClick={() => state.setFocusId(undefined)}
+                          >
+                            <X size={16} />
+                            {t('assembly.back')}
+                          </button>
+                        )}
+                        {!workbench.focusId &&
+                          workbench.canvasView === 'rafter' &&
+                          (workbench.viewPreset === 'construction' ||
+                            workbench.viewPreset === 'cuts') && (
+                            <button
+                              className="a-button a-back"
+                              onClick={() => state.setView('skeleton')}
+                            >
+                              <ArrowLeft size={16} />
+                              {t('assembly.backToSkeleton')}
+                            </button>
+                          )}
+                        {workbench.viewPreset === 'materials' ? (
+                          <div
+                            className={`a-material-workspace material-view-${workbench.materialsView}`}
+                          >
+                            <div
+                              className="a-material-local-switch"
+                              role="tablist"
+                              aria-label={t('assembly.materialWorkspaceView')}
+                            >
+                              <details className="mp-secondary-views">
+                                <summary>
+                                  {t('assembly.materialDetailViews')}
+                                </summary>
+                                {(['summary', 'drawing'] as const).map(
+                                  (view) => (
+                                    <button
+                                      key={view}
+                                      role="tab"
+                                      aria-selected={
+                                        workbench.materialsView === view
+                                      }
+                                      onClick={() =>
+                                        state.setMaterialsView(view)
+                                      }
+                                    >
+                                      {t(`assembly.${view}MaterialView`)}
+                                    </button>
+                                  ),
+                                )}
+                              </details>
+                            </div>
+                            <div data-material-surface="plan">
+                              <Suspense
+                                fallback={<div className="a-loading-panel" />}
+                              >
+                                <MaterialPlan
+                                  key={
+                                    projectSessionState.active?.id ?? 'unsaved'
+                                  }
+                                  facts={materialFacts}
+                                  membrane={membraneProduct}
+                                  scenario={costScenario}
+                                  prices={effectiveMaterialPrices}
+                                  readiness={projectReadiness}
+                                  onReadinessAction={runReadinessAction}
+                                  linear={linearSurface}
+                                  onPricesChange={setMaterialPrices}
+                                  onScenarioChange={setCostScenario}
+                                  onOpenCutting={openCutting}
+                                  onOpenLayers={() =>
+                                    state.navigateTo(
+                                      workbenchLocation('layers'),
+                                    )
+                                  }
+                                  onOpenCovering={() =>
+                                    state.navigateTo(
+                                      workbenchLocation('covering'),
+                                    )
+                                  }
+                                  onOpenCosting={() =>
+                                    state.navigateTo(
+                                      workbenchLocation('costing'),
+                                    )
+                                  }
+                                  onOpenExport={openExecutionExport}
+                                />
+                              </Suspense>
+                            </div>
+                            <div data-material-surface="system">
+                              {workbench.materialsView === 'system' && (
+                                <Suspense
+                                  fallback={<div className="a-loading-panel" />}
+                                >
+                                  <RoofSystemWorkspace
+                                    surface={surfaceProjection}
+                                    facts={materialFacts}
+                                    onOpenCovering={() =>
+                                      state.navigateTo(
+                                        workbenchLocation('covering'),
+                                      )
+                                    }
+                                    onOpenTilePlan={() =>
+                                      state.setMaterialsView('plan')
+                                    }
+                                    onOpenDrainage={() =>
+                                      state.setMaterialsView('drainage')
+                                    }
+                                  />
+                                </Suspense>
+                              )}
+                            </div>
+                            <div data-material-surface="drainage">
+                              {workbench.materialsView === 'drainage' && (
+                                <Suspense
+                                  fallback={<div className="a-loading-panel" />}
+                                >
+                                  <DrainageWorkspace
+                                    surface={surfaceProjection}
+                                    facts={roofSystem}
+                                    onOpenPlan={() =>
+                                      state.setMaterialsView('plan')
+                                    }
+                                  />
+                                </Suspense>
+                              )}
+                            </div>
+                            <div
+                              data-material-surface="cutting"
+                              data-testid="k1-cutting-surface"
+                            >
+                              {workbench.materialsView === 'cutting' &&
+                                (k1Requirement.status === 'resolved' ? (
+                                  <Suspense
+                                    fallback={
+                                      <div className="a-loading-panel" />
+                                    }
+                                  >
+                                    <K1CuttingPlan
+                                      presentation="inline"
+                                      requirement={k1Requirement}
+                                      projectName={
+                                        projectSessionState.active?.name
+                                      }
+                                      unit={state.unit}
+                                      mobile={mobile}
+                                      onClose={() => state.navigateBack()}
+                                      initialPlan={activeCuttingPlan}
+                                      onPlanChange={(plan) =>
+                                        setCurrentCuttingPlan(
+                                          plan && projectSessionState.active
+                                            ? {
+                                                projectId:
+                                                  projectSessionState.active.id,
+                                                plan,
+                                              }
+                                            : undefined,
+                                        )
+                                      }
+                                    />
+                                  </Suspense>
+                                ) : (
+                                  <div
+                                    className="a-empty-state"
+                                    data-testid="k1-cutting-unavailable"
+                                  >
+                                    <strong>
+                                      {t('assembly.workflow.k1Unavailable')}
+                                    </strong>
+                                    <p>
+                                      {t(
+                                        'assembly.workflow.k1UnavailableDescription',
+                                      )}
+                                    </p>
+                                    <button
+                                      type="button"
+                                      className="a-button a-primary"
+                                      onClick={() =>
+                                        state.navigateTo(
+                                          workbenchLocation('construction'),
+                                        )
+                                      }
+                                    >
+                                      {t(
+                                        'assembly.workflow.action.completeGeometry',
+                                      )}
+                                    </button>
+                                  </div>
+                                ))}
+                            </div>
+                            <div data-material-surface="summary">
+                              <ProjectSummary
+                                facts={projectSummary}
+                                {...(projectSessionState.active
+                                  ? {
+                                      projectName:
+                                        projectSessionState.active.name,
+                                    }
+                                  : {})}
+                                journey={projectJourney}
+                                onJourneyAction={runJourneyAction}
                                 unit={state.unit}
-                                mobile={mobile}
-                                onClose={() => state.navigateBack()}
-                                initialPlan={activeCuttingPlan}
-                                onPlanChange={(plan) =>
-                                  setCurrentCuttingPlan(
-                                    plan && projectSessionState.active
-                                      ? {
-                                          projectId:
-                                            projectSessionState.active.id,
-                                          plan,
-                                        }
-                                      : undefined,
+                                onOpenCutting={openCutting}
+                                onOpenCovering={() =>
+                                  state.navigateTo(
+                                    workbenchLocation('covering'),
                                   )
                                 }
                               />
-                            </Suspense>
-                          ) : (
+                            </div>
                             <div
-                              className="a-empty-state"
-                              data-testid="k1-cutting-unavailable"
+                              className="a-material-canvas"
+                              data-material-surface="drawing"
                             >
-                              <strong>
-                                {t('assembly.workflow.k1Unavailable')}
-                              </strong>
-                              <p>
-                                {t(
-                                  'assembly.workflow.k1UnavailableDescription',
-                                )}
-                              </p>
-                              <button
-                                type="button"
-                                className="a-button a-primary"
-                                onClick={() =>
+                              <Suspense
+                                fallback={<div className="a-loading-panel" />}
+                              >
+                                <SkeletonCanvas
+                                  template={state.template}
+                                  skeleton={framingProjection.composedSkeleton}
+                                  collisionSkeleton={baseSkeleton}
+                                  spacing={layoutSpacing}
+                                  relatedIds={relatedSelectionIds}
+                                  activeInstance={activeInstance}
+                                  surfaceGeometry={surfaceProjection}
+                                  battens={battenProjection}
+                                  counterBattens={counterBattenProjection}
+                                  compact
+                                />
+                              </Suspense>
+                            </div>
+                            <div data-material-surface="schedule">
+                              <Suspense
+                                fallback={<div className="a-loading-panel" />}
+                              >
+                                <MaterialSchedule
+                                  schedule={memberSchedule}
+                                  k1={k1Requirement}
+                                  coveringStatus={
+                                    projectWorkflow.stages[3]!.status
+                                  }
+                                  onOpenCutting={openCutting}
+                                  selectedRowId={
+                                    workbench.selectedScheduleRowId
+                                  }
+                                  selectedInstanceId={
+                                    workbench.selectedScheduleInstanceId
+                                  }
+                                  battens={battenProjection}
+                                  counterBattens={counterBattenProjection}
+                                  battenAutoComposition={battenAutoComposition}
+                                  onSelectRow={(row) => {
+                                    state.setScheduleSelection(row.id);
+                                    if (mobile)
+                                      state.setMobilePanel('inspector');
+                                  }}
+                                  onSelectInstance={selectScheduleInstance}
+                                />
+                              </Suspense>
+                            </div>
+                          </div>
+                        ) : workbench.viewPreset === 'covering' ? (
+                          <Suspense
+                            fallback={<div className="a-loading-panel" />}
+                          >
+                            <CoveringWorkspace
+                              assignments={coveringAssignments}
+                              assignment={activeCoveringAssignment}
+                              layout={activeCoveringLayout}
+                              conflicts={activeCoveringConflicts}
+                              surfaceGeometry={surfaceProjection}
+                              battens={battenProjection}
+                              counterBattens={counterBattenProjection}
+                              installation={installationFacts}
+                              tilePlan={tilePurchasePlans.find(
+                                (plan) =>
+                                  plan.assignmentId ===
+                                  activeCoveringAssignment?.id,
+                              )}
+                              roofTopology={roofTopology}
+                              drainage={roofSystem.drainage}
+                              onOpenMaterials={() =>
+                                state.navigateTo(
+                                  workbenchLocation('materials', 'plan'),
+                                  { remember: true },
+                                )
+                              }
+                            />
+                          </Suspense>
+                        ) : workbench.viewPreset === 'costing' ? (
+                          <Suspense
+                            fallback={<div className="a-loading-panel" />}
+                          >
+                            {costScenario && projectSessionState.active ? (
+                              <CostWorkspace
+                                facts={
+                                  {
+                                    source: {
+                                      projectId: projectSessionState.active.id,
+                                      projectName:
+                                        projectSessionState.active.name,
+                                      projectCreatedAt:
+                                        projectSessionState.active.createdAt,
+                                      projectUpdatedAt:
+                                        projectSessionState.active.updatedAt,
+                                      projectSchemaVersion:
+                                        state.projectDocument.schemaVersion,
+                                    },
+                                    template: state.template,
+                                    resolved: templateResult,
+                                    skeleton:
+                                      framingProjection.composedSkeleton,
+                                    surface: surfaceProjection,
+                                    windows: roofWindows,
+                                    schedule: memberSchedule,
+                                    details: allDetailPreviews,
+                                    k1: k1Requirement,
+                                    cutting: activeCuttingPlan,
+                                    membraneEnabled: !!membrane?.enabled,
+                                    counterBattensEnabled:
+                                      !!counterBattens?.enabled,
+                                    battensEnabled: !!battenLayout?.enabled,
+                                    battens: battenProjection,
+                                    battenAutoSource:
+                                      battenAutoComposition.source,
+                                    battenInstallationDecision,
+                                    counterBattens: counterBattenProjection,
+                                    coverings: coveringAssignments,
+                                    coveringStatuses:
+                                      resolvedCoveringLayouts.map((layout) => ({
+                                        assignmentId: layout.assignmentId,
+                                        status: layout.status,
+                                        warnings: [...layout.issueCodes],
+                                      })),
+                                    coveringLayouts: resolvedCoveringLayouts,
+                                    variantPrices,
+                                    // V48: price the commercial pieces, not metres.
+                                    linearPlans,
+                                    // V50: price the tiles to buy, not the area.
+                                    tilePurchasePlans,
+                                    // V51: price the commercial roof-system pieces.
+                                    roofSystem,
+                                  } satisfies Omit<ExportFacts, 'cost'>
+                                }
+                                scenario={costScenario}
+                                onScenarioChange={setCostScenario}
+                                onOpenDocuments={openExecutionExport}
+                                materialsAttention={
+                                  materialRows.filter((row) => row.partial)
+                                    .length
+                                }
+                                onOpenMaterials={() =>
                                   state.navigateTo(
-                                    workbenchLocation('construction'),
+                                    workbenchLocation('materials'),
                                   )
                                 }
-                              >
-                                {t('assembly.workflow.action.completeGeometry')}
-                              </button>
-                            </div>
-                          ))}
-                      </div>
-                      <div data-material-surface="summary">
-                        <ProjectSummary
-                          facts={projectSummary}
-                          journey={projectJourney}
-                          onJourneyAction={runJourneyAction}
-                          readiness={projectReadiness}
-                          unit={state.unit}
-                          onOpenCutting={openCutting}
-                          onOpenCovering={() =>
-                            state.navigateTo(workbenchLocation('covering'))
-                          }
-                        />
-                      </div>
-                      <div
-                        className="a-material-canvas"
-                        data-material-surface="drawing"
-                      >
-                        <Suspense
-                          fallback={<div className="a-loading-panel" />}
-                        >
-                          <SkeletonCanvas
-                            template={state.template}
-                            skeleton={framingProjection.composedSkeleton}
-                            collisionSkeleton={baseSkeleton}
-                            spacing={layoutSpacing}
-                            relatedIds={relatedSelectionIds}
-                            activeInstance={activeInstance}
-                            surfaceGeometry={surfaceProjection}
-                            battens={battenProjection}
-                            counterBattens={counterBattenProjection}
-                            compact
-                          />
-                        </Suspense>
-                      </div>
-                      <div data-material-surface="schedule">
-                        <Suspense
-                          fallback={<div className="a-loading-panel" />}
-                        >
-                          <MaterialSchedule
-                            schedule={memberSchedule}
-                            k1={k1Requirement}
-                            coveringStatus={projectWorkflow.stages[3]!.status}
-                            onOpenCutting={openCutting}
-                            selectedRowId={workbench.selectedScheduleRowId}
-                            selectedInstanceId={
-                              workbench.selectedScheduleInstanceId
-                            }
-                            battens={battenProjection}
-                            counterBattens={counterBattenProjection}
-                            battenAutoComposition={battenAutoComposition}
-                            onSelectRow={(row) => {
-                              state.setScheduleSelection(row.id);
-                              if (mobile) state.setMobilePanel('inspector');
-                            }}
-                            onSelectInstance={selectScheduleInstance}
-                          />
-                        </Suspense>
-                      </div>
-                    </div>
-                  ) : workbench.viewPreset === 'covering' ? (
-                    <Suspense fallback={<div className="a-loading-panel" />}>
-                      <CoveringWorkspace
-                        assignments={coveringAssignments}
-                        assignment={activeCoveringAssignment}
-                        layout={activeCoveringLayout}
-                        conflicts={activeCoveringConflicts}
-                        surfaceGeometry={surfaceProjection}
-                        battens={battenProjection}
-                        counterBattens={counterBattenProjection}
-                        installation={installationFacts}
-                        tilePlan={tilePurchasePlans.find(
-                          (plan) =>
-                            plan.assignmentId === activeCoveringAssignment?.id,
-                        )}
-                        roofTopology={roofTopology}
-                        drainage={roofSystem.drainage}
-                        onOpenMaterials={() =>
-                          state.navigateTo(
-                            workbenchLocation('materials', 'plan'),
-                            { remember: true },
-                          )
-                        }
-                      />
-                    </Suspense>
-                  ) : workbench.viewPreset === 'costing' ? (
-                    <Suspense fallback={<div className="a-loading-panel" />}>
-                      {costScenario && projectSessionState.active ? (
-                        <CostWorkspace
-                          facts={
-                            {
-                              source: {
-                                projectId: projectSessionState.active.id,
-                                projectName: projectSessionState.active.name,
-                                projectCreatedAt:
-                                  projectSessionState.active.createdAt,
-                                projectUpdatedAt:
-                                  projectSessionState.active.updatedAt,
-                                projectSchemaVersion:
-                                  state.projectDocument.schemaVersion,
-                              },
-                              template: state.template,
-                              resolved: templateResult,
-                              skeleton: framingProjection.composedSkeleton,
-                              surface: surfaceProjection,
-                              windows: roofWindows,
-                              schedule: memberSchedule,
-                              details: allDetailPreviews,
-                              k1: k1Requirement,
-                              cutting: activeCuttingPlan,
-                              membraneEnabled: !!membrane?.enabled,
-                              counterBattensEnabled: !!counterBattens?.enabled,
-                              battensEnabled: !!battenLayout?.enabled,
-                              battens: battenProjection,
-                              battenAutoSource: battenAutoComposition.source,
-                              battenInstallationDecision,
-                              counterBattens: counterBattenProjection,
-                              coverings: coveringAssignments,
-                              coveringStatuses: resolvedCoveringLayouts.map(
-                                (layout) => ({
-                                  assignmentId: layout.assignmentId,
-                                  status: layout.status,
-                                  warnings: [...layout.issueCodes],
-                                }),
-                              ),
-                              coveringLayouts: resolvedCoveringLayouts,
-                              variantPrices,
-                              // V48: price the commercial pieces, not metres.
-                              linearPlans,
-                              // V50: price the tiles to buy, not the area.
-                              tilePurchasePlans,
-                              // V51: price the commercial roof-system pieces.
-                              roofSystem,
-                            } satisfies Omit<ExportFacts, 'cost'>
-                          }
-                          scenario={costScenario}
-                          onScenarioChange={setCostScenario}
-                          onOpenDocuments={openExecutionExport}
-                          materialsAttention={
-                            materialRows.filter((row) => row.partial).length
-                          }
-                          onOpenMaterials={() =>
-                            state.navigateTo(workbenchLocation('materials'))
-                          }
-                          onOpenQuote={openQuote}
-                        />
-                      ) : (
-                        <div className="a-loading-panel" />
-                      )}
-                    </Suspense>
-                  ) : workbench.viewPreset === 'documents' ? (
-                    <DocumentHub
-                      facts={documentFactsWithLimits}
-                      readiness={projectReadiness}
-                      unit={state.unit}
-                      onAction={runReadinessAction}
-                      onOpen={openDocument}
-                      onMaterialCsv={() =>
-                        downloadMaterialCsv(
-                          materialRows,
-                          effectiveMaterialPrices,
-                          projectSessionState.active?.name ?? brand,
-                          i18n.language,
-                        )
-                      }
-                      onCostCsv={
-                        costScenario?.lines.length
-                          ? () =>
-                              downloadCostEstimateCsv(
-                                costScenario,
+                                onOpenQuote={openQuote}
+                              />
+                            ) : (
+                              <div className="a-loading-panel" />
+                            )}
+                          </Suspense>
+                        ) : workbench.viewPreset === 'documents' ? (
+                          <DocumentHub
+                            facts={documentFactsWithLimits}
+                            readiness={projectReadiness}
+                            unit={state.unit}
+                            onAction={runReadinessAction}
+                            onOpen={openDocument}
+                            onMaterialCsv={() =>
+                              downloadMaterialCsv(
+                                materialRows,
+                                effectiveMaterialPrices,
                                 projectSessionState.active?.name ?? brand,
                                 i18n.language,
                               )
-                          : undefined
-                      }
-                    />
-                  ) : workbench.focusId ? (
-                    <AssemblyCanvas
-                      result={result}
-                      focusId={workbench.focusId}
-                    />
-                  ) : workbench.canvasView === 'hip' && hip ? (
-                    <HipFabricationSheet
-                      hip={hip}
-                      onBack={() => state.setView('skeleton')}
-                    />
-                  ) : workbench.canvasView === 'rafter' ? (
-                    <AssemblyCanvas result={result} />
-                  ) : workbench.workspaceRenderer === '3d' ? (
-                    <Suspense
-                      fallback={
-                        <div className="a-loading-panel" role="status">
-                          {t('assembly.scene3d.loading')}
-                        </div>
-                      }
-                    >
-                      <TechnicalScene3D
-                        skeleton={skeleton}
-                        relatedIds={relatedSelectionIds}
-                        counterBattens={scene3dContext.counterBattenRuns}
-                        unresolvedHipBoundaries={
-                          scene3dContext.unresolvedHipBoundaries
-                        }
-                        finishedMembers={scene3dContext.finishedMembers}
-                        onReturnTo2D={() => state.setWorkspaceRenderer('2d')}
-                        onOpenPreparation={openInstancePreparation}
-                      />
-                    </Suspense>
-                  ) : (
-                    <Suspense fallback={<div className="a-loading-panel" />}>
-                      <SkeletonCanvas
-                        template={state.template}
-                        skeleton={skeleton}
-                        collisionSkeleton={baseSkeleton}
-                        proposalMemberIds={
-                          new Set(proposalMembers.map((member) => member.id))
-                        }
-                        spacing={layoutSpacing}
-                        relatedSupportId={activeOperation?.relatedSupportId}
-                        relatedIds={relatedSelectionIds}
-                        activeInstance={activeInstance}
-                        surfaceGeometry={surfaceProjection}
-                        battens={battenProjection}
-                        counterBattens={counterBattenProjection}
-                      />
-                    </Suspense>
-                  )}
-                </section>
-                {!mobile &&
-                  !wideWorkspace &&
-                  !coveringWithoutProduct &&
-                  (workbench.viewPreset !== 'materials' ||
-                    selectedScheduleRow) &&
-                  inspectorContent}
-              </div>
-              {exportSource && (
-                <Suspense fallback={<div className="a-loading-panel" />}>
-                  <ExecutionExport
-                    key={`${documentRequest?.kind}:${documentRequest?.mode}`}
-                    source={exportSource}
-                    facts={{ ...documentFactsWithLimits, source: exportSource }}
-                    documentKind={
-                      (documentRequest?.kind ??
-                        'execution') as ReadinessDocumentKind
-                    }
-                    documentStatus={documentStatusFor(
-                      projectReadiness,
-                      (documentRequest?.kind ??
-                        'execution') as ReadinessDocumentKind,
+                            }
+                            onCostCsv={
+                              costScenario?.lines.length
+                                ? () =>
+                                    downloadCostEstimateCsv(
+                                      costScenario,
+                                      projectSessionState.active?.name ?? brand,
+                                      i18n.language,
+                                    )
+                                : undefined
+                            }
+                          />
+                        ) : workbench.focusId ? (
+                          <AssemblyCanvas
+                            result={result}
+                            focusId={workbench.focusId}
+                          />
+                        ) : workbench.canvasView === 'hip' && hip ? (
+                          <HipFabricationSheet
+                            hip={hip}
+                            onBack={() => state.setView('skeleton')}
+                          />
+                        ) : workbench.canvasView === 'rafter' ? (
+                          <AssemblyCanvas result={result} />
+                        ) : workbench.workspaceRenderer === '3d' ? (
+                          <Suspense
+                            fallback={
+                              <div className="a-loading-panel" role="status">
+                                {t('assembly.scene3d.loading')}
+                              </div>
+                            }
+                          >
+                            <TechnicalScene3D
+                              skeleton={skeleton}
+                              relatedIds={relatedSelectionIds}
+                              counterBattens={scene3dContext.counterBattenRuns}
+                              unresolvedHipBoundaries={
+                                scene3dContext.unresolvedHipBoundaries
+                              }
+                              finishedMembers={scene3dContext.finishedMembers}
+                              onReturnTo2D={() =>
+                                state.setWorkspaceRenderer('2d')
+                              }
+                              onOpenPreparation={openInstancePreparation}
+                            />
+                          </Suspense>
+                        ) : (
+                          <Suspense
+                            fallback={<div className="a-loading-panel" />}
+                          >
+                            <SkeletonCanvas
+                              template={state.template}
+                              skeleton={skeleton}
+                              collisionSkeleton={baseSkeleton}
+                              proposalMemberIds={
+                                new Set(
+                                  proposalMembers.map((member) => member.id),
+                                )
+                              }
+                              spacing={layoutSpacing}
+                              relatedSupportId={
+                                activeOperation?.relatedSupportId
+                              }
+                              relatedIds={relatedSelectionIds}
+                              activeInstance={activeInstance}
+                              surfaceGeometry={surfaceProjection}
+                              battens={battenProjection}
+                              counterBattens={counterBattenProjection}
+                            />
+                          </Suspense>
+                        )}
+                      </section>
+                      {!mobile &&
+                        !wideWorkspace &&
+                        !coveringWithoutProduct &&
+                        (workbench.viewPreset !== 'materials' ||
+                          selectedScheduleRow) &&
+                        inspectorContent}
+                    </div>
+                    {exportSource && (
+                      <Suspense fallback={<div className="a-loading-panel" />}>
+                        <ExecutionExport
+                          key={`${documentRequest?.kind}:${documentRequest?.mode}`}
+                          source={exportSource}
+                          facts={{
+                            ...documentFactsWithLimits,
+                            source: exportSource,
+                          }}
+                          documentKind={
+                            (documentRequest?.kind ??
+                              'execution') as ReadinessDocumentKind
+                          }
+                          documentStatus={documentStatusFor(
+                            projectReadiness,
+                            (documentRequest?.kind ??
+                              'execution') as ReadinessDocumentKind,
+                          )}
+                          onFixProblems={() => {
+                            closeDocument();
+                            const kind = (documentRequest?.kind ??
+                              'execution') as ReadinessDocumentKind;
+                            const firstBlocker = projectReadiness.issues.find(
+                              (issue) =>
+                                issue.severity === 'blocker' &&
+                                issue.affects.includes(kind) &&
+                                issue.action,
+                            );
+                            if (firstBlocker?.action)
+                              runReadinessAction(firstBlocker.action);
+                            else setReadinessOpen(true);
+                          }}
+                          unit={state.unit}
+                          mobile={mobile}
+                          onClose={closeDocument}
+                          onPlanK1={() => {
+                            closeDocument();
+                            openCutting();
+                          }}
+                          initialSelection={
+                            documentRequest?.mode === 'preview'
+                              ? HUB_DOCUMENT_SECTIONS[documentRequest.kind]
+                              : undefined
+                          }
+                          startInPreview={documentRequest?.mode === 'preview'}
+                          backLabel={t('assembly.nav.documentHub')}
+                        />
+                      </Suspense>
                     )}
-                    onFixProblems={() => {
-                      closeDocument();
-                      const kind = (documentRequest?.kind ??
-                        'execution') as ReadinessDocumentKind;
-                      const firstBlocker = projectReadiness.issues.find(
-                        (issue) =>
-                          issue.severity === 'blocker' &&
-                          issue.affects.includes(kind) &&
-                          issue.action,
-                      );
-                      if (firstBlocker?.action)
-                        runReadinessAction(firstBlocker.action);
-                      else setReadinessOpen(true);
-                    }}
-                    unit={state.unit}
-                    mobile={mobile}
-                    onClose={closeDocument}
-                    onPlanK1={() => {
-                      closeDocument();
-                      openCutting();
-                    }}
-                    initialSelection={
-                      documentRequest?.mode === 'preview'
-                        ? HUB_DOCUMENT_SECTIONS[documentRequest.kind]
-                        : undefined
-                    }
-                    startInPreview={documentRequest?.mode === 'preview'}
-                    backLabel={t('assembly.nav.documentHub')}
-                  />
-                </Suspense>
-              )}
-              {mobile &&
-                workbench.selectedId !== 'roof' &&
-                workbench.viewPreset !== 'covering' &&
-                !drawer.open &&
-                workbench.mobilePanel === 'none' && (
-                  <div className="a-mobile-selection-peek">
-                    <strong>
-                      {entityLabel(workbench.selectedId, state, t)}
-                    </strong>
-                    <button
-                      className="a-button"
-                      onClick={() => {
-                        state.setInspectorOpen(true);
-                        state.setMobilePanel('inspector');
-                      }}
-                    >
-                      {t('assembly.editSelection')}
-                    </button>
+                    {mobile &&
+                      workbench.selectedId !== 'roof' &&
+                      workbench.viewPreset !== 'covering' &&
+                      !drawer.open &&
+                      workbench.mobilePanel === 'none' && (
+                        <div className="a-mobile-selection-peek">
+                          <strong>
+                            {entityLabel(workbench.selectedId, state, t)}
+                          </strong>
+                          <button
+                            className="a-button"
+                            onClick={() => {
+                              state.setInspectorOpen(true);
+                              state.setMobilePanel('inspector');
+                            }}
+                          >
+                            {t('assembly.editSelection')}
+                          </button>
+                        </div>
+                      )}
+                    {mobile && <MobileTaskDock />}
+                    {mobile && workbench.mobilePanel === 'tools' && (
+                      <MobileSheet
+                        title={t('assembly.toolbox')}
+                        onClose={() => state.setMobilePanel('none')}
+                      >
+                        <Toolbox
+                          result={result}
+                          detailPreviews={selectionDetailPreviews}
+                          mobileTask={workbench.viewPreset}
+                        />
+                      </MobileSheet>
+                    )}
+                    {mobile && workbench.mobilePanel === 'inspector' && (
+                      <MobileSheet
+                        title={t('assembly.inspector')}
+                        onClose={() => state.setMobilePanel('none')}
+                      >
+                        {inspectorContent}
+                        {(workbench.viewPreset === 'construction' ||
+                          workbench.viewPreset === 'cuts') && (
+                          <>
+                            <PreparationPlan
+                              roofPackage={fabricationPackage}
+                              activeInstance={activeInstance}
+                            />
+                            <ContextualResults
+                              context={selectionContext}
+                              resolved={templateResult}
+                              skeleton={skeleton}
+                            />
+                          </>
+                        )}
+                      </MobileSheet>
+                    )}
+                    {mobile && workbench.mobilePanel === 'view' && (
+                      <MobileSheet
+                        title={t('assembly.view')}
+                        onClose={() => state.setMobilePanel('none')}
+                      >
+                        <MobileViewSettings skeleton={skeleton} />
+                      </MobileSheet>
+                    )}
+                    {mobile
+                      ? drawer.open && (
+                          <MobileSheet
+                            title={t('assembly.detailDrawer')}
+                            onClose={state.closeDetailDrawer}
+                            expanded={drawer.mode === 'focus'}
+                          >
+                            {detailDrawerElement}
+                          </MobileSheet>
+                        )
+                      : detailDrawerElement}
+                    {!mobile &&
+                      (workbench.viewPreset === 'construction' ||
+                        workbench.viewPreset === 'cuts') && (
+                        <>
+                          <PreparationPlan
+                            roofPackage={fabricationPackage}
+                            activeInstance={activeInstance}
+                          />
+                          <ContextualResults
+                            context={selectionContext}
+                            resolved={templateResult}
+                            skeleton={skeleton}
+                          />
+                        </>
+                      )}
                   </div>
-                )}
-              {mobile && <MobileTaskDock />}
-              {mobile && workbench.mobilePanel === 'tools' && (
-                <MobileSheet
-                  title={t('assembly.toolbox')}
-                  onClose={() => state.setMobilePanel('none')}
-                >
-                  <Toolbox
-                    result={result}
-                    detailPreviews={selectionDetailPreviews}
-                    mobileTask={workbench.viewPreset}
-                  />
-                </MobileSheet>
+                </div>
               )}
-              {mobile && workbench.mobilePanel === 'inspector' && (
-                <MobileSheet
-                  title={t('assembly.inspector')}
-                  onClose={() => state.setMobilePanel('none')}
-                >
-                  {inspectorContent}
-                  {(workbench.viewPreset === 'construction' ||
-                    workbench.viewPreset === 'cuts') && (
-                    <>
-                      <PreparationPlan
-                        roofPackage={fabricationPackage}
-                        activeInstance={activeInstance}
-                      />
-                      <ContextualResults
-                        context={selectionContext}
-                        resolved={templateResult}
-                        skeleton={skeleton}
-                      />
-                    </>
+              <details className="a-assumptions">
+                <summary>{t('assembly.assumptions')}</summary>
+                <p>
+                  {t(
+                    `assembly.${state.template.type === 'hip' ? 'hipAssumptionsText' : 'assumptionsText'}`,
                   )}
-                </MobileSheet>
-              )}
-              {mobile && workbench.mobilePanel === 'view' && (
-                <MobileSheet
-                  title={t('assembly.view')}
-                  onClose={() => state.setMobilePanel('none')}
-                >
-                  <MobileViewSettings skeleton={skeleton} />
-                </MobileSheet>
-              )}
-              {mobile
-                ? drawer.open && (
-                    <MobileSheet
-                      title={t('assembly.detailDrawer')}
-                      onClose={state.closeDetailDrawer}
-                      expanded={drawer.mode === 'focus'}
-                    >
-                      {detailDrawerElement}
-                    </MobileSheet>
-                  )
-                : detailDrawerElement}
-              {!mobile &&
-                (workbench.viewPreset === 'construction' ||
-                  workbench.viewPreset === 'cuts') && (
-                  <>
-                    <PreparationPlan
-                      roofPackage={fabricationPackage}
-                      activeInstance={activeInstance}
-                    />
-                    <ContextualResults
-                      context={selectionContext}
-                      resolved={templateResult}
-                      skeleton={skeleton}
-                    />
-                  </>
-                )}
-            </>
+                </p>
+                <p>{t('assembly.structural')}</p>
+              </details>
+              <footer className="a-footer">
+                <span>
+                  {brand} · {t('assembly.local')}
+                </span>
+                <span>
+                  {workbench.mode === 'builder' && projectSessionState.active
+                    ? projectStatusLabel(
+                        projectSessionState.saveStatus,
+                        i18n.language,
+                      )
+                    : t('assembly.noSave')}
+                </span>
+              </footer>
+            </main>
           )}
-          <details className="a-assumptions">
-            <summary>{t('assembly.assumptions')}</summary>
-            <p>
-              {t(
-                `assembly.${state.template.type === 'hip' ? 'hipAssumptionsText' : 'assumptionsText'}`,
-              )}
-            </p>
-            <p>{t('assembly.structural')}</p>
-          </details>
-          <footer className="a-footer">
-            <span>
-              {brand} · {t('assembly.local')}
-            </span>
-            <span>
-              {workbench.mode === 'builder' && projectSessionState.active
-                ? projectStatusLabel(
-                    projectSessionState.saveStatus,
-                    i18n.language,
-                  )
-                : t('assembly.noSave')}
-            </span>
-          </footer>
-        </main>
+        </>
       )}
       {quoteOpen && currentQuoteDraft && (
         <QuoteWorkspace
@@ -3294,6 +3513,7 @@ function AssemblyPageContent({
                 project.id !== projectSessionState.active?.id,
             ),
           )}
+          {...(projectStartAt ? { startAt: projectStartAt } : {})}
           onBeginProject={() => state.setMode('builder')}
           onQuick={() => {
             setProjectStartMode(undefined);
@@ -3304,67 +3524,53 @@ function AssemblyPageContent({
             setProjectStartMode(undefined);
             setIfcImportOpen(true);
           }}
-          onOpenProject={async (id) => {
-            await projectSession.initialize();
-            await projectSession.open(id);
-            state.setMode('builder');
-            rememberCreatorStart();
-            setReuseFreshProject(false);
-            setProjectStartMode(undefined);
-            state.navigatePerspective('project');
-          }}
+          onOpenProject={openSavedProject}
           onClose={() => {
             rememberCreatorStart();
             projectSession.acknowledgeFreshProject();
             setReuseFreshProject(false);
             setProjectStartMode(undefined);
+            setProjectStartAt(undefined);
           }}
           onSubmit={async (template) => {
             if (projectStartMode === 'new' || projectStartMode === 'quick') {
-              if (!reuseFreshProject) await projectSession.create();
+              // A fresh, untouched session project is reused; otherwise a
+              // new record is created so an existing project is never replaced.
+              const initialized = projectSession.snapshot().initialized;
+              await projectSession.initialize();
+              if (
+                !reuseFreshProject &&
+                (initialized || !projectSession.snapshot().freshProject)
+              )
+                await projectSession.create();
               useAssembly
                 .getState()
                 .replaceProjectDocument(createRoofProjectDocument(template));
             } else if (projectStartMode === 'edit') {
               useAssembly.getState().setProjectRoof(template);
             }
-            rememberCreatorStart();
-            projectSession.acknowledgeFreshProject();
-            setReuseFreshProject(false);
-            setProjectStartMode(undefined);
-            state.navigatePerspective('project');
+            enterProject();
             state.setViewPreset('construction');
           }}
           onAdvanced={async () => {
             const initialized = projectSession.snapshot().initialized;
             await projectSession.initialize();
-            state.setMode('builder');
-            // A fresh, untouched session project is reused; otherwise a new
-            // record is created so an existing project is never replaced.
             if (
               !reuseFreshProject &&
               (initialized || !projectSession.snapshot().freshProject)
             )
               await projectSession.create();
-            rememberCreatorStart();
-            projectSession.acknowledgeFreshProject();
-            setReuseFreshProject(false);
-            setProjectStartMode(undefined);
-            state.navigatePerspective('project');
+            enterProject();
             state.setViewPreset('construction');
           }}
           onExample={async (id) => {
             await projectSession.initialize();
-            state.setMode('builder');
             const title = t(`assembly.creator.examples.item.${id}.title`);
             await projectSession.createFromDocument(
               projectExampleDocument(id),
               t('assembly.creator.examples.name', { title }),
             );
-            rememberCreatorStart();
-            setReuseFreshProject(false);
-            setProjectStartMode(undefined);
-            state.navigatePerspective('project');
+            enterProject();
             state.setViewPreset('construction');
           }}
         />
@@ -3374,19 +3580,24 @@ function AssemblyPageContent({
           <IfcImportWorkspace
             onClose={() => setIfcImportOpen(false)}
             onCreate={async (template) => {
-              await projectSession.createFromDocument(
-                createRoofProjectDocument(template),
-                i18n.language.startsWith('pl')
-                  ? 'Projekt z IFC'
-                  : 'Project from IFC',
-              );
-              rememberCreatorStart();
-              projectSession.acknowledgeFreshProject();
-              setReuseFreshProject(false);
-              setProjectStartMode(undefined);
+              const name = i18n.language.startsWith('pl')
+                ? 'Projekt z IFC'
+                : 'Project from IFC';
+              const initialized = projectSession.snapshot().initialized;
+              await projectSession.initialize();
+              // Reuse the placeholder a first initialization just created.
+              if (!initialized && projectSession.snapshot().freshProject) {
+                useAssembly
+                  .getState()
+                  .replaceProjectDocument(createRoofProjectDocument(template));
+                await projectSession.rename(name);
+              } else
+                await projectSession.createFromDocument(
+                  createRoofProjectDocument(template),
+                  name,
+                );
               setIfcImportOpen(false);
-              state.setMode('builder');
-              state.navigatePerspective('project');
+              enterProject();
               state.setViewPreset('construction');
             }}
           />
@@ -3414,11 +3625,15 @@ function AssemblyPageContent({
   );
 }
 
-export function AssemblyPage({
-  startAtHome = false,
-}: {
-  startAtHome?: boolean;
-}) {
+export interface AppRouteProps {
+  /** `#/` — the application home (Standard and Business entry). */
+  home?: boolean;
+  /** `#/platform` — the RoofCalc system console (platform admins only). */
+  platform?: boolean;
+  onNavigate?: (view: AppView) => void;
+}
+
+export function AssemblyPage(props: AppRouteProps) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -3434,7 +3649,7 @@ export function AssemblyPage({
        * issues no request and renders no business UI at all (§65).
        */}
       <BusinessContextProvider>
-        <AssemblyPageContent startAtHome={startAtHome} />
+        <AssemblyPageContent {...props} />
       </BusinessContextProvider>
     </QueryClientProvider>
   );

@@ -1936,6 +1936,31 @@ export const assemblyPl = {
   // V53 project journey: where am I, what is ready, what next and why.
   journey: {
     overview: 'Przebieg projektu',
+    projectOverview: 'Przegląd projektu',
+    continue: 'Kontynuuj pracę',
+    railStatus: {
+      ready: 'Gotowe',
+      attention: 'Wymaga uwagi',
+      open: 'Do zrobienia',
+    },
+    layer: {
+      membrane: 'Membrana',
+      counterBattens: 'Kontrłaty',
+      battens: 'Łaty',
+    },
+    positions_one: '{{count}} pozycja',
+    positions_few: '{{count}} pozycje',
+    positions_many: '{{count}} pozycji',
+    positions_other: '{{count}} pozycji',
+    members_one: '{{count}} element',
+    members_few: '{{count}} elementy',
+    members_many: '{{count}} elementów',
+    members_other: '{{count}} elementów',
+    net: 'netto',
+    missingPrices_one: 'brak {{count}} ceny',
+    missingPrices_few: 'brak {{count}} cen',
+    missingPrices_many: 'brak {{count}} cen',
+    missingPrices_other: 'brak {{count}} cen',
     overviewStatus: {
       complete: 'Gotowe',
       'needs-action': 'Do uzupełnienia',
@@ -4428,6 +4453,31 @@ export const assemblyEn: typeof assemblyPl = {
   // V53 project journey: where am I, what is ready, what next and why.
   journey: {
     overview: 'Project journey',
+    projectOverview: 'Project overview',
+    continue: 'Continue work',
+    railStatus: {
+      ready: 'Ready',
+      attention: 'Needs attention',
+      open: 'To do',
+    },
+    layer: {
+      membrane: 'Membrane',
+      counterBattens: 'Counter-battens',
+      battens: 'Battens',
+    },
+    positions_one: '{{count}} item',
+    positions_few: '{{count}} items',
+    positions_many: '{{count}} items',
+    positions_other: '{{count}} items',
+    members_one: '{{count}} member',
+    members_few: '{{count}} members',
+    members_many: '{{count}} members',
+    members_other: '{{count}} members',
+    net: 'net',
+    missingPrices_one: '{{count}} price missing',
+    missingPrices_few: '{{count}} prices missing',
+    missingPrices_many: '{{count}} prices missing',
+    missingPrices_other: '{{count}} prices missing',
     overviewStatus: {
       complete: 'Complete',
       'needs-action': 'Needs action',

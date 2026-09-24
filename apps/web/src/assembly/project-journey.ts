@@ -61,59 +61,8 @@ export interface JourneyStage {
 
 export interface ProjectJourney {
   stages: JourneyStage[];
-  overview: JourneyOverviewStage[];
   recommended?: JourneyAction & { stage: JourneyStageKey };
   counts: { ready: number; decisions: number };
-}
-
-export type JourneyOverviewKey = Exclude<
-  JourneyStageKey,
-  'layers' | 'roof-system'
->;
-export interface JourneyOverviewStage {
-  key: JourneyOverviewKey;
-  status: 'complete' | 'needs-action' | 'not-started';
-  target: JourneyAction;
-  summary?: string;
-}
-
-/** Six user-facing stages, composed from the detailed readiness journey. */
-export function projectJourneyOverview(
-  stages: readonly JourneyStage[],
-): JourneyOverviewStage[] {
-  const groups: readonly [JourneyOverviewKey, readonly JourneyStageKey[]][] = [
-    ['geometry', ['geometry']],
-    ['construction', ['construction']],
-    ['covering', ['covering', 'layers']],
-    ['materials', ['materials', 'roof-system']],
-    ['cost', ['cost']],
-    ['documents', ['documents']],
-  ];
-  return groups.map(([key, keys]) => {
-    const children = keys.flatMap((child) =>
-      stages.filter((stage) => stage.key === child),
-    );
-    const main = children[0]!;
-    const unfinished =
-      children.find((stage) => stage.state === 'fix') ??
-      children.find(
-        (stage) => stage.state === 'decision' || stage.state === 'in-progress',
-      );
-    const target = unfinished ?? main;
-    const absent =
-      main.state === 'optional' ||
-      main.state === 'waiting' ||
-      main.issues.some((issue) => issue.code === 'covering-missing');
-    return {
-      key,
-      status: absent ? 'not-started' : unfinished ? 'needs-action' : 'complete',
-      target: {
-        action: unfinished ? target.action : STAGE_ACTION[main.key],
-        ...(target.focus ? { focus: target.focus } : {}),
-      },
-      ...(main.summary ? { summary: main.summary } : {}),
-    };
-  });
 }
 
 export interface JourneyFacts {
@@ -136,7 +85,7 @@ const ROOF_SYSTEM_PREFIXES = ['drainage-', 'opening-flashing', 'roof-system-'];
 const isRoofSystemIssue = (issue: ReadinessIssue) =>
   ROOF_SYSTEM_PREFIXES.some((prefix) => issue.code.startsWith(prefix));
 
-const STAGE_ACTION: Record<JourneyStageKey, ReadinessAction> = {
+export const STAGE_ACTION: Record<JourneyStageKey, ReadinessAction> = {
   geometry: 'review-geometry',
   construction: 'review-structure',
   covering: 'choose-covering',
@@ -331,7 +280,6 @@ export function deriveProjectJourney(facts: JourneyFacts): ProjectJourney {
     : undefined;
   return {
     stages,
-    overview: projectJourneyOverview(stages),
     recommended: unfinishedFoundation
       ? pickFor(unfinishedFoundation, facts)
       : primary && primaryStage

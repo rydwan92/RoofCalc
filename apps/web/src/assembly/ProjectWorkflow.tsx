@@ -1,9 +1,14 @@
 import { useTranslation } from 'react-i18next';
+import {
+  AlertTriangle,
+  ArrowRight,
+  CheckCircle2,
+  Scissors,
+} from 'lucide-react';
 import type { ProjectWorkflow } from './project-workflow';
 import type { ProjectJourney, JourneyAction } from './project-journey';
-import type { ProjectReadiness } from './project-readiness';
 import type { LengthUnit } from '@cieslacalc/roof-math';
-import { JourneyOverview } from './ProjectReadiness';
+import { journeyStageStatus, journeyStageTarget } from './ProjectReadiness';
 import { readinessIssueText } from './readiness-copy';
 
 export interface ProjectSummaryFacts {
@@ -20,170 +25,129 @@ export interface ProjectSummaryFacts {
   k1Ready: boolean;
 }
 
+/**
+ * One project overview: every stage with the fact already derived for it,
+ * its status and one way in. No own calculation — the journey summaries and
+ * readiness issues are the only sources.
+ */
 export function ProjectSummary({
   facts,
+  projectName,
   journey,
-  readiness,
   onJourneyAction,
   unit,
   onOpenCutting,
-  onOpenCovering,
 }: {
   facts: ProjectSummaryFacts;
+  projectName?: string;
   journey?: ProjectJourney;
-  readiness?: ProjectReadiness;
   onJourneyAction?: (action: JourneyAction) => void;
   unit?: LengthUnit;
   onOpenCutting: () => void;
-  onOpenCovering: () => void;
+  /** Kept for callers; covering is reached through its stage row. */
+  onOpenCovering?: () => void;
 }) {
   const { t, i18n } = useTranslation();
-  const area =
-    facts.netRoofAreaMm2 === undefined
-      ? undefined
-      : new Intl.NumberFormat(i18n.language, {
-          maximumFractionDigits: 2,
-        }).format(facts.netRoofAreaMm2 / 1_000_000);
+  const recommended = journey?.recommended;
   return (
     <section className="a-project-summary" data-testid="project-summary">
-      <header>
-        <small>{t('assembly.workflow.title')}</small>
-        <h2>{t('assembly.workflow.summaryTitle')}</h2>
-        <p>{t('assembly.workflow.summaryDescription')}</p>
-      </header>
-      {journey && onJourneyAction && (
-        <>
-          <JourneyOverview
-            journey={journey}
-            onAction={onJourneyAction}
-            expanded
-          />
-          {journey.recommended && (
-            <button
-              type="button"
-              className="a-button a-primary"
-              onClick={() => onJourneyAction(journey.recommended!)}
-            >
-              {t(`assembly.readiness.action.${journey.recommended.action}`)}
-            </button>
-          )}
-          {readiness && (
-            <ul>
-              {readiness.issues
-                .filter((issue) => issue.severity !== 'info')
-                .slice(0, 3)
-                .map((issue) => (
-                  <li key={issue.id}>
-                    {
-                      readinessIssueText(t, issue, unit ?? 'cm', i18n.language)
-                        .title
-                    }
-                    {issue.action && (
-                      <button
-                        type="button"
-                        className="a-link-button"
-                        onClick={() =>
-                          onJourneyAction({ action: issue.action! })
-                        }
-                      >
-                        {t(`assembly.readiness.action.${issue.action}`)}
-                      </button>
-                    )}
-                  </li>
-                ))}
-            </ul>
-          )}
-        </>
-      )}
-      <div className="a-project-summary-grid">
-        <article>
-          <span>{t('assembly.workflow.roof')}</span>
-          <strong>{t(`assembly.${facts.roofType}Roof`)}</strong>
-          <p>
-            {area === undefined
-              ? t('assembly.workflow.roofAreaUnavailable')
-              : `${area} m² · ${t('assembly.netGeometric')}`}
-          </p>
-        </article>
-        <article>
-          <span>{t('assembly.workflow.timber')}</span>
-          <strong>
-            {facts.timberCount} {t('assembly.piecesShort')}
-          </strong>
-          <p>
-            {facts.timberFamilies
-              .map(({ familyKey, quantity }) => `${familyKey} ${quantity}`)
-              .join(' · ')}
-          </p>
-        </article>
-        <article>
-          <span>{t('assembly.workflow.stage.openings')}</span>
-          <strong>{facts.openingCount}</strong>
-          <p>{t('assembly.workflow.openingsDescription')}</p>
-        </article>
-        <article>
-          <span>{t('assembly.workflow.stage.layers')}</span>
-          <strong>{facts.enabledLayerCount}</strong>
-          <p>{t('assembly.workflow.layersDescription')}</p>
-        </article>
-        <article>
-          <span>{t('assembly.workflow.stage.covering')}</span>
-          <strong>
-            {t(`assembly.workflow.status.${facts.coveringStatus}`)}
-          </strong>
-          <p>
-            {facts.coveringPositionCount > 0
-              ? t('assembly.workflow.positions', {
-                  count: facts.coveringPositionCount,
-                })
-              : facts.coveringRunCount > 0
-                ? t('assembly.workflow.runs', { count: facts.coveringRunCount })
-                : t(
-                    facts.coveringCount > 0
-                      ? 'assembly.workflow.reviewCoveringDescription'
-                      : 'assembly.workflow.coveringDescription',
-                  )}
-          </p>
+      <header className="a-overview-head">
+        <div>
+          <small>{t('assembly.journey.projectOverview')}</small>
+          <h2>{projectName ?? t('assembly.workflow.summaryTitle')}</h2>
+          {journey?.stages[0]?.summary && <p>{journey.stages[0].summary}</p>}
+        </div>
+        {recommended && onJourneyAction && (
           <button
             type="button"
-            className="a-link-button"
-            onClick={onOpenCovering}
+            className="a-button a-primary a-overview-continue"
+            data-testid="overview-continue"
+            onClick={() => onJourneyAction(recommended)}
           >
-            {t(
-              facts.coveringCount > 0
-                ? 'assembly.workflow.action.reviewCovering'
-                : 'assembly.workflow.action.addCovering',
-            )}
+            <span>
+              <small>{t('assembly.journey.continue')}</small>
+              {t(`assembly.readiness.action.${recommended.action}`)}
+            </span>
+            <ArrowRight size={18} aria-hidden="true" />
           </button>
-        </article>
-        <article className="a-project-cutting-card" data-ready={facts.k1Ready}>
-          <span>{t('assembly.workflow.stage.cutting')}</span>
-          <strong>
-            {t(
-              facts.k1Ready
-                ? 'assembly.workflow.k1Ready'
-                : 'assembly.workflow.k1Unavailable',
-            )}
-          </strong>
-          <p>
-            {t(
-              facts.k1Ready
-                ? 'assembly.workflow.k1Description'
-                : 'assembly.workflow.k1UnavailableDescription',
-            )}
-          </p>
-          {facts.k1Ready && (
-            <button
-              type="button"
-              className="a-button a-primary"
-              data-testid="summary-k1-cutting-cta"
-              onClick={onOpenCutting}
-            >
-              {t('assembly.workflow.action.planK1')}
-            </button>
-          )}
-        </article>
-      </div>
+        )}
+      </header>
+      {journey && onJourneyAction && (
+        <ol className="a-overview-stages" data-testid="journey-dashboard">
+          {journey.stages.map((stage, index) => {
+            const status = journeyStageStatus(stage);
+            const issue =
+              stage.issues.find((item) => item.severity === 'blocker') ??
+              stage.issues.find((item) => item.severity === 'warning');
+            const note = issue
+              ? readinessIssueText(t, issue, unit ?? 'cm', i18n.language).title
+              : stage.state === 'waiting' && stage.waitingFor
+                ? journey.stages.find(
+                    (item) =>
+                      item.state === 'waiting' &&
+                      item.waitingFor === stage.waitingFor,
+                  ) === stage
+                  ? t(`assembly.journey.waiting.${stage.waitingFor}`)
+                  : t('assembly.journey.waitingShort', {
+                      stage: t(
+                        `assembly.journey.stage.${stage.waitingFor}`,
+                      ).toLowerCase(),
+                    })
+                : undefined;
+            return (
+              <li
+                key={stage.key}
+                data-status={status}
+                data-stage={stage.key}
+                data-recommended={recommended?.stage === stage.key || undefined}
+              >
+                <span className="a-overview-index" aria-hidden="true">
+                  {status === 'ready' ? (
+                    <CheckCircle2 size={18} />
+                  ) : status === 'attention' ? (
+                    <AlertTriangle size={17} />
+                  ) : (
+                    index + 1
+                  )}
+                </span>
+                <div className="a-overview-fact">
+                  <strong>{t(`assembly.journey.stage.${stage.key}`)}</strong>
+                  <span>
+                    {stage.summary ||
+                      t(`assembly.journey.state.${stage.state}`)}
+                  </span>
+                  {note && (
+                    <small data-kind={issue ? 'issue' : 'waiting'}>
+                      {note}
+                    </small>
+                  )}
+                </div>
+                {stage.key === 'construction' && facts.k1Ready && (
+                  <button
+                    type="button"
+                    className="a-button a-overview-extra"
+                    data-testid="summary-k1-cutting-cta"
+                    onClick={onOpenCutting}
+                  >
+                    <Scissors size={15} aria-hidden="true" />
+                    {t('assembly.workflow.action.planK1')}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="a-button a-overview-open"
+                  data-journey-step={stage.key}
+                  onClick={() =>
+                    onJourneyAction(journeyStageTarget(journey, stage))
+                  }
+                >
+                  {t('assembly.journey.open')}
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+      )}
       <p className="a-schedule-boundary-note">
         {t('assembly.workflow.summaryBoundary')}
       </p>

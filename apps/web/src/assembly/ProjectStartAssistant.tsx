@@ -207,7 +207,10 @@ export function ProjectStartAssistant({
   onImportIfc,
   projects = [],
   onOpenProject,
+  startAt,
 }: {
+  /** Skip the start chooser (the application home already offered it). */
+  startAt?: 'examples' | 1;
   onQuick?: () => void;
   onBeginProject?: () => void;
   onImportIfc?: () => void;
@@ -223,7 +226,9 @@ export function ProjectStartAssistant({
   const state = useAssembly();
   const unit = state.unit;
   const { t, i18n } = useTranslation();
-  const [stage, setStage] = useState<Stage>(mode === 'new' ? 'choose' : 1);
+  const [stage, setStage] = useState<Stage>(
+    startAt ?? (mode === 'new' ? 'choose' : 1),
+  );
   const [draft, setDraft] = useState(() => initialDraft(template, unit));
   const [confirmed, setConfirmed] = useState<Set<ProjectStartField>>(
     () => new Set(mode === 'quick' ? QUICK_CONFIRMED : []),
@@ -434,7 +439,8 @@ export function ProjectStartAssistant({
     setStage((stage + 1) as Stage);
   };
   const goBack = () => {
-    if (stage === 1 || stage === 'examples')
+    if ((stage === 1 || stage === 'examples') && startAt && onClose) onClose();
+    else if (stage === 1 || stage === 'examples')
       setStage(mode === 'new' ? 'choose' : 1);
     else if (typeof stage === 'number') setStage((stage - 1) as Stage);
   };

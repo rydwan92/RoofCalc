@@ -8521,3 +8521,22 @@ button.a-quick-fact[aria-pressed='true'] {
       minmax(0, 1.2fr);
   }
 }
+/* V62: builder heading collapses to one quiet line; the rail carries context. */
+@media (min-width: 801px) {
+  .assembly-app.mode-builder .a-main {
+    padding: 8px 16px 18px;
+  }
+  .assembly-app.mode-builder .a-page-heading > div {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .assembly-app.mode-builder .a-page-heading .a-eyebrow {
+    display: none;
+  }
+  .assembly-app.mode-builder .a-page-heading h1 {
+    margin: 0;
+    font-size: 18px;
+    letter-spacing: -0.3px;
+  }
+}
