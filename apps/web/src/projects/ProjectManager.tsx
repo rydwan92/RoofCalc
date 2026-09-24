@@ -68,12 +68,14 @@ export function ProjectManager({
   mobile,
   onStartNew,
   onEditBasics,
+  onImportIfc,
 }: {
   session: ProjectSession;
   state: ProjectSessionState;
   mobile: boolean;
   onStartNew?: () => void;
   onEditBasics?: () => void;
+  onImportIfc?: () => void;
 }) {
   const { i18n } = useTranslation();
   const m = messages[i18n.language.startsWith('pl') ? 'pl' : 'en'];
@@ -237,6 +239,18 @@ export function ProjectManager({
       >
         {m.import}
       </button>
+      {onImportIfc && (
+        <button
+          className="a-project-import"
+          data-testid="project-import-ifc"
+          onClick={() => {
+            setOpen(false);
+            onImportIfc();
+          }}
+        >
+          {m.import} · IFC
+        </button>
+      )}
       <input
         ref={input}
         type="file"

@@ -264,6 +264,11 @@ const TechnicalScene3D = lazy(() =>
     default: module.TechnicalScene3D,
   })),
 );
+const IfcImportWorkspace = lazy(() =>
+  import('../bim/ifc/IfcImportWorkspace').then((module) => ({
+    default: module.IfcImportWorkspace,
+  })),
+);
 
 type TileAssignment = CoveringAssignmentSpec & {
   product: CoveringAssignmentSpec['product'] & {
@@ -372,6 +377,7 @@ function AssemblyPageContent() {
     projectSessionState.active?.id,
   );
   const [projectStartMode, setProjectStartMode] = useState<ProjectStartMode>();
+  const [ifcImportOpen, setIfcImportOpen] = useState(false);
   const [reuseFreshProject, setReuseFreshProject] = useState(false);
   const workbench = state.workbench;
   const mobile = useMobileWorkbench();
@@ -2208,6 +2214,7 @@ function AssemblyPageContent() {
               setReuseFreshProject(false);
               setProjectStartMode('edit');
             }}
+            onImportIfc={() => setIfcImportOpen(true)}
           />
         )}
         {workbench.mode === 'builder' && (
@@ -3266,6 +3273,11 @@ function AssemblyPageContent() {
             state.setViewPreset('construction');
           }}
         />
+      )}
+      {ifcImportOpen && (
+        <Suspense fallback={<p>Uruchamianie importera IFC…</p>}>
+          <IfcImportWorkspace onClose={() => setIfcImportOpen(false)} />
+        </Suspense>
       )}
       {quickDetail && workbench.mode === 'quick' && (
         <QuickDetailDialog

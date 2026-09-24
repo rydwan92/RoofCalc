@@ -162,6 +162,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@cieslacalc/bim-import-core':
+        specifier: workspace:*
+        version: link:../../packages/bim-import-core
       '@cieslacalc/business-core':
         specifier: workspace:*
         version: link:../../packages/business-core
@@ -246,6 +249,9 @@ importers:
       three:
         specifier: 0.186.0
         version: 0.186.0
+      web-ifc:
+        specifier: 0.0.78
+        version: 0.0.78
       zod:
         specifier: ^3.25.0
         version: 3.25.76
@@ -262,6 +268,8 @@ importers:
       vite:
         specifier: ^6.1.0
         version: 6.4.3(@types/node@20.19.43)(tsx@4.23.13)
+
+  packages/bim-import-core: {}
 
   packages/business-core:
     dependencies:
@@ -3596,6 +3604,9 @@ packages:
     resolution: {integrity: sha512-o8qghlI8NZHU1lLPrpi2+Uq7abh4GGPpYANlalzWxyWteJOCsr/P+oPBA49TOLu5FTZO4d3F9MnWJfiMo4BkmA==}
     engines: {node: '>=18'}
 
+  web-ifc@0.0.78:
+    resolution: {integrity: sha512-LGKMNYFVNyz9vVERN0iz+zvPQJqT7MEGBxslzcuuhwDDOA116LmJLKkg8sZ5SEvQJSc5NRVMWgpRNkDmuoQoJg==}
+
   webidl-conversions@7.0.0:
     resolution: {integrity: sha512-VwddBukDzu71offAQR975unBIGqfKZpM+8ZX6ySk8nYhVoo5CYaZyzt3YBvYtRtO+aoGlqxPg/B87NGVZ/fu6g==}
     engines: {node: '>=12'}
@@ -6450,6 +6461,8 @@ snapshots:
   w3c-xmlserializer@5.0.0:
     dependencies:
       xml-name-validator: 5.0.0
+
+  web-ifc@0.0.78: {}
 
   webidl-conversions@7.0.0: {}
 

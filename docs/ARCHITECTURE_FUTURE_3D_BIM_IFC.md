@@ -1,10 +1,10 @@
 # RoofCalc / CieślaCalc — future 3D, BIM and IFC visualization strategy
 
 **Status:** strategic product/architecture direction. Stages 1–3 of §10 were
-implemented in V38 — see `docs/ARCHITECTURE_V38_TECHNICAL_3D_MVP.md` for what
-actually exists. Everything beyond stage 3, and the whole BIM/IFC direction in
-§4–§5, remains direction only: this document still authorizes no further
-implementation by itself and introduces no further runtime dependency.
+implemented in V38 — see `docs/ARCHITECTURE_V38_TECHNICAL_3D_MVP.md`. The first
+local IFC reference importer is implemented in V61 — see
+`docs/ARCHITECTURE_V61_IFC_IMPORT.md`. Remaining BIM/IFC ideas here are still
+direction only and introduce no runtime dependency by themselves.
 
 This direction extends the existing rule that the whole-roof preview must be derived from the same canonical project/assembly/geometry model as calculations, fabrication, quantities and documentation. A future 3D viewer must never become a second geometry engine.
 

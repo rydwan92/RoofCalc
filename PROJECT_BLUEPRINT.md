@@ -1297,6 +1297,15 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+## V61A — IFC reference import (implemented locally; V61B pending)
+
+- Authorized by the attached V61 prompt, which supersedes the V60B checkpoint. Baseline: clean `main` at `6dd147e83004a10cc79cf01d59a73b259bb24f1f`; baseline `pnpm verify` passed (1654 tests, 13 skips). GitHub V60B2 CI #49 was checked once and is successful: Verify passed, Browser QA 117 passed and 31 skipped.
+- Ready: a roofer can inspect a local IFC and deliberately map one supported roof to a normal project. A pure BIM import package owns reference DTOs and evidence-based candidate decisions; web owns file parsing, worker, Three.js reference display and confirmation. IFC and camera state are transient, with no SQL or project schema change. Conversion is one explicit project creation action; reference browsing creates no history. Existing solvers alone produce quantities, procurement and costs; no catalogue technical field or commercial rule enters import logic. Local browser parsing works without API or database. At 390×844 the same candidate fields and exact numeric inputs remain reachable. No new roof geometry is implemented, so research covers IFC units, coordinates and semantic mapping rather than construction formulas. Focused synthetic IFC fixtures and browser smoke cover parser, reference inspection and controlled conversion. IDs remain opaque and one selected source roof maps to one V1 roof.
+- V61A complete in source: pinned direct `web-ifc@0.0.78`, local single-thread WASM, lazy browser worker with file limit and parser cleanup; pure BIM reference contracts and semantic roof detection; session-only 3D reference viewer, filters, spatial tree, inspector and start entry. Synthetic IFC4 gable/pyramid fixtures are 2 KB each. No project/schema/SQL changes. The IFC file never uploads to the API. The parser bundle is a lazy 3.62 MB worker chunk plus 1.60 MB locally served WASM; initial app chunk grew less than 1 KB.
+- Validation: V61A `pnpm verify` passed (1659 tests, 13 skips; typecheck/lint/format/build/edge boundary), focused IFC Playwright passed desktop and mobile (4 tests), `git diff --check` passed. A separate `pnpm build:edge` is running. Raw source is IFC4; only SI metre-family units are normalized for now. Unknown units block future conversion. The 3D viewer is reference-only, and roof candidate discovery does not convert a project.
+- WIP outside V61A commit: `packages/bim-import-core/src/analysis.ts` and `analysis.test.ts` hold the conservative gable analysis for V61B. Keep these files intact and unstaged during the V61A commit.
+- NEXT ACTION: commit/push V61A, then implement V61B gable parameter confirmation and canonical project creation. Run focused browser QA and full validation; do not start V62.
+
 ## V60B - commercial VAT and price operations (implemented locally)
 
 - Baseline: clean `main` at `a833be0716bdf9d99a508f99b7ce87432421a5e5`; `pnpm verify` passed (1649 tests, 13 intentional skips, web/API/Worker builds). No Shared DEV credentials used.

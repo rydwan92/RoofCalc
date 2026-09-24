@@ -9,6 +9,7 @@
     "preview": "vite preview --host 127.0.0.1 --port 4173 --strictPort"
   },
   "dependencies": {
+    "@cieslacalc/bim-import-core": "workspace:*",
     "@cieslacalc/business-core": "workspace:*",
     "@cieslacalc/calculator-core": "workspace:*",
     "@cieslacalc/catalog-core": "workspace:*",
@@ -20,8 +21,8 @@
     "@cieslacalc/pricing-core": "workspace:*",
     "@cieslacalc/procurement-core": "workspace:*",
     "@cieslacalc/project-core": "workspace:*",
-    "@cieslacalc/quote-core": "workspace:*",
     "@cieslacalc/quantity-core": "workspace:*",
+    "@cieslacalc/quote-core": "workspace:*",
     "@cieslacalc/roof-math": "workspace:*",
     "@cieslacalc/roof-system-core": "workspace:*",
     "@cieslacalc/shared": "workspace:*",
@@ -37,6 +38,7 @@
     "react-i18next": "^15.6.0",
     "react-router-dom": "^7.6.0",
     "three": "0.186.0",
+    "web-ifc": "0.0.78",
     "zod": "^3.25.0",
     "zustand": "^5.0.5"
   },
