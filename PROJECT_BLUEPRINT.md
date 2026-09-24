@@ -1297,7 +1297,14 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
-## V60 - wholesale operations (in progress)
+## V60B - commercial VAT and price operations (implemented locally)
+
+- Baseline: clean `main` at `a833be0716bdf9d99a508f99b7ce87432421a5e5`; `pnpm verify` passed (1649 tests, 13 intentional skips, web/API/Worker builds). No Shared DEV credentials used.
+- Completed in the current worktree: optional organization VAT through business contract, SQL mapper, import/manual edits, organization price response and new quote snapshots; SQL data-quality count and `without-vat` filter; capability-gated bulk VAT, actionable quality view; SKU-only price CSV with mapping, dry-run preview, unknown SKU rejection, effective date, atomic VAT/price writes and immutable same-day price history; pricing table/manual edit route. Standard calculations and technical catalogue are untouched. Migration 0007 is unchanged; no migration 0008.
+- Scope/ready: business-core owns pure commercial CSV contracts; API owns tenant-scoped persistence and pricing history; web owns administration and quote composition. VAT is organization commercial state, not technical truth. No roof/project schema, geometry, quantity, procurement, catalogue technical revision, undo/history gesture, cost formula or multi-structure change. Existing saved projects still open. Admin needs API; Standard remains offline. Mobile uses the same numeric VAT/price inputs and compact admin navigation at 390px. Focused domain/API/quote tests plus desktop/mobile business browser smoke cover the change; no new geometry research or fixture is needed.
+- Validation: both V60B slices passed `pnpm verify` (1654 tests passed, 13 intentional skips; typecheck/lint/format, web/API/Worker builds). `pnpm build:edge` passed. Focused Playwright business smoke passed desktop and mobile (3 passed, 1 viewport-only skip), including quality navigation, price CSV preview/unknown SKU and 1024/1440/1920/390px overflow checks. `git diff --check` passed. No SQL deployment or Shared DEV verification was attempted; DB-real write behavior remains unverified here.
+- Git: V60B1 `1b932ec8880a606dab2686f71208cf91937a004a` was committed locally. V60B2 is the pricing workspace/browser/checkpoint slice. Push is pending because Git cannot obtain GitHub credentials and `gh auth status` reports no login; no remote CI result is claimed.
+- NEXT ACTION: commit the verified V60B2 slice, authenticate GitHub for `origin`, push both commits to `main`, and confirm remote CI. Do not begin V61.
 
 - Current iteration supersedes the earlier checkpoint; baseline main `63dc5a033002d843574863e84fc0ad3b7084703e` was clean, verify passed, latest CI green.
 - V60A: dedicated administration workspace, derived setup status, company settings and team management; server-side roles and last active owner protection; generated password returned once. Membership disabling preserves auth accounts and history.

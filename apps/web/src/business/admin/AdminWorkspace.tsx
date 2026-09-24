@@ -8,6 +8,7 @@ import { workspaceClient } from '../workspace/client';
 import { CompanySettings } from '../CompanySettings';
 import { AdminAssortment } from './AdminAssortment';
 import { Team } from './Team';
+import { PricingWorkspace } from './PricingWorkspace';
 
 export function SetupStatus({ onContinue }: { onContinue: () => void }) {
   const { i18n } = useTranslation(),
@@ -62,8 +63,14 @@ export function AdminWorkspace({ onClose }: { onClose: () => void }) {
     business.session?.memberships.find(
       (item) => item.organizationId === business.organizationId,
     )?.capabilities ?? [];
-  const [tab, setTab] = useState<'company' | 'team' | 'assortment' | 'quality'>(
-    capabilities.includes('organization.manage') ? 'company' : 'assortment',
+  const [tab, setTab] = useState<
+    'company' | 'team' | 'assortment' | 'pricing' | 'quality'
+  >(
+    capabilities.includes('organization.manage')
+      ? 'company'
+      : capabilities.includes('assortment.manage')
+        ? 'assortment'
+        : 'pricing',
   );
   const [assortmentFilter, setAssortmentFilter] =
     useState<AssortmentFilter>('all');
@@ -73,7 +80,8 @@ export function AdminWorkspace({ onClose }: { onClose: () => void }) {
   };
   if (
     !capabilities.includes('organization.manage') &&
-    !capabilities.includes('assortment.manage')
+    !capabilities.includes('assortment.manage') &&
+    !capabilities.includes('prices.manage')
   )
     return null;
   return (
@@ -105,6 +113,7 @@ export function AdminWorkspace({ onClose }: { onClose: () => void }) {
                 pl ? 'Asortyment' : 'Assortment',
                 'assortment.manage',
               ],
+              ['pricing', pl ? 'Cennik' : 'Pricing', 'prices.manage'],
               [
                 'quality',
                 pl ? 'Jakość danych' : 'Data quality',
@@ -130,6 +139,8 @@ export function AdminWorkspace({ onClose }: { onClose: () => void }) {
             <Team key={business.organizationId} />
           ) : tab === 'quality' ? (
             <DataQuality onOpen={openAssortment} />
+          ) : tab === 'pricing' ? (
+            <PricingWorkspace />
           ) : (
             <AdminAssortment
               key={assortmentFilter}

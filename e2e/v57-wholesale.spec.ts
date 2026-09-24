@@ -81,6 +81,39 @@ async function stubApis(page: Page) {
       await route.fulfill({ json: { items: [organization] } });
       return;
     }
+    if (url.pathname.endsWith('/assortment/price-import')) {
+      await route.fulfill({
+        json: {
+          applied: Boolean(route.request().postDataJSON()?.apply),
+          counts: {
+            total: 2,
+            changed: 1,
+            unchanged: 0,
+            unknown: 1,
+            invalid: 0,
+            withVat: 2,
+            withoutVat: 0,
+          },
+          rows: [
+            {
+              sourceLine: 2,
+              externalKey: 'DACH-00384',
+              netAmountMinor: 482,
+              vatRateBps: 2300,
+              status: 'changed',
+            },
+            {
+              sourceLine: 3,
+              externalKey: 'UNKNOWN',
+              netAmountMinor: 510,
+              vatRateBps: 2300,
+              status: 'unknown-sku',
+            },
+          ],
+        },
+      });
+      return;
+    }
     if (url.pathname.endsWith('/assortment')) {
       const row = {
         item: {
@@ -239,6 +272,53 @@ test('V57 salesperson: customer → roof → company tile → materials → draf
     await settings.screenshot({
       path: `test-results/v59-settings-${testInfo.project.name}.png`,
     });
+  await admin
+    .getByRole('button', { name: 'Jakość danych', exact: true })
+    .click();
+  await expect(page.getByTestId('admin-quality-workspace')).toBeVisible();
+  await page
+    .getByTestId('admin-quality-workspace')
+    .getByRole('button', { name: /bez VAT/ })
+    .click();
+  await expect(page.locator('[data-filter="without-vat"]')).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  await admin.getByRole('button', { name: 'Cennik', exact: true }).click();
+  await expect(page.getByTestId('pricing-workspace')).toBeVisible();
+  for (const width of testInfo.project.name === 'mobile'
+    ? [390]
+    : [1024, 1440, 1920]) {
+    await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+      ),
+    ).toBe(true);
+  }
+  if (testInfo.project.name !== 'mobile')
+    await page.setViewportSize({ width: 1440, height: 900 });
+  await page
+    .getByTestId('pricing-workspace')
+    .getByRole('button', { name: 'Aktualizuj ceny z CSV' })
+    .click();
+  await expect(page.getByTestId('price-csv-import')).toBeVisible();
+  const priceImport = page.getByTestId('price-csv-import');
+  await priceImport.locator('input[type="file"]').setInputFiles({
+    name: 'prices.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from(
+      'SKU;Cena netto;VAT\nDACH-00384;4,82;23\nUNKNOWN;5,10;23',
+    ),
+  });
+  await priceImport.getByRole('button', { name: 'Pokaż podgląd' }).click();
+  await expect(page.getByTestId('price-import-preview')).toContainText(
+    'UNKNOWN SKU',
+  );
+  await page
+    .getByTestId('price-csv-import')
+    .getByRole('button', { name: 'Wróć' })
+    .click();
   await page
     .getByTestId('admin-workspace')
     .getByRole('button', { name: '← Sprzedaż', exact: true })
