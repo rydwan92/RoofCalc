@@ -362,7 +362,7 @@ test('V57 salesperson: customer → roof → company tile → materials → draf
     'Wybierz pokrycie',
   );
 
-  await perspective(page, 'project');
+  await perspective(page, 'covering');
   await page.locator('[data-task="covering"]:visible').first().click();
   await page
     .getByRole('button', { name: /Dachówka/ })

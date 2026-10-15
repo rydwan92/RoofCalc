@@ -2,6 +2,7 @@ import { lazy, Suspense, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { CostScenario } from '@cieslacalc/cost-core';
+import { classifyPriceFreshness } from '@cieslacalc/pricing-core';
 import type { MembraneProductSelection } from '@cieslacalc/covering-core';
 import { catalogClient } from '../catalog/client';
 import { parseDecimal } from '../format';
@@ -257,6 +258,8 @@ export function MaterialPlan({
     new Intl.NumberFormat(locale, { style: 'currency', currency }).format(
       minor / 100,
     );
+  // Same UTC calendar date the price lookup uses for "active today".
+  const today = new Date().toISOString().slice(0, 10);
   const unit = (value: string) =>
     ({
       piece: locale.startsWith('pl') ? 'szt.' : 'pcs',
@@ -855,8 +858,17 @@ export function MaterialPlan({
                           value={candidate.entry.id}
                         >
                           {candidate.ownerLabel ?? m.catalogue} ·{' '}
-                          {candidate.entry.validFrom} ·{' '}
-                          {money(candidate.entry.netAmountMinor)}/
+                          {candidate.entry.validFrom}
+                          {(() => {
+                            const age = classifyPriceFreshness(
+                              candidate.entry,
+                              today,
+                            );
+                            return age.freshness === 'stale'
+                              ? ` (⚠ ${m.priceAgeShort.replace('{days}', String(age.ageDays))})`
+                              : '';
+                          })()}{' '}
+                          · {money(candidate.entry.netAmountMinor)}/
                           {unit(candidate.entry.saleUnit)} · {m.net}
                           {candidate.entry.sourceVatRateBps !== undefined
                             ? ` · VAT ${candidate.entry.sourceVatRateBps / 100}%`
@@ -874,6 +886,30 @@ export function MaterialPlan({
                       <option value="manual">{m.manual}</option>
                     </select>
                   </label>
+                  {price?.source === 'price-list' &&
+                    (() => {
+                      const selected = candidates.find(
+                        (candidate) => candidate.entry.id === price.entryId,
+                      );
+                      if (!selected) return null;
+                      const age = classifyPriceFreshness(selected.entry, today);
+                      if (age.freshness === 'current') return null;
+                      return (
+                        <small
+                          className="mp-price-age"
+                          data-freshness={age.freshness}
+                          data-testid="material-price-age"
+                          role={age.freshness === 'stale' ? 'alert' : undefined}
+                        >
+                          {(age.freshness === 'stale'
+                            ? m.priceStale
+                            : m.priceAging
+                          )
+                            .replace('{date}', selected.entry.validFrom)
+                            .replace('{days}', String(age.ageDays))}
+                        </small>
+                      );
+                    })()}
                   {price?.source === 'manual' && (
                     <label>
                       {m.manualPrice}

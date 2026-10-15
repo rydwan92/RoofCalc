@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type { ProjectSummary } from '@cieslacalc/project-core';
 import {
   AlertTriangle,
@@ -7,6 +7,8 @@ import {
   BookOpen,
   Check,
   CircleCheck,
+  FileScan,
+  FolderOpen,
   PencilRuler,
   Sparkles,
   X,
@@ -116,8 +118,11 @@ function initialDraft(
   };
 }
 
-/** Plan view drawn from the resolved skeleton of the draft — no own formulas. */
-function RoofPlanPreview({
+/**
+ * Plan view drawn from the resolved skeleton of the draft — no own formulas.
+ * Shared by the Creator and the document import confirmation.
+ */
+export function RoofPlanPreview({
   template,
   label,
   invalidLabel,
@@ -205,12 +210,18 @@ export function ProjectStartAssistant({
   onQuick,
   onBeginProject,
   onImportIfc,
+  onImportDocument,
+  onOpenArchive,
   projects = [],
   onOpenProject,
 }: {
   onQuick?: () => void;
   onBeginProject?: () => void;
   onImportIfc?: () => void;
+  /** VNext: PDF/photo document import. */
+  onImportDocument?: () => void;
+  /** Opens a saved `.cieslacalc.json` archive as a project. */
+  onOpenArchive?: (contents: string) => Promise<void>;
   projects?: readonly ProjectSummary[];
   onOpenProject?: (id: string) => Promise<void>;
   mode: ProjectStartMode;
@@ -231,6 +242,7 @@ export function ProjectStartAssistant({
   const [attempted, setAttempted] = useState<Set<number>>(new Set());
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const archiveInput = useRef<HTMLInputElement>(null);
 
   const numbers = useMemo(() => {
     const read = (field: ProjectStartField) => {
@@ -543,6 +555,18 @@ export function ProjectStartAssistant({
                 <span>{t('assembly.journey.start.quickHint')}</span>
               </button>
             )}
+            {onImportDocument && (
+              <button
+                type="button"
+                className="a-start-path"
+                data-testid="project-start-document"
+                onClick={onImportDocument}
+              >
+                <FileScan size={24} aria-hidden="true" />
+                <strong>{t('assembly.journey.start.document')}</strong>
+                <span>{t('assembly.journey.start.documentHint')}</span>
+              </button>
+            )}
             {onImportIfc && (
               <button
                 type="button"
@@ -579,6 +603,41 @@ export function ProjectStartAssistant({
                   </button>
                 ))}
               </div>
+              {onOpenArchive && (
+                <>
+                  <button
+                    type="button"
+                    className="a-link-button a-start-open-file"
+                    data-testid="project-start-open-file"
+                    disabled={busy}
+                    onClick={() => archiveInput.current?.click()}
+                  >
+                    <FolderOpen size={16} aria-hidden="true" />
+                    {t('assembly.journey.start.openFile')}
+                  </button>
+                  <input
+                    ref={archiveInput}
+                    type="file"
+                    hidden
+                    accept=".json,.cieslacalc.json,application/json"
+                    aria-label={t('assembly.journey.start.openFile')}
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      event.target.value = '';
+                      if (!file) return;
+                      setBusy(true);
+                      setError('');
+                      void file
+                        .text()
+                        .then(onOpenArchive)
+                        .catch(() =>
+                          setError(t('assembly.journey.start.openFileError')),
+                        )
+                        .finally(() => setBusy(false));
+                    }}
+                  />
+                </>
+              )}
               <details data-testid="start-all-projects">
                 <summary>
                   {t('assembly.journey.start.all')} ({projects.length})

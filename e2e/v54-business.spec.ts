@@ -295,7 +295,7 @@ async function openBuilder(page: Page, mode: 'standard' | 'business') {
 
 /** Project → Pokrycie → Dachówka → Wybierz z katalogu. */
 async function openCoveringPicker(page: Page) {
-  await page.locator('[data-perspective="project"]').click();
+  await page.locator('[data-perspective="covering"]').click();
   await page.locator('[data-task="covering"]').click();
   await page
     .getByRole('button', { name: /Dachówka/ })
@@ -453,7 +453,7 @@ test.describe('V54 business mode', () => {
     await page.reload();
     await page.locator('[data-mode="builder"]').click();
     await page.getByTestId('business-home-continue').click();
-    await page.locator('[data-perspective="project"]').click();
+    await page.locator('[data-perspective="covering"]').click();
     // §17/§18: an explicit choice, never an automatic substitution.
     await page.locator('[data-task="covering"]').click();
     const technicalFactsAfter = page

@@ -276,6 +276,42 @@ describe('package dependency direction', () => {
     expect(offenders).toEqual([]);
   });
 
+  /**
+   * VNext document import: recognition rules are pure and offline. The PDF
+   * parser lives in one web adapter folder, so a document can never reach a
+   * package, a server or another module's parsing path by accident.
+   */
+  const PDF_PARSERS = [/^pdfjs-dist(\/|$)/];
+  const NETWORK =
+    /\b(?:fetch\(|XMLHttpRequest|WebSocket|navigator\.sendBeacon)/;
+
+  it('document-import-core stays pure, offline and parser-free', () => {
+    expect(
+      forbiddenImports('packages/document-import-core', [
+        ...PURE_DOMAIN,
+        ...RENDERERS,
+        ...PDF_PARSERS,
+        /^@cieslacalc\//,
+      ]),
+    ).toEqual([]);
+    expect(
+      forbiddenText('packages/document-import-core', BROWSER_GLOBALS),
+    ).toEqual([]);
+    expect(forbiddenText('packages/document-import-core', NETWORK)).toEqual([]);
+  });
+
+  it('the PDF parser stays inside the web document-import folder', () => {
+    const offenders = forbiddenImports('apps/web', PDF_PARSERS).filter(
+      (entry) => !entry.file.startsWith('apps/web/src/document-import/'),
+    );
+    expect(offenders).toEqual([]);
+    for (const name of workspacePackageDirectories())
+      expect({
+        package: name,
+        matches: forbiddenImports(`packages/${name}`, PDF_PARSERS),
+      }).toEqual({ package: name, matches: [] });
+  });
+
   it('pure domain packages never touch browser globals', () => {
     for (const directory of [
       'packages/roof-math',

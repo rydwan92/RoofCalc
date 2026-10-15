@@ -99,6 +99,9 @@ export function WorkbenchControls({
               </button>
               <button
                 className="a-isolate-button a-workspace-focus-button"
+                title={t(
+                  `assembly.${state.workbench.workspaceFocus.active ? 'restoreWorkspace' : 'focusWorkspace'}`,
+                )}
                 aria-pressed={state.workbench.workspaceFocus.active}
                 onClick={() =>
                   state.setWorkspaceFocus(
@@ -114,6 +117,9 @@ export function WorkbenchControls({
               {!state.workbench.selectedInstanceId && (
                 <button
                   className="a-isolate-button"
+                  title={t(
+                    `assembly.${state.workbench.isolateSelection ? 'showWholeRoof' : 'isolateElement'}`,
+                  )}
                   aria-pressed={state.workbench.isolateSelection}
                   disabled={state.workbench.selectedId === 'roof'}
                   onClick={() =>

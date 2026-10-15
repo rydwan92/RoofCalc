@@ -750,6 +750,11 @@ export const useAssembly = create<AssemblyState>((set) => ({
       return {
         workbench: {
           ...next,
+          // The construction drawing belongs to the section that opened it.
+          constructionSection:
+            perspective === 'project' || perspective === 'structure'
+              ? perspective
+              : next.constructionSection,
           materialsView:
             perspective === 'materials' && !stay ? 'plan' : next.materialsView,
           navigationTrail: [],

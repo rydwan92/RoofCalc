@@ -98,17 +98,18 @@ async function addMobileManualCovering(
   fireEvent.click(within(draft).getByTestId('confirm-manual-covering'));
 }
 
-it('opens mobile Builder on drawing with five perspectives, contextual tasks and one on-demand tools sheet', async () => {
+it('opens mobile Builder on drawing with six sections, contextual tasks and one on-demand tools sheet', async () => {
   render(<App />);
   fireEvent.click(screen.getByRole('button', { name: 'Kreator' }));
   await screen.findByTestId('skeleton-drawing', {}, { timeout: 5000 });
   expect(screen.queryByRole('dialog')).toBeNull();
-  const dock = screen.getByRole('tablist', { name: 'Perspektywa' });
-  expect(within(dock).getAllByRole('tab')).toHaveLength(5);
+  const dock = screen.getByRole('tablist', { name: 'Sekcje projektu' });
+  expect(within(dock).getAllByRole('tab')).toHaveLength(6);
   const tasks = screen.getByRole('tablist', {
     name: 'Zadania w tej części projektu',
   });
-  expect(within(tasks).getAllByRole('tab')).toHaveLength(4);
+  // Projekt: roof geometry and openings; covering has its own section.
+  expect(within(tasks).getAllByRole('tab')).toHaveLength(2);
   expect(useAssembly.getState().historyPast).toHaveLength(0);
   fireEvent.click(screen.getByRole('button', { name: 'Narzędzia' }));
   const sheet = screen.getByRole('dialog', { name: 'Narzędzia' });
@@ -134,10 +135,8 @@ it('shows mobile project status and reaches summary and K1 planning through the 
   expect(screen.getByTestId('project-progress')).toBeTruthy();
   fireEvent.click(screen.getByTestId('project-next-action'));
   expect(useAssembly.getState().workbench.viewPreset).toBe('covering');
-  const dock = screen.getByRole('tablist', { name: 'Perspektywa' });
-  fireEvent.click(
-    within(dock).getByRole('tab', { name: 'Perspektywa: Materiały' }),
-  );
+  const dock = screen.getByRole('tablist', { name: 'Sekcje projektu' });
+  fireEvent.click(within(dock).getByRole('tab', { name: 'Sekcja: Materiały' }));
   fireEvent.click(screen.getByRole('tab', { name: 'Projekt' }));
   expect(screen.getByTestId('project-summary')).toBeTruthy();
   fireEvent.click(screen.getByTestId('summary-k1-cutting-cta'));
@@ -183,10 +182,8 @@ it('opens the material Inspector sheet only after an exact schedule row is selec
       eaveOffsetMm: 250,
     }),
   );
-  const dock = screen.getByRole('tablist', { name: 'Perspektywa' });
-  fireEvent.click(
-    within(dock).getByRole('tab', { name: 'Perspektywa: Materiały' }),
-  );
+  const dock = screen.getByRole('tablist', { name: 'Sekcje projektu' });
+  fireEvent.click(within(dock).getByRole('tab', { name: 'Sekcja: Materiały' }));
   const schedule = await screen.findByTestId('material-schedule');
   expect(screen.queryByRole('dialog')).toBeNull();
   const layers = within(schedule).getByTestId(
@@ -311,7 +308,7 @@ it('treats a touch window tap as selection, then commits one activated drag and 
 it('keeps the covering drawing separate from exact product parameters and repairs batten issues', async () => {
   render(<App />);
   fireEvent.click(screen.getByRole('button', { name: 'Kreator' }));
-  fireEvent.click(screen.getByRole('tab', { name: 'Pokrycie' }));
+  fireEvent.click(screen.getByRole('tab', { name: 'Sekcja: Pokrycie' }));
   await addMobileManualCovering('roof-tile');
   await screen.findByTestId('covering-workspace');
   expect(screen.getByTestId('tile-layout-drawing')).toBeTruthy();
@@ -341,7 +338,7 @@ it('keeps the covering drawing separate from exact product parameters and repair
 it('opens standing-seam numeric parameters and width modes through the mobile Inspector sheet', async () => {
   render(<App />);
   fireEvent.click(screen.getByRole('button', { name: 'Kreator' }));
-  fireEvent.click(screen.getByRole('tab', { name: 'Pokrycie' }));
+  fireEvent.click(screen.getByRole('tab', { name: 'Sekcja: Pokrycie' }));
   await addMobileManualCovering('standing-seam');
   expect(
     await screen.findByTestId('standing-seam-layout-drawing'),
@@ -370,7 +367,7 @@ it('opens standing-seam numeric parameters and width modes through the mobile In
 it('edits cut-to-length metal in one mobile Inspector sheet and keeps drawing detail transient', async () => {
   render(<App />);
   fireEvent.click(screen.getByRole('button', { name: 'Kreator' }));
-  fireEvent.click(screen.getByRole('tab', { name: 'Pokrycie' }));
+  fireEvent.click(screen.getByRole('tab', { name: 'Sekcja: Pokrycie' }));
   await addMobileManualCovering('modular-sheet');
   await screen.findByTestId('sheet-layout-drawing');
   fireEvent.click(

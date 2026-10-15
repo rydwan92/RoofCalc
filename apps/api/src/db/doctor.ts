@@ -1,12 +1,9 @@
 import type { RowDataPacket } from 'mysql2/promise';
 import type { DatabaseConnectionOptions } from './config';
+import { databaseErrorCode } from './errors';
 
 export function databaseFailureReason(error: unknown): string {
-  const code =
-    error && typeof error === 'object' && 'code' in error
-      ? error.code
-      : undefined;
-  switch (code) {
+  switch (databaseErrorCode(error)) {
     case 'ER_ACCESS_DENIED_ERROR':
       return 'Access denied. Check the user and password in DATABASE_URL (encode @ as %40). Accounts with REQUIRE SSL also reject plaintext logins — do not use ?ssl=disabled for remote hosts.';
     case 'ER_DBACCESS_DENIED_ERROR':
@@ -29,6 +26,9 @@ export function databaseFailureReason(error: unknown): string {
     case 'ERR_TLS_CERT_ALTNAME_INVALID':
     case 'CERT_HAS_EXPIRED':
       return 'TLS certificate could not be verified. Hyperdrive also requires a publicly trusted certificate for its default mode.';
+    case 'ER_NO_SUCH_TABLE':
+    case 'ER_BAD_FIELD_ERROR':
+      return 'The database schema is behind this version of RoofCalc. Run pnpm db:status, then pnpm db:setup:local for a local database.';
     case 'ER_NOT_KEYFILE':
     case 'ER_CRASHED_ON_USAGE':
       return 'MariaDB reports a damaged table. Back up and check affected tables before repairing them.';
@@ -77,6 +77,31 @@ export interface DoctorConnection {
 
 const rows = (result: [unknown, unknown]) => result[0] as RowDataPacket[];
 
+/**
+ * Prefix of the line that makes `pnpm db:doctor` (and therefore
+ * `pnpm db:setup:local`) stop before `drizzle-kit migrate` starts.
+ */
+export const MIGRATION_BLOCKED_PREFIX = 'Migration compatibility: blocked';
+
+/**
+ * MariaDB before 10.10 (XAMPP 8.x ships 10.4) defaults
+ * `explicit_defaults_for_timestamp` to OFF. The committed migrations declare
+ * `timestamp(3) NOT NULL` columns without a default, which such a server
+ * rejects halfway through a migration (ERROR 1067 "Invalid default value"),
+ * and it silently turns nullable TIMESTAMP columns into NOT NULL ones.
+ * Migrations are immutable, so the server setting is fixed before migrating.
+ */
+function timestampCompatibility(
+  explicitDefaults: unknown,
+  pending: boolean,
+): string[] {
+  if (explicitDefaults === undefined || explicitDefaults === null) return [];
+  if (Number(explicitDefaults) === 1) return [];
+  return [
+    `${pending ? MIGRATION_BLOCKED_PREFIX : 'Migration compatibility: warning'} — the server runs with explicit_defaults_for_timestamp=OFF (MariaDB < 10.10 default). Add explicit_defaults_for_timestamp=ON under [mysqld] in my.ini (XAMPP: xampp/mysql/bin/my.ini) and restart MySQL, or use the bundled MariaDB 10.11 (pnpm db:up).`,
+  ];
+}
+
 /** Drops password hashes from a SHOW GRANTS line. */
 export function sanitizeGrant(grant: string): string {
   return grant
@@ -111,12 +136,14 @@ export async function diagnoseDatabase(
     ];
   }
   lines.push('Database: connected (authentication ok)');
+  let explicitTimestamps: unknown;
   try {
     const serverRow = rows(
       await connection.query(
-        'SELECT VERSION() AS version, DATABASE() AS database_name',
+        'SELECT VERSION() AS version, DATABASE() AS database_name, @@explicit_defaults_for_timestamp AS explicit_timestamps',
       ),
     )[0];
+    explicitTimestamps = serverRow?.explicit_timestamps;
     lines.push(
       `Server: ${String(serverRow?.version ?? 'unknown')}`,
       `Database name: ${String(serverRow?.database_name ?? 'unknown')}`,
@@ -139,6 +166,7 @@ export async function diagnoseDatabase(
       lines.push(
         `Schema migrations: pending (0/${expectedMigrations})`,
         'Schema: empty. Run pnpm db:bootstrap.',
+        ...timestampCompatibility(explicitTimestamps, true),
       );
       return lines;
     }
@@ -156,6 +184,10 @@ export async function diagnoseDatabase(
     );
     lines.push(
       `Schema migrations: ${count === expectedMigrations ? 'current' : 'pending'} (${count}/${expectedMigrations})`,
+      ...timestampCompatibility(
+        explicitTimestamps,
+        count !== expectedMigrations,
+      ),
     );
     const products = rows(
       await connection.query(

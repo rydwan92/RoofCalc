@@ -56,9 +56,20 @@ http://127.0.0.1:5173/#/calculators/common-rafter i odśwież kartę po starcie.
 Utwórz bazę `cieslacalc`, ustaw `DATABASE_URL` w `.env`, po czym:
 
 ```bash
-pnpm db:bootstrap
-pnpm dev
+npx pnpm@10.15.1 db:setup:local
+npx pnpm@10.15.1 dev
 ```
+
+`db:setup:local` działa tylko dla adresu loopback i jest idempotentny
+(doctor → migracje → seedy → smoke-check → status). Konto `root` bez hasła
+(domyślne w XAMPP) jest obsługiwane. **XAMPP 8 dostarcza MariaDB 10.4**, która
+domyślnie ma `explicit_defaults_for_timestamp=OFF`; zatwierdzone migracje
+wymagają `ON` (inaczej migracja 0005 przerywa się w połowie). `db:doctor`
+wykrywa to przed migracją i zatrzymuje setup z instrukcją: dodaj
+`explicit_defaults_for_timestamp=ON` w sekcji `[mysqld]` pliku
+`xampp/mysql/bin/my.ini` i zrestartuj MySQL (albo użyj Wariantu A z MariaDB
+10.11). `npx pnpm@10.15.1 db:status` pokazuje stan migracji i seedów także
+dla bazy nieaktualnej.
 
 `db:bootstrap` czeka na gotowość bazy, nakłada zatwierdzone migracje,
 zasila katalog i cennik realnymi, cytowanymi danymi (dachówki, membrana,
@@ -130,6 +141,13 @@ npx pnpm@10.15.1 build
 ```
 
 Po buildzie w tym układzie XAMPP otwórz http://localhost/RoofCalc/apps/web/dist/#/calculators/common-rafter i odśwież stronę przez Ctrl+F5, aby pominąć cache. `index.php` przekierowuje do `apps/web/dist/`. Po zmianie kodu wykonaj build lub użyj serwera Vite. Apache wystarcza do lokalnych obliczeń; API działa osobno na porcie 3001 (uruchom `pnpm dev` lub `pnpm start`). Lokalny build otwarty pod `localhost/.../apps/web/dist/` pobiera katalog i ceny z `http://127.0.0.1:3001/api`. API zezwala na odczyt z lokalnych adresów przeglądarki; projekty pozostają w pamięci lokalnej dotychczasowego adresu XAMPP. Vite i hosting Node nadal korzystają z `/api` na swoim adresie. Przy innym adresie API ustaw `VITE_API_BASE_URL` w `apps/web/.env.local` i wykonaj ponownie build.
+
+Tryb **Business** (logowanie, hurtownia) wymaga sesji na tym samym adresie co
+API, więc nie działa ze statycznego buildu XAMPP — strona logowania mówi to
+wprost. Do pracy w trybie Business uruchom `npx pnpm@10.15.1 dev` i otwórz
+http://127.0.0.1:5173 (wymaga też `BETTER_AUTH_URL` i `BETTER_AUTH_SECRET` w
+`.env`). Tryb Standard, projekty lokalne i import dokumentów działają w
+statycznym buildzie bez serwera.
 
 Na hostingu Node uruchom `npx pnpm@10.15.1 start`. Express serwuje frontend i `/api/health`. Dostępne zmienne: `PORT` (domyślnie 3001), `HOST` (127.0.0.1). Publicznym katalogiem jest `apps/web/dist`, nie całe repozytorium. `VITE_BRAND_NAME` w `apps/web/.env.local` ustawia nazwę przed buildem. HashRouter obsługuje podkatalogi.
 

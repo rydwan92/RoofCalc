@@ -568,3 +568,25 @@ Missing, invalid or inaccessible storage falls back to existing project update
 order. Deleted IDs are ignored by intersection with the repository list. This
 is a device navigation preference, never part of RoofProjectDocumentV1,
 ProjectRecordV1, SQL, Business, export or canonical Undo history. No migration.
+
+## 13. `RecognitionResult` / `ImportedRoofDraftV1` — document import (VNext, session-only)
+
+Owned by `packages/document-import-core` (ADR-012). `RecognitionResult` is the
+runtime contract every recognition engine returns; `recognitionResultSchema`
+(zod) validates it at the boundary, so a future external engine is untrusted
+input. `ImportedRoofDraftV1` (`schemaVersion: 1`) is derived by
+`deriveImportedRoofDraft(source, results, decisions)` and is **not
+persisted**: no localStorage key, no SQL, never part of
+`RoofProjectDocumentV1`, `ProjectRecordV1`, exports or Undo history. Values are
+canonical mm / degrees; page coordinates use the page's own space (`pt` for
+PDF, `px` for images, top-left origin). The source file's bytes are never
+stored. Only the confirmed result enters the existing project-start path.
+Persisting a draft later (e.g. to resume a review) requires a new entry here,
+a storage key and a reader for version 1.
+
+## 14. Workbench section state (VNext, transient)
+
+`WorkbenchViewState.constructionSection: 'project' | 'structure'` records
+which navigation section shows the shared construction drawing. Transient view
+state (ADR-002): never serialized, never in history, reset with the
+workbench. No migration.

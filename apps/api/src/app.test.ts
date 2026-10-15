@@ -30,6 +30,21 @@ describe('API', () => {
       .set('Origin', 'http://localhost');
     expect(write.headers['access-control-allow-origin']).toBeUndefined();
   });
+  it('lets a local Apache build read the public setup status', async () => {
+    // Regression: this route answered before the CORS middleware ran, so the
+    // XAMPP build showed "cannot connect to the database" for a blocked read.
+    const response = await request(createApp())
+      .get('/api/setup/status')
+      .set('Origin', 'http://localhost');
+    expect(response.status).toBe(200);
+    expect(response.headers['access-control-allow-origin']).toBe(
+      'http://localhost',
+    );
+    const write = await request(createApp())
+      .post('/api/setup/first-owner')
+      .set('Origin', 'http://localhost');
+    expect(write.headers['access-control-allow-origin']).toBeUndefined();
+  });
   it('reports health as degraded without a database', async () => {
     const response = await request(createApp()).get('/api/health');
     expect(response.status).toBe(200);

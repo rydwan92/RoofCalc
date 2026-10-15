@@ -15,3 +15,20 @@ export function resolveApiBaseUrl(
     return 'http://127.0.0.1:3001/api';
   return '/api';
 }
+
+/**
+ * True when the API lives on another origin (the static XAMPP build talking
+ * to the Node API on :3001). Such a page may read public data, but Business
+ * sign-in needs a same-origin session cookie and same-origin writes.
+ */
+export function isCrossOriginApi(
+  base = resolveApiBaseUrl(),
+  origin = globalThis.location?.origin,
+): boolean {
+  if (!origin || !/^https?:\/\//.test(base)) return false;
+  try {
+    return new URL(base).origin !== origin;
+  } catch {
+    return false;
+  }
+}

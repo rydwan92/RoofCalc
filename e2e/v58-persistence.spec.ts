@@ -86,7 +86,7 @@ test('V58 SQL sales workflow survives reload, detects stale writes and preserves
   await creator.getByTestId('project-start-submit').click();
   await expect(creator).toBeHidden();
   await expect(page.getByTestId('business-save-status')).toHaveText('Zapisano');
-  await perspective(page, 'project');
+  await perspective(page, 'covering');
   await page.locator('[data-task="covering"]:visible').first().click();
   await page
     .getByRole('button', { name: /Dachówka/ })
@@ -180,7 +180,7 @@ test('V58 SQL sales workflow survives reload, detects stale writes and preserves
   await expect(page.getByTestId('business-login')).toBeVisible();
   await page
     .getByTestId('business-login')
-    .getByRole('button', { name: 'Standard', exact: true })
+    .getByRole('button', { name: 'Wróć do trybu Standard', exact: true })
     .click();
   await expect(page.getByTestId('business-login')).toBeHidden();
   await expect(

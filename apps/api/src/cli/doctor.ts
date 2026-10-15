@@ -8,6 +8,7 @@ import {
   databaseFailureReason,
   diagnoseDatabase,
   diagnoseNetwork,
+  MIGRATION_BLOCKED_PREFIX,
   type NetworkProbe,
 } from '../db/doctor';
 import { findWorkspaceRoot } from '../environment';
@@ -58,7 +59,13 @@ async function main() {
       journal.entries.length,
     );
     console.log(lines.join('\n'));
-    if (connection && lines.includes('Database: unavailable'))
+    // A blocked migration stops `db:setup:local` here, before drizzle-kit
+    // could leave the schema half migrated.
+    if (
+      connection &&
+      (lines.includes('Database: unavailable') ||
+        lines.some((line) => line.startsWith(MIGRATION_BLOCKED_PREFIX)))
+    )
       process.exitCode = 1;
   } finally {
     await connection?.close();

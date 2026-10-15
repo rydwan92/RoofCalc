@@ -32,9 +32,9 @@ async function openBuilder(page: Page) {
 const PERSPECTIVE_OF: Record<string, string> = {
   construction: 'project',
   openings: 'project',
-  layers: 'project',
-  covering: 'project',
-  cuts: 'execution',
+  layers: 'covering',
+  covering: 'covering',
+  cuts: 'structure',
   materials: 'materials',
   costing: 'costing',
   documents: 'documents',

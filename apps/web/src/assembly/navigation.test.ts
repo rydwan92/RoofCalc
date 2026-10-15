@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { useAssembly } from './store';
 import {
+  activePerspective,
   NAVIGATION_TRAIL_LIMIT,
   pushNavigationTrail,
   tasksForPerspective,
@@ -12,16 +13,34 @@ beforeEach(() => {
   useAssembly.getState().reset();
 });
 
-describe('V37 perspective navigation', () => {
-  it('exposes only contextual tasks per perspective, with documents as a real destination', () => {
+describe('VNext section navigation (V37 perspectives + V53 stages)', () => {
+  it('exposes only contextual tasks per section, with documents as a real destination', () => {
     expect(tasksForPerspective('project')).toEqual([
       'construction',
       'openings',
-      'layers',
-      'covering',
     ]);
-    expect(tasksForPerspective('execution')).toEqual(['cuts']);
+    expect(tasksForPerspective('structure')).toEqual(['construction', 'cuts']);
+    expect(tasksForPerspective('covering')).toEqual(['covering', 'layers']);
     expect(tasksForPerspective('documents')).toEqual(['documents']);
+  });
+
+  it('keeps the shared construction drawing in the section that opened it', () => {
+    const store = useAssembly.getState();
+    store.navigatePerspective('structure');
+    let { workbench, historyPast } = useAssembly.getState();
+    expect(workbench).toMatchObject({
+      viewPreset: 'construction',
+      constructionSection: 'structure',
+    });
+    expect(activePerspective(workbench)).toBe('structure');
+    useAssembly.getState().navigatePerspective('project');
+    ({ workbench, historyPast } = useAssembly.getState());
+    expect(activePerspective(workbench)).toBe('project');
+    expect(workbench.viewPreset).toBe('construction');
+    useAssembly.getState().navigatePerspective('covering');
+    useAssembly.getState().navigatePerspective('structure');
+    expect(useAssembly.getState().workbench.viewPreset).toBe('construction');
+    expect(historyPast).toHaveLength(0);
   });
 
   it('switches perspective without history and clears the return trail', () => {

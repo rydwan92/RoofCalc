@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useBusiness } from '../context';
 import { sessionClient } from './client';
 import { BusinessClientError } from '../client';
+import { isCrossOriginApi } from '../../api-base';
 
 const errors: Record<string, [string, string]> = {
   'invalid-credentials': [
@@ -53,7 +54,13 @@ export function BusinessLogin() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const state = setup.data;
-  const unavailable = setup.isError || state?.database === 'unavailable';
+  // Three different situations used to share one "database" message:
+  // a static build that cannot hold a session, an API that does not answer,
+  // and an API that answers without its database.
+  const staticBuild = isCrossOriginApi();
+  const serverUnreachable = !staticBuild && setup.isError;
+  const databaseDown = !staticBuild && state?.database === 'unavailable';
+  const unavailable = staticBuild || serverUnreachable || databaseDown;
   const authMissing = state?.auth === 'unconfigured';
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -123,14 +130,33 @@ export function BusinessLogin() {
               : 'Checking server setup…'}
           </p>
         ) : unavailable || authMissing ? (
-          <p role="alert">
-            {unavailable
+          <p
+            role="alert"
+            data-login-state={
+              staticBuild
+                ? 'static-build'
+                : serverUnreachable
+                  ? 'server-unreachable'
+                  : databaseDown
+                    ? 'database-unavailable'
+                    : 'auth-unconfigured'
+            }
+          >
+            {staticBuild
               ? pl
-                ? 'Nie można połączyć się z bazą danych RoofCalc Business.'
-                : 'Cannot connect to the RoofCalc Business database.'
-              : pl
-                ? 'RoofCalc Business wymaga dokończenia konfiguracji serwera.'
-                : 'RoofCalc Business requires server configuration.'}
+                ? 'Logowanie RoofCalc Business działa tylko przez serwer aplikacji. Ta strona jest statycznym buildem (np. z XAMPP), więc nie może utworzyć sesji logowania. Uruchom w katalogu projektu „npx pnpm@10.15.1 dev” i otwórz http://127.0.0.1:5173. Tryb Standard działa bez serwera.'
+                : 'RoofCalc Business sign-in works only through the application server. This page is a static build (e.g. from XAMPP) and cannot hold a sign-in session. Run “npx pnpm@10.15.1 dev” in the project folder and open http://127.0.0.1:5173. Standard mode works without a server.'
+              : serverUnreachable
+                ? pl
+                  ? 'Serwer RoofCalc (API) nie odpowiada. Uruchom go poleceniem „npx pnpm@10.15.1 dev” i spróbuj ponownie.'
+                  : 'The RoofCalc server (API) does not respond. Start it with “npx pnpm@10.15.1 dev” and try again.'
+                : databaseDown
+                  ? pl
+                    ? 'Serwer RoofCalc działa, ale nie może połączyć się z bazą danych. Sprawdź adres bazy w pliku .env i wynik „npx pnpm@10.15.1 db:status”.'
+                    : 'The RoofCalc server runs but cannot reach its database. Check the database address in .env and the output of “npx pnpm@10.15.1 db:status”.'
+                  : pl
+                    ? 'RoofCalc Business wymaga dokończenia konfiguracji serwera (BETTER_AUTH_URL i BETTER_AUTH_SECRET w pliku .env).'
+                    : 'RoofCalc Business requires server configuration (BETTER_AUTH_URL and BETTER_AUTH_SECRET in .env).'}
           </p>
         ) : creating ? (
           <p>
@@ -278,12 +304,21 @@ export function BusinessLogin() {
             {pl ? 'Wróć do logowania' : 'Back to sign in'}
           </button>
         )}
+        {serverUnreachable && (
+          <button
+            className="a-button"
+            type="button"
+            onClick={() => void setup.refetch()}
+          >
+            {pl ? 'Spróbuj ponownie' : 'Try again'}
+          </button>
+        )}
         <button
           className="a-button"
           type="button"
           onClick={() => business.setMode('standard')}
         >
-          Standard
+          {pl ? 'Wróć do trybu Standard' : 'Back to Standard mode'}
         </button>
       </form>
     </main>

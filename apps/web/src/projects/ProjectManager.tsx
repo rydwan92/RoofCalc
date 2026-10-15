@@ -72,6 +72,7 @@ export function ProjectManager({
   onStartNew,
   onEditBasics,
   onImportIfc,
+  onImportDocument,
 }: {
   session: ProjectSession;
   state: ProjectSessionState;
@@ -79,6 +80,8 @@ export function ProjectManager({
   onStartNew?: () => void;
   onEditBasics?: () => void;
   onImportIfc?: () => void;
+  /** VNext: PDF/photo document import. */
+  onImportDocument?: () => void;
 }) {
   const { i18n } = useTranslation();
   const m = messages[i18n.language.startsWith('pl') ? 'pl' : 'en'];
@@ -253,6 +256,19 @@ export function ProjectManager({
           }}
         >
           {m.import} · IFC
+        </button>
+      )}
+      {onImportDocument && (
+        <button
+          className="a-project-import"
+          data-testid="project-import-document"
+          onClick={() => {
+            setOpen(false);
+            onImportDocument();
+          }}
+        >
+          {m.import} · PDF /{' '}
+          {i18n.language.startsWith('pl') ? 'zdjęcie' : 'photo'}
         </button>
       )}
       <input

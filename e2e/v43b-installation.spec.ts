@@ -137,7 +137,8 @@ async function stubCatalogue(page: Page) {
 }
 
 async function openTask(page: Page, task: 'covering' | 'layers') {
-  await page.locator('[data-perspective="project"]:visible').first().click();
+  // VNext: covering and its layers form the Pokrycie section.
+  await page.locator('[data-perspective="covering"]:visible').first().click();
   await page.locator(`[data-task="${task}"]:visible`).first().click();
 }
 

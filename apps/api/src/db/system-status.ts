@@ -1,5 +1,6 @@
 import { and, eq, sql } from 'drizzle-orm';
 import type { CatalogDatabase } from './client';
+import { databaseErrorCode } from './errors';
 import { catalogImportBatches } from './schema';
 import { pricingImportBatches } from './pricing-schema';
 import { organizationImportBatches } from './business-schema';
@@ -27,13 +28,9 @@ export interface SystemStatus {
   >;
 }
 
+/** A table that a later migration creates; read as absent, never a failure. */
 function missingTable(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    error.code === 'ER_NO_SUCH_TABLE'
-  );
+  return databaseErrorCode(error) === 'ER_NO_SUCH_TABLE';
 }
 
 async function orEmpty<T>(read: () => Promise<T[]>) {

@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import { parseDatabaseUrl } from './config';
-import { diagnoseDatabase, diagnoseNetwork, sanitizeGrant } from './doctor';
+import {
+  diagnoseDatabase,
+  diagnoseNetwork,
+  MIGRATION_BLOCKED_PREFIX,
+  sanitizeGrant,
+} from './doctor';
 
 it('reports optional unconfigured database without connecting', async () => {
   expect((await diagnoseDatabase(undefined, 3)).join('\n')).toContain(
@@ -94,6 +99,69 @@ it('directs a partially created schema to bootstrap', async () => {
     .mockRejectedValueOnce({ code: 'ER_NO_SUCH_TABLE' });
   expect((await diagnoseDatabase({ query }, 3)).join('\n')).toContain(
     'pnpm db:bootstrap',
+  );
+});
+
+it('blocks migrations on a server without explicit timestamp defaults', async () => {
+  // Real XAMPP MariaDB 10.4: migration 0005 failed with ERROR 1067 halfway
+  // and left the schema at 5/8. The doctor must stop setup before that.
+  const query = vi
+    .fn()
+    .mockResolvedValueOnce([[], []])
+    .mockResolvedValueOnce([
+      [
+        {
+          version: '10.4.27-MariaDB',
+          database_name: 'local',
+          explicit_timestamps: 0,
+        },
+      ],
+      [],
+    ])
+    .mockResolvedValueOnce([[], []])
+    .mockResolvedValueOnce([[], []])
+    .mockResolvedValueOnce([[{ count: 0 }], []]);
+  const lines = await diagnoseDatabase({ query }, 8);
+  const blocked = lines.find((line) =>
+    line.startsWith(MIGRATION_BLOCKED_PREFIX),
+  );
+  expect(blocked).toContain('explicit_defaults_for_timestamp=ON');
+  expect(blocked).toContain('my.ini');
+});
+
+it('only warns about timestamp defaults once every migration is applied', async () => {
+  const query = vi
+    .fn()
+    .mockResolvedValueOnce([[], []])
+    .mockResolvedValueOnce([
+      [{ version: '10.4', database_name: 'x', explicit_timestamps: '0' }],
+      [],
+    ])
+    .mockResolvedValueOnce([[], []])
+    .mockResolvedValueOnce([[], []])
+    .mockResolvedValueOnce([[{ count: 9 }], []])
+    .mockResolvedValueOnce([[{ count: 3 }], []])
+    .mockResolvedValue([[{ count: 0 }], []]);
+  const lines = await diagnoseDatabase({ query }, 3);
+  expect(lines.some((line) => line.startsWith(MIGRATION_BLOCKED_PREFIX))).toBe(
+    false,
+  );
+  expect(lines.join('\n')).toContain('Migration compatibility: warning');
+});
+
+it('accepts a server with explicit timestamp defaults', async () => {
+  const query = vi
+    .fn()
+    .mockResolvedValueOnce([[], []])
+    .mockResolvedValueOnce([
+      [{ version: '10.11', database_name: 'x', explicit_timestamps: 1 }],
+      [],
+    ])
+    .mockResolvedValueOnce([[], []])
+    .mockResolvedValueOnce([[], []])
+    .mockResolvedValueOnce([[{ count: 0 }], []]);
+  expect((await diagnoseDatabase({ query }, 8)).join('\n')).not.toContain(
+    'Migration compatibility',
   );
 });
 

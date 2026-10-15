@@ -1,6 +1,6 @@
 # RoofCalc / CieślaCalc — Architecture Index
 
-**This is the current-state map, after V52.** Read it after `PROJECT_BLUEPRINT.md`
+**This is the current-state map, after V52** (VNext additions: one six-section workbench navigation and `document-import-core` — see `ARCHITECTURE_VNEXT_WORKSPACE_AND_DOCUMENT_IMPORT.md`). Read it after `PROJECT_BLUEPRINT.md`
 and before touching code. It describes what exists today, not the history of how
 it got here. Historical `ARCHITECTURE_V*.md` documents stay authoritative for the
 subsystem they introduced and should be opened only when changing that subsystem.
@@ -63,6 +63,9 @@ Dependency direction is **downward only**.
 | `pricing-core` | **V34C.** Pure commerce layer, sibling to `cost-core`: `PriceList`/`PriceListEntry` against an opaque `commercialVariantId` (never imports `catalog-core`, never sees a technical dimension). Write-once entries (ADR-004) — an unchanged re-import is a no-op, a genuine price change needs a new entry ID. **V35** adds additive `sourceAmountBasis?`/`sourceVatRateBps?` provenance fields — pure record-keeping; `netAmountMinor` stays the one number everything downstream uses and is always already-net. | `zod` |
 | `project-core` | `ProjectRecordV1` envelope, lifecycle helpers, JSON import/export and the `ProjectRepository` interface. No browser, no React, no i18n. | `calculator-core`, `zod` |
 | `shared` | Cross-cutting DTOs shared by web and API. | — |
+| `document-import-core` | **VNext.** Pure document recognition: byte-signature ingestion and limits, dimension tokens (PL/EN), label semantics, unit resolution, plausibility, the versioned `RecognitionResult` / `ImportedRoofDraftV1` model, manual calibration, engine descriptors with a consent gate, and mapping to project-start parameters. No parser, no network, no workspace imports (ADR-012). | `zod` |
+| `bim-import-core` | **V61.** Renderer-free IFC reference DTOs and conservative gable analysis. | — |
+| `business-core` / `quote-core` | **V57–V60.** Commercial contracts (assortment, CSV, VAT) and integer-money quote snapshots. | `pricing-core`, `zod` / `zod` |
 | `ui` | Semantic design tokens (`--ui-*`) and a few primitives. | `react` (peer) |
 | `apps/web` | React workbench: Zustand store, canvases, inspectors, i18n, local persistence, catalogue client. **V38** adds `assembly/scene3d/` — the lazily loaded Three.js technical viewport, the only place in the repository allowed to import a renderer. **V34C** adds `apps/web/src/pricing/` (HTTP client + `usePricesForVariants`) and a manual membrane-product entry form in the layers inspector. **V35** adds `MembraneProductPicker.tsx`/`TimberStockProductPicker.tsx` (mirroring `CatalogProductPicker.tsx`'s DI/i18n pattern), `assembly/timber-stock-class.ts` + `timber-stock-adapter.ts` (the web-layer bridge from a catalogue timber pick into `procurement-core`'s pure `StockOption`), and an MVP read-only material-cost panel inside `K1CuttingPlan.tsx`. | the packages above |
 | `apps/api` | Express read-only catalogue API, Drizzle/MySQL repository, canonical importer, CLI. **V34C** adds a sibling `/api/pricing` route tree, `apps/api/src/pricing/`, and `apps/api/src/db/pricing-schema.ts` (a table set sibling to the catalogue-technical `schema.ts`, sharing only the DB connection pool). **V35** adds a deterministic first-run bootstrap CLI (`wait-for-db.ts`, `seed-all.ts`, `smoke-check.ts`) and a root `compose.yaml` (MariaDB, Docker variant). | `catalog-core`, `covering-core`, `pricing-core`, `shared` |
@@ -614,6 +617,8 @@ pnpm e2e      # real-browser smoke, desktop 1440x900 and mobile 390x844 (pnpm e2
 
 | Document | Read when |
 | --- | --- |
+| `ROOFCALC_VNEXT_AUDIT` | current verified state, baseline, SQL findings and priorities (VNext) |
+| `ARCHITECTURE_VNEXT_WORKSPACE_AND_DOCUMENT_IMPORT` | the one six-section navigation, design tokens, document import pipeline, SQL first-run fixes |
 | `ARCHITECTURE_GUIDED_WORKBENCH_JOURNEY` | root start, six-stage overview, central next action, recent local projects and direct input routing after V61B |
 | `ARCHITECTURE_V36_MATERIAL_PLAN` | Materials plan, price selection/provenance, BOM/CSV and DB runtime diagnostics |
 | `ARCHITECTURE_V37_PRODUCT_EXPERIENCE_AND_COVERING_STUDIO` | perspective navigation and return trail, Document Hub, guided Creator and examples, Covering Studio technical/visual views |

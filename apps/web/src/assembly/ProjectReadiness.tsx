@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   Circle,
   Info,
+  LayoutDashboard,
   Minus,
   ShieldCheck,
   XCircle,
@@ -56,7 +57,13 @@ export function ProjectReadinessBar({
   onOpenPanel,
   onOverview,
   currentStage,
+  compact = false,
 }: {
+  /**
+   * VNext: the six statuses live in the primary navigation, so the bar
+   * shows only progress and the one next action, inline in the nav row.
+   */
+  compact?: boolean;
   readiness: ProjectReadiness;
   /** V53: the one recommended next action and stage overview. */
   journey?: ProjectJourney;
@@ -117,7 +124,7 @@ export function ProjectReadinessBar({
     : undefined;
   return (
     <>
-      {journey && onJourneyAction && (
+      {journey && onJourneyAction && !compact && (
         <JourneyOverview
           journey={journey}
           currentStage={currentStage}
@@ -135,7 +142,7 @@ export function ProjectReadinessBar({
           </p>
         )}
       <section
-        className="a-readiness-bar"
+        className={`a-readiness-bar${compact ? ' is-compact' : ''}`}
         aria-label={t('assembly.readiness.panelTitle')}
         data-testid="project-readiness-bar"
         data-state={primary?.severity ?? 'ready'}
@@ -147,7 +154,7 @@ export function ProjectReadinessBar({
           aria-label={t('assembly.readiness.progressLabel', progress)}
           onClick={onOpenPanel}
         >
-          {here && (
+          {here && !compact && (
             <span
               className="a-journey-here"
               data-testid="journey-here"
@@ -186,6 +193,7 @@ export function ProjectReadinessBar({
             data-testid="project-primary-issue"
             data-issue={primary.code}
             data-severity={primary.severity}
+            title={compact ? `${text.title} — ${text.description}` : undefined}
           >
             <SeverityIcon severity={primary.severity} />
             <div>
@@ -203,6 +211,11 @@ export function ProjectReadinessBar({
             className="a-readiness-primary is-next"
             data-testid="project-journey-next"
             data-stage={recommended.stage}
+            title={
+              compact
+                ? `${t(`assembly.journey.next.${recommended.reasonKey}.title`)} — ${t(`assembly.journey.next.${recommended.reasonKey}.description`)}`
+                : undefined
+            }
           >
             <Circle size={16} aria-hidden="true" />
             <div>
@@ -232,11 +245,19 @@ export function ProjectReadinessBar({
           {onOverview && (
             <button
               type="button"
-              className="a-button a-ghost"
+              className={`a-button a-ghost${compact ? ' is-icon' : ''}`}
               data-testid="project-overview-action"
+              aria-label={
+                compact ? t('assembly.workflow.summaryTitle') : undefined
+              }
+              title={compact ? t('assembly.workflow.summaryTitle') : undefined}
               onClick={onOverview}
             >
-              {t('assembly.workflow.summaryTitle')}
+              {compact ? (
+                <LayoutDashboard size={17} aria-hidden="true" />
+              ) : (
+                t('assembly.workflow.summaryTitle')
+              )}
             </button>
           )}
           {recommended && onJourneyAction ? (
@@ -245,6 +266,13 @@ export function ProjectReadinessBar({
               className="a-button a-primary"
               data-testid="project-next-action"
               data-readiness-action={recommended.action}
+              title={
+                recommended.reasonKey
+                  ? t(
+                      `assembly.journey.next.${recommended.reasonKey}.description`,
+                    )
+                  : text?.description
+              }
               onClick={() => onJourneyAction(recommended)}
             >
               {t(`assembly.readiness.action.${recommended.action}`)}

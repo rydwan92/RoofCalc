@@ -206,6 +206,10 @@ const pl = {
   manual: 'CENA RĘCZNA DLA TEJ WYCENY',
   noPrice: 'Brak ceny w cenniku',
   selectPrice: 'Wybierz źródło ceny',
+  priceAging: 'Cena z {date} ({days} dni temu) — sprawdź jej aktualność.',
+  priceStale:
+    'Cena z {date} ({days} dni temu) może być nieaktualna. Potwierdź ją u dostawcy przed wyceną.',
+  priceAgeShort: '{days} dni',
   manualPrice: 'Cena ręczna netto',
   price: 'Cena netto',
   value: 'Wartość netto',
@@ -484,6 +488,11 @@ const en: typeof pl = {
   manual: 'MANUAL PRICE FOR THIS ESTIMATE',
   noPrice: 'No price in list',
   selectPrice: 'Select price source',
+  priceAging:
+    'Price from {date} ({days} days ago) — check that it is still current.',
+  priceStale:
+    'Price from {date} ({days} days ago) may be outdated. Confirm it with the supplier before quoting.',
+  priceAgeShort: '{days} days',
   manualPrice: 'Manual net unit price',
   price: 'Net unit price',
   value: 'Net value',

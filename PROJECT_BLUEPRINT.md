@@ -1297,6 +1297,36 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+## VNext — workspace, document import, SQL first-run (in progress)
+
+- Authorized by the user's VNext prompt (2026-10-15), superseding the guided
+  workbench NEXT ACTION below; that work is in `c185a16` and is the baseline.
+- Baseline (Node 22.18 via nvm, `npx pnpm@10.15.1`): `pnpm verify` green —
+  1696 tests passed, 13 skipped; web/API/Worker dry-run builds pass.
+- Audit: `docs/ROOFCALC_VNEXT_AUDIT.md`. SQL first-run defects fixed in source
+  (cause-aware DB error codes, type-only drizzle config import, empty local
+  password, doctor blocks migrations when `explicit_defaults_for_timestamp`
+  is OFF). Full bootstrap verified twice on an isolated MariaDB 10.4 instance.
+- Done: `packages/document-import-core` (ADR-012) + `apps/web/src/document-import/`
+  (pdf.js in a bundled `.js` worker, review UI, manual calibration); start
+  screen card + "open project file"; ONE six-section navigation with journey
+  statuses (`constructionSection` transient state), compact next action,
+  Alt+1…6 / [ ] / ? shortcuts; tokens extended + `workspace.css`; price
+  freshness (`pricing-core/freshness.ts`) in Material Plan; Business login
+  states + CORS for setup status on the static XAMPP build.
+- Validation: final `pnpm verify` green (1783 passed, 13 skipped; web/API/Worker
+  builds, bundle guard clean); real-PDF integration test; browser QA desktop 1440×900 and phone
+  390×844 (Vite) and static build via XAMPP Apache. Last full `verify` was
+  re-running at the usage limit — check `pnpm verify` first.
+- Not done: full `pnpm e2e` (new `e2e/document-import.spec.ts` and updated
+  selectors are unexecuted), dark theme (deliberately not exposed),
+  automatic geometry recognition, OCR/AI engines (descriptors only).
+- Local test artefacts: isolated MariaDB (scratch datadir, port 3317) and DB
+  `roofcalc_vnext_audit`/`roofcalc_vnext_probe` on XAMPP 3306 can be dropped.
+- NEXT ACTION: run `pnpm verify` and `pnpm e2e` (start `web-preview` first;
+  global pnpm shim hangs on this machine), fix any selector fallout, then
+  merge the branch.
+
 ## Guided Workbench UX / Project Journey — validation in progress
 
 - User prompt after V61B supersedes the previous NEXT ACTION; UX only.

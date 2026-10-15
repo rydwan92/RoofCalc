@@ -39,7 +39,7 @@ async function closeSheet(page: Page, mobile: boolean) {
 
 /** Opens Layers › Counter-battens with the layer switched on. */
 async function openCounterBattens(page: Page, mobile = false) {
-  await page.locator('[data-perspective="project"]:visible').first().click();
+  await page.locator('[data-perspective="covering"]:visible').first().click();
   await page.locator('[data-task="layers"]:visible').first().click();
   await openTools(page, mobile);
   // Enable the layer first: selecting it can close the phone's tools sheet.

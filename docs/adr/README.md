@@ -23,3 +23,5 @@ Several ADRs here are executable: `tools/architecture/*.test.ts` fails
 | [008](ADR-008-compound-roofs-as-composed-structures.md) | Compound roofs are composed structures, not secondary roof fields | review |
 | [009](ADR-009-fabrication-geometry-upstream-of-procurement.md) | Fabrication geometry is resolved upstream of procurement | `layering.test.ts` |
 | [010](ADR-010-required-piece-is-a-fabrication-blank.md) | `RequiredPiece` means one required physical fabrication blank | `opaque-ids.test.ts` |
+| [011](ADR-011-catalog-kind-is-general.md) | The catalogue kind is a general technical material kind | catalogue tests |
+| [012](ADR-012-document-import-intermediate-model.md) | Document import goes through a versioned intermediate model; engines are adapters | `layering.test.ts`, document-import-core tests |

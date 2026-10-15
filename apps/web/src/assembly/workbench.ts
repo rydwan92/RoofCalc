@@ -36,20 +36,30 @@ export type ViewPreset =
   | 'documents';
 
 /**
- * Primary workbench navigation (V37). Perspectives own the contextual
- * secondary tasks; no new persisted or canonical state. `documents` is a real
- * transient destination (Centrum dokumentów), not an export shortcut.
+ * Primary workbench navigation. V37 introduced perspectives that own the
+ * contextual secondary tasks; VNext merges them with the V53 journey stages
+ * into ONE navigation of six sections — Projekt / Konstrukcja / Pokrycie /
+ * Materiały / Kosztorys / Dokumenty — each carrying its journey status.
+ * Purely transient view state; no persisted or canonical state.
+ *
+ * The construction drawing serves two sections: in Projekt it is the roof
+ * geometry (roof selected), in Konstrukcja the timber structure. Which one
+ * the user is in is the transient `constructionSection`.
  */
 export type WorkbenchPerspective =
-  'project' | 'execution' | 'materials' | 'costing' | 'documents';
+  'project' | 'structure' | 'covering' | 'materials' | 'costing' | 'documents';
 
 const PERSPECTIVE_TASKS: Record<WorkbenchPerspective, readonly ViewPreset[]> = {
-  project: ['construction', 'openings', 'layers', 'covering'],
-  execution: ['cuts'],
+  project: ['construction', 'openings'],
+  structure: ['construction', 'cuts'],
+  covering: ['covering', 'layers'],
   materials: ['materials'],
   costing: ['costing'],
   documents: ['documents'],
 };
+
+/** The two sections that share the construction drawing. */
+export type ConstructionSection = 'project' | 'structure';
 
 /** Local view inside a task; only views with their own return meaning. */
 export type WorkbenchLocalView = MaterialsView | 'document-preview';
@@ -78,12 +88,16 @@ export function workbenchLocation(
 }
 
 export function currentWorkbenchLocation(
-  view: Pick<WorkbenchViewState, 'viewPreset' | 'materialsView'>,
+  view: Pick<WorkbenchViewState, 'viewPreset' | 'materialsView'> &
+    Partial<Pick<WorkbenchViewState, 'constructionSection'>>,
 ): WorkbenchLocation {
-  return workbenchLocation(
-    view.viewPreset,
-    view.viewPreset === 'materials' ? view.materialsView : undefined,
-  );
+  return {
+    ...workbenchLocation(
+      view.viewPreset,
+      view.viewPreset === 'materials' ? view.materialsView : undefined,
+    ),
+    perspective: perspectiveForTask(view.viewPreset, view.constructionSection),
+  };
 }
 
 export function sameWorkbenchLocation(
@@ -118,15 +132,31 @@ export function workbenchLocationLabelKey(location: WorkbenchLocation): string {
     return location.localView === 'document-preview'
       ? 'assembly.nav.documentPreview'
       : 'assembly.nav.documentHub';
+  // The shared construction drawing is named by the section that shows it.
+  if (location.task === 'construction')
+    return location.perspective === 'structure'
+      ? 'assembly.nav.task.structure'
+      : 'assembly.nav.task.geometry';
   return `assembly.${location.task}Preset`;
 }
 
-export function perspectiveForTask(preset: ViewPreset): WorkbenchPerspective {
+export function perspectiveForTask(
+  preset: ViewPreset,
+  constructionSection: ConstructionSection = 'project',
+): WorkbenchPerspective {
+  if (preset === 'construction') return constructionSection;
   for (const perspective of Object.keys(
     PERSPECTIVE_TASKS,
   ) as WorkbenchPerspective[])
     if (PERSPECTIVE_TASKS[perspective].includes(preset)) return perspective;
   return 'project';
+}
+
+/** The section the workbench currently shows. */
+export function activePerspective(
+  view: Pick<WorkbenchViewState, 'viewPreset' | 'constructionSection'>,
+): WorkbenchPerspective {
+  return perspectiveForTask(view.viewPreset, view.constructionSection);
 }
 
 export function tasksForPerspective(
@@ -137,7 +167,8 @@ export function tasksForPerspective(
 
 export const WORKBENCH_PERSPECTIVES: readonly WorkbenchPerspective[] = [
   'project',
-  'execution',
+  'structure',
+  'covering',
   'materials',
   'costing',
   'documents',
@@ -231,6 +262,8 @@ export interface WorkbenchViewState {
   /** V38 transient renderer choice for the central workspace. */
   workspaceRenderer: WorkspaceRenderer;
   viewPreset: ViewPreset;
+  /** VNext: which section the shared construction drawing belongs to. */
+  constructionSection: ConstructionSection;
   buildUpView: BuildUpView;
   materialsView: MaterialsView;
   /** Transient phone presentation; excluded from project documents and history. */
@@ -296,6 +329,7 @@ export const initialWorkbenchViewState: WorkbenchViewState = {
   canvasView: 'skeleton',
   workspaceRenderer: '2d',
   viewPreset: 'construction',
+  constructionSection: 'project',
   buildUpView: 'overview',
   materialsView: 'plan',
   mobilePanel: 'none',

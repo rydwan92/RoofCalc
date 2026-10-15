@@ -34,6 +34,29 @@ export function createApp(
 ) {
   const app = express();
   app.disable('x-powered-by');
+  // Local Apache builds keep their own origin and local project storage.
+  // Only browser GET/HEAD requests from explicit loopback origins may read
+  // the API. Registered before every route: the public setup status used to
+  // be answered first without this header, so a local build reported a
+  // missing database when the browser had only blocked the response.
+  app.use('/api', (req, res, next) => {
+    res.vary('Origin');
+    const origin = req.get('Origin');
+    if (origin && (req.method === 'GET' || req.method === 'HEAD')) {
+      try {
+        const url = new URL(origin);
+        if (
+          url.origin === origin &&
+          ['http:', 'https:'].includes(url.protocol) &&
+          ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)
+        )
+          res.setHeader('Access-Control-Allow-Origin', origin);
+      } catch {
+        /* An invalid origin receives no CORS permission. */
+      }
+    }
+    next();
+  });
   app.get('/api/setup/status', async (_req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     try {
@@ -102,26 +125,6 @@ export function createApp(
     app.all('/api/auth/*', (_req, res) => {
       res.status(503).json({ error: { code: 'auth-not-configured' } });
     });
-  // Local Apache builds keep their own origin and local project storage.
-  // Only browser GET/HEAD requests from explicit loopback origins may read API.
-  app.use('/api', (req, res, next) => {
-    res.vary('Origin');
-    const origin = req.get('Origin');
-    if (origin && (req.method === 'GET' || req.method === 'HEAD')) {
-      try {
-        const url = new URL(origin);
-        if (
-          url.origin === origin &&
-          ['http:', 'https:'].includes(url.protocol) &&
-          ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)
-        )
-          res.setHeader('Access-Control-Allow-Origin', origin);
-      } catch {
-        /* An invalid origin receives no CORS permission. */
-      }
-    }
-    next();
-  });
   /** Business JSON writes are checked against origin, session and capability. */
   app.use('/api/business', express.json({ limit: JSON_BODY_LIMIT }));
   app.use('/api', async (req, res) => {

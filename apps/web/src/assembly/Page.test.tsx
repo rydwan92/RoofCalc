@@ -492,9 +492,9 @@ describe('dual-mode parametric workbench', () => {
         .querySelector('[data-profile="member:rafter-1"]')!
         .getAttribute('points'),
     ).not.toBe(before);
-    fireEvent.click(
-      screen.getByRole('tab', { name: 'Perspektywa: Wykonanie' }),
-    );
+    // VNext: execution (cuts) is a task of the Konstrukcja section.
+    fireEvent.click(screen.getByRole('tab', { name: 'Sekcja: Konstrukcja' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Cięcia' }));
     expect(
       container.querySelector('[data-datum="datum:purlin-1-heel"]'),
     ).toBeTruthy();
@@ -695,9 +695,7 @@ describe('dual-mode parametric workbench', () => {
       await screen.findByRole('heading', { name: 'Roof workbench' }),
     ).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Add purlin' })).toBeTruthy();
-    fireEvent.click(
-      screen.getByRole('tab', { name: 'Perspective: Materials' }),
-    );
+    fireEvent.click(screen.getByRole('tab', { name: 'Section: Materials' }));
     expect(
       await screen.findByRole('heading', { name: 'Member schedule' }),
     ).toBeTruthy();
@@ -1206,6 +1204,7 @@ describe('dual-mode parametric workbench', () => {
     expect(screen.getByRole('alert').textContent).toContain(
       'Otwór nie mieści się w polu',
     );
+    fireEvent.click(screen.getByRole('tab', { name: 'Sekcja: Pokrycie' }));
     fireEvent.click(screen.getByRole('tab', { name: 'Warstwy' }));
     fireEvent.click(screen.getByRole('button', { name: 'Łaty' }));
     const battenSwitch = screen.getByRole('switch', {
@@ -1742,6 +1741,7 @@ describe('dual-mode parametric workbench', () => {
     });
     const before = structuredClone(useAssembly.getState().projectDocument);
 
+    fireEvent.click(screen.getByRole('tab', { name: 'Sekcja: Pokrycie' }));
     fireEvent.click(screen.getByRole('tab', { name: 'Warstwy' }));
     fireEvent.click(screen.getByRole('button', { name: 'Membrana' }));
     expect(container.querySelectorAll('[data-roof-surface]')).toHaveLength(2);
@@ -1752,9 +1752,7 @@ describe('dual-mode parametric workbench', () => {
     expect(useAssembly.getState().projectDocument).toEqual(before);
     expect(useAssembly.getState().historyPast).toHaveLength(0);
 
-    fireEvent.click(
-      screen.getByRole('tab', { name: 'Perspektywa: Materiały' }),
-    );
+    fireEvent.click(screen.getByRole('tab', { name: 'Sekcja: Materiały' }));
     expect(await screen.findByTestId('material-schedule')).toBeTruthy();
     expect(container.querySelectorAll('[data-build-up-quantity]')).toHaveLength(
       1,
@@ -1778,6 +1776,7 @@ describe('dual-mode parametric workbench', () => {
     act(() => {
       useAssembly.getState().setMembraneLayer({ enabled: true });
     });
+    fireEvent.click(screen.getByRole('tab', { name: 'Sekcja: Pokrycie' }));
     fireEvent.click(screen.getByRole('tab', { name: 'Warstwy' }));
     fireEvent.click(screen.getByRole('button', { name: 'Membrana' }));
 
@@ -1826,9 +1825,7 @@ describe('dual-mode parametric workbench', () => {
 
   it('opens the geometry-based material schedule and highlights its source members without editing the project', async () => {
     const { container } = render(<App />);
-    expect(
-      screen.queryByRole('tab', { name: 'Perspektywa: Materiały' }),
-    ).toBeNull();
+    expect(screen.queryByRole('tab', { name: 'Sekcja: Materiały' })).toBeNull();
     expect(useAssembly.getState().unit).toBe('mm');
     builder();
     act(() => {
@@ -1844,9 +1841,7 @@ describe('dual-mode parametric workbench', () => {
     const before = structuredClone(useAssembly.getState().projectDocument);
     const historyLength = useAssembly.getState().historyPast.length;
 
-    fireEvent.click(
-      screen.getByRole('tab', { name: 'Perspektywa: Materiały' }),
-    );
+    fireEvent.click(screen.getByRole('tab', { name: 'Sekcja: Materiały' }));
     expect(await screen.findByTestId('material-schedule')).toBeTruthy();
     expect(screen.getByTestId('batten-quantity')).toBeTruthy();
     expect(
@@ -1903,9 +1898,7 @@ describe('dual-mode parametric workbench', () => {
     builder();
     const before = structuredClone(useAssembly.getState().projectDocument);
     const history = useAssembly.getState().historyPast.length;
-    fireEvent.click(
-      screen.getByRole('tab', { name: 'Perspektywa: Materiały' }),
-    );
+    fireEvent.click(screen.getByRole('tab', { name: 'Sekcja: Materiały' }));
     await screen.findByTestId('material-schedule');
     expect(screen.getByTestId('k1-cutting-cta')).toBeTruthy();
     fireEvent.click(screen.getByTestId('k1-cutting-cta'));
@@ -1946,9 +1939,7 @@ describe('dual-mode parametric workbench', () => {
     render(<App />);
     builder();
     act(() => useAssembly.getState().setCanonicalField('ridge.thicknessMm', 0));
-    fireEvent.click(
-      screen.getByRole('tab', { name: 'Perspektywa: Materiały' }),
-    );
+    fireEvent.click(screen.getByRole('tab', { name: 'Sekcja: Materiały' }));
     await screen.findByTestId('material-schedule');
     expect(screen.queryByTestId('k1-cutting-cta')).toBeNull();
     expect(screen.getByText(/Brak fizycznej deski kalenicowej/)).toBeTruthy();
@@ -1958,9 +1949,7 @@ describe('dual-mode parametric workbench', () => {
     render(<App />);
     builder();
     act(() => useAssembly.getState().setRidgeConnection('half-lap'));
-    fireEvent.click(
-      screen.getByRole('tab', { name: 'Perspektywa: Materiały' }),
-    );
+    fireEvent.click(screen.getByRole('tab', { name: 'Sekcja: Materiały' }));
     await screen.findByTestId('material-schedule');
     expect(screen.queryByTestId('k1-cutting-cta')).toBeNull();
     expect(
@@ -1972,9 +1961,7 @@ describe('dual-mode parametric workbench', () => {
     render(<App />);
     builder();
     act(() => useAssembly.getState().setRidgeConnection('direct-meeting'));
-    fireEvent.click(
-      screen.getByRole('tab', { name: 'Perspektywa: Materiały' }),
-    );
+    fireEvent.click(screen.getByRole('tab', { name: 'Sekcja: Materiały' }));
     await screen.findByTestId('material-schedule');
     expect(screen.getByTestId('k1-cutting-cta')).toBeTruthy();
   });
@@ -1987,9 +1974,7 @@ describe('dual-mode parametric workbench', () => {
       useAssembly.getState().setRoofStructureSystem('rafter-collar-tie'),
     );
     expect(useAssembly.getState().historyPast.length).toBeGreaterThan(history);
-    fireEvent.click(
-      screen.getByRole('tab', { name: 'Perspektywa: Materiały' }),
-    );
+    fireEvent.click(screen.getByRole('tab', { name: 'Sekcja: Materiały' }));
     await screen.findByTestId('material-schedule');
     expect(screen.getAllByText('C1', { exact: false }).length).toBeGreaterThan(
       0,
@@ -2002,9 +1987,7 @@ describe('dual-mode parametric workbench', () => {
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: 'Krokiew narożna' }));
     builder();
-    fireEvent.click(
-      screen.getByRole('tab', { name: 'Perspektywa: Materiały' }),
-    );
+    fireEvent.click(screen.getByRole('tab', { name: 'Sekcja: Materiały' }));
     await screen.findByTestId('material-schedule');
     const jackRows = screen
       .getAllByTestId('material-schedule-row')
@@ -2033,9 +2016,7 @@ describe('dual-mode parametric workbench', () => {
       useAssembly.getState().projectDocument,
     );
 
-    fireEvent.click(
-      screen.getByRole('tab', { name: 'Perspektywa: Materiały' }),
-    );
+    fireEvent.click(screen.getByRole('tab', { name: 'Sekcja: Materiały' }));
     await screen.findByTestId('material-schedule');
     const summaries = screen.getAllByTestId('material-build-up-summary');
     expect(summaries).toHaveLength(1);
@@ -2126,7 +2107,7 @@ describe('dual-mode parametric workbench', () => {
     vi.stubGlobal('ResizeObserver', NarrowResizeObserver);
     const { container } = render(<App />);
     builder();
-    const preset = screen.getByRole('tab', { name: 'Perspektywa: Materiały' });
+    const preset = screen.getByRole('tab', { name: 'Sekcja: Materiały' });
     fireEvent.click(preset);
     expect(preset.getAttribute('aria-selected')).toBe('true');
     expect(await screen.findByTestId('material-schedule')).toBeTruthy();
@@ -2201,7 +2182,7 @@ describe('dual-mode parametric workbench', () => {
     const { container } = render(<App />);
     expect(screen.queryByRole('tab', { name: 'Pokrycie' })).toBeNull();
     builder();
-    const coveringTab = screen.getByRole('tab', { name: 'Pokrycie' });
+    const coveringTab = screen.getByRole('tab', { name: 'Sekcja: Pokrycie' });
     const historyBeforeTask = useAssembly.getState().historyPast.length;
     fireEvent.click(coveringTab);
     expect(useAssembly.getState().historyPast).toHaveLength(historyBeforeTask);
@@ -2255,6 +2236,7 @@ describe('dual-mode parametric workbench', () => {
       historyBeforeFit + 1,
     );
     expect(screen.queryByText(/Włącz i skonfiguruj łaty/)).toBeNull();
+    fireEvent.click(screen.getByRole('tab', { name: 'Sekcja: Pokrycie' }));
     fireEvent.click(screen.getByRole('tab', { name: 'Warstwy' }));
     fireEvent.click(screen.getByRole('button', { name: 'Łaty' }));
     expect(
@@ -2314,7 +2296,7 @@ describe('dual-mode parametric workbench', () => {
     const { container } = render(<App />);
     fireEvent.click(screen.getByRole('button', { name: 'Krokiew narożna' }));
     builder();
-    fireEvent.click(screen.getByRole('tab', { name: 'Pokrycie' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Sekcja: Pokrycie' }));
     await addManualCovering('roof-tile');
     const block = await screen.findByTestId('covering-installation-block');
     expect(
@@ -2446,7 +2428,7 @@ describe('dual-mode parametric workbench', () => {
   it('V43B: installation mode choice is plain language and recomputes Auto', async () => {
     render(<App />);
     builder();
-    fireEvent.click(screen.getByRole('tab', { name: 'Pokrycie' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Sekcja: Pokrycie' }));
     await addManualCovering('roof-tile');
     act(() => {
       const coverings = structuredClone(
@@ -2501,6 +2483,7 @@ describe('dual-mode parametric workbench', () => {
         .getState()
         .setBattenLayout({ ...newBattenLayer(), mode: 'manual', gaugeMm: 400 }),
     );
+    fireEvent.click(screen.getByRole('tab', { name: 'Sekcja: Pokrycie' }));
     fireEvent.click(screen.getByRole('tab', { name: 'Warstwy' }));
     fireEvent.click(screen.getByRole('button', { name: 'Łaty' }));
     expect(
@@ -2514,6 +2497,7 @@ describe('dual-mode parametric workbench', () => {
         .getByTestId('batten-references')
         .querySelector('[data-owner="manual"]'),
     ).toBeTruthy();
+    // Already in the Pokrycie section (Warstwy): switch to its covering task.
     fireEvent.click(screen.getByRole('tab', { name: 'Pokrycie' }));
     await addManualCovering('roof-tile');
     const block = screen.getByTestId('covering-installation-block');
@@ -2546,7 +2530,7 @@ describe('dual-mode parametric workbench', () => {
   it('keeps an incomplete manual covering form outside canonical state and history', async () => {
     render(<App />);
     builder();
-    fireEvent.click(screen.getByRole('tab', { name: 'Pokrycie' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Sekcja: Pokrycie' }));
     const assistant = await screen.findByTestId('covering-add-assistant');
     fireEvent.click(
       assistant.querySelector<HTMLButtonElement>(
@@ -2586,7 +2570,7 @@ describe('dual-mode parametric workbench', () => {
         eaveOffsetMm: 250,
       }),
     );
-    fireEvent.click(screen.getByRole('tab', { name: 'Pokrycie' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Sekcja: Pokrycie' }));
     await addManualCovering('roof-tile');
     const gableDrawing = await screen.findByTestId('tile-layout-drawing');
     expect(gableDrawing.style.aspectRatio).not.toBe('');
@@ -2676,7 +2660,7 @@ describe('dual-mode parametric workbench', () => {
         eaveOffsetMm: 250,
       }),
     );
-    fireEvent.click(screen.getByRole('tab', { name: 'Pokrycie' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Sekcja: Pokrycie' }));
     await addManualCovering('modular-sheet');
 
     expect(await screen.findByTestId('sheet-layout-drawing')).toBeTruthy();
@@ -2715,7 +2699,7 @@ describe('dual-mode parametric workbench', () => {
   it('edits a manual metal product to cut-to-length and keeps drawing detail outside project history', async () => {
     render(<App />);
     builder();
-    fireEvent.click(screen.getByRole('tab', { name: 'Pokrycie' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Sekcja: Pokrycie' }));
     await addManualCovering('modular-sheet');
     await screen.findByTestId('sheet-layout-drawing');
     fireEvent.click(
@@ -2783,7 +2767,7 @@ describe('dual-mode parametric workbench', () => {
   it('shows a readable catalogue source and detaches revision identity after a technical edit', async () => {
     render(<App />);
     builder();
-    fireEvent.click(screen.getByRole('tab', { name: 'Pokrycie' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Sekcja: Pokrycie' }));
     await addManualCovering('modular-sheet');
     await screen.findByTestId('sheet-layout-drawing');
     act(() => {
@@ -2822,7 +2806,7 @@ describe('dual-mode parametric workbench', () => {
   it('creates standing seam, edits its width in Inspector and keeps exact run lengths compact', async () => {
     render(<App />);
     builder();
-    fireEvent.click(screen.getByRole('tab', { name: 'Pokrycie' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Sekcja: Pokrycie' }));
     await addManualCovering('standing-seam');
     expect(
       await screen.findByTestId('standing-seam-layout-drawing'),
@@ -2898,7 +2882,7 @@ describe('dual-mode parametric workbench', () => {
   it('shows standing-seam opening interruptions and separate short/long run diagnostics', async () => {
     render(<App />);
     builder();
-    fireEvent.click(screen.getByRole('tab', { name: 'Pokrycie' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Sekcja: Pokrycie' }));
     await addManualCovering('standing-seam');
     await screen.findByTestId('standing-seam-layout-drawing');
     act(() => {
@@ -2943,7 +2927,7 @@ describe('dual-mode parametric workbench', () => {
         eaveOffsetMm: 250,
       }),
     );
-    fireEvent.click(screen.getByRole('tab', { name: 'Pokrycie' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Sekcja: Pokrycie' }));
     await addManualCovering('roof-tile');
     act(() => {
       const coverings = structuredClone(
@@ -2984,7 +2968,7 @@ describe('dual-mode parametric workbench', () => {
         eaveOffsetMm: 250,
       }),
     );
-    fireEvent.click(screen.getByRole('tab', { name: 'Pokrycie' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Sekcja: Pokrycie' }));
     await addManualCovering('roof-tile');
     fireEvent.click(screen.getByRole('button', { name: '+ Dodaj pokrycie' }));
     await addManualCovering('modular-sheet');
@@ -3007,7 +2991,7 @@ describe('dual-mode parametric workbench', () => {
   it('marks overlapping primary coverings as conflicted and emits no duplicate quantity', async () => {
     render(<App />);
     builder();
-    fireEvent.click(screen.getByRole('tab', { name: 'Pokrycie' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Sekcja: Pokrycie' }));
     await addManualCovering('roof-tile');
     fireEvent.click(screen.getByRole('button', { name: '+ Dodaj pokrycie' }));
     await addManualCovering('modular-sheet');

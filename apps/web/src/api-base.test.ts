@@ -1,6 +1,6 @@
 ﻿// @vitest-environment jsdom
 import { expect, it } from 'vitest';
-import { resolveApiBaseUrl } from './api-base';
+import { isCrossOriginApi, resolveApiBaseUrl } from './api-base';
 
 it('connects local Apache builds to Node while keeping Vite and Node same-origin', () => {
   const apache = new URL('http://localhost/RoofCalc/apps/web/dist/');
@@ -19,4 +19,14 @@ it('connects local Apache builds to Node while keeping Vite and Node same-origin
   expect(resolveApiBaseUrl(apache, false, 'https://example.com/api/')).toBe(
     'https://example.com/api',
   );
+});
+
+it('recognises a static build whose API is on another origin', () => {
+  expect(
+    isCrossOriginApi('http://127.0.0.1:3001/api', 'http://localhost'),
+  ).toBe(true);
+  expect(isCrossOriginApi('/api', 'http://127.0.0.1:5173')).toBe(false);
+  expect(
+    isCrossOriginApi('http://127.0.0.1:5173/api', 'http://127.0.0.1:5173'),
+  ).toBe(false);
 });

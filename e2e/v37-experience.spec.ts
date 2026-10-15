@@ -101,7 +101,7 @@ test.describe('V37 — new user', () => {
     );
     await expect(page.getByTestId('skeleton-drawing')).toBeVisible();
 
-    await openPerspectiveTask(page, 'project', 'covering');
+    await openPerspectiveTask(page, 'covering', 'covering');
     await addManualTile(page);
     const drawing = page.getByTestId('tile-layout-drawing');
     await expect(drawing).toHaveAttribute('data-covering-mode', 'technical');
@@ -197,7 +197,7 @@ test.describe('V37 — covering edge behaviour', () => {
     await page.locator('[data-mode="builder"]').click();
     await page.locator('.a-start-secondary > summary').click();
     await page.getByTestId('project-start-advanced').click();
-    await openPerspectiveTask(page, 'project', 'covering');
+    await openPerspectiveTask(page, 'covering', 'covering');
     await addManualTile(page);
     await expect(page.locator('.a-covering-plane-outline')).toHaveCount(1);
     await expect(page.locator('.a-tile-fragment')).not.toHaveCount(0);

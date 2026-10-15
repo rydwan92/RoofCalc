@@ -1,22 +1,95 @@
+/*
+ * RoofCalc design tokens (VNext).
+ *
+ * Calm technical palette: neutral surfaces, graphite text, a deep green
+ * accent and a teal selection. Colour values below are unchanged from V21 so
+ * existing drawings keep their meaning; VNext adds the missing scales
+ * (space, radius, type, elevation, focus, motion) and semantic state
+ * colours. New UI must use these tokens instead of literal values.
+ */
 :root {
+  /* Surfaces and text */
   --ui-background: #f7f8f5;
   --ui-surface: #ffffff;
+  --ui-surface-raised: #ffffff;
+  --ui-surface-sunken: #f1f4f0;
   --ui-canvas: #f4f7f3;
   --ui-panel: #ffffff;
   --ui-line: #dce3dc;
   --ui-line-strong: #80978c;
   --ui-text: #24382f;
   --ui-text-muted: #667b71;
+  --ui-text-subtle: #879a90;
+  --ui-text-on-accent: #ffffff;
+
+  /* Brand and interaction */
   --ui-accent: #235344;
+  --ui-accent-hover: #1b4337;
+  --ui-accent-soft: #e6efe9;
   --ui-selection: #007f73;
+  --ui-selection-soft: #cce9df;
   --ui-related: #4f8175;
+
+  /* Semantic states (text colour / soft fill) */
+  --ui-success: #2f7a4f;
+  --ui-success-soft: #e5f3ea;
+  --ui-attention: #9a5b12;
+  --ui-attention-soft: #fff2d9;
   --ui-warning: #b35b2d;
   --ui-danger: #b42318;
+  --ui-danger-soft: #fdecea;
+  --ui-info: #2f5f8f;
+  --ui-info-soft: #e8f0f8;
+
+  /* Domain drawing colours (meaningful; never themed by accident) */
   --ui-timber: #b8865d;
   --ui-collar-tie: #8a4a6b;
   --ui-covering-full: #5b8f7c;
   --ui-covering-cut: #c38320;
   --ui-opening: #b42318;
+
+  /* Space (4 px grid) */
+  --ui-space-1: 4px;
+  --ui-space-2: 8px;
+  --ui-space-3: 12px;
+  --ui-space-4: 16px;
+  --ui-space-5: 20px;
+  --ui-space-6: 24px;
+  --ui-space-8: 32px;
+
+  /* Radius */
+  --ui-radius-sm: 6px;
+  --ui-radius-md: 9px;
+  --ui-radius-lg: 12px;
+  --ui-radius-pill: 999px;
+
+  /* Typography */
+  --ui-font: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+  --ui-font-numeric: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  --ui-text-xs: 11px;
+  --ui-text-sm: 12.5px;
+  --ui-text-md: 14px;
+  --ui-text-lg: 16px;
+  --ui-text-xl: 20px;
+  --ui-weight-regular: 450;
+  --ui-weight-medium: 600;
+  --ui-weight-bold: 720;
+  --ui-tracking-caps: 0.06em;
+
+  /* Elevation */
+  --ui-shadow-1: 0 1px 2px #17302714;
+  --ui-shadow-2: 0 4px 14px #1730271f;
+  --ui-shadow-3: 0 18px 60px #0b241e40;
+
+  /* Focus and controls */
+  --ui-focus-ring: 0 0 0 3px #007f7366;
+  --ui-control-height: 36px;
+  --ui-touch-target: 44px;
+
+  /* Motion: short and only for state feedback */
+  --ui-duration: 120ms;
+  --ui-ease: cubic-bezier(0.2, 0, 0, 1);
+
   /* Compatibility aliases for the small shared shell. */
   --bg: var(--ui-background);
   --surface: var(--ui-surface);
@@ -27,5 +100,11 @@
   --line: var(--ui-line);
   --accent: #d8eaac;
   --radius: 16px;
-  --font: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font: var(--ui-font);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --ui-duration: 0ms;
+  }
 }

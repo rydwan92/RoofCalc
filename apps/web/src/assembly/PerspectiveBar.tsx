@@ -1,23 +1,25 @@
 import {
-  ChevronDown,
+  Check,
   Droplets,
   FileText,
   Grid3X3,
   Hammer,
   House,
+  Keyboard,
   Layers3,
   LayoutGrid,
   ListTree,
   Scissors,
   SquareDashed,
+  Triangle,
   Wallet,
-  Wrench,
 } from 'lucide-react';
-import { useRef } from 'react';
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { JourneyOverviewKey, ProjectJourney } from './project-journey';
 import { useAssembly } from './store';
 import {
-  perspectiveForTask,
+  activePerspective,
   tasksForPerspective,
   WORKBENCH_PERSPECTIVES,
   type MaterialsView,
@@ -27,8 +29,9 @@ import {
 
 export const PERSPECTIVE_ICON: Record<WorkbenchPerspective, typeof LayoutGrid> =
   {
-    project: LayoutGrid,
-    execution: Hammer,
+    project: Triangle,
+    structure: Hammer,
+    covering: Grid3X3,
     materials: ListTree,
     costing: Wallet,
     documents: FileText,
@@ -45,16 +48,15 @@ const TASK_ICON: Record<ViewPreset, typeof LayoutGrid> = {
   documents: FileText,
 };
 
-const ALL_DESTINATIONS: readonly ViewPreset[] = [
-  'construction',
-  'openings',
-  'layers',
-  'covering',
-  'cuts',
-  'materials',
-  'costing',
-  'documents',
-];
+/** Each section carries the status of its journey stage (V53 overview). */
+export const SECTION_STAGE: Record<WorkbenchPerspective, JourneyOverviewKey> = {
+  project: 'geometry',
+  structure: 'construction',
+  covering: 'covering',
+  materials: 'materials',
+  costing: 'cost',
+  documents: 'documents',
+};
 
 const MATERIAL_VIEWS: readonly MaterialsView[] = [
   'plan',
@@ -65,90 +67,145 @@ const MATERIAL_VIEWS: readonly MaterialsView[] = [
 ];
 
 /**
- * V37 primary navigation: five perspectives. Secondary tasks are contextual
- * (see ContextualTaskTabs). Switching perspective is transient view state and
- * clears the return trail; it never creates edit history.
+ * VNext primary navigation: ONE row of six sections. It replaces the V53
+ * stage strip and the V37 perspective bar, which described the same project
+ * twice. Each section shows its journey status; switching is transient view
+ * state and creates no edit history. The compact "next action" sits at the
+ * end of the same row (`trailing`).
  */
-export function PerspectiveBar() {
-  const state = useAssembly();
+export function WorkspaceNav({
+  journey,
+  onSection,
+  trailing,
+}: {
+  journey?: ProjectJourney;
+  onSection: (perspective: WorkbenchPerspective) => void;
+  trailing?: ReactNode;
+}) {
+  const workbench = useAssembly((state) => state.workbench);
   const { t } = useTranslation();
-  const active = perspectiveForTask(state.workbench.viewPreset);
-  const menu = useRef<HTMLDetailsElement>(null);
+  const active = activePerspective(workbench);
   return (
-    <div className="a-perspective-row">
+    <div className="a-section-row">
       <nav
-        className="a-perspective-bar"
-        role="tablist"
-        aria-label={t('assembly.perspective')}
+        className="a-section-nav"
+        aria-label={t('assembly.nav.sections')}
+        data-testid="journey-overview"
       >
-        {WORKBENCH_PERSPECTIVES.map((perspective) => {
-          const Icon = PERSPECTIVE_ICON[perspective];
-          const name = t(`assembly.perspective.${perspective}`);
-          return (
-            <button
-              key={perspective}
-              type="button"
-              role="tab"
-              data-perspective={perspective}
-              aria-selected={active === perspective}
-              aria-label={t('assembly.perspectiveLabel', { name })}
-              onClick={() => state.navigatePerspective(perspective)}
-            >
-              <Icon size={16} aria-hidden="true" />
-              <span aria-hidden="true">{name}</span>
-            </button>
-          );
-        })}
-      </nav>
-      <details className="a-nav-jump" ref={menu}>
-        <summary title={t('assembly.nav.jumpHint')}>
-          <Wrench size={15} aria-hidden="true" />
-          <span>{t('assembly.nav.jump')}</span>
-          <ChevronDown size={14} aria-hidden="true" />
-        </summary>
-        <div role="menu" aria-label={t('assembly.nav.jump')}>
-          {ALL_DESTINATIONS.map((task) => {
-            const Icon = TASK_ICON[task];
+        <ol role="tablist" aria-label={t('assembly.nav.sections')}>
+          {WORKBENCH_PERSPECTIVES.map((perspective, index) => {
+            const Icon = PERSPECTIVE_ICON[perspective];
+            const stage = journey?.overview.find(
+              (item) => item.key === SECTION_STAGE[perspective],
+            );
+            const name = t(`assembly.perspective.${perspective}`);
+            const status = stage
+              ? t(`assembly.journey.overviewStatus.${stage.status}`)
+              : undefined;
             return (
-              <button
-                key={task}
-                type="button"
-                role="menuitem"
-                data-nav-shortcut={task}
-                onClick={() => {
-                  state.navigatePerspective(perspectiveForTask(task));
-                  state.setViewPreset(task);
-                  menu.current?.removeAttribute('open');
-                }}
-              >
-                <Icon size={15} aria-hidden="true" />
-                <span>
-                  {t(`assembly.perspective.${perspectiveForTask(task)}`)} ›{' '}
-                  {t(
-                    task === 'materials'
-                      ? 'assembly.nav.materials.plan'
-                      : task === 'documents'
-                        ? 'assembly.nav.documentHub'
-                        : `assembly.${task}Preset`,
+              <li key={perspective} data-status={stage?.status}>
+                <button
+                  type="button"
+                  role="tab"
+                  data-perspective={perspective}
+                  data-journey-step={SECTION_STAGE[perspective]}
+                  aria-selected={active === perspective}
+                  aria-current={active === perspective ? 'page' : undefined}
+                  aria-label={t('assembly.perspectiveLabel', { name })}
+                  aria-describedby={
+                    status ? `section-status-${perspective}` : undefined
+                  }
+                  title={`${name}${status ? ` · ${status}` : ''} (Alt+${index + 1})`}
+                  onClick={() => onSection(perspective)}
+                >
+                  <Icon size={16} aria-hidden="true" />
+                  <span className="a-section-name" aria-hidden="true">
+                    {name}
+                  </span>
+                  {stage && (
+                    <i
+                      className="a-section-status"
+                      data-status={stage.status}
+                      aria-hidden="true"
+                    >
+                      {stage.status === 'complete' && <Check size={10} />}
+                    </i>
                   )}
-                </span>
-              </button>
+                  {status && (
+                    <span
+                      id={`section-status-${perspective}`}
+                      className="a-visually-hidden"
+                    >
+                      {status}
+                    </span>
+                  )}
+                </button>
+              </li>
             );
           })}
-        </div>
-      </details>
+        </ol>
+      </nav>
+      {trailing}
     </div>
   );
 }
 
+/** The keyboard shortcuts of the workbench, discoverable in one place. */
+export function ShortcutHelp() {
+  const { t } = useTranslation();
+  const rows: [string, string][] = [
+    ['Alt+1 … Alt+6', t('assembly.nav.shortcuts.section')],
+    ['[  ]', t('assembly.nav.shortcuts.panels')],
+    ['M', t('assembly.nav.shortcuts.measure')],
+    ['F', t('assembly.nav.shortcuts.fit')],
+    ['Ctrl+Z / Ctrl+Y', t('assembly.nav.shortcuts.undo')],
+    ['Ctrl+D', t('assembly.nav.shortcuts.duplicate')],
+    ['Alt+←', t('assembly.nav.shortcuts.back')],
+    ['Esc', t('assembly.nav.shortcuts.escape')],
+  ];
+  return (
+    <details className="a-shortcuts" data-testid="workbench-shortcuts">
+      <summary
+        className="a-icon"
+        aria-label={t('assembly.nav.shortcuts.open')}
+        title={t('assembly.nav.shortcuts.open')}
+      >
+        <Keyboard size={17} aria-hidden="true" />
+      </summary>
+      <div role="dialog" aria-label={t('assembly.nav.shortcuts.title')}>
+        <strong>{t('assembly.nav.shortcuts.title')}</strong>
+        <dl>
+          {rows.map(([keys, label]) => (
+            <div key={keys}>
+              <dt>
+                <kbd>{keys}</kbd>
+              </dt>
+              <dd>{label}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+    </details>
+  );
+}
+
+function taskLabelKey(task: ViewPreset, perspective: WorkbenchPerspective) {
+  if (task === 'construction')
+    return perspective === 'structure'
+      ? 'assembly.nav.task.structure'
+      : 'assembly.nav.task.geometry';
+  if (task === 'documents') return 'assembly.nav.documentHub';
+  return `assembly.${task}Preset`;
+}
+
 /**
- * Secondary navigation for the active perspective only (V37 §2). Materials
+ * Secondary navigation for the active section only (V37 §2). Materials
  * exposes its local views as real tabs, so K1 cutting has a stable place.
  */
 export function ContextualTaskTabs({ k1Ready = true }: { k1Ready?: boolean }) {
   const state = useAssembly();
   const { t } = useTranslation();
-  const perspective = perspectiveForTask(state.workbench.viewPreset);
+  const perspective = activePerspective(state.workbench);
   if (perspective === 'materials')
     return (
       <div
@@ -186,13 +243,14 @@ export function ContextualTaskTabs({ k1Ready = true }: { k1Ready?: boolean }) {
         ))}
       </div>
     );
+  const tasks = tasksForPerspective(perspective);
   return (
     <div
       className="a-context-tabs"
       role="tablist"
       aria-label={t('assembly.nav.contextTasks')}
     >
-      {tasksForPerspective(perspective).map((task) => {
+      {tasks.map((task) => {
         const Icon = TASK_ICON[task];
         return (
           <button
@@ -204,13 +262,7 @@ export function ContextualTaskTabs({ k1Ready = true }: { k1Ready?: boolean }) {
             onClick={() => state.setViewPreset(task)}
           >
             <Icon size={15} aria-hidden="true" />
-            <span>
-              {t(
-                task === 'documents'
-                  ? 'assembly.nav.documentHub'
-                  : `assembly.${task}Preset`,
-              )}
-            </span>
+            <span>{t(taskLabelKey(task, perspective))}</span>
           </button>
         );
       })}

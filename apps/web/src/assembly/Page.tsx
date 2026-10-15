@@ -44,6 +44,7 @@ import {
   SlidersHorizontal,
   Wrench,
   Maximize,
+  Printer,
 } from 'lucide-react';
 import {
   HIP_RAFTER_PROTOTYPE_ID,
@@ -93,7 +94,11 @@ import {
 import { ContextualResults } from './Summary';
 import { Toolbox } from './Toolbox';
 import { WorkbenchControls, MobileViewSettings } from './WorkbenchControls';
-import { ContextualTaskTabs, PerspectiveBar } from './PerspectiveBar';
+import {
+  ContextualTaskTabs,
+  ShortcutHelp,
+  WorkspaceNav,
+} from './PerspectiveBar';
 import {
   DocumentHub,
   HUB_DOCUMENT_SECTIONS,
@@ -101,7 +106,11 @@ import {
 } from './DocumentHub';
 import { downloadMaterialCsv } from './material-csv';
 import { downloadCostEstimateCsv } from './cost-csv';
-import { workbenchLocation } from './workbench';
+import {
+  WORKBENCH_PERSPECTIVES,
+  workbenchLocation,
+  type WorkbenchPerspective,
+} from './workbench';
 import { projectExampleDocument } from './project-examples';
 import { PreparationPlan } from './PreparationPlan';
 import { Inspector } from './Inspector';
@@ -188,6 +197,8 @@ import { resolveBattenAutoComposition } from './batten-composition';
 import './styles.css';
 import './v37.css';
 import '../business/business.css';
+// VNext shell last: it refines the chrome above through design tokens.
+import './workspace.css';
 
 const creatorStartSeenKey = 'cieslacalc.creatorStartSeen.v1';
 
@@ -268,6 +279,12 @@ const CostWorkspace = lazy(() =>
 const TechnicalScene3D = lazy(() =>
   import('./scene3d/TechnicalScene3D').then((module) => ({
     default: module.TechnicalScene3D,
+  })),
+);
+/** VNext: PDF/photo import; pdf.js and its worker load only with it. */
+const DocumentImportWorkspace = lazy(() =>
+  import('../document-import/DocumentImportWorkspace').then((module) => ({
+    default: module.DocumentImportWorkspace,
   })),
 );
 const IfcImportWorkspace = lazy(() =>
@@ -363,9 +380,6 @@ function AssemblyPageContent({
     (typeof allDetailPreviews)[number] | undefined
   >();
   const [readinessOpen, setReadinessOpen] = useState(false);
-  const [foundationFocus, setFoundationFocus] = useState<
-    'geometry' | 'construction'
-  >('construction');
   const [actionFeedback, setActionFeedback] = useState<{
     message: string;
     historyLength: number;
@@ -403,6 +417,7 @@ function AssemblyPageContent({
       rememberProjectVisit(activeProjectId);
   }, [activeProjectId, projectSessionState.freshProject]);
   const [ifcImportOpen, setIfcImportOpen] = useState(false);
+  const [documentImportOpen, setDocumentImportOpen] = useState(false);
   const [reuseFreshProject, setReuseFreshProject] = useState(false);
   const workbench = state.workbench;
   const mobile = useMobileWorkbench();
@@ -1899,10 +1914,12 @@ function AssemblyPageContent({
     switch (action) {
       case 'review-geometry':
       case 'review-structure':
-        setFoundationFocus(
-          action === 'review-geometry' ? 'geometry' : 'construction',
-        );
         runProjectAction('completeGeometry');
+        useAssembly
+          .getState()
+          .navigatePerspective(
+            action === 'review-geometry' ? 'project' : 'structure',
+          );
         state.select('roof');
         state.setInspectorOpen(true);
         requestAnimationFrame(() => {
@@ -2007,6 +2024,30 @@ function AssemblyPageContent({
         return;
     }
   };
+  /**
+   * VNext primary navigation. Projekt and Konstrukcja share the construction
+   * drawing; Konstrukcja also reveals the structure settings group, without
+   * moving keyboard focus into a field.
+   */
+  const openSection = (perspective: WorkbenchPerspective) => {
+    setReadinessOpen(false);
+    closeDocument();
+    // Navigation only: selection, panels and drawing settings stay as the
+    // user left them. Konstrukcja reveals the structure settings group.
+    state.navigatePerspective(perspective);
+    if (perspective !== 'structure') return;
+    if (mobile) {
+      // On a phone the structure settings live in the inspector sheet.
+      state.setInspectorOpen(true);
+      state.setMobilePanel('inspector');
+    }
+    requestAnimationFrame(() => {
+      const settings = document.querySelector<HTMLDetailsElement>(
+        '[data-testid="structure-settings"]',
+      );
+      if (settings) settings.open = true;
+    });
+  };
   const applySafeRepair = () => {
     const before = useAssembly.getState().historyPast.length;
     state.fitInstallationToRoof();
@@ -2015,6 +2056,8 @@ function AssemblyPageContent({
   };
   const wideWorkspace =
     workbench.viewPreset === 'costing' || workbench.viewPreset === 'documents';
+  const foundationFocus =
+    workbench.constructionSection === 'structure' ? 'construction' : 'geometry';
   // An empty covering task has nothing to edit: give the space to the
   // "Dodaj pokrycie" empty state instead of a blank Inspector.
   const coveringWithoutProduct =
@@ -2193,6 +2236,40 @@ function AssemblyPageContent({
           else state.stepBackContext();
           return;
         }
+        if (workbench.mode === 'builder' && e.key === '?') {
+          const help = document.querySelector<HTMLDetailsElement>(
+            '[data-testid="workbench-shortcuts"]',
+          );
+          if (help) {
+            e.preventDefault();
+            help.open = !help.open;
+          }
+          return;
+        }
+        if (
+          workbench.mode === 'builder' &&
+          e.altKey &&
+          !e.ctrlKey &&
+          /^[1-6]$/.test(e.key)
+        ) {
+          e.preventDefault();
+          openSection(WORKBENCH_PERSPECTIVES[Number(e.key) - 1]!);
+          return;
+        }
+        if (
+          workbench.mode === 'builder' &&
+          !mobile &&
+          !e.ctrlKey &&
+          !e.metaKey &&
+          !e.altKey &&
+          (e.key === '[' || e.key === ']')
+        ) {
+          e.preventDefault();
+          if (e.key === '[')
+            state.setToolboxCollapsed(!workbench.toolboxCollapsed);
+          else state.setInspectorOpen(!workbench.inspectorOpen);
+          return;
+        }
         if (
           e.altKey &&
           e.key === 'ArrowLeft' &&
@@ -2266,6 +2343,7 @@ function AssemblyPageContent({
               setProjectStartMode('edit');
             }}
             onImportIfc={() => setIfcImportOpen(true)}
+            onImportDocument={() => setDocumentImportOpen(true)}
           />
         )}
         {workbench.mode === 'builder' && (
@@ -2274,8 +2352,10 @@ function AssemblyPageContent({
             className="a-export-trigger"
             data-testid="project-execution-export"
             onClick={openExecutionExport}
+            title={t('assembly.nav.printTitle')}
           >
-            {t('assembly.perspective.documents')}
+            <Printer size={16} aria-hidden="true" />
+            {t('assembly.nav.print')}
           </button>
         )}
         {exportError && <span role="alert">{exportError}</span>}
@@ -2318,6 +2398,7 @@ function AssemblyPageContent({
               </button>
             </div>
           )}
+          {workbench.mode === 'builder' && !mobile && <ShortcutHelp />}
           {mobile && (
             <details className="a-header-overflow">
               <summary
@@ -2541,34 +2622,48 @@ function AssemblyPageContent({
                   onAction={runCommercialAction}
                 />
               )}
-              <ProjectReadinessBar
-                key={projectSessionState.active?.id ?? 'unsaved'}
-                readiness={projectReadiness}
-                journey={projectJourney}
-                currentStage={
-                  (
-                    {
-                      construction: foundationFocus,
-                      openings: 'geometry',
-                      layers: 'layers',
-                      covering: 'covering',
-                      cuts: 'construction',
-                      materials:
-                        workbench.materialsView === 'system' ||
-                        workbench.materialsView === 'drainage'
-                          ? 'roof-system'
-                          : 'materials',
-                      costing: 'cost',
-                      documents: 'documents',
-                    } as Partial<Record<string, JourneyStageKey>>
-                  )[workbench.viewPreset]
-                }
-                unit={state.unit}
-                onAction={runReadinessAction}
-                onJourneyAction={runJourneyAction}
-                onOpenPanel={() => setReadinessOpen(true)}
-                onOverview={() => runProjectAction('openSummary')}
-              />
+              {(() => {
+                const readinessBar = (
+                  <ProjectReadinessBar
+                    compact
+                    key={projectSessionState.active?.id ?? 'unsaved'}
+                    readiness={projectReadiness}
+                    journey={projectJourney}
+                    currentStage={
+                      (
+                        {
+                          construction: foundationFocus,
+                          openings: 'geometry',
+                          layers: 'layers',
+                          covering: 'covering',
+                          cuts: 'construction',
+                          materials:
+                            workbench.materialsView === 'system' ||
+                            workbench.materialsView === 'drainage'
+                              ? 'roof-system'
+                              : 'materials',
+                          costing: 'cost',
+                          documents: 'documents',
+                        } as Partial<Record<string, JourneyStageKey>>
+                      )[workbench.viewPreset]
+                    }
+                    unit={state.unit}
+                    onAction={runReadinessAction}
+                    onJourneyAction={runJourneyAction}
+                    onOpenPanel={() => setReadinessOpen(true)}
+                    onOverview={() => runProjectAction('openSummary')}
+                  />
+                );
+                return mobile ? (
+                  readinessBar
+                ) : (
+                  <WorkspaceNav
+                    journey={projectJourney}
+                    onSection={openSection}
+                    trailing={readinessBar}
+                  />
+                );
+              })()}
               {readinessOpen && (
                 <ProjectReadinessPanel
                   journey={projectJourney}
@@ -2603,7 +2698,6 @@ function AssemblyPageContent({
                   />
                 )}
                 <section className="a-canvas-column">
-                  {!mobile && <PerspectiveBar />}
                   {!mobile && (
                     <WorkbenchControls
                       skeleton={skeleton}
@@ -3167,7 +3261,12 @@ function AssemblyPageContent({
                     </button>
                   </div>
                 )}
-              {mobile && <MobileTaskDock />}
+              {mobile && (
+                <MobileTaskDock
+                  journey={projectJourney}
+                  onSection={openSection}
+                />
+              )}
               {mobile && workbench.mobilePanel === 'tools' && (
                 <MobileSheet
                   title={t('assembly.toolbox')}
@@ -3304,6 +3403,20 @@ function AssemblyPageContent({
             setProjectStartMode(undefined);
             setIfcImportOpen(true);
           }}
+          onImportDocument={() => {
+            state.setMode('builder');
+            setProjectStartMode(undefined);
+            setDocumentImportOpen(true);
+          }}
+          onOpenArchive={async (contents) => {
+            await projectSession.initialize();
+            await projectSession.import(contents);
+            state.setMode('builder');
+            rememberCreatorStart();
+            setReuseFreshProject(false);
+            setProjectStartMode(undefined);
+            state.navigatePerspective('project');
+          }}
           onOpenProject={async (id) => {
             await projectSession.initialize();
             await projectSession.open(id);
@@ -3368,6 +3481,36 @@ function AssemblyPageContent({
             state.setViewPreset('construction');
           }}
         />
+      )}
+      {documentImportOpen && (
+        <Suspense
+          fallback={
+            <p className="a-loading-overlay" role="status">
+              {i18n.language.startsWith('pl')
+                ? 'Uruchamianie importu dokumentu…'
+                : 'Starting document import…'}
+            </p>
+          }
+        >
+          <DocumentImportWorkspace
+            onClose={() => setDocumentImportOpen(false)}
+            onCreate={async (template, name) => {
+              await projectSession.initialize();
+              await projectSession.createFromDocument(
+                createRoofProjectDocument(template),
+                name,
+              );
+              rememberCreatorStart();
+              projectSession.acknowledgeFreshProject();
+              setReuseFreshProject(false);
+              setProjectStartMode(undefined);
+              setDocumentImportOpen(false);
+              state.setMode('builder');
+              state.navigatePerspective('project');
+              state.setViewPreset('construction');
+            }}
+          />
+        </Suspense>
       )}
       {ifcImportOpen && (
         <Suspense fallback={<p>Uruchamianie importera IFC…</p>}>

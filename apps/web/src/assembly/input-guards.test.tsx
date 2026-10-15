@@ -109,7 +109,7 @@ describe('V44 presentation never changes quantities', () => {
       ]);
       useAssembly.getState().setBattenLayout(newBattenLayer());
     });
-    fireEvent.click(screen.getByRole('tab', { name: 'Pokrycie' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Sekcja: Pokrycie' }));
     // Whole-roof counts only; a view may add per-plane detail rows.
     const counts = async () => {
       // The covering workspace is lazy-loaded; the default 1 s wait was too
@@ -162,7 +162,7 @@ describe('V47 covering input guardrails', () => {
         }),
       ]);
     });
-    fireEvent.click(screen.getByRole('tab', { name: 'Pokrycie' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Sekcja: Pokrycie' }));
     const field = (
       await screen.findAllByLabelText(/Szerokość krycia/)
     )[0] as HTMLInputElement;

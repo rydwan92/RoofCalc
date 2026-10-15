@@ -86,7 +86,7 @@ async function stubCatalogue(page: Page) {
 
 async function openPerspective(
   page: Page,
-  perspective: 'project' | 'materials' | 'documents',
+  perspective: 'project' | 'covering' | 'materials' | 'documents',
 ) {
   await page
     .locator(`[data-perspective="${perspective}"]:visible`)
@@ -104,7 +104,7 @@ async function startProject(page: Page, hip: boolean) {
 }
 
 async function catalogueTile(page: Page) {
-  await openPerspective(page, 'project');
+  await openPerspective(page, 'covering');
   await page.locator('[data-task="covering"]:visible').first().click();
   const assistant = page.getByTestId('covering-add-assistant');
   await assistant.locator('[data-covering-family="roof-tile"]').click();
