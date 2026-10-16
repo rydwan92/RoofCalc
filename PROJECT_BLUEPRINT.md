@@ -1297,35 +1297,46 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
-## VNext — workspace, document import, SQL first-run (in progress)
+## VNext — workspace, document import, SQL first-run (completed locally, second session)
 
-- Authorized by the user's VNext prompt (2026-10-15), superseding the guided
-  workbench NEXT ACTION below; that work is in `c185a16` and is the baseline.
-- Baseline (Node 22.18 via nvm, `npx pnpm@10.15.1`): `pnpm verify` green —
-  1696 tests passed, 13 skipped; web/API/Worker dry-run builds pass.
-- Audit: `docs/ROOFCALC_VNEXT_AUDIT.md`. SQL first-run defects fixed in source
-  (cause-aware DB error codes, type-only drizzle config import, empty local
-  password, doctor blocks migrations when `explicit_defaults_for_timestamp`
-  is OFF). Full bootstrap verified twice on an isolated MariaDB 10.4 instance.
-- Done: `packages/document-import-core` (ADR-012) + `apps/web/src/document-import/`
-  (pdf.js in a bundled `.js` worker, review UI, manual calibration); start
-  screen card + "open project file"; ONE six-section navigation with journey
-  statuses (`constructionSection` transient state), compact next action,
-  Alt+1…6 / [ ] / ? shortcuts; tokens extended + `workspace.css`; price
-  freshness (`pricing-core/freshness.ts`) in Material Plan; Business login
-  states + CORS for setup status on the static XAMPP build.
-- Validation: final `pnpm verify` green (1783 passed, 13 skipped; web/API/Worker
-  builds, bundle guard clean); real-PDF integration test; browser QA desktop 1440×900 and phone
-  390×844 (Vite) and static build via XAMPP Apache. Last full `verify` was
-  re-running at the usage limit — check `pnpm verify` first.
-- Not done: full `pnpm e2e` (new `e2e/document-import.spec.ts` and updated
-  selectors are unexecuted), dark theme (deliberately not exposed),
-  automatic geometry recognition, OCR/AI engines (descriptors only).
-- Local test artefacts: isolated MariaDB (scratch datadir, port 3317) and DB
-  `roofcalc_vnext_audit`/`roofcalc_vnext_probe` on XAMPP 3306 can be dropped.
-- NEXT ACTION: run `pnpm verify` and `pnpm e2e` (start `web-preview` first;
-  global pnpm shim hangs on this machine), fix any selector fallout, then
-  merge the branch.
+- Authorized by the user's VNext prompt (2026-10-15) and the follow-up "extend
+  the work, professionalize the look, push at the end" (2026-10-16). The first
+  session is commit `d9ae41e` on `origin/claude/roofcalc-vnext-audit-afa57d`;
+  the baseline is `c185a16` (1696 tests passed, 13 skipped).
+- Audit and final state: `docs/ROOFCALC_VNEXT_AUDIT.md` §7. Architecture:
+  `docs/ARCHITECTURE_VNEXT_WORKSPACE_AND_DOCUMENT_IMPORT.md`, ADR-012.
+- First session (in `d9ae41e`): `packages/document-import-core` +
+  `apps/web/src/document-import/` (pdf.js in a bundled `.js` worker, review
+  UI, manual calibration); start-screen import card and "open project file";
+  ONE six-section navigation with journey statuses, compact next action,
+  Alt+1…6 / [ ] / ? shortcuts; tokens + `workspace.css`; price freshness;
+  Business login states + CORS for the static XAMPP build; SQL first-run fixes.
+- Second session: vector-geometry engine (`document-import-core/geometry.ts`,
+  `apps/web/src/document-import/pdf-geometry.ts`) — closed building outline at
+  the stated scale, cross-checked against written dimensions, decides the unit
+  of a bare number; legacy pdf.js build (Playwright Chromium lacks
+  `getOrInsertComputed`); optional `ExecutionDocument.source.inputFingerprint`
+  (`rc1-…`, SCHEMA_REGISTRY §7); UI polish — Material Plan roof-system list,
+  neutral cost total, zoom controls anchored to the drawing
+  (`.a-skeleton-stage`), "Inne widoki", 3D pick aperture (`scenePickOffsets`,
+  UX contract §7.1), compact top HUD card on phones, translated
+  `projectionLabel` (was an i18next "returned an object" string); dead V34B/V37
+  perspective-bar and "Przejdź do" CSS removed.
+- Validation: `pnpm verify` green — 168 files (2 skipped), 1799 tests passed,
+  13 skipped; web/API/Worker builds and bundle guard clean. Full `pnpm e2e`:
+  143 passed, 31 conditionally skipped,
+  0 failed (desktop 1440×900 and phone 390×844). The two phone 3D tests that already failed at `c185a16` now
+  pass (the picking scan skips the HUD card; touch aperture).
+- Not done: dark theme (not exposed: ~800 hard-coded colours), OCR / AI Vision
+  (descriptors only), non-rectangular outline recognition, `Page.tsx` split,
+  shared DEV Hyperdrive check (operator).
+- Local artefacts: isolated MariaDB (scratch datadir, port 3317) and DBs
+  `roofcalc_vnext_audit` / `roofcalc_vnext_probe` on XAMPP 3306 can be
+  dropped; the user's `cieslacalc` DB is untouched at 1/8 migrations and needs
+  `explicit_defaults_for_timestamp=ON` before `pnpm db:setup:local`.
+- NEXT ACTION: review and merge `claude/roofcalc-vnext-audit-afa57d` into
+  `main` (user decision); then the dark theme needs the legacy hard-coded
+  colours moved onto `--ui-*` tokens first.
 
 ## Guided Workbench UX / Project Journey — validation in progress
 

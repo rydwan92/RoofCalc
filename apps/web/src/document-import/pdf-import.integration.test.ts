@@ -6,7 +6,9 @@ import {
   EMPTY_DECISIONS,
   mapDraftToRoofStart,
   recognizeTextLayer,
+  recognizeVectorGeometry,
   type ImportSource,
+  type PageSegment,
   type TextLayerPage,
 } from '@cieslacalc/document-import-core';
 import {
@@ -20,6 +22,7 @@ import {
   projectStartValuesFromTemplate,
   validateProjectStart,
 } from '../assembly/project-start';
+import { segmentsFromOperatorList } from './pdf-geometry';
 import { textItemsFromPdf, type Matrix } from './pdf-text';
 
 /**
@@ -28,6 +31,12 @@ import { textItemsFromPdf, type Matrix } from './pdf-text';
  * project-start mapping the Creator and the IFC import use.
  */
 async function readPdf(bytes: Uint8Array): Promise<TextLayerPage[]> {
+  return (await readPdfDocument(bytes)).pages;
+}
+
+async function readPdfDocument(
+  bytes: Uint8Array,
+): Promise<{ pages: TextLayerPage[]; segments: PageSegment[] }> {
   const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
   const task = pdfjs.getDocument({
     data: bytes.slice(),
@@ -40,6 +49,7 @@ async function readPdf(bytes: Uint8Array): Promise<TextLayerPage[]> {
   const document = await task.promise;
   try {
     const pages: TextLayerPage[] = [];
+    const segments: PageSegment[] = [];
     for (let number = 1; number <= document.numPages; number += 1) {
       const page = await document.getPage(number);
       const viewport = page.getViewport({ scale: 1 });
@@ -54,8 +64,16 @@ async function readPdf(bytes: Uint8Array): Promise<TextLayerPage[]> {
           viewport.transform as unknown as Matrix,
         ),
       });
+      segments.push(
+        ...segmentsFromOperatorList(
+          number,
+          await page.getOperatorList(),
+          pdfjs.OPS,
+          viewport.transform as unknown as Matrix,
+        ),
+      );
     }
-    return pages;
+    return { pages, segments };
   } finally {
     await task.destroy();
   }
@@ -190,7 +208,54 @@ describe('PDF document import (real pdf.js parser)', () => {
     );
   });
 
-  it('keeps unitless hip values uncertain until confirmed', async () => {
+  it('measures the drawn outline at 1:100 and confirms the written dimensions', async () => {
+    const bytes = createRoofPlanPdf(gableRoofPlanSpec());
+    const { pages, segments } = await readPdfDocument(bytes);
+    const text = recognizeTextLayer(pages);
+    const vector = recognizeVectorGeometry({
+      pages: pages.map((page) => ({ ...page, segments })),
+      scale: text.scale,
+      written: text.measurements,
+    });
+    expect(
+      vector.measurements.map((item) => [item.field, item.valueMm]),
+    ).toEqual([
+      ['buildingLength', 12_400],
+      ['buildingWidth', 9_600],
+    ]);
+    const checks = (vector.relations ?? []).flatMap((relation) =>
+      relation.kind === 'scale-cross-check' ? [relation.deviationRatio] : [],
+    );
+    expect(checks).toHaveLength(2);
+    for (const deviation of checks) expect(deviation).toBeLessThan(0.001);
+    expect(vector.warnings).toEqual([]);
+  });
+
+  it('decodes a re-rectangle outline and lets it decide unitless values', async () => {
+    const bytes = createRoofPlanPdf(hipRoofPlanSpec());
+    const { pages, segments } = await readPdfDocument(bytes);
+    const text = recognizeTextLayer(pages);
+    const vector = recognizeVectorGeometry({
+      pages: pages.map((page) => ({ ...page, segments })),
+      scale: text.scale,
+      written: text.measurements,
+    });
+    const draft = deriveImportedRoofDraft({
+      source: source(bytes, pages),
+      results: [text, vector],
+    });
+    expect(draft.fields.buildingLength).toMatchObject({
+      value: 14_000,
+      unitBasis: 'drawing-scale',
+      confidence: 'high',
+    });
+    expect(draft.fields.buildingWidth).toMatchObject({
+      value: 10_000,
+      unitBasis: 'drawing-scale',
+    });
+  });
+
+  it('keeps unitless hip values uncertain from the text alone', async () => {
     const bytes = createRoofPlanPdf(hipRoofPlanSpec());
     const pages = await readPdf(bytes);
     const draft = deriveImportedRoofDraft({

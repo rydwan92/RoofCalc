@@ -26,6 +26,9 @@ export const PLAUSIBLE_RANGES: Record<
   rafterDepth: { min: 80, max: 400 },
 };
 
+/** A written number agrees with a drawn length within this ratio. */
+export const DRAWING_UNIT_AGREEMENT = 0.02;
+
 /** Equal canonical values within this relative tolerance are the same value. */
 export const SAME_VALUE_TOLERANCE = 0.005;
 
@@ -61,13 +64,16 @@ export function plausibleUnits(
 /**
  * Canonical value of a measurement *for a given field*. Order of authority:
  * the measurement's own unit (explicit or calibrated), then a unit the user
- * chose for the document, then a unit the document declares, and only then
- * the single unit under which the number is plausible for that field.
+ * chose for the document, then a unit the document declares, then the one
+ * unit that makes the number equal to the same line drawn at scale, and
+ * only then the single unit under which the number is plausible.
  */
 export function resolveMeasurementValue(
   measurement: RecognizedMeasurement,
   field: NumericRoofField,
   documentUnit?: { unit: LengthUnit; basis: 'document' | 'user' },
+  /** The same dimension drawn at the stated scale, when one exists. */
+  drawnReferenceMm?: number,
 ): ResolvedValue {
   if (fieldQuantity(field) !== measurement.quantity)
     return { status: 'unresolved' };
@@ -92,6 +98,24 @@ export function resolveMeasurementValue(
       basis:
         documentUnit.basis === 'user' ? 'user-declared' : 'document-declared',
     };
+  // The drawing decides between units when exactly one of them makes the
+  // written number equal to the line drawn at scale.
+  if (drawnReferenceMm !== undefined && drawnReferenceMm > 0) {
+    const matching = (['mm', 'cm', 'm'] as const).filter(
+      (unit) =>
+        Math.abs(
+          measurement.raw.value * LENGTH_UNIT_MM[unit] - drawnReferenceMm,
+        ) /
+          drawnReferenceMm <=
+        DRAWING_UNIT_AGREEMENT,
+    );
+    if (matching.length === 1)
+      return {
+        status: 'resolved',
+        value: measurement.raw.value * LENGTH_UNIT_MM[matching[0]!],
+        basis: 'drawing-scale',
+      };
+  }
   const units = plausibleUnits(field, measurement.raw.value);
   if (units.length === 1)
     return {

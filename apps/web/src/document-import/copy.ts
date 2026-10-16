@@ -117,7 +117,17 @@ const pl = {
     'user-declared': 'jednostka wybrana przez Ciebie',
     'plausible-range': 'jednostkę przyjęto z typowego zakresu — sprawdź',
     calibrated: 'zmierzone na podkładzie po kalibracji',
+    'drawing-scale': 'jednostkę potwierdza linia na rysunku w skali',
   } satisfies Record<UnitBasis, string>,
+  engineVector: (found: boolean): string =>
+    found
+      ? 'Geometria wektorowa PDF — obrys budynku znaleziony na rysunku'
+      : 'Geometria wektorowa PDF — nie znaleziono zamkniętego obrysu',
+  crossCheckMatch: (denominator: number, percent: string) =>
+    `zgodne z linią na rysunku (1:${denominator}, odchyłka ${percent})`,
+  crossCheckMismatch: (denominator: number, percent: string) =>
+    `różni się od linii na rysunku (1:${denominator}) o ${percent}`,
+  drawnSource: 'długość linii obrysu w skali rysunku',
   required: 'wymagane',
   warnings: 'Uwagi',
   warning: (
@@ -289,7 +299,17 @@ const en: Copy = {
     'user-declared': 'unit you chose',
     'plausible-range': 'unit assumed from the typical range — check',
     calibrated: 'measured on the calibrated underlay',
+    'drawing-scale': 'unit confirmed by the line drawn at scale',
   },
+  engineVector: (found) =>
+    found
+      ? 'PDF vector geometry — building outline found in the drawing'
+      : 'PDF vector geometry — no closed outline found',
+  crossCheckMatch: (denominator, percent) =>
+    `matches the drawn line (1:${denominator}, deviation ${percent})`,
+  crossCheckMismatch: (denominator, percent) =>
+    `differs from the drawn line (1:${denominator}) by ${percent}`,
+  drawnSource: 'outline line length at the drawing scale',
   required: 'required',
   warnings: 'Notes',
   warning: (warning, field) => {

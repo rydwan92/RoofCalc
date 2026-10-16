@@ -7,7 +7,8 @@
  *   1. ingestion          classifyDocumentBytes, checkImageDimensions
  *   2. preprocessing      (adapter) positioned text / page raster
  *   3. text & dimensions  scanMeasurementTokens
- *   4. geometry           calibrateFromPoints, calibrateFromDrawingScale
+ *   4. geometry           recognizeVectorGeometry (outline at scale),
+ *                         calibrateFromPoints, calibrateFromDrawingScale
  *   5. semantics          recognizeTextLayer, manualMeasurementResult
  *   6. units              resolveMeasurementValue
  *   7. validation         deriveImportedRoofDraft (plausibility, conflicts)
@@ -24,4 +25,5 @@ export * from './text-layer';
 export * from './draft';
 export * from './mapping';
 export * from './calibration';
+export * from './geometry';
 export { normalizeForMatching } from './vocabulary';

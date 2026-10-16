@@ -34,6 +34,47 @@ export interface DocumentSource {
   projectCreatedAt: string;
   projectUpdatedAt: string;
   projectSchemaVersion: number;
+  /**
+   * VNext: deterministic fingerprint of the canonical project document the
+   * evidence was computed from (`documentInputFingerprint`). Printed on the
+   * document so a paper or PDF copy can later be matched to — or shown to be
+   * older than — the project state. Absent on documents built before VNext.
+   */
+  inputFingerprint?: string;
+}
+
+function canonicalJson(value: unknown): string {
+  if (value === undefined) return 'null';
+  if (value === null || typeof value !== 'object')
+    return JSON.stringify(value) ?? 'null';
+  if (Array.isArray(value))
+    return `[${value.map((item) => canonicalJson(item)).join(',')}]`;
+  return `{${Object.entries(value as Record<string, unknown>)
+    .filter(([, item]) => item !== undefined)
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([key, item]) => `${JSON.stringify(key)}:${canonicalJson(item)}`)
+    .join(',')}}`;
+}
+
+/**
+ * Stable 53-bit fingerprint (cyrb53) of canonical JSON: key order does not
+ * matter, any value change does. A drift identifier, not a security hash.
+ */
+export function documentInputFingerprint(value: unknown): string {
+  const text = canonicalJson(value);
+  let h1 = 0xdeadbeef;
+  let h2 = 0x41c6ce57;
+  for (let index = 0; index < text.length; index += 1) {
+    const code = text.charCodeAt(index);
+    h1 = Math.imul(h1 ^ code, 2654435761);
+    h2 = Math.imul(h2 ^ code, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507);
+  h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507);
+  h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  const hash = 4294967296 * (2097151 & h2) + (h1 >>> 0);
+  return `rc1-${hash.toString(16).padStart(14, '0')}`;
 }
 
 export interface Point2D {

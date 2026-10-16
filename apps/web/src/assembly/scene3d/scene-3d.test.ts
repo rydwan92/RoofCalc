@@ -12,6 +12,8 @@ import {
   sceneEntityEmphasis,
   sceneFamilyFacets,
   sceneInstanceKey,
+  scenePickOffsets,
+  scenePickTolerance,
   sceneSelectionFacts,
   selectedSceneEntity,
 } from './scene-presentation';
@@ -197,5 +199,24 @@ describe('viewport presentation helpers', () => {
       .filter(([group]) => group !== 'roof-plane')
       .map(([, value]) => value.base);
     expect(new Set(colors).size).toBe(colors.length);
+  });
+});
+
+describe('3D pick aperture', () => {
+  it('tries the exact point first, then the nearer ring, then the outer one', () => {
+    const offsets = scenePickOffsets(16);
+    expect(offsets[0]).toEqual({ dx: 0, dy: 0 });
+    expect(offsets).toHaveLength(17);
+    const radii = offsets.map(({ dx, dy }) => Math.hypot(dx, dy));
+    expect(radii.slice(1, 9).every((r) => Math.abs(r - 8) < 0.01)).toBe(true);
+    expect(radii.slice(9).every((r) => Math.abs(r - 16) < 0.01)).toBe(true);
+  });
+
+  it('is exact without a tolerance and wider for a finger than a mouse', () => {
+    expect(scenePickOffsets(0)).toEqual([{ dx: 0, dy: 0 }]);
+    expect(scenePickTolerance('mouse')).toBeLessThan(
+      scenePickTolerance('touch'),
+    );
+    expect(scenePickTolerance('pen')).toBe(scenePickTolerance('touch'));
   });
 });

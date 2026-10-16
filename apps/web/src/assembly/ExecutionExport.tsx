@@ -97,6 +97,7 @@ const copy = {
     source: 'Stan projektu',
     generated: 'Wygenerowano',
     schema: 'Schemat',
+    fingerprint: 'Dane wejściowe',
     roof: 'Dach',
     gable: 'dwuspadowy',
     hip: 'kopertowy',
@@ -379,6 +380,7 @@ const copy = {
     source: 'Project state',
     generated: 'Generated',
     schema: 'Schema',
+    fingerprint: 'Input',
     roof: 'Roof',
     gable: 'gable',
     hip: 'hip',
@@ -1932,6 +1934,15 @@ function DocumentPreview({
               <span>
                 {m.source}: {date(execution.source.projectUpdatedAt)} ·{' '}
                 {m.schema} {execution.source.projectSchemaVersion}
+                {execution.source.inputFingerprint && (
+                  <>
+                    {' · '}
+                    {m.fingerprint}{' '}
+                    <code data-testid="document-input-fingerprint">
+                      {execution.source.inputFingerprint}
+                    </code>
+                  </>
+                )}
               </span>
               <span>
                 {m.generated}: {date(execution.generatedAt)}

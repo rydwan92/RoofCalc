@@ -22,6 +22,16 @@ export const TEXT_LAYER_ENGINE: RecognitionEngineDescriptor = {
   accepts: ['pdf'],
 };
 
+/** Outline lines of a vector PDF, measured at the drawing's stated scale. */
+export const VECTOR_GEOMETRY_ENGINE: RecognitionEngineDescriptor = {
+  id: 'roofcalc-vector-geometry',
+  mode: 'vector-geometry',
+  version: '1',
+  locality: 'on-device',
+  availability: 'available',
+  accepts: ['pdf'],
+};
+
 export const MANUAL_UNDERLAY_ENGINE: RecognitionEngineDescriptor = {
   id: 'roofcalc-manual-underlay',
   mode: 'manual',
@@ -56,6 +66,7 @@ export const AI_VISION_ENGINE_SLOT: RecognitionEngineDescriptor = {
 
 export const RECOGNITION_ENGINES: readonly RecognitionEngineDescriptor[] = [
   TEXT_LAYER_ENGINE,
+  VECTOR_GEOMETRY_ENGINE,
   MANUAL_UNDERLAY_ENGINE,
   OCR_ENGINE_SLOT,
   AI_VISION_ENGINE_SLOT,

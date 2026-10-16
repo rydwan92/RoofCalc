@@ -4,5 +4,6 @@
  * static servers — XAMPP's Apache among them — serve `.mjs` without a
  * JavaScript MIME type, and browsers then refuse to start the module worker.
  * Importing the worker module registers its message handler on `self`.
+ * The legacy build matches the legacy main thread (see pdf-runtime.ts).
  */
-import 'pdfjs-dist/build/pdf.worker.min.mjs';
+import 'pdfjs-dist/legacy/build/pdf.worker.min.mjs';

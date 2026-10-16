@@ -22,7 +22,8 @@ export type DocumentSourceKind = 'pdf' | 'png' | 'jpeg' | 'webp';
 export type LengthUnit = 'mm' | 'cm' | 'm';
 export type PageUnit = 'pt' | 'px';
 
-export type RecognitionMode = 'text-layer' | 'ocr' | 'ai-vision' | 'manual';
+export type RecognitionMode =
+  'text-layer' | 'vector-geometry' | 'ocr' | 'ai-vision' | 'manual';
 
 /** Roof parameters a document can supply; names match the project start. */
 export type NumericRoofField =
@@ -67,7 +68,9 @@ export type UnitBasis =
   | 'document-declared'
   | 'user-declared'
   | 'plausible-range'
-  | 'calibrated';
+  | 'calibrated'
+  /** The unit that makes the number equal to the line drawn at scale. */
+  | 'drawing-scale';
 
 export type EvidenceCode =
   | 'explicit-label'
@@ -81,6 +84,7 @@ export type EvidenceCode =
   | 'dimension-pair'
   | 'section-pair'
   | 'manual-measurement'
+  | 'drawn-at-scale'
   | 'scale-cross-check-match'
   | 'scale-cross-check-mismatch';
 
@@ -318,6 +322,7 @@ const measurementSchema = z.object({
       'user-declared',
       'plausible-range',
       'calibrated',
+      'drawing-scale',
     ])
     .optional(),
   region: regionSchema.optional(),
@@ -339,13 +344,14 @@ const measurementSchema = z.object({
         'dimension-pair',
         'section-pair',
         'manual-measurement',
+        'drawn-at-scale',
         'scale-cross-check-match',
         'scale-cross-check-mismatch',
       ]),
     )
     .max(20),
   engineId: idSchema,
-  mode: z.enum(['text-layer', 'ocr', 'ai-vision', 'manual']),
+  mode: z.enum(['text-layer', 'vector-geometry', 'ocr', 'ai-vision', 'manual']),
 });
 
 const warningSchema = z.discriminatedUnion('code', [
@@ -388,7 +394,13 @@ const warningSchema = z.discriminatedUnion('code', [
 export const recognitionResultSchema = z.object({
   engine: z.object({
     id: idSchema,
-    mode: z.enum(['text-layer', 'ocr', 'ai-vision', 'manual']),
+    mode: z.enum([
+      'text-layer',
+      'vector-geometry',
+      'ocr',
+      'ai-vision',
+      'manual',
+    ]),
     version: z.string().min(1).max(50),
   }),
   measurements: z.array(measurementSchema).max(5_000),

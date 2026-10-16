@@ -46,6 +46,7 @@ import {
   SCENE_EMPHASIS_COLOR,
   SCENE_GROUP_COLOR,
   sceneInstanceKey,
+  scenePickOffsets,
   type SceneEmphasis,
 } from './scene-presentation';
 
@@ -748,15 +749,18 @@ export class TechnicalViewport {
     });
   }
 
-  /** Returns the entity under a client point, or nothing. */
-  pick(clientX: number, clientY: number): ViewportPick | undefined {
+  /**
+   * Returns the entity under a client point, or nothing. With a tolerance
+   * (CSS pixels) a miss is retried around the point, nearest ring first, so
+   * an exact hit always wins over a neighbouring member.
+   */
+  pick(
+    clientX: number,
+    clientY: number,
+    tolerancePx = 0,
+  ): ViewportPick | undefined {
     const rect = this.canvas.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) return undefined;
-    this.pointer.set(
-      ((clientX - rect.left) / rect.width) * 2 - 1,
-      -((clientY - rect.top) / rect.height) * 2 + 1,
-    );
-    this.raycaster.setFromCamera(this.pointer, this.camera);
     const meshes = [
       ...[...this.buckets.values()]
         .filter((bucket) => bucket.solid.count > 0)
@@ -765,13 +769,20 @@ export class TechnicalViewport {
         (object): object is Mesh => object instanceof Mesh && object.visible,
       ),
     ];
-    for (const hit of this.raycaster.intersectObjects(meshes, false)) {
-      const ids = hit.object.userData.entityIds as string[] | undefined;
-      const entityId =
-        typeof hit.instanceId === 'number'
-          ? ids?.[hit.instanceId]
-          : (hit.object.userData.entityId as string | undefined);
-      if (entityId) return { entityId };
+    for (const { dx, dy } of scenePickOffsets(tolerancePx)) {
+      this.pointer.set(
+        ((clientX + dx - rect.left) / rect.width) * 2 - 1,
+        -((clientY + dy - rect.top) / rect.height) * 2 + 1,
+      );
+      this.raycaster.setFromCamera(this.pointer, this.camera);
+      for (const hit of this.raycaster.intersectObjects(meshes, false)) {
+        const ids = hit.object.userData.entityIds as string[] | undefined;
+        const entityId =
+          typeof hit.instanceId === 'number'
+            ? ids?.[hit.instanceId]
+            : (hit.object.userData.entityId as string | undefined);
+        if (entityId) return { entityId };
+      }
     }
     return undefined;
   }
@@ -781,8 +792,8 @@ export class TechnicalViewport {
    * transient feedback: it never touches the canonical workbench selection.
    * Returns true when something selectable is under the pointer.
    */
-  hover(clientX: number, clientY: number): boolean {
-    const hit = this.pick(clientX, clientY);
+  hover(clientX: number, clientY: number, tolerancePx = 0): boolean {
+    const hit = this.pick(clientX, clientY, tolerancePx);
     const entity = hit ? this.entity(hit.entityId) : undefined;
     if (this.hoveredEntityId === (entity?.id ?? undefined))
       return !!entity?.selectable;

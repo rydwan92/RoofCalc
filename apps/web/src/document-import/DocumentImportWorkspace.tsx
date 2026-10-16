@@ -31,6 +31,7 @@ import {
   mapDraftToRoofStart,
   NUMERIC_ROOF_FIELDS,
   recognizeTextLayer,
+  recognizeVectorGeometry,
   REQUIRED_ROOF_FIELDS,
   START_PARAMETER_OF,
   type DocumentPageInfo,
@@ -85,6 +86,7 @@ interface LoadedDocument {
   pageCount: number;
   pages: DocumentPageInfo[];
   text?: RecognitionResult;
+  vector?: RecognitionResult;
   pdf?: OpenedPdf;
   image?: OpenedImage;
 }
@@ -117,14 +119,27 @@ async function loadDocument(file: File): Promise<LoadedDocument> {
   if (verdict.kind === 'pdf') {
     try {
       const pdf = await openPdf(bytes);
+      const text = recognizeTextLayer(pdf.textPages, {
+        totalPages: pdf.pageCount,
+      });
       return {
         ...common,
         pdf,
         pages: pdf.pages,
         pageCount: pdf.pageCount,
-        text: recognizeTextLayer(pdf.textPages, { totalPages: pdf.pageCount }),
+        text,
+        vector: recognizeVectorGeometry({
+          pages: pdf.pages.map((page) => ({
+            ...page,
+            segments: pdf.segments.filter((item) => item.page === page.page),
+          })),
+          scale: text.scale,
+          written: text.measurements,
+        }),
       };
     } catch (error) {
+      // The technical reason only (never document content), for support.
+      console.warn('RoofCalc document import: PDF could not be read', error);
       throw new DocumentLoadError(
         error instanceof PdfPasswordError ? 'password' : 'failed',
       );
@@ -277,12 +292,13 @@ export function DocumentImportWorkspace({
             source,
             results: [
               ...(doc?.text ? [doc.text] : []),
+              ...(doc?.vector ? [doc.vector] : []),
               ...(manualResult ? [manualResult] : []),
             ],
             decisions,
           })
         : undefined,
-    [decisions, doc?.text, manualResult, source],
+    [decisions, doc?.text, doc?.vector, manualResult, source],
   );
   const mapping = useMemo(
     () => (draft ? mapDraftToRoofStart(draft, defaults) : undefined),
@@ -917,6 +933,15 @@ export function DocumentImportWorkspace({
                     <li data-available="true">
                       {doc.text ? m.engineText(textCount) : m.engineNoText}
                     </li>
+                    {doc.kind === 'pdf' && (
+                      <li data-available="true">
+                        {m.engineVector(
+                          !!doc.vector?.segments?.some(
+                            (segment) => segment.role === 'outline',
+                          ),
+                        )}
+                      </li>
+                    )}
                     <li data-available="true">{m.engineManual}</li>
                     <li data-available="false">{m.engineOcr}</li>
                     <li data-available="false">{m.engineAi}</li>
@@ -1000,6 +1025,20 @@ export function DocumentImportWorkspace({
                           LENGTH_FIELDS.includes(field) &&
                           calibration?.page === pageNumber
                         }
+                        crossCheck={(() => {
+                          const relation = draft.relations.find(
+                            (item) =>
+                              item.kind === 'scale-cross-check' &&
+                              item.measurementId === state.measurementId,
+                          );
+                          return relation?.kind === 'scale-cross-check' &&
+                            draft.scale
+                            ? {
+                                deviationRatio: relation.deviationRatio,
+                                denominator: draft.scale.denominator,
+                              }
+                            : undefined;
+                        })()}
                         onActivate={() => activate(field)}
                         onType={(raw) => typeValue(field, raw)}
                         onChoose={(id) => {
@@ -1163,6 +1202,7 @@ function FieldRow({
   defaultText,
   formatValue,
   canMeasure,
+  crossCheck,
   onActivate,
   onType,
   onChoose,
@@ -1182,6 +1222,8 @@ function FieldRow({
   defaultText: string;
   formatValue: (value: number) => string;
   canMeasure: boolean;
+  /** Written value compared with the same line drawn at scale. */
+  crossCheck?: { deviationRatio: number; denominator: number };
   onActivate: () => void;
   onType: (raw: string) => void;
   onChoose: (id: string) => void;
@@ -1283,10 +1325,35 @@ function FieldRow({
           {measurement.region
             ? `${m.pageShort(measurement.region.page)} · `
             : ''}
-          „{measurement.label?.text ? `${measurement.label.text} ` : ''}
-          {measurement.raw.text}”
+          {measurement.mode === 'vector-geometry' ? (
+            m.drawnSource
+          ) : (
+            <>
+              „{measurement.label?.text ? `${measurement.label.text} ` : ''}
+              {measurement.raw.text}”
+            </>
+          )}
           {state.unitBasis && <em> — {m.basis[state.unitBasis]}</em>}
         </button>
+      )}
+      {crossCheck && state.status !== 'user-entered' && (
+        <small
+          className="dimp-cross-check"
+          data-agrees={crossCheck.deviationRatio <= 0.02 || undefined}
+          data-testid={`document-import-cross-check-${field}`}
+        >
+          {crossCheck.deviationRatio <= 0.02 ? (
+            <Check size={12} aria-hidden="true" />
+          ) : (
+            <AlertTriangle size={12} aria-hidden="true" />
+          )}
+          {(crossCheck.deviationRatio <= 0.02
+            ? m.crossCheckMatch
+            : m.crossCheckMismatch)(
+            crossCheck.denominator,
+            `${(crossCheck.deviationRatio * 100).toFixed(1).replace('.', ',')} %`,
+          )}
+        </small>
       )}
       {alternatives.length > 0 && (
         <select

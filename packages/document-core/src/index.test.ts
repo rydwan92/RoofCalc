@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  documentInputFingerprint,
   buildExecutionDocument,
   defaultSectionSelection,
   type SectionCandidate,
@@ -110,4 +111,33 @@ it('V47 carries document readiness into the built document', () => {
     status,
   });
   expect(document.status).toEqual(status);
+});
+
+describe('VNext document input fingerprint', () => {
+  const project = {
+    schemaVersion: 1,
+    project: { roof: { type: 'gable', pitchDeg: 35, halfRunMm: 4800 } },
+  };
+
+  it('is stable and independent of key order', () => {
+    const reordered = {
+      project: { roof: { halfRunMm: 4800, pitchDeg: 35, type: 'gable' } },
+      schemaVersion: 1,
+    };
+    expect(documentInputFingerprint(project)).toMatch(/^rc1-[0-9a-f]{14}$/);
+    expect(documentInputFingerprint(reordered)).toBe(
+      documentInputFingerprint(project),
+    );
+  });
+
+  it('changes with any canonical value and ignores undefined fields', () => {
+    const changed = structuredClone(project);
+    changed.project.roof.pitchDeg = 35.5;
+    expect(documentInputFingerprint(changed)).not.toBe(
+      documentInputFingerprint(project),
+    );
+    expect(documentInputFingerprint({ ...project, optional: undefined })).toBe(
+      documentInputFingerprint(project),
+    );
+  });
 });

@@ -376,6 +376,11 @@ plan-view outline; `hydraulicsNotVerified: true`, no quantities or prices).
 It is optional: it counts toward the execution package only when drainage
 is configured.
 
+VNext adds the optional `source.inputFingerprint` (`documentInputFingerprint`
+of the canonical project document, `rc1-<14 hex>`), printed in the page
+footer. Additive and optional: documents built before VNext simply omit it;
+`version` stays 1.
+
 ---
 
 ## 8. Browser storage keys

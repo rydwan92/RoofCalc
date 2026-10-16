@@ -657,3 +657,21 @@
     width: 7em;
   }
 }
+
+/* Vector geometry: the outline found in the drawing, and the cross-check */
+.dimp-segment.role-outline {
+  stroke: var(--ui-selection);
+  stroke-width: 2.5;
+  stroke-dasharray: 8 4;
+  opacity: 0.75;
+}
+.dimp-cross-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--ui-text-xs);
+  color: var(--ui-attention);
+}
+.dimp-cross-check[data-agrees] {
+  color: var(--ui-success);
+}

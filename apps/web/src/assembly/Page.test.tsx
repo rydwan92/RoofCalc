@@ -229,7 +229,7 @@ describe('dual-mode parametric workbench', () => {
     expect(useAssembly.getState().workbench.viewPreset).toBe('covering');
     act(() => useAssembly.getState().setViewPreset('materials'));
     fireEvent.click(
-      screen.getByText('Więcej ustawień', {
+      screen.getByText('Inne widoki', {
         selector: '.mp-secondary-views summary',
       }),
     );

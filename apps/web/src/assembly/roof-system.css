@@ -503,6 +503,40 @@
 .mp-roof-system li button:hover span {
   text-decoration: underline;
 }
+/*
+ * VNext: the V44 Materials button style (centred, boxed) out-ranked the rows
+ * above, so every area rendered as a centred pill. The summary is a list:
+ * area on the left, its state on the right, one hairline between rows.
+ */
+.mp-workspace .mp-roof-system ul {
+  gap: 0;
+}
+.mp-workspace .mp-roof-system li + li {
+  border-top: 1px solid var(--ui-line, #dce3dc);
+}
+.mp-workspace .mp-roof-system li button:not(.a-primary) {
+  justify-content: space-between;
+  width: 100%;
+  min-height: 36px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: var(--ui-radius-sm, 6px);
+  background: transparent;
+  font-size: var(--ui-text-sm, 13px);
+  font-weight: var(--ui-weight-medium, 500);
+  text-align: left;
+}
+.mp-workspace
+  .mp-roof-system
+  li
+  button:not(.a-primary):not(.a-button):hover:not(:disabled) {
+  background: var(--ui-surface-sunken, #f3f6f2);
+}
+.mp-workspace .mp-roof-system li button strong {
+  font-size: var(--ui-text-xs, 12px);
+  font-weight: var(--ui-weight-bold, 650);
+  white-space: nowrap;
+}
 .mp-roof-system .rs-counts {
   margin: 0;
 }

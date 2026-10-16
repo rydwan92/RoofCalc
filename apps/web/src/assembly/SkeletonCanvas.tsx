@@ -1340,707 +1340,766 @@ function SkeletonCanvasComponent({
           )}
         </div>
       )}
-      <svg
-        ref={svg}
-        className="a-drawing"
-        data-testid="skeleton-drawing"
-        data-fit-scale={fit.scale}
-        role="group"
-        aria-label={t(
-          `assembly.${template.type === 'hip' ? 'hipSkeletonDrawing' : 'skeletonDrawing'}`,
-        )}
-        style={{ height }}
-        onPointerDownCapture={beginTouchCapture}
-        onPointerDown={beginPan}
-        onPointerMove={moveDrag}
-        onPointerUp={(event) => {
-          endTouch(event);
-          if (event.pointerId === drag.current?.pointerId) finishDrag(false);
-        }}
-        onPointerCancel={(event) => {
-          endTouch(event);
-          if (event.pointerId === drag.current?.pointerId) finishDrag(true);
-        }}
-        onLostPointerCapture={() => finishDrag(true)}
-      >
-        <title>
-          {t(
+      {/* The view controls float over the drawing itself, so the metrics
+          strip below can grow (hip rows, wrapping) without covering them. */}
+      <div className="a-skeleton-stage">
+        <svg
+          ref={svg}
+          className="a-drawing"
+          data-testid="skeleton-drawing"
+          data-fit-scale={fit.scale}
+          role="group"
+          aria-label={t(
             `assembly.${template.type === 'hip' ? 'hipSkeletonDrawing' : 'skeletonDrawing'}`,
           )}
-        </title>
-        <rect
-          className="a-skeleton-background"
-          data-skeleton-background="true"
-          width={width}
-          height={height}
-        />
-        {selectedStore.placementTool && (
-          <g className="a-placement-planes">
-            {placementPlanes.map((plane) => (
-              <polygon
-                key={plane.roofPlaneId}
-                data-roof-plane={plane.roofPlaneId}
-                data-active={
-                  selectedStore.placementTool?.roofPlaneId ===
-                    plane.roofPlaneId ||
-                  placementGhost?.roofPlaneId === plane.roofPlaneId ||
-                  undefined
-                }
-                points={plane.corners
-                  .map((corner) => `${corner.x},${corner.y}`)
-                  .join(' ')}
-                onPointerDown={(event) => event.stopPropagation()}
-                onPointerEnter={() =>
-                  selectedStore.setRoofWindowPlacementPlane(plane.roofPlaneId)
-                }
-                onPointerMove={(event) => updatePlacementGhost(event, plane)}
-                onPointerLeave={() => {
-                  setPlacementGhost(undefined);
-                  selectedStore.setRoofWindowPlacementPlane(undefined);
-                }}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  const position = planePositionFromPointer(event, plane);
-                  if (position)
-                    selectedStore.placeRoofWindowAt(
-                      plane.roofPlaneId,
-                      position,
-                    );
-                  setPlacementGhost(undefined);
-                }}
-              />
-            ))}
-          </g>
-        )}
-        {policy.showRoofPlanes && (
-          <g className="a-roof-guides" aria-hidden="true">
-            {guides.map((guide) => (
-              <polygon
-                key={guide.id}
-                className={
-                  selectedWindowOverlay?.feature.roofPlaneId === guide.id
-                    ? 'is-selected-plane'
-                    : undefined
-                }
-                points={pointString(guide.projected)}
-              />
-            ))}
-          </g>
-        )}
-        {alignmentGuide && alignmentGuideLines.length > 0 && (
-          <g className="a-window-alignment-guide" pointerEvents="none">
-            {alignmentGuideLines.map((line, index) => (
-              <line
-                key={`${alignmentGuide.sourceFeatureId}:${index}`}
-                x1={line.from.x}
-                y1={line.from.y}
-                x2={line.to.x}
-                y2={line.to.y}
-              />
-            ))}
-            <text
-              x={alignmentGuideLines[0]!.from.x}
-              y={alignmentGuideLines[0]!.from.y - 8}
-            >
-              {alignmentGuide.sourceFeatureId.replace(
-                'feature:roof-window-',
-                'O',
-              )}
-            </text>
-          </g>
-        )}
-        {policy.showCoveringUnderlay && (
-          <g
-            className="a-covering-underlay"
-            aria-hidden="true"
-            data-testid="installation-covering-underlay"
-          >
-            {placementPlanes
-              .filter((plane) => coveredPlaneIds.has(plane.roofPlaneId))
-              .map((plane) => (
+          style={{ height }}
+          onPointerDownCapture={beginTouchCapture}
+          onPointerDown={beginPan}
+          onPointerMove={moveDrag}
+          onPointerUp={(event) => {
+            endTouch(event);
+            if (event.pointerId === drag.current?.pointerId) finishDrag(false);
+          }}
+          onPointerCancel={(event) => {
+            endTouch(event);
+            if (event.pointerId === drag.current?.pointerId) finishDrag(true);
+          }}
+          onLostPointerCapture={() => finishDrag(true)}
+        >
+          <title>
+            {t(
+              `assembly.${template.type === 'hip' ? 'hipSkeletonDrawing' : 'skeletonDrawing'}`,
+            )}
+          </title>
+          <rect
+            className="a-skeleton-background"
+            data-skeleton-background="true"
+            width={width}
+            height={height}
+          />
+          {selectedStore.placementTool && (
+            <g className="a-placement-planes">
+              {placementPlanes.map((plane) => (
                 <polygon
                   key={plane.roofPlaneId}
-                  points={pointString(plane.corners)}
+                  data-roof-plane={plane.roofPlaneId}
+                  data-active={
+                    selectedStore.placementTool?.roofPlaneId ===
+                      plane.roofPlaneId ||
+                    placementGhost?.roofPlaneId === plane.roofPlaneId ||
+                    undefined
+                  }
+                  points={plane.corners
+                    .map((corner) => `${corner.x},${corner.y}`)
+                    .join(' ')}
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onPointerEnter={() =>
+                    selectedStore.setRoofWindowPlacementPlane(plane.roofPlaneId)
+                  }
+                  onPointerMove={(event) => updatePlacementGhost(event, plane)}
+                  onPointerLeave={() => {
+                    setPlacementGhost(undefined);
+                    selectedStore.setRoofWindowPlacementPlane(undefined);
+                  }}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    const position = planePositionFromPointer(event, plane);
+                    if (position)
+                      selectedStore.placeRoofWindowAt(
+                        plane.roofPlaneId,
+                        position,
+                      );
+                    setPlacementGhost(undefined);
+                  }}
                 />
               ))}
-          </g>
-        )}
-        {policy.showMembrane && (
-          <g
-            className={`a-membrane-layer ${selectedStore.membrane?.enabled ? '' : 'is-disabled'}`}
-            aria-label={t('assembly.membrane')}
-          >
-            {placementPlanes.map((plane) => {
-              const surfaceId = `surface:${plane.roofPlaneId}`;
-              const selected = state.workbench.selectedId === surfaceId;
-              const included =
-                selectedStore.membrane?.roofPlaneIds === undefined ||
-                selectedStore.membrane.roofPlaneIds.includes(plane.roofPlaneId);
-              const holes = windowOverlays.filter(
-                (overlay) => overlay.feature.roofPlaneId === plane.roofPlaneId,
-              );
-              const maskId = `surface-mask-${plane.roofPlaneId.replaceAll(':', '-')}`;
-              const surface = surfaceGeometry.planes.find(
-                (candidate) => candidate.roofPlaneId === plane.roofPlaneId,
-              );
-              return (
-                <g key={surfaceId}>
-                  <mask id={maskId}>
-                    <polygon points={pointString(plane.corners)} fill="white" />
-                    {holes.map((hole) => (
-                      <polygon
-                        key={hole.feature.id}
-                        points={pointString(hole.corners)}
-                        fill="black"
-                      />
-                    ))}
-                  </mask>
+            </g>
+          )}
+          {policy.showRoofPlanes && (
+            <g className="a-roof-guides" aria-hidden="true">
+              {guides.map((guide) => (
+                <polygon
+                  key={guide.id}
+                  className={
+                    selectedWindowOverlay?.feature.roofPlaneId === guide.id
+                      ? 'is-selected-plane'
+                      : undefined
+                  }
+                  points={pointString(guide.projected)}
+                />
+              ))}
+            </g>
+          )}
+          {alignmentGuide && alignmentGuideLines.length > 0 && (
+            <g className="a-window-alignment-guide" pointerEvents="none">
+              {alignmentGuideLines.map((line, index) => (
+                <line
+                  key={`${alignmentGuide.sourceFeatureId}:${index}`}
+                  x1={line.from.x}
+                  y1={line.from.y}
+                  x2={line.to.x}
+                  y2={line.to.y}
+                />
+              ))}
+              <text
+                x={alignmentGuideLines[0]!.from.x}
+                y={alignmentGuideLines[0]!.from.y - 8}
+              >
+                {alignmentGuide.sourceFeatureId.replace(
+                  'feature:roof-window-',
+                  'O',
+                )}
+              </text>
+            </g>
+          )}
+          {policy.showCoveringUnderlay && (
+            <g
+              className="a-covering-underlay"
+              aria-hidden="true"
+              data-testid="installation-covering-underlay"
+            >
+              {placementPlanes
+                .filter((plane) => coveredPlaneIds.has(plane.roofPlaneId))
+                .map((plane) => (
                   <polygon
+                    key={plane.roofPlaneId}
                     points={pointString(plane.corners)}
-                    mask={`url(#${maskId})`}
+                  />
+                ))}
+            </g>
+          )}
+          {policy.showMembrane && (
+            <g
+              className={`a-membrane-layer ${selectedStore.membrane?.enabled ? '' : 'is-disabled'}`}
+              aria-label={t('assembly.membrane')}
+            >
+              {placementPlanes.map((plane) => {
+                const surfaceId = `surface:${plane.roofPlaneId}`;
+                const selected = state.workbench.selectedId === surfaceId;
+                const included =
+                  selectedStore.membrane?.roofPlaneIds === undefined ||
+                  selectedStore.membrane.roofPlaneIds.includes(
+                    plane.roofPlaneId,
+                  );
+                const holes = windowOverlays.filter(
+                  (overlay) =>
+                    overlay.feature.roofPlaneId === plane.roofPlaneId,
+                );
+                const maskId = `surface-mask-${plane.roofPlaneId.replaceAll(':', '-')}`;
+                const surface = surfaceGeometry.planes.find(
+                  (candidate) => candidate.roofPlaneId === plane.roofPlaneId,
+                );
+                return (
+                  <g key={surfaceId}>
+                    <mask id={maskId}>
+                      <polygon
+                        points={pointString(plane.corners)}
+                        fill="white"
+                      />
+                      {holes.map((hole) => (
+                        <polygon
+                          key={hole.feature.id}
+                          points={pointString(hole.corners)}
+                          fill="black"
+                        />
+                      ))}
+                    </mask>
+                    <polygon
+                      points={pointString(plane.corners)}
+                      mask={`url(#${maskId})`}
+                      role="button"
+                      tabIndex={0}
+                      aria-pressed={selected}
+                      aria-label={`${t('assembly.roofPlane')} ${t(roofPlaneShortLabelKey(plane.roofPlaneId), { id: plane.roofPlaneId })} · ${surface ? new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 1 }).format(surface.netAreaMm2 / 1_000_000) : 0} m²`}
+                      data-roof-surface={surfaceId}
+                      className={`${selected ? 'is-selected' : ''} ${included ? '' : 'is-excluded'}`}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        state.select(surfaceId);
+                      }}
+                      onDoubleClick={(event) => {
+                        event.stopPropagation();
+                        focusScreenPoints(plane.corners);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          state.select(surfaceId);
+                        }
+                      }}
+                    />
+                  </g>
+                );
+              })}
+            </g>
+          )}
+          {placementGhostCorners && (
+            <g className="a-roof-window-ghost" pointerEvents="none">
+              <polygon
+                points={placementGhostCorners
+                  .map((corner) => `${corner.x},${corner.y}`)
+                  .join(' ')}
+              />
+              {policy.showLabels && (
+                <text
+                  x={placementGhostCorners[0]!.x + 8}
+                  y={placementGhostCorners[0]!.y - 8}
+                >
+                  {length(placementGhost!.feature.widthMm)} ×{' '}
+                  {length(placementGhost!.feature.heightMm)}
+                </text>
+              )}
+            </g>
+          )}
+          {/* Counter-battens lie under battens: draw them first (V43B). */}
+          {policy.showCounterBattens && (
+            <g
+              className="a-counter-batten-layer"
+              aria-label={t('assembly.counterBattens')}
+            >
+              {counterBattenLines.map((row) => {
+                const selected = state.workbench.selectedId === row.rowId;
+                return (
+                  <g
+                    key={row.id}
                     role="button"
                     tabIndex={0}
                     aria-pressed={selected}
-                    aria-label={`${t('assembly.roofPlane')} ${t(roofPlaneShortLabelKey(plane.roofPlaneId), { id: plane.roofPlaneId })} · ${surface ? new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 1 }).format(surface.netAreaMm2 / 1_000_000) : 0} m²`}
-                    data-roof-surface={surfaceId}
-                    className={`${selected ? 'is-selected' : ''} ${included ? '' : 'is-excluded'}`}
+                    data-counter-batten-row={row.rowId}
+                    className={selected ? 'is-selected' : ''}
                     onClick={(event) => {
                       event.stopPropagation();
-                      state.select(surfaceId);
+                      state.select(row.rowId);
                     }}
                     onDoubleClick={(event) => {
                       event.stopPropagation();
-                      focusScreenPoints(plane.corners);
+                      focusScreenPoints([row.from, row.to]);
                     }}
                     onKeyDown={(event) => {
                       if (event.key === 'Enter' || event.key === ' ') {
                         event.preventDefault();
-                        state.select(surfaceId);
+                        state.select(row.rowId);
                       }
                     }}
-                  />
-                </g>
-              );
-            })}
-          </g>
-        )}
-        {placementGhostCorners && (
-          <g className="a-roof-window-ghost" pointerEvents="none">
-            <polygon
-              points={placementGhostCorners
-                .map((corner) => `${corner.x},${corner.y}`)
-                .join(' ')}
-            />
-            {policy.showLabels && (
-              <text
-                x={placementGhostCorners[0]!.x + 8}
-                y={placementGhostCorners[0]!.y - 8}
-              >
-                {length(placementGhost!.feature.widthMm)} ×{' '}
-                {length(placementGhost!.feature.heightMm)}
-              </text>
-            )}
-          </g>
-        )}
-        {/* Counter-battens lie under battens: draw them first (V43B). */}
-        {policy.showCounterBattens && (
-          <g
-            className="a-counter-batten-layer"
-            aria-label={t('assembly.counterBattens')}
-          >
-            {counterBattenLines.map((row) => {
-              const selected = state.workbench.selectedId === row.rowId;
-              return (
-                <g
-                  key={row.id}
-                  role="button"
-                  tabIndex={0}
-                  aria-pressed={selected}
-                  data-counter-batten-row={row.rowId}
-                  className={selected ? 'is-selected' : ''}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    state.select(row.rowId);
-                  }}
-                  onDoubleClick={(event) => {
-                    event.stopPropagation();
-                    focusScreenPoints([row.from, row.to]);
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault();
-                      state.select(row.rowId);
-                    }
-                  }}
-                >
-                  <line
-                    className="a-counter-batten-hit-target"
-                    x1={row.from.x}
-                    y1={row.from.y}
-                    x2={row.to.x}
-                    y2={row.to.y}
-                  />
-                  <line
-                    className="a-counter-batten-segment"
-                    x1={row.from.x}
-                    y1={row.from.y}
-                    x2={row.to.x}
-                    y2={row.to.y}
-                  />
-                </g>
-              );
-            })}
-          </g>
-        )}
-        {policy.showBattens && (
-          <g className="a-batten-layer" aria-label={t('assembly.battens')}>
-            {battenLines.map((batten) => (
-              <g
-                key={batten.id}
-                role="button"
-                tabIndex={0}
-                data-batten-row={batten.rowId}
-                aria-label={`${t('assembly.battenRow')} ${batten.rowId.split(':').at(-1)}`}
-                aria-pressed={
-                  state.workbench.selectedId === batten.rowId ||
-                  relatedIds?.has(batten.rowId)
-                }
-                className={
-                  state.workbench.selectedId === batten.rowId ||
-                  relatedIds?.has(batten.rowId)
-                    ? 'is-selected'
-                    : ''
-                }
-                onClick={(event) => {
-                  event.stopPropagation();
-                  state.select(batten.rowId);
-                }}
-                onDoubleClick={(event) => {
-                  event.stopPropagation();
-                  focusScreenPoints([batten.from, batten.to]);
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    state.select(batten.rowId);
-                  }
-                }}
-              >
-                <line
-                  className="a-batten-hit-target"
-                  x1={batten.from.x}
-                  y1={batten.from.y}
-                  x2={batten.to.x}
-                  y2={batten.to.y}
-                />
-                <line
-                  className="a-batten-segment"
-                  x1={batten.from.x}
-                  y1={batten.from.y}
-                  x2={batten.to.x}
-                  y2={batten.to.y}
-                />
-              </g>
-            ))}
-          </g>
-        )}
-        {unresolvedHipBoundaries.length > 0 && (
-          <g
-            className="a-unresolved-hip-layer"
-            aria-label={t('assembly.hipBoundary.title')}
-          >
-            {unresolvedHipBoundaries.map((boundary) => (
-              <line
-                key={boundary.id}
-                data-testid="unresolved-hip-boundary"
-                className="a-unresolved-hip-boundary"
-                x1={boundary.from.x}
-                y1={boundary.from.y}
-                x2={boundary.to.x}
-                y2={boundary.to.y}
-              />
-            ))}
-          </g>
-        )}
-        {spacingStationAxes.length > 0 && (
-          <g
-            className={`a-spacing-guides ${state.workbench.selectedId === 'roof' ? 'is-active' : ''}`}
-            aria-hidden="true"
-          >
-            {spacingStationAxes.map((station) => (
-              <line
-                key={station.id}
-                data-testid="spacing-station-axis"
-                className="a-spacing-station-axis"
-                x1={station.from.x}
-                y1={station.from.y}
-                x2={station.to.x}
-                y2={station.to.y}
-              />
-            ))}
-            {spacingDimensions.map((dimension) => {
-              const from = spacingStationAxes[dimension.fromStationIndex]!;
-              const to = spacingStationAxes[dimension.toStationIndex]!;
-              const laneOffset = dimension.lane * 18;
-              return (
-                <g
-                  key={dimension.id}
-                  data-testid="spacing-bay-dimension"
-                  data-spacing-presentation={
-                    dimension.representative ? 'representative' : 'individual'
-                  }
-                >
-                  <line
-                    className="a-spacing-dimension-line"
-                    x1={from.dimensionPoint.x + laneOffset}
-                    y1={from.dimensionPoint.y}
-                    x2={to.dimensionPoint.x + laneOffset}
-                    y2={to.dimensionPoint.y}
-                  />
-                  <circle
-                    cx={from.dimensionPoint.x + laneOffset}
-                    cy={from.dimensionPoint.y}
-                    r={2.5}
-                  />
-                  <circle
-                    cx={to.dimensionPoint.x + laneOffset}
-                    cy={to.dimensionPoint.y}
-                    r={2.5}
-                  />
-                  <text
-                    x={
-                      (from.dimensionPoint.x + to.dimensionPoint.x) / 2 +
-                      laneOffset +
-                      7
-                    }
-                    y={(from.dimensionPoint.y + to.dimensionPoint.y) / 2 - 5}
                   >
-                    {dimension.representative
-                      ? `${dimension.count} × ${length(dimension.spacingMm)}`
-                      : length(dimension.spacingMm)}
-                  </text>
-                </g>
-              );
-            })}
-          </g>
-        )}
-        <g className="a-skeleton-members">
-          {solids
-            .filter(({ member }) => {
-              const secondary =
-                member.kind === 'rafter' || member.kind === 'jack-rafter';
-              return secondary
-                ? policy.showSecondaryMembers ||
-                    state.workbench.selectedId === member.id
-                : policy.showPrimaryMembers ||
-                    state.workbench.selectedId === member.id;
-            })
-            .map(({ member, faces }) => {
-              const visualState = resolveMemberVisualState({
-                member,
-                view: state.workbench,
-                relatedSupportId,
-                relatedIds,
-              });
-              const selected = visualState === 'selected';
-              const warning = selectedCollisionIds.has(member.id);
-              const bayBoundary = bayMemberIds.has(member.id);
-              const related = visualState === 'related' || bayBoundary;
-              const muted = visualState === 'muted';
-              const purlinHandle =
-                member.kind === 'purlin'
-                  ? handles.find(
-                      (handle) => handle.selectionId === member.selectionId,
-                    )
-                  : undefined;
-              const editablePurlin =
-                policy.showDirectManipulation && !!purlinHandle;
-              const activePurlin =
-                activeHandle === purlinHandle?.id ||
-                hoveredPurlin === member.selectionId;
-              const axisFrom = viewPoint(projectAxonometric(member.from));
-              const axisTo = viewPoint(projectAxonometric(member.to));
-              return (
-                <g
-                  key={member.id}
-                  data-entity={member.id}
-                  data-prototype={member.prototypeId}
-                  data-selection-state={
-                    warning
-                      ? 'warning'
-                      : selected
-                        ? 'selected'
-                        : related
-                          ? 'related'
-                          : muted
-                            ? 'muted'
-                            : 'normal'
-                  }
-                  role="button"
-                  tabIndex={0}
-                  aria-label={memberLabel(member, t)}
-                  aria-pressed={selected}
-                  data-drag-state={
-                    activeHandle === purlinHandle?.id ? 'dragging' : undefined
-                  }
-                  className={`a-skeleton-member kind-${member.kind} ${proposalMemberIds?.has(member.id) ? 'is-framing-proposal' : ''} ${selected ? 'is-selected' : ''} ${related ? 'is-related' : ''} ${warning ? 'is-warning' : ''} ${muted && !warning && !bayBoundary ? 'is-muted' : ''} ${editablePurlin ? 'is-editable-purlin' : ''} ${activePurlin ? 'is-hover-editable' : ''}`}
-                  onClick={() => select(member)}
-                  onDoubleClick={(event) => {
-                    event.stopPropagation();
-                    focusScreenPoints(
-                      faces.flatMap((face) => face.projected.map(viewPoint)),
-                    );
-                  }}
-                  onKeyDown={(event) => {
-                    if (
-                      purlinHandle &&
-                      [
-                        'ArrowLeft',
-                        'ArrowRight',
-                        'ArrowUp',
-                        'ArrowDown',
-                      ].includes(event.key)
-                    ) {
-                      adjustHandle(event, purlinHandle);
-                      return;
-                    }
-                    keySelect(event, member);
-                  }}
-                  onPointerEnter={() => {
-                    setHoveredMemberId(member.id);
-                    if (editablePurlin) setHoveredPurlin(member.selectionId);
-                  }}
-                  onPointerLeave={() => {
-                    if (hoveredMemberId === member.id) setHoveredMemberId(null);
-                    if (hoveredPurlin === member.selectionId)
-                      setHoveredPurlin(null);
-                  }}
-                  onPointerDown={(event) => {
-                    if (purlinHandle) startDrag(event, purlinHandle);
-                  }}
-                >
-                  {axisFrom && axisTo && (
                     <line
-                      className={
-                        editablePurlin
-                          ? 'a-purlin-body-hit-target'
-                          : 'a-member-hit-target'
-                      }
-                      data-purlin-hit-target={
-                        editablePurlin ? member.selectionId : undefined
-                      }
-                      x1={axisFrom.x}
-                      y1={axisFrom.y}
-                      x2={axisTo.x}
-                      y2={axisTo.y}
+                      className="a-counter-batten-hit-target"
+                      x1={row.from.x}
+                      y1={row.from.y}
+                      x2={row.to.x}
+                      y2={row.to.y}
                     />
-                  )}
-                  {faces.map((face) => (
-                    <polygon
-                      key={face.id}
-                      className={`a-skeleton-face face-${face.id}`}
-                      points={pointString(face.projected)}
+                    <line
+                      className="a-counter-batten-segment"
+                      x1={row.from.x}
+                      y1={row.from.y}
+                      x2={row.to.x}
+                      y2={row.to.y}
                     />
-                  ))}
-                </g>
-              );
-            })}
-        </g>
-        {policy.showRoofFeatures && (
-          <g className="a-roof-feature-layer">
-            {windowOverlays.map((overlay) => {
-              const selected =
-                state.workbench.selectedId === overlay.feature.id;
-              const groupSelected = state.workbench.selectedFeatureIds.includes(
-                overlay.feature.id,
-              );
-              const collides = overlay.collisionIds.size > 0;
-              return (
+                  </g>
+                );
+              })}
+            </g>
+          )}
+          {policy.showBattens && (
+            <g className="a-batten-layer" aria-label={t('assembly.battens')}>
+              {battenLines.map((batten) => (
                 <g
-                  key={overlay.feature.id}
+                  key={batten.id}
                   role="button"
                   tabIndex={0}
-                  aria-label={`${t('assembly.roofWindow')} ${overlay.feature.id}`}
-                  aria-pressed={groupSelected}
-                  data-roof-window={overlay.feature.id}
-                  data-collision={collides || undefined}
-                  className={`a-roof-window ${selected ? 'is-selected' : ''} ${groupSelected && !selected ? 'is-group-selected' : ''} ${collides ? 'is-collision' : ''}`}
+                  data-batten-row={batten.rowId}
+                  aria-label={`${t('assembly.battenRow')} ${batten.rowId.split(':').at(-1)}`}
+                  aria-pressed={
+                    state.workbench.selectedId === batten.rowId ||
+                    relatedIds?.has(batten.rowId)
+                  }
+                  className={
+                    state.workbench.selectedId === batten.rowId ||
+                    relatedIds?.has(batten.rowId)
+                      ? 'is-selected'
+                      : ''
+                  }
                   onClick={(event) => {
                     event.stopPropagation();
-                    state.selectRoofWindow(overlay.feature.id, event.shiftKey);
+                    state.select(batten.rowId);
                   }}
                   onDoubleClick={(event) => {
                     event.stopPropagation();
-                    focusScreenPoints(overlay.corners);
+                    focusScreenPoints([batten.from, batten.to]);
                   }}
                   onKeyDown={(event) => {
-                    if (nudgeWindow(event, overlay.feature)) return;
                     if (event.key === 'Enter' || event.key === ' ') {
                       event.preventDefault();
-                      state.selectRoofWindow(overlay.feature.id);
+                      state.select(batten.rowId);
                     }
                   }}
-                  onPointerDown={(event) => startWindowDrag(event, overlay)}
-                >
-                  <polygon
-                    points={overlay.corners
-                      .map((corner) => `${corner.x},${corner.y}`)
-                      .join(' ')}
-                  />
-                  {policy.showLabels &&
-                    visibleWindowLabelIds.has(overlay.feature.id) && (
-                      <text
-                        x={
-                          overlay.corners.reduce(
-                            (sum, point) => sum + point.x,
-                            0,
-                          ) / 4
-                        }
-                        y={
-                          overlay.corners.reduce(
-                            (sum, point) => sum + point.y,
-                            0,
-                          ) / 4
-                        }
-                        textAnchor="middle"
-                        dominantBaseline="middle"
-                      >
-                        {overlay.feature.id.replace(
-                          'feature:roof-window-',
-                          'O',
-                        )}
-                      </text>
-                    )}
-                  {collides && (
-                    <title>
-                      {t('assembly.windowCollision')}:{' '}
-                      {[...overlay.collisionIds]
-                        .map(memberInstanceCode)
-                        .join(', ')}
-                    </title>
-                  )}
-                </g>
-              );
-            })}
-          </g>
-        )}
-        {policy.showCutMarkers && activeInstance && (
-          <MemberInstanceOverlay
-            instance={activeInstance}
-            activeOperationId={state.workbench.activeOperationId}
-            project={worldPoint}
-            narrow={width < 550}
-            onActivate={(operation) =>
-              state.activateOperation({
-                operationId: operation.operationId,
-                prototypeId: activeInstance.prototypeId,
-                selectionId: operation.operationId,
-                instanceId: activeInstance.instanceId,
-                previewId: operation.detailPreviewId,
-              })
-            }
-          />
-        )}
-        {policy.showDirectManipulation && (
-          <g className="a-handle-layer">
-            {handles
-              .filter((handle) => handle.kind !== 'purlin')
-              .map((handle) => (
-                <g
-                  key={handle.id}
-                  data-handle={handle.kind}
-                  className={`a-skeleton-handle ${activeHandle === handle.id ? 'is-active' : ''}`}
-                  role="slider"
-                  tabIndex={0}
-                  aria-label={t(
-                    `assembly.handle${handle.kind[0]!.toUpperCase()}${handle.kind.slice(1)}`,
-                  )}
-                  aria-valuenow={handleValue(handle)}
-                  onPointerDown={(event) => startDrag(event, handle)}
-                  onKeyDown={(event) => adjustHandle(event, handle)}
                 >
                   <line
-                    className="a-handle-axis"
-                    x1={handle.axisStart.x}
-                    y1={handle.axisStart.y}
-                    x2={handle.axisEnd.x}
-                    y2={handle.axisEnd.y}
+                    className="a-batten-hit-target"
+                    x1={batten.from.x}
+                    y1={batten.from.y}
+                    x2={batten.to.x}
+                    y2={batten.to.y}
                   />
-                  <circle cx={handle.at.x} cy={handle.at.y} r={9} />
+                  <line
+                    className="a-batten-segment"
+                    x1={batten.from.x}
+                    y1={batten.from.y}
+                    x2={batten.to.x}
+                    y2={batten.to.y}
+                  />
                 </g>
               ))}
-          </g>
-        )}
-        {activePurlinDrag && activeHandleData && (
-          <line
-            data-testid="purlin-placement-guide"
-            className="a-purlin-placement-guide"
-            x1={activeHandleData.axisStart.x}
-            y1={activeHandleData.axisStart.y}
-            x2={activeHandleData.axisEnd.x}
-            y2={activeHandleData.axisEnd.y}
-            pointerEvents="none"
-          />
-        )}
-        {preview && chipPosition && (
-          <g className="a-handle-chip" pointerEvents="none">
-            <rect
-              x={chipPosition.x}
-              y={chipPosition.y}
-              width={chipWidth}
-              height={28}
-              rx={5}
-            />
-            <text x={chipPosition.x + 10} y={chipPosition.y + 18}>
-              {preview}
-            </text>
-          </g>
-        )}
-        {selectedStore.measurement && (
-          <g className="a-measure-layer">
-            {measurementFrom && measurementTo && (
-              <line
-                data-testid="measure-line"
-                x1={worldPoint(measurementFrom.point).x}
-                y1={worldPoint(measurementFrom.point).y}
-                x2={worldPoint(measurementTo.point).x}
-                y2={worldPoint(measurementTo.point).y}
-              />
-            )}
-            {[measurementFrom, measurementTo]
-              .filter((point): point is MeasurementSnapPoint => !!point)
-              .map((point, index) => (
-                <circle
-                  key={`${point.id}:${index}`}
-                  data-testid={
-                    index === 0 ? 'measure-first-point' : 'measure-snap-point'
-                  }
-                  cx={worldPoint(point.point).x}
-                  cy={worldPoint(point.point).y}
-                  r={index === 0 ? 7 : 6}
+            </g>
+          )}
+          {unresolvedHipBoundaries.length > 0 && (
+            <g
+              className="a-unresolved-hip-layer"
+              aria-label={t('assembly.hipBoundary.title')}
+            >
+              {unresolvedHipBoundaries.map((boundary) => (
+                <line
+                  key={boundary.id}
+                  data-testid="unresolved-hip-boundary"
+                  className="a-unresolved-hip-boundary"
+                  x1={boundary.from.x}
+                  y1={boundary.from.y}
+                  x2={boundary.to.x}
+                  y2={boundary.to.y}
                 />
               ))}
-            <rect
-              className="a-measure-hit-layer"
-              width={width}
-              height={height}
-              fill="transparent"
-              role="button"
-              aria-label={t('assembly.measurePickPoint')}
-              onPointerMove={(event) =>
-                setHoveredMeasurePoint(measurementPointAt(event))
-              }
-              onPointerLeave={() => setHoveredMeasurePoint(undefined)}
-              onPointerDown={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                const point = measurementPointAt(event);
-                if (point) selectedStore.chooseMeasurementPoint(point);
-              }}
-            />
+            </g>
+          )}
+          {spacingStationAxes.length > 0 && (
+            <g
+              className={`a-spacing-guides ${state.workbench.selectedId === 'roof' ? 'is-active' : ''}`}
+              aria-hidden="true"
+            >
+              {spacingStationAxes.map((station) => (
+                <line
+                  key={station.id}
+                  data-testid="spacing-station-axis"
+                  className="a-spacing-station-axis"
+                  x1={station.from.x}
+                  y1={station.from.y}
+                  x2={station.to.x}
+                  y2={station.to.y}
+                />
+              ))}
+              {spacingDimensions.map((dimension) => {
+                const from = spacingStationAxes[dimension.fromStationIndex]!;
+                const to = spacingStationAxes[dimension.toStationIndex]!;
+                const laneOffset = dimension.lane * 18;
+                return (
+                  <g
+                    key={dimension.id}
+                    data-testid="spacing-bay-dimension"
+                    data-spacing-presentation={
+                      dimension.representative ? 'representative' : 'individual'
+                    }
+                  >
+                    <line
+                      className="a-spacing-dimension-line"
+                      x1={from.dimensionPoint.x + laneOffset}
+                      y1={from.dimensionPoint.y}
+                      x2={to.dimensionPoint.x + laneOffset}
+                      y2={to.dimensionPoint.y}
+                    />
+                    <circle
+                      cx={from.dimensionPoint.x + laneOffset}
+                      cy={from.dimensionPoint.y}
+                      r={2.5}
+                    />
+                    <circle
+                      cx={to.dimensionPoint.x + laneOffset}
+                      cy={to.dimensionPoint.y}
+                      r={2.5}
+                    />
+                    <text
+                      x={
+                        (from.dimensionPoint.x + to.dimensionPoint.x) / 2 +
+                        laneOffset +
+                        7
+                      }
+                      y={(from.dimensionPoint.y + to.dimensionPoint.y) / 2 - 5}
+                    >
+                      {dimension.representative
+                        ? `${dimension.count} × ${length(dimension.spacingMm)}`
+                        : length(dimension.spacingMm)}
+                    </text>
+                  </g>
+                );
+              })}
+            </g>
+          )}
+          <g className="a-skeleton-members">
+            {solids
+              .filter(({ member }) => {
+                const secondary =
+                  member.kind === 'rafter' || member.kind === 'jack-rafter';
+                return secondary
+                  ? policy.showSecondaryMembers ||
+                      state.workbench.selectedId === member.id
+                  : policy.showPrimaryMembers ||
+                      state.workbench.selectedId === member.id;
+              })
+              .map(({ member, faces }) => {
+                const visualState = resolveMemberVisualState({
+                  member,
+                  view: state.workbench,
+                  relatedSupportId,
+                  relatedIds,
+                });
+                const selected = visualState === 'selected';
+                const warning = selectedCollisionIds.has(member.id);
+                const bayBoundary = bayMemberIds.has(member.id);
+                const related = visualState === 'related' || bayBoundary;
+                const muted = visualState === 'muted';
+                const purlinHandle =
+                  member.kind === 'purlin'
+                    ? handles.find(
+                        (handle) => handle.selectionId === member.selectionId,
+                      )
+                    : undefined;
+                const editablePurlin =
+                  policy.showDirectManipulation && !!purlinHandle;
+                const activePurlin =
+                  activeHandle === purlinHandle?.id ||
+                  hoveredPurlin === member.selectionId;
+                const axisFrom = viewPoint(projectAxonometric(member.from));
+                const axisTo = viewPoint(projectAxonometric(member.to));
+                return (
+                  <g
+                    key={member.id}
+                    data-entity={member.id}
+                    data-prototype={member.prototypeId}
+                    data-selection-state={
+                      warning
+                        ? 'warning'
+                        : selected
+                          ? 'selected'
+                          : related
+                            ? 'related'
+                            : muted
+                              ? 'muted'
+                              : 'normal'
+                    }
+                    role="button"
+                    tabIndex={0}
+                    aria-label={memberLabel(member, t)}
+                    aria-pressed={selected}
+                    data-drag-state={
+                      activeHandle === purlinHandle?.id ? 'dragging' : undefined
+                    }
+                    className={`a-skeleton-member kind-${member.kind} ${proposalMemberIds?.has(member.id) ? 'is-framing-proposal' : ''} ${selected ? 'is-selected' : ''} ${related ? 'is-related' : ''} ${warning ? 'is-warning' : ''} ${muted && !warning && !bayBoundary ? 'is-muted' : ''} ${editablePurlin ? 'is-editable-purlin' : ''} ${activePurlin ? 'is-hover-editable' : ''}`}
+                    onClick={() => select(member)}
+                    onDoubleClick={(event) => {
+                      event.stopPropagation();
+                      focusScreenPoints(
+                        faces.flatMap((face) => face.projected.map(viewPoint)),
+                      );
+                    }}
+                    onKeyDown={(event) => {
+                      if (
+                        purlinHandle &&
+                        [
+                          'ArrowLeft',
+                          'ArrowRight',
+                          'ArrowUp',
+                          'ArrowDown',
+                        ].includes(event.key)
+                      ) {
+                        adjustHandle(event, purlinHandle);
+                        return;
+                      }
+                      keySelect(event, member);
+                    }}
+                    onPointerEnter={() => {
+                      setHoveredMemberId(member.id);
+                      if (editablePurlin) setHoveredPurlin(member.selectionId);
+                    }}
+                    onPointerLeave={() => {
+                      if (hoveredMemberId === member.id)
+                        setHoveredMemberId(null);
+                      if (hoveredPurlin === member.selectionId)
+                        setHoveredPurlin(null);
+                    }}
+                    onPointerDown={(event) => {
+                      if (purlinHandle) startDrag(event, purlinHandle);
+                    }}
+                  >
+                    {axisFrom && axisTo && (
+                      <line
+                        className={
+                          editablePurlin
+                            ? 'a-purlin-body-hit-target'
+                            : 'a-member-hit-target'
+                        }
+                        data-purlin-hit-target={
+                          editablePurlin ? member.selectionId : undefined
+                        }
+                        x1={axisFrom.x}
+                        y1={axisFrom.y}
+                        x2={axisTo.x}
+                        y2={axisTo.y}
+                      />
+                    )}
+                    {faces.map((face) => (
+                      <polygon
+                        key={face.id}
+                        className={`a-skeleton-face face-${face.id}`}
+                        points={pointString(face.projected)}
+                      />
+                    ))}
+                  </g>
+                );
+              })}
           </g>
-        )}
-      </svg>
+          {policy.showRoofFeatures && (
+            <g className="a-roof-feature-layer">
+              {windowOverlays.map((overlay) => {
+                const selected =
+                  state.workbench.selectedId === overlay.feature.id;
+                const groupSelected =
+                  state.workbench.selectedFeatureIds.includes(
+                    overlay.feature.id,
+                  );
+                const collides = overlay.collisionIds.size > 0;
+                return (
+                  <g
+                    key={overlay.feature.id}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`${t('assembly.roofWindow')} ${overlay.feature.id}`}
+                    aria-pressed={groupSelected}
+                    data-roof-window={overlay.feature.id}
+                    data-collision={collides || undefined}
+                    className={`a-roof-window ${selected ? 'is-selected' : ''} ${groupSelected && !selected ? 'is-group-selected' : ''} ${collides ? 'is-collision' : ''}`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      state.selectRoofWindow(
+                        overlay.feature.id,
+                        event.shiftKey,
+                      );
+                    }}
+                    onDoubleClick={(event) => {
+                      event.stopPropagation();
+                      focusScreenPoints(overlay.corners);
+                    }}
+                    onKeyDown={(event) => {
+                      if (nudgeWindow(event, overlay.feature)) return;
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        state.selectRoofWindow(overlay.feature.id);
+                      }
+                    }}
+                    onPointerDown={(event) => startWindowDrag(event, overlay)}
+                  >
+                    <polygon
+                      points={overlay.corners
+                        .map((corner) => `${corner.x},${corner.y}`)
+                        .join(' ')}
+                    />
+                    {policy.showLabels &&
+                      visibleWindowLabelIds.has(overlay.feature.id) && (
+                        <text
+                          x={
+                            overlay.corners.reduce(
+                              (sum, point) => sum + point.x,
+                              0,
+                            ) / 4
+                          }
+                          y={
+                            overlay.corners.reduce(
+                              (sum, point) => sum + point.y,
+                              0,
+                            ) / 4
+                          }
+                          textAnchor="middle"
+                          dominantBaseline="middle"
+                        >
+                          {overlay.feature.id.replace(
+                            'feature:roof-window-',
+                            'O',
+                          )}
+                        </text>
+                      )}
+                    {collides && (
+                      <title>
+                        {t('assembly.windowCollision')}:{' '}
+                        {[...overlay.collisionIds]
+                          .map(memberInstanceCode)
+                          .join(', ')}
+                      </title>
+                    )}
+                  </g>
+                );
+              })}
+            </g>
+          )}
+          {policy.showCutMarkers && activeInstance && (
+            <MemberInstanceOverlay
+              instance={activeInstance}
+              activeOperationId={state.workbench.activeOperationId}
+              project={worldPoint}
+              narrow={width < 550}
+              onActivate={(operation) =>
+                state.activateOperation({
+                  operationId: operation.operationId,
+                  prototypeId: activeInstance.prototypeId,
+                  selectionId: operation.operationId,
+                  instanceId: activeInstance.instanceId,
+                  previewId: operation.detailPreviewId,
+                })
+              }
+            />
+          )}
+          {policy.showDirectManipulation && (
+            <g className="a-handle-layer">
+              {handles
+                .filter((handle) => handle.kind !== 'purlin')
+                .map((handle) => (
+                  <g
+                    key={handle.id}
+                    data-handle={handle.kind}
+                    className={`a-skeleton-handle ${activeHandle === handle.id ? 'is-active' : ''}`}
+                    role="slider"
+                    tabIndex={0}
+                    aria-label={t(
+                      `assembly.handle${handle.kind[0]!.toUpperCase()}${handle.kind.slice(1)}`,
+                    )}
+                    aria-valuenow={handleValue(handle)}
+                    onPointerDown={(event) => startDrag(event, handle)}
+                    onKeyDown={(event) => adjustHandle(event, handle)}
+                  >
+                    <line
+                      className="a-handle-axis"
+                      x1={handle.axisStart.x}
+                      y1={handle.axisStart.y}
+                      x2={handle.axisEnd.x}
+                      y2={handle.axisEnd.y}
+                    />
+                    <circle cx={handle.at.x} cy={handle.at.y} r={9} />
+                  </g>
+                ))}
+            </g>
+          )}
+          {activePurlinDrag && activeHandleData && (
+            <line
+              data-testid="purlin-placement-guide"
+              className="a-purlin-placement-guide"
+              x1={activeHandleData.axisStart.x}
+              y1={activeHandleData.axisStart.y}
+              x2={activeHandleData.axisEnd.x}
+              y2={activeHandleData.axisEnd.y}
+              pointerEvents="none"
+            />
+          )}
+          {preview && chipPosition && (
+            <g className="a-handle-chip" pointerEvents="none">
+              <rect
+                x={chipPosition.x}
+                y={chipPosition.y}
+                width={chipWidth}
+                height={28}
+                rx={5}
+              />
+              <text x={chipPosition.x + 10} y={chipPosition.y + 18}>
+                {preview}
+              </text>
+            </g>
+          )}
+          {selectedStore.measurement && (
+            <g className="a-measure-layer">
+              {measurementFrom && measurementTo && (
+                <line
+                  data-testid="measure-line"
+                  x1={worldPoint(measurementFrom.point).x}
+                  y1={worldPoint(measurementFrom.point).y}
+                  x2={worldPoint(measurementTo.point).x}
+                  y2={worldPoint(measurementTo.point).y}
+                />
+              )}
+              {[measurementFrom, measurementTo]
+                .filter((point): point is MeasurementSnapPoint => !!point)
+                .map((point, index) => (
+                  <circle
+                    key={`${point.id}:${index}`}
+                    data-testid={
+                      index === 0 ? 'measure-first-point' : 'measure-snap-point'
+                    }
+                    cx={worldPoint(point.point).x}
+                    cy={worldPoint(point.point).y}
+                    r={index === 0 ? 7 : 6}
+                  />
+                ))}
+              <rect
+                className="a-measure-hit-layer"
+                width={width}
+                height={height}
+                fill="transparent"
+                role="button"
+                aria-label={t('assembly.measurePickPoint')}
+                onPointerMove={(event) =>
+                  setHoveredMeasurePoint(measurementPointAt(event))
+                }
+                onPointerLeave={() => setHoveredMeasurePoint(undefined)}
+                onPointerDown={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  const point = measurementPointAt(event);
+                  if (point) selectedStore.chooseMeasurementPoint(point);
+                }}
+              />
+            </g>
+          )}
+        </svg>
+        <div
+          className="a-canvas-controls"
+          role="group"
+          aria-label={t('assembly.view')}
+        >
+          <button
+            aria-label={t('assembly.zoomOut')}
+            disabled={viewport.zoom <= 0.65}
+            onClick={() =>
+              setViewport((current) =>
+                clampCanvasViewport(
+                  { ...current, zoom: current.zoom - 0.2 },
+                  { width, height },
+                ),
+              )
+            }
+          >
+            <Minus size={16} />
+          </button>
+          <span>{Math.round(viewport.zoom * 100)}%</span>
+          <button
+            aria-label={t('assembly.zoomIn')}
+            disabled={viewport.zoom >= 3}
+            onClick={() =>
+              setViewport((current) =>
+                clampCanvasViewport(
+                  { ...current, zoom: current.zoom + 0.2 },
+                  { width, height },
+                ),
+              )
+            }
+          >
+            <Plus size={16} />
+          </button>
+          <button
+            aria-label={t('assembly.fit')}
+            onClick={() => {
+              activeFitRef.current = candidateFitRef.current;
+              setViewport({ ...fittedViewport });
+            }}
+          >
+            <Maximize size={16} />
+          </button>
+        </div>
+      </div>
       {selectedStore.measurement && (
         <div className="a-measure-hud" role="status" data-testid="measure-hud">
           <strong>{t('assembly.measure')}</strong>
@@ -2071,7 +2130,13 @@ function SkeletonCanvasComponent({
             role="status"
             data-testid="member-local-hud"
           >
-            <strong>{memberInstanceCode(identityMember.id)}</strong>
+            {/* A schedule code (K1-04, J1-12, H1) when the member has one;
+                otherwise its translated kind — never an opaque ID (ADR-007). */}
+            <strong>
+              {memberInstanceCode(identityMember.id) === identityMember.id
+                ? memberLabel(identityMember, t)
+                : memberInstanceCode(identityMember.id)}
+            </strong>
             <span>{length(identityMemberLengthMm)}</span>
             <span>
               {length(identityMember.section.widthMm)} ×{' '}
@@ -2123,50 +2188,6 @@ function SkeletonCanvasComponent({
           </span>
         </div>
       )}
-      <div
-        className="a-canvas-controls"
-        role="group"
-        aria-label={t('assembly.view')}
-      >
-        <button
-          aria-label={t('assembly.zoomOut')}
-          disabled={viewport.zoom <= 0.65}
-          onClick={() =>
-            setViewport((current) =>
-              clampCanvasViewport(
-                { ...current, zoom: current.zoom - 0.2 },
-                { width, height },
-              ),
-            )
-          }
-        >
-          <Minus size={16} />
-        </button>
-        <span>{Math.round(viewport.zoom * 100)}%</span>
-        <button
-          aria-label={t('assembly.zoomIn')}
-          disabled={viewport.zoom >= 3}
-          onClick={() =>
-            setViewport((current) =>
-              clampCanvasViewport(
-                { ...current, zoom: current.zoom + 0.2 },
-                { width, height },
-              ),
-            )
-          }
-        >
-          <Plus size={16} />
-        </button>
-        <button
-          aria-label={t('assembly.fit')}
-          onClick={() => {
-            activeFitRef.current = candidateFitRef.current;
-            setViewport({ ...fittedViewport });
-          }}
-        >
-          <Maximize size={16} />
-        </button>
-      </div>
       <dl className="a-skeleton-metrics">
         <div>
           <dt>{t('assembly.buildingLength')}</dt>

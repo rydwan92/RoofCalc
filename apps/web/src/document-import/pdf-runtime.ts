@@ -1,8 +1,10 @@
 import {
   DOCUMENT_IMPORT_LIMITS,
   type DocumentPageInfo,
+  type PageSegment,
   type TextLayerPage,
 } from '@cieslacalc/document-import-core';
+import { segmentsFromOperatorList } from './pdf-geometry';
 import { textItemsFromPdf, type Matrix } from './pdf-text';
 
 /**
@@ -13,12 +15,17 @@ import { textItemsFromPdf, type Matrix } from './pdf-text';
  * XFA forms. Everything it creates is released by `close()`.
  */
 
-type PdfJs = typeof import('pdfjs-dist');
+/**
+ * The legacy build: pdf.js 6's modern build calls very recent JavaScript APIs
+ * (e.g. `Map.prototype.getOrInsertComputed`) that ordinary site laptops and
+ * older Firefox/Chromium versions lack. The legacy build ships polyfills.
+ */
+type PdfJs = typeof import('pdfjs-dist/legacy/build/pdf.mjs');
 let runtime: Promise<PdfJs> | undefined;
 let worker: Worker | undefined;
 
 function loadPdfJs(): Promise<PdfJs> {
-  runtime ??= import('pdfjs-dist');
+  runtime ??= import('pdfjs-dist/legacy/build/pdf.mjs');
   return runtime.then((pdfjs) => {
     if (!worker) {
       // Our own bundled worker entry (see pdf-worker.ts), handed to pdf.js
@@ -55,6 +62,8 @@ export interface OpenedPdf {
   pageCount: number;
   pages: DocumentPageInfo[];
   textPages: TextLayerPage[];
+  /** Straight drawn lines of every analysed page, in page space. */
+  segments: PageSegment[];
   render(
     page: number,
     canvas: HTMLCanvasElement,
@@ -86,6 +95,7 @@ export async function openPdf(bytes: ArrayBuffer): Promise<OpenedPdf> {
   const analysed = Math.min(pageCount, DOCUMENT_IMPORT_LIMITS.maxPdfPages);
   const pages: DocumentPageInfo[] = [];
   const textPages: TextLayerPage[] = [];
+  const segments: PageSegment[] = [];
   try {
     for (let number = 1; number <= analysed; number += 1) {
       const page = await document_.getPage(number);
@@ -105,6 +115,15 @@ export async function openPdf(bytes: ArrayBuffer): Promise<OpenedPdf> {
           viewport.transform as unknown as Matrix,
         ),
       });
+      const operators = await page.getOperatorList();
+      segments.push(
+        ...segmentsFromOperatorList(
+          number,
+          operators,
+          pdfjs.OPS,
+          viewport.transform as unknown as Matrix,
+        ),
+      );
       page.cleanup();
     }
   } catch (error) {
@@ -117,6 +136,7 @@ export async function openPdf(bytes: ArrayBuffer): Promise<OpenedPdf> {
     pageCount,
     pages,
     textPages,
+    segments,
     async render(number, canvas, cssScale) {
       activeRender?.cancel();
       const page = await document_.getPage(number);

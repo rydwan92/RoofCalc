@@ -185,3 +185,40 @@ export function sceneInstanceKey(entity: TechnicalSceneEntity): string {
     alongMm.toFixed(3),
   ].join('|');
 }
+
+/**
+ * Pick aperture in CSS pixels. A timber member a few pixels wide is easy to
+ * hit with a mouse and hard with a finger, so a miss is retried around the
+ * point — wider for touch — the way CAD tools use a pick box.
+ */
+export const SCENE_PICK_TOLERANCE_PX = { mouse: 6, touch: 16 } as const;
+
+export function scenePickTolerance(pointerType: string): number {
+  return pointerType === 'mouse'
+    ? SCENE_PICK_TOLERANCE_PX.mouse
+    : SCENE_PICK_TOLERANCE_PX.touch;
+}
+
+/**
+ * Screen offsets probed for one pick, nearest first: the exact point, then
+ * eight directions at half and at the full tolerance. An exact hit therefore
+ * always wins over a neighbour, and a near miss resolves to the closest ring.
+ */
+/** Thousandths of a pixel, and never a negative zero. */
+const roundOffset = (value: number) => Math.round(value * 1000) / 1000 + 0;
+
+export function scenePickOffsets(
+  tolerancePx: number,
+): ReadonlyArray<{ dx: number; dy: number }> {
+  const offsets = [{ dx: 0, dy: 0 }];
+  if (!(tolerancePx > 0)) return offsets;
+  for (const radius of [tolerancePx / 2, tolerancePx])
+    for (let step = 0; step < 8; step += 1) {
+      const angle = (step * Math.PI) / 4;
+      offsets.push({
+        dx: roundOffset(radius * Math.cos(angle)),
+        dy: roundOffset(radius * Math.sin(angle)),
+      });
+    }
+  return offsets;
+}

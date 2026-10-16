@@ -82,19 +82,33 @@ Pipeline (`document-import-core`, each stage pure):
    WebP; HEIC and DWG get a specific message), 25 MB limit, page/text/pixel
    limits.
 2. **Preprocessing** (adapter) — pdf.js text content → positioned items in
-   page space (top-left origin, points); images → bitmap.
+   page space (top-left origin, points); the operator list → straight line
+   segments, tracking save/restore/cm transforms (`pdf-geometry.ts`);
+   images → bitmap. The **legacy** pdf.js build is used: the modern build
+   calls very recent JavaScript APIs (`Map.prototype.getOrInsertComputed`)
+   that ordinary laptops and older browsers lack. The worker is our own
+   bundled `.js` entry, because static servers such as XAMPP's Apache serve
+   `.mjs` without a JavaScript MIME type. QuickJS (document scripting) is
+   not shipped at all.
 3. **Text & dimensions** — `scanMeasurementTokens`: decimal comma, mm/cm/m,
    angles, % slope, pairs (`8×18`, `12,40 × 9,60 m`), scale `1:100`; rejects
    areas, money, identifiers (K1, A4) and dates.
-4. **Geometry candidates** — manual: two-point calibration or a stated drawing
-   scale on a vector page (`1 pt = 25.4/72 mm × n`); segments and relations are
-   kept in the draft. Automatic line recognition is not implemented.
+4. **Geometry candidates** — automatic (`recognizeVectorGeometry`): the
+   largest closed axis-aligned rectangle drawn on a vector page, page frames
+   and subdivisions excluded; with a stated scale its sides become drawn
+   lengths (`1 pt = 25.4/72 mm × n`), the longer side read as the building
+   length, `medium` on their own. They cross-check written dimensions
+   (agreement ≤ 2 %, otherwise a `scale-mismatch` warning) and decide the unit
+   of a number written without one (`unitBasis: 'drawing-scale'`, one
+   confidence level up). Manual: two-point calibration or the stated scale,
+   then measuring on the underlay.
 5. **Semantics** — PL/EN label vocabulary (building length/width, pitch,
    eave, spacing, rafter section, dimension pairs), roof type words
    (supported: gable, hip; named unsupported types are reported). Values on
    the same line after a label, or in the line below.
-6. **Units** — explicit unit → document statement ("wymiary w cm") → user
-   choice → the single plausible unit for that field (marked, low confidence).
+6. **Units** — explicit unit → user choice / document statement ("wymiary w
+   cm") → the unit that matches the line drawn at scale → the single plausible
+   unit for that field (marked, low confidence).
 7. **Validation** — plausibility ranges (not the canonical ranges), conflicts,
    hip length ≥ width, swapped dimensions warning.
 8. **Template mapping** — `mapDraftToRoofStart` → `ProjectStartValues` names;
@@ -103,15 +117,26 @@ Pipeline (`document-import-core`, each stage pure):
    review checkbox, edits revoke it.
 10. **Project creation** — existing `createProjectStartTemplate` path.
 
-Engines: text layer (on device, available), manual underlay (available), OCR
+Engines: text layer and vector geometry (on device, available), manual
+underlay (available), OCR
 and AI vision (described, `not-configured`, never faked; external engines
 need per-document consent).
 
 **Supported today:** PDF files with a text layer (CAD/editor exports) whose
-dimensions are written as labelled text; any PDF/JPG/PNG/WebP as an underlay
-for calibrated manual measurement. **Not yet:** OCR of scans/photos, automatic
-recognition of outlines/dimension lines, multi-roof documents, roof types other
-than gable and hip.
+dimensions are written as labelled text, plus a rectangular outline drawn as
+lines or `re` rectangles checked against the stated scale; any
+PDF/JPG/PNG/WebP as an underlay for calibrated manual measurement. **Not yet:**
+OCR of scans/photos, non-rectangular outlines (L-shapes), reading dimension
+lines without text, multi-roof documents, roof types other than gable and hip.
+
+## 3a. Export input fingerprint
+
+`DocumentSource.inputFingerprint` (`document-core`, optional, additive) is a
+stable 53-bit hash of the canonical `RoofProjectDocumentV1` JSON
+(`documentInputFingerprint`, key-order independent). It is printed in every
+execution-document page footer, so a printed or PDF copy can later be matched
+to — or shown to be older than — the project state. It is a drift identifier,
+not a security hash, and introduces no schema version change.
 
 ## 4. SQL first run
 

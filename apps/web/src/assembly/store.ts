@@ -74,6 +74,7 @@ import {
   tasksForPerspective,
   type WorkbenchLocation,
   type WorkbenchPerspective,
+  type ConstructionSection,
   type BuildUpView,
   type DimensionLevel,
   type ViewPreset,
@@ -411,6 +412,8 @@ export interface AssemblyState {
   stepBackContext: () => void;
   /** V37 top-level perspective switch; clears the transient return trail. */
   navigatePerspective: (perspective: WorkbenchPerspective) => void;
+  /** VNext: which section owns the construction drawing; view state only. */
+  setConstructionSection: (section: ConstructionSection) => void;
   /** Cross-context jump; remembers the current location for "Wróć". */
   navigateTo: (
     location: WorkbenchLocation,
@@ -761,6 +764,10 @@ export const useAssembly = create<AssemblyState>((set) => ({
         },
       };
     }),
+  setConstructionSection: (constructionSection) =>
+    set((state) => ({
+      workbench: { ...state.workbench, constructionSection },
+    })),
   navigateTo: (location, options) =>
     set((state) => {
       const current = currentWorkbenchLocation(state.workbench);

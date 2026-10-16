@@ -4,6 +4,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useSyncExternalStore,
 } from 'react';
@@ -152,7 +153,10 @@ import {
   type MaterialPriceSelection,
 } from './material-plan';
 import { useCostScenario } from './use-cost-scenario';
-import type { DocumentSource } from '@cieslacalc/document-core';
+import {
+  documentInputFingerprint,
+  type DocumentSource,
+} from '@cieslacalc/document-core';
 import type { K1SessionPlan } from './K1CuttingPlan';
 import {
   deriveProjectWorkflow,
@@ -405,8 +409,11 @@ function AssemblyPageContent({
   );
   const [projectStartMode, setProjectStartMode] = useState<ProjectStartMode>();
   const [homeProjects, setHomeProjects] = useState<SavedProjectSummary[]>([]);
+  // In Business mode the sign-in / sales desk is the home page; the project
+  // start dialog must not cover it on the first load.
+  const businessAtLoad = useRef(business.mode === 'business');
   useEffect(() => {
-    if (startAtHome) {
+    if (startAtHome && !businessAtLoad.current) {
       setProjectStartMode('new');
       void new LocalProjectRepository().list().then(setHomeProjects);
     }
@@ -1135,6 +1142,11 @@ function AssemblyPageContent({
       }),
     [surfaceProjection, roofTopology, roofSystemIntent, resolvedRidgeTiles],
   );
+  // VNext: printed documents name the exact canonical input they came from.
+  const projectInputFingerprint = useMemo(
+    () => documentInputFingerprint(state.projectDocument),
+    [state.projectDocument],
+  );
   const materialFacts: ExportFacts = {
     source: {
       projectId: projectSessionState.active?.id ?? 'unsaved',
@@ -1142,6 +1154,7 @@ function AssemblyPageContent({
       projectCreatedAt: projectSessionState.active?.createdAt ?? '',
       projectUpdatedAt: projectSessionState.active?.updatedAt ?? '',
       projectSchemaVersion: state.projectDocument.schemaVersion,
+      inputFingerprint: projectInputFingerprint,
     },
     template: state.template,
     resolved: templateResult,
@@ -1827,6 +1840,9 @@ function AssemblyPageContent({
           projectCreatedAt: active.createdAt,
           projectUpdatedAt: active.updatedAt,
           projectSchemaVersion: state.projectDocument.schemaVersion,
+          inputFingerprint: documentInputFingerprint(
+            useAssembly.getState().projectDocument,
+          ),
         });
       })
       .catch(() =>
@@ -1915,11 +1931,11 @@ function AssemblyPageContent({
       case 'review-geometry':
       case 'review-structure':
         runProjectAction('completeGeometry');
-        useAssembly
-          .getState()
-          .navigatePerspective(
-            action === 'review-geometry' ? 'project' : 'structure',
-          );
+        // Only the section label changes: the return trail and the phone's
+        // inspector sheet opened by completeGeometry stay as they are.
+        state.setConstructionSection(
+          action === 'review-geometry' ? 'project' : 'structure',
+        );
         state.select('roof');
         state.setInspectorOpen(true);
         requestAnimationFrame(() => {
@@ -2036,11 +2052,6 @@ function AssemblyPageContent({
     // user left them. Konstrukcja reveals the structure settings group.
     state.navigatePerspective(perspective);
     if (perspective !== 'structure') return;
-    if (mobile) {
-      // On a phone the structure settings live in the inspector sheet.
-      state.setInspectorOpen(true);
-      state.setMobilePanel('inspector');
-    }
     requestAnimationFrame(() => {
       const settings = document.querySelector<HTMLDetailsElement>(
         '[data-testid="structure-settings"]',
@@ -2445,6 +2456,7 @@ function AssemblyPageContent({
                 >
                   {t('assembly.language')} · {i18n.language.toUpperCase()}
                 </button>
+                <BusinessModeToggle />
               </div>
             </details>
           )}
@@ -2471,8 +2483,9 @@ function AssemblyPageContent({
               {i18n.language.toUpperCase()}
             </button>
           )}
-          {/* An application capability, beside unit and language (§14). */}
-          <BusinessModeToggle />
+          {/* An application capability, beside unit and language (§14). On a
+              phone it lives in the settings menu to keep one header row. */}
+          {!mobile && <BusinessModeToggle />}
         </div>
       </header>
       {business.mode === 'business' &&
@@ -2743,6 +2756,34 @@ function AssemblyPageContent({
                         <SlidersHorizontal size={17} />
                         {t('assembly.view')}
                       </button>
+                      {workbench.viewPreset === 'construction' && (
+                        // VNext: the exact roof / structure values on a phone,
+                        // opened deliberately instead of on every section tap.
+                        <button
+                          className="a-button"
+                          data-testid="mobile-open-roof-parameters"
+                          onClick={() => {
+                            state.select('roof');
+                            state.setInspectorOpen(true);
+                            state.setMobilePanel('inspector');
+                            const structure =
+                              workbench.constructionSection === 'structure';
+                            requestAnimationFrame(() => {
+                              const settings =
+                                document.querySelector<HTMLDetailsElement>(
+                                  '[data-testid="structure-settings"]',
+                                );
+                              if (settings && structure) settings.open = true;
+                            });
+                          }}
+                        >
+                          {t(
+                            workbench.constructionSection === 'structure'
+                              ? 'assembly.nav.mobileStructureParameters'
+                              : 'assembly.nav.mobileRoofParameters',
+                          )}
+                        </button>
+                      )}
                       {workbench.viewPreset === 'layers' && (
                         <button
                           className="a-button"
@@ -3060,6 +3101,7 @@ function AssemblyPageContent({
                                   projectSessionState.active.updatedAt,
                                 projectSchemaVersion:
                                   state.projectDocument.schemaVersion,
+                                inputFingerprint: projectInputFingerprint,
                               },
                               template: state.template,
                               resolved: templateResult,
@@ -3496,10 +3538,18 @@ function AssemblyPageContent({
             onClose={() => setDocumentImportOpen(false)}
             onCreate={async (template, name) => {
               await projectSession.initialize();
-              await projectSession.createFromDocument(
-                createRoofProjectDocument(template),
-                name,
-              );
+              // Like the Creator: an untouched project that the session has
+              // just created is reused, so the import leaves one record.
+              if (reuseFreshProject || projectSession.snapshot().freshProject) {
+                useAssembly
+                  .getState()
+                  .replaceProjectDocument(createRoofProjectDocument(template));
+                await projectSession.rename(name);
+              } else
+                await projectSession.createFromDocument(
+                  createRoofProjectDocument(template),
+                  name,
+                );
               rememberCreatorStart();
               projectSession.acknowledgeFreshProject();
               setReuseFreshProject(false);

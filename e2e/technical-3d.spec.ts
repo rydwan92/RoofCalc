@@ -70,10 +70,20 @@ async function selectFamily(page: Page, code: string) {
     for (let j = 1; j < 13; j += 1) {
       const box = await canvas.boundingBox();
       if (!box) continue;
-      await page.mouse.click(
-        box.x + (box.width * i) / 18,
-        box.y + (box.height * j) / 13,
-      );
+      const x = box.x + (box.width * i) / 18;
+      const y = box.y + (box.height * j) / 13;
+      // A tap on the selection card is a tap on the card (it holds an
+      // action), never on the model behind it — as for a real user.
+      const card = (await hud.count()) > 0 ? await hud.boundingBox() : null;
+      if (
+        card &&
+        x >= card.x &&
+        x <= card.x + card.width &&
+        y >= card.y &&
+        y <= card.y + card.height
+      )
+        continue;
+      await page.mouse.click(x, y);
       if (
         (await hud.count()) > 0 &&
         ((await hud.innerText()) ?? '').startsWith(code)

@@ -108,85 +108,8 @@
   font-weight: 600;
 }
 
-/* ---------- Primary navigation ---------- */
-.a-perspective-row {
-  display: flex;
-  align-items: stretch;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-.a-perspective-row .a-perspective-bar {
-  flex: 1;
-  margin: 0;
-  padding: 3px;
-  border-radius: var(--v37-radius);
-  background: var(--v37-surface-2);
-}
-.a-perspective-row .a-perspective-bar button {
-  min-height: 40px;
-  font-size: 13px;
-  font-weight: 650;
-}
-.a-perspective-row .a-perspective-bar button[aria-selected='true'] {
-  border-bottom-width: 2px;
-  box-shadow: var(--v37-shadow);
-}
-.a-nav-jump {
-  position: relative;
-}
-.a-nav-jump > summary {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  height: 100%;
-  min-height: 44px;
-  padding: 0 12px;
-  border: 1px solid var(--a-line);
-  border-radius: var(--v37-radius);
-  background: #fff;
-  color: var(--a-text-muted);
-  font-size: 12px;
-  font-weight: 650;
-  cursor: pointer;
-  list-style: none;
-  white-space: nowrap;
-}
-.a-nav-jump > summary::-webkit-details-marker {
-  display: none;
-}
-.a-nav-jump[open] > summary {
-  color: var(--a-text);
-  border-color: var(--a-line-strong);
-}
-.a-nav-jump > div {
-  position: absolute;
-  z-index: 40;
-  top: calc(100% + 6px);
-  right: 0;
-  display: grid;
-  min-width: 250px;
-  padding: 6px;
-  border: 1px solid var(--a-line);
-  border-radius: var(--v37-radius);
-  background: #fff;
-  box-shadow: 0 12px 32px #17382b24;
-}
-.a-nav-jump > div button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 38px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--a-text);
-  font-size: 13px;
-  text-align: left;
-}
-.a-nav-jump > div button:hover {
-  background: var(--v37-surface-2);
-}
+/* The V37 perspective row and "Przejdź do" jump were replaced by the VNext
+   section navigation (workspace.css). */
 
 /* ---------- Secondary contextual tasks ---------- */
 .assembly-app .a-workbench-controls {
@@ -1906,7 +1829,8 @@
 }
 @media (max-width: 800px) {
   /* A phone viewport is too small to float controls over the model, so they
-     become one scrollable row above it and the stage keeps its height. */
+     become one scrollable row above it and the stage keeps its height —
+     34vh, which ends above the selection peek at 390 × 844. */
   .a-scene3d-stage {
     min-height: 34vh;
   }
@@ -1930,12 +1854,69 @@
     font-size: 12px;
     white-space: nowrap;
   }
+  /*
+   * VNext: one compact card at the top of the stage (the sky above the ridge
+   * is the emptiest part of an isometric view, and the bottom belongs to the
+   * selection peek). Name and action share the first row, section and axis
+   * the second; the honesty note stays, on one line — the stage header
+   * already states it in full.
+   */
   .a-scene3d-hud {
-    left: 8px;
+    top: 8px;
     right: 8px;
-    bottom: 8px;
+    bottom: auto;
+    left: 8px;
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr) max-content;
+    grid-template-areas:
+      'name name action'
+      'section length length'
+      'note note note';
+    align-items: center;
+    column-gap: 14px;
+    row-gap: 1px;
     max-width: none;
-    padding: 8px 10px;
+    padding: 6px 8px 6px 10px;
+  }
+  .a-scene3d-hud strong {
+    grid-area: name;
+    min-width: 0;
+    overflow: hidden;
+    font-size: 13px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .a-scene3d-hud span {
+    gap: 5px;
+    justify-content: flex-start;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .a-scene3d-hud span[data-hud='section'] {
+    grid-area: section;
+  }
+  .a-scene3d-hud span[data-hud='length'] {
+    grid-area: length;
+  }
+  .a-scene3d-hud span i {
+    font-size: 10px;
+  }
+  .a-scene3d-hud em {
+    grid-area: note;
+    margin-top: 0;
+    overflow: hidden;
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .assembly-app .a-scene3d-hud button {
+    grid-area: action;
+    align-self: center;
+    margin-top: 0;
+    min-height: 30px;
+    padding: 2px 8px;
+    font-size: 12px;
+    white-space: nowrap;
   }
 }
 

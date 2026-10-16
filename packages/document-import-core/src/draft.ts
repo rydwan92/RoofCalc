@@ -67,6 +67,11 @@ function candidatesFor(
   warnings: DraftWarning[],
 ): Resolved[] {
   const resolved: Resolved[] = [];
+  // The same dimension drawn at the stated scale (vector-geometry engine).
+  const drawnReferenceMm = measurements.find(
+    (measurement) =>
+      measurement.mode === 'vector-geometry' && measurement.field === field,
+  )?.valueMm;
   for (const measurement of measurements) {
     const assigned = measurement.field === field;
     const unlabelledLength =
@@ -74,7 +79,12 @@ function candidatesFor(
       fieldQuantity(field) === 'length' &&
       (field === 'buildingLength' || field === 'buildingWidth');
     if (!assigned && !unlabelledLength) continue;
-    const result = resolveMeasurementValue(measurement, field, documentUnit);
+    const result = resolveMeasurementValue(
+      measurement,
+      field,
+      documentUnit,
+      measurement.mode === 'vector-geometry' ? undefined : drawnReferenceMm,
+    );
     if (result.status === 'ambiguous' && assigned)
       warnings.push({
         code: 'unit-ambiguous',
@@ -90,6 +100,9 @@ function candidatesFor(
     (a, b) =>
       Number(b.measurement.field === field) -
         Number(a.measurement.field === field) ||
+      // A written value is the primary reading; the drawing confirms it.
+      Number(b.measurement.mode !== 'vector-geometry') -
+        Number(a.measurement.mode !== 'vector-geometry') ||
       RANK[b.measurement.confidence] - RANK[a.measurement.confidence] ||
       b.measurement.evidence.length - a.measurement.evidence.length,
   );
@@ -98,6 +111,13 @@ function candidatesFor(
 function effectiveConfidence(resolved: Resolved): Confidence {
   // A unit guessed from a plausible range can never make a value certain.
   if (resolved.basis === 'plausible-range') return 'low';
+  // A written number whose unit the drawing at scale independently confirms
+  // gains one level: two separate sources agree.
+  if (
+    resolved.basis === 'drawing-scale' &&
+    resolved.measurement.mode !== 'vector-geometry'
+  )
+    return resolved.measurement.confidence === 'low' ? 'medium' : 'high';
   return resolved.measurement.confidence;
 }
 

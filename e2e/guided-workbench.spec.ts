@@ -38,6 +38,10 @@ test('start → geometry → structure → next action, with exact inputs and no
     'choose-covering',
   );
   await journey.locator('[data-journey-step="construction"]').click();
+  // VNext: on a phone the section tap only navigates; the exact structure
+  // values open from the explicit parameters action.
+  if (testInfo.project.name === 'mobile')
+    await page.getByTestId('mobile-open-roof-parameters').click();
   const fields = page.getByTestId('structure-settings');
   await expect(fields).toHaveAttribute('open', '');
   const width = fields.locator('input').first();
@@ -198,7 +202,8 @@ test('recent and all projects reopen local records; start copy follows English',
     name: 'Zmień język na angielski',
   });
   if (!(await language.isVisible()))
-    await page.getByRole('button', { name: 'Ustawienia', exact: true }).click();
+    // The phone header keeps settings in a <summary>, labelled 'Ustawienia'.
+    await page.getByLabel('Ustawienia', { exact: true }).click();
   await language.click();
   await page.locator('.a-brand').click();
   await expect(start.getByTestId('project-start-guided')).toContainText(

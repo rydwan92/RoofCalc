@@ -152,3 +152,40 @@ Lokalny serwer: XAMPP MariaDB **10.4.27** na porcie 3306.
    walidacja → projekt) + kalibracja/pomiar na podkładzie.
 4. SQL first-run i ścieżka katalog → obliczenie → zestawienie → koszt.
 5. Dokumentacja zgodna z kodem i checkpoint.
+
+## 7. Stan po iteracji VNext
+
+Iteracja przebiegła w dwóch sesjach: commit `d9ae41e` (nawigacja, import
+PDF/zdjęcia, SQL first-run) i druga sesja (geometria wektorowa PDF, odcisk
+danych eksportu, dopracowanie wyglądu, wybór w 3D na telefonie).
+
+| # z §4 | Stan |
+| --- | --- |
+| 1 Nawigacja | ✅ Jedna nawigacja sześciu sekcji ze statusami etapów, kompaktowe „co teraz” w tym samym pasku, zadania sekcji w jednym wierszu, skróty Alt+1…6 / [ ] / ?. Dok mobilny ma te same sześć sekcji. |
+| 2 Design system | ◐ Tokeny rozszerzone (powierzchnie, stany, odstępy, promienie, typografia, cienie, fokus, ruch, `prefers-reduced-motion`); nowe i poprawiane ekrany używają tokenów. Ciemny motyw świadomie **nieudostępniony** — ~800 zakodowanych kolorów w starszym CSS dałoby niespójny wynik. |
+| 3 Import dokumentów | ✅ MVP end-to-end: PDF z warstwą tekstową → wymiary, opisy, jednostki → geometria wektorowa (zamknięty obrys budynku w skali rysunku, kontrola krzyżowa z wymiarami opisanymi) → edycja i potwierdzenie → jeden projekt. Podkład z kalibracją/miarką dla PDF bez tekstu i zdjęć. OCR i AI Vision to jawnie niedostępne deskryptory. |
+| 4 SQL first-run | ✅ W źródle; pełny bootstrap sprawdzony na izolowanej MariaDB 10.4. Baza użytkownika `cieslacalc` (1/8 migracji) nie była migrowana — wymaga `explicit_defaults_for_timestamp=ON` w `my.ini` (decyzja użytkownika). |
+| 5 Ceny | ✅ Wiek obserwacji ceny i znacznik „może być nieaktualna” (`pricing-core/freshness.ts`) w planie materiałów. |
+| 6 Eksport | ✅ Opcjonalny `source.inputFingerprint` (`rc1-…`) w dokumencie wykonawczym i stopce wydruku. |
+| 7 Wydajność | — Bez zmian; nic nie zostało zoptymalizowane „na ślepo”. pdf.js i Three.js ładują się leniwie. |
+| 8 Rozmiar kodu | — Bez refaktoru `Page.tsx`; nowe moduły są osobne (`document-import-core`, `apps/web/src/document-import/`). |
+
+Dopracowanie wyglądu w drugiej sesji (wszystko sprawdzone w przeglądarce):
+lista „System dachu” w Materiałach (etykieta po lewej, status po prawej —
+wcześniej nadpisywał ją styl przycisków V44), suma kosztorysu bez fioletu
+rodziny „więźba”, przyciski powiększenia zakotwiczone w rysunku (nie
+zasłaniają już paska wymiarów), „Inne widoki” zamiast mylącego „Więcej
+ustawień”, apertura wyboru w 3D (mysz 6 px, dotyk 16 px), kompaktowa karta
+HUD 3D na telefonie oraz poprawna etykieta dostępności grupy „Rzutowanie”.
+
+Walidacja (Node 22.18, `npx pnpm@10.15.1`): `pnpm verify` — 168 plików
+(2 pominięte), **1799 testów**, 13 pominiętych; buildy web/API/Worker i
+granice bundla czyste. Pełny `pnpm e2e` (desktop 1440×900 i telefon
+390×844): **143 przeszły, 31 warunkowo pominiętych, 0 błędów**. Dwa testy 3D na
+telefonie, które nie przechodziły już na wersji bazowej `c185a16`, teraz
+przechodzą.
+
+Pozostaje: ciemny motyw (wymaga migracji zakodowanych kolorów), OCR/AI
+Vision (dostawca i zgoda), rozpoznawanie dachów innych niż prostokątny
+obrys, rozbicie `Page.tsx`, połączenie Hyperdrive ze współdzieloną bazą DEV
+(operacja operatora).

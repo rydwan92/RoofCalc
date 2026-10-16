@@ -37,6 +37,7 @@ import { useAssembly } from '../store';
 import {
   sceneEntityEmphasis,
   sceneFamilyFacets,
+  scenePickTolerance,
   sceneSelectionFacts,
   selectedSceneEntity,
 } from './scene-presentation';
@@ -229,7 +230,11 @@ export function TechnicalScene3D({
       Math.hypot(event.clientX - start.x, event.clientY - start.y) > 6
     )
       return;
-    const hit = viewportRef.current?.pick(event.clientX, event.clientY);
+    const hit = viewportRef.current?.pick(
+      event.clientX,
+      event.clientY,
+      scenePickTolerance(event.pointerType),
+    );
     const entity = hit ? viewportRef.current?.entity(hit.entityId) : undefined;
     if (!entity?.selectable || !entity.sourceRef.selectionId) {
       state.select('roof');
@@ -246,11 +251,19 @@ export function TechnicalScene3D({
   // and never a canonical selection update on pointer move (§18).
   const onPointerMove = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     if (pointerDown.current) return;
-    const { clientX, clientY } = event;
+    const { clientX, clientY, pointerType } = event;
     if (hoverFrame.current) return;
     hoverFrame.current = requestAnimationFrame(() => {
       hoverFrame.current = 0;
-      setHovering(!!viewportRef.current?.hover(clientX, clientY));
+      // The same aperture as a click, so the outline previews what a click
+      // would select.
+      setHovering(
+        !!viewportRef.current?.hover(
+          clientX,
+          clientY,
+          scenePickTolerance(pointerType),
+        ),
+      );
     });
   };
 
@@ -329,7 +342,7 @@ export function TechnicalScene3D({
         <div
           className="a-scene3d-projection"
           role="group"
-          aria-label={t('assembly.scene3d.projection')}
+          aria-label={t('assembly.scene3d.projectionLabel')}
         >
           {(['perspective', 'orthographic'] as SceneProjection[]).map(
             (entry) => (

@@ -25,6 +25,8 @@ export interface PlanLine {
 export interface RoofPlanSpec {
   texts: PlanText[];
   lines: PlanLine[];
+  /** Rectangles drawn with the PDF `re` operator: [x, y, width, height]. */
+  rects?: [number, number, number, number][];
   /** Points; A4 landscape by default. */
   width?: number;
   height?: number;
@@ -82,6 +84,10 @@ function contentStream(spec: RoofPlanSpec): string {
     operations.push(
       `${fixed(line.width ?? 0.6)} w ${fixed(line.from[0])} ${fixed(line.from[1])} m ${fixed(line.to[0])} ${fixed(line.to[1])} l S`,
     );
+  for (const [x, y, w, h] of spec.rects ?? [])
+    operations.push(
+      `1.2 w ${fixed(x)} ${fixed(y)} ${fixed(w)} ${fixed(h)} re S`,
+    );
   operations.push('0 0 0 rg');
   for (const text of spec.texts) {
     const matrix =
@@ -132,11 +138,19 @@ function planGeometry(lengthM: number, widthM: number, hip: boolean) {
   const y0 = 150;
   const w = lengthM * PT_PER_M_AT_1_100;
   const h = widthM * PT_PER_M_AT_1_100;
+  // The gable outline is four separate lines, the hip outline one `re`
+  // rectangle — both shapes appear in real CAD exports.
+  const outline: PlanLine[] = hip
+    ? []
+    : [
+        { from: [x0, y0], to: [x0 + w, y0], width: 1.2 },
+        { from: [x0 + w, y0], to: [x0 + w, y0 + h], width: 1.2 },
+        { from: [x0 + w, y0 + h], to: [x0, y0 + h], width: 1.2 },
+        { from: [x0, y0 + h], to: [x0, y0], width: 1.2 },
+      ];
+  const rects: [number, number, number, number][] = hip ? [[x0, y0, w, h]] : [];
   const lines: PlanLine[] = [
-    { from: [x0, y0], to: [x0 + w, y0], width: 1.2 },
-    { from: [x0 + w, y0], to: [x0 + w, y0 + h], width: 1.2 },
-    { from: [x0 + w, y0 + h], to: [x0, y0 + h], width: 1.2 },
-    { from: [x0, y0 + h], to: [x0, y0], width: 1.2 },
+    ...outline,
     // Horizontal dimension line below, vertical one on the left.
     { from: [x0, y0 - 20], to: [x0 + w, y0 - 20], width: 0.4 },
     { from: [x0, y0 - 25], to: [x0, y0 - 15], width: 0.4 },
@@ -162,7 +176,7 @@ function planGeometry(lengthM: number, widthM: number, hip: boolean) {
         width: 0.8,
       },
     );
-  return { lines, x0, y0, w, h };
+  return { lines, rects, x0, y0, w, h };
 }
 
 /** Fixture 1: a gable plan with a complete Polish title block. */
@@ -198,15 +212,17 @@ export function gableRoofPlanSpec(): RoofPlanSpec {
 
 /** Fixture 2: a hip plan with unitless values and a slope in percent. */
 export function hipRoofPlanSpec(): RoofPlanSpec {
-  const { lines, x0, y0, w } = planGeometry(14, 10, true);
+  const { lines, rects, x0, y0, w } = planGeometry(14, 10, true);
   return {
     lines,
+    rects,
     texts: [
       { text: 'Dach kopertowy — rzut', x: 60, y: 555, size: 14, bold: true },
       { text: '1400', x: x0 + w / 2 - 11, y: y0 - 32, size: 9 },
       { text: 'Długość budynku 1400', x: 520, y: 478 },
       { text: 'Szerokość budynku 1000', x: 520, y: 462 },
       { text: 'Spadek dachu 70%', x: 520, y: 446 },
+      { text: 'Skala 1:100', x: 520, y: 104, size: 8 },
     ],
   };
 }

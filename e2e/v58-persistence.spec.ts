@@ -6,11 +6,16 @@ test.skip(
   'Requires an explicitly configured disposable SQL workspace.',
 );
 
+async function chooseBusinessMode(page: Page) {
+  const toggle = page.getByTestId('business-mode-toggle');
+  // On a phone the mode switch sits in the header settings menu.
+  if (!(await toggle.isVisible()))
+    await page.getByLabel('Ustawienia', { exact: true }).click();
+  await toggle.locator('select').selectOption('business');
+}
+
 async function signIn(page: Page) {
-  await page
-    .getByTestId('business-mode-toggle')
-    .locator('select')
-    .selectOption('business');
+  await chooseBusinessMode(page);
   const login = page.getByTestId('business-login');
   await login.getByLabel('E-mail').fill(process.env.ROOFCALC_USER_EMAIL!);
   await login.getByLabel('Hasło').fill(process.env.ROOFCALC_USER_PASSWORD!);
@@ -192,10 +197,7 @@ test('V58 rejects invalid credentials and restores an authenticated session afte
   page,
 }) => {
   await page.goto('/#/calculators/common-rafter');
-  await page
-    .getByTestId('business-mode-toggle')
-    .locator('select')
-    .selectOption('business');
+  await chooseBusinessMode(page);
   const login = page.getByTestId('business-login');
   await login.getByLabel('E-mail').fill('invalid@example.test');
   await login.getByLabel('Hasło').fill('invalid-password-for-test');

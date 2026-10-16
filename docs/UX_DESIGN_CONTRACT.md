@@ -190,6 +190,11 @@ and their totals are never added together.
 - Hover is renderer-local feedback only — a quiet outline and a pointer cursor.
   It never writes a canonical selection on pointer move. A pointer that moved
   more than ~6 px is a camera gesture, never a selection.
+- **Pick aperture (VNext).** A click that misses is retried around the point,
+  nearest ring first — 6 px for a mouse, 16 px for touch or pen — so a timber
+  member a few pixels wide stays selectable with a finger. An exact hit always
+  wins over a neighbour, and hover uses the same aperture so the outline
+  previews what a click would select (`scenePickOffsets`).
 - The HUD card restates already-resolved values and names the layer each comes
   from (§4): *Przekrój* and *Oś elementu*, never a bare number that could be
   mistaken for a fabrication blank. The Inspector owns full detail; the HUD
@@ -201,7 +206,10 @@ and their totals are never added together.
 - Mobile (`≤800px`): the switch lives in the View sheet, the viewport controls
   become one horizontally scrollable row above the stage, and the page still
   never scrolls horizontally. 3D is a smoke-level capability there; 2D remains
-  the primary phone experience.
+  the primary phone experience. The HUD is one compact card at the **top** of
+  the stage (name and action on one row, section and axis on the next, the
+  honesty note on one line) because the bottom belongs to the selection peek;
+  a tap on the card is never a tap on the model behind it.
 - Every 3D control is a real labelled button with `aria-pressed` where it
   toggles; returning to 2D never requires touching the canvas.
 
