@@ -22,6 +22,20 @@
       "port": 5173
     },
     {
+      "name": "web-alt",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "pnpm@10.15.1",
+        "--filter",
+        "@cieslacalc/web",
+        "exec",
+        "vite",
+        "--port",
+        "5174"
+      ],
+      "port": 5174
+    },
+    {
       "name": "web-preview",
       "runtimeExecutable": "npx",
       "runtimeArgs": [

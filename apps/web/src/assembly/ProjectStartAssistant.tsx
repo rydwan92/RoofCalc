@@ -42,6 +42,43 @@ import { useAssembly } from './store';
 import { workbenchProjectResolver } from './workbench-project';
 
 export type ProjectStartMode = 'new' | 'quick' | 'edit';
+
+/** One saved project: its name first, then when it last changed. */
+function RecentProjectButton({
+  project,
+  disabled,
+  onOpen,
+}: {
+  project: ProjectSummary;
+  disabled: boolean;
+  onOpen: () => void;
+}) {
+  const { t, i18n } = useTranslation();
+  const updated = new Date(project.updatedAt);
+  const date = Number.isNaN(updated.getTime())
+    ? undefined
+    : new Intl.DateTimeFormat(i18n.language, {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      }).format(updated);
+  return (
+    <button
+      type="button"
+      className="a-start-project"
+      disabled={disabled}
+      onClick={onOpen}
+    >
+      <FolderOpen size={18} aria-hidden="true" />
+      <span className="a-start-project-name">{project.name}</span>
+      {date && (
+        <span className="a-start-project-date">
+          {t('assembly.journey.start.updated', { date })}
+        </span>
+      )}
+      <ArrowRight size={16} aria-hidden="true" />
+    </button>
+  );
+}
 type Stage = 'choose' | 'examples' | 1 | 2 | 3 | 4;
 
 interface Draft {
@@ -590,17 +627,14 @@ export function ProjectStartAssistant({
               </p>
               <div className="a-start-recent-list">
                 {projects.slice(0, 3).map((project) => (
-                  <button
-                    type="button"
-                    className="a-button"
+                  <RecentProjectButton
                     key={project.id}
+                    project={project}
                     disabled={busy}
-                    onClick={() =>
+                    onOpen={() =>
                       onOpenProject && run(() => onOpenProject(project.id))
                     }
-                  >
-                    {project.name}
-                  </button>
+                  />
                 ))}
               </div>
               {onOpenArchive && (
@@ -638,26 +672,25 @@ export function ProjectStartAssistant({
                   />
                 </>
               )}
-              <details data-testid="start-all-projects">
-                <summary>
-                  {t('assembly.journey.start.all')} ({projects.length})
-                </summary>
-                <div className="a-start-recent-list">
-                  {projects.map((project) => (
-                    <button
-                      type="button"
-                      className="a-button"
-                      key={project.id}
-                      disabled={busy}
-                      onClick={() =>
-                        onOpenProject && run(() => onOpenProject(project.id))
-                      }
-                    >
-                      {project.name}
-                    </button>
-                  ))}
-                </div>
-              </details>
+              {projects.length > 3 && (
+                <details data-testid="start-all-projects">
+                  <summary>
+                    {t('assembly.journey.start.all')} ({projects.length})
+                  </summary>
+                  <div className="a-start-recent-list">
+                    {projects.map((project) => (
+                      <RecentProjectButton
+                        key={project.id}
+                        project={project}
+                        disabled={busy}
+                        onOpen={() =>
+                          onOpenProject && run(() => onOpenProject(project.id))
+                        }
+                      />
+                    ))}
+                  </div>
+                </details>
+              )}
             </section>
             <details className="a-start-secondary">
               <summary>{t('assembly.journey.start.more')}</summary>

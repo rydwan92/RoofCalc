@@ -1,8 +1,20 @@
 import { existsSync } from 'node:fs';
-import { loadEnvFile } from 'node:process';
+import process from 'node:process';
 import { spawn } from 'node:child_process';
 
-if (existsSync('.env')) loadEnvFile('.env');
+// Checked before anything else: an older Node fails later with errors that
+// look like a database or proxy problem (see docs/KONFIGURACJA.md).
+const [major] = process.versions.node.split('.').map(Number);
+if (major < 22) {
+  console.error(
+    `CieślaCalc wymaga Node 22 lub nowszego (jest ${process.versions.node}).\n` +
+      'Zainstaluj Node 22 LTS (np. nvm install 22 && nvm use 22) i uruchom ponownie.',
+  );
+  process.exit(1);
+}
+
+// The ONE local configuration file. `pnpm check:local` explains every line.
+if (existsSync('.env')) process.loadEnvFile('.env');
 
 async function running(url, matches) {
   try {
@@ -35,6 +47,7 @@ console.log(`CieślaCalc: ${webUrl}/#/calculators/common-rafter`);
 console.log(`API: ${apiUrl}/api/health`);
 if (apiRunning) console.log('API already running — reusing it.');
 if (webRunning) console.log('Vite already running — reusing it.');
+console.log('Konfiguracja (.env, baza, Business): pnpm check:local');
 if (filters.length) {
   const child = spawn('pnpm', ['--parallel', ...filters, 'dev'], {
     stdio: 'inherit',

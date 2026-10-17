@@ -6,14 +6,22 @@ Wymagania i stan pracy: [PROJECT_BLUEPRINT.md](PROJECT_BLUEPRINT.md). Aktualny k
 
 ## Uruchomienie
 
-Node.js >= 20.16, pnpm 10.15.1. W katalogu repozytorium:
+Node.js >= 22, pnpm 10.15.1. W katalogu repozytorium:
 
 ```powershell
 npx pnpm@10.15.1 install --frozen-lockfile
+npx pnpm@10.15.1 configure:local
 npx pnpm@10.15.1 dev
 ```
 
 Frontend: http://127.0.0.1:5173. API: http://127.0.0.1:3001/api/health. Przy globalnym pnpm można używać bezpośrednio `pnpm`.
+
+**Konfiguracja w jednym miejscu:** lokalnie wszystko jest w rootowym `.env`
+(baza, port API — czytany też przez proxy Vite — i logowanie Business).
+`pnpm configure:local` tworzy `.env`, bazę i osobnego użytkownika aplikacji,
+`pnpm check:local` tylko sprawdza i tłumaczy błędy. Dla Cloudflare:
+`pnpm configure:cloudflare` / `pnpm check:cloudflare`. Pełna instrukcja:
+[docs/KONFIGURACJA.md](docs/KONFIGURACJA.md).
 
 ## Baza danych i katalog materiałów (opcjonalnie)
 

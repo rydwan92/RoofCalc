@@ -194,7 +194,11 @@ test('recent and all projects reopen local records; start copy follows English',
   await expect(start).toBeHidden();
   await page.locator('.a-brand').click();
   await expect(
-    start.locator('.a-start-recent-list').first().getByRole('button').first(),
+    start
+      .locator('.a-start-recent-list')
+      .first()
+      .locator('.a-start-project-name')
+      .first(),
   ).toHaveText('Fourth roof');
   await start.getByTestId('project-start-quick').click();
   // The desktop and mobile settings expose the same language action.

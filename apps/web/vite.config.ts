@@ -1,10 +1,22 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { basename, dirname, join } from 'node:path';
-import { defineConfig, type Plugin } from 'vite';
+import { fileURLToPath } from 'node:url';
+import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 
 const require = createRequire(import.meta.url);
+
+/**
+ * The dev proxy follows the API's `PORT` from the ONE root `.env` (the
+ * same file the API reads), so changing the port in one place can never
+ * leave Vite talking to a dead address. The real environment wins.
+ */
+function apiPort(mode: string): number {
+  const root = fileURLToPath(new URL('../..', import.meta.url));
+  const port = Number(loadEnv(mode, root, 'PORT').PORT ?? 3001);
+  return Number.isInteger(port) && port > 0 && port < 65536 ? port : 3001;
+}
 
 /**
  * VNext document import: pdf.js decodes JBIG2/JPEG 2000 scans with WASM
@@ -53,9 +65,11 @@ function pdfjsWasmAssets(): Plugin {
   };
 }
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [react(), pdfjsWasmAssets()],
   worker: { format: 'es' },
+  // The static XAMPP build calls the Node API directly on this port.
+  define: { __ROOFCALC_LOCAL_API_PORT__: JSON.stringify(apiPort(mode)) },
   base: './',
   build: {
     rollupOptions: {
@@ -73,6 +87,6 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
-    proxy: { '/api': 'http://127.0.0.1:3001' },
+    proxy: { '/api': `http://127.0.0.1:${apiPort(mode)}` },
   },
-});
+}));

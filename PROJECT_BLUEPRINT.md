@@ -1297,7 +1297,58 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
-## VNext-2 — dimension-first import, roof connections, catalogue, visual clarity (in progress)
+## VNext-2 (2026-10-18) — one-place configuration, Cloudflare check, UI polish
+
+- Authorized by the user's prompt of 2026-10-18 ("database working locally,
+  wired up easily and in ONE place, also correct on my Cloudflare host; finish
+  the interrupted work; improve look and UI/UX; analyse my screenshots; take
+  my own changes into account; push at the end"). Baseline: `876150f`
+  (VNext-2 `c9c8f8a` + the user's main-checkout DB recovery work).
+- Screenshot findings (cause → fix): SQL pasted into `.env` was silently
+  skipped by Node → `check:local` names each such line, the wizard comments
+  it out and can create the DB/user itself; Node 20 in the shell → `pnpm dev`
+  and the wizard stop with a Node 22 message, `.node-version` = 22; hard-coded
+  Vite proxy `:3001` vs `PORT` in `.env` → Vite reads `PORT` from the root
+  `.env` (also baked into the static XAMPP build as `__ROOFCALC_LOCAL_API_PORT__`);
+  Business screen sent hosted visitors to `.env` → host-aware guidance.
+- Local configuration (`apps/api/src/config/`, pure + tested):
+  `env-file.ts` (Node-compatible parser, issues, in-place key edits),
+  `local-database.ts` (read-only check; loopback-only provisioning of ONE
+  database and ONE app user with grants on that database only);
+  `cli/configure-local.ts` → `pnpm configure:local` / `pnpm check:local`
+  (5 steps, confirmation before every change, `.env.backup-*`, never prints
+  secrets; schema step runs `setup-database.ts local` in the same Node).
+- Cloudflare: `config/cloudflare.ts` (JSONC, wrangler.jsonc rules, secret
+  NAMES, Hyperdrive caching flag, deployed probes) + `cli/configure-cloudflare.ts`
+  → `pnpm configure:cloudflare` / `pnpm check:cloudflare` / `pnpm cloudflare:login`.
+  Account changes (missing Worker secrets, caching off) only after an explicit
+  yes; never deploys or migrates. Read-only run on 2026-10-18: wrangler.jsonc
+  valid; wrangler not logged in here; deployed Worker lacks `/api/readiness`
+  (old `main` code) and auth secrets.
+- UI/UX: start screen recent projects (name, last change, arrow; "all
+  projects" only when > 3; compact phone cards so recent projects are visible
+  at 390 px; clear disclosures); compact readiness bar shows the reason
+  instead of repeating the button label, fluid width keeps it on one row;
+  lazy panels show a loading indicator instead of an empty area.
+- Docs: `docs/KONFIGURACJA.md` (PL: what lives where, three commands,
+  phpMyAdmin alternative, error table, Cloudflare dashboard list), README.
+  `.env.example` keeps the user's `PORT=3006` (Vite now follows it).
+- E2E fix: `v49-stock-aware.spec.ts` read the timber PRICE batch from
+  `packages/catalog-data` (a leftover of the VNext-2 move; prices stay in
+  `apps/api/src/data/import-batches`), which aborted the whole suite.
+- Validation: `pnpm verify` green — 180 files (2 skipped), 1886 tests passed,
+  13 skipped; web/API/Worker builds clean. Full `pnpm e2e`: 149 passed,
+  31 conditionally skipped, 0 failed (desktop 1440×900, phone 390×844).
+  Visual QA in the browser: start screen at 1440×900 and 375×812, workbench
+  sections, Połączenia, readiness bar on one row.
+- Not done / limits: wrangler was not logged in here, so secret names and the
+  Hyperdrive caching flag are verified by code paths and unit tests only; no
+  remote change, deployment or merge to `main`.
+- NEXT ACTION: user — `pnpm cloudflare:login`, `pnpm configure:cloudflare`,
+  merge this branch into `main` (Cloudflare builds `main`), approved shared
+  DEV maintenance; then create the first Business owner on the Worker.
+
+## VNext-2 — dimension-first import, roof connections, catalogue, visual clarity (completed in `c9c8f8a`)
 
 - Authorized by the user's prompt of 2026-10-17 ("import based on written
   dimensions, not scaling; modular architecture; product database and easier

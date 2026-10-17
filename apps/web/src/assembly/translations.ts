@@ -2018,6 +2018,7 @@ export const assemblyPl = {
       recentHint:
         'Projekty z tego urządzenia. Starsze projekty bez historii otwierania są uporządkowane według ostatniej zmiany.',
       all: 'Wszystkie projekty',
+      updated: 'zmieniony {{date}}',
       empty:
         'Nie masz jeszcze zapisanych projektów. Zacznij od Nowego projektu powyżej.',
       more: 'Przykłady i opcje zaawansowane',
@@ -4571,6 +4572,7 @@ export const assemblyEn: typeof assemblyPl = {
       recentHint:
         'Projects on this device. Older projects without visit history are sorted by their last edit.',
       all: 'All projects',
+      updated: 'changed {{date}}',
       empty: 'No saved projects yet. Choose New project above to get started.',
       more: 'Examples and advanced options',
       geometryDone: 'Roof geometry is ready. Next step: set up the structure.',

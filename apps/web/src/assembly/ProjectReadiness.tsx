@@ -122,6 +122,25 @@ export function ProjectReadinessBar({
   const text = primary
     ? readinessIssueText(t, primary, unit, i18n.language)
     : undefined;
+  const actionLabel =
+    recommended && onJourneyAction
+      ? t(`assembly.readiness.action.${recommended.action}`)
+      : primary?.action
+        ? t(`assembly.readiness.action.${primary.action}`)
+        : undefined;
+  // The compact bar has room for one line beside the button. When that
+  // line would only repeat the button ("Choose covering" twice), it shows
+  // the reason instead.
+  const echoes = (title: string) =>
+    compact &&
+    !!actionLabel &&
+    title.trim().toLocaleLowerCase() === actionLabel.trim().toLocaleLowerCase();
+  const nextTitle = recommended?.reasonKey
+    ? t(`assembly.journey.next.${recommended.reasonKey}.title`)
+    : '';
+  const nextDescription = recommended?.reasonKey
+    ? t(`assembly.journey.next.${recommended.reasonKey}.description`)
+    : '';
   return (
     <>
       {journey && onJourneyAction && !compact && (
@@ -202,7 +221,9 @@ export function ProjectReadinessBar({
                   {t('assembly.journey.now')}
                 </small>
               )}
-              <strong>{text.title}</strong>
+              <strong>
+                {echoes(text.title) ? text.description : text.title}
+              </strong>
               <span>{text.description}</span>
             </div>
           </div>
@@ -211,25 +232,15 @@ export function ProjectReadinessBar({
             className="a-readiness-primary is-next"
             data-testid="project-journey-next"
             data-stage={recommended.stage}
-            title={
-              compact
-                ? `${t(`assembly.journey.next.${recommended.reasonKey}.title`)} — ${t(`assembly.journey.next.${recommended.reasonKey}.description`)}`
-                : undefined
-            }
+            title={compact ? `${nextTitle} — ${nextDescription}` : undefined}
           >
             <Circle size={16} aria-hidden="true" />
             <div>
               <small className="a-journey-now">
                 {t('assembly.journey.now')}
               </small>
-              <strong>
-                {t(`assembly.journey.next.${recommended.reasonKey}.title`)}
-              </strong>
-              <span>
-                {t(
-                  `assembly.journey.next.${recommended.reasonKey}.description`,
-                )}
-              </span>
+              <strong>{echoes(nextTitle) ? nextDescription : nextTitle}</strong>
+              <span>{nextDescription}</span>
             </div>
           </div>
         ) : (
@@ -275,7 +286,7 @@ export function ProjectReadinessBar({
               }
               onClick={() => onJourneyAction(recommended)}
             >
-              {t(`assembly.readiness.action.${recommended.action}`)}
+              {actionLabel}
             </button>
           ) : (
             primary?.action && (

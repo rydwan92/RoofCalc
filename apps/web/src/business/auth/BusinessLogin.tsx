@@ -5,6 +5,7 @@ import { useBusiness } from '../context';
 import { sessionClient } from './client';
 import { BusinessClientError } from '../client';
 import { isCrossOriginApi } from '../../api-base';
+import { isLocalHost, setupGuidance } from './setup-guidance';
 
 const errors: Record<string, [string, string]> = {
   'invalid-credentials': [
@@ -62,6 +63,14 @@ export function BusinessLogin() {
   const databaseDown = !staticBuild && state?.database === 'unavailable';
   const unavailable = staticBuild || serverUnreachable || databaseDown;
   const authMissing = state?.auth === 'unconfigured';
+  const local = isLocalHost();
+  const problem = staticBuild
+    ? 'static-build'
+    : serverUnreachable
+      ? 'server-unreachable'
+      : databaseDown
+        ? 'database-unavailable'
+        : 'auth-unconfigured';
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -130,33 +139,8 @@ export function BusinessLogin() {
               : 'Checking server setup…'}
           </p>
         ) : unavailable || authMissing ? (
-          <p
-            role="alert"
-            data-login-state={
-              staticBuild
-                ? 'static-build'
-                : serverUnreachable
-                  ? 'server-unreachable'
-                  : databaseDown
-                    ? 'database-unavailable'
-                    : 'auth-unconfigured'
-            }
-          >
-            {staticBuild
-              ? pl
-                ? 'Logowanie RoofCalc Business działa tylko przez serwer aplikacji. Ta strona jest statycznym buildem (np. z XAMPP), więc nie może utworzyć sesji logowania. Uruchom w katalogu projektu „npx pnpm@10.15.1 dev” i otwórz http://127.0.0.1:5173. Tryb Standard działa bez serwera.'
-                : 'RoofCalc Business sign-in works only through the application server. This page is a static build (e.g. from XAMPP) and cannot hold a sign-in session. Run “npx pnpm@10.15.1 dev” in the project folder and open http://127.0.0.1:5173. Standard mode works without a server.'
-              : serverUnreachable
-                ? pl
-                  ? 'Serwer RoofCalc (API) nie odpowiada. Uruchom go poleceniem „npx pnpm@10.15.1 dev” i spróbuj ponownie.'
-                  : 'The RoofCalc server (API) does not respond. Start it with “npx pnpm@10.15.1 dev” and try again.'
-                : databaseDown
-                  ? pl
-                    ? 'Serwer RoofCalc działa, ale nie może połączyć się z bazą danych. Sprawdź adres bazy w pliku .env i wynik „npx pnpm@10.15.1 db:status”.'
-                    : 'The RoofCalc server runs but cannot reach its database. Check the database address in .env and the output of “npx pnpm@10.15.1 db:status”.'
-                  : pl
-                    ? 'RoofCalc Business wymaga dokończenia konfiguracji serwera (BETTER_AUTH_URL i BETTER_AUTH_SECRET w pliku .env).'
-                    : 'RoofCalc Business requires server configuration (BETTER_AUTH_URL and BETTER_AUTH_SECRET in .env).'}
+          <p role="alert" data-login-state={problem}>
+            {setupGuidance(problem, local, pl)}
           </p>
         ) : creating ? (
           <p>
@@ -165,11 +149,7 @@ export function BusinessLogin() {
               : 'Create the first administrator account.'}
           </p>
         ) : state?.firstOwner === 'unknown' ? (
-          <p role="alert">
-            {pl
-              ? 'Baza jest połączona, ale stan kont nie jest dostępny. Operator musi sprawdzić migracje.'
-              : 'Database connected, but account status is unavailable. The operator must check migrations.'}
-          </p>
+          <p role="alert">{setupGuidance('schema-unknown', local, pl)}</p>
         ) : state?.firstOwner === 'required' ? (
           <p>
             {pl

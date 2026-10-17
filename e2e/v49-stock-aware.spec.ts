@@ -12,16 +12,15 @@ import { technicalPreview } from '../packages/catalog-core/src/index';
  * browser sees exactly what a seeded database would return.
  */
 
-const read = <T>(name: string) =>
-  JSON.parse(
-    readFileSync(`packages/catalog-data/batches/${name}`, 'utf8'),
-  ) as T;
+// Technical batches are shared data (ADR-013); price lists stay in the API.
+const read = <T>(name: string, directory = 'packages/catalog-data/batches') =>
+  JSON.parse(readFileSync(`${directory}/${name}`, 'utf8')) as T;
 const tiles = read<CatalogImportBatchV1>('tiles-2026-09-v35.json');
 const timber = read<CatalogImportBatchV1>('timber-linear-stock-2026-09.json');
 const prices = read<{
   priceLists: { id: string; ownerLabel: string; currencyCode: string }[];
   entries: { commercialVariantId: string; priceListId: string }[];
-}>('timber-linear-prices-2026-09-18.json');
+}>('timber-linear-prices-2026-09-18.json', 'apps/api/src/data/import-batches');
 
 const koda = tiles.revisions.find(
   (item) => item.productId === 'product:swissporton:koda',

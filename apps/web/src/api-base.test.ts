@@ -16,6 +16,10 @@ it('connects local Apache builds to Node while keeping Vite and Node same-origin
   expect(
     resolveApiBaseUrl(new URL('https://example.com/apps/web/dist/'), false, ''),
   ).toBe('/api');
+  // The static build follows PORT from the root .env, like the dev proxy.
+  expect(resolveApiBaseUrl(apache, false, '', 3006)).toBe(
+    'http://127.0.0.1:3006/api',
+  );
   expect(resolveApiBaseUrl(apache, false, 'https://example.com/api/')).toBe(
     'https://example.com/api',
   );

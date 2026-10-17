@@ -681,6 +681,46 @@
   cursor: pointer;
   padding: 12px 0;
 }
+/* Start screen hierarchy: heading, quiet hint, then clearly clickable
+   disclosures — the disclosures used to render smaller than the hint. */
+.a-start-recent h3 {
+  margin: 4px 0 2px;
+  font-size: 16px;
+}
+.a-start-recent > p {
+  margin: 0 0 10px;
+  color: var(--ui-text-muted);
+  font-size: 13px;
+}
+.assembly-app .a-start-secondary > summary,
+.assembly-app .a-start-recent summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  color: var(--ui-accent);
+  font-size: 14px;
+  font-weight: 600;
+  list-style: none;
+}
+.a-start-secondary > summary::-webkit-details-marker,
+.a-start-recent summary::-webkit-details-marker {
+  display: none;
+}
+.a-start-secondary > summary::before,
+.a-start-recent summary::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 120ms ease;
+}
+.a-start-secondary[open] > summary::before,
+.a-start-recent details[open] > summary::before {
+  transform: rotate(45deg);
+}
 .a-start-secondary .a-start-path {
   margin-bottom: 8px;
 }
@@ -688,10 +728,59 @@
   display: grid;
   gap: 6px;
 }
-.a-start-recent-list button {
-  min-height: 44px;
+.a-start-project {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 8px 14px;
+  border: 1px solid var(--ui-line, #d9e0da);
+  border-radius: var(--ui-radius-md, 10px);
+  background: var(--ui-surface, #fff);
+  color: var(--ui-text, #17221d);
   text-align: left;
+  cursor: pointer;
+}
+.a-start-project > svg:first-child {
+  color: var(--ui-accent, #1f6b4f);
+}
+.a-start-project > svg:last-child {
+  color: var(--ui-text-muted, #5b6b62);
+  opacity: 0.6;
+}
+.a-start-project-name {
   overflow-wrap: anywhere;
+  font-weight: 600;
+}
+.a-start-project-date {
+  color: var(--ui-text-muted, #5b6b62);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.a-start-project:hover:not(:disabled),
+.a-start-project:focus-visible {
+  border-color: var(--ui-accent, #1f6b4f);
+  background: var(--ui-accent-soft, #edf6ee);
+}
+.a-start-project:hover:not(:disabled) > svg:last-child {
+  opacity: 1;
+  color: var(--ui-accent, #1f6b4f);
+}
+@media (max-width: 560px) {
+  .a-start-project {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+  .a-start-project-date {
+    grid-column: 2;
+    grid-row: 2;
+    white-space: normal;
+  }
+  .a-start-project > svg:last-child {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+  }
 }
 
 .a-start-paths {
@@ -701,6 +790,29 @@
   .a-start-paths .a-start-path {
     min-height: 120px !important;
     padding: 14px;
+  }
+}
+/* Phones: compact rows (icon beside text) so recent projects are visible
+   without scrolling past four tall cards. */
+@media (max-width: 560px) {
+  /* The dialog body scrolls; rows must keep their content height instead of
+     shrinking to each card's min-height. */
+  .assembly-app .a-start-paths {
+    grid-auto-rows: max-content;
+  }
+  .assembly-app .a-start-paths .a-start-path {
+    grid-template-columns: 28px minmax(0, 1fr);
+    align-items: center;
+    column-gap: 12px;
+    row-gap: 2px;
+    min-height: 72px !important;
+    padding: 12px 14px;
+  }
+  .assembly-app .a-start-paths .a-start-path svg {
+    grid-row: 1 / span 2;
+  }
+  .assembly-app .a-start-paths .a-start-path strong {
+    font-size: 16px;
   }
 }
 

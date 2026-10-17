@@ -635,6 +635,8 @@ pnpm e2e      # real-browser smoke, desktop 1440x900 and mobile 390x844 (pnpm e2
 | `ARCHITECTURE_V43B_COVERING_AND_BATTEN_WORKFLOW` | covering-first batten workflow, Auto/Manual ownership, batten scope audit, installation plan, hip-detail guidance |
 | `ARCHITECTURE_V44_CALCULATOR_TRUST_AND_UX` | calculator oracles, reference acceptance numbers, display precision, Quick result/evidence, source and status vocabulary |
 | `ARCHITECTURE_V45_SHARED_DEV_DATABASE_AND_HYPERDRIVE` | one alwaysdata DEV database for Node and Worker, DATABASE_URL/TLS policy, doctor, health, Hyperdrive setup |
+| `KONFIGURACJA` | **Start here for configuration (PL).** What lives in the root `.env`, `wrangler.jsonc`, Worker secrets, Hyperdrive and Workers Builds; `configure:local` / `check:local` / `configure:cloudflare` |
+| `DATABASE_RECOVERY_AND_CLOUDFLARE` | guarded migrator, schema readiness, deployment gate, remote maintenance runbook |
 | `ARCHITECTURE_V61_5_BUSINESS_PRODUCTION_BOOTSTRAP` | first owner, auth configuration, Worker Business writes, live migration/seed status and explicit shared DEV maintenance |
 | `ARCHITECTURE_V46_COVERING_SYNC_REPAIR_AND_SCHEME` | plane-scope reconciliation on roof-type switch, fit-roof repair, automatic battens with first covering, overlap audit, roof-aware covering scheme |
 | `ARCHITECTURE_V47_PROJECT_READINESS_AND_GUARDRAILS` | project readiness projection, severity semantics, safe repair vs expert decisions, document preflight/status, structured assumptions, membrane end laps, tile eave projection |

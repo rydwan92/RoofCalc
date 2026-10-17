@@ -6,6 +6,11 @@ Hyperdrive's remote database. Never copy data or synchronize these databases.
 Both use `db/schema-bundle.ts`, the same eight SQL migrations, repository classes,
 HTTP contracts and Better Auth tables. Only connection creation differs.
 
+**Everyday setup lives in [KONFIGURACJA.md](KONFIGURACJA.md)** (Polish):
+`pnpm configure:local` / `pnpm check:local` for the root `.env` and the local
+database, `pnpm configure:cloudflare` / `pnpm check:cloudflare` for the Worker.
+This runbook keeps the recovery history and the remote maintenance sequence.
+
 ## Local recovery performed
 
 MariaDB 10.4.27 reported `explicit_defaults_for_timestamp=0` with `NO_ZERO_DATE`.
@@ -122,6 +127,12 @@ Business schema. Wrangler had no authenticated account; no independent remote
 maintenance URL was available. Remote migration state, TLS mode, caching setting,
 Worker secrets and Workers Builds dashboard settings remain unverified. No remote
 mutation, commit, push or deployment was performed.
+
+Read-only re-check on 2026-10-18 (`pnpm check:cloudflare`): `wrangler.jsonc`
+passes every static rule; the deployed Worker still answers `/api/readiness`
+with 404 (the deployed revision predates it — `main` has not received this
+work) and reports auth unconfigured. Wrangler was not logged in on this
+machine, so secret names and the Hyperdrive caching flag were not read.
 
 References: [MariaDB system variables](https://mariadb.com/docs/server/server-management/variables-and-modes/server-system-variables),
 [session variable availability](https://jira.mariadb.org/browse/MDEV-29225),

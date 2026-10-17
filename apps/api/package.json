@@ -22,7 +22,11 @@
     "db:setup:local": "tsx src/cli/setup-database.ts local",
     "db:setup:shared-dev": "tsx src/cli/setup-database.ts shared-dev",
     "db:check:deployment": "tsx src/cli/check-deployment.ts",
-    "deploy:cloudflare": "pnpm db:check:deployment && wrangler deploy --config ../../wrangler.jsonc"
+    "deploy:cloudflare": "pnpm db:check:deployment && wrangler deploy --config ../../wrangler.jsonc",
+    "configure:local": "tsx src/cli/configure-local.ts",
+    "check:local": "tsx src/cli/configure-local.ts --check",
+    "configure:cloudflare": "tsx src/cli/configure-cloudflare.ts",
+    "check:cloudflare": "tsx src/cli/configure-cloudflare.ts --check"
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "1.7.5",
