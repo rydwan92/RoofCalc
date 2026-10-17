@@ -3,6 +3,7 @@ import { useAssembly } from './store';
 import {
   activePerspective,
   NAVIGATION_TRAIL_LIMIT,
+  perspectiveForTask,
   pushNavigationTrail,
   tasksForPerspective,
   workbenchLocation,
@@ -19,7 +20,13 @@ describe('VNext section navigation (V37 perspectives + V53 stages)', () => {
       'construction',
       'openings',
     ]);
-    expect(tasksForPerspective('structure')).toEqual(['construction', 'cuts']);
+    // VNext-2: the connection plan is the third structure task.
+    expect(tasksForPerspective('structure')).toEqual([
+      'construction',
+      'cuts',
+      'connections',
+    ]);
+    expect(perspectiveForTask('connections')).toBe('structure');
     expect(tasksForPerspective('covering')).toEqual(['covering', 'layers']);
     expect(tasksForPerspective('documents')).toEqual(['documents']);
   });

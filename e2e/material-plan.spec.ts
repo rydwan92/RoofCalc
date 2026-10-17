@@ -19,7 +19,7 @@ async function openMaterialProject(
   record.document.project.roof.rafterSection = { widthMm: 45, depthMm: 145 };
   const tiles = JSON.parse(
     readFileSync(
-      'apps/api/src/data/import-batches/tiles-2026-09-v35.json',
+      'packages/catalog-data/batches/tiles-2026-09-v35.json',
       'utf8',
     ),
   ) as CatalogImportBatchV1;

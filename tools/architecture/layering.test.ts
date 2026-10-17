@@ -300,6 +300,32 @@ describe('package dependency direction', () => {
     expect(forbiddenText('packages/document-import-core', NETWORK)).toEqual([]);
   });
 
+  /**
+   * VNext-2 connection catalogue: codes, standards and detailing rules
+   * only. It may know the timber vocabulary, never a solver, a renderer, a
+   * translation, a commercial concept or the network — capacity and prices
+   * are other layers' business.
+   */
+  it('connection-core stays pure: vocabulary + detailing, nothing else', () => {
+    expect(
+      forbiddenImports('packages/connection-core', [
+        ...PURE_DOMAIN,
+        ...RENDERERS,
+        /^@cieslacalc\/(?!timber-model$)/,
+      ]),
+    ).toEqual([]);
+    expect(forbiddenText('packages/connection-core', BROWSER_GLOBALS)).toEqual(
+      [],
+    );
+    expect(forbiddenText('packages/connection-core', NETWORK)).toEqual([]);
+    expect(
+      forbiddenText(
+        'packages/connection-core',
+        /\b(?:priceList|unitPrice|vatRate|currencyCode)\b/,
+      ),
+    ).toEqual([]);
+  });
+
   it('the PDF parser stays inside the web document-import folder', () => {
     const offenders = forbiddenImports('apps/web', PDF_PARSERS).filter(
       (entry) => !entry.file.startsWith('apps/web/src/document-import/'),

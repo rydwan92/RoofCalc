@@ -624,3 +624,57 @@
   align-items: center;
   gap: 3px;
 }
+
+/*
+ * VNext-2 section colours: each section's icon carries its hue in the main
+ * navigation and the phone dock, and the active task is underlined in the
+ * hue of its section. Selection itself stays the accent fill; status stays
+ * the dot. Colour answers "where am I", never "is it done".
+ */
+[data-perspective='project'],
+.a-context-tabs[data-section='project'] {
+  --section-hue: var(--ui-section-project);
+}
+[data-perspective='structure'],
+.a-context-tabs[data-section='structure'] {
+  --section-hue: var(--ui-section-structure);
+}
+[data-perspective='covering'],
+.a-context-tabs[data-section='covering'] {
+  --section-hue: var(--ui-section-covering);
+}
+[data-perspective='materials'],
+.a-context-tabs[data-section='materials'] {
+  --section-hue: var(--ui-section-materials);
+}
+[data-perspective='costing'],
+.a-context-tabs[data-section='costing'] {
+  --section-hue: var(--ui-section-costing);
+}
+[data-perspective='documents'],
+.a-context-tabs[data-section='documents'] {
+  --section-hue: var(--ui-section-documents);
+}
+.a-section-nav button[aria-selected='false'] > svg,
+.a-mobile-task-dock button[data-perspective][aria-selected='false'] > svg {
+  color: var(--section-hue, currentColor);
+}
+.assembly-app .a-context-tabs button[aria-selected='true'] {
+  border-bottom-color: var(--section-hue, var(--ui-selection));
+}
+.assembly-app .a-context-tabs button[aria-selected='true'] > svg {
+  color: var(--section-hue, currentColor);
+}
+
+/* ADR-013: the Material Plan states when the built-in catalogue is in use. */
+.mp-header small[data-status='info'] {
+  display: inline-flex;
+  padding: 2px 8px;
+  border-radius: var(--ui-radius-pill);
+  background: var(--ui-info-soft);
+  color: var(--ui-info);
+  font-weight: var(--ui-weight-medium);
+}
+.mp-header small[data-status='warning'] {
+  color: var(--ui-attention);
+}

@@ -220,3 +220,38 @@ describe('3D pick aperture', () => {
     expect(scenePickTolerance('pen')).toBe(scenePickTolerance('touch'));
   });
 });
+
+describe('member family colours are one system', () => {
+  it('CSS member tokens equal the 3D scene family colours', async () => {
+    const { readFileSync } = await import('node:fs');
+    const tokens = readFileSync(
+      new URL('../../../../../packages/ui/src/tokens.css', import.meta.url),
+      'utf8',
+    );
+    const token = (name: string) =>
+      new RegExp(`--ui-member-${name}:\\s*(#[0-9a-f]{6})`, 'i').exec(
+        tokens,
+      )?.[1];
+    expect({
+      rafter: token('rafter'),
+      hip: token('hip'),
+      jack: token('jack'),
+      collar: token('collar'),
+      wallPlate: token('wall-plate'),
+      purlin: token('purlin'),
+      ridge: token('ridge'),
+      opening: token('opening'),
+      counterBatten: token('counter-batten'),
+    }).toEqual({
+      rafter: SCENE_GROUP_COLOR['common-rafter'].base,
+      hip: SCENE_GROUP_COLOR['hip-rafter'].base,
+      jack: SCENE_GROUP_COLOR['jack-rafter'].base,
+      collar: SCENE_GROUP_COLOR['collar-tie'].base,
+      wallPlate: SCENE_GROUP_COLOR['wall-plate'].base,
+      purlin: SCENE_GROUP_COLOR.purlin.base,
+      ridge: SCENE_GROUP_COLOR.ridge.base,
+      opening: SCENE_GROUP_COLOR['opening-framing'].base,
+      counterBatten: SCENE_GROUP_COLOR['counter-batten'].base,
+    });
+  });
+});

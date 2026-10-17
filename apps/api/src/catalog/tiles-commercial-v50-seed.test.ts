@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { seedBatchPath } from '../data/batch-files';
 import { describe, expect, it } from 'vitest';
 import {
   catalogImportBatchV1Schema,
@@ -13,12 +14,7 @@ import { MemoryCatalogRepository } from './memory-repository';
  * compatibility, and nothing unsourced is stored.
  */
 function load(name: string): unknown {
-  return JSON.parse(
-    readFileSync(
-      new URL(`../data/import-batches/${name}`, import.meta.url),
-      'utf8',
-    ),
-  );
+  return JSON.parse(readFileSync(seedBatchPath(name), 'utf8'));
 }
 
 const batches = [

@@ -27,6 +27,7 @@
     "@better-auth/drizzle-adapter": "1.7.5",
     "@cieslacalc/business-core": "workspace:*",
     "@cieslacalc/catalog-core": "workspace:*",
+    "@cieslacalc/catalog-data": "workspace:*",
     "@cieslacalc/covering-core": "workspace:*",
     "@cieslacalc/pricing-core": "workspace:*",
     "@cieslacalc/project-core": "workspace:*",

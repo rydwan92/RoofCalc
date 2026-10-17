@@ -4,7 +4,7 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
-import { ArrowLeft, Search, X } from 'lucide-react';
+import { ArrowLeft, CircleCheck, Search, TriangleAlert, X } from 'lucide-react';
 import {
   createCatalogProductSelection,
   isCoveringTechnicalSpec,
@@ -18,7 +18,15 @@ import type {
 import { useTranslation } from 'react-i18next';
 import { MobileSheet } from '../assembly/MobileSheet';
 import { useMobileWorkbench } from '../assembly/mobile-workbench';
-import { catalogClient, type CatalogClient } from './client';
+import type { CatalogClient } from './client';
+import {
+  BundledCatalogNotice,
+  catalogQueryKey,
+  UseBundledCatalog,
+  useCatalogClient,
+} from './catalog-source';
+import { bundledCatalogClient } from './offline-client';
+import { useAssembly } from '../assembly/store';
 import { useBusiness } from '../business/context';
 import { businessCopy } from '../business/copy';
 import { BusinessAssortmentPicker } from '../business/BusinessAssortmentPicker';
@@ -49,6 +57,9 @@ const copy = {
     width: 'Szerokość krycia',
     gauge: 'Rozstaw łat',
     pitch: 'Minimalny kąt',
+    fitTitle: 'Twój dach',
+    fits: (pitch: number) => `kąt dachu ${pitch}° ≥ minimum produktu`,
+    tooFlat: (pitch: number) => `dach ${pitch}° — poniżej minimum produktu`,
     panelLength: 'Zakres długości',
     sheetFormat: 'Format',
     fixedSheet: 'Stały arkusz',
@@ -91,6 +102,9 @@ const copy = {
     width: 'Cover width',
     gauge: 'Batten gauge',
     pitch: 'Minimum pitch',
+    fitTitle: 'Your roof',
+    fits: (pitch: number) => `roof pitch ${pitch}° ≥ product minimum`,
+    tooFlat: (pitch: number) => `roof ${pitch}° — below the product minimum`,
     panelLength: 'Length range',
     sheetFormat: 'Format',
     fixedSheet: 'Fixed sheet',
@@ -173,12 +187,12 @@ function PickerBody({
   const [applying, setApplying] = useState(false);
   const [applyError, setApplyError] = useState(false);
   const manufacturers = useQuery({
-    queryKey: ['catalog', 'manufacturers'],
+    queryKey: catalogQueryKey(client, 'manufacturers'),
     queryFn: ({ signal }) => client.listManufacturers(signal),
     staleTime: 5 * 60_000,
   });
   const products = useInfiniteQuery({
-    queryKey: ['catalog', 'products', kind, q, manufacturerId],
+    queryKey: catalogQueryKey(client, 'products', kind, q, manufacturerId),
     queryFn: ({ signal, pageParam }) =>
       client.searchProducts(
         {
@@ -195,13 +209,15 @@ function PickerBody({
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
   const detail = useQuery({
-    queryKey: ['catalog', 'product', productId],
+    queryKey: catalogQueryKey(client, 'product', productId),
     queryFn: ({ signal }) => client.getProduct(productId!, signal),
     enabled: Boolean(productId),
     staleTime: 60_000,
   });
 
   const unavailable = manufacturers.isError || products.isError;
+  // V-next-2: the card says whether the product suits this roof's pitch.
+  const roofPitchDeg = useAssembly((state) => state.template.pitchDeg);
   const productItems = products.data?.pages.flatMap((page) => page.items);
   const selectedVariant = detail.data?.variants.find(
     (item) => item.id === variantId,
@@ -216,12 +232,12 @@ function PickerBody({
     setApplyError(false);
     try {
       const exact = await queryClient.fetchQuery({
-        queryKey: [
-          'catalog',
+        queryKey: catalogQueryKey(
+          client,
           'revision',
           item.product.id,
           item.currentRevision.id,
-        ],
+        ),
         queryFn: ({ signal }) =>
           client.getRevision(item.product.id, item.currentRevision.id, signal),
         staleTime: Infinity,
@@ -244,6 +260,7 @@ function PickerBody({
   if (productId)
     return (
       <div className="a-catalog-picker-body" data-testid="catalog-detail">
+        <BundledCatalogNotice />
         <button
           className="a-catalog-back"
           onClick={() => setProductId(undefined)}
@@ -257,6 +274,7 @@ function PickerBody({
             message={m.unavailable}
             manual={m.manual}
             onManual={onManual}
+            offerBundled={client !== bundledCatalogClient}
           />
         ) : (
           <>
@@ -311,6 +329,7 @@ function PickerBody({
 
   return (
     <div className="a-catalog-picker-body" data-testid="catalog-results">
+      <BundledCatalogNotice />
       <p className="a-catalog-kind-context">{m.kind[kind]}</p>
       <div className="a-catalog-filters">
         <label>
@@ -344,6 +363,7 @@ function PickerBody({
           message={m.unavailable}
           manual={m.manual}
           onManual={onManual}
+          offerBundled={client !== bundledCatalogClient}
         />
       ) : products.isLoading || manufacturers.isLoading ? (
         <div className="a-catalog-loading" aria-live="polite">
@@ -378,6 +398,27 @@ function PickerBody({
                   <div>
                     <dt>{m.pitch}</dt>
                     <dd>{product.technicalPreview.minPitchDeg}°</dd>
+                  </div>
+                )}
+                {product.technicalPreview.minPitchDeg !== undefined && (
+                  <div
+                    className="a-catalog-fit"
+                    data-fits={
+                      roofPitchDeg >= product.technicalPreview.minPitchDeg ||
+                      undefined
+                    }
+                  >
+                    <dt>{m.fitTitle}</dt>
+                    <dd>
+                      {roofPitchDeg >= product.technicalPreview.minPitchDeg ? (
+                        <CircleCheck size={13} aria-hidden="true" />
+                      ) : (
+                        <TriangleAlert size={13} aria-hidden="true" />
+                      )}
+                      {roofPitchDeg >= product.technicalPreview.minPitchDeg
+                        ? m.fits(roofPitchDeg)
+                        : m.tooFlat(roofPitchDeg)}
+                    </dd>
                   </div>
                 )}
                 {product.technicalPreview.sheetLengthModel && (
@@ -445,14 +486,17 @@ function CatalogUnavailable({
   message,
   manual,
   onManual,
+  offerBundled,
 }: {
   message: string;
   manual: string;
   onManual: () => void;
+  offerBundled: boolean;
 }) {
   return (
     <div className="a-catalog-unavailable" role="status">
       <p>{message}</p>
+      {offerBundled && <UseBundledCatalog />}
       <button className="a-button" onClick={onManual}>
         {manual}
       </button>
@@ -465,7 +509,7 @@ export function CatalogProductPicker({
   onApply,
   onManual,
   onClose,
-  client = catalogClient,
+  client: injectedClient,
   confirmReplacementImpact = false,
 }: {
   kind: CoveringKind;
@@ -478,6 +522,7 @@ export function CatalogProductPicker({
   const { i18n } = useTranslation();
   const m = copy[i18n.language.startsWith('pl') ? 'pl' : 'en'];
   const bm = businessCopy(i18n.language);
+  const client = useCatalogClient(injectedClient);
   const mobile = useMobileWorkbench();
   const business = useBusiness();
   const [pending, setPending] = useState<CoveringProductSelection>();

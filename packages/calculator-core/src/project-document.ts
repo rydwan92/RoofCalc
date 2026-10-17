@@ -1,5 +1,9 @@
 import { z } from 'zod';
 import {
+  roofConnectionPlanSchema,
+  type RoofConnectionPlan,
+} from '@cieslacalc/connection-core';
+import {
   coveringAssignmentSpecSchema,
   membraneProductFieldSchema,
   type CoveringAssignmentSpec,
@@ -135,6 +139,13 @@ export interface RoofProjectDocumentV1 {
      * user decisions are stored — never a derived gutter or hook count.
      */
     roofSystem?: RoofSystemIntent;
+    /**
+     * VNext-2 connection plan: the fastening chosen per kind of node
+     * (rafter–wall plate, collar tie–rafter …). Additive: absent on every
+     * older project and whenever nothing is planned. Decisions only — no
+     * counts, spacings or capacities are stored.
+     */
+    connectionPlan?: RoofConnectionPlan;
   };
 }
 
@@ -149,6 +160,7 @@ export const roofProjectDocumentV1Schema = z
       coverings: z.array(coveringAssignmentSpecSchema).optional(),
       membraneProduct: membraneProductFieldSchema.optional(),
       roofSystem: roofSystemIntentSchema.optional(),
+      connectionPlan: roofConnectionPlanSchema.optional(),
     }),
   })
   .transform((document): RoofProjectDocumentV1 => ({
@@ -162,6 +174,9 @@ export const roofProjectDocumentV1Schema = z
       membraneProduct: document.project.membraneProduct,
       ...(document.project.roofSystem
         ? { roofSystem: document.project.roofSystem }
+        : {}),
+      ...(document.project.connectionPlan
+        ? { connectionPlan: document.project.connectionPlan }
         : {}),
     },
   }));
@@ -177,6 +192,7 @@ export function createRoofProjectDocument(
       | 'coverings'
       | 'membraneProduct'
       | 'roofSystem'
+      | 'connectionPlan'
     >
   > = {},
 ): RoofProjectDocumentV1 {
@@ -190,6 +206,7 @@ export function createRoofProjectDocument(
       coverings: composition.coverings ?? [],
       membraneProduct: composition.membraneProduct,
       roofSystem: composition.roofSystem,
+      connectionPlan: composition.connectionPlan,
     },
   });
 }

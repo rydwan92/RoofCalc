@@ -563,3 +563,6 @@ export function isCoveringTechnicalSpec(
     spec.kind !== 'roof-window-component'
   );
 }
+
+// VNext-2 offline read model (ADR-013). Kept last: it reads the schemas above.
+export * from './offline';

@@ -13,6 +13,8 @@
     "@cieslacalc/business-core": "workspace:*",
     "@cieslacalc/calculator-core": "workspace:*",
     "@cieslacalc/catalog-core": "workspace:*",
+    "@cieslacalc/catalog-data": "workspace:*",
+    "@cieslacalc/connection-core": "workspace:*",
     "@cieslacalc/cost-core": "workspace:*",
     "@cieslacalc/covering-core": "workspace:*",
     "@cieslacalc/document-core": "workspace:*",

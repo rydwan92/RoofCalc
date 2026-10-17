@@ -543,6 +543,7 @@ export const assemblyPl = {
   openingsPreset: 'Otwory',
   layersPreset: 'Warstwy',
   cutsPreset: 'Cięcia',
+  connectionsPreset: 'Połączenia',
   materialsPreset: 'Zestawienie',
   costingPreset: 'Kosztorys',
   perspective: 'Perspektywa',
@@ -821,6 +822,26 @@ export const assemblyPl = {
       documents: 'Dokumenty',
     },
     sections: 'Sekcje projektu',
+    sectionHelp: {
+      project: 'Bryła dachu: wymiary, kąt, okap i otwory',
+      structure: 'Więźba: elementy, cięcia i połączenia',
+      covering: 'Pokrycie i warstwy: membrana, kontrłaty, łaty',
+      materials: 'Zestawienie materiałów, system dachu i odwodnienie',
+      costing: 'Kosztorys: pozycje, ceny i VAT',
+      documents: 'Dokumenty do druku i PDF',
+    },
+    taskHelp: {
+      geometry: 'Kształt i wymiary dachu',
+      structure: 'Układ więźby, podpory i przekroje',
+      openings: 'Okna dachowe i wymiany',
+      cuts: 'Przygotowanie elementu: trasowanie i cięcia',
+      connections: 'Węzły więźby: łączniki i podstawa normowa',
+      covering: 'Produkt pokrycia i jego układ na połaciach',
+      layers: 'Membrana, kontrłaty i łaty',
+      materials: 'Plan materiałów',
+      costing: 'Pozycje kosztorysu',
+      documents: 'Dokumenty projektu',
+    },
     task: {
       geometry: 'Geometria dachu',
       structure: 'Więźba',
@@ -2260,6 +2281,11 @@ export const assemblyPl = {
         description:
           'Rozstaw {{gauge}} jest poza zakresem {{min}}–{{max}}. Dachówki nie ułożą się poprawnie.',
       },
+      'battens-auto-unresolved': {
+        title: 'Automatyczny rozstaw łat nie znalazł rozwiązania',
+        description:
+          'Z zakresu łatowania produktu nie da się ułożyć równych rzędów na tej połaci. Ustaw rozstaw ręcznie albo sprawdź dane produktu.',
+      },
       'battens-product-incompatible': {
         title: 'Produkt nie pasuje do kąta dachu',
         description:
@@ -3084,6 +3110,7 @@ export const assemblyEn: typeof assemblyPl = {
   openingsPreset: 'Openings',
   layersPreset: 'Layers',
   cutsPreset: 'Cuts',
+  connectionsPreset: 'Connections',
   materialsPreset: 'Schedule',
   costingPreset: 'Cost estimate',
   perspective: 'Perspective',
@@ -3360,6 +3387,26 @@ export const assemblyEn: typeof assemblyPl = {
       documents: 'Documents',
     },
     sections: 'Project sections',
+    sectionHelp: {
+      project: 'Roof body: dimensions, pitch, eave and openings',
+      structure: 'Timber structure: members, cuts and connections',
+      covering: 'Covering and layers: membrane, counter-battens, battens',
+      materials: 'Material list, roof system and drainage',
+      costing: 'Cost estimate: lines, prices and VAT',
+      documents: 'Documents to print and PDF',
+    },
+    taskHelp: {
+      geometry: 'Roof shape and dimensions',
+      structure: 'Structure layout, supports and sections',
+      openings: 'Roof windows and headers',
+      cuts: 'Member preparation: marking and cutting',
+      connections: 'Structure nodes: fasteners and standards',
+      covering: 'Covering product and its layout on the planes',
+      layers: 'Membrane, counter-battens and battens',
+      materials: 'Material plan',
+      costing: 'Cost lines',
+      documents: 'Project documents',
+    },
     task: {
       geometry: 'Roof geometry',
       structure: 'Timber structure',
@@ -4783,6 +4830,11 @@ export const assemblyEn: typeof assemblyPl = {
         title: 'Batten gauge outside the product range',
         description:
           'Gauge {{gauge}} is outside {{min}}–{{max}}. Tiles will not lay correctly.',
+      },
+      'battens-auto-unresolved': {
+        title: 'The automatic batten gauge found no solution',
+        description:
+          'The product gauge range does not give equal courses on this roof plane. Set the gauge manually or check the product data.',
       },
       'battens-product-incompatible': {
         title: 'The product does not suit the roof pitch',

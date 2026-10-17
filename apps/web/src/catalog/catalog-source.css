@@ -1,0 +1,63 @@
+/* ADR-013 bundled catalogue: the offer, the always-visible notice, and the
+   roof-fit line on product cards. Tokens only. */
+.a-catalog-bundled-offer {
+  display: grid;
+  justify-items: center;
+  gap: var(--ui-space-1);
+  margin: var(--ui-space-2) 0;
+}
+.a-catalog-bundled-offer .a-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ui-space-2);
+}
+.a-catalog-bundled-offer small {
+  max-width: 44ch;
+  color: var(--ui-text-muted);
+  font-size: var(--ui-text-xs);
+  text-align: center;
+}
+.a-catalog-bundled-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ui-space-2);
+  margin-bottom: var(--ui-space-3);
+  padding: var(--ui-space-2) var(--ui-space-3);
+  border-left: 3px solid var(--ui-info);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-info-soft);
+  font-size: var(--ui-text-xs);
+  line-height: 1.45;
+}
+.a-catalog-bundled-notice > svg {
+  flex: none;
+  color: var(--ui-info);
+}
+.a-catalog-bundled-notice span {
+  flex: 1 1 220px;
+}
+.assembly-app .a-catalog-bundled-notice button,
+.a-catalog-bundled-notice button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  padding: 0 var(--ui-space-2);
+  border: 1px solid var(--ui-line);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-surface);
+  color: var(--ui-accent);
+  font-size: var(--ui-text-xs);
+  font-weight: var(--ui-weight-medium);
+  cursor: pointer;
+}
+.a-catalog-fit dd {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ui-attention);
+}
+.a-catalog-fit[data-fits] dd {
+  color: var(--ui-success);
+}

@@ -22,8 +22,49 @@ export type DocumentSourceKind = 'pdf' | 'png' | 'jpeg' | 'webp';
 export type LengthUnit = 'mm' | 'cm' | 'm';
 export type PageUnit = 'pt' | 'px';
 
+/**
+ * How a measurement was obtained. `transcription` = the user selected a
+ * dimension written on a scan or photo and typed it exactly as written;
+ * `manual` = the user measured a line on a calibrated underlay.
+ */
 export type RecognitionMode =
-  'text-layer' | 'vector-geometry' | 'ocr' | 'ai-vision' | 'manual';
+  | 'text-layer'
+  | 'vector-geometry'
+  | 'ocr'
+  | 'ai-vision'
+  | 'transcription'
+  | 'manual';
+
+export const RECOGNITION_MODES = [
+  'text-layer',
+  'vector-geometry',
+  'ocr',
+  'ai-vision',
+  'transcription',
+  'manual',
+] as const satisfies readonly RecognitionMode[];
+
+/**
+ * Dimension-first policy (VNext-2). A value is either **written** — a
+ * number printed on the drawing, read from its text layer, by OCR or typed
+ * by the user from the drawing — or **scaled**, i.e. measured off the
+ * drawing through a scale. Prints, scans and photos are routinely resized,
+ * so a scaled value is never authoritative: written dimensions decide a
+ * field; scaled ones only cross-check it, or stand in — flagged — when
+ * nothing is written at all.
+ */
+export type ValueSource = 'written' | 'scaled';
+
+export function measurementValueSource(measurement: {
+  mode: RecognitionMode;
+  unitBasis?: UnitBasis;
+}): ValueSource {
+  return measurement.mode === 'vector-geometry' ||
+    measurement.mode === 'manual' ||
+    measurement.unitBasis === 'calibrated'
+    ? 'scaled'
+    : 'written';
+}
 
 /** Roof parameters a document can supply; names match the project start. */
 export type NumericRoofField =
@@ -86,7 +127,36 @@ export type EvidenceCode =
   | 'manual-measurement'
   | 'drawn-at-scale'
   | 'scale-cross-check-match'
-  | 'scale-cross-check-mismatch';
+  | 'scale-cross-check-mismatch'
+  /** One of several numbers standing alone in a row of dimensions. */
+  | 'dimension-row'
+  /** The overall dimension that a chain of part dimensions sums to. */
+  | 'chain-total'
+  /** A part of a dimension chain whose sum equals a written total. */
+  | 'chain-part'
+  /** Typed by the user from the drawing; its region is kept as evidence. */
+  | 'transcribed';
+
+export const EVIDENCE_CODES = [
+  'explicit-label',
+  'generic-label',
+  'explicit-unit',
+  'same-line',
+  'nearby',
+  'unlabelled',
+  'only-angle-in-document',
+  'percent-slope-converted',
+  'dimension-pair',
+  'section-pair',
+  'manual-measurement',
+  'drawn-at-scale',
+  'scale-cross-check-match',
+  'scale-cross-check-mismatch',
+  'dimension-row',
+  'chain-total',
+  'chain-part',
+  'transcribed',
+] as const satisfies readonly EvidenceCode[];
 
 export interface PageBox {
   x: number;
@@ -159,7 +229,19 @@ export type DraftRelation =
       drawnMm: number;
       deviationRatio: number;
     }
-  | { kind: 'outline'; segmentIds: string[] };
+  | { kind: 'outline'; segmentIds: string[] }
+  /**
+   * Written part dimensions whose sum equals a written overall dimension.
+   * Unit-free and scale-free: it proves the numbers were read consistently.
+   */
+  | {
+      kind: 'dimension-chain';
+      axis: 'horizontal' | 'vertical';
+      totalMeasurementId: string;
+      partMeasurementIds: string[];
+      /** Sum of the parts in the numbers' own written unit. */
+      sum: number;
+    };
 
 export type DraftWarning =
   | { code: 'no-text-layer'; page?: number }
@@ -183,6 +265,16 @@ export type DraftWarning =
       field: NumericRoofField;
       documentMm: number;
       drawnMm: number;
+    }
+  /** Nothing written was found; the value was measured through a scale. */
+  | { code: 'scaled-value-only'; field: NumericRoofField }
+  /** A row of written parts nearly — but not exactly — sums to a total. */
+  | {
+      code: 'dimension-chain-mismatch';
+      totalMeasurementId: string;
+      partMeasurementIds: string[];
+      sum: number;
+      total: number;
     };
 
 export interface ScaleStatement {
@@ -330,28 +422,9 @@ const measurementSchema = z.object({
     .object({ text: shortText, region: regionSchema.optional() })
     .optional(),
   confidence: z.enum(['high', 'medium', 'low']),
-  evidence: z
-    .array(
-      z.enum([
-        'explicit-label',
-        'generic-label',
-        'explicit-unit',
-        'same-line',
-        'nearby',
-        'unlabelled',
-        'only-angle-in-document',
-        'percent-slope-converted',
-        'dimension-pair',
-        'section-pair',
-        'manual-measurement',
-        'drawn-at-scale',
-        'scale-cross-check-match',
-        'scale-cross-check-mismatch',
-      ]),
-    )
-    .max(20),
+  evidence: z.array(z.enum(EVIDENCE_CODES)).max(20),
   engineId: idSchema,
-  mode: z.enum(['text-layer', 'vector-geometry', 'ocr', 'ai-vision', 'manual']),
+  mode: z.enum(RECOGNITION_MODES),
 });
 
 const warningSchema = z.discriminatedUnion('code', [
@@ -389,18 +462,20 @@ const warningSchema = z.discriminatedUnion('code', [
     documentMm: finite,
     drawnMm: finite,
   }),
+  z.object({ code: z.literal('scaled-value-only'), field: fieldSchema }),
+  z.object({
+    code: z.literal('dimension-chain-mismatch'),
+    totalMeasurementId: idSchema,
+    partMeasurementIds: z.array(idSchema).max(50),
+    sum: finite,
+    total: finite,
+  }),
 ]);
 
 export const recognitionResultSchema = z.object({
   engine: z.object({
     id: idSchema,
-    mode: z.enum([
-      'text-layer',
-      'vector-geometry',
-      'ocr',
-      'ai-vision',
-      'manual',
-    ]),
+    mode: z.enum(RECOGNITION_MODES),
     version: z.string().min(1).max(50),
   }),
   measurements: z.array(measurementSchema).max(5_000),
@@ -465,6 +540,13 @@ export const recognitionResultSchema = z.object({
           deviationRatio: finite,
         }),
         z.object({ kind: z.literal('outline'), segmentIds: z.array(idSchema) }),
+        z.object({
+          kind: z.literal('dimension-chain'),
+          axis: z.enum(['horizontal', 'vertical']),
+          totalMeasurementId: idSchema,
+          partMeasurementIds: z.array(idSchema).min(2).max(50),
+          sum: finite,
+        }),
       ]),
     )
     .max(10_000)

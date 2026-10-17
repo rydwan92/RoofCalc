@@ -31,6 +31,7 @@ export type ViewPreset =
   | 'layers'
   | 'covering'
   | 'cuts'
+  | 'connections'
   | 'materials'
   | 'costing'
   | 'documents';
@@ -51,7 +52,7 @@ export type WorkbenchPerspective =
 
 const PERSPECTIVE_TASKS: Record<WorkbenchPerspective, readonly ViewPreset[]> = {
   project: ['construction', 'openings'],
-  structure: ['construction', 'cuts'],
+  structure: ['construction', 'cuts', 'connections'],
   covering: ['covering', 'layers'],
   materials: ['materials'],
   costing: ['costing'],

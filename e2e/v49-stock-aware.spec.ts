@@ -14,7 +14,7 @@ import { technicalPreview } from '../packages/catalog-core/src/index';
 
 const read = <T>(name: string) =>
   JSON.parse(
-    readFileSync(`apps/api/src/data/import-batches/${name}`, 'utf8'),
+    readFileSync(`packages/catalog-data/batches/${name}`, 'utf8'),
   ) as T;
 const tiles = read<CatalogImportBatchV1>('tiles-2026-09-v35.json');
 const timber = read<CatalogImportBatchV1>('timber-linear-stock-2026-09.json');

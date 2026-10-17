@@ -17,13 +17,13 @@ async function openTileProject(page: Page, withWindow = false) {
   ) as ProjectRecordV1;
   const v35 = JSON.parse(
     readFileSync(
-      'apps/api/src/data/import-batches/tiles-2026-09-v35.json',
+      'packages/catalog-data/batches/tiles-2026-09-v35.json',
       'utf8',
     ),
   ) as CatalogImportBatchV1;
   const v50 = JSON.parse(
     readFileSync(
-      'apps/api/src/data/import-batches/tiles-commercial-2026-09-v50.json',
+      'packages/catalog-data/batches/tiles-commercial-2026-09-v50.json',
       'utf8',
     ),
   ) as CatalogImportBatchV1;

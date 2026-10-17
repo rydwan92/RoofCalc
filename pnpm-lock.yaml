@@ -104,6 +104,9 @@ importers:
       '@cieslacalc/catalog-core':
         specifier: workspace:*
         version: link:../../packages/catalog-core
+      '@cieslacalc/catalog-data':
+        specifier: workspace:*
+        version: link:../../packages/catalog-data
       '@cieslacalc/covering-core':
         specifier: workspace:*
         version: link:../../packages/covering-core
@@ -174,6 +177,12 @@ importers:
       '@cieslacalc/catalog-core':
         specifier: workspace:*
         version: link:../../packages/catalog-core
+      '@cieslacalc/catalog-data':
+        specifier: workspace:*
+        version: link:../../packages/catalog-data
+      '@cieslacalc/connection-core':
+        specifier: workspace:*
+        version: link:../../packages/connection-core
       '@cieslacalc/cost-core':
         specifier: workspace:*
         version: link:../../packages/cost-core
@@ -288,6 +297,9 @@ importers:
 
   packages/calculator-core:
     dependencies:
+      '@cieslacalc/connection-core':
+        specifier: workspace:*
+        version: link:../connection-core
       '@cieslacalc/covering-core':
         specifier: workspace:*
         version: link:../covering-core
@@ -318,6 +330,17 @@ importers:
       '@cieslacalc/roof-system-core':
         specifier: workspace:*
         version: link:../roof-system-core
+      zod:
+        specifier: ^3.25.0
+        version: 3.25.76
+
+  packages/catalog-data: {}
+
+  packages/connection-core:
+    dependencies:
+      '@cieslacalc/timber-model':
+        specifier: workspace:*
+        version: link:../timber-model
       zod:
         specifier: ^3.25.0
         version: 3.25.76

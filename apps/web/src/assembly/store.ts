@@ -8,6 +8,7 @@ import type {
   MembraneProductSelection,
 } from '@cieslacalc/covering-core';
 import type { RoofSystemIntent } from '@cieslacalc/roof-system-core';
+import type { RoofConnectionPlan } from '@cieslacalc/connection-core';
 import {
   createRoofProjectDocument,
   parseRoofProjectDocument,
@@ -315,6 +316,7 @@ function committedTemplate(
       coverings: currentDocument?.project.coverings ?? [],
       membraneProduct: currentDocument?.project.membraneProduct,
       roofSystem: currentDocument?.project.roofSystem,
+      connectionPlan: currentDocument?.project.connectionPlan,
     }),
     template,
     spec,
@@ -490,6 +492,8 @@ export interface AssemblyState {
    */
   setRoofSystem: (roofSystem: RoofSystemIntent | undefined) => void;
   previewRoofSystem: (roofSystem: RoofSystemIntent | undefined) => void;
+  /** VNext-2: one planned-connection change is one history entry. */
+  setConnectionPlan: (plan: RoofConnectionPlan | undefined) => void;
   add: () => void;
   remove: (id: string) => void;
   select: (id: string, prototypeId?: string) => void;
@@ -593,6 +597,22 @@ function withRoofSystem(
     coverings: project.coverings,
     membraneProduct: project.membraneProduct,
     roofSystem,
+    connectionPlan: project.connectionPlan,
+  });
+}
+function withConnectionPlan(
+  document: RoofProjectDocumentV1,
+  connectionPlan: RoofConnectionPlan | undefined,
+): RoofProjectDocumentV1 {
+  const project = document.project;
+  return createRoofProjectDocument(project.roof, {
+    features: project.features,
+    openingFraming: project.openingFraming,
+    buildUp: project.buildUp,
+    coverings: project.coverings,
+    membraneProduct: project.membraneProduct,
+    roofSystem: project.roofSystem,
+    connectionPlan,
   });
 }
 function restoredSnapshot(snapshotToRestore: DomainSnapshot) {
@@ -1303,6 +1323,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         coverings: state.projectDocument.project.coverings,
         membraneProduct: state.projectDocument.project.membraneProduct,
         roofSystem: state.projectDocument.project.roofSystem,
+        connectionPlan: state.projectDocument.project.connectionPlan,
       });
       return {
         ...withHistory(
@@ -1526,6 +1547,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         coverings: state.projectDocument.project.coverings,
         membraneProduct: state.projectDocument.project.membraneProduct,
         roofSystem: state.projectDocument.project.roofSystem,
+        connectionPlan: state.projectDocument.project.connectionPlan,
       });
       return {
         ...withHistory(
@@ -1564,6 +1586,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         coverings: state.projectDocument.project.coverings,
         membraneProduct: state.projectDocument.project.membraneProduct,
         roofSystem: state.projectDocument.project.roofSystem,
+        connectionPlan: state.projectDocument.project.connectionPlan,
       });
       return {
         ...withHistory(
@@ -1677,6 +1700,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         coverings: state.projectDocument.project.coverings,
         membraneProduct: state.projectDocument.project.membraneProduct,
         roofSystem: state.projectDocument.project.roofSystem,
+        connectionPlan: state.projectDocument.project.connectionPlan,
       });
       return {
         ...withHistory(
@@ -1737,6 +1761,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         coverings: state.projectDocument.project.coverings,
         membraneProduct: state.projectDocument.project.membraneProduct,
         roofSystem: state.projectDocument.project.roofSystem,
+        connectionPlan: state.projectDocument.project.connectionPlan,
       });
       return {
         ...withHistory(
@@ -1778,6 +1803,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         coverings: state.projectDocument.project.coverings,
         membraneProduct: state.projectDocument.project.membraneProduct,
         roofSystem: state.projectDocument.project.roofSystem,
+        connectionPlan: state.projectDocument.project.connectionPlan,
       });
       return {
         ...withHistory(
@@ -1813,6 +1839,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         coverings: state.projectDocument.project.coverings,
         membraneProduct: state.projectDocument.project.membraneProduct,
         roofSystem: state.projectDocument.project.roofSystem,
+        connectionPlan: state.projectDocument.project.connectionPlan,
       });
       return {
         ...withHistory(
@@ -1863,6 +1890,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         coverings: state.projectDocument.project.coverings,
         membraneProduct: state.projectDocument.project.membraneProduct,
         roofSystem: state.projectDocument.project.roofSystem,
+        connectionPlan: state.projectDocument.project.connectionPlan,
       });
       return {
         ...withHistory(
@@ -1958,6 +1986,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         coverings: state.projectDocument.project.coverings,
         membraneProduct: state.projectDocument.project.membraneProduct,
         roofSystem: state.projectDocument.project.roofSystem,
+        connectionPlan: state.projectDocument.project.connectionPlan,
       });
       applied = true;
       return {
@@ -1993,6 +2022,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         coverings: state.projectDocument.project.coverings,
         membraneProduct: state.projectDocument.project.membraneProduct,
         roofSystem: state.projectDocument.project.roofSystem,
+        connectionPlan: state.projectDocument.project.connectionPlan,
       });
       return {
         ...withHistory(
@@ -2016,6 +2046,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         coverings: state.projectDocument.project.coverings,
         membraneProduct: state.projectDocument.project.membraneProduct,
         roofSystem: state.projectDocument.project.roofSystem,
+        connectionPlan: state.projectDocument.project.connectionPlan,
       });
       return withHistory(
         state,
@@ -2031,6 +2062,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         coverings: state.projectDocument.project.coverings,
         membraneProduct: state.projectDocument.project.membraneProduct,
         roofSystem: state.projectDocument.project.roofSystem,
+        connectionPlan: state.projectDocument.project.connectionPlan,
       });
       return withHistory(
         state,
@@ -2053,6 +2085,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         coverings: repair.coverings,
         membraneProduct: project.membraneProduct,
         roofSystem: project.roofSystem,
+        connectionPlan: project.connectionPlan,
       });
       return withHistory(
         state,
@@ -2068,6 +2101,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         coverings: state.projectDocument.project.coverings,
         membraneProduct: state.projectDocument.project.membraneProduct,
         roofSystem: state.projectDocument.project.roofSystem,
+        connectionPlan: state.projectDocument.project.connectionPlan,
       });
       return withHistory(
         state,
@@ -2083,6 +2117,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         coverings: state.projectDocument.project.coverings,
         membraneProduct,
         roofSystem: state.projectDocument.project.roofSystem,
+        connectionPlan: state.projectDocument.project.connectionPlan,
       });
       return withHistory(
         state,
@@ -2098,6 +2133,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         coverings: state.projectDocument.project.coverings,
         membraneProduct: state.projectDocument.project.membraneProduct,
         roofSystem: state.projectDocument.project.roofSystem,
+        connectionPlan: state.projectDocument.project.connectionPlan,
       });
       return withHistory(
         state,
@@ -2118,6 +2154,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         coverings: state.projectDocument.project.coverings,
         membraneProduct: state.projectDocument.project.membraneProduct,
         roofSystem: state.projectDocument.project.roofSystem,
+        connectionPlan: state.projectDocument.project.connectionPlan,
       });
       return withHistory(
         state,
@@ -2162,6 +2199,17 @@ export const useAssembly = create<AssemblyState>((set) => ({
         state.invalidFields,
       ),
     ),
+  setConnectionPlan: (plan) =>
+    set((state) =>
+      withHistory(
+        state,
+        committedDocument(
+          withConnectionPlan(state.projectDocument, plan),
+          state.drafts,
+          state.invalidFields,
+        ),
+      ),
+    ),
   setCoveringAssignments: (coverings) =>
     set((state) => {
       const document = createRoofProjectDocument(state.template, {
@@ -2176,6 +2224,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         coverings,
         membraneProduct: state.projectDocument.project.membraneProduct,
         roofSystem: state.projectDocument.project.roofSystem,
+        connectionPlan: state.projectDocument.project.connectionPlan,
       });
       const previousId = state.workbench.selectedCoveringAssignmentId;
       const previousIndex = previousId

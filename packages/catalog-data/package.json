@@ -1,0 +1,11 @@
+{
+  "name": "@cieslacalc/catalog-data",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./batches/*": "./batches/*",
+    "./package.json": "./package.json"
+  }
+}

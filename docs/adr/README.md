@@ -25,3 +25,5 @@ Several ADRs here are executable: `tools/architecture/*.test.ts` fails
 | [010](ADR-010-required-piece-is-a-fabrication-blank.md) | `RequiredPiece` means one required physical fabrication blank | `opaque-ids.test.ts` |
 | [011](ADR-011-catalog-kind-is-general.md) | The catalogue kind is a general technical material kind | catalogue tests |
 | [012](ADR-012-document-import-intermediate-model.md) | Document import goes through a versioned intermediate model; engines are adapters | `layering.test.ts`, document-import-core tests |
+| [013](ADR-013-bundled-technical-catalogue.md) | A bundled technical catalogue is an explicit offline choice; the server stays the source | `offline.test.ts`, `e2e/offline-catalogue.spec.ts` |
+| [014](ADR-014-connection-plan-is-detailing-not-design.md) | The connection plan records decisions and checks detailing, never capacity | `connection-core` tests, `layering.test.ts` |

@@ -169,8 +169,9 @@ export function manualMeasurementResult(
           height: Math.abs(input.to.y - input.from.y),
         },
       },
-      // A click on an underlay is honest evidence but never exact.
-      confidence: 'medium',
+      // A click on an underlay through a scale is honest evidence but never
+      // exact, and prints are often resized: a scaled value stays low.
+      confidence: 'low',
       evidence: ['manual-measurement'],
       engineId: MANUAL_UNDERLAY_ENGINE.id,
       mode: 'manual',

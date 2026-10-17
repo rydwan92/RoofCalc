@@ -40,7 +40,7 @@ interface BatchLike {
 
 const batch = JSON.parse(
   readFileSync(
-    'apps/api/src/data/import-batches/roof-system-2026-09-v52.json',
+    'packages/catalog-data/batches/roof-system-2026-09-v52.json',
     'utf8',
   ),
 ) as BatchLike;

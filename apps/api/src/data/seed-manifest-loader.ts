@@ -8,6 +8,7 @@ import {
 } from '@cieslacalc/catalog-core';
 import { priceImportBatchV1Schema } from '@cieslacalc/pricing-core';
 import type { ExpectedSeed } from '../db/seed-status';
+import { seedBatchPath } from './batch-files';
 import {
   BUSINESS_SEED,
   CATALOGUE_SEED_BATCHES,
@@ -15,7 +16,6 @@ import {
 } from './seed-manifest';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const batchDirectory = resolve(here, 'import-batches');
 const businessDirectory = resolve(here, 'business');
 const checksum = (value: unknown) =>
   createHash('sha256').update(canonicalJson(value)).digest('hex');
@@ -25,7 +25,7 @@ export async function loadExpectedSeeds(): Promise<ExpectedSeed[]> {
   const catalogue = await Promise.all(
     CATALOGUE_SEED_BATCHES.map(async (file) => {
       const batch = catalogImportBatchV1Schema.parse(
-        JSON.parse(await readFile(resolve(batchDirectory, file), 'utf8')),
+        JSON.parse(await readFile(seedBatchPath(file), 'utf8')),
       );
       return {
         file,
@@ -38,7 +38,7 @@ export async function loadExpectedSeeds(): Promise<ExpectedSeed[]> {
   const pricing = await Promise.all(
     PRICING_SEED_BATCHES.map(async (file) => {
       const batch = priceImportBatchV1Schema.parse(
-        JSON.parse(await readFile(resolve(batchDirectory, file), 'utf8')),
+        JSON.parse(await readFile(seedBatchPath(file), 'utf8')),
       );
       return {
         file,

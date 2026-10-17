@@ -42,7 +42,7 @@ const hip: RoofTemplateSpec = {
 
 /**
  * Technical snapshots of three seeded roof-tile families
- * (apps/api/src/data/import-batches/tiles-2026-09*.json): different cover
+ * (packages/catalog-data/batches/tiles-2026-09*.json): different cover
  * widths, gauge ranges, minimum pitches, consumption and physical sizes.
  */
 const SEEDED: Record<string, RoofTileTechnicalSpec> = {

@@ -595,3 +595,23 @@ a storage key and a reader for version 1.
 which navigation section shows the shared construction drawing. Transient view
 state (ADR-002): never serialized, never in history, reset with the
 workbench. No migration.
+
+## 15. `project.connectionPlan` — connection plan (VNext-2, persisted)
+
+- Owner: `packages/connection-core` (`roofConnectionPlanSchema`), embedded in
+  `RoofProjectDocumentV1.project` by `calculator-core`.
+- Shape: `{ version: 1, nodes: { [RoofNodeKind]?: { fastening?: { type,
+  diameterMm?, perNode? }, connector?, note? } } }`. Decisions only — no
+  counts, spacings or capacities.
+- Additive optional: absent on every older project and whenever nothing is
+  planned (`withPlannedConnection` drops empty nodes and an empty plan). An
+  older app version that parses a newer file drops the field (zod strips
+  unknown keys) — the roof itself is unaffected.
+- Validation: a fastener or connector must be one the catalogue offers for
+  that node kind; `perNode` 1–50; diameter 2–30 mm; note ≤ 240 characters.
+- History: `setConnectionPlan` is one undo entry; every store composition
+  site carries the field (test: `connections/plan-store.test.ts`).
+- RecognitionResult (§13) additions in VNext-2, session-only: mode
+  `transcription`; evidence `dimension-row`, `chain-total`, `chain-part`,
+  `transcribed`; relation `dimension-chain`; warnings `scaled-value-only`,
+  `dimension-chain-mismatch`.

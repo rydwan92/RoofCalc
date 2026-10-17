@@ -11,7 +11,14 @@ import { MobileSheet } from '../assembly/MobileSheet';
 import { useMobileWorkbench } from '../assembly/mobile-workbench';
 import { BusinessAssortmentSearch } from '../business/BusinessAssortmentSearch';
 import { useBusiness } from '../business/context';
-import { catalogClient, type CatalogClient } from './client';
+import type { CatalogClient } from './client';
+import {
+  BundledCatalogNotice,
+  catalogQueryKey,
+  UseBundledCatalog,
+  useCatalogClient,
+} from './catalog-source';
+import { bundledCatalogClient } from './offline-client';
 import { usePriceOptions } from '../pricing/use-prices';
 import { materialCopy } from '../assembly/material-copy';
 
@@ -167,7 +174,7 @@ function TimberCardOffers({
 }) {
   const m = materialCopy(locale);
   const detail = useQuery({
-    queryKey: ['catalog', 'product', productId],
+    queryKey: catalogQueryKey(client, 'product', productId),
     queryFn: ({ signal }) => client.getProduct(productId, signal),
     staleTime: 60_000,
   });
@@ -226,12 +233,18 @@ function PickerBody({
   const [applying, setApplying] = useState(false);
   const [applyError, setApplyError] = useState(false);
   const manufacturers = useQuery({
-    queryKey: ['catalog', 'manufacturers'],
+    queryKey: catalogQueryKey(client, 'manufacturers'),
     queryFn: ({ signal }) => client.listManufacturers(signal),
     staleTime: 5 * 60_000,
   });
   const products = useInfiniteQuery({
-    queryKey: ['catalog', 'products', 'timber-stock', q, manufacturerId],
+    queryKey: catalogQueryKey(
+      client,
+      'products',
+      'timber-stock',
+      q,
+      manufacturerId,
+    ),
     queryFn: ({ signal, pageParam }) =>
       client.searchProducts(
         {
@@ -248,7 +261,7 @@ function PickerBody({
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
   const detail = useQuery({
-    queryKey: ['catalog', 'product', productId],
+    queryKey: catalogQueryKey(client, 'product', productId),
     queryFn: ({ signal }) => client.getProduct(productId!, signal),
     enabled: Boolean(productId),
     staleTime: 60_000,
@@ -274,12 +287,12 @@ function PickerBody({
     setApplyError(false);
     try {
       const exact = await queryClient.fetchQuery({
-        queryKey: [
-          'catalog',
+        queryKey: catalogQueryKey(
+          client,
           'revision',
           item.product.id,
           item.currentRevision.id,
-        ],
+        ),
         queryFn: ({ signal }) =>
           client.getRevision(item.product.id, item.currentRevision.id, signal),
         staleTime: Infinity,
@@ -320,6 +333,7 @@ function PickerBody({
         className="a-catalog-picker-body"
         data-testid="timber-stock-catalog-detail"
       >
+        <BundledCatalogNotice />
         <button
           className="a-catalog-back"
           onClick={() => setProductId(undefined)}
@@ -330,6 +344,7 @@ function PickerBody({
           <div className="a-catalog-loading">{m.loading}</div>
         ) : detail.isError || !detail.data ? (
           <CatalogUnavailable
+            offerBundled={client !== bundledCatalogClient}
             message={m.unavailable}
             manual={m.manual}
             onManual={onManual}
@@ -381,6 +396,7 @@ function PickerBody({
             .replace('{{depth}}', String(requiredSection.depthMm))}
         </p>
       )}
+      <BundledCatalogNotice />
       <div className="a-catalog-filters">
         <label>
           <span>{m.search}</span>
@@ -410,6 +426,7 @@ function PickerBody({
       </div>
       {unavailable ? (
         <CatalogUnavailable
+          offerBundled={client !== bundledCatalogClient}
           message={m.unavailable}
           manual={m.manual}
           onManual={onManual}
@@ -486,10 +503,12 @@ function PickerBody({
 }
 
 function CatalogUnavailable({
+  offerBundled,
   message,
   manual,
   onManual,
 }: {
+  offerBundled: boolean;
   message: string;
   manual: string;
   onManual: () => void;
@@ -497,6 +516,7 @@ function CatalogUnavailable({
   return (
     <div className="a-catalog-unavailable" role="status">
       <p>{message}</p>
+      {offerBundled && <UseBundledCatalog />}
       <button className="a-button" onClick={onManual}>
         {manual}
       </button>
@@ -508,7 +528,7 @@ export function TimberStockProductPicker({
   requiredSection,
   onApply,
   onClose,
-  client = catalogClient,
+  client: injectedClient,
 }: {
   requiredSection?: { widthMm: number; depthMm: number };
   onApply: (pick: TimberStockCatalogPick) => void;
@@ -517,6 +537,7 @@ export function TimberStockProductPicker({
 }) {
   const { i18n } = useTranslation();
   const m = copy[i18n.language.startsWith('pl') ? 'pl' : 'en'];
+  const client = useCatalogClient(injectedClient);
   const mobile = useMobileWorkbench();
   const business = useBusiness();
   const queryClient = useQueryClient();
@@ -531,12 +552,12 @@ export function TimberStockProductPicker({
         onSelect={async (row) => {
           if (!row.catalog) return;
           const exact = await queryClient.fetchQuery({
-            queryKey: [
-              'catalog',
+            queryKey: catalogQueryKey(
+              client,
               'revision',
               row.catalog.productId,
               row.catalog.currentRevisionId,
-            ],
+            ),
             queryFn: ({ signal }) =>
               client.getRevision(
                 row.catalog!.productId,

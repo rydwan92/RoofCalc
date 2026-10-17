@@ -19,7 +19,7 @@ import {
   measureMm,
   PDF_POINT_MM,
 } from './calibration';
-import { parseRecognitionResult } from './model';
+import { measurementValueSource, parseRecognitionResult } from './model';
 
 const bytes = (...values: number[]) => new Uint8Array(values);
 const text = (value: string) =>
@@ -192,8 +192,10 @@ describe('manual calibration and measurement', () => {
       field: 'buildingLength',
       valueMm: 12_401,
       unitBasis: 'calibrated',
-      confidence: 'medium',
+      // Measured through a scale: never more than a stand-in (VNext-2).
+      confidence: 'low',
     });
+    expect(measurementValueSource(manual.measurements[0]!)).toBe('scaled');
     expect(manual.segments?.map((segment) => segment.role)).toEqual([
       'calibration',
       'measurement',

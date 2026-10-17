@@ -5,6 +5,7 @@
   "type": "module",
   "exports": "./src/index.ts",
   "dependencies": {
+    "@cieslacalc/connection-core": "workspace:*",
     "@cieslacalc/covering-core": "workspace:*",
     "@cieslacalc/drawing-engine": "workspace:*",
     "@cieslacalc/roof-math": "workspace:*",

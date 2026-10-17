@@ -545,3 +545,27 @@ date and "zweryfikuj przed zakupem" when the price comes from the catalogue.
 
 **The catalogue is optional.** When it is unavailable the panel says so in one
 line and manual lengths keep working.
+
+## VNext-2 — colour as orientation, written dimensions, connection plan
+
+- **Colour has two jobs and never swaps them.** Section hues
+  (`--ui-section-*`) answer "where am I": section icons in the navigation and
+  the phone dock, and the underline of the active task. Status colours
+  (success / attention / danger) answer "is it done". Timber families keep one
+  colour in every view (`--ui-member-*` = the 3D scene colours).
+- Every section and task names its purpose in one line (hover title and the
+  accessible label + status).
+- **Document import reads written numbers.** On a scan or photo the default
+  tool is *Odczytaj wymiar*: frame the number (drag or tap), see it magnified,
+  type it as written, choose its meaning. Scale tools live in a group labelled
+  *Skala — tylko kontrolnie*. A value measured at scale is always marked
+  "orientacyjnie" and never wins over a written one. A dimension chain shows
+  its proof (`320 + 600 + 320 = 1240 ✓`).
+- **Connection plan** (Konstrukcja → Połączenia): one card per kind of node,
+  wall to ridge, coloured by its member families; the carpentry joint the
+  model already resolves, the planned fastener and connector, the detailing
+  check with its table, the standards. Every check says it is placement
+  geometry, not capacity. No default diameter is preselected.
+- **Built-in catalogue** is offered only where the server catalogue is
+  unavailable, and while used it is always labelled with its data date and a
+  way back.

@@ -5,6 +5,7 @@ import type { CostScenario } from '@cieslacalc/cost-core';
 import { classifyPriceFreshness } from '@cieslacalc/pricing-core';
 import type { MembraneProductSelection } from '@cieslacalc/covering-core';
 import { catalogClient } from '../catalog/client';
+import { useCatalogSource } from '../catalog/catalog-source';
 import { parseDecimal } from '../format';
 import { usePriceOptions } from '../pricing/use-prices';
 import { useAssembly } from './store';
@@ -196,6 +197,8 @@ export function MaterialPlan({
   const rs = roofSystemCopy(locale);
   const rows = createMaterialPlanRows(facts, membrane);
   const business = useBusiness();
+  // ADR-013: the user may read the built-in technical catalogue offline.
+  const catalogSource = useCatalogSource();
   const commercial = useOrganizationPrices(
     rows.flatMap((row) =>
       row.product?.variantId ? [row.product.variantId] : [],
@@ -326,23 +329,41 @@ export function MaterialPlan({
         <div>
           <h2>{m.title}</h2>
           <small
-            data-status={catalogue.isError ? 'warning' : 'neutral'}
+            data-status={
+              catalogSource.source === 'bundled'
+                ? 'info'
+                : catalogue.isError
+                  ? 'warning'
+                  : 'neutral'
+            }
             data-testid="catalogue-status"
           >
-            {catalogue.isPending
-              ? m.loading
-              : catalogue.isError
-                ? m.offline
-                : m.online}
+            {catalogSource.source === 'bundled'
+              ? m.bundled
+              : catalogue.isPending
+                ? m.loading
+                : catalogue.isError
+                  ? m.offline
+                  : m.online}
           </small>
-          {catalogue.isError && (
-            <button
-              type="button"
-              className="mp-retry"
-              onClick={() => void catalogue.refetch()}
-            >
-              {m.retry}
-            </button>
+          {catalogue.isError && catalogSource.source === 'server' && (
+            <>
+              <button
+                type="button"
+                className="mp-retry"
+                onClick={() => void catalogue.refetch()}
+              >
+                {m.retry}
+              </button>
+              <button
+                type="button"
+                className="mp-retry"
+                data-testid="material-use-bundled-catalogue"
+                onClick={() => catalogSource.setSource('bundled')}
+              >
+                {m.useBundled}
+              </button>
+            </>
           )}
         </div>
         <div className="mp-actions">

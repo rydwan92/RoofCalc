@@ -213,7 +213,7 @@ test('V51 catalogue system: Galeco STAL2 from the seed batch, hooks at the sourc
 }) => {
   const batch = JSON.parse(
     readFileSync(
-      'apps/api/src/data/import-batches/drainage-galeco-stal2-2026-09-v51.json',
+      'packages/catalog-data/batches/drainage-galeco-stal2-2026-09-v51.json',
       'utf8',
     ),
   ) as CatalogImportBatchV1;

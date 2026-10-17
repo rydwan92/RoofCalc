@@ -11,10 +11,7 @@ import type { CatalogImportBatchV1 } from '../packages/catalog-core/src/index';
  */
 
 const tiles = JSON.parse(
-  readFileSync(
-    'apps/api/src/data/import-batches/tiles-2026-09-v35.json',
-    'utf8',
-  ),
+  readFileSync('packages/catalog-data/batches/tiles-2026-09-v35.json', 'utf8'),
 ) as CatalogImportBatchV1;
 const revision = tiles.revisions.find(
   (item) => item.productId === 'product:swissporton:koda',

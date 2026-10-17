@@ -675,3 +675,187 @@
 .dimp-cross-check[data-agrees] {
   color: var(--ui-success);
 }
+
+/* ------------------------------------------------------------------ */
+/* VNext-2 dimension-first reading: transcription of written numbers,  */
+/* dimension chains, and the scale demoted to a check.                 */
+/* ------------------------------------------------------------------ */
+.dimp-group-scale {
+  opacity: 0.85;
+}
+.dimp-group-scale::before {
+  content: attr(title);
+  align-self: center;
+  padding: 0 var(--ui-space-1);
+  color: var(--ui-text-subtle);
+  font-size: var(--ui-text-xs);
+  white-space: nowrap;
+}
+.dimp-viewer[data-tool='transcribe'] svg {
+  cursor: crosshair;
+  touch-action: none;
+}
+.dimp-frame {
+  fill: #2f5f8f1f;
+  stroke: var(--ui-info);
+  stroke-width: 2;
+  stroke-dasharray: 5 3;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+.dimp-region[data-mode='transcription'] {
+  fill: #2f5f8f1a;
+  stroke: var(--ui-info);
+  stroke-dasharray: none;
+}
+.dimp-region[data-chain] {
+  stroke: var(--ui-success);
+  stroke-dasharray: none;
+}
+.dimp-region[data-chain='total'] {
+  fill: #2f7a4f1f;
+  stroke-width: 1.6;
+}
+.dimp-transcribe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ui-space-3);
+  align-items: flex-start;
+  margin: 0 var(--ui-space-3) var(--ui-space-2);
+  padding: var(--ui-space-3);
+  border: 1px solid var(--ui-info);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-info-soft);
+}
+.dimp-zoom {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+.dimp-zoom canvas {
+  max-width: 320px;
+  max-height: 120px;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--ui-radius-sm);
+  background: #fff;
+  image-rendering: auto;
+}
+.dimp-zoom figcaption {
+  color: var(--ui-text-muted);
+  font-size: var(--ui-text-xs);
+}
+.dimp-transcribe-fields {
+  display: grid;
+  flex: 1 1 240px;
+  gap: var(--ui-space-2);
+}
+.dimp-transcribe-fields label {
+  display: grid;
+  gap: 4px;
+  font-size: var(--ui-text-sm);
+  font-weight: var(--ui-weight-medium);
+}
+.dimp-transcribe-fields .dimp-input input {
+  width: 100%;
+  font-size: var(--ui-text-md);
+  font-variant-numeric: tabular-nums;
+}
+.dimp-transcribe-fields select {
+  min-height: var(--ui-control-height);
+}
+.dimp-transcribe-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ui-space-2);
+}
+.dimp-transcribe-actions button:not(.dimp-primary) {
+  min-height: var(--ui-control-height);
+  padding: 0 var(--ui-space-3);
+  border: 1px solid var(--ui-line);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-surface);
+}
+.dimp-principle {
+  display: flex;
+  gap: var(--ui-space-2);
+  align-items: flex-start;
+  margin: 0;
+  color: var(--ui-text-muted);
+  font-size: var(--ui-text-xs);
+  line-height: 1.45;
+}
+.dimp-principle svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--ui-success);
+}
+.dimp-raster-notice {
+  display: flex;
+  gap: var(--ui-space-2);
+  align-items: flex-start;
+  margin: 0;
+  padding: var(--ui-space-2) var(--ui-space-3);
+  border-left: 3px solid var(--ui-info);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-info-soft);
+  color: var(--ui-text);
+  font-size: var(--ui-text-sm);
+  line-height: 1.45;
+}
+.dimp-raster-notice svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--ui-info);
+}
+.dimp-transcriptions ul {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dimp-transcriptions li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-2);
+}
+.dimp-transcriptions strong {
+  font-variant-numeric: tabular-nums;
+}
+.dimp-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid transparent;
+  border-radius: var(--ui-radius-sm);
+  background: transparent;
+  color: var(--ui-text-muted);
+  cursor: pointer;
+}
+.dimp-icon:hover {
+  border-color: var(--ui-line);
+  background: var(--ui-danger-soft);
+  color: var(--ui-danger);
+}
+.dimp-chain,
+.dimp-chain-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ui-success);
+  font-size: var(--ui-text-xs);
+  font-variant-numeric: tabular-nums;
+}
+.dimp-chain-tag {
+  margin-left: var(--ui-space-1);
+}
+@media (max-width: 800px) {
+  .dimp-group-scale::before {
+    display: none;
+  }
+  .dimp-zoom canvas {
+    max-width: 100%;
+  }
+}

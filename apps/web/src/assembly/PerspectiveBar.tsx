@@ -8,6 +8,7 @@ import {
   Keyboard,
   Layers3,
   LayoutGrid,
+  Link2,
   ListTree,
   Scissors,
   SquareDashed,
@@ -43,6 +44,7 @@ const TASK_ICON: Record<ViewPreset, typeof LayoutGrid> = {
   layers: Layers3,
   covering: Grid3X3,
   cuts: Scissors,
+  connections: Link2,
   materials: ListTree,
   costing: Wallet,
   documents: FileText,
@@ -115,7 +117,7 @@ export function WorkspaceNav({
                   aria-describedby={
                     status ? `section-status-${perspective}` : undefined
                   }
-                  title={`${name}${status ? ` · ${status}` : ''} (Alt+${index + 1})`}
+                  title={`${name} — ${t(`assembly.nav.sectionHelp.${perspective}`)}${status ? ` · ${status}` : ''} (Alt+${index + 1})`}
                   onClick={() => onSection(perspective)}
                 >
                   <Icon size={16} aria-hidden="true" />
@@ -210,6 +212,7 @@ export function ContextualTaskTabs({ k1Ready = true }: { k1Ready?: boolean }) {
     return (
       <div
         className="a-context-tabs"
+        data-section={perspective}
         role="tablist"
         aria-label={t('assembly.nav.contextTasks')}
       >
@@ -247,6 +250,7 @@ export function ContextualTaskTabs({ k1Ready = true }: { k1Ready?: boolean }) {
   return (
     <div
       className="a-context-tabs"
+      data-section={perspective}
       role="tablist"
       aria-label={t('assembly.nav.contextTasks')}
     >
@@ -259,6 +263,9 @@ export function ContextualTaskTabs({ k1Ready = true }: { k1Ready?: boolean }) {
             role="tab"
             data-task={task}
             aria-selected={state.workbench.viewPreset === task}
+            title={t(
+              `assembly.nav.taskHelp.${task === 'construction' ? (perspective === 'structure' ? 'structure' : 'geometry') : task}`,
+            )}
             onClick={() => state.setViewPreset(task)}
           >
             <Icon size={15} aria-hidden="true" />

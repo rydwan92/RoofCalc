@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { seedBatchPath } from '../data/batch-files';
 import { describe, expect, it } from 'vitest';
 import { catalogImportBatchV1Schema } from '@cieslacalc/catalog-core';
 import { priceImportBatchV1Schema } from '@cieslacalc/pricing-core';
@@ -9,12 +10,7 @@ import { MemoryPricingRepository } from '../pricing/memory-repository';
 import { PricingService } from '../pricing/service';
 
 function load<T>(name: string): T {
-  return JSON.parse(
-    readFileSync(
-      new URL(`../data/import-batches/${name}`, import.meta.url),
-      'utf8',
-    ),
-  ) as T;
+  return JSON.parse(readFileSync(seedBatchPath(name), 'utf8')) as T;
 }
 
 describe('V39/V42 metal catalogue reconciliation', () => {

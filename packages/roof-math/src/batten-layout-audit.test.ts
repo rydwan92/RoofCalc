@@ -61,7 +61,7 @@ const layout = (
 
 /**
  * Gauge ranges of three seeded roof-tile snapshots with different families
- * (apps/api/src/data/import-batches/tiles-2026-09*.json). Neutral numbers only:
+ * (packages/catalog-data/batches/tiles-2026-09*.json). Neutral numbers only:
  * roof-math never reads covering products.
  */
 const SEEDED_RANGES = [

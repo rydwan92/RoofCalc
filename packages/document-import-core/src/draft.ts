@@ -1,10 +1,13 @@
+import { analyzeDimensionChains, type DimensionChain } from './chains';
 import {
   IMPORTED_ROOF_DRAFT_SCHEMA_VERSION,
+  measurementValueSource,
   NUMERIC_ROOF_FIELDS,
   REQUIRED_ROOF_FIELDS,
   type Confidence,
   type DraftField,
   type DraftWarning,
+  type EvidenceCode,
   type ImportedRoofDraftV1,
   type ImportRoofType,
   type ImportSource,
@@ -12,6 +15,7 @@ import {
   type NumericRoofField,
   type RecognitionResult,
   type RecognizedMeasurement,
+  type ValueSource,
 } from './model';
 import {
   fieldQuantity,
@@ -58,6 +62,8 @@ interface Resolved {
   measurement: RecognizedMeasurement;
   value: number;
   basis: NonNullable<DraftField['unitBasis']>;
+  source: ValueSource;
+  chainTotal: boolean;
 }
 
 function candidatesFor(
@@ -65,6 +71,7 @@ function candidatesFor(
   measurements: readonly RecognizedMeasurement[],
   documentUnit: ImportedRoofDraftV1['documentUnit'],
   warnings: DraftWarning[],
+  chainTotalIds: ReadonlySet<string>,
 ): Resolved[] {
   const resolved: Resolved[] = [];
   // The same dimension drawn at the stated scale (vector-geometry engine).
@@ -73,6 +80,9 @@ function candidatesFor(
       measurement.mode === 'vector-geometry' && measurement.field === field,
   )?.valueMm;
   for (const measurement of measurements) {
+    // Dimension-first: a length measured automatically off the drawing
+    // cross-checks written dimensions and never fills a field itself.
+    if (measurement.mode === 'vector-geometry') continue;
     const assigned = measurement.field === field;
     const unlabelledLength =
       measurement.field === undefined &&
@@ -83,7 +93,7 @@ function candidatesFor(
       measurement,
       field,
       documentUnit,
-      measurement.mode === 'vector-geometry' ? undefined : drawnReferenceMm,
+      drawnReferenceMm,
     );
     if (result.status === 'ambiguous' && assigned)
       warnings.push({
@@ -94,37 +104,83 @@ function candidatesFor(
     if (result.status !== 'resolved') continue;
     // Unlabelled numbers are offered only where they are plausible.
     if (!assigned && !isPlausible(field, result.value)) continue;
-    resolved.push({ measurement, value: result.value, basis: result.basis });
+    resolved.push({
+      measurement,
+      value: result.value,
+      basis: result.basis,
+      source: measurementValueSource(measurement),
+      chainTotal: chainTotalIds.has(measurement.id),
+    });
   }
   return resolved.sort(
     (a, b) =>
+      // Written beats scaled, whatever its label.
+      Number(b.source === 'written') - Number(a.source === 'written') ||
       Number(b.measurement.field === field) -
         Number(a.measurement.field === field) ||
-      // A written value is the primary reading; the drawing confirms it.
-      Number(b.measurement.mode !== 'vector-geometry') -
-        Number(a.measurement.mode !== 'vector-geometry') ||
+      Number(b.chainTotal) - Number(a.chainTotal) ||
       RANK[b.measurement.confidence] - RANK[a.measurement.confidence] ||
       b.measurement.evidence.length - a.measurement.evidence.length,
   );
 }
 
 function effectiveConfidence(resolved: Resolved): Confidence {
+  // A value measured through a scale is never more than a stand-in.
+  if (resolved.source === 'scaled') return 'low';
   // A unit guessed from a plausible range can never make a value certain.
   if (resolved.basis === 'plausible-range') return 'low';
   // A written number whose unit the drawing at scale independently confirms
   // gains one level: two separate sources agree.
-  if (
-    resolved.basis === 'drawing-scale' &&
-    resolved.measurement.mode !== 'vector-geometry'
-  )
+  if (resolved.basis === 'drawing-scale')
     return resolved.measurement.confidence === 'low' ? 'medium' : 'high';
+  // An unlabelled overall dimension that its written parts add up to is
+  // more than a stray number: two written facts agree.
+  if (resolved.chainTotal && resolved.measurement.confidence === 'low')
+    return 'medium';
   return resolved.measurement.confidence;
+}
+
+/**
+ * Building length and width from dimension chains when nothing labels
+ * them: the largest overall dimension of each axis; the larger of the two
+ * axes is the length. One axis alone suggests only the length.
+ */
+function chainSuggestions(
+  chains: readonly DimensionChain[],
+  lengthCandidates: readonly Resolved[],
+  widthCandidates: readonly Resolved[],
+): Partial<Record<NumericRoofField, string>> {
+  const largest = (candidates: readonly Resolved[]) => {
+    const byAxis = new Map<string, Resolved>();
+    for (const chain of chains) {
+      const total = candidates.find(
+        (item) =>
+          item.measurement.id === chain.totalMeasurementId &&
+          item.source === 'written',
+      );
+      const current = byAxis.get(chain.axis);
+      if (total && (!current || total.value > current.value))
+        byAxis.set(chain.axis, total);
+    }
+    return [...byAxis.entries()].sort((a, b) => b[1].value - a[1].value);
+  };
+  const forLength = largest(lengthCandidates);
+  const [first] = forLength;
+  if (!first) return {};
+  const suggestions: Partial<Record<NumericRoofField, string>> = {
+    buildingLength: first[1].measurement.id,
+  };
+  const other = largest(widthCandidates).find(([axis]) => axis !== first[0]);
+  if (other) suggestions.buildingWidth = other[1].measurement.id;
+  return suggestions;
 }
 
 function deriveField(
   field: NumericRoofField,
   candidates: readonly Resolved[],
   decisions: ImportDecisions,
+  suggestedId: string | undefined,
+  warnings: DraftWarning[],
 ): DraftField {
   const entry = decisions.entries[field];
   const alternatives = candidates.map((item) => item.measurement.id);
@@ -141,10 +197,15 @@ function deriveField(
   const chosen = chosenId
     ? candidates.find((item) => item.measurement.id === chosenId)
     : undefined;
-  const labelled = candidates.filter(
-    (item) => item.measurement.field === field,
-  );
-  const best = chosen ?? labelled[0] ?? candidates[0];
+  const written = candidates.filter((item) => item.source === 'written');
+  const labelled = written.filter((item) => item.measurement.field === field);
+  const suggested = suggestedId
+    ? written.find((item) => item.measurement.id === suggestedId)
+    : undefined;
+  // Dimension-first: a labelled written value, then an overall dimension
+  // from a chain, then any written number; a scaled value only last.
+  const best =
+    chosen ?? labelled[0] ?? suggested ?? written[0] ?? candidates[0];
   if (!best)
     return {
       field,
@@ -165,6 +226,8 @@ function deriveField(
         !sameValue(other.value, best.value),
     );
   const confidence = effectiveConfidence(best);
+  if (best.source === 'scaled')
+    warnings.push({ code: 'scaled-value-only', field });
   const draft: DraftField = {
     field,
     status: conflict ? 'conflict' : 'recognized',
@@ -193,7 +256,24 @@ export function deriveImportedRoofDraft(input: {
   decisions?: ImportDecisions;
 }): ImportedRoofDraftV1 {
   const decisions = input.decisions ?? EMPTY_DECISIONS;
-  const measurements = input.results.flatMap((result) => result.measurements);
+  const recognized = input.results.flatMap((result) => result.measurements);
+  // Dimension chains are a draft-level analysis over every written number,
+  // whichever engine read it (text layer, OCR or the user's transcription).
+  const { chains, mismatches } = analyzeDimensionChains(recognized);
+  const chainTotalIds = new Set(
+    chains.map((chain) => chain.totalMeasurementId),
+  );
+  const chainPartIds = new Set(
+    chains.flatMap((chain) => chain.partMeasurementIds),
+  );
+  const measurements = recognized.map((measurement) => {
+    const extra: EvidenceCode[] = [];
+    if (chainTotalIds.has(measurement.id)) extra.push('chain-total');
+    if (chainPartIds.has(measurement.id)) extra.push('chain-part');
+    return extra.length
+      ? { ...measurement, evidence: [...measurement.evidence, ...extra] }
+      : measurement;
+  });
   const declared = input.results.find(
     (result) => result.documentUnit,
   )?.documentUnit;
@@ -208,17 +288,31 @@ export function deriveImportedRoofDraft(input: {
       : declared
         ? { ...declared, basis: 'document' }
         : undefined;
-  const warnings: DraftWarning[] = input.results.flatMap(
-    (result) => result.warnings,
-  );
+  const warnings: DraftWarning[] = [
+    ...input.results.flatMap((result) => result.warnings),
+    ...mismatches,
+  ];
 
+  const candidates = Object.fromEntries(
+    NUMERIC_ROOF_FIELDS.map((field) => [
+      field,
+      candidatesFor(field, measurements, documentUnit, warnings, chainTotalIds),
+    ]),
+  ) as Record<NumericRoofField, Resolved[]>;
+  const suggestions = chainSuggestions(
+    chains,
+    candidates.buildingLength,
+    candidates.buildingWidth,
+  );
   const fields = Object.fromEntries(
     NUMERIC_ROOF_FIELDS.map((field) => [
       field,
       deriveField(
         field,
-        candidatesFor(field, measurements, documentUnit, warnings),
+        candidates[field],
         decisions,
+        suggestions[field],
+        warnings,
       ),
     ]),
   ) as Record<NumericRoofField, DraftField>;
@@ -279,7 +373,10 @@ export function deriveImportedRoofDraft(input: {
     fields,
     points: input.results.flatMap((result) => result.points ?? []),
     segments: input.results.flatMap((result) => result.segments ?? []),
-    relations: input.results.flatMap((result) => result.relations ?? []),
+    relations: [
+      ...input.results.flatMap((result) => result.relations ?? []),
+      ...chains,
+    ],
     warnings: dedupeWarnings(warnings),
     missing,
   };

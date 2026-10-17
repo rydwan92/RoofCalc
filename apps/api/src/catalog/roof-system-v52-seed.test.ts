@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { seedBatchPath } from '../data/batch-files';
 import { describe, expect, it } from 'vitest';
 import { catalogImportBatchV1Schema } from '@cieslacalc/catalog-core';
 import {
@@ -16,12 +17,7 @@ import { MemoryCatalogRepository } from './memory-repository';
  */
 const read = (file: string) =>
   catalogImportBatchV1Schema.parse(
-    JSON.parse(
-      readFileSync(
-        new URL(`../data/import-batches/${file}`, import.meta.url),
-        'utf8',
-      ),
-    ),
+    JSON.parse(readFileSync(seedBatchPath(file), 'utf8')),
   );
 const batch = read('roof-system-2026-09-v52.json');
 

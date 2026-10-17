@@ -3,6 +3,7 @@ import {
   createRoofPlanPdf,
   gableRoofPlanSpec,
 } from '../fixtures/documents/roof-plan-pdf';
+import { createPlanPhotoPng } from '../fixtures/documents/plan-photo-png';
 
 /**
  * VNext document import, end to end in a real browser with the real pdf.js
@@ -94,6 +95,99 @@ test('imports a PDF roof plan, reviews it and creates one project', async ({
       () => document.documentElement.scrollWidth <= innerWidth + 1,
     ),
   ).toBe(true);
+});
+
+/**
+ * VNext-2 dimension-first: a photo has no text layer and its scale is
+ * unknown. The user frames each dimension written on it and types it as
+ * written; no calibration, no measuring at scale.
+ */
+test('builds a project from a plan photo using only written dimensions', async ({
+  page,
+}) => {
+  const requests: string[] = [];
+  page.on('request', (request) => {
+    if (request.method() !== 'GET') requests.push(request.url());
+  });
+  await page.route('**/api/**', (route) =>
+    route.fulfill({ status: 503, json: {} }),
+  );
+  await page.goto('/');
+  await page.getByTestId('project-start-document').click();
+  const importer = page.getByTestId('document-import');
+  await importer.getByTestId('document-import-file').setInputFiles({
+    name: 'zdjecie-rzutu.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from(createPlanPhotoPng()),
+  });
+  await expect(
+    importer.getByTestId('document-import-raster-notice'),
+  ).toBeVisible({ timeout: 20_000 });
+  // Reading written dimensions is the default tool for a photo.
+  await expect(
+    importer.getByTestId('document-import-transcribe'),
+  ).toHaveAttribute('aria-pressed', 'true');
+
+  const overlay = importer.getByTestId('document-import-overlay');
+  async function read(
+    at: [number, number],
+    text: string,
+    target: string,
+    drag = false,
+  ) {
+    await overlay.scrollIntoViewIfNeeded();
+    const box = (await overlay.boundingBox())!;
+    const x = box.x + box.width * at[0];
+    const y = box.y + box.height * at[1];
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    if (drag) await page.mouse.move(x + 40, y + 14, { steps: 4 });
+    await page.mouse.up();
+    const form = importer.getByTestId('document-import-transcription');
+    await expect(form).toBeVisible();
+    await form.getByTestId('document-import-transcription-value').fill(text);
+    await form
+      .getByTestId('document-import-transcription-target')
+      .selectOption(target);
+    await form.getByTestId('document-import-transcription-save').click();
+    await expect(form).toBeHidden();
+  }
+  await read([0.45, 0.17], '12,40 m', 'buildingLength', true);
+  await read([0.08, 0.5], '9,60 m', 'buildingWidth');
+  await read([0.6, 0.5], '35°', 'pitch');
+
+  await expect(
+    importer.getByTestId('document-import-transcriptions').locator('li'),
+  ).toHaveCount(3);
+  await expect(
+    importer.getByTestId('document-import-buildingLength'),
+  ).toHaveValue('1240');
+  await expect(importer.getByTestId('document-import-pitch')).toHaveValue('35');
+  await expect(
+    overlay.locator('rect.dimp-region[data-mode="transcription"]'),
+  ).toHaveCount(3);
+
+  await importer
+    .getByTestId('document-import-roof-type')
+    .getByRole('button', { name: 'Dwuspadowy' })
+    .click();
+  await importer.getByTestId('document-import-reviewed').check();
+  await importer.getByTestId('document-import-create').click();
+  await expect(importer).toBeHidden();
+
+  const records = await page.evaluate(() =>
+    Object.keys(localStorage)
+      .filter((key) => key.startsWith('cieslacalc.projects.v1.record.'))
+      .map((key) => JSON.parse(localStorage.getItem(key)!)),
+  );
+  expect(records).toHaveLength(1);
+  expect(records[0].document.project.roof).toMatchObject({
+    type: 'gable',
+    buildingLengthMm: 12_400,
+    halfRunMm: 4_800,
+    pitchDeg: 35,
+  });
+  expect(requests).toEqual([]);
 });
 
 test('rejects a file that only pretends to be a PDF', async ({ page }) => {

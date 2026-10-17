@@ -3,6 +3,8 @@ import {
   parseDocumentNumber,
   percentSlopeToDegrees,
   scanMeasurementTokens,
+  toSuperscriptDigits,
+  writtenDecimals,
 } from './tokens';
 
 const kinds = (line: string) =>
@@ -33,6 +35,25 @@ describe('document number parsing', () => {
     expect(parseDocumentNumber(text)).toBe(value);
   });
 
+  it.each([
+    ['38\u2075', 38.5],
+    ['124\u2075', 124.5],
+    ['1 24\u2075', 124.5],
+  ])('reads a raised half centimetre: %s → %s', (text, value) => {
+    expect(parseDocumentNumber(text)).toBe(value);
+  });
+
+  it('never stacks a superscript on a decimal fraction', () => {
+    expect(parseDocumentNumber('12,4\u2075')).toBeUndefined();
+  });
+
+  it('counts the decimal places as written', () => {
+    expect(writtenDecimals('12,40')).toBe(2);
+    expect(writtenDecimals('38\u2075')).toBe(1);
+    expect(writtenDecimals('1240')).toBe(0);
+    expect(toSuperscriptDigits('5')).toBe('\u2075');
+  });
+
   it('rejects non-numbers', () => {
     expect(parseDocumentNumber('12a')).toBeUndefined();
     expect(parseDocumentNumber('')).toBeUndefined();
@@ -56,6 +77,8 @@ describe('measurement token scanning', () => {
     ['Wymiary 12,40 m × 9,60 m', ['pair:12.4x9.6m']],
     ['SKALA 1:100', ['scale:100']],
     ['M 1 : 50', ['scale:50']],
+    ['38\u2075', ['length:38.5']],
+    ['320 600 32\u2075', ['length:320', 'length:600', 'length:32.5']],
   ])('%s', (line, expected) => {
     expect(kinds(line)).toEqual(expected);
   });

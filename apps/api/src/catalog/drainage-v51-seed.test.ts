@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { seedBatchPath } from '../data/batch-files';
 import { describe, expect, it } from 'vitest';
 import { catalogImportBatchV1Schema } from '@cieslacalc/catalog-core';
 import { roofDrainageComponentTechnicalSpecSchema } from '@cieslacalc/roof-system-core';
@@ -13,10 +14,7 @@ import { MemoryCatalogRepository } from './memory-repository';
 const batch = catalogImportBatchV1Schema.parse(
   JSON.parse(
     readFileSync(
-      new URL(
-        '../data/import-batches/drainage-galeco-stal2-2026-09-v51.json',
-        import.meta.url,
-      ),
+      seedBatchPath('drainage-galeco-stal2-2026-09-v51.json'),
       'utf8',
     ),
   ),

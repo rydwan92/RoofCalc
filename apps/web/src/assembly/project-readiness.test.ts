@@ -298,6 +298,41 @@ describe('V47 project readiness', () => {
     expect(readiness.safeRepair.issueIds).toEqual([]);
   });
 
+  it('auto battens without a solution are not reported as a pitch problem', () => {
+    const base = facts({
+      coverings: [tile(roofPlaneIds(gable))],
+      buildUp: { battenLayout: newBattenLayer() },
+    });
+    const unresolved = {
+      ...base,
+      battenWorkflow: {
+        ...base.battenWorkflow,
+        state: 'auto-incompatible' as const,
+        pitch: { actualDeg: 35, minimumDeg: 10, status: 'compatible' as const },
+      },
+    };
+    expect(codes(deriveProjectReadiness(unresolved))).toContain(
+      'battens-auto-unresolved',
+    );
+    expect(codes(deriveProjectReadiness(unresolved))).not.toContain(
+      'battens-product-incompatible',
+    );
+    const tooFlat = {
+      ...unresolved,
+      battenWorkflow: {
+        ...unresolved.battenWorkflow,
+        pitch: {
+          actualDeg: 8,
+          minimumDeg: 10,
+          status: 'below-minimum' as const,
+        },
+      },
+    };
+    expect(codes(deriveProjectReadiness(tooFlat))).toContain(
+      'battens-product-incompatible',
+    );
+  });
+
   it('manual gauge outside the product range is a blocker with Dopasuj automatycznie', () => {
     const readiness = deriveProjectReadiness(
       facts({

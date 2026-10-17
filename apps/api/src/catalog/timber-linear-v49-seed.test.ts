@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { seedBatchPath } from '../data/batch-files';
 import { describe, expect, it } from 'vitest';
 import {
   catalogImportBatchV1Schema,
@@ -19,12 +20,7 @@ import { MemoryPricingRepository } from '../pricing/memory-repository';
  */
 
 function load(name: string): unknown {
-  return JSON.parse(
-    readFileSync(
-      new URL(`../data/import-batches/${name}`, import.meta.url),
-      'utf8',
-    ),
-  );
+  return JSON.parse(readFileSync(seedBatchPath(name), 'utf8'));
 }
 
 const v35 = catalogImportBatchV1Schema.parse(load('timber-stock-2026-09.json'));

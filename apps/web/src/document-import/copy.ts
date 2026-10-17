@@ -11,6 +11,13 @@ import type {
  * Copy for the lazily loaded document importer (PL/EN), kept beside the
  * module like the IFC importer's, so the main bundle does not carry it.
  */
+
+/** A chain sum in the numbers' own written unit, at most three decimals. */
+function formatChainNumber(value: number, decimalComma = true): string {
+  const text = String(Number(value.toFixed(3)));
+  return decimalComma ? text.replace('.', ',') : text;
+}
+
 const pl = {
   title: 'Import projektu z dokumentu',
   subtitle: 'PDF z opisanymi wymiarami albo zdjęcie lub skan rzutu',
@@ -18,7 +25,9 @@ const pl = {
   steps: ['Plik', 'Rozpoznanie', 'Weryfikacja', 'Projekt'],
   dropTitle: 'Przeciągnij tutaj rzut dachu lub dokumentację',
   dropHint:
-    'PDF z warstwą tekstową (eksport z programu CAD lub edytora), a także zdjęcie lub skan JPG, PNG, WebP do ręcznego odmierzenia.',
+    'PDF z warstwą tekstową (eksport z programu CAD lub edytora) — wymiary odczytamy automatycznie. Zdjęcie lub skan JPG, PNG, WebP — zaznaczysz zapisane na nim wymiary i przepiszesz je.',
+  dimensionFirst:
+    'Liczymy na wymiarach zapisanych na rysunku, nie na mierzeniu ze skali — wydruki, skany i zdjęcia często mają inną skalę niż podana.',
   choose: 'Wybierz plik',
   privacy:
     'Plik jest analizowany wyłącznie w tej przeglądarce. Nie jest wysyłany na serwer ani do usług AI i nie jest zapisywany w projekcie.',
@@ -49,13 +58,45 @@ const pl = {
   zoomOut: 'Pomniejsz',
   fit: 'Dopasuj',
   toolSelect: 'Wskaż',
+  toolTranscribe: 'Odczytaj wymiar',
   toolCalibrate: 'Kalibruj skalę',
+  readingGroup: 'Odczyt wymiarów',
+  scaleGroup: 'Skala — tylko kontrolnie',
   toolHintSelect:
     'Kliknij wartość w panelu, aby zobaczyć ją w dokumencie. Kliknij zaznaczony odczyt na rysunku, aby przypisać go do aktywnego pola.',
+  toolHintTranscribe:
+    'Obrysuj na rysunku liczbę wymiaru (przeciągnij lub kliknij), a potem wpisz ją dokładnie tak, jak jest zapisana.',
   toolHintCalibrate:
-    'Kliknij dwa końce odcinka o znanej długości (np. wymiarowany bok budynku).',
+    'Kliknij dwa końce odcinka o znanej długości (np. wymiarowany bok budynku). Pomiar ze skali służy tylko do kontroli.',
   toolHintMeasure: (field: string) =>
-    `Zmierz „${field}”: kliknij dwa końce odcinka na rysunku.`,
+    `Zmierz „${field}” ze skali: kliknij dwa końce odcinka na rysunku. Wynik będzie orientacyjny.`,
+  transcribeTitle: 'Odczytaj wymiar z rysunku',
+  transcribeValue: 'Wymiar tak, jak jest zapisany',
+  transcribeValueHint: 'np. 12,40 · 1240 · 38⁵ · 35° · 8×18',
+  transcribeMeaning: 'Co oznacza ten wymiar?',
+  transcribeUnassigned: 'Wymiar bez przypisania (np. część łańcucha)',
+  rafterSection: 'Przekrój krokwi (szer. × wys.)',
+  transcribeSave: 'Dodaj odczyt',
+  transcribeCancel: 'Anuluj',
+  transcribeZoom: 'Powiększenie zaznaczonego miejsca',
+  transcribeError: {
+    empty: 'Wpisz wymiar.',
+    'not-a-dimension': 'To nie wygląda na wymiar — wpisz liczbę, np. 12,40.',
+    'several-values': 'Wpisz jedną wartość — każdy wymiar odczytaj osobno.',
+    'angle-expected': 'Dla kąta wpisz stopnie (35°) lub spadek w procentach.',
+    'length-expected': 'Dla długości wpisz liczbę, np. 12,40 lub 1240.',
+    'pair-expected': 'Dla przekroju wpisz dwie liczby, np. 8×18.',
+    'out-of-range': 'Kąt nachylenia musi być między 0° a 90°.',
+  },
+  transcriptions: (count: number) => `Przepisane wymiary (${count})`,
+  removeTranscription: 'Usuń odczyt',
+  unassigned: 'bez przypisania',
+  rasterNotice:
+    'Ten dokument nie ma warstwy tekstowej (skan lub zdjęcie). Zaznacz na rysunku zapisane wymiary narzędziem „Odczytaj wymiar” i przepisz je — nie trzeba ustawiać skali.',
+  transcribedSource: 'Twój odczyt z rysunku',
+  scaledSource: 'zmierzone ze skali — orientacyjnie',
+  chainEvidence: (parts: string, total: string) =>
+    `łańcuch wymiarowy: ${parts} = ${total}`,
   knownLength: 'Rzeczywista długość odcinka',
   applyCalibration: 'Ustaw skalę',
   useDrawingScale: (denominator: number) =>
@@ -78,8 +119,12 @@ const pl = {
     `Warstwa tekstowa PDF — na tym urządzeniu (${count} ${count === 1 ? 'odczyt' : 'odczytów'})`,
   engineNoText:
     'Warstwa tekstowa PDF — brak tekstu w dokumencie (skan lub zdjęcie)',
-  engineManual: 'Pomiar ręczny na podkładzie — na tym urządzeniu',
-  engineOcr: 'OCR skanów — niedostępne w tej wersji',
+  engineManual:
+    'Pomiar ze skali na podkładzie — tylko kontrolnie, na tym urządzeniu',
+  engineTranscription:
+    'Odczyt zapisanych wymiarów (zaznacz i przepisz) — na tym urządzeniu',
+  engineOcr:
+    'OCR skanów — niedostępne w tej wersji (gotowe miejsce na lokalny silnik)',
   engineAi:
     'AI Vision — niedostępne (brak skonfigurowanego dostawcy; nic nie jest wysyłane)',
   roofType: 'Typ dachu',
@@ -95,7 +140,7 @@ const pl = {
   scale: 'Skala rysunku',
   confirm: 'Potwierdź',
   confirmed: 'Potwierdzone',
-  measure: 'Zmierz na rysunku',
+  measure: 'Zmierz ze skali',
   showInDocument: 'Pokaż w dokumencie',
   alternatives: (count: number) => `Inne odczyty (${count})`,
   chooseAlternative: 'Wybierz inny odczyt…',
@@ -116,7 +161,7 @@ const pl = {
     'document-declared': 'jednostka z opisu dokumentu',
     'user-declared': 'jednostka wybrana przez Ciebie',
     'plausible-range': 'jednostkę przyjęto z typowego zakresu — sprawdź',
-    calibrated: 'zmierzone na podkładzie po kalibracji',
+    calibrated: 'zmierzone ze skali na podkładzie — orientacyjnie',
     'drawing-scale': 'jednostkę potwierdza linia na rysunku w skali',
   } satisfies Record<UnitBasis, string>,
   engineVector: (found: boolean): string =>
@@ -136,7 +181,7 @@ const pl = {
   ) => {
     switch (warning.code) {
       case 'no-text-layer':
-        return 'Dokument nie ma warstwy tekstowej (skan lub zdjęcie). Ustaw skalę i odmierz wymiary ręcznie albo wpisz je.';
+        return 'Dokument nie ma warstwy tekstowej (skan lub zdjęcie). Zaznacz i przepisz zapisane wymiary narzędziem „Odczytaj wymiar”.';
       case 'page-limit-reached':
         return `Przeanalizowano ${warning.processed} z ${warning.total} stron (limit).`;
       case 'text-limit-reached':
@@ -156,7 +201,11 @@ const pl = {
       case 'hip-length-below-width':
         return 'Dach kopertowy wymaga długości nie mniejszej niż szerokość.';
       case 'scale-mismatch':
-        return `${field(warning.field)}: wymiar opisany różni się od długości linii w skali rysunku.`;
+        return `${field(warning.field)}: wymiar opisany różni się od długości linii w skali rysunku. Obowiązuje wymiar zapisany — sprawdź, czy wydruk nie był skalowany.`;
+      case 'scaled-value-only':
+        return `${field(warning.field)}: na rysunku nie znaleziono zapisanego wymiaru — użyto pomiaru ze skali. Sprawdź go albo odczytaj wymiar z rysunku.`;
+      case 'dimension-chain-mismatch':
+        return `Suma wymiarów cząstkowych (${formatChainNumber(warning.sum)}) nie zgadza się z wymiarem całkowitym (${formatChainNumber(warning.total)}). Któraś liczba mogła zostać źle odczytana.`;
     }
   },
   blockers: 'Przed utworzeniem projektu',
@@ -186,7 +235,7 @@ const pl = {
   construction:
     'Układ konstrukcji i połączenie w kalenicy ustawisz w warsztacie (domyślnie: więźba krokwiowa, deska kalenicowa).',
   limitation:
-    'Import odczytuje opisane wymiary z warstwy tekstowej PDF oraz pomiary wskazane ręcznie. Nie rozpoznaje jeszcze samodzielnie geometrii z linii rysunku ani tekstu ze zdjęć i skanów.',
+    'Import opiera się na wymiarach zapisanych na rysunku: z warstwy tekstowej PDF automatycznie, ze zdjęć i skanów po przepisaniu. Sprawdza sumy łańcuchów wymiarowych. Linie rysunku i skala służą tylko do kontroli. Tekstu ze zdjęć nie rozpoznaje jeszcze samodzielnie (OCR).',
   reviewCheck: 'Sprawdziłem odczytane wartości i ich źródła w dokumencie.',
   create: 'Utwórz projekt RoofCalc',
   creating: 'Tworzenie projektu…',
@@ -207,7 +256,9 @@ const en: Copy = {
   steps: ['File', 'Recognition', 'Review', 'Project'],
   dropTitle: 'Drop a roof plan or documentation here',
   dropHint:
-    'A PDF with a text layer (CAD or editor export), or a JPG, PNG or WebP photo or scan for manual measurement.',
+    'A PDF with a text layer (CAD or editor export) — dimensions are read automatically. A JPG, PNG or WebP photo or scan — you mark the dimensions written on it and type them in.',
+  dimensionFirst:
+    'We rely on the dimensions written on the drawing, not on measuring at scale — prints, scans and photos are often at a different scale than stated.',
   choose: 'Choose file',
   privacy:
     'The file is analysed only in this browser. It is not sent to a server or an AI service and is not stored in the project.',
@@ -235,13 +286,45 @@ const en: Copy = {
   zoomOut: 'Zoom out',
   fit: 'Fit',
   toolSelect: 'Point',
+  toolTranscribe: 'Read a dimension',
   toolCalibrate: 'Calibrate scale',
+  readingGroup: 'Reading dimensions',
+  scaleGroup: 'Scale — for checking only',
   toolHintSelect:
     'Click a value in the panel to see it in the document. Click a highlighted reading on the drawing to assign it to the active field.',
+  toolHintTranscribe:
+    'Frame the dimension number on the drawing (drag or click), then type it exactly as written.',
   toolHintCalibrate:
-    'Click both ends of a segment of known length (e.g. a dimensioned building side).',
+    'Click both ends of a segment of known length (e.g. a dimensioned building side). Measuring at scale is for checking only.',
   toolHintMeasure: (field) =>
-    `Measure “${field}”: click both ends of the segment on the drawing.`,
+    `Measure “${field}” at scale: click both ends of the segment. The result is approximate.`,
+  transcribeTitle: 'Read a dimension from the drawing',
+  transcribeValue: 'Dimension exactly as written',
+  transcribeValueHint: 'e.g. 12.40 · 1240 · 38⁵ · 35° · 8×18',
+  transcribeMeaning: 'What does this dimension mean?',
+  transcribeUnassigned: 'Unassigned dimension (e.g. part of a chain)',
+  rafterSection: 'Rafter section (width × depth)',
+  transcribeSave: 'Add reading',
+  transcribeCancel: 'Cancel',
+  transcribeZoom: 'Magnified selection',
+  transcribeError: {
+    empty: 'Type the dimension.',
+    'not-a-dimension':
+      'That does not look like a dimension — type a number, e.g. 12.40.',
+    'several-values': 'Type one value — read each dimension separately.',
+    'angle-expected': 'For an angle type degrees (35°) or a slope in percent.',
+    'length-expected': 'For a length type a number, e.g. 12.40 or 1240.',
+    'pair-expected': 'For a section type two numbers, e.g. 8×18.',
+    'out-of-range': 'The pitch must be between 0° and 90°.',
+  },
+  transcriptions: (count) => `Transcribed dimensions (${count})`,
+  removeTranscription: 'Remove reading',
+  unassigned: 'unassigned',
+  rasterNotice:
+    'This document has no text layer (scan or photo). Mark the dimensions written on the drawing with “Read a dimension” and type them in — no scale needed.',
+  transcribedSource: 'Your reading from the drawing',
+  scaledSource: 'measured at scale — approximate',
+  chainEvidence: (parts, total) => `dimension chain: ${parts} = ${total}`,
   knownLength: 'Real length of the segment',
   applyCalibration: 'Set scale',
   useDrawingScale: (denominator) => `Use drawing scale 1:${denominator}`,
@@ -260,8 +343,12 @@ const en: Copy = {
   engineText: (count) =>
     `PDF text layer — on this device (${count} ${count === 1 ? 'reading' : 'readings'})`,
   engineNoText: 'PDF text layer — the document has no text (scan or photo)',
-  engineManual: 'Manual measurement on the underlay — on this device',
-  engineOcr: 'Scan OCR — not available in this version',
+  engineManual:
+    'Measuring at scale on the underlay — for checking only, on this device',
+  engineTranscription:
+    'Reading written dimensions (mark and type) — on this device',
+  engineOcr:
+    'Scan OCR — not available in this version (a slot for a local engine)',
   engineAi:
     'AI Vision — not available (no provider configured; nothing is uploaded)',
   roofType: 'Roof type',
@@ -277,7 +364,7 @@ const en: Copy = {
   scale: 'Drawing scale',
   confirm: 'Confirm',
   confirmed: 'Confirmed',
-  measure: 'Measure on drawing',
+  measure: 'Measure at scale',
   showInDocument: 'Show in document',
   alternatives: (count) => `Other readings (${count})`,
   chooseAlternative: 'Choose another reading…',
@@ -298,7 +385,7 @@ const en: Copy = {
     'document-declared': 'unit stated by the document',
     'user-declared': 'unit you chose',
     'plausible-range': 'unit assumed from the typical range — check',
-    calibrated: 'measured on the calibrated underlay',
+    calibrated: 'measured at scale on the underlay — approximate',
     'drawing-scale': 'unit confirmed by the line drawn at scale',
   },
   engineVector: (found) =>
@@ -315,7 +402,7 @@ const en: Copy = {
   warning: (warning, field) => {
     switch (warning.code) {
       case 'no-text-layer':
-        return 'The document has no text layer (scan or photo). Set a scale and measure, or type the values.';
+        return 'The document has no text layer (scan or photo). Mark and type the written dimensions with “Read a dimension”.';
       case 'page-limit-reached':
         return `Analysed ${warning.processed} of ${warning.total} pages (limit).`;
       case 'text-limit-reached':
@@ -335,7 +422,11 @@ const en: Copy = {
       case 'hip-length-below-width':
         return 'A hip roof needs a length not smaller than its width.';
       case 'scale-mismatch':
-        return `${field(warning.field)}: the written dimension differs from the drawn length at the drawing scale.`;
+        return `${field(warning.field)}: the written dimension differs from the drawn length at the drawing scale. The written dimension applies — check whether the print was rescaled.`;
+      case 'scaled-value-only':
+        return `${field(warning.field)}: no written dimension was found — a measurement at scale is used. Check it or read the dimension from the drawing.`;
+      case 'dimension-chain-mismatch':
+        return `The part dimensions add up to ${formatChainNumber(warning.sum, false)}, not to the overall ${formatChainNumber(warning.total, false)}. One of the numbers may have been misread.`;
     }
   },
   blockers: 'Before creating the project',
@@ -362,7 +453,7 @@ const en: Copy = {
   construction:
     'Structure system and ridge connection are set in the workshop (default: rafter roof, ridge board).',
   limitation:
-    'Import reads written dimensions from a PDF text layer and measurements you mark. It does not yet recognise geometry from drawing lines or text in photos and scans on its own.',
+    'Import relies on the dimensions written on the drawing: automatically from a PDF text layer, after typing from photos and scans. It checks dimension-chain sums. Drawing lines and the scale are for checking only. It does not yet read text in photos on its own (OCR).',
   reviewCheck: 'I checked the read values and their sources in the document.',
   create: 'Create RoofCalc project',
   creating: 'Creating project…',

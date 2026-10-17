@@ -13,6 +13,9 @@ import {
   Plus,
   Ruler,
   ScanLine,
+  Sigma,
+  TextCursorInput,
+  Trash2,
   X,
 } from 'lucide-react';
 import { fromMillimetres, toMillimetres } from '@cieslacalc/roof-math';
@@ -29,12 +32,16 @@ import {
   enterValue,
   manualMeasurementResult,
   mapDraftToRoofStart,
+  measurementValueSource,
   NUMERIC_ROOF_FIELDS,
   recognizeTextLayer,
   recognizeVectorGeometry,
   REQUIRED_ROOF_FIELDS,
   START_PARAMETER_OF,
+  transcribeDimension,
+  transcriptionResult,
   type DocumentPageInfo,
+  type DraftRelation,
   type DocumentSourceKind,
   type DraftField,
   type ImportDecisions,
@@ -42,12 +49,15 @@ import {
   type IngestionRejection,
   type ManualMeasurementInput,
   type NumericRoofField,
+  type PageBox,
   type PagePoint,
   type RecognitionResult,
   type RecognizedMeasurement,
   type RoofStartParameters,
   type ScaleCalibration,
   type SourceRegion,
+  type TranscriptionError,
+  type TranscriptionTarget,
 } from '@cieslacalc/document-import-core';
 import { parseDecimal } from '../format';
 import { createDefaultProjectDocument, useAssembly } from '../assembly/store';
@@ -159,12 +169,39 @@ async function loadDocument(file: File): Promise<LoadedDocument> {
 
 type Tool =
   | { kind: 'select' }
+  | { kind: 'transcribe' }
   | { kind: 'calibrate' }
   | { kind: 'measure'; field: NumericRoofField };
 
 const LENGTH_FIELDS: readonly NumericRoofField[] = NUMERIC_ROOF_FIELDS.filter(
   (field) => field !== 'pitch',
 );
+
+/** What a transcribed dimension can mean, in the order a plan is read. */
+const TRANSCRIPTION_TARGETS: readonly TranscriptionTarget[] = [
+  'buildingLength',
+  'buildingWidth',
+  'pitch',
+  'eave',
+  'spacing',
+  'rafterSection',
+];
+
+/** A framed region on the page while the user types what it says. */
+interface PendingFrame {
+  page: number;
+  box: PageBox;
+}
+
+/** A click without a drag frames this share of the page around the point. */
+const CLICK_FRAME = { width: 0.08, height: 0.035 };
+
+/** A page has no usable text: a photo, a scan or a scanned PDF page. */
+function isRasterPage(doc: LoadedDocument, page: number): boolean {
+  if (!doc.pdf) return true;
+  const text = doc.pdf.textPages.find((item) => item.page === page);
+  return !text?.items.some((item) => item.text.trim());
+}
 
 function displayNumber(value: number, digits: number) {
   return String(Number(value.toFixed(digits)));
@@ -205,6 +242,22 @@ export function DocumentImportWorkspace({
   const [createError, setCreateError] = useState<string>();
   const [dragging, setDragging] = useState(false);
   const [viewerWidth, setViewerWidth] = useState(800);
+  // Dimension-first transcription of a scan or photo.
+  /** One entry per framed dimension; a section pair yields two readings. */
+  const [transcriptions, setTranscriptions] = useState<
+    { id: string; measurements: RecognizedMeasurement[] }[]
+  >([]);
+  const [frame, setFrame] = useState<PendingFrame>();
+  const [framing, setFraming] = useState(false);
+  const [transcribeText, setTranscribeText] = useState('');
+  const [transcribeTarget, setTranscribeTarget] = useState<
+    TranscriptionTarget | ''
+  >('');
+  const [transcribeError, setTranscribeError] = useState<TranscriptionError>();
+  const frameStart = useRef<PagePoint | undefined>(undefined);
+  const transcriptionCount = useRef(0);
+  const zoomCanvas = useRef<HTMLCanvasElement>(null);
+  const transcribeInput = useRef<HTMLInputElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const viewer = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -285,6 +338,15 @@ export function DocumentImportWorkspace({
         : undefined,
     [calibration, manual],
   );
+  const transcribed = useMemo(
+    () =>
+      transcriptions.length
+        ? transcriptionResult(
+            transcriptions.flatMap((entry) => entry.measurements),
+          )
+        : undefined,
+    [transcriptions],
+  );
   const draft = useMemo(
     () =>
       source
@@ -292,14 +354,31 @@ export function DocumentImportWorkspace({
             source,
             results: [
               ...(doc?.text ? [doc.text] : []),
+              ...(transcribed ? [transcribed] : []),
               ...(doc?.vector ? [doc.vector] : []),
               ...(manualResult ? [manualResult] : []),
             ],
             decisions,
           })
         : undefined,
-    [decisions, doc?.text, doc?.vector, manualResult, source],
+    [decisions, doc?.text, doc?.vector, manualResult, source, transcribed],
   );
+  const chainOf = useMemo(() => {
+    const byTotal = new Map<
+      string,
+      Extract<DraftRelation, { kind: 'dimension-chain' }>
+    >();
+    const members = new Map<string, 'total' | 'part'>();
+    for (const relation of draft?.relations ?? [])
+      if (relation.kind === 'dimension-chain') {
+        byTotal.set(relation.totalMeasurementId, relation);
+        members.set(relation.totalMeasurementId, 'total');
+        for (const id of relation.partMeasurementIds)
+          if (!members.has(id)) members.set(id, 'part');
+      }
+    return { byTotal, members };
+  }, [draft?.relations]);
+  const rasterPage = !!doc && isRasterPage(doc, pageNumber);
   const mapping = useMemo(
     () => (draft ? mapDraftToRoofStart(draft, defaults) : undefined),
     [defaults, draft],
@@ -357,6 +436,12 @@ export function DocumentImportWorkspace({
     setDecisions(EMPTY_DECISIONS);
     setCalibration(undefined);
     setManual([]);
+    setTranscriptions([]);
+    setFrame(undefined);
+    setFraming(false);
+    setTranscribeText('');
+    setTranscribeTarget('');
+    setTranscribeError(undefined);
     setTool({ kind: 'select' });
     setPending([]);
     setInputs({});
@@ -389,6 +474,10 @@ export function DocumentImportWorkspace({
         (measurement) => measurement.region,
       );
       if (first?.region) setPageNumber(first.region.page);
+      // A scan or photo has nothing to point at: start by reading the
+      // dimensions written on it.
+      if (isRasterPage(loaded, first?.region?.page ?? 1))
+        setTool({ kind: 'transcribe' });
     } catch (error) {
       if (token !== loadToken.current) return;
       const reason =
@@ -446,8 +535,156 @@ export function DocumentImportWorkspace({
     };
   }
 
+  /* ---------------------- transcription (dimension-first) -------------- */
+
+  function frameBetween(a: PagePoint, b: PagePoint): PendingFrame {
+    return {
+      page: a.page,
+      box: {
+        x: Math.min(a.x, b.x),
+        y: Math.min(a.y, b.y),
+        width: Math.abs(b.x - a.x),
+        height: Math.abs(b.y - a.y),
+      },
+    };
+  }
+
+  function onFrameStart(event: React.PointerEvent<SVGSVGElement>) {
+    if (tool.kind !== 'transcribe' || event.button !== 0) return;
+    const point = pagePoint(event);
+    frameStart.current = point;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setFraming(true);
+    setFrame(frameBetween(point, point));
+    setTranscribeError(undefined);
+  }
+
+  function onFrameMove(event: React.PointerEvent<SVGSVGElement>) {
+    if (!framing || !frameStart.current) return;
+    setFrame(frameBetween(frameStart.current, pagePoint(event)));
+  }
+
+  function onFrameEnd(event: React.PointerEvent<SVGSVGElement>) {
+    if (!framing || !frameStart.current || !pageInfo) return;
+    const start = frameStart.current;
+    const end = pagePoint(event);
+    frameStart.current = undefined;
+    setFraming(false);
+    let next = frameBetween(start, end);
+    // A click (or a tiny drag) frames a typical dimension around the point.
+    if (
+      next.box.width < pageInfo.width * 0.01 &&
+      next.box.height < pageInfo.height * 0.01
+    ) {
+      const width = pageInfo.width * CLICK_FRAME.width;
+      const height = pageInfo.height * CLICK_FRAME.height;
+      next = {
+        page: start.page,
+        box: {
+          x: Math.max(0, start.x - width / 2),
+          y: Math.max(0, start.y - height / 2),
+          width,
+          height,
+        },
+      };
+    }
+    setFrame(next);
+    // Suggest the meaning only for a field the user is filling in — one
+    // that is still empty — never the field just answered.
+    if (
+      !transcribeTarget &&
+      activeField &&
+      draft?.fields[activeField].value === undefined
+    )
+      setTranscribeTarget(
+        activeField === 'rafterWidth' || activeField === 'rafterDepth'
+          ? 'rafterSection'
+          : activeField,
+      );
+    requestAnimationFrame(() => transcribeInput.current?.focus());
+  }
+
+  // The framed region, magnified from the rendered page, beside the input.
+  useEffect(() => {
+    const target = zoomCanvas.current;
+    const source = canvas.current;
+    if (!frame || framing || !target || !source || !pageInfo) return;
+    const sx = (frame.box.x / pageInfo.width) * source.width;
+    const sy = (frame.box.y / pageInfo.height) * source.height;
+    const sw = Math.max(1, (frame.box.width / pageInfo.width) * source.width);
+    const sh = Math.max(
+      1,
+      (frame.box.height / pageInfo.height) * source.height,
+    );
+    const scale = Math.min(320 / sw, 120 / sh, 6);
+    target.width = Math.max(1, Math.round(sw * scale));
+    target.height = Math.max(1, Math.round(sh * scale));
+    const context = target.getContext('2d');
+    context?.drawImage(
+      source,
+      sx,
+      sy,
+      sw,
+      sh,
+      0,
+      0,
+      target.width,
+      target.height,
+    );
+  }, [frame, framing, pageInfo]);
+
+  function cancelTranscription() {
+    setFrame(undefined);
+    setFraming(false);
+    setTranscribeText('');
+    setTranscribeError(undefined);
+  }
+
+  function saveTranscription() {
+    if (!frame) return;
+    transcriptionCount.current += 1;
+    const id = `transcription:${transcriptionCount.current}`;
+    const outcome = transcribeDimension({
+      id,
+      page: frame.page,
+      box: frame.box,
+      text: transcribeText,
+      ...(transcribeTarget ? { target: transcribeTarget } : {}),
+    });
+    if (!outcome.ok) {
+      setTranscribeError(outcome.error);
+      return;
+    }
+    setTranscriptions([
+      ...transcriptions,
+      { id, measurements: outcome.measurements },
+    ]);
+    // A transcription for a field is the reading the user chose for it.
+    let next = decisions;
+    const nextInputs = { ...inputs };
+    for (const measurement of outcome.measurements)
+      if (measurement.field) {
+        next = chooseMeasurement(next, measurement.field, measurement.id);
+        delete nextInputs[measurement.field];
+      }
+    setInputs(nextInputs);
+    update(next);
+    const assigned = outcome.measurements[0]?.field;
+    if (assigned) setActiveField(assigned);
+    setFocusId(outcome.measurements[0]?.id);
+    setFrame(undefined);
+    setTranscribeText('');
+    setTranscribeTarget('');
+    setTranscribeError(undefined);
+  }
+
+  function removeTranscription(id: string) {
+    setTranscriptions(transcriptions.filter((entry) => entry.id !== id));
+    setReviewed(false);
+  }
+
   function onPageClick(event: React.MouseEvent<SVGSVGElement>) {
-    if (tool.kind === 'select') return;
+    if (tool.kind === 'select' || tool.kind === 'transcribe') return;
     const point = pagePoint(event);
     const points = [...pending, point];
     if (points.length < 2) {
@@ -716,9 +953,9 @@ export function DocumentImportWorkspace({
                   </button>
                 </div>
                 <div
-                  className="dimp-group"
+                  className="dimp-group dimp-group-reading"
                   role="group"
-                  aria-label={m.toolSelect}
+                  aria-label={m.readingGroup}
                 >
                   <button
                     type="button"
@@ -726,6 +963,7 @@ export function DocumentImportWorkspace({
                     onClick={() => {
                       setTool({ kind: 'select' });
                       setPending([]);
+                      cancelTranscription();
                     }}
                   >
                     <Crosshair size={16} aria-hidden="true" />
@@ -733,11 +971,31 @@ export function DocumentImportWorkspace({
                   </button>
                   <button
                     type="button"
+                    aria-pressed={tool.kind === 'transcribe'}
+                    data-testid="document-import-transcribe"
+                    onClick={() => {
+                      setTool({ kind: 'transcribe' });
+                      setPending([]);
+                    }}
+                  >
+                    <TextCursorInput size={16} aria-hidden="true" />
+                    {m.toolTranscribe}
+                  </button>
+                </div>
+                <div
+                  className="dimp-group dimp-group-scale"
+                  role="group"
+                  aria-label={m.scaleGroup}
+                  title={m.scaleGroup}
+                >
+                  <button
+                    type="button"
                     aria-pressed={tool.kind === 'calibrate'}
                     data-testid="document-import-calibrate"
                     onClick={() => {
                       setTool({ kind: 'calibrate' });
                       setPending([]);
+                      cancelTranscription();
                     }}
                   >
                     <Ruler size={16} aria-hidden="true" />
@@ -766,7 +1024,9 @@ export function DocumentImportWorkspace({
                   ? m.toolHintCalibrate
                   : tool.kind === 'measure'
                     ? m.toolHintMeasure(fieldLabel(tool.field))
-                    : m.toolHintSelect}
+                    : tool.kind === 'transcribe'
+                      ? m.toolHintTranscribe
+                      : m.toolHintSelect}
                 {calibration && (
                   <strong>
                     {' · '}
@@ -817,6 +1077,83 @@ export function DocumentImportWorkspace({
                   {calibrationError}
                 </p>
               )}
+              {frame && !framing && (
+                <form
+                  className="dimp-transcribe"
+                  data-testid="document-import-transcription"
+                  aria-label={m.transcribeTitle}
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    saveTranscription();
+                  }}
+                >
+                  <figure className="dimp-zoom">
+                    <canvas ref={zoomCanvas} aria-hidden="true" />
+                    <figcaption>{m.transcribeZoom}</figcaption>
+                  </figure>
+                  <div className="dimp-transcribe-fields">
+                    <label>
+                      {m.transcribeValue}
+                      <span className="dimp-input">
+                        <input
+                          ref={transcribeInput}
+                          value={transcribeText}
+                          placeholder={m.transcribeValueHint}
+                          data-testid="document-import-transcription-value"
+                          aria-invalid={!!transcribeError || undefined}
+                          aria-describedby="dimp-transcribe-error"
+                          onChange={(event) => {
+                            setTranscribeText(event.target.value);
+                            setTranscribeError(undefined);
+                          }}
+                        />
+                      </span>
+                    </label>
+                    <label>
+                      {m.transcribeMeaning}
+                      <select
+                        value={transcribeTarget}
+                        data-testid="document-import-transcription-target"
+                        onChange={(event) =>
+                          setTranscribeTarget(
+                            event.target.value as TranscriptionTarget | '',
+                          )
+                        }
+                      >
+                        <option value="">{m.transcribeUnassigned}</option>
+                        {TRANSCRIPTION_TARGETS.map((target) => (
+                          <option key={target} value={target}>
+                            {target === 'rafterSection'
+                              ? m.rafterSection
+                              : fieldLabel(target)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    {transcribeError && (
+                      <p
+                        id="dimp-transcribe-error"
+                        className="dimp-error"
+                        role="alert"
+                      >
+                        {m.transcribeError[transcribeError]}
+                      </p>
+                    )}
+                    <div className="dimp-transcribe-actions">
+                      <button
+                        type="submit"
+                        className="dimp-primary"
+                        data-testid="document-import-transcription-save"
+                      >
+                        {m.transcribeSave}
+                      </button>
+                      <button type="button" onClick={cancelTranscription}>
+                        {m.transcribeCancel}
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              )}
               <div className="dimp-viewer" ref={viewer} data-tool={tool.kind}>
                 {pageInfo && (
                   <div
@@ -831,6 +1168,9 @@ export function DocumentImportWorkspace({
                       viewBox={`0 0 ${pageInfo.width} ${pageInfo.height}`}
                       preserveAspectRatio="none"
                       onClick={onPageClick}
+                      onPointerDown={onFrameStart}
+                      onPointerMove={onFrameMove}
+                      onPointerUp={onFrameEnd}
                       data-testid="document-import-overlay"
                       aria-label={m.document}
                       role="img"
@@ -839,7 +1179,12 @@ export function DocumentImportWorkspace({
                         .filter(
                           (measurement) =>
                             measurement.region?.page === pageNumber &&
-                            measurement.mode !== 'manual',
+                            measurement.mode !== 'manual' &&
+                            // A pair transcription shares one frame.
+                            !(
+                              measurement.mode === 'transcription' &&
+                              measurement.field === 'rafterDepth'
+                            ),
                         )
                         .map((measurement) => {
                           const box = measurement.region!.box;
@@ -852,6 +1197,8 @@ export function DocumentImportWorkspace({
                             <rect
                               key={measurement.id}
                               className="dimp-region"
+                              data-mode={measurement.mode}
+                              data-chain={chainOf.members.get(measurement.id)}
                               data-confidence={measurement.confidence}
                               data-focused={
                                 focusId === measurement.id ||
@@ -906,6 +1253,16 @@ export function DocumentImportWorkspace({
                           y2={pending[1]!.y}
                         />
                       )}
+                      {frame?.page === pageNumber && (
+                        <rect
+                          className="dimp-frame"
+                          data-testid="document-import-frame"
+                          x={frame.box.x}
+                          y={frame.box.y}
+                          width={frame.box.width}
+                          height={frame.box.height}
+                        />
+                      )}
                     </svg>
                   </div>
                 )}
@@ -918,16 +1275,26 @@ export function DocumentImportWorkspace({
                 data-testid="document-import-review"
               >
                 <h3>{m.review}</h3>
+                <p className="dimp-principle">
+                  <Sigma size={14} aria-hidden="true" />
+                  {m.dimensionFirst}
+                </p>
+                {rasterPage && (
+                  <p
+                    className="dimp-raster-notice"
+                    data-testid="document-import-raster-notice"
+                  >
+                    <TextCursorInput size={16} aria-hidden="true" />
+                    {m.rasterNotice}
+                  </p>
+                )}
                 <details className="dimp-engines">
                   <summary>
                     <ScanLine size={15} aria-hidden="true" />
-                    {doc.text
-                      ? doc.text.warnings.some(
-                          (w) => w.code === 'no-text-layer',
-                        )
-                        ? m.engineNoText
-                        : m.engineText(textCount)
-                      : m.engineManual}
+                    {doc.text &&
+                    !doc.text.warnings.some((w) => w.code === 'no-text-layer')
+                      ? m.engineText(textCount)
+                      : m.engineTranscription}
                   </summary>
                   <ul>
                     <li data-available="true">
@@ -942,6 +1309,7 @@ export function DocumentImportWorkspace({
                         )}
                       </li>
                     )}
+                    <li data-available="true">{m.engineTranscription}</li>
                     <li data-available="true">{m.engineManual}</li>
                     <li data-available="false">{m.engineOcr}</li>
                     <li data-available="false">{m.engineAi}</li>
@@ -988,11 +1356,60 @@ export function DocumentImportWorkspace({
                     </small>
                   )}
                 </div>
+                {transcriptions.length > 0 && (
+                  <section
+                    className="dimp-transcriptions"
+                    data-testid="document-import-transcriptions"
+                  >
+                    <h4>{m.transcriptions(transcriptions.length)}</h4>
+                    <ul>
+                      {transcriptions.map((entry) => {
+                        const [first] = entry.measurements;
+                        if (!first) return null;
+                        const meaning =
+                          entry.measurements.length > 1
+                            ? m.rafterSection
+                            : first.field
+                              ? fieldLabel(first.field)
+                              : m.unassigned;
+                        return (
+                          <li key={entry.id}>
+                            <button
+                              type="button"
+                              className="dimp-source"
+                              onClick={() => scrollToMeasurement(first)}
+                            >
+                              <MapPin size={13} aria-hidden="true" />
+                              <strong>{first.raw.text}</strong> — {meaning}
+                              {chainOf.members.get(first.id) && (
+                                <span className="dimp-chain-tag">
+                                  <Sigma size={11} aria-hidden="true" />
+                                </span>
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              className="dimp-icon"
+                              aria-label={`${m.removeTranscription}: ${first.raw.text}`}
+                              title={m.removeTranscription}
+                              onClick={() => removeTranscription(entry.id)}
+                            >
+                              <Trash2 size={14} aria-hidden="true" />
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </section>
+                )}
                 <ul className="dimp-fields">
                   {NUMERIC_ROOF_FIELDS.map((field) => {
                     const state = draft.fields[field];
                     const measurement = state.measurementId
                       ? measurementById.get(state.measurementId)
+                      : undefined;
+                    const chain = state.measurementId
+                      ? chainOf.byTotal.get(state.measurementId)
                       : undefined;
                     return (
                       <FieldRow
@@ -1024,6 +1441,19 @@ export function DocumentImportWorkspace({
                         canMeasure={
                           LENGTH_FIELDS.includes(field) &&
                           calibration?.page === pageNumber
+                        }
+                        chain={
+                          chain && measurement
+                            ? {
+                                parts: chain.partMeasurementIds
+                                  .map(
+                                    (id) => measurementById.get(id)?.raw.text,
+                                  )
+                                  .filter(Boolean)
+                                  .join(' + '),
+                                total: measurement.raw.text,
+                              }
+                            : undefined
                         }
                         crossCheck={(() => {
                           const relation = draft.relations.find(
@@ -1202,6 +1632,7 @@ function FieldRow({
   defaultText,
   formatValue,
   canMeasure,
+  chain,
   crossCheck,
   onActivate,
   onType,
@@ -1222,6 +1653,8 @@ function FieldRow({
   defaultText: string;
   formatValue: (value: number) => string;
   canMeasure: boolean;
+  /** Written parts that add up to this written overall dimension. */
+  chain?: { parts: string; total: string };
   /** Written value compared with the same line drawn at scale. */
   crossCheck?: { deviationRatio: number; denominator: number };
   onActivate: () => void;
@@ -1329,12 +1762,28 @@ function FieldRow({
             m.drawnSource
           ) : (
             <>
+              {measurement.mode === 'transcription' &&
+                `${m.transcribedSource}: `}
               „{measurement.label?.text ? `${measurement.label.text} ` : ''}
               {measurement.raw.text}”
+              {measurementValueSource(measurement) === 'scaled' &&
+                ` — ${m.scaledSource}`}
             </>
           )}
-          {state.unitBasis && <em> — {m.basis[state.unitBasis]}</em>}
+          {state.unitBasis && state.unitBasis !== 'calibrated' && (
+            <em> — {m.basis[state.unitBasis]}</em>
+          )}
         </button>
+      )}
+      {chain && state.status !== 'user-entered' && (
+        <small
+          className="dimp-chain"
+          data-testid={`document-import-chain-${field}`}
+        >
+          <Sigma size={12} aria-hidden="true" />
+          {m.chainEvidence(chain.parts, chain.total)}
+          <Check size={12} aria-hidden="true" />
+        </small>
       )}
       {crossCheck && state.status !== 'user-entered' && (
         <small

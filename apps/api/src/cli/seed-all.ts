@@ -1,6 +1,4 @@
 import { readFile } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import type { RowDataPacket } from 'mysql2/promise';
 import { catalogImportBatchV1Schema } from '@cieslacalc/catalog-core';
 import { priceImportBatchV1Schema } from '@cieslacalc/pricing-core';
@@ -13,9 +11,7 @@ import {
   CATALOGUE_SEED_BATCHES,
   PRICING_SEED_BATCHES,
 } from '../data/seed-manifest';
-
-const here = dirname(fileURLToPath(import.meta.url));
-const BATCH_DIR = resolve(here, '../data/import-batches');
+import { seedBatchPath } from '../data/batch-files';
 
 /**
  * Deterministic first-run seed order (V35). Technical catalogue batches
@@ -54,7 +50,7 @@ async function main() {
       new DrizzleCatalogRepository(connection.db),
     );
     for (const file of CATALOGUE_SEED_BATCHES) {
-      const contents = await readFile(resolve(BATCH_DIR, file), 'utf8');
+      const contents = await readFile(seedBatchPath(file), 'utf8');
       const batch = catalogImportBatchV1Schema.parse(JSON.parse(contents));
       const report = await catalogImporter.import(batch, {
         apply,
@@ -68,7 +64,7 @@ async function main() {
       new DrizzlePricingRepository(connection.db),
     );
     for (const file of PRICING_SEED_BATCHES) {
-      const contents = await readFile(resolve(BATCH_DIR, file), 'utf8');
+      const contents = await readFile(seedBatchPath(file), 'utf8');
       const batch = priceImportBatchV1Schema.parse(JSON.parse(contents));
       const report = await pricingImporter.import(batch, {
         apply,

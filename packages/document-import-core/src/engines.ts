@@ -22,7 +22,24 @@ export const TEXT_LAYER_ENGINE: RecognitionEngineDescriptor = {
   accepts: ['pdf'],
 };
 
-/** Outline lines of a vector PDF, measured at the drawing's stated scale. */
+/**
+ * Dimensions the user frames on a scan, photo or text-less PDF page and
+ * types exactly as written. Dimension-first: no scale, no calibration.
+ */
+export const TRANSCRIPTION_ENGINE: RecognitionEngineDescriptor = {
+  id: 'roofcalc-transcription',
+  mode: 'transcription',
+  version: '1',
+  locality: 'on-device',
+  availability: 'available',
+  accepts: ['pdf', 'png', 'jpeg', 'webp'],
+};
+
+/**
+ * Outline lines of a vector PDF, measured at the drawing's stated scale.
+ * Scaled evidence: it cross-checks written dimensions and never fills a
+ * field on its own (see `measurementValueSource`).
+ */
 export const VECTOR_GEOMETRY_ENGINE: RecognitionEngineDescriptor = {
   id: 'roofcalc-vector-geometry',
   mode: 'vector-geometry',
@@ -45,6 +62,13 @@ export const MANUAL_UNDERLAY_ENGINE: RecognitionEngineDescriptor = {
  * Reserved slots. No OCR or AI vision provider is configured in this
  * version; they are listed so the UI can state the limitation honestly and
  * so a future adapter plugs into the same contract. They are never faked.
+ *
+ * An OCR adapter needs to deliver only positioned text — the
+ * `TextLayerPage[]` shape a PDF text layer already produces — and then runs
+ * through `recognizeTextLayer` unchanged: labels, units, dimension rows,
+ * chains and plausibility are shared, so OCR output is held to exactly the
+ * rules of a born-digital PDF. Its engine id must be its own, so a draft can
+ * always say which numbers a machine read.
  */
 export const OCR_ENGINE_SLOT: RecognitionEngineDescriptor = {
   id: 'ocr',
@@ -66,6 +90,7 @@ export const AI_VISION_ENGINE_SLOT: RecognitionEngineDescriptor = {
 
 export const RECOGNITION_ENGINES: readonly RecognitionEngineDescriptor[] = [
   TEXT_LAYER_ENGINE,
+  TRANSCRIPTION_ENGINE,
   VECTOR_GEOMETRY_ENGINE,
   MANUAL_UNDERLAY_ENGINE,
   OCR_ENGINE_SLOT,

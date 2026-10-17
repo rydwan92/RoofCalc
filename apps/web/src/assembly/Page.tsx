@@ -198,6 +198,7 @@ import {
 } from './ProjectStartAssistant';
 import { evaluateBattenInstallation } from './batten-installation';
 import { resolveBattenAutoComposition } from './batten-composition';
+import { roofConnectionCensus } from './connections/census';
 import './styles.css';
 import './v37.css';
 import '../business/business.css';
@@ -273,6 +274,12 @@ const MaterialPlan = lazy(() =>
 const CostWorkspace = lazy(() =>
   import('./CostWorkspace').then((module) => ({
     default: module.CostWorkspace,
+  })),
+);
+/** VNext-2 connection plan: loaded with its copy only when opened. */
+const ConnectionsWorkspace = lazy(() =>
+  import('./connections/ConnectionsWorkspace').then((module) => ({
+    default: module.ConnectionsWorkspace,
   })),
 );
 /**
@@ -992,6 +999,20 @@ function AssemblyPageContent({
         return source ? [source] : [];
       }),
     [coveringAssignments, resolvedCoveringLayouts],
+  );
+  // VNext-2: which nodes the accepted composition has, for the connection plan.
+  const connectionCensus = useMemo(
+    () =>
+      roofConnectionCensus({
+        template: state.template,
+        members: framingProjection.composedSkeleton.members,
+        buildUp: state.projectDocument.project.buildUp,
+      }),
+    [
+      framingProjection.composedSkeleton.members,
+      state.projectDocument.project.buildUp,
+      state.template,
+    ],
   );
   const memberSchedule = useMemo(
     () =>
@@ -2066,7 +2087,20 @@ function AssemblyPageContent({
       showFeedback('assembly.readiness.feedback.repaired');
   };
   const wideWorkspace =
-    workbench.viewPreset === 'costing' || workbench.viewPreset === 'documents';
+    workbench.viewPreset === 'costing' ||
+    workbench.viewPreset === 'documents' ||
+    workbench.viewPreset === 'connections';
+  /** From the connection plan back to the structure settings it reads. */
+  const openStructureSettings = () => {
+    state.navigateTo(workbenchLocation('construction'), { remember: true });
+    state.setConstructionSection('structure');
+    requestAnimationFrame(() => {
+      const settings = document.querySelector<HTMLDetailsElement>(
+        '[data-testid="structure-settings"]',
+      );
+      if (settings) settings.open = true;
+    });
+  };
   const foundationFocus =
     workbench.constructionSection === 'structure' ? 'construction' : 'geometry';
   // An empty covering task has nothing to edit: give the space to the
@@ -2650,6 +2684,7 @@ function AssemblyPageContent({
                           layers: 'layers',
                           covering: 'covering',
                           cuts: 'construction',
+                          connections: 'construction',
                           materials:
                             workbench.materialsView === 'system' ||
                             workbench.materialsView === 'drainage'
@@ -3084,6 +3119,15 @@ function AssemblyPageContent({
                             { remember: true },
                           )
                         }
+                      />
+                    </Suspense>
+                  ) : workbench.viewPreset === 'connections' ? (
+                    <Suspense fallback={<div className="a-loading-panel" />}>
+                      <ConnectionsWorkspace
+                        census={connectionCensus}
+                        plan={state.projectDocument.project.connectionPlan}
+                        onChange={state.setConnectionPlan}
+                        onOpenStructure={openStructureSettings}
                       />
                     </Suspense>
                   ) : workbench.viewPreset === 'costing' ? (

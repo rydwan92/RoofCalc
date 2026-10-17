@@ -1297,6 +1297,51 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+## VNext-2 — dimension-first import, roof connections, catalogue, visual clarity (in progress)
+
+- Authorized by the user's prompt of 2026-10-17 ("import based on written
+  dimensions, not scaling; modular architecture; product database and easier
+  choices; prepare adding and joining roof members and planning roof
+  connections on applicable standards; intuitive, labelled, colour-organized
+  UI"). Baseline: `63dbc6e`, `pnpm verify` 1799 passed / 13 skipped, full
+  `pnpm e2e` 143 passed / 31 skipped / 0 failed.
+- Plan and Definition of Ready:
+  `docs/ARCHITECTURE_VNEXT2_DIMENSIONS_CONNECTIONS_CATALOGUE.md`.
+- Order: (1) dimension-first import in `document-import-core` + transcription
+  tool for scans/photos; (2) `packages/connection-core` + domain research
+  `docs/domain/ROOF_TIMBER_CONNECTIONS_AND_STANDARDS.md`; (3) offline technical
+  catalogue snapshot + picker; (4) semantic colours, descriptions, legends.
+- Norm verification so far: EN 1995-1-1 Table 8.4 (bolts) and 8.5 (dowels)
+  confirmed by two independent secondary sources; Table 8.2 (nails) NOT
+  confirmed — nails/screws carry references only, no computed spacings.
+- Step (1) DONE: `document-import-core` dimension-first policy
+  (`measurementValueSource`, written beats scaled; vector geometry only
+  cross-checks), `chains.ts` (dimension chains, mismatch warning),
+  `transcription.ts` + web "Odczytaj wymiar" tool (default for scans/photos),
+  superscript half-centimetres, dimension rows; E2E photo → project.
+- Step (2) DONE in code: `packages/connection-core` (standards, catalogue,
+  EC5 Table 8.4/8.5 spacing + row fit, plan schema, schedule, junction
+  research vocabulary), `project.connectionPlan?` (additive, carried by all
+  20 store composition sites, `setConnectionPlan` = one history entry),
+  Konstrukcja → Połączenia workspace, `--ui-member-*` family colour tokens.
+  Docs for steps 1–2 still to write.
+- Step (3) DONE: technical batches moved to `packages/catalog-data` (git mv;
+  prices stay in the API, `seedBatchPath`), `catalog-core` offline read model,
+  `BundledCatalogClient` + explicit "Użyj wbudowanego katalogu" (ADR-013),
+  pitch-minimum badge, honest `battens-auto-unresolved` readiness message.
+- Step (4) DONE: `--ui-section-*` hues (nav, dock, active task), section/task
+  help titles, `--ui-member-*` family colours (test vs 3D scene colours).
+- Docs: ARCHITECTURE_VNEXT2 (DoR), domain research on standards, ADR-013,
+  ADR-014, SCHEMA_REGISTRY §15, ARCHITECTURE_INDEX, UX contract.
+- Validation: `pnpm verify` green — 175 files (2 skipped), 1859 tests passed,
+  13 skipped; targeted E2E: document-import 6/6, connections 2/2,
+  offline-catalogue 2/2. Full `pnpm e2e` pending.
+- 2026-10-18: user resumed; their uncommitted DB/Cloudflare work in the main
+  checkout (migrator with hash prefix check, /api/readiness, deployment gate,
+  runbook) is integrated next.
+- NEXT ACTION: integrate main-checkout changes, then one-place DB config and
+  Cloudflare path, UI/UX, full verify + e2e, push the branch.
+
 ## VNext — workspace, document import, SQL first-run (completed locally, second session)
 
 - Authorized by the user's VNext prompt (2026-10-15) and the follow-up "extend

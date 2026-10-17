@@ -82,6 +82,7 @@ export type ReadinessIssueCode =
   | 'battens-off'
   | 'battens-incompatible'
   | 'battens-product-incompatible'
+  | 'battens-auto-unresolved'
   | 'battens-invalid'
   | 'battens-scope'
   | 'battens-auto-unavailable'
@@ -584,6 +585,27 @@ export function deriveProjectReadiness(
       });
       break;
     case 'auto-incompatible':
+      // VNext-2: only a pitch below the product minimum is a pitch problem.
+      // Otherwise the automatic layout found no whole-course solution, and
+      // saying "the pitch is too low" would send the user the wrong way.
+      if (battens.pitch.status !== 'below-minimum') {
+        add({
+          code: 'battens-auto-unresolved',
+          severity: 'blocker',
+          area: 'layers',
+          params: battens.allowedRangeMm
+            ? {
+                minMm: battens.allowedRangeMm.min,
+                maxMm: battens.allowedRangeMm.max,
+              }
+            : {},
+          action: 'set-manual',
+          secondaryAction: 'review-covering',
+          affects: QUANTITY_DOCUMENTS,
+          source: 'batten-workflow',
+        });
+        break;
+      }
       add({
         code: 'battens-product-incompatible',
         severity: 'blocker',

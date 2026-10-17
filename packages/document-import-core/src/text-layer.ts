@@ -19,6 +19,7 @@ import {
   LENGTH_UNIT_MM,
   percentSlopeToDegrees,
   scanMeasurementTokens,
+  toSuperscriptDigits,
   type MeasurementToken,
 } from './tokens';
 import {
@@ -119,15 +120,54 @@ function buildLine(
 }
 
 /**
+ * A raised, smaller one- or two-digit item right after a number is a
+ * superscript fraction ("38" + raised "5" = 38,5 cm on Polish architectural
+ * drawings). A PDF stores it as a separate text item; it is written back
+ * onto its number as superscript digits so the token scanner reads one
+ * value instead of "38" and a stray "5" (or "385").
+ */
+function mergeRaisedDigits(items: readonly TextLayerItem[]): TextLayerItem[] {
+  const merged = [...items];
+  const absorbed = new Set<TextLayerItem>();
+  for (const item of items) {
+    if (isRotated(item) || !/^\d{1,2}$/.test(item.text.trim())) continue;
+    const index = merged.findIndex((base) => {
+      if (base === item || absorbed.has(base) || isRotated(base)) return false;
+      if (!/\d$/.test(base.text.trimEnd())) return false;
+      const height = base.box.height;
+      const gap = item.box.x - (base.box.x + base.box.width);
+      return (
+        item.box.height < height * 0.8 &&
+        gap >= -height * 0.2 &&
+        gap <= height * 0.3 &&
+        centerY(item.box) < centerY(base.box) - height * 0.1 &&
+        item.box.y + item.box.height > base.box.y - height * 0.2
+      );
+    });
+    if (index < 0) continue;
+    const base = merged[index]!;
+    merged[index] = {
+      ...base,
+      text: base.text.trimEnd() + toSuperscriptDigits(item.text.trim()),
+      box: union([base.box, item.box]),
+    };
+    absorbed.add(item);
+  }
+  return merged.filter((item) => !absorbed.has(item));
+}
+
+/**
  * Groups positioned text items into reading lines: items whose vertical
  * centres agree within half the smaller text height share a line and are
  * ordered left to right. Rotated items (vertical dimension text) form their
  * own lines.
  */
 export function assembleLines(page: TextLayerPage): AssembledLine[] {
-  const items = page.items
-    .filter((item) => item.text.trim().length > 0)
-    .slice(0, DOCUMENT_IMPORT_LIMITS.maxTextItemsPerPage);
+  const items = mergeRaisedDigits(
+    page.items
+      .filter((item) => item.text.trim().length > 0)
+      .slice(0, DOCUMENT_IMPORT_LIMITS.maxTextItemsPerPage),
+  );
   const horizontal = items
     .filter((item) => !isRotated(item))
     .sort((a, b) => centerY(a.box) - centerY(b.box) || a.box.x - b.box.x);
@@ -427,18 +467,57 @@ function labelled(
     });
 }
 
-/** A line that is only a dimension value, e.g. "1240" or "12,40 m". */
-function standaloneLength(
+type LengthToken = Extract<MeasurementToken, { kind: 'length' }>;
+
+/** Text items further apart than this many text heights are separate groups. */
+const GROUP_GAP_HEIGHTS = 4;
+
+/**
+ * Character ranges of a line split at large horizontal gaps, so a row of
+ * dimension numbers is not merged with an unrelated title block that
+ * happens to sit at the same height.
+ */
+function spatialGroups(line: AssembledLine): { start: number; end: number }[] {
+  if (line.rotated || line.spans.length < 2)
+    return [{ start: 0, end: line.text.length }];
+  const groups: { start: number; end: number }[] = [];
+  let start = 0;
+  line.spans.forEach((span, index) => {
+    const previous = line.spans[index - 1];
+    if (!previous) return;
+    const gap = span.box.x - (previous.box.x + previous.box.width);
+    const height = Math.min(span.box.height, previous.box.height) || 1;
+    if (gap > height * GROUP_GAP_HEIGHTS) {
+      groups.push({ start, end: previous.end });
+      start = span.start;
+    }
+  });
+  groups.push({ start, end: line.text.length });
+  return groups;
+}
+
+/**
+ * Dimension values standing alone: a line, or a spatial group of a line,
+ * that contains nothing but lengths — "1240", "12,40 m", or a dimension row
+ * "320 600 320" written along a dimension line.
+ */
+function dimensionRows(
   line: AssembledLine,
   tokens: readonly MeasurementToken[],
-): Extract<MeasurementToken, { kind: 'length' }> | undefined {
-  if (tokens.length !== 1) return undefined;
-  const [token] = tokens;
-  if (token?.kind !== 'length') return undefined;
-  const rest = (line.text.slice(0, token.start) + line.text.slice(token.end))
-    .replace(/[\s()[\]\-–—=:;,.]/g, '')
-    .trim();
-  return rest.length === 0 ? token : undefined;
+): LengthToken[][] {
+  return spatialGroups(line).flatMap(({ start, end }) => {
+    const inside = tokens.filter(
+      (token) => token.start >= start && token.end <= end,
+    );
+    if (inside.length === 0 || inside.some((token) => token.kind !== 'length'))
+      return [];
+    let rest = line.text.slice(start, end);
+    for (const token of [...inside].reverse())
+      rest = rest.slice(0, token.start - start) + rest.slice(token.end - start);
+    return rest.replace(/[\s()[\]\-–—=:;,.]/g, '').length === 0
+      ? [inside as LengthToken[]]
+      : [];
+  });
 }
 
 export interface TextLayerOptions {
@@ -530,26 +609,31 @@ export function recognizeTextLayer(
           angles.push({ line, token });
     });
     // Standalone dimension values become unlabelled candidates only after
-    // labels had the first claim on every token of the page.
-    for (const { line, tokens } of lines) {
-      const token = standaloneLength(line, tokens);
-      if (!token || context.usedTokens.has(tokenKey(line, token))) continue;
-      context.usedTokens.add(tokenKey(line, token));
-      push(context, {
-        id: measurementId(line, token, 'candidate'),
-        quantity: 'length',
-        raw: { text: token.text, value: token.value, unit: token.unit },
-        ...(token.unit
-          ? {
-              valueMm: token.value * LENGTH_UNIT_MM[token.unit],
-              unitBasis: 'explicit' as const,
-            }
-          : {}),
-        region: regionOfRange(line, token.start, token.end),
-        confidence: 'low',
-        evidence: token.unit ? ['unlabelled', 'explicit-unit'] : ['unlabelled'],
-      });
-    }
+    // labels had the first claim on every token of the page. Several in one
+    // row are a dimension row — the parts of a possible dimension chain.
+    for (const { line, tokens } of lines)
+      for (const row of dimensionRows(line, tokens))
+        for (const token of row) {
+          if (context.usedTokens.has(tokenKey(line, token))) continue;
+          context.usedTokens.add(tokenKey(line, token));
+          const evidence: EvidenceCode[] = ['unlabelled'];
+          if (row.length > 1) evidence.push('dimension-row');
+          if (token.unit) evidence.push('explicit-unit');
+          push(context, {
+            id: measurementId(line, token, 'candidate'),
+            quantity: 'length',
+            raw: { text: token.text, value: token.value, unit: token.unit },
+            ...(token.unit
+              ? {
+                  valueMm: token.value * LENGTH_UNIT_MM[token.unit],
+                  unitBasis: 'explicit' as const,
+                }
+              : {}),
+            region: regionOfRange(line, token.start, token.end),
+            confidence: 'low',
+            evidence,
+          });
+        }
   }
 
   // A document with one distinct unlabelled angle and no labelled pitch:

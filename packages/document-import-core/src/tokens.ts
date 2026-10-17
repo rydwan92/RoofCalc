@@ -32,11 +32,38 @@ export type MeasurementToken =
   | (TokenBase & { kind: 'scale'; denominator: number });
 
 /**
- * A number as written in Polish or English technical documents: decimal
- * comma or point; thousands grouped by a non-breaking/thin space, or by a
- * plain space only when a length unit follows ("12 400 mm").
+ * Superscript digits. Polish architectural drawings dimension in
+ * centimetres and write a half centimetre as a raised 5: "38⁵" = 38,5 cm.
  */
-const NUM = String.raw`(?:\d{1,3}(?:[\u00a0\u202f]\d{3})+|\d{1,3}(?: \d{3})+(?=\s*(?:mm|cm|m)(?![\p{L}\d²³]))|\d+)(?:[.,]\d+)?`;
+const SUP = String.raw`[\u2070\u00b9\u00b2\u00b3\u2074-\u2079]`;
+const SUPERSCRIPT_DIGIT: Record<string, string> = {
+  '\u2070': '0',
+  '\u00b9': '1',
+  '\u00b2': '2',
+  '\u00b3': '3',
+  '\u2074': '4',
+  '\u2075': '5',
+  '\u2076': '6',
+  '\u2077': '7',
+  '\u2078': '8',
+  '\u2079': '9',
+};
+const DIGIT_SUPERSCRIPT = Object.fromEntries(
+  Object.entries(SUPERSCRIPT_DIGIT).map(([raised, digit]) => [digit, raised]),
+);
+
+/** "5" → "⁵": how a raised digit beside a number is written back. */
+export function toSuperscriptDigits(digits: string): string {
+  return [...digits].map((digit) => DIGIT_SUPERSCRIPT[digit] ?? digit).join('');
+}
+
+/**
+ * A number as written in Polish or English technical documents: decimal
+ * comma or point, or a superscript fraction ("38⁵"); thousands grouped by a
+ * non-breaking/thin space, or by a plain space only when a length unit
+ * follows ("12 400 mm").
+ */
+const NUM = String.raw`(?:\d{1,3}(?:[\u00a0\u202f]\d{3})+|\d{1,3}(?: \d{3})+(?=\s*(?:mm|cm|m)(?![\p{L}\d²³]))|\d+)(?:[.,]\d+|${SUP}{1,2}(?![\d.,]))?`;
 /** Not part of a word, an identifier such as K1/A4, or another number. */
 const LEFT = String.raw`(?<![\p{L}\d.,])`;
 /** Not continued by a letter/digit or by a further decimal group (dates). */
@@ -56,12 +83,30 @@ const TOKEN = new RegExp(
   'giu',
 );
 
-/** "12,40" → 12.4, "1 240" → 1240, "0.9" → 0.9. */
+const TRAILING_SUPERSCRIPT = new RegExp(`${SUP}+$`, 'u');
+
+/** "12,40" → 12.4, "1 240" → 1240, "0.9" → 0.9, "38⁵" → 38.5. */
 export function parseDocumentNumber(text: string): number | undefined {
-  const compact = text.replace(/[\s\u00a0\u202f]/g, '').replace(',', '.');
+  const trimmed = text.trim();
+  const raised = TRAILING_SUPERSCRIPT.exec(trimmed)?.[0] ?? '';
+  const compact = trimmed
+    .slice(0, trimmed.length - raised.length)
+    .replace(/[\s\u00a0\u202f]/g, '')
+    .replace(',', '.');
   if (!/^\d+(?:\.\d+)?$/.test(compact)) return undefined;
-  const value = Number(compact);
+  // A superscript fraction never follows a decimal separator.
+  if (raised && compact.includes('.')) return undefined;
+  const fraction = [...raised].map((char) => SUPERSCRIPT_DIGIT[char]).join('');
+  const value = Number(fraction ? `${compact}.${fraction}` : compact);
   return Number.isFinite(value) ? value : undefined;
+}
+
+/** Decimal places as written: "12,40" → 2, "38⁵" → 1, "1240" → 0. */
+export function writtenDecimals(text: string): number {
+  const trimmed = text.trim();
+  const raised = TRAILING_SUPERSCRIPT.exec(trimmed)?.[0];
+  if (raised) return raised.length;
+  return /[.,](\d+)/.exec(trimmed)?.[1]?.length ?? 0;
 }
 
 function unitOf(text: string | undefined): LengthUnit | undefined {
