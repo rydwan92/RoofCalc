@@ -380,6 +380,7 @@ function AssemblyPageContent({
   const state = useAssembly(),
     { t, i18n } = useTranslation();
   const business = useBusiness();
+  const businessHomeOpen = business.mode === 'business' && business.homeOpen;
   const [projectSession] = useState(() => new ProjectSession());
   const projectSessionState = useSyncExternalStore(
     projectSession.subscribe,
@@ -2538,7 +2539,7 @@ function AssemblyPageContent({
             }
           />
         )}
-      {business.mode === 'business' && business.homeOpen ? (
+      {businessHomeOpen ? (
         <BusinessHome
           projects={projectSessionState.projects}
           onCreate={startBusinessEstimation}
@@ -3465,7 +3466,7 @@ function AssemblyPageContent({
           onClose={() => setQuoteOpen(false)}
         />
       )}
-      {projectStartMode && (
+      {projectStartMode && !businessHomeOpen && (
         <ProjectStartAssistant
           mode={projectStartMode}
           template={state.template}

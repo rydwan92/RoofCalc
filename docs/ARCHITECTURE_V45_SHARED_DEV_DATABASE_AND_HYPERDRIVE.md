@@ -1,5 +1,11 @@
 # V45 — one shared DEV database for local Node and Cloudflare
 
+> Superseded operational topology (2026-10-17): local XAMPP and Cloudflare now
+> use independent databases with one shared schema/migration history. See
+> [current recovery/deployment runbook](DATABASE_RECOVERY_AND_CLOUDFLARE.md).
+> Disable Hyperdrive query caching for authenticated Business. Historical
+> catalogue-only caching and remote `db:bootstrap` instructions below no longer apply.
+
 V45 finishes what V42 prepared: local development and the public
 `roofcalc.michal-rydwanski.workers.dev` DEV site read **the same** MariaDB
 database. There is no second copy and no synchronisation.

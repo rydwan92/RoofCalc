@@ -3,6 +3,7 @@ import { createCatalogDatabase } from '../db/client';
 import { databaseFailureReason } from '../db/doctor';
 import { describeDatabaseTarget, isLoopbackHost } from '../db/config';
 import { readSystemStatus } from '../db/system-status';
+import { readSchemaState } from '../db/schema-readiness';
 
 async function main() {
   const connection = createCatalogDatabase();
@@ -23,6 +24,8 @@ async function main() {
       `SERVER VERSION: ${String(versionRows[0]?.version ?? 'unknown')}`,
     );
     const state = await readSystemStatus(connection.db);
+    const schema = await readSchemaState(connection.pool);
+    console.log(`SCHEMA: ${schema} (migration hashes and physical columns)`);
     console.log(
       `MIGRATIONS: ${state.migrations.state} (${state.migrations.applied}/${state.migrations.expected})`,
     );
@@ -36,6 +39,7 @@ async function main() {
       `BUSINESS SEED: ${state.seeds.business.state} (${state.seeds.business.current}/${state.seeds.business.expected})`,
     );
     const ready =
+      schema === 'current' &&
       state.migrations.state === 'current' &&
       Object.values(state.seeds).every(
         (category) => category.state === 'current',

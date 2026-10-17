@@ -1377,11 +1377,63 @@ If code is temporarily incomplete, explicitly list:
   shared DEV Hyperdrive check (operator).
 - Local artefacts: isolated MariaDB (scratch datadir, port 3317) and DBs
   `roofcalc_vnext_audit` / `roofcalc_vnext_probe` on XAMPP 3306 can be
-  dropped; the user's `cieslacalc` DB is untouched at 1/8 migrations and needs
-  `explicit_defaults_for_timestamp=ON` before `pnpm db:setup:local`.
+  dropped. (Superseded 2026-10-17: the user's `cieslacalc` DB was recovered
+  to 8/8 migrations — see the MariaDB recovery entry below.)
 - NEXT ACTION: review and merge `claude/roofcalc-vnext-audit-afa57d` into
   `main` (user decision); then the dark theme needs the legacy hard-coded
   colours moved onto `--ui-*` tokens first.
+
+## 2026-10-17 — MariaDB migration recovery / deployment readiness
+
+- User repair prompt supersedes the previous UX checkpoint. Preserve the user's
+  pre-existing `.env.example` root/port edits; no commit, push or deployment.
+- Baseline: typecheck passed; verify stopped at lint (1160 errors in generated
+  bundles under nested `.claude/worktrees`). Fixed ignore patterns, without
+  changing those worktrees. Shell Node 20.16; all validation uses available
+  Node 22.23.2. Local initial state: MariaDB 10.4.27, 5/8 migrations, 12 tables.
+- Exact failure: first statement of 0005, ER_INVALID_DEFAULT / 1067 / SQLSTATE
+  42000, Invalid default value for refresh_token_expires_at. Runtime had
+  explicit_defaults_for_timestamp=0 with NO_ZERO_DATE. Existing XAMPP my.ini
+  already had ON; graceful MariaDB restart loaded it. MariaDB 10.4 lacks a
+  session override. No partial 0005 tables existed. No SQL/journal edits.
+- Backup before writes: `.git/cieslacalc-before-repair-20261017.sql` (21308 bytes,
+  completed dump). Applied 0005–0007. Local setup and its replay passed:
+  8/8 migrations, 10/10 catalogue batches, 4/4 pricing batches, 1/1 Business
+  batch, 90 active products, 41 price entries, 22 tables including journal.
+- Implemented guarded Drizzle runner (prefix/hash verification, explicit timestamp
+  behavior, safe error metadata), guarded local bootstrap and acknowledged shared
+  DEV path; read-only schema hash/column checks in Node/Worker; public readiness
+  endpoint; auth/Business/bootstrap fail closed on incompatible schema; remote-only
+  TLS deployment readiness commands; private env-file ignore rules and runbook.
+- Fixed a discovered Business blocker: root project-start overlay covered the login
+  screen. It is now hidden on Business home; existing desktop/mobile login test
+  asserts this. No geometry, canonical project/SQL version, quantity, procurement,
+  pricing arithmetic, Undo or ID semantics changed. Standard remains offline.
+- Changed groups: API migration/readiness CLI and DB modules/tests, Node/Worker
+  adapters, readiness manifest/parity test, scripts/workflow/wrangler, lint/git
+  ignores, assembly Page conditional and login E2E, README and architecture docs.
+  See `docs/DATABASE_RECOVERY_AND_CLOUDFLARE.md` for the operational sequence.
+- Real local evidence: db:doctor and status passed; 11 Node-vs-Worker SQL parity
+  tests passed. First-owner creation, password login and session read passed in
+  one rollback-only transaction: no test account/consumed marker retained. A local
+  bootstrap token was generated in ignored .env and never printed. Live Vite/API
+  form passed and screenshots were inspected at 1440×900 and 390×844.
+- Validation: verify passed twice (1704 passed, 13 intentional skips; web/API/Worker
+  dry-run and bundle boundaries clean). Final post-UI verify and complete E2E are
+  running. First browser attempt reused another worktree's :4173 server; stopped
+  and isolated this checkout on :4184. A later run was stopped for the login fix.
+- Runtime: API :3001 and Vite :5173 launched using Node 22; :3002 was a temporary
+  direct-tsx startup check. Runtime /health reports connected/configured,
+  /readiness current, /setup/status firstOwner required/bootstrap available.
+- Remote: read-only Worker probes confirmed SQL access and 50 catalogue products,
+  but auth unconfigured and first owner unknown. Wrangler is not authenticated;
+  no remote maintenance URL available. Remote migration state, TLS/cache settings,
+  secrets and Workers Builds dashboard configuration remain unverified. Set cache
+  disabled for auth/session reads, configure secrets and guarded build command,
+  then perform separately approved shared DEV maintenance before deploy.
+- NEXT ACTION: collect final verify and desktop/mobile E2E results, resolve relevant
+  regressions, update this checkpoint, then report local readiness and remote access
+  limitations. No pending feature implementation; do not commit/push/deploy.
 
 ## Guided Workbench UX / Project Journey — validation in progress
 

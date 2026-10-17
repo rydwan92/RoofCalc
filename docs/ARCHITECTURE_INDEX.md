@@ -7,6 +7,11 @@ subsystem they introduced and should be opened only when changing that subsystem
 
 Canonical unit everywhere: **millimetres**. Display units are presentation only.
 
+Database operations (2026-10-17): local XAMPP and remote Hyperdrive are independent
+databases with one Drizzle schema/history. For migration recovery, runtime schema
+gates and separate maintenance/deployment commands, use
+[`DATABASE_RECOVERY_AND_CLOUDFLARE.md`](DATABASE_RECOVERY_AND_CLOUDFLARE.md).
+
 ---
 
 ## 1. The pipeline

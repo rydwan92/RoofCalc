@@ -544,6 +544,11 @@ reference and marks the price manual. Quantity ownership remains independent.
 
 ## 12. Checklist for any schema change
 
+2026-10-17 migration recovery: no SQL or canonical schema version change.
+The eight immutable SQL files are executed with explicit TIMESTAMP defaults.
+Runtime readiness checks journal timestamps/hashes and column presence against
+the shared Drizzle bundle; see `DATABASE_RECOVERY_AND_CLOUDFLARE.md`.
+
 V59: migration `0006_daily_chamber.sql` adds nullable `phone`, `email`, `website`,
 `default_validity_days` and `offer_footer` to `organizations`; migration 0005 is unchanged.
 `Organization` and `QuoteOrganizationSnapshot` gain optional contact/logo fields;

@@ -11,6 +11,9 @@
   "main": "./apps/api/src/edge/worker.ts",
   "compatibility_date": "2026-09-16",
   "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "BETTER_AUTH_URL": "https://roofcalc.michal-rydwanski.workers.dev",
+  },
   "assets": {
     "directory": "./apps/web/dist",
     "binding": "ASSETS",
@@ -18,7 +21,8 @@
     "run_worker_first": ["/api/*"],
   },
   "observability": { "enabled": true },
-  // HYPERDRIVE binding points to the shared DEV database configuration.
+  // Remote DEV is independent of local XAMPP. Disable query caching on this
+  // Hyperdrive configuration: auth/session/membership reads must be fresh.
   "hyperdrive": [
     {
       "binding": "HYPERDRIVE",

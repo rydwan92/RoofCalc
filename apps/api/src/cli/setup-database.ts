@@ -57,7 +57,11 @@ async function main() {
   ])
     await runScript(
       script,
-      script === 'db:status' ? ['--', '--require-ready'] : [],
+      script === 'db:status'
+        ? ['--', '--require-ready']
+        : script === 'db:migrate' && target.environment === 'shared-dev'
+          ? ['--', '--apply', '--confirm', 'shared-dev']
+          : [],
     );
   console.log(`DATABASE READY: ${target.environment}.`);
 }

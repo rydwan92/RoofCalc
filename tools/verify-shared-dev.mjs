@@ -34,6 +34,9 @@ for (let attempt = 1; attempt <= 12; attempt++) {
       throw new Error('Deployed API is not the expected Worker runtime.');
     if (health.database !== 'connected')
       throw new Error('Worker database is not connected.');
+    const readiness = await read('/api/readiness');
+    if (readiness.schema !== 'current')
+      throw new Error('Worker schema does not match the deployed code.');
     const setup = await read('/api/setup/status');
     if (setup.database !== 'connected')
       throw new Error('Setup endpoint does not see the connected database.');

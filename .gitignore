@@ -5,6 +5,8 @@ coverage/
 .dev.vars
 .wrangler/
 .env.local
+.env.*
+!.env.example
 *.log
 .DS_Store
 *.zip

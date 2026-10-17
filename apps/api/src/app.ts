@@ -57,6 +57,28 @@ export function createApp(
     }
     next();
   });
+  // Schema readiness gate (2026-10-17): Business, auth and first-owner
+  // requests need the exact migrated schema; /api/readiness reports it.
+  app.use('/api', async (req, res, next) => {
+    const readiness = req.path === '/readiness';
+    const guarded =
+      ['/business/', '/auth/'].some((prefix) => req.path.startsWith(prefix)) ||
+      req.path === '/setup/first-owner';
+    if (!readiness && (!guarded || !health.probeSchema)) return next();
+    const state =
+      (await health.probeSchema?.().catch(() => 'unavailable' as const)) ??
+      'unavailable';
+    res.setHeader('Cache-Control', 'no-store');
+    if (readiness) {
+      res.status(state === 'current' ? 200 : 503).json({ schema: state });
+      return;
+    }
+    if (state !== 'current') {
+      res.status(503).json({ error: { code: 'schema-not-ready' } });
+      return;
+    }
+    next();
+  });
   app.get('/api/setup/status', async (_req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     try {

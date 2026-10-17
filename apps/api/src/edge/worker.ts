@@ -24,6 +24,7 @@ import {
   readSetupStatus,
 } from '../business/auth/bootstrap';
 import { readSystemStatus } from '../db/system-status';
+import { readSchemaState } from '../db/schema-readiness';
 
 /** The subset of Cloudflare's Hyperdrive binding that mysql2 needs. */
 export interface HyperdriveBinding {
@@ -161,6 +162,7 @@ export function createWorker(connect: ConnectDatabase = connectHyperdrive) {
         });
 
       const needsDatabase =
+        url.pathname === '/api/readiness' ||
         setupStatus ||
         setupBootstrap ||
         ((request.method === 'GET' || request.method === 'HEAD') &&
@@ -182,6 +184,24 @@ export function createWorker(connect: ConnectDatabase = connectHyperdrive) {
       let connection: Awaited<ReturnType<ConnectDatabase>> | undefined;
       try {
         connection = await connect(env.HYPERDRIVE);
+        if (
+          url.pathname === '/api/readiness' ||
+          setupBootstrap ||
+          url.pathname.startsWith('/api/business/') ||
+          url.pathname.startsWith('/api/auth/')
+        ) {
+          const state = await readSchemaState(connection);
+          if (url.pathname === '/api/readiness')
+            return respond(request, {
+              status: state === 'current' ? 200 : 503,
+              body: { schema: state },
+            });
+          if (state !== 'current')
+            return respond(request, {
+              status: 503,
+              body: { error: { code: 'schema-not-ready' } },
+            });
+        }
         const db = drizzle(connection as Connection, {
           schema,
           mode: 'default',

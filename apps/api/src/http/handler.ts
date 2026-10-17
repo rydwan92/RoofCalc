@@ -40,6 +40,7 @@ import { type AdminRequestContext } from '../business/capability';
 import { can, type BusinessAccess } from '../business/auth/access';
 import { workspaceRoute } from '../business/workspace/routes';
 import type { SystemStatus } from '../db/system-status';
+import type { SchemaState } from '../db/schema-readiness';
 import {
   WorkspaceError,
   type WorkspaceRepository,
@@ -84,6 +85,7 @@ export interface HealthContext {
   auth?: HealthResponse['auth'];
   /** Runs a trivial read; must never throw driver details to the caller. */
   probeDatabase?: () => Promise<void>;
+  probeSchema?: () => Promise<SchemaState>;
 }
 
 const HEALTH_PROBE_TIMEOUT_MS = 5000;

@@ -13,6 +13,7 @@ import { createBusinessAuth } from './business/auth/auth';
 import { resolveBusinessAccess } from './business/auth/access';
 import { DrizzleWorkspaceRepository } from './business/workspace/drizzle-repository';
 import { readSystemStatus } from './db/system-status';
+import { readSchemaState } from './db/schema-readiness';
 
 const port = Number(process.env.PORT ?? 3001);
 if (!Number.isInteger(port) || port < 1 || port > 65535)
@@ -66,6 +67,9 @@ const server = createApp(
   {
     runtime: 'node',
     auth: auth ? 'configured' : 'unconfigured',
+    probeSchema: catalogDatabase
+      ? () => readSchemaState(catalogDatabase.pool)
+      : undefined,
     probeDatabase: catalogDatabase
       ? async () => {
           await catalogDatabase.pool.query('SELECT 1');

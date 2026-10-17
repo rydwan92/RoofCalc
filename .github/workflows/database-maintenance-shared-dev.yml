@@ -61,7 +61,7 @@ jobs:
 
       - name: Migrate
         if: inputs.operation == 'migrate'
-        run: pnpm --filter @cieslacalc/api db:migrate
+        run: pnpm --filter @cieslacalc/api db:migrate -- --apply --confirm shared-dev
 
       - name: Seed catalogue, prices and business demo twice
         if: inputs.operation == 'seed'

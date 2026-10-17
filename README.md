@@ -77,41 +77,36 @@ tarcica konstrukcyjna z realnych obserwacji rynkowych) i na końcu
 weryfikuje wynik (`apps/api/src/cli/smoke-check.ts`). Działa identycznie w
 obu wariantach — różni je tylko `DATABASE_URL`.
 
-**Wariant C — wspólna baza DEV na alwaysdata (V45):** ta sama baza, z której
-czyta wersja na Cloudflare. Prywatny root `.env` zawiera jedną linię
-`DATABASE_URL=mysql://<user>:<hasło>@mysql-<konto>.alwaysdata.net:3306/<baza>`
-(`@` w haśle jako `%40`; host z myślnikiem). Konto wymaga TLS — dla hostów
-innych niż loopback aplikacja zawsze łączy się po TLS z weryfikacją
-certyfikatu. Kolejność:
+**Zdalne DEV / Cloudflare:** lokalna baza XAMPP i zdalna baza Hyperdrive są
+niezależne. Mają wspólny schemat Drizzle i historię migracji, bez kopiowania danych.
+Lokalne `.env` pozostaje przy XAMPP. Zdalny URL podaj prywatnie w oddzielnym
+procesie utrzymania z `ROOFCALC_DB_ENV=shared-dev`:
 
 ```bash
-pnpm db:doctor        # tylko odczyt: DNS, TCP, TLS, logowanie, uprawnienia, migracje
-pnpm db:bootstrap     # raz dla świeżej bazy; ponowne uruchomienie jest bezpieczne
-pnpm dev:remote       # doctor + dev
-pnpm test:shared-db   # opcjonalnie: Node API i handler Workera zwracają te same dane
+pnpm db:doctor
+pnpm db:setup:shared-dev -- --apply --confirm shared-dev
+pnpm db:status -- --require-ready
 ```
 
-Lokalne `.env` nigdy nie trafia do Git. Szczegóły:
-[`docs/ARCHITECTURE_V45_SHARED_DEV_DATABASE_AND_HYPERDRIVE.md`](docs/ARCHITECTURE_V45_SHARED_DEV_DATABASE_AND_HYPERDRIVE.md).
+Przed zapisami wykonaj kopię zdalnej bazy. `db:bootstrap` działa wyłącznie lokalnie.
+Szczegóły: [aktualna instrukcja bazy i wdrożenia](docs/DATABASE_RECOVERY_AND_CLOUDFLARE.md).
 
 ## Publiczne DEV na Cloudflare
 
-Repo zawiera adapter Worker + Static Assets, ponieważ istniejący publiczny
-adres jest w domenie `workers.dev`. `/api` pozostaje na tym samym originie co
-frontend. Worker korzysta z bindingu `HYPERDRIVE`, `mysql2` i tych samych
-repozytoriów Drizzle oraz usług co Node. Przepływ:
-Browser → Worker → Hyperdrive → MariaDB (alwaysdata), lokalnie:
-Web → Node API → MariaDB — ta sama baza.
+Przepływ: React/static assets → Worker → Hyperdrive → zdalna MariaDB.
+Lokalnie: Vite → Express → XAMPP. Schemat, modele i usługi API są wspólne.
 
-`wrangler.jsonc` jest w repo (bez sekretów) i Cloudflare Workers Builds
-wdraża go po każdym pushu na `main`: `/api/*` trafia do Workera, pozostałe
-ścieżki do SPA. `pnpm build:edge` wykonuje lokalny dry-run pakowania i
-sprawdza granice bundli. Blok `hyperdrive` jest zakomentowany, dopóki nie
-wkleisz prawdziwego ID konfiguracji Hyperdrive — do tego czasu
-`/api/health` zwraca `"database": "not-configured"`, a kalkulator działa
-bez katalogu. Hasło bazy zapisuje się tylko w konfiguracji Hyperdrive po
-stronie Cloudflare, nigdy jako `VITE_*`. Instrukcja:
-[`docs/ARCHITECTURE_V45_SHARED_DEV_DATABASE_AND_HYPERDRIVE.md`](docs/ARCHITECTURE_V45_SHARED_DEV_DATABASE_AND_HYPERDRIVE.md).
+`wrangler.jsonc` zawiera bindingi `ASSETS`, `HYPERDRIVE` i publiczny
+`BETTER_AUTH_URL`. Sekrety logowania i bootstrapu ustaw osobno w Workerze.
+Wyłącz cache zapytań Hyperdrive dla sesji i uprawnień Business.
+`/api/health` sprawdza dostępność; `/api/readiness` weryfikuje wersję schematu.
+
+W Workers Builds ustaw Node 22, build `pnpm cloudflare:build`, deploy
+`pnpm deploy:cloudflare` oraz prywatny zdalny `DATABASE_URL` i
+`ROOFCALC_DB_ENV=shared-dev`. Kontrola przed wdrożeniem jest tylko odczytem;
+migracje wykonuje się osobno, przed zatwierdzonym pushem/deployem.
+`pnpm build:edge` pozostaje lokalnym dry-runem niewymagającym zdalnej bazy.
+
 Dodany cennik Ruukki z 28.04.2026 jest archiwalny: producent ogłosił
 cennik od 28.08.2026, więc domyślny lookup nie podaje dawnej ceny jako
 aktualnej. Dla kontroli zapisu historycznego API przyjmuje `&at=2026-07-01`.

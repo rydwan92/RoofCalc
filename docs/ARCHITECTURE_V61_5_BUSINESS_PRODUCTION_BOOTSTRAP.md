@@ -1,5 +1,11 @@
 # V61.5 — Business production bootstrap and readiness
 
+2026-10-17: [Database recovery/deployment runbook](DATABASE_RECOVERY_AND_CLOUDFLARE.md)
+adds an exact migration-hash/physical-column gate (`/api/readiness`) in both
+transports before Business/auth/bootstrap, guarded migrations with explicit
+TIMESTAMP semantics, and read-only predeployment checks. SQL history remains
+0000–0007. Local XAMPP and the remote Hyperdrive origin are independent databases.
+
 ## Scope
 
 The deployed Worker and local Node server share the same first-owner service and Business handler. Standard calculations and local projects do not call these services. V61B IFC conversion is paused.

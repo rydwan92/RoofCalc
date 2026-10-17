@@ -12,6 +12,8 @@ export default defineConfig({
     'src/cli/status.ts',
     'src/cli/setup-target.ts',
     'src/cli/setup-database.ts',
+    'src/cli/migrate.ts',
+    'src/cli/check-deployment.ts',
   ],
   format: ['esm'],
   platform: 'node',
