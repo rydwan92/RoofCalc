@@ -469,6 +469,13 @@ and their totals are never added together.
 - **Calm by default.** One primary item in the project bar; everything else in
   the on-demand "Sprawdzenie projektu" panel. Success is quiet, blockers strong,
   warnings moderate, info muted. Icons plus text, never colour alone.
+- **The checklist can stay in view (VNext-2).** On screens ≥ 1200 px the
+  panel can be pinned ("Przypnij") as a side column: no backdrop, no focus
+  trap, stage actions keep it open, the current stage reads "tu jesteś", and
+  the bar then shows only its next-action button (the column already carries
+  progress). Alt+0 opens / unpins it. Pinning is a device preference
+  (`cieslacalc.checklistPinned.v1`), never project data or history. Phones
+  and narrow windows keep the on-demand sheet.
 - **Safe repair is explicit.** Only deterministic, non-controversial changes
   join "Napraw bezpiecznie N problemy", always previewed, one history entry,
   confirmed with "[Cofnij]". Expert decisions (H1 detail, installation mode,

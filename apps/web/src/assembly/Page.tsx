@@ -119,6 +119,11 @@ import { WorkbenchContextBar } from './WorkbenchContextBar';
 import { MobileSheet } from './MobileSheet';
 import { MobileTaskDock } from './MobileTaskDock';
 import { useMobileWorkbench } from './mobile-workbench';
+import {
+  readChecklistPinned,
+  rememberChecklistPinned,
+  useChecklistDockAvailable,
+} from './checklist-dock';
 import { BuildUpSummaryBar } from './BuildUpWorkspace';
 import { workbenchProjectResolver } from './workbench-project';
 import { resolveWorkbenchSelectionContext } from './selection';
@@ -392,6 +397,7 @@ function AssemblyPageContent({
     (typeof allDetailPreviews)[number] | undefined
   >();
   const [readinessOpen, setReadinessOpen] = useState(false);
+  const [checklistPinned, setChecklistPinned] = useState(readChecklistPinned);
   const [actionFeedback, setActionFeedback] = useState<{
     message: string;
     historyLength: number;
@@ -436,6 +442,18 @@ function AssemblyPageContent({
   const [reuseFreshProject, setReuseFreshProject] = useState(false);
   const workbench = state.workbench;
   const mobile = useMobileWorkbench();
+  const checklistDockAvailable = useChecklistDockAvailable() && !mobile;
+  /** VNext-2: the pinned checklist is a side column on wide screens. */
+  const checklistDocked =
+    checklistPinned &&
+    checklistDockAvailable &&
+    workbench.mode === 'builder' &&
+    !businessHomeOpen;
+  const setChecklistDocked = (pinned: boolean) => {
+    setChecklistPinned(pinned);
+    rememberChecklistPinned(pinned);
+    setReadinessOpen(false);
+  };
   const drawer = workbench.detailDrawer;
   const brand = import.meta.env.VITE_BRAND_NAME || 'CieślaCalc';
   const project = useMemo(
@@ -2261,9 +2279,26 @@ function AssemblyPageContent({
         installation={installationFacts}
       />
     );
+  const currentJourneyStage = (
+    {
+      construction: foundationFocus,
+      openings: 'geometry',
+      layers: 'layers',
+      covering: 'covering',
+      cuts: 'construction',
+      connections: 'construction',
+      materials:
+        workbench.materialsView === 'system' ||
+        workbench.materialsView === 'drainage'
+          ? 'roof-system'
+          : 'materials',
+      costing: 'cost',
+      documents: 'documents',
+    } as Partial<Record<string, JourneyStageKey>>
+  )[workbench.viewPreset];
   return (
     <div
-      className={`assembly-app mode-${workbench.mode} detail-${drawer.mode} ${mobile ? 'is-mobile-workbench' : ''}`}
+      className={`assembly-app mode-${workbench.mode} detail-${drawer.mode} ${mobile ? 'is-mobile-workbench' : ''} ${checklistDocked ? 'has-docked-checklist' : ''}`}
       onKeyDown={(e) => {
         const target = e.target as HTMLElement;
         if (
@@ -2290,6 +2325,12 @@ function AssemblyPageContent({
             e.preventDefault();
             help.open = !help.open;
           }
+          return;
+        }
+        if (workbench.mode === 'builder' && e.altKey && e.key === '0') {
+          e.preventDefault();
+          if (checklistDocked) setChecklistDocked(false);
+          else setReadinessOpen((open) => !open);
           return;
         }
         if (
@@ -2677,25 +2718,7 @@ function AssemblyPageContent({
                     key={projectSessionState.active?.id ?? 'unsaved'}
                     readiness={projectReadiness}
                     journey={projectJourney}
-                    currentStage={
-                      (
-                        {
-                          construction: foundationFocus,
-                          openings: 'geometry',
-                          layers: 'layers',
-                          covering: 'covering',
-                          cuts: 'construction',
-                          connections: 'construction',
-                          materials:
-                            workbench.materialsView === 'system' ||
-                            workbench.materialsView === 'drainage'
-                              ? 'roof-system'
-                              : 'materials',
-                          costing: 'cost',
-                          documents: 'documents',
-                        } as Partial<Record<string, JourneyStageKey>>
-                      )[workbench.viewPreset]
-                    }
+                    currentStage={currentJourneyStage}
                     unit={state.unit}
                     onAction={runReadinessAction}
                     onJourneyAction={runJourneyAction}
@@ -2713,7 +2736,7 @@ function AssemblyPageContent({
                   />
                 );
               })()}
-              {readinessOpen && (
+              {(readinessOpen || checklistDocked) && (
                 <ProjectReadinessPanel
                   journey={projectJourney}
                   onJourneyAction={runJourneyAction}
@@ -2721,7 +2744,18 @@ function AssemblyPageContent({
                   unit={state.unit}
                   onAction={runReadinessAction}
                   onSafeRepair={applySafeRepair}
-                  onClose={() => setReadinessOpen(false)}
+                  pinned={checklistDocked}
+                  currentStage={currentJourneyStage}
+                  onTogglePin={
+                    checklistDockAvailable
+                      ? () => setChecklistDocked(!checklistDocked)
+                      : undefined
+                  }
+                  onClose={() =>
+                    checklistDocked
+                      ? setChecklistDocked(false)
+                      : setReadinessOpen(false)
+                  }
                 />
               )}
               {actionFeedback && (

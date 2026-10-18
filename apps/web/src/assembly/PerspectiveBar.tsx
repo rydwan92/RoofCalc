@@ -157,6 +157,7 @@ export function ShortcutHelp() {
   const { t } = useTranslation();
   const rows: [string, string][] = [
     ['Alt+1 … Alt+6', t('assembly.nav.shortcuts.section')],
+    ['Alt+0', t('assembly.nav.shortcuts.checklist')],
     ['[  ]', t('assembly.nav.shortcuts.panels')],
     ['M', t('assembly.nav.shortcuts.measure')],
     ['F', t('assembly.nav.shortcuts.fit')],

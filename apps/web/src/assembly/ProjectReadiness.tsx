@@ -6,7 +6,10 @@ import {
   Circle,
   Info,
   LayoutDashboard,
+  ListChecks,
   Minus,
+  Pin,
+  PinOff,
   ShieldCheck,
   XCircle,
 } from 'lucide-react';
@@ -171,8 +174,14 @@ export function ProjectReadinessBar({
           className="a-readiness-progress"
           data-testid="project-progress"
           aria-label={t('assembly.readiness.progressLabel', progress)}
+          title={t('assembly.readiness.openHint')}
           onClick={onOpenPanel}
         >
+          <ListChecks
+            className="a-readiness-list-icon"
+            size={15}
+            aria-hidden="true"
+          />
           {here && !compact && (
             <span
               className="a-journey-here"
@@ -371,9 +380,12 @@ function IssueRow({
 function JourneyStages({
   journey,
   onJourneyAction,
+  currentStage,
 }: {
   journey: ProjectJourney;
   onJourneyAction: (action: JourneyAction) => void;
+  /** The stage of the workspace the user is in, marked "you are here". */
+  currentStage?: JourneyStageKey;
 }) {
   const { t } = useTranslation();
   const open = (stage: JourneyStage) =>
@@ -394,20 +406,28 @@ function JourneyStages({
       <ol>
         {journey.stages.map((stage) => {
           const recommended = journey.recommended?.stage === stage.key;
+          const current = currentStage === stage.key;
           return (
             <li
               key={stage.key}
               data-stage={stage.key}
               data-state={stage.state}
               data-recommended={recommended || undefined}
+              data-current={current || undefined}
             >
               <button
                 type="button"
                 data-testid={`journey-stage-${stage.key}`}
+                aria-current={current ? 'step' : undefined}
                 onClick={() => open(stage)}
               >
                 <span className="a-journey-name">
                   {t(`assembly.journey.stage.${stage.key}`)}
+                  {current && (
+                    <em className="a-journey-current">
+                      {t('assembly.readiness.current')}
+                    </em>
+                  )}
                 </span>
                 <span className="a-journey-state">
                   {t(`assembly.journey.state.${stage.state}`)}
@@ -446,6 +466,9 @@ export function ProjectReadinessPanel({
   onAction,
   onSafeRepair,
   onClose,
+  pinned = false,
+  onTogglePin,
+  currentStage,
 }: {
   readiness: ProjectReadiness;
   journey?: ProjectJourney;
@@ -454,34 +477,47 @@ export function ProjectReadinessPanel({
   onAction: (action: ReadinessAction) => void;
   onSafeRepair: () => void;
   onClose: () => void;
+  /**
+   * VNext-2: pinned, the checklist is a calm side column beside the
+   * workbench — no backdrop, no focus trap, it stays open while the user
+   * works. Unpinned, it is the on-demand drawer.
+   */
+  pinned?: boolean;
+  /** Absent where pinning is unavailable (phones, narrow windows). */
+  onTogglePin?: () => void;
+  currentStage?: JourneyStageKey;
 }) {
   const { t, i18n } = useTranslation();
   const [previewRepair, setPreviewRepair] = useState(false);
   const dialog = useRef<HTMLElement>(null);
   useEffect(() => {
+    if (pinned) return;
     const previous = document.activeElement as HTMLElement | null;
     dialog.current?.focus();
     return () => previous?.focus();
-  }, []);
+  }, [pinned]);
   const safeCount = readiness.safeRepair.issueIds.length;
   return (
-    <div className="a-readiness-layer">
-      <button
-        type="button"
-        className="a-readiness-backdrop"
-        aria-label={t('assembly.readiness.close')}
-        onClick={onClose}
-      />
+    <div className={`a-readiness-layer${pinned ? ' is-pinned' : ''}`}>
+      {!pinned && (
+        <button
+          type="button"
+          className="a-readiness-backdrop"
+          aria-label={t('assembly.readiness.close')}
+          onClick={onClose}
+        />
+      )}
       <section
         ref={dialog}
         className="a-readiness-panel"
-        role="dialog"
-        aria-modal="true"
+        role={pinned ? 'complementary' : 'dialog'}
+        aria-modal={pinned ? undefined : 'true'}
         aria-label={t('assembly.readiness.panelTitle')}
         data-testid="project-readiness-panel"
+        data-pinned={pinned || undefined}
         tabIndex={-1}
         onKeyDown={(event) => {
-          if (event.key === 'Escape') {
+          if (event.key === 'Escape' && !pinned) {
             event.stopPropagation();
             onClose();
           }
@@ -490,14 +526,51 @@ export function ProjectReadinessPanel({
         <header>
           <div>
             <h2>{t('assembly.readiness.panelTitle')}</h2>
-            <p>{t('assembly.readiness.panelIntro')}</p>
+            <p>
+              {t(
+                pinned
+                  ? 'assembly.readiness.pinnedIntro'
+                  : 'assembly.readiness.panelIntro',
+              )}
+            </p>
           </div>
-          <button type="button" className="a-button" onClick={onClose}>
-            {t('assembly.readiness.close')}
-          </button>
+          <div className="a-readiness-panel-actions">
+            {onTogglePin && (
+              <button
+                type="button"
+                className="a-button a-readiness-pin"
+                data-testid="project-readiness-pin"
+                aria-pressed={pinned}
+                title={t(
+                  pinned
+                    ? 'assembly.readiness.unpinHint'
+                    : 'assembly.readiness.pinHint',
+                )}
+                onClick={onTogglePin}
+              >
+                {pinned ? (
+                  <PinOff size={15} aria-hidden="true" />
+                ) : (
+                  <Pin size={15} aria-hidden="true" />
+                )}
+                {t(
+                  pinned
+                    ? 'assembly.readiness.unpin'
+                    : 'assembly.readiness.pin',
+                )}
+              </button>
+            )}
+            <button type="button" className="a-button" onClick={onClose}>
+              {t('assembly.readiness.close')}
+            </button>
+          </div>
         </header>
         {journey && onJourneyAction && (
-          <JourneyStages journey={journey} onJourneyAction={onJourneyAction} />
+          <JourneyStages
+            journey={journey}
+            onJourneyAction={onJourneyAction}
+            currentStage={currentStage}
+          />
         )}
         {safeCount > 0 && (
           <div className="a-readiness-safe" data-testid="readiness-safe-repair">

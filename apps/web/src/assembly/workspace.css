@@ -65,6 +65,8 @@
     color: var(--ui-text);
     font-size: var(--ui-text-sm);
     font-weight: var(--ui-weight-medium);
+    white-space: nowrap;
+    flex: none;
   }
   .assembly-app .a-export-trigger:hover {
     border-color: var(--ui-line-strong);
@@ -253,7 +255,7 @@
 .a-readiness-bar.is-compact .a-readiness-primary {
   min-width: 0;
   /* Fluid so the bar stays on the section row; the full text is the title. */
-  max-width: clamp(140px, 16vw, 340px);
+  max-width: clamp(120px, 14vw, 340px);
 }
 .a-readiness-bar.is-compact .a-readiness-primary > div {
   min-width: 0;

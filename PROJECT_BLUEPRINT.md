@@ -1297,6 +1297,40 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+## VNext-2 (2026-10-18, part 2) — main updated, local dev fixed, pinned checklist
+
+- Authorized by the user's message of 2026-10-18 ("yes, make the improved
+  version be on main; configure it locally again; keep improving look, UI/UX
+  and guidance; the checklist behind the progress dots should be available
+  all the time").
+- `main` fast-forwarded to `25284eb`, then `01312c8` (no force). The main
+  checkout's uncommitted work was verified as fully contained in the branch,
+  backed up in `.git/backup-main-checkout-2026-10-18/` and set aside as stash
+  `roofcalc-main-wip-before-vnext-ff-20261018` (kept, not dropped); local
+  `main` fast-forwarded, `pnpm install`, `check:local` all green.
+- Local dev root causes: global pnpm is 12.4.1 (it re-resolves the pinned
+  10.15.1 and can stall inside the repo) and `tsx watch` started together
+  with Vite under `pnpm --parallel` hung before listening → `tools/dev.mjs`
+  runs both servers with its own Node straight from their packages, API first.
+  Node 22.18.0 copied into nvm-windows' root (`C:\nvm`); switching the global
+  version (`nvm use 22.18.0`) is left to the user.
+- The worktree `.env` pointed at a scratch MariaDB (:3317) from the VNext
+  session; it now uses the same local database as the main checkout.
+- Pinned checklist: `checklist-dock.ts` (device preference + ≥ 1200 px
+  query), `ProjectReadinessPanel` `pinned` mode (complementary column, no
+  backdrop/focus trap, "tu jesteś" on the current stage), `has-docked-checklist`
+  root padding, Alt+0, list icon + hint on the progress pill, bar shows only
+  its button while docked; print button no longer wraps.
+- Tests: `readiness-ui.test.tsx` pinned case; `e2e/checklist.spec.ts`.
+- Validation: `pnpm verify` green — 1887 tests passed, 13 skipped; full
+  `pnpm e2e` 150 passed, 32 conditionally skipped, 0 failed. Browser QA at
+  1440×900 (pinned and drawer), 1100×800 (no pin) and 390×844 (sheet, no
+  horizontal overflow). Local `main` dev: API :3001 and Vite :5173 answer,
+  `/api/readiness` current, first owner required, bootstrap available.
+- NEXT ACTION: user — `nvm use 22.18.0` (or install Node 22), optionally
+  `npm i -g pnpm@10.15.1`; Cloudflare: `pnpm cloudflare:login`,
+  `pnpm configure:cloudflare`, approved shared DEV maintenance.
+
 ## VNext-2 (2026-10-18) — one-place configuration, Cloudflare check, UI polish
 
 - Authorized by the user's prompt of 2026-10-18 ("database working locally,

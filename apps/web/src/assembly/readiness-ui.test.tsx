@@ -16,6 +16,7 @@ import { roofPlaneIds } from '@cieslacalc/roof-math';
 import { App } from '../App';
 import i18n from '../i18n';
 import { newBattenLayer, newCounterBattenLayer } from './build-up-defaults';
+import { checklistDockQuery } from './checklist-dock';
 import { useAssembly } from './store';
 
 const TILE: RoofTileTechnicalSpec = {
@@ -208,5 +209,45 @@ describe('V47 readiness UI', () => {
     expect(
       useAssembly.getState().projectDocument.project.coverings[0]!.roofPlaneIds,
     ).toHaveLength(4);
+  });
+
+  it('pins the checklist beside the workbench, keeps it open while working and remembers it', () => {
+    const original = window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+      matches: query === checklistDockQuery,
+      media: query,
+      addEventListener() {},
+      removeEventListener() {},
+    })) as unknown as typeof window.matchMedia;
+    try {
+      render(<App />);
+      builder();
+      fireEvent.click(screen.getByTestId('project-progress'));
+      fireEvent.click(screen.getByTestId('project-readiness-pin'));
+      const pinned = screen.getByTestId('project-readiness-panel');
+      // A side column, not a dialog: no backdrop, the workbench stays usable.
+      expect(pinned.getAttribute('role')).toBe('complementary');
+      expect(document.querySelector('.a-readiness-backdrop')).toBeNull();
+      expect(
+        document
+          .querySelector('.assembly-app')
+          ?.classList.contains('has-docked-checklist'),
+      ).toBe(true);
+      expect(localStorage.getItem('cieslacalc.checklistPinned.v1')).toBe('1');
+      // A stage navigates and the list stays, marking where the user is.
+      fireEvent.click(within(pinned).getByTestId('journey-stage-covering'));
+      expect(useAssembly.getState().workbench.viewPreset).toBe('covering');
+      const after = screen.getByTestId('project-readiness-panel');
+      expect(
+        after.querySelector('[data-current]')?.getAttribute('data-stage'),
+      ).toBe('covering');
+      // A view preference only: the project and its history are untouched.
+      expect(useAssembly.getState().historyPast).toHaveLength(0);
+      fireEvent.click(within(after).getByRole('button', { name: 'Odepnij' }));
+      expect(screen.queryByTestId('project-readiness-panel')).toBeNull();
+      expect(localStorage.getItem('cieslacalc.checklistPinned.v1')).toBeNull();
+    } finally {
+      window.matchMedia = original;
+    }
   });
 });

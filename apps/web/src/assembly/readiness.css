@@ -843,3 +843,77 @@
     white-space: normal;
   }
 }
+
+/* ---------- VNext-2: pinned checklist beside the workbench ---------- */
+.assembly-app {
+  --a-checklist-width: 300px;
+}
+@media (min-width: 1680px) {
+  .assembly-app {
+    --a-checklist-width: 360px;
+  }
+}
+.assembly-app.has-docked-checklist {
+  padding-right: var(--a-checklist-width);
+}
+/* The pinned list already shows progress and names the next step; the bar
+   keeps only its button, so the section row stays on one line. */
+.assembly-app.has-docked-checklist
+  .a-readiness-bar.is-compact
+  .a-readiness-progress,
+.assembly-app.has-docked-checklist
+  .a-readiness-bar.is-compact
+  .a-readiness-primary {
+  display: none;
+}
+/* Pinned: a side column, not an overlay — the workbench stays usable. */
+.a-readiness-layer.is-pinned {
+  left: auto;
+  width: var(--a-checklist-width);
+  z-index: 45;
+}
+.a-readiness-layer.is-pinned .a-readiness-panel {
+  width: 100%;
+  gap: 10px;
+  padding: 14px 14px 28px;
+  border-left: 1px solid var(--ui-line);
+  background: var(--ui-canvas, #f4f7f3);
+  box-shadow: none;
+}
+.a-readiness-layer.is-pinned .a-readiness-panel > header {
+  flex-wrap: wrap;
+}
+.a-readiness-panel-actions {
+  display: flex;
+  flex: none;
+  gap: 6px;
+}
+.a-readiness-pin {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.a-readiness-pin[aria-pressed='true'] {
+  border-color: var(--ui-accent);
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent);
+}
+.a-journey-current {
+  display: inline-block;
+  margin-left: 8px;
+  white-space: nowrap;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--ui-accent);
+  color: #fff;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  vertical-align: 1px;
+}
+.a-readiness-list-icon {
+  flex: none;
+  color: var(--ui-accent);
+}
