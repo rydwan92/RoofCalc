@@ -573,6 +573,15 @@ line and manual lengths keep working.
   model already resolves, the planned fastener and connector, the detailing
   check with its table, the standards. Every check says it is placement
   geometry, not capacity. No default diameter is preselected.
+- **VNext-3: a node is a place, not a multiplication.** Counts come from
+  where member axes meet. "Pokaż na rysunku" marks every occurrence and
+  emphasises the joined members; a marker or ← → opens one occurrence (where,
+  which members — K1-04 / J1-02 / H1 as in the schedule — joint, plan, what
+  is still open, existing preparation sheets); "Pokaż" opens a member with a
+  remembered way back; Escape closes the occurrence, then the node. Each card
+  answers five separate questions — occurs, joint, fasteners, spacing,
+  capacity (always the designer's). Wall plates are members with a length,
+  never an anchor count. A member's inspector lists its own nodes.
 - **Built-in catalogue** is offered only where the server catalogue is
   unavailable, and while used it is always labelled with its data date and a
   way back.

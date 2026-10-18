@@ -63,7 +63,7 @@ describe('connection plan ↔ drawing', () => {
     expect(
       within(detail).getByTestId('connection-occurrence').textContent,
     ).toBe(`Wystąpienie 2 z ${count}`);
-    expect(detail.textContent).toContain('K1 nr');
+    expect(detail.textContent).toMatch(/K1-\d{2} \(połać/);
     expect(detail.textContent).toContain('Murłata');
     fireEvent.click(within(detail).getByRole('button', { name: 'Następne' }));
     expect(
@@ -151,5 +151,25 @@ describe('connection plan ↔ drawing', () => {
     expect(
       within(card).queryByTestId('connection-show-wall-plate-anchorage'),
     ).toBeNull();
+  });
+});
+
+describe('keyboard in the connection plan', () => {
+  it('Escape closes the occurrence, then takes the node off the drawing', async () => {
+    const plan = await openConnections();
+    fireEvent.click(
+      within(plan).getByTestId('connection-show-rafter-wall-plate'),
+    );
+    fireEvent.click((await markers()).querySelector('.a-connection-marker')!);
+    expect(screen.getByTestId('connection-node-detail')).toBeTruthy();
+    const app = document.querySelector('.assembly-app')!;
+    fireEvent.keyDown(app, { key: 'Escape' });
+    expect(screen.queryByTestId('connection-node-detail')).toBeNull();
+    expect(useAssembly.getState().workbench.connectionFocus).toBe(
+      'rafter-wall-plate',
+    );
+    fireEvent.keyDown(app, { key: 'Escape' });
+    expect(useAssembly.getState().workbench.connectionFocus).toBeUndefined();
+    expect(useAssembly.getState().workbench.viewPreset).toBe('connections');
   });
 });

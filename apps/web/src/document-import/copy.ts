@@ -143,6 +143,7 @@ const pl = {
   measure: 'Zmierz ze skali',
   showInDocument: 'Pokaż w dokumencie',
   alternatives: (count: number) => `Inne odczyty (${count})`,
+  conflictPick: 'Dokument podaje różne wartości — wybierz właściwą:',
   chooseAlternative: 'Wybierz inny odczyt…',
   pageShort: (page: number) => `str. ${page}`,
   confidence: {
@@ -367,6 +368,7 @@ const en: Copy = {
   measure: 'Measure at scale',
   showInDocument: 'Show in document',
   alternatives: (count) => `Other readings (${count})`,
+  conflictPick: 'The document states different values — choose the right one:',
   chooseAlternative: 'Choose another reading…',
   pageShort: (page) => `p. ${page}`,
   confidence: {

@@ -616,6 +616,12 @@ workbench. No migration.
   that node kind; `perNode` 1–50; diameter 2–30 mm; note ≤ 240 characters.
 - History: `setConnectionPlan` is one undo entry; every store composition
   site carries the field (test: `connections/plan-store.test.ts`).
+- VNext-3 (additive): node kinds `jack-rafter-purlin`, `purlin-hip-rafter`,
+  `interrupted-rafter-header` may appear as plan keys. Every older plan
+  still parses; an older app reading a newer file rejects the unknown key —
+  open newer files in the current app. Node occurrences themselves are
+  derived (`resolveRoofConnectionNodes`), never persisted; the census row
+  unit `member` (wall-plate anchorage) is derived as well.
 - RecognitionResult (§13) additions in VNext-2, session-only: mode
   `transcription`; evidence `dimension-row`, `chain-total`, `chain-part`,
   `transcribed`; relation `dimension-chain`; warnings `scaled-value-only`,

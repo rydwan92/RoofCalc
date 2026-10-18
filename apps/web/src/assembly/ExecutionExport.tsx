@@ -314,6 +314,10 @@ const copy = {
         'K1: połączenie na nakładkę w kalenicy nie jest jeszcze opracowane, więc przygotowanie elementu i rozkrój K1 są niedostępne.',
       'collar-tie-geometric': () =>
         'Jętka: długość i położenie to wynik geometryczny względem osi krokwi, bez cięć wykonawczych i doboru przekroju.',
+      'jack-purlin-joinery-unresolved': (p: Params) =>
+        `J1: ${p.count} kulawek przechodzi nad płatwią — wcięcia na płatwi nie są obliczone; ustal je w projekcie lub na budowie.`,
+      'purlin-hip-joint-unresolved': (p: Params) =>
+        `Płatwie: ${p.count} końców dochodzi do krokwi narożnych — sposób połączenia nie jest modelowany.`,
       'cost-incomplete': (p: Params) =>
         `Kosztorys: ${p.missingPrices} pozycji bez ceny nie wchodzi do sumy.`,
       'drainage-hydraulics-not-verified': () =>
@@ -597,6 +601,10 @@ const copy = {
         'K1: the half-lap ridge connection is not modelled yet, so K1 preparation and cutting are unavailable.',
       'collar-tie-geometric': () =>
         'Collar tie: length and position are geometric, referenced to the rafter axis, without fabrication cuts or section sizing.',
+      'jack-purlin-joinery-unresolved': (p: Params) =>
+        `J1: ${p.count} jack rafters pass over a purlin — the notches on the purlin are not computed; settle them in the design or on site.`,
+      'purlin-hip-joint-unresolved': (p: Params) =>
+        `Purlins: ${p.count} ends meet hip rafters — the joint is not modelled.`,
       'cost-incomplete': (p: Params) =>
         `Cost estimate: ${p.missingPrices} items without a price are excluded from the total.`,
       'drainage-hydraulics-not-verified': () =>

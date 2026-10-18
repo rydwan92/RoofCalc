@@ -141,7 +141,7 @@ test('shows a node on the drawing and walks to its member and back', async ({
   await expect(detail.getByTestId('connection-occurrence')).toHaveText(
     `Wystąpienie 1 z ${count}`,
   );
-  await expect(detail).toContainText('J1 nr');
+  await expect(detail).toContainText(/J1-\d{2} \(połać/);
   await expect(detail).toContainText('H1');
   await detail.getByRole('button', { name: 'Następne' }).click();
   await expect(detail.getByTestId('connection-occurrence')).toHaveText(

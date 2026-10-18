@@ -131,6 +131,17 @@ const pl = {
     'collar-tie': 'Jętka',
     'opening-header': 'Wymian',
   } satisfies Record<SkeletonMemberKind, string>,
+  sides: {
+    left: 'strona lewa',
+    right: 'strona prawa',
+    center: 'środek',
+    front: 'strona przednia',
+    rear: 'strona tylna',
+    'front-left': 'naroże przednie lewe',
+    'front-right': 'naroże przednie prawe',
+    'rear-left': 'naroże tylne lewe',
+    'rear-right': 'naroże tylne prawe',
+  } satisfies Record<SkeletonMemberSide, string>,
   pieces: { lower: 'odcinek dolny', upper: 'odcinek górny' },
   headerPieces: { lower: 'dolny', upper: 'górny' },
   number: 'nr',
@@ -458,6 +469,17 @@ const en: ConnectionsCopy = {
     'collar-tie': 'Collar tie',
     'opening-header': 'Header',
   },
+  sides: {
+    left: 'left side',
+    right: 'right side',
+    center: 'centre',
+    front: 'front side',
+    rear: 'rear side',
+    'front-left': 'front-left corner',
+    'front-right': 'front-right corner',
+    'rear-left': 'rear-left corner',
+    'rear-right': 'rear-right corner',
+  },
   pieces: { lower: 'lower piece', upper: 'upper piece' },
   headerPieces: { lower: 'lower', upper: 'upper' },
   number: 'no.',
@@ -665,24 +687,37 @@ export type NodeMissing =
   | 'spacing-too-tight'
   | 'capacity';
 
-/** "K1 nr 3 (połać lewa)", "Wymian dolny (połać lewa)", "Kalenica". */
+/**
+ * "K1-04 (połać lewa)", "J1-02 (połać przednia, naroże przednie lewe)",
+ * "H1 (naroże przednie lewe)", "Wymian dolny (połać lewa)", "Kalenica" —
+ * the codes the schedule and the drawing use, plus where the member is.
+ */
 export function memberLabelText(
   m: ConnectionsCopy,
   label: MemberLabel | undefined,
 ): string {
   if (!label) return '—';
+  const pad = (value: number) => String(value).padStart(2, '0');
+  const coded =
+    label.kind === 'rafter' ||
+    label.kind === 'rafter-segment' ||
+    label.kind === 'jack-rafter';
   const name =
     label.kind === 'opening-header'
       ? `${m.memberKinds[label.kind]}${label.piece ? ` ${m.headerPieces[label.piece]}` : ''}`
-      : label.code && label.kind !== 'collar-tie'
-        ? label.code
-        : m.memberKinds[label.kind];
-  const ordinal = label.ordinal ? ` ${m.number} ${label.ordinal}` : '';
-  const piece =
-    label.kind === 'rafter-segment' && label.piece
-      ? `, ${m.pieces[label.piece]}`
-      : '';
-  const part =
-    label.kind === 'ridge' ? '' : ` (${m.parts[label.part]}${piece})`;
-  return `${name}${ordinal}${part}`;
+      : coded && label.code
+        ? `${label.code}${label.ordinal ? `-${pad(label.ordinal)}` : ''}`
+        : label.kind === 'hip-rafter' && label.code
+          ? label.code
+          : `${m.memberKinds[label.kind]}${label.ordinal ? ` ${label.ordinal}` : ''}`;
+  if (label.kind === 'ridge') return name;
+  const where =
+    label.kind === 'wall-plate' || label.kind === 'purlin'
+      ? m.sides[label.part]
+      : m.parts[label.part];
+  const extra = [
+    label.corner ? m.parts[label.corner] : '',
+    label.kind === 'rafter-segment' && label.piece ? m.pieces[label.piece] : '',
+  ].filter(Boolean);
+  return `${name} (${[where, ...extra].join(', ')})`;
 }

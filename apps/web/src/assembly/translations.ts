@@ -356,7 +356,7 @@ export const assemblyPl = {
   hipRoof: 'Kopertowy',
   commonRafter: 'Krokiew zwykła',
   hipRafter: 'Krokiew narożna',
-  jackRafter: 'Kulawek',
+  jackRafter: 'Kulawka',
   structureSystem: 'Konstrukcja więźby',
   rafterSystem: 'Więźba krokwiowa',
   rafterCollarTieSystem: 'Więźba krokwiowo-jętkowa',

@@ -26,6 +26,7 @@ import {
   chooseMeasurement,
   classifyDocumentBytes,
   confirmField,
+  conflictingReadings,
   deriveImportedRoofDraft,
   DOCUMENT_IMPORT_LIMITS,
   EMPTY_DECISIONS,
@@ -1422,6 +1423,7 @@ export function DocumentImportWorkspace({
                           .filter(
                             (item): item is RecognizedMeasurement => !!item,
                           )}
+                        conflict={conflictingReadings(draft, field)}
                         copy={m}
                         label={fieldLabel(field)}
                         unitLabel={field === 'pitch' ? '°' : unit}
@@ -1623,6 +1625,7 @@ function FieldRow({
   state,
   measurement,
   alternatives,
+  conflict,
   copy: m,
   label,
   unitLabel,
@@ -1644,6 +1647,8 @@ function FieldRow({
   state: DraftField;
   measurement?: RecognizedMeasurement;
   alternatives: RecognizedMeasurement[];
+  /** VNext-3: the disagreeing readings, side by side (empty if none). */
+  conflict: readonly RecognizedMeasurement[];
   copy: ImportCopy;
   label: string;
   unitLabel: string;
@@ -1803,6 +1808,47 @@ function FieldRow({
             `${(crossCheck.deviationRatio * 100).toFixed(1).replace('.', ',')} %`,
           )}
         </small>
+      )}
+      {conflict.length > 1 && (
+        <div
+          className="dimp-conflict"
+          role="group"
+          aria-label={m.conflictPick}
+          data-testid={`document-import-conflict-${field}`}
+        >
+          <small>
+            <AlertTriangle size={12} aria-hidden="true" />
+            {m.conflictPick}
+          </small>
+          <div>
+            {conflict.map((reading) => {
+              const value =
+                reading.quantity === 'angle'
+                  ? reading.valueDeg
+                  : reading.valueMm;
+              return (
+                <button
+                  key={reading.id}
+                  type="button"
+                  className="dimp-conflict-option"
+                  onClick={() => onChoose(reading.id)}
+                >
+                  <strong>
+                    {value === undefined
+                      ? reading.raw.text
+                      : formatValue(value)}
+                  </strong>
+                  <small>
+                    {reading.region
+                      ? `${m.pageShort(reading.region.page)} · `
+                      : ''}
+                    „{reading.raw.text}”
+                  </small>
+                </button>
+              );
+            })}
+          </div>
+        </div>
       )}
       {alternatives.length > 0 && (
         <select

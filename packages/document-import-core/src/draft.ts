@@ -428,3 +428,36 @@ export function confirmField(
   if (!key) return decisions;
   return { ...decisions, confirmed: { ...decisions.confirmed, [field]: key } };
 }
+
+/**
+ * VNext-3: the readings that make a field a conflict — the selected one
+ * first, then every other reading labelled for the same field with another
+ * value — so the review can show them side by side and one click decides.
+ * Empty when the field is not in conflict. Readings without a known unit
+ * value are left to the "other readings" menu.
+ */
+export function conflictingReadings(
+  draft: ImportedRoofDraftV1,
+  field: NumericRoofField,
+): RecognizedMeasurement[] {
+  const state = draft.fields[field];
+  if (state.status !== 'conflict' || state.value === undefined) return [];
+  const byId = new Map(draft.measurements.map((item) => [item.id, item]));
+  const selected = state.measurementId
+    ? byId.get(state.measurementId)
+    : undefined;
+  if (!selected) return [];
+  const valueOf = (item: RecognizedMeasurement) =>
+    item.quantity === 'angle' ? item.valueDeg : item.valueMm;
+  const seen = [state.value];
+  const others: RecognizedMeasurement[] = [];
+  for (const id of state.alternatives) {
+    const item = byId.get(id);
+    const value = item ? valueOf(item) : undefined;
+    if (!item || item.field !== field || value === undefined) continue;
+    if (seen.some((known) => sameValue(known, value))) continue;
+    seen.push(value);
+    others.push(item);
+  }
+  return [selected, ...others];
+}

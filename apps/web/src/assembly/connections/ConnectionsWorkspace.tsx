@@ -1,5 +1,6 @@
 import {
   Suspense,
+  useCallback,
   useEffect,
   useId,
   useMemo,
@@ -94,14 +95,18 @@ export function ConnectionsWorkspace({
 }) {
   const { i18n } = useTranslation();
   const m = connectionsCopy(i18n.language);
-  const markerLabel = (node: ResolvedRoofConnectionNode, index: number) =>
-    m.markerLabel(
-      m.nodes[node.kind],
-      index + 1,
-      node.members
-        .map((member) => memberLabelText(m, labels.get(member.id)))
-        .join(' + '),
-    );
+  // Stable while language and labels are, so the drawing keeps its memo.
+  const markerLabel = useCallback(
+    (node: ResolvedRoofConnectionNode, index: number) =>
+      m.markerLabel(
+        m.nodes[node.kind],
+        index + 1,
+        node.members
+          .map((member) => memberLabelText(m, labels.get(member.id)))
+          .join(' + '),
+      ),
+    [labels, m],
+  );
   const rows = useMemo(
     () => deriveConnectionSchedule(census, plan),
     [census, plan],

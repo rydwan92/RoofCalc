@@ -257,7 +257,7 @@ test.describe('V39 — J1 execution status', () => {
     // The Toolbox offers J1 on a hip roof; selecting it must not claim a
     // finished fabrication result that no intent has chosen.
     await page
-      .locator('button:visible', { hasText: 'Kulawek J1' })
+      .locator('button:visible', { hasText: 'Kulawka J1' })
       .first()
       .click();
     await closeSheet(page, mobile);

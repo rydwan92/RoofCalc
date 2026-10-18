@@ -1297,6 +1297,42 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+## VNext-3 (2026-10-18) — functional excellence: connections, drawing, code
+
+- Authorized by the VNext-3 prompt (P0 connection correctness, P1 plan ↔
+  drawing, P2 targeted Page refactor, P3 daily UX, P4 import polish; push at
+  the end). Baseline `3f52a32`: verify 1888 passed / 13 skipped.
+- P0 done: `connection-core/nodes.ts` — nodes only where solved axes meet
+  (1 mm, end reach = half the met member's width; coinciding ends never bear).
+  New kinds `jack-rafter-purlin`, `purlin-hip-rafter`,
+  `interrupted-rafter-header`; anchorage counted as members + length; paired
+  ridge joints; `apex-without-ridge`. Census counts from nodes (web
+  `census.ts`); corrections listed in commit `6f3d357`.
+- P1 done: Połączenia = plan beside the drawing (markers, emphasis, one
+  occurrence via ordinary selection → `connection-node` context, details,
+  "Pokaż" member with restored way back, Escape steps back in place);
+  member inspector "Połączenia elementu"; labels K1-04 / J1-02 (from corner)
+  / H1 from structure + geometry (`labels.ts`); `selectConnectionNode`
+  keeps the plan (`select('roof')` jumps to construction — found by test).
+- P2 done: `construction-projection.ts` (skeleton, framing, proposal,
+  fabrication, nodes, labels; memoised on canonical inputs, tested for
+  identity) and `connections/use-connection-view.ts`; stable marker props
+  for the memoised canvas.
+- P3 partial: plan readability (5-step ladder, layout), member family colours
+  from `--ui-member-*` tokens in the drawing, "Kulawek" → "Kulawka",
+  phone meta wrap. Not done: numeric field ergonomics, inspector regrouping,
+  camera retention audit, SkeletonCanvas `memberLabel` still parses IDs.
+- P7 integrity: limitations `jack-purlin-joinery-unresolved` and
+  `purlin-hip-joint-unresolved` (counted from nodes) reach documents.
+- P4 partial: conflicting readings shown side by side
+  (`conflictingReadings`); points 3–6 verified already handled.
+- Validation: `pnpm verify` green — 185 files (2 skipped), 1915 tests
+  passed, 13 skipped; full `pnpm e2e` 152 passed, 32 conditionally skipped,
+  0 failed (desktop 1440×900, phone 390×844). Browser QA of the plan and
+  drawing on the hip example (32 J1–H1 markers, detail, member jump, back).
+- NEXT ACTION: review; on approval fast-forward `main` (deploys to
+  Cloudflare). Then P3 leftovers above.
+
 ## VNext-2 (2026-10-18, part 3) — Cloudflare go-live tooling
 
 - User: local first owner created and signed in (the wrong `.env` token was

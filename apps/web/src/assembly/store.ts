@@ -499,6 +499,11 @@ export interface AssemblyState {
   setConnectionPlan: (plan: RoofConnectionPlan | undefined) => void;
   /** VNext-3: show one node kind on the drawing (view-only, no history). */
   focusConnectionKind: (kind: RoofNodeKind | undefined) => void;
+  /**
+   * VNext-3: choose one node occurrence, or none, as the selection — in
+   * place: unlike `select('roof')`, it never leaves the connection plan.
+   */
+  selectConnectionNode: (nodeId: string | undefined) => void;
   add: () => void;
   remove: (id: string) => void;
   select: (id: string, prototypeId?: string) => void;
@@ -2218,6 +2223,21 @@ export const useAssembly = create<AssemblyState>((set) => ({
   focusConnectionKind: (connectionFocus) =>
     set((state) => ({
       workbench: { ...state.workbench, connectionFocus },
+    })),
+  selectConnectionNode: (nodeId) =>
+    set((state) => ({
+      workbench: {
+        ...state.workbench,
+        selectedId: nodeId ?? 'roof',
+        selectedPrototypeId: undefined,
+        selectedInstanceId: undefined,
+        selectedScheduleRowId: undefined,
+        selectedScheduleInstanceId: undefined,
+        selectedFeatureIds: [],
+        activeOperationId: undefined,
+        focusId: undefined,
+        isolateSelection: false,
+      },
     })),
   setCoveringAssignments: (coverings) =>
     set((state) => {

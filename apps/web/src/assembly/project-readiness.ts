@@ -168,6 +168,10 @@ export type ProjectLimitation =
   | { code: 'hip-execution-reference-only' }
   | { code: 'ridge-half-lap-unresolved' }
   | { code: 'collar-tie-geometric' }
+  /** VNext-3: J1 crossing a purlin — the bearing notch is not computed. */
+  | { code: 'jack-purlin-joinery-unresolved'; params: { count: number } }
+  /** VNext-3: purlin ends on hip rafters — the joint is not modelled. */
+  | { code: 'purlin-hip-joint-unresolved'; params: { count: number } }
   | { code: 'cost-incomplete'; params: { missingPrices: number } }
   | { code: 'drainage-hydraulics-not-verified' };
 
@@ -194,8 +198,16 @@ export interface ProjectReadiness {
   limitations: ProjectLimitation[];
 }
 
+/** VNext-3: located node counts the structure leaves unresolved. */
+export interface UnresolvedNodeFacts {
+  jackPurlin: number;
+  purlinHip: number;
+}
+
 export interface ReadinessFacts {
   template: RoofTemplateSpec;
+  /** From the connection node projection; absent = nothing located. */
+  connectionNodes?: UnresolvedNodeFacts;
   constructionReady: boolean;
   surfaceIssueCount: number;
   openingWarningCount: number;
@@ -1158,7 +1170,11 @@ export function deriveProjectLimitations(
     });
   }
   limitations.push(
-    ...structuralLimitations({ template: facts.template, k1: facts.k1 }),
+    ...structuralLimitations({
+      template: facts.template,
+      k1: facts.k1,
+      connectionNodes: facts.connectionNodes,
+    }),
   );
   if (facts.drainage && facts.drainage.status !== 'disabled')
     limitations.push({ code: 'drainage-hydraulics-not-verified' });
@@ -1174,7 +1190,9 @@ export function deriveProjectLimitations(
 export function structuralLimitations(facts: {
   template: RoofTemplateSpec;
   k1: K1CuttingRequirement;
+  connectionNodes?: UnresolvedNodeFacts;
 }): ProjectLimitation[] {
+  const nodes = facts.connectionNodes;
   return [
     ...(facts.template.type === 'hip'
       ? [{ code: 'hip-execution-reference-only' as const }]
@@ -1185,6 +1203,23 @@ export function structuralLimitations(facts: {
       : []),
     ...(roofStructureSystem(facts.template) === 'rafter-collar-tie'
       ? [{ code: 'collar-tie-geometric' as const }]
+      : []),
+    // Counted where the axes really meet: only jacks that reach a purlin.
+    ...(nodes?.jackPurlin
+      ? [
+          {
+            code: 'jack-purlin-joinery-unresolved' as const,
+            params: { count: nodes.jackPurlin },
+          },
+        ]
+      : []),
+    ...(nodes?.purlinHip
+      ? [
+          {
+            code: 'purlin-hip-joint-unresolved' as const,
+            params: { count: nodes.purlinHip },
+          },
+        ]
       : []),
   ];
 }

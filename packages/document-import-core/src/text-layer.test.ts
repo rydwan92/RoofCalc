@@ -9,6 +9,7 @@ import {
 import {
   chooseMeasurement,
   confirmField,
+  conflictingReadings,
   deriveImportedRoofDraft,
   EMPTY_DECISIONS,
   enterValue,
@@ -359,6 +360,12 @@ describe('draft derivation and review', () => {
       results: conflicting,
     });
     expect(draft.fields.buildingLength.status).toBe('conflict');
+    // Both readings, side by side, for one click to decide.
+    expect(
+      conflictingReadings(draft, 'buildingLength').map(
+        (reading) => reading.valueMm,
+      ),
+    ).toEqual([12_400, 13_000]);
     expect(mapDraftToRoofStart(draft, DEFAULTS)).toMatchObject({
       status: 'blocked',
       blockers: expect.arrayContaining([
@@ -375,6 +382,7 @@ describe('draft derivation and review', () => {
       status: 'recognized',
       value: 13_000,
     });
+    expect(conflictingReadings(resolved, 'buildingLength')).toEqual([]);
   });
 
   it('revokes a confirmation when the confirmed value changes', () => {

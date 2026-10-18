@@ -1620,7 +1620,7 @@ describe('dual-mode parametric workbench', () => {
       0,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Kulawek J1' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Kulawka J1' }));
     expect(useAssembly.getState().workbench.selectedId).toBe(
       'member:jack-rafter-J1',
     );
@@ -1631,7 +1631,7 @@ describe('dual-mode parametric workbench', () => {
 
     fireEvent.click(
       screen.getByRole('button', {
-        name: /Kulawek J1\/1 · lewa · przedni lewy narożnik/,
+        name: /Kulawka J1\/1 · lewa · przedni lewy narożnik/,
       }),
     );
     expect(useAssembly.getState().workbench.selectedId).toBe(
@@ -1715,7 +1715,7 @@ describe('dual-mode parametric workbench', () => {
 
     fireEvent.click(
       screen.getByRole('button', {
-        name: /Kulawek J1\/2 · przód · przedni lewy narożnik/,
+        name: /Kulawka J1\/2 · przód · przedni lewy narożnik/,
       }),
     );
     expect(

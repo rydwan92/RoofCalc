@@ -18,16 +18,16 @@
   --a-guide-fill: #91b5a51f;
   --a-guide-fill-alt: #7ca49a14;
   --a-timber-secondary-dark: #a77750;
-  --a-timber-secondary-light: #d3ad82;
+  --a-timber-secondary-light: var(--ui-member-jack, #d3ad82);
   --a-feature: #356cab;
   --a-feature-fill: #dceafd;
   --a-batten: #a66532;
   --a-counter-batten: #4e7551;
   --a-membrane: #6aa9b6;
   --a-framing: #6b4ca5;
-  --a-framing-light: #d8c9ef;
+  --a-framing-light: var(--ui-member-opening, #d8c9ef);
   --a-collar-tie: var(--ui-collar-tie, #8a4a6b);
-  --a-collar-tie-light: #c98aa8;
+  --a-collar-tie-light: var(--ui-member-collar, #c98aa8);
   --a-warning: var(--ui-warning, #b35b2d);
   --a-warning-fill: #fff0df;
   --a-state-selected: #007f73;
@@ -2453,7 +2453,7 @@
 .a-skeleton-member.kind-rafter .face-top,
 .a-skeleton-member.kind-rafter .face-start,
 .a-skeleton-member.kind-rafter .face-end {
-  fill: #d49a62;
+  fill: var(--ui-member-rafter, #d49a62);
 }
 .a-skeleton-member.kind-hip-rafter .a-skeleton-face {
   stroke: #3e2d21;
@@ -2467,7 +2467,7 @@
 .a-skeleton-member.kind-hip-rafter .face-top,
 .a-skeleton-member.kind-hip-rafter .face-start,
 .a-skeleton-member.kind-hip-rafter .face-end {
-  fill: #bc7848;
+  fill: var(--ui-member-hip, #bc7848);
 }
 .a-skeleton-member.kind-opening-header .a-skeleton-face {
   stroke: var(--a-framing);
@@ -2557,7 +2557,7 @@
 .a-skeleton-member.kind-wall-plate .face-top,
 .a-skeleton-member.kind-wall-plate .face-start,
 .a-skeleton-member.kind-wall-plate .face-end {
-  fill: #719184;
+  fill: var(--ui-member-wall-plate, #719184);
 }
 .a-skeleton-member.kind-ridge .face-bottom,
 .a-skeleton-member.kind-ridge .face-side-a,
@@ -2567,7 +2567,7 @@
 .a-skeleton-member.kind-ridge .face-top,
 .a-skeleton-member.kind-ridge .face-start,
 .a-skeleton-member.kind-ridge .face-end {
-  fill: #8397aa;
+  fill: var(--ui-member-ridge, #8397aa);
 }
 .a-skeleton-member.kind-purlin .face-bottom,
 .a-skeleton-member.kind-purlin .face-side-a,
@@ -2577,7 +2577,7 @@
 .a-skeleton-member.kind-purlin .face-top,
 .a-skeleton-member.kind-purlin .face-start,
 .a-skeleton-member.kind-purlin .face-end {
-  fill: #ae7b4d;
+  fill: var(--ui-member-purlin, #ae7b4d);
 }
 .a-skeleton-member.kind-collar-tie .face-bottom,
 .a-skeleton-member.kind-collar-tie .face-side-a,

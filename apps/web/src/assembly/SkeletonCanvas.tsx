@@ -148,8 +148,6 @@ export interface ConnectionMarkers {
   nodes: readonly ResolvedRoofConnectionNode[];
   selectedId?: string;
   onSelect: (nodeId: string) => void;
-  /** Accessible name of one occurrence. */
-  label: (node: ResolvedRoofConnectionNode, index: number) => string;
 }
 
 function SkeletonCanvasComponent({
@@ -166,6 +164,7 @@ function SkeletonCanvasComponent({
   counterBattens,
   compact = false,
   connectionMarkers,
+  connectionMarkerLabel,
 }: {
   template: RoofTemplateSpec;
   skeleton: RoofSkeleton;
@@ -184,6 +183,11 @@ function SkeletonCanvasComponent({
    * axes meet. Presentation of the node projection only.
    */
   connectionMarkers?: ConnectionMarkers;
+  /** Accessible name of one occurrence (kept apart so markers stay stable). */
+  connectionMarkerLabel?: (
+    node: ResolvedRoofConnectionNode,
+    index: number,
+  ) => string;
 }) {
   const selectedStore = useAssembly(
     useShallow((store) => ({
@@ -1892,7 +1896,9 @@ function SkeletonCanvasComponent({
                     role="button"
                     tabIndex={0}
                     aria-pressed={selected}
-                    aria-label={connectionMarkers.label(node, index)}
+                    aria-label={
+                      connectionMarkerLabel?.(node, index) ?? String(index + 1)
+                    }
                     transform={`translate(${point.x} ${point.y})`}
                     onClick={(event) => {
                       event.stopPropagation();

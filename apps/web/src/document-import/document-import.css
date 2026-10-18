@@ -859,3 +859,48 @@
     max-width: 100%;
   }
 }
+
+/* VNext-3: disagreeing readings side by side, one click decides. */
+.dimp-conflict {
+  display: grid;
+  gap: 6px;
+  padding: var(--ui-space-2);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-danger-soft, #fde8e6);
+}
+.dimp-conflict > small {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ui-danger);
+  font-weight: var(--ui-weight-medium);
+}
+.dimp-conflict > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.dimp-conflict-option {
+  display: grid;
+  gap: 1px;
+  min-height: 40px;
+  padding: 4px 10px;
+  border: 1px solid var(--ui-line-strong);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.dimp-conflict-option:hover,
+.dimp-conflict-option:focus-visible {
+  border-color: var(--ui-accent);
+}
+.dimp-conflict-option strong {
+  font-variant-numeric: tabular-nums;
+}
+.dimp-conflict-option small {
+  color: var(--ui-text-muted);
+  font-size: var(--ui-text-xs);
+}
