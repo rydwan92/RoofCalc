@@ -8,6 +8,7 @@ import {
   isDeployedOrigin,
   missingWorkerSecrets,
   parseJsonc,
+  parseHyperdriveOrigin,
   parseLoggedIn,
   parseSecretNames,
   summarizeWrangler,
@@ -87,6 +88,24 @@ describe('wrangler output', () => {
       true,
     );
     expect(parseLoggedIn('')).toBe(false);
+  });
+
+  it('reads the Hyperdrive origin without any password', () => {
+    const output = `{
+      "id": "2d7f0a9beaee47219f9e7a6a0aeabeaf",
+      "name": "roofcalc-dev",
+      "origin": { "host": "mysql-example.alwaysdata.net", "port": 3306,
+        "database": "example_roofcalc_dev", "scheme": "mysql", "user": "example" },
+      "caching": { "disabled": false }
+    }`;
+    expect(parseHyperdriveOrigin(output)).toEqual({
+      host: 'mysql-example.alwaysdata.net',
+      port: 3306,
+      database: 'example_roofcalc_dev',
+      user: 'example',
+    });
+    expect(parseHyperdriveOrigin('{"origin":{"host":"h"}}')).toBeUndefined();
+    expect(parseHyperdriveOrigin('Not logged in')).toBeUndefined();
   });
 
   it('reads the Hyperdrive caching flag', () => {

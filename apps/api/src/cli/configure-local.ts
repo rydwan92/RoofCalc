@@ -1,8 +1,6 @@
-import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { createInterface, type Interface } from 'node:readline/promises';
 import {
   analyzeLocalEnv,
@@ -14,10 +12,12 @@ import {
 } from '../config/env-file';
 import { describeDatabaseTarget, parseDatabaseUrl } from '../db/config';
 import {
-  checkLocalConnection,
+  checkDatabaseConnection,
   provisionLocalDatabase,
 } from '../config/local-database';
 import { findWorkspaceRoot } from '../environment';
+import { ask, askHidden, confirm } from './prompt';
+import { runDatabaseSetup } from './run-setup';
 
 /**
  * `pnpm configure:local` — ONE place to set up a local RoofCalc: the root
@@ -61,41 +61,9 @@ function describeIssue(issue: EnvIssue): string {
   }
 }
 
-async function ask(
-  rl: Interface | undefined,
-  question: string,
-  fallback = '',
-): Promise<string> {
-  if (!rl) return fallback;
-  const answer = (
-    await rl.question(`  ${question}${fallback ? ` [${fallback}]` : ''}: `)
-  ).trim();
-  return answer || fallback;
-}
-
-async function confirm(rl: Interface | undefined, question: string) {
-  if (assumeYes) return true;
-  if (!rl) return false;
-  const answer = (await rl.question(`  ${question} [T/n]: `))
-    .trim()
-    .toLowerCase();
-  return answer === '' || answer === 't' || answer === 'y' || answer === 'tak';
-}
-
-/** A password prompt that does not echo what is typed. */
-async function askHidden(rl: Interface | undefined, question: string) {
-  if (!rl) return '';
-  const writable = rl as unknown as { _writeToOutput?: (text: string) => void };
-  const original = writable._writeToOutput;
-  process.stdout.write(`  ${question}: `);
-  writable._writeToOutput = () => undefined;
-  try {
-    return (await rl.question('')).trim();
-  } finally {
-    writable._writeToOutput = original;
-    process.stdout.write('\n');
-  }
-}
+/** Every change is confirmed; `--yes` accepts all, Enter means yes. */
+const confirmStep = (rl: Interface | undefined, question: string) =>
+  assumeYes ? Promise.resolve(true) : confirm(rl, question, true);
 
 /** Asks for names and credentials, then provisions through the module. */
 async function provision(
@@ -137,22 +105,6 @@ async function provision(
   return undefined;
 }
 
-/** `db:setup:local` in this same Node and loader — no shell, no PATH. */
-function runSetup(): Promise<boolean> {
-  return new Promise((resolve) => {
-    const script = fileURLToPath(
-      new URL('./setup-database.ts', import.meta.url),
-    );
-    const child = spawn(
-      process.execPath,
-      [...process.execArgv, script, 'local'],
-      { stdio: 'inherit' },
-    );
-    child.once('error', () => resolve(false));
-    child.once('exit', (code) => resolve(code === 0));
-  });
-}
-
 async function main() {
   console.log('RoofCalc — konfiguracja lokalna');
   console.log('Jedno miejsce: plik .env w katalogu głównym projektu.');
@@ -183,7 +135,7 @@ async function main() {
       warn('Brak pliku .env.');
       if (
         !check &&
-        (await confirm(rl, 'Utworzyć .env z ustawieniami lokalnymi?'))
+        (await confirmStep(rl, 'Utworzyć .env z ustawieniami lokalnymi?'))
       ) {
         text = 'HOST=127.0.0.1\nPORT=3001\n';
         changed = true;
@@ -200,7 +152,7 @@ async function main() {
     if (
       invalidLines.length &&
       !check &&
-      (await confirm(
+      (await confirmStep(
         rl,
         'Zamienić te linie w komentarze (# …), żeby nie przeszkadzały?',
       ))
@@ -225,7 +177,7 @@ async function main() {
         /* reported in step 2 */
       }
     let connection = databaseUrl
-      ? await checkLocalConnection(databaseUrl).catch(
+      ? await checkDatabaseConnection(databaseUrl).catch(
           () => ({ status: 'failed' }) as const,
         )
       : undefined;
@@ -245,7 +197,10 @@ async function main() {
         );
       if (
         !check &&
-        (await confirm(rl, 'Utworzyć bazę i osobnego użytkownika aplikacji?'))
+        (await confirmStep(
+          rl,
+          'Utworzyć bazę i osobnego użytkownika aplikacji?',
+        ))
       ) {
         const current = databaseUrl
           ? (() => {
@@ -267,7 +222,7 @@ async function main() {
           databaseUrl = url;
           text = setEnvValue(text, 'DATABASE_URL', url);
           changed = true;
-          connection = await checkLocalConnection(url);
+          connection = await checkDatabaseConnection(url);
           if (connection.status === 'connected')
             ok(`Połączono jako nowy użytkownik: ${connection.version}.`);
         }
@@ -285,7 +240,7 @@ async function main() {
       ok('Sekrety lokalne ustawione (wartości nie są wyświetlane).');
     else if (
       !check &&
-      (await confirm(
+      (await confirmStep(
         rl,
         `Wygenerować brakujące ustawienia (${missingAuth.join(', ')})?`,
       ))
@@ -332,13 +287,13 @@ async function main() {
       warn(`Schemat: ${connection.schema}.`);
       if (
         !check &&
-        (await confirm(
+        (await confirmStep(
           rl,
           'Uruchomić migracje i dane startowe (pnpm db:setup:local)?',
         ))
       ) {
         process.env.DATABASE_URL = databaseUrl;
-        if (!(await runSetup())) blocking = true;
+        if (!(await runDatabaseSetup('local'))) blocking = true;
       } else blocking = blocking || check;
     } else warn('Pominięto — najpierw połączenie z bazą.');
 

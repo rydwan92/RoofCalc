@@ -1,5 +1,7 @@
 import '../environment';
 import { spawn } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import {
   assertLocalSetupTarget,
   assertSharedDevSetupTarget,
@@ -10,16 +12,31 @@ function valueAfter(name: string): string | undefined {
   return index >= 0 ? process.argv[index + 1] : undefined;
 }
 
+const apiDirectory = fileURLToPath(new URL('../..', import.meta.url));
+const scripts = (
+  JSON.parse(
+    readFileSync(new URL('../../package.json', import.meta.url), 'utf8'),
+  ) as { scripts: Record<string, string> }
+).scripts;
+
+/**
+ * Runs one `tsx …` package script with this same Node and TypeScript
+ * loader. package.json stays the single definition of each step; a nested
+ * `pnpm` is avoided because a different global pnpm (e.g. 12.x) may stall
+ * while it resolves the pinned 10.15.1.
+ */
 function runScript(script: string, args: string[] = []): Promise<void> {
   return new Promise((resolvePromise, reject) => {
-    const child = spawn('pnpm', [script, ...args], {
-      cwd: process.cwd(),
-      env: process.env,
-      stdio: 'inherit',
-      // Windows cannot execute a .cmd shim directly through spawn(). The
-      // command and argument are both internal constants, never user input.
-      shell: process.platform === 'win32',
-    });
+    const [runner, ...command] = (scripts[script] ?? '').split(/\s+/);
+    if (runner !== 'tsx' || !command.length) {
+      reject(new Error(`${script} is not a tsx script`));
+      return;
+    }
+    const child = spawn(
+      process.execPath,
+      [...process.execArgv, ...command, ...args],
+      { cwd: apiDirectory, env: process.env, stdio: 'inherit' },
+    );
     child.once('error', reject);
     child.once('exit', (code) =>
       code === 0
@@ -58,9 +75,9 @@ async function main() {
     await runScript(
       script,
       script === 'db:status'
-        ? ['--', '--require-ready']
+        ? ['--require-ready']
         : script === 'db:migrate' && target.environment === 'shared-dev'
-          ? ['--', '--apply', '--confirm', 'shared-dev']
+          ? ['--apply', '--confirm', 'shared-dev']
           : [],
     );
   console.log(`DATABASE READY: ${target.environment}.`);

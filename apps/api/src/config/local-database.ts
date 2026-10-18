@@ -16,7 +16,7 @@ export type ConnectionCheck =
   | { status: 'connected'; version: string; schema: SchemaState }
   | { status: 'server-down' | 'access-denied' | 'database-missing' | 'failed' };
 
-export async function checkLocalConnection(
+export async function checkDatabaseConnection(
   databaseUrl: string,
 ): Promise<ConnectionCheck> {
   let connection: mysql.Connection | undefined;

@@ -104,43 +104,53 @@ panelu XAMPP. `pnpm db:doctor` wykrywa to przed migracją.
 
 ## 4. Cloudflare
 
+Lokalna wersja się nie zmienia: wszystko poniżej działa na koncie Cloudflare
+i na zdalnej bazie za Hyperdrive. Lokalny `.env` nie jest czytany do
+zmian ani zapisywany.
+
 ```powershell
 pnpm cloudflare:login
 pnpm configure:cloudflare
 ```
 
-`pnpm configure:cloudflare` (oraz `pnpm check:cloudflare`, tylko odczyt):
+`pnpm cloudflare:login` otwiera przeglądarkę — zaloguj się i zatwierdź dostęp
+wranglera do konta. `pnpm configure:cloudflare` (oraz `pnpm check:cloudflare`,
+tylko odczyt) przechodzi sześć kroków i przed każdą zmianą pyta:
 
-1. sprawdza `wrangler.jsonc`: punkt wejścia Workera, `nodejs_compat`,
-   `/api/*` obsługiwane przez Workera, adres `BETTER_AUTH_URL` (https, bez
-   ścieżki), powiązanie `HYPERDRIVE` i brak sekretów w pliku;
-2. sprawdza logowanie wranglera;
-3. czyta **nazwy** sekretów Workera; brakujące może wygenerować i zapisać po
-   Twoim potwierdzeniu — kod pierwszego konta pokazuje wtedy **jeden raz**;
-4. sprawdza, czy Hyperdrive ma wyłączone buforowanie zapytań (sesje i
-   uprawnienia muszą być świeże) i po potwierdzeniu je wyłącza;
-5. odpytuje publiczne `/api/health`, `/api/readiness` i `/api/setup/status`
-   wdrożonej aplikacji.
+1. **wrangler.jsonc** — punkt wejścia Workera, `nodejs_compat`, `/api/*`
+   obsługiwane przez Workera, `BETTER_AUTH_URL` (https, bez ścieżki),
+   powiązanie `HYPERDRIVE`, brak sekretów w pliku;
+2. **logowanie** wranglera;
+3. **sekrety Workera** — czyta tylko nazwy; brakujące `BETTER_AUTH_SECRET` i
+   `ROOFCALC_BOOTSTRAP_TOKEN` generuje i zapisuje. **Kod pierwszego konta na
+   Cloudflare pokazuje jeden raz** — jest inny niż lokalny w `.env`. Gdy
+   konto jeszcze nie istnieje, a kod zginął, może nadać nowy;
+4. **buforowanie Hyperdrive** — musi być wyłączone (sesje i uprawnienia
+   zawsze świeże); wyłącza je albo zrób to w panelu: Hyperdrive →
+   `roofcalc-dev` → Settings → Caching → **Disable**;
+5. **zdalna baza** — bierze host, bazę i użytkownika z Hyperdrive, pyta o
+   hasło (trzymane tylko w pamięci tego uruchomienia), sprawdza schemat. Gdy
+   jest nieaktualny i wpiszesz `shared-dev`: robi **pełną kopię zapasową** do
+   `backups/` (poza Git), potem zatwierdzone migracje (bez usuwania danych),
+   dane startowe (historia cen i dane użytkowników zostają) i test;
+6. **wdrożona aplikacja** — publiczne `/api/health`, `/api/readiness`,
+   `/api/setup/status`.
 
-Nigdy nie wdraża, nie migruje zdalnej bazy i nie wyświetla istniejących
-sekretów.
+Na końcu: otwórz `https://roofcalc.michal-rydwanski.workers.dev` → Business →
+utwórz pierwsze konto kodem z kroku 3.
 
-**Ustawienia w panelu** (Workers & Pages → `roofcalc` → Settings → Build) —
-wrangler ich nie odczyta:
+**Wdrażanie** — Workers Builds buduje każdy push do `main` (gałęzie robocze
+dostają tylko wersje podglądu). Obecne polecenia budowania działają; nie
+trzeba ich zmieniać. Opcjonalna bramka (zatrzymuje wdrożenie, gdy zdalna
+baza jest nieaktualna): polecenie budowania `pnpm cloudflare:build`,
+wdrożenia `pnpm deploy:cloudflare` i zmienne budowania `DATABASE_URL`
+(sekret, ta sama baza co w Hyperdrive) oraz `ROOFCALC_DB_ENV=shared-dev` —
+bez tych zmiennych build z bramką się zatrzyma.
 
-- gałąź produkcyjna: `main` (wdrażany jest kod z `main`, nie z gałęzi roboczej);
-- Node 22 — z pliku `.node-version` (albo zmienna `NODE_VERSION=22`);
-- polecenie budowania: `pnpm cloudflare:build`;
-- polecenie wdrożenia: `pnpm deploy:cloudflare`;
-- zmienne budowania: `DATABASE_URL` jako **sekret** (zdalna baza, ta sama co
-  w Hyperdrive) i `ROOFCALC_DB_ENV=shared-dev`. Bramka budowania sprawdza
-  schemat i dane startowe zdalnej bazy (tylko odczyt) i zatrzymuje wdrożenie,
-  jeśli baza jest nieaktualna.
-
-**Konserwacja zdalnej bazy** (migracje, dane startowe) jest osobną,
-świadomą operacją: najpierw kopia zapasowa u dostawcy bazy, potem workflow
-„Database maintenance – shared DEV” w GitHub Actions albo lokalnie, z
-prywatnym zdalnym `DATABASE_URL` podanym tylko dla tego procesu:
+**Konserwacja z GitHub Actions** (zamiast kroku 5): workflow „Database
+maintenance – shared DEV” wymaga sekretu środowiska `shared-dev` o nazwie
+`ROOFCALC_DEV_DATABASE_URL` (zdalny adres bazy). Ręcznie z terminala, z
+adresem podanym tylko dla tego procesu:
 
 ```text
 pnpm db:setup:shared-dev -- --apply --confirm shared-dev

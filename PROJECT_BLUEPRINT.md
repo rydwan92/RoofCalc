@@ -1297,6 +1297,27 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+## VNext-2 (2026-10-18, part 3) — Cloudflare go-live tooling
+
+- User: local first owner created and signed in (the wrong `.env` token was
+  the earlier error). Asked for help to make Cloudflare work without
+  breaking the local version. Dashboard screenshots: Workers Builds deploys
+  `main` (Ready), bindings ASSETS + HYPERDRIVE → `roofcalc-dev`
+  (alwaysdata origin), **Hyperdrive caching enabled** (60 s / SWR 15 s).
+  GitHub environment `shared-dev` exists without `ROOFCALC_DEV_DATABASE_URL`.
+- `configure:cloudflare` now has 6 steps: new step 5 reads the Hyperdrive
+  origin (no password via API), asks for the password (memory only), checks
+  the schema read-only and, after the typed `shared-dev`, makes a
+  `mysqldump --ssl` backup into ignored `backups/` (or requires "mam kopię")
+  and runs the guarded `setup-database.ts shared-dev` with `DATABASE_URL`
+  only in the child environment. Step 3 can re-issue the bootstrap code
+  while no owner exists. Requires Node ≥ 22. Build settings: keep current.
+- `setup-database.ts` runs each `tsx` package script with its own Node and
+  loader (no nested pnpm; verified on a throwaway XAMPP database, dropped);
+  shared `cli/prompt.ts` and `cli/run-setup.ts`; `checkDatabaseConnection`.
+- NEXT ACTION: user — `nvm use 22.18.0`, `pnpm cloudflare:login`,
+  `pnpm configure:cloudflare` (steps 3–5), then create the Cloudflare owner.
+
 ## VNext-2 (2026-10-18, part 2) — main updated, local dev fixed, pinned checklist
 
 - Authorized by the user's message of 2026-10-18 ("yes, make the improved

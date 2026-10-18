@@ -11,6 +11,9 @@ coverage/
 .DS_Store
 *.zip
 
+# Database backups (configure:cloudflare) contain private data
+/backups/
+
 # Playwright
 /test-results/
 /playwright-report/

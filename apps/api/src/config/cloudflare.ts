@@ -205,6 +205,44 @@ export function hyperdriveCachingDisabled(output: string): boolean | undefined {
   }
 }
 
+/** The origin database behind a Hyperdrive configuration — never a password. */
+export interface DatabaseOrigin {
+  host: string;
+  port: number;
+  database: string;
+  user: string;
+}
+
+/** From `wrangler hyperdrive get <id>` (the API never returns the password). */
+export function parseHyperdriveOrigin(
+  output: string,
+): DatabaseOrigin | undefined {
+  const start = output.indexOf('{');
+  const end = output.lastIndexOf('}');
+  if (start < 0 || end < start) return undefined;
+  try {
+    const origin = record(
+      record(JSON.parse(output.slice(start, end + 1)))?.origin,
+    );
+    const port = Number(origin?.port ?? 3306);
+    if (
+      typeof origin?.host !== 'string' ||
+      typeof origin.database !== 'string' ||
+      typeof origin.user !== 'string' ||
+      !Number.isInteger(port)
+    )
+      return undefined;
+    return {
+      host: origin.host,
+      port,
+      database: origin.database,
+      user: origin.user,
+    };
+  } catch {
+    return undefined;
+  }
+}
+
 export interface Probe {
   status: number;
   body: unknown;
