@@ -655,7 +655,9 @@ export function ContextualResults({
     );
   }
 
-  if (context.kind === 'batten-row') return null;
+  // A connection node is explained by the connection plan beside the drawing.
+  if (context.kind === 'batten-row' || context.kind === 'connection-node')
+    return null;
 
   const isSeat = context.jointKind === 'seat-notch';
   const isHipCut = context.jointKind === 'hip-end-cut';

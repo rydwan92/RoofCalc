@@ -8,7 +8,10 @@ import type {
   MembraneProductSelection,
 } from '@cieslacalc/covering-core';
 import type { RoofSystemIntent } from '@cieslacalc/roof-system-core';
-import type { RoofConnectionPlan } from '@cieslacalc/connection-core';
+import type {
+  RoofConnectionPlan,
+  RoofNodeKind,
+} from '@cieslacalc/connection-core';
 import {
   createRoofProjectDocument,
   parseRoofProjectDocument,
@@ -494,6 +497,8 @@ export interface AssemblyState {
   previewRoofSystem: (roofSystem: RoofSystemIntent | undefined) => void;
   /** VNext-2: one planned-connection change is one history entry. */
   setConnectionPlan: (plan: RoofConnectionPlan | undefined) => void;
+  /** VNext-3: show one node kind on the drawing (view-only, no history). */
+  focusConnectionKind: (kind: RoofNodeKind | undefined) => void;
   add: () => void;
   remove: (id: string) => void;
   select: (id: string, prototypeId?: string) => void;
@@ -2210,6 +2215,10 @@ export const useAssembly = create<AssemblyState>((set) => ({
         ),
       ),
     ),
+  focusConnectionKind: (connectionFocus) =>
+    set((state) => ({
+      workbench: { ...state.workbench, connectionFocus },
+    })),
   setCoveringAssignments: (coverings) =>
     set((state) => {
       const document = createRoofProjectDocument(state.template, {

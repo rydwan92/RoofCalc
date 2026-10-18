@@ -108,3 +108,65 @@ test('plans the connections of a collar-tie roof', async ({ page }) => {
     ),
   ).toBe(true);
 });
+
+/**
+ * VNext-3: a node kind on the drawing — markers where the member axes meet,
+ * one occurrence in detail, a jump to one of its members and back.
+ */
+test('shows a node on the drawing and walks to its member and back', async ({
+  page,
+}) => {
+  await page.route('**/api/**', (route) =>
+    route.fulfill({ status: 503, json: {} }),
+  );
+  await page.goto('/#/calculators/common-rafter');
+  await page.locator('[data-mode="builder"]').click();
+  const start = page.getByTestId('project-start-assistant');
+  await page.locator('.a-start-secondary > summary').click();
+  await start.getByTestId('project-start-examples').click();
+  await start.getByTestId('project-example-hip').click();
+  await expect(start).toBeHidden();
+  await openConnections(page);
+
+  const plan = page.getByTestId('connection-plan');
+  await plan.getByTestId('connection-show-jack-rafter-hip-rafter').click();
+  const markers = page.getByTestId('connection-markers');
+  await expect(markers).toBeVisible();
+  const count = Number(await markers.getAttribute('data-count'));
+  expect(count).toBeGreaterThan(0);
+  await expect(markers.locator('.a-connection-marker')).toHaveCount(count);
+
+  await page.getByTestId('connection-first-occurrence').click();
+  const detail = page.getByTestId('connection-node-detail');
+  await expect(detail.getByTestId('connection-occurrence')).toHaveText(
+    `Wystąpienie 1 z ${count}`,
+  );
+  await expect(detail).toContainText('J1 nr');
+  await expect(detail).toContainText('H1');
+  await detail.getByRole('button', { name: 'Następne' }).click();
+  await expect(detail.getByTestId('connection-occurrence')).toHaveText(
+    `Wystąpienie 2 z ${count}`,
+  );
+
+  // The member itself, in the structure drawing, with a way back.
+  await detail.getByTestId('connection-open-member').first().click();
+  await expect(page.getByTestId('connection-plan')).toBeHidden();
+  await expect(
+    page.locator('.a-skeleton-member.is-selected').first(),
+  ).toBeVisible();
+  await page
+    .getByRole('button', { name: 'Wróć: Połączenia' })
+    .locator('visible=true')
+    .first()
+    .click();
+  await expect(
+    page
+      .getByTestId('connection-node-detail')
+      .getByTestId('connection-occurrence'),
+  ).toHaveText(`Wystąpienie 2 z ${count}`);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth + 1,
+    ),
+  ).toBe(true);
+});

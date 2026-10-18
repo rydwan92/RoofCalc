@@ -49,6 +49,9 @@ import {
 } from './Inputs';
 import { HipBoundaryDetailChooser } from './HipBoundaryDetail';
 import { MemberInstanceInspector } from './MemberInstanceInspector';
+import type { ResolvedRoofConnectionNode } from '@cieslacalc/connection-core';
+
+const MemberConnections = lazy(() => import('./connections/MemberConnections'));
 import type { WorkbenchSelectionContext } from './selection';
 import { useAssembly } from './store';
 import {
@@ -98,6 +101,7 @@ export function Inspector({
   battenAutoComposition,
   counterBattens,
   installation,
+  connections,
 }: {
   result: Calculation | null;
   hip?: ResolvedHipRafter;
@@ -116,6 +120,11 @@ export function Inspector({
   battenAutoComposition: BattenAutoComposition;
   counterBattens: CounterBattenLayoutResult;
   installation: InstallationWorkflowFacts;
+  /** VNext-3: the selected member's nodes and the way into the plan. */
+  connections?: {
+    nodes: readonly ResolvedRoofConnectionNode[];
+    onOpen: (node: ResolvedRoofConnectionNode) => void;
+  };
 }) {
   const state = useAssembly();
   const { t } = useTranslation();
@@ -179,6 +188,14 @@ export function Inspector({
               skeleton={skeleton}
               roofPackage={roofPackage}
             />
+          )}
+          {connections && connections.nodes.length > 0 && (
+            <Suspense fallback={null}>
+              <MemberConnections
+                nodes={connections.nodes}
+                onOpen={connections.onOpen}
+              />
+            </Suspense>
           )}
           {workbench.selectedId === 'roof' && (
             <>

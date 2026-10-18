@@ -46,11 +46,17 @@ export interface RoofNodeOccurrence {
   /**
    * `node` (default): `count` discrete joints. `axis`: `count` member axes
    * along which the joint repeats (battens on a counter-batten) — a planned
-   * fastener count per joint cannot be multiplied into a total.
+   * fastener count per joint cannot be multiplied into a total. `member`:
+   * `count` members whose connection repeats at a spacing the model does not
+   * define (wall-plate anchors) — again no total.
    */
-  unit?: 'node' | 'axis';
+  unit?: NodeCountUnit;
+  /** Total length of the counted members/axes (mm), where it helps planning. */
+  extentMm?: number;
   modelled?: ModelledInterface;
 }
+
+export type NodeCountUnit = 'node' | 'axis' | 'member';
 
 export interface RoofConnectionCensus {
   nodes: readonly RoofNodeOccurrence[];
@@ -88,7 +94,8 @@ export interface ConnectionScheduleRow {
   kind: RoofNodeKind;
   participants: readonly [RoofMemberRole, RoofMemberRole];
   count: number;
-  unit: 'node' | 'axis';
+  unit: NodeCountUnit;
+  extentMm?: number;
   modelled?: ModelledInterface;
   planned?: PlannedNodeConnection;
   options: {
@@ -209,6 +216,9 @@ export function deriveConnectionSchedule(
         participants: ROOF_NODES[kind].participants,
         count: occurrence.count,
         unit,
+        ...(occurrence.extentMm !== undefined
+          ? { extentMm: occurrence.extentMm }
+          : {}),
         ...(occurrence.modelled ? { modelled: occurrence.modelled } : {}),
         ...(planned ? { planned } : {}),
         options: {

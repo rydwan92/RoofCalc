@@ -203,7 +203,10 @@ import {
 } from './ProjectStartAssistant';
 import { evaluateBattenInstallation } from './batten-installation';
 import { resolveBattenAutoComposition } from './batten-composition';
-import { roofConnectionCensus } from './connections/census';
+import type { RoofNodeKind } from '@cieslacalc/connection-core';
+import { roofConnectionModel } from './connections/census';
+import { memberLabelIndex } from './connections/labels';
+import { formatLength } from '../format';
 import './styles.css';
 import './v37.css';
 import '../business/business.css';
@@ -1019,10 +1022,11 @@ function AssemblyPageContent({
       }),
     [coveringAssignments, resolvedCoveringLayouts],
   );
-  // VNext-2: which nodes the accepted composition has, for the connection plan.
-  const connectionCensus = useMemo(
+  // VNext-3: where the accepted composition's member axes meet (nodes),
+  // and the census the connection plan schedules from them.
+  const connectionModel = useMemo(
     () =>
-      roofConnectionCensus({
+      roofConnectionModel({
         template: state.template,
         members: framingProjection.composedSkeleton.members,
         buildUp: state.projectDocument.project.buildUp,
@@ -1032,6 +1036,14 @@ function AssemblyPageContent({
       state.projectDocument.project.buildUp,
       state.template,
     ],
+  );
+  const memberLabels = useMemo(
+    () =>
+      memberLabelIndex(
+        framingProjection.composedSkeleton.members,
+        templateResult.memberPrototypes,
+      ),
+    [framingProjection.composedSkeleton.members, templateResult],
   );
   const memberSchedule = useMemo(
     () =>
@@ -1669,6 +1681,7 @@ function AssemblyPageContent({
         resolved: templateResult,
         skeleton: baseSkeleton,
         features: state.projectDocument.project.features,
+        connectionNodes: connectionModel.projection.nodes,
       }),
     [
       workbench.selectedId,
@@ -1677,8 +1690,87 @@ function AssemblyPageContent({
       templateResult,
       baseSkeleton,
       state.projectDocument.project.features,
+      connectionModel.projection.nodes,
     ],
   );
+  // VNext-3: the node kind shown on the drawing, its occurrences, and the
+  // members to emphasise (the chosen occurrence, else every occurrence).
+  const selectedConnectionNode =
+    selectionContext.kind === 'connection-node'
+      ? selectionContext.node
+      : undefined;
+  // Back from a member ("Pokaż") the plan shows the same occurrence again,
+  // if the geometry still has it.
+  const lastConnectionNodeId = useRef<string | undefined>(undefined);
+  const previousViewPreset = useRef(workbench.viewPreset);
+  useEffect(() => {
+    if (selectedConnectionNode)
+      lastConnectionNodeId.current = selectedConnectionNode.id;
+  }, [selectedConnectionNode]);
+  useEffect(() => {
+    const entered =
+      previousViewPreset.current !== 'connections' &&
+      workbench.viewPreset === 'connections';
+    previousViewPreset.current = workbench.viewPreset;
+    if (!entered || selectedConnectionNode) return;
+    const node = connectionModel.projection.nodes.find(
+      (candidate) => candidate.id === lastConnectionNodeId.current,
+    );
+    if (node && node.kind === workbench.connectionFocus) state.select(node.id);
+  }, [
+    connectionModel.projection.nodes,
+    selectedConnectionNode,
+    state,
+    workbench.connectionFocus,
+    workbench.viewPreset,
+  ]);
+  // VNext-3: the nodes of the member chosen on the drawing (a physical
+  // instance, or one support such as a purlin), for the inspector.
+  const memberConnectionNodes = useMemo(() => {
+    const instanceId = workbench.selectedInstanceId;
+    const selectionId = workbench.selectedId;
+    if (selectionId === 'roof' || selectedConnectionNode) return [];
+    return connectionModel.projection.nodes.filter((node) =>
+      node.members.some((member) =>
+        instanceId
+          ? member.id === instanceId
+          : member.selectionId === selectionId || member.id === selectionId,
+      ),
+    );
+  }, [
+    connectionModel.projection.nodes,
+    selectedConnectionNode,
+    workbench.selectedId,
+    workbench.selectedInstanceId,
+  ]);
+  const openConnectionNode = (node: { id: string; kind: RoofNodeKind }) => {
+    state.focusConnectionKind(node.kind);
+    state.navigateTo(workbenchLocation('connections'), { remember: true });
+    state.select(node.id);
+  };
+  const focusedConnectionNodes = useMemo(
+    () =>
+      workbench.connectionFocus
+        ? connectionModel.projection.nodes.filter(
+            (node) => node.kind === workbench.connectionFocus,
+          )
+        : [],
+    [connectionModel.projection.nodes, workbench.connectionFocus],
+  );
+  const connectionRelatedIds = useMemo(() => {
+    const nodes =
+      selectedConnectionNode &&
+      selectedConnectionNode.kind === workbench.connectionFocus
+        ? [selectedConnectionNode]
+        : focusedConnectionNodes;
+    return new Set(
+      nodes.flatMap((node) => node.members.map((member) => member.id)),
+    );
+  }, [
+    focusedConnectionNodes,
+    selectedConnectionNode,
+    workbench.connectionFocus,
+  ]);
   const result = templateResult.calculation;
   const hip =
     'hipRafter' in templateResult ? templateResult.hipRafter : undefined;
@@ -2109,6 +2201,16 @@ function AssemblyPageContent({
     workbench.viewPreset === 'costing' ||
     workbench.viewPreset === 'documents' ||
     workbench.viewPreset === 'connections';
+  /** VNext-3: from a node to one of its members, with a way back. */
+  const openConnectionMember = (target: { id: string }) => {
+    const member = framingProjection.composedSkeleton.members.find(
+      (candidate) => candidate.id === target.id,
+    );
+    if (!member) return;
+    state.navigateTo(workbenchLocation('construction'), { remember: true });
+    state.setConstructionSection('structure');
+    state.select(member.selectionId, member.prototypeId);
+  };
   /** From the connection plan back to the structure settings it reads. */
   const openStructureSettings = () => {
     state.navigateTo(workbenchLocation('construction'), { remember: true });
@@ -2277,6 +2379,11 @@ function AssemblyPageContent({
         battenAutoComposition={battenAutoComposition}
         counterBattens={counterBattenProjection}
         installation={installationFacts}
+        connections={
+          memberConnectionNodes.length
+            ? { nodes: memberConnectionNodes, onOpen: openConnectionNode }
+            : undefined
+        }
       />
     );
   const currentJourneyStage = (
@@ -3159,10 +3266,51 @@ function AssemblyPageContent({
                   ) : workbench.viewPreset === 'connections' ? (
                     <Suspense fallback={<div className="a-loading-panel" />}>
                       <ConnectionsWorkspace
-                        census={connectionCensus}
+                        census={connectionModel.census}
+                        projection={connectionModel.projection}
                         plan={state.projectDocument.project.connectionPlan}
                         onChange={state.setConnectionPlan}
                         onOpenStructure={openStructureSettings}
+                        focus={workbench.connectionFocus}
+                        onFocus={(kind) => {
+                          state.focusConnectionKind(kind);
+                          // A chosen occurrence of another kind is not kept.
+                          if (
+                            selectedConnectionNode &&
+                            selectedConnectionNode.kind !== kind
+                          )
+                            state.select('roof');
+                        }}
+                        selectedNode={selectedConnectionNode}
+                        onSelectNode={(nodeId) => state.select(nodeId)}
+                        onOpenMember={openConnectionMember}
+                        labels={memberLabels}
+                        formatLength={(valueMm) =>
+                          `${formatLength(valueMm, state.unit, i18n.language)} ${state.unit}`
+                        }
+                        drawing={(markerLabel) => (
+                          <SkeletonCanvas
+                            template={state.template}
+                            skeleton={framingProjection.composedSkeleton}
+                            collisionSkeleton={baseSkeleton}
+                            spacing={layoutSpacing}
+                            relatedIds={connectionRelatedIds}
+                            surfaceGeometry={surfaceProjection}
+                            battens={battenProjection}
+                            counterBattens={counterBattenProjection}
+                            compact
+                            connectionMarkers={
+                              workbench.connectionFocus
+                                ? {
+                                    nodes: focusedConnectionNodes,
+                                    selectedId: selectedConnectionNode?.id,
+                                    onSelect: (nodeId) => state.select(nodeId),
+                                    label: markerLabel,
+                                  }
+                                : undefined
+                            }
+                          />
+                        )}
                       />
                     </Suspense>
                   ) : workbench.viewPreset === 'costing' ? (

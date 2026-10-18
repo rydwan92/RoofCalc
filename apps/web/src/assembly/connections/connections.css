@@ -264,7 +264,11 @@
   color: var(--ui-text-muted);
   font-size: var(--ui-text-sm);
 }
-.cn-workspace .cn-link {
+.cn-workspace .cn-link,
+.assembly-app .cn-member-connections .cn-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   justify-self: start;
   min-height: 30px;
   padding: 0;
@@ -459,6 +463,8 @@ p.cn-detailing {
   .cn-node-meta {
     grid-column: 1 / -1;
     display: flex;
+    flex-wrap: wrap;
+    align-items: center;
     justify-content: flex-start;
     gap: var(--ui-space-2);
   }
@@ -468,4 +474,343 @@ p.cn-detailing {
   .cn-workspace .cn-link {
     min-height: var(--ui-touch-target);
   }
+}
+
+/* ---------- VNext-3: plan beside the drawing ---------- */
+.cn-workspace {
+  max-width: 1480px;
+}
+.cn-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 44%);
+  gap: var(--ui-space-4);
+  align-items: start;
+}
+.cn-layout .cn-node-body {
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+.cn-layout .cn-node-body > :first-child {
+  grid-column: auto;
+}
+.cn-node[data-focused] {
+  border-color: var(--ui-accent);
+  box-shadow:
+    0 0 0 2px var(--ui-accent-soft),
+    var(--ui-shadow-1);
+}
+.cn-show {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--ui-line-strong);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface);
+  color: var(--ui-accent);
+  font: inherit;
+  font-size: var(--ui-text-xs);
+  font-weight: var(--ui-weight-bold);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.cn-show[aria-pressed='true'] {
+  border-color: var(--ui-accent);
+  background: var(--ui-accent);
+  color: var(--ui-surface);
+}
+
+/* The five separate questions of a node, never one verdict. */
+.cn-ladder {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.cn-ladder li {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  padding: 6px 8px;
+  border-top: 3px solid var(--ui-line);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-surface-sunken);
+}
+.cn-ladder small {
+  color: var(--ui-text-muted);
+  font-size: 10px;
+  font-weight: var(--ui-weight-bold);
+  letter-spacing: var(--ui-tracking-caps);
+  text-transform: uppercase;
+}
+.cn-ladder span {
+  overflow-wrap: anywhere;
+  font-size: var(--ui-text-xs);
+  font-weight: var(--ui-weight-medium);
+}
+.cn-ladder [data-tone='ok'] {
+  border-top-color: var(--ui-success);
+}
+.cn-ladder [data-tone='warn'] {
+  border-top-color: var(--ui-attention);
+  background: var(--ui-attention-soft);
+}
+.cn-ladder [data-tone='external'] {
+  border-top-color: var(--ui-info);
+  background: var(--ui-info-soft);
+}
+.cn-unit-note {
+  margin: 0;
+  font-size: var(--ui-text-xs);
+}
+.cn-boundary[data-tone='warn'] {
+  border-left-color: var(--ui-attention);
+  background: var(--ui-attention-soft);
+}
+.cn-boundary[data-tone='warn'] svg {
+  color: var(--ui-attention);
+}
+
+/* The drawing column stays in view while the plan scrolls. */
+.cn-drawing {
+  position: sticky;
+  top: var(--ui-space-3);
+  display: grid;
+  gap: var(--ui-space-3);
+  padding: var(--ui-space-3);
+  border: 1px solid var(--ui-line);
+  border-radius: var(--ui-radius-lg);
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow-1);
+}
+.cn-drawing-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-2);
+}
+.cn-drawing-head small {
+  display: block;
+  color: var(--ui-text-muted);
+  font-size: var(--ui-text-xs);
+  letter-spacing: var(--ui-tracking-caps);
+  text-transform: uppercase;
+}
+.cn-drawing-head strong {
+  font-size: var(--ui-text-md);
+}
+.cn-drawing-canvas {
+  min-height: 300px;
+  overflow: hidden;
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-canvas);
+}
+.cn-drawing-canvas .a-canvas {
+  height: 360px;
+}
+.cn-drawing .cn-muted {
+  margin: 0;
+  font-size: var(--ui-text-sm);
+}
+.cn-pick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-2);
+}
+
+/* One occurrence. */
+.cn-detail {
+  display: grid;
+  gap: var(--ui-space-3);
+}
+.cn-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-2);
+  padding: 4px;
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-accent-soft);
+}
+.cn-stepper strong {
+  font-size: var(--ui-text-sm);
+  font-variant-numeric: tabular-nums;
+}
+.cn-icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--ui-line-strong);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface);
+  color: var(--ui-accent);
+  cursor: pointer;
+}
+.cn-detail-grid {
+  display: grid;
+  gap: var(--ui-space-2);
+  margin: 0;
+}
+.cn-detail-grid > div {
+  display: grid;
+  grid-template-columns: 9.5em minmax(0, 1fr);
+  gap: var(--ui-space-2);
+  padding-bottom: var(--ui-space-2);
+  border-bottom: 1px solid var(--ui-line);
+}
+.cn-detail-grid dt {
+  color: var(--ui-text-muted);
+  font-size: var(--ui-text-xs);
+  font-weight: var(--ui-weight-bold);
+}
+.cn-detail-grid dd {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  font-size: var(--ui-text-sm);
+}
+.cn-detail-grid dd > span {
+  color: var(--ui-text-muted);
+  font-size: var(--ui-text-xs);
+  font-variant-numeric: tabular-nums;
+}
+.cn-detail-members,
+.cn-missing {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.cn-detail-members li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--ui-space-2);
+}
+.cn-missing li {
+  position: relative;
+  padding-left: 14px;
+  font-size: var(--ui-text-xs);
+}
+.cn-missing li::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 2px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ui-attention);
+}
+.cn-missing [data-missing='capacity']::before {
+  background: var(--ui-info);
+}
+.cn-detail-drawings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ui-space-2);
+}
+
+/* Markers on the shared drawing. */
+.a-connection-marker {
+  cursor: pointer;
+  outline: none;
+}
+.a-connection-marker-hit {
+  fill: transparent;
+}
+.a-connection-marker-dot {
+  fill: var(--ui-surface);
+  stroke: var(--ui-accent);
+  stroke-width: 2.5;
+}
+.a-connection-marker:hover .a-connection-marker-dot,
+.a-connection-marker:focus-visible .a-connection-marker-dot {
+  fill: var(--ui-accent-soft);
+  stroke-width: 3.5;
+}
+.a-connection-marker.is-selected .a-connection-marker-dot {
+  fill: var(--ui-accent);
+  stroke: var(--ui-surface);
+  stroke-width: 3;
+}
+.a-connection-marker-index {
+  fill: var(--ui-accent);
+  font-size: 12px;
+  font-weight: 700;
+  text-anchor: middle;
+  paint-order: stroke;
+  stroke: var(--ui-surface);
+  stroke-width: 3px;
+}
+
+@media (max-width: 1100px) {
+  .cn-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* Phones and narrow windows: the drawing first, only once a node is chosen. */
+  .cn-drawing {
+    position: static;
+    order: -1;
+  }
+  .cn-workspace:not([data-focused]) .cn-drawing {
+    display: none;
+  }
+}
+@media (max-width: 800px) {
+  .cn-ladder {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .cn-ladder [data-step='capacity'] {
+    grid-column: 1 / -1;
+  }
+  .cn-detail-grid > div {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cn-drawing-canvas .a-canvas {
+    height: 300px;
+  }
+  .cn-show,
+  .cn-icon-button {
+    min-height: var(--ui-touch-target);
+    min-width: var(--ui-touch-target);
+  }
+}
+
+/* ---------- VNext-3: the member's own nodes, in the inspector ---------- */
+.cn-member-connections h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cn-member-connections ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.cn-member-connections li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--ui-space-2);
+  padding: 6px 0;
+  border-bottom: 1px solid var(--ui-line);
+  font-size: var(--ui-text-sm);
+}
+.cn-member-connections small {
+  color: var(--ui-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.cn-member-connections p {
+  margin: var(--ui-space-1) 0 0;
+  color: var(--ui-text-muted);
+  font-size: var(--ui-text-xs);
 }

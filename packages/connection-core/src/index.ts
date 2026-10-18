@@ -9,6 +9,7 @@
  *               spacings and a row-fit detailing check
  *   plan        the canonical, persisted connection plan + its schema
  *   schedule    census + plan → the connection schedule (plan połączeń)
+ *   nodes       where solved member axes actually meet (VNext-3)
  *   junctions   roof-to-roof junction vocabulary for ADR-008 (research)
  *
  * Geometry and detailing only. Capacity, the number of fasteners a node
@@ -21,4 +22,5 @@ export * from './catalogue';
 export * from './spacing';
 export * from './plan';
 export * from './schedule';
+export * from './nodes';
 export * from './junctions';

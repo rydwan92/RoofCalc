@@ -12,6 +12,7 @@ import type {
   SupportSpec,
 } from '@cieslacalc/timber-model';
 import type { resolveRoofTemplate } from '@cieslacalc/roof-math';
+import type { ResolvedRoofConnectionNode } from '@cieslacalc/connection-core';
 
 export type ResolvedRoofTemplate = ReturnType<typeof resolveRoofTemplate>;
 
@@ -30,6 +31,8 @@ export type WorkbenchSelectionContext =
       support?: SupportSpec;
     }
   | { kind: 'roof-window'; feature: RoofFeature }
+  /** VNext-3: one occurrence of a connection node, from the node projection. */
+  | { kind: 'connection-node'; node: ResolvedRoofConnectionNode }
   | { kind: 'batten-row'; id: string }
   | {
       kind: 'joint';
@@ -54,9 +57,15 @@ export function resolveWorkbenchSelectionContext(args: {
   resolved: ResolvedRoofTemplate;
   skeleton: RoofSkeleton;
   features?: RoofFeature[];
+  /** Current node projection; a node that no longer exists is not selected. */
+  connectionNodes?: readonly ResolvedRoofConnectionNode[];
 }): WorkbenchSelectionContext {
   const { selected, spec, resolved, skeleton, features = [] } = args;
   if (selected === 'roof') return { kind: 'roof' };
+  const node = args.connectionNodes?.find(
+    (candidate) => candidate.id === selected,
+  );
+  if (node) return { kind: 'connection-node', node };
 
   const feature = features.find((candidate) => candidate.id === selected);
   if (feature) return { kind: 'roof-window', feature };

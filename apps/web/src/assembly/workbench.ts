@@ -9,6 +9,7 @@ import type {
   RoofTemplateSpec,
   SkeletonMember3D,
 } from '@cieslacalc/timber-model';
+import type { RoofNodeKind } from '@cieslacalc/connection-core';
 
 export type WorkbenchMode = 'quick' | 'builder';
 export type WorkbenchCanvasView = 'skeleton' | 'rafter' | 'hip';
@@ -295,6 +296,12 @@ export interface WorkbenchViewState {
   windowLayoutFeedback?: RoofWindowLayoutFeedback;
   /** Transient preview; applying it is the only canonical/history mutation. */
   openingFramingProposalFeatureId?: string;
+  /**
+   * VNext-3: the node kind the connection plan shows on the drawing. The
+   * chosen occurrence is the ordinary `selectedId`. View-only: never in the
+   * project document or history.
+   */
+  connectionFocus?: RoofNodeKind;
   /** Monotonic view-only signal consumed by the canvas. */
   fitRequestId: number;
   activeOperationId?: string;
@@ -349,6 +356,7 @@ export const initialWorkbenchViewState: WorkbenchViewState = {
   placementFeedback: undefined,
   windowLayoutFeedback: undefined,
   openingFramingProposalFeatureId: undefined,
+  connectionFocus: undefined,
   fitRequestId: 0,
   activeOperationId: undefined,
   detailDrawer: {
@@ -411,6 +419,8 @@ export function deriveWorkbenchProjectionPolicy(
       view.buildUpView === 'counterBattens' ||
       installation);
   const materials = view.viewPreset === 'materials';
+  // VNext-3: the connection plan reads the roof; it never drags geometry.
+  const connections = view.viewPreset === 'connections';
   return {
     showRoofPlanes: true,
     showCoveringUnderlay: installation && view.layerVisibility.covering,
@@ -435,17 +445,18 @@ export function deriveWorkbenchProjectionPolicy(
         materials ||
         covering) &&
       view.layerVisibility.battens,
-    showCutMarkers: cuts || !!view.selectedInstanceId,
+    showCutMarkers: (cuts || !!view.selectedInstanceId) && !connections,
     showDatums: cuts,
     showDimensions: view.layerVisibility.dimensions,
     showLabels: view.layerVisibility.labels,
-    showDirectManipulation: !cuts && !materials && !covering,
+    showDirectManipulation: !cuts && !materials && !covering && !connections,
     muteUnrelated:
       cuts ||
       openings ||
       layers ||
       covering ||
       (materials && !!view.selectedScheduleRowId) ||
+      (connections && !!view.connectionFocus) ||
       view.isolateSelection,
     isolateSelection: view.isolateSelection,
     effectiveDimensionLevel,

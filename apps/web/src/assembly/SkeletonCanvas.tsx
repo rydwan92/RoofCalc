@@ -27,6 +27,7 @@ import {
   type ViewportState,
 } from '@cieslacalc/drawing-engine';
 import type { MemberInstanceContext } from '@cieslacalc/calculator-core';
+import type { ResolvedRoofConnectionNode } from '@cieslacalc/connection-core';
 import {
   clampGablePitchDeg,
   clampRoofHalfRunMm,
@@ -143,6 +144,14 @@ function memberLabel(member: SkeletonMember3D, t: (key: string) => string) {
   return t(`assembly.${member.kind}`);
 }
 
+export interface ConnectionMarkers {
+  nodes: readonly ResolvedRoofConnectionNode[];
+  selectedId?: string;
+  onSelect: (nodeId: string) => void;
+  /** Accessible name of one occurrence. */
+  label: (node: ResolvedRoofConnectionNode, index: number) => string;
+}
+
 function SkeletonCanvasComponent({
   template,
   skeleton,
@@ -156,6 +165,7 @@ function SkeletonCanvasComponent({
   battens: battenResult,
   counterBattens,
   compact = false,
+  connectionMarkers,
 }: {
   template: RoofTemplateSpec;
   skeleton: RoofSkeleton;
@@ -169,6 +179,11 @@ function SkeletonCanvasComponent({
   battens: BattenLayoutResult;
   counterBattens: CounterBattenLayoutResult;
   compact?: boolean;
+  /**
+   * VNext-3: occurrences of one connection node kind, drawn where the member
+   * axes meet. Presentation of the node projection only.
+   */
+  connectionMarkers?: ConnectionMarkers;
 }) {
   const selectedStore = useAssembly(
     useShallow((store) => ({
@@ -1755,7 +1770,10 @@ function SkeletonCanvasComponent({
                 const warning = selectedCollisionIds.has(member.id);
                 const bayBoundary = bayMemberIds.has(member.id);
                 const related = visualState === 'related' || bayBoundary;
-                const muted = visualState === 'muted';
+                // A node kind on the drawing mutes everything it does not join.
+                const muted =
+                  visualState === 'muted' ||
+                  (!!connectionMarkers && visualState === 'normal');
                 const purlinHandle =
                   member.kind === 'purlin'
                     ? handles.find(
@@ -1856,6 +1874,52 @@ function SkeletonCanvasComponent({
                 );
               })}
           </g>
+          {connectionMarkers && (
+            <g
+              className="a-connection-markers"
+              data-testid="connection-markers"
+              data-count={connectionMarkers.nodes.length}
+            >
+              {connectionMarkers.nodes.map((node, index) => {
+                const point = worldPoint(node.location);
+                if (!point) return null;
+                const selected = connectionMarkers.selectedId === node.id;
+                return (
+                  <g
+                    key={node.id}
+                    className={`a-connection-marker ${selected ? 'is-selected' : ''}`}
+                    data-node-id={node.id}
+                    role="button"
+                    tabIndex={0}
+                    aria-pressed={selected}
+                    aria-label={connectionMarkers.label(node, index)}
+                    transform={`translate(${point.x} ${point.y})`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      connectionMarkers.onSelect(node.id);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        connectionMarkers.onSelect(node.id);
+                      }
+                    }}
+                  >
+                    <circle className="a-connection-marker-hit" r={14} />
+                    <circle
+                      className="a-connection-marker-dot"
+                      r={selected ? 9 : 6}
+                    />
+                    {selected && (
+                      <text className="a-connection-marker-index" y={-15}>
+                        {index + 1}
+                      </text>
+                    )}
+                  </g>
+                );
+              })}
+            </g>
+          )}
           {policy.showRoofFeatures && (
             <g className="a-roof-feature-layer">
               {windowOverlays.map((overlay) => {

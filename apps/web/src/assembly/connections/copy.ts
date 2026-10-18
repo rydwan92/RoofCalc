@@ -1,4 +1,9 @@
 import type {
+  SkeletonMemberKind,
+  SkeletonMemberSide,
+} from '@cieslacalc/timber-model';
+import type { MemberLabel } from './labels';
+import type {
   ConnectionTypeId,
   DetailingCheck,
   ModelledInterface,
@@ -30,6 +35,105 @@ const pl = {
     `${count} ${count === 1 ? 'węzeł' : count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 10 || count % 100 >= 20) ? 'węzły' : 'węzłów'}`,
   axes: (count: number) =>
     `${count} ${count === 1 ? 'oś' : count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 10 || count % 100 >= 20) ? 'osie' : 'osi'}`,
+  members: (count: number, lengthMm?: number) =>
+    `${count} ${count === 1 ? 'element' : count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 10 || count % 100 >= 20) ? 'elementy' : 'elementów'}${lengthMm ? ` · ${(lengthMm / 1000).toFixed(1).replace('.', ',')} m` : ''}`,
+  memberUnitNote:
+    'Liczba kotew zależy od ich rozstawu, którego model nie ustala — podana jest liczba i długość murłat.',
+  apexWithoutRidge:
+    'Dach bez kalenicy: zbieg krokwi w wierzchołku nie jest modelowany — tych węzłów nie policzono.',
+  memberConnections: {
+    title: 'Połączenia elementu',
+    open: 'Pokaż w planie',
+    hint: 'Węzły, w których ten element styka się z innymi — wyznaczone z geometrii dachu.',
+  },
+  showOnDrawing: (count: number) => `Pokaż na rysunku (${count})`,
+  shownOnDrawing: 'Na rysunku',
+  drawingTitle: 'Rysunek węzłów',
+  drawingIdle:
+    'Wybierz „Pokaż na rysunku” przy węźle — jego wystąpienia pojawią się jako znaczniki, a łączone elementy zostaną wyróżnione.',
+  drawingPick:
+    'Kliknij znacznik albo przejdź strzałkami, aby zobaczyć szczegóły jednego wystąpienia.',
+  closeDrawing: 'Wróć do planu',
+  noOccurrences: 'Ten węzeł nie występuje w obecnej geometrii dachu.',
+  occurrence: (index: number, count: number) =>
+    `Wystąpienie ${index} z ${count}`,
+  previous: 'Poprzednie',
+  next: 'Następne',
+  markerLabel: (node: string, index: number, where: string) =>
+    `${node}, wystąpienie ${index}: ${where}`,
+  detail: {
+    where: 'Gdzie',
+    along: 'od początku budynku',
+    fromRidge: 'od osi kalenicy',
+    height: 'wysokość nad murłatą',
+    members: 'Łączone elementy',
+    showMember: 'Pokaż',
+    joint: 'Połączenie ciesielskie',
+    planned: 'Zaplanowane łączenie',
+    notPlanned: 'Nie zaplanowano łączników ani łącznika stalowego.',
+    perNode: (count: number) => `${count} szt. na węzeł`,
+    missing: 'Do uzupełnienia',
+    drawings: 'Rysunki wykonawcze',
+    preparation: (code: string) => `Przygotowanie elementu ${code}`,
+    noDrawing: 'Dla tego węzła RoofCalc nie ma jeszcze rysunku wykonawczego.',
+  },
+  missing: {
+    'joint-undecided': 'Wybierz sposób połączenia w ustawieniach konstrukcji.',
+    'joint-not-modelled':
+      'Geometria tego połączenia nie jest liczona — ustal ją w projekcie lub na budowie.',
+    'no-fastening': 'Zaplanuj łączniki trzpieniowe lub łącznik stalowy.',
+    'diameter-missing': 'Podaj średnicę łącznika, aby sprawdzić rozstawy.',
+    'spacing-too-tight': 'Szereg łączników nie mieści się w przekroju.',
+    capacity:
+      'Nośność i liczbę łączników potwierdza projektant konstrukcji (PN-EN 1995-1-1).',
+  } satisfies Record<NodeMissing, string>,
+  ladder: {
+    title: 'Stan węzła',
+    geometry: 'Występuje',
+    joint: 'Rodzaj połączenia',
+    fasteners: 'Łączniki',
+    spacing: 'Rozstawy',
+    capacity: 'Nośność',
+    jointState: {
+      resolved: 'geometria obliczona',
+      named: 'wybrane, bez geometrii',
+      undecided: 'do decyzji',
+      none: 'nie modelowane',
+    },
+    fastenerState: { planned: 'zaplanowane', none: 'brak' },
+    spacingState: {
+      fits: 'mieszczą się',
+      'too-tight': 'za ciasno',
+      'not-computed': 'nie liczone',
+      none: '—',
+    },
+    capacityState: 'projektant konstrukcji',
+  },
+  parts: {
+    left: 'połać lewa',
+    right: 'połać prawa',
+    center: 'środek',
+    front: 'połać przednia',
+    rear: 'połać tylna',
+    'front-left': 'naroże przednie lewe',
+    'front-right': 'naroże przednie prawe',
+    'rear-left': 'naroże tylne lewe',
+    'rear-right': 'naroże tylne prawe',
+  } satisfies Record<SkeletonMemberSide, string>,
+  memberKinds: {
+    rafter: 'Krokiew',
+    'rafter-segment': 'Krokiew',
+    'hip-rafter': 'Krokiew narożna',
+    'jack-rafter': 'Kulawka',
+    'wall-plate': 'Murłata',
+    ridge: 'Kalenica',
+    purlin: 'Płatew',
+    'collar-tie': 'Jętka',
+    'opening-header': 'Wymian',
+  } satisfies Record<SkeletonMemberKind, string>,
+  pieces: { lower: 'odcinek dolny', upper: 'odcinek górny' },
+  headerPieces: { lower: 'dolny', upper: 'górny' },
+  number: 'nr',
   carpentry: 'Połączenie ciesielskie',
   carpentryNone: 'Brak połączenia ciesielskiego w modelu',
   changeInStructure: 'Zmień w konstrukcji',
@@ -136,12 +240,15 @@ const pl = {
     'rafter-wall-plate': 'Krokiew — murłata',
     'rafter-ridge': 'Krokiew — kalenica',
     'rafter-purlin': 'Krokiew — płatew',
+    'jack-rafter-purlin': 'Kulawka — płatew',
+    'purlin-hip-rafter': 'Płatew — krokiew narożna',
     'collar-tie-rafter': 'Jętka — krokiew',
     'hip-rafter-ridge': 'Krokiew narożna — kalenica',
     'hip-rafter-wall-plate': 'Krokiew narożna — naroże murłat',
     'jack-rafter-hip-rafter': 'Kulawka — krokiew narożna',
     'jack-rafter-wall-plate': 'Kulawka — murłata',
-    'opening-header-rafter': 'Wymian — krokiew (otwór)',
+    'opening-header-rafter': 'Wymian — krokiew skrajna (otwór)',
+    'interrupted-rafter-header': 'Krokiew przerwana — wymian (otwór)',
     'wall-plate-anchorage': 'Murłata — wieniec (kotwienie)',
     'counter-batten-rafter': 'Kontrłata — krokiew',
     'batten-counter-batten': 'Łata — kontrłata',
@@ -151,6 +258,10 @@ const pl = {
       'Dolne oparcie krokwi. Przenosi docisk na murłatę i musi zabezpieczać krokiew przed poderwaniem przez wiatr.',
     'rafter-ridge': 'Górny koniec krokwi w kalenicy.',
     'rafter-purlin': 'Pośrednie oparcie krokwi na płatwi.',
+    'jack-rafter-purlin':
+      'Kulawka przechodzi nad płatwią. Obliczenia kulawek nie modelują jeszcze tego oparcia — wcięcie ustal na budowie lub w projekcie.',
+    'purlin-hip-rafter':
+      'Koniec płatwi dochodzi do krokwi narożnej. Sposób połączenia nie jest modelowany — wymaga decyzji projektowej.',
     'collar-tie-rafter':
       'Jętka spina przeciwległe krokwie i ogranicza ich ugięcie i rozpieranie.',
     'hip-rafter-ridge': 'Zbieg krokwi narożnych z kalenicą.',
@@ -158,7 +269,9 @@ const pl = {
     'jack-rafter-hip-rafter': 'Kulawka dochodzi do boku krokwi narożnej.',
     'jack-rafter-wall-plate': 'Dolne oparcie kulawki na murłacie.',
     'opening-header-rafter':
-      'Wymian przy oknie dachowym przejmuje przeciętą krokiew i oddaje obciążenie na krokwie skrajne.',
+      'Wymian przy oknie dachowym opiera się na krokwiach skrajnych i oddaje na nie obciążenie.',
+    'interrupted-rafter-header':
+      'Krokiew przecięta otworem kończy się na wymianie (górny i dolny odcinek osobno).',
     'wall-plate-anchorage':
       'Kotwienie murłaty w wieńcu przenosi siły poziome i ssanie wiatru na ściany.',
     'counter-batten-rafter': 'Mocowanie kontrłat do krokwi wzdłuż każdej osi.',
@@ -251,6 +364,103 @@ const en: ConnectionsCopy = {
   legend: 'Members',
   count: (count) => plural(count, 'node', 'nodes'),
   axes: (count) => plural(count, 'axis', 'axes'),
+  members: (count, lengthMm) =>
+    `${plural(count, 'member', 'members')}${lengthMm ? ` · ${(lengthMm / 1000).toFixed(1)} m` : ''}`,
+  memberUnitNote:
+    'The anchor count depends on a spacing the model does not set — the number and length of wall plates are given.',
+  apexWithoutRidge:
+    'Roof without a ridge: the rafters meeting at the apex are not modelled — those nodes are not counted.',
+  memberConnections: {
+    title: 'Member connections',
+    open: 'Show in the plan',
+    hint: 'Nodes where this member meets others — found from the roof geometry.',
+  },
+  showOnDrawing: (count) => `Show on the drawing (${count})`,
+  shownOnDrawing: 'On the drawing',
+  drawingTitle: 'Node drawing',
+  drawingIdle:
+    'Choose “Show on the drawing” on a node — its occurrences appear as markers and the joined members are highlighted.',
+  drawingPick:
+    'Click a marker or step with the arrows to see one occurrence in detail.',
+  closeDrawing: 'Back to the plan',
+  noOccurrences: 'This node does not occur in the current roof geometry.',
+  occurrence: (index, count) => `Occurrence ${index} of ${count}`,
+  previous: 'Previous',
+  next: 'Next',
+  markerLabel: (node, index, where) => `${node}, occurrence ${index}: ${where}`,
+  detail: {
+    where: 'Where',
+    along: 'from the building start',
+    fromRidge: 'from the ridge axis',
+    height: 'height above the wall plate',
+    members: 'Joined members',
+    showMember: 'Show',
+    joint: 'Carpentry joint',
+    planned: 'Planned fastening',
+    notPlanned: 'No fasteners or steel connector planned.',
+    perNode: (count) => `${count} per node`,
+    missing: 'Still to settle',
+    drawings: 'Execution drawings',
+    preparation: (code) => `Preparation of ${code}`,
+    noDrawing: 'RoofCalc has no execution drawing for this node yet.',
+  },
+  missing: {
+    'joint-undecided': 'Choose the joint in the structure settings.',
+    'joint-not-modelled':
+      'The geometry of this joint is not computed — settle it in the design or on site.',
+    'no-fastening': 'Plan dowel-type fasteners or a steel connector.',
+    'diameter-missing': 'Enter the fastener diameter to check spacing.',
+    'spacing-too-tight': 'The fastener row does not fit in the section.',
+    capacity:
+      'Capacity and the number of fasteners are confirmed by the structural designer (EN 1995-1-1).',
+  },
+  ladder: {
+    title: 'Node status',
+    geometry: 'Occurs',
+    joint: 'Joint type',
+    fasteners: 'Fasteners',
+    spacing: 'Spacing',
+    capacity: 'Capacity',
+    jointState: {
+      resolved: 'geometry computed',
+      named: 'chosen, no geometry',
+      undecided: 'to decide',
+      none: 'not modelled',
+    },
+    fastenerState: { planned: 'planned', none: 'none' },
+    spacingState: {
+      fits: 'fits',
+      'too-tight': 'too tight',
+      'not-computed': 'not computed',
+      none: '—',
+    },
+    capacityState: 'structural designer',
+  },
+  parts: {
+    left: 'left plane',
+    right: 'right plane',
+    center: 'centre',
+    front: 'front plane',
+    rear: 'rear plane',
+    'front-left': 'front-left corner',
+    'front-right': 'front-right corner',
+    'rear-left': 'rear-left corner',
+    'rear-right': 'rear-right corner',
+  },
+  memberKinds: {
+    rafter: 'Rafter',
+    'rafter-segment': 'Rafter',
+    'hip-rafter': 'Hip rafter',
+    'jack-rafter': 'Jack rafter',
+    'wall-plate': 'Wall plate',
+    ridge: 'Ridge',
+    purlin: 'Purlin',
+    'collar-tie': 'Collar tie',
+    'opening-header': 'Header',
+  },
+  pieces: { lower: 'lower piece', upper: 'upper piece' },
+  headerPieces: { lower: 'lower', upper: 'upper' },
+  number: 'no.',
   carpentry: 'Carpentry joint',
   carpentryNone: 'No carpentry joint in the model',
   changeInStructure: 'Change in the structure',
@@ -338,12 +548,15 @@ const en: ConnectionsCopy = {
     'rafter-wall-plate': 'Rafter — wall plate',
     'rafter-ridge': 'Rafter — ridge',
     'rafter-purlin': 'Rafter — purlin',
+    'jack-rafter-purlin': 'Jack rafter — purlin',
+    'purlin-hip-rafter': 'Purlin — hip rafter',
     'collar-tie-rafter': 'Collar tie — rafter',
     'hip-rafter-ridge': 'Hip rafter — ridge',
     'hip-rafter-wall-plate': 'Hip rafter — wall-plate corner',
     'jack-rafter-hip-rafter': 'Jack rafter — hip rafter',
     'jack-rafter-wall-plate': 'Jack rafter — wall plate',
-    'opening-header-rafter': 'Header — rafter (opening)',
+    'opening-header-rafter': 'Header — trimmer rafter (opening)',
+    'interrupted-rafter-header': 'Interrupted rafter — header (opening)',
     'wall-plate-anchorage': 'Wall plate — ring beam (anchorage)',
     'counter-batten-rafter': 'Counter-batten — rafter',
     'batten-counter-batten': 'Batten — counter-batten',
@@ -353,6 +566,10 @@ const en: ConnectionsCopy = {
       'Lower bearing of the rafter. Transfers bearing to the wall plate and must hold the rafter down against wind uplift.',
     'rafter-ridge': 'Upper end of the rafter at the ridge.',
     'rafter-purlin': 'Intermediate bearing of the rafter on a purlin.',
+    'jack-rafter-purlin':
+      'The jack rafter passes over a purlin. Jack rafter fabrication does not model this bearing yet — settle the notch on site or in the design.',
+    'purlin-hip-rafter':
+      'A purlin end meets the hip rafter. The joint is not modelled — it needs a design decision.',
     'collar-tie-rafter':
       'The collar tie joins opposite rafters and limits their deflection and spread.',
     'hip-rafter-ridge': 'Where the hip rafters meet the ridge.',
@@ -362,7 +579,9 @@ const en: ConnectionsCopy = {
       'The jack rafter meets the side of the hip rafter.',
     'jack-rafter-wall-plate': 'Lower bearing of the jack rafter.',
     'opening-header-rafter':
-      'The header at a roof window carries the cut rafter onto the trimmer rafters.',
+      'The header at a roof window bears on the trimmer rafters and passes its load to them.',
+    'interrupted-rafter-header':
+      'A rafter cut by the opening ends on the header (upper and lower piece separately).',
     'wall-plate-anchorage':
       'Anchoring the wall plate to the ring beam transfers horizontal forces and wind suction to the walls.',
     'counter-batten-rafter': 'Fixing counter-battens to every rafter axis.',
@@ -436,3 +655,34 @@ export function connectionsCopy(language: string): ConnectionsCopy {
 }
 
 export type { ConnectionsCopy };
+
+/** What still needs settling at a node, from the schedule row. */
+export type NodeMissing =
+  | 'joint-undecided'
+  | 'joint-not-modelled'
+  | 'no-fastening'
+  | 'diameter-missing'
+  | 'spacing-too-tight'
+  | 'capacity';
+
+/** "K1 nr 3 (połać lewa)", "Wymian dolny (połać lewa)", "Kalenica". */
+export function memberLabelText(
+  m: ConnectionsCopy,
+  label: MemberLabel | undefined,
+): string {
+  if (!label) return '—';
+  const name =
+    label.kind === 'opening-header'
+      ? `${m.memberKinds[label.kind]}${label.piece ? ` ${m.headerPieces[label.piece]}` : ''}`
+      : label.code && label.kind !== 'collar-tie'
+        ? label.code
+        : m.memberKinds[label.kind];
+  const ordinal = label.ordinal ? ` ${m.number} ${label.ordinal}` : '';
+  const piece =
+    label.kind === 'rafter-segment' && label.piece
+      ? `, ${m.pieces[label.piece]}`
+      : '';
+  const part =
+    label.kind === 'ridge' ? '' : ` (${m.parts[label.part]}${piece})`;
+  return `${name}${ordinal}${part}`;
+}

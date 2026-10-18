@@ -28,12 +28,18 @@ export type RoofNodeKind =
   | 'rafter-wall-plate'
   | 'rafter-ridge'
   | 'rafter-purlin'
+  /** VNext-3: a jack rafter bearing on a purlin (hip roofs). */
+  | 'jack-rafter-purlin'
+  /** VNext-3: a purlin ending on a hip rafter (hip roofs). */
+  | 'purlin-hip-rafter'
   | 'collar-tie-rafter'
   | 'hip-rafter-ridge'
   | 'hip-rafter-wall-plate'
   | 'jack-rafter-hip-rafter'
   | 'jack-rafter-wall-plate'
   | 'opening-header-rafter'
+  /** VNext-3: a rafter interrupted by an opening, ending on its header. */
+  | 'interrupted-rafter-header'
   | 'wall-plate-anchorage'
   | 'counter-batten-rafter'
   | 'batten-counter-batten';
@@ -63,6 +69,14 @@ export const ROOF_NODES: Record<RoofNodeKind, RoofNodeDefinition> = {
     kind: 'rafter-purlin',
     participants: ['common-rafter', 'purlin'],
   },
+  'jack-rafter-purlin': {
+    kind: 'jack-rafter-purlin',
+    participants: ['jack-rafter', 'purlin'],
+  },
+  'purlin-hip-rafter': {
+    kind: 'purlin-hip-rafter',
+    participants: ['purlin', 'hip-rafter'],
+  },
   'collar-tie-rafter': {
     kind: 'collar-tie-rafter',
     participants: ['collar-tie', 'common-rafter'],
@@ -88,6 +102,10 @@ export const ROOF_NODES: Record<RoofNodeKind, RoofNodeDefinition> = {
     kind: 'opening-header-rafter',
     participants: ['opening-header', 'common-rafter'],
   },
+  'interrupted-rafter-header': {
+    kind: 'interrupted-rafter-header',
+    participants: ['common-rafter', 'opening-header'],
+  },
   'wall-plate-anchorage': {
     kind: 'wall-plate-anchorage',
     participants: ['wall-plate', 'substrate'],
@@ -109,8 +127,11 @@ export const ROOF_NODE_ORDER: readonly RoofNodeKind[] = [
   'jack-rafter-wall-plate',
   'hip-rafter-wall-plate',
   'rafter-purlin',
+  'jack-rafter-purlin',
+  'purlin-hip-rafter',
   'collar-tie-rafter',
   'opening-header-rafter',
+  'interrupted-rafter-header',
   'jack-rafter-hip-rafter',
   'rafter-ridge',
   'hip-rafter-ridge',
@@ -232,6 +253,7 @@ const RAFTER_ENDS: readonly RoofNodeKind[] = [
   'jack-rafter-wall-plate',
   'hip-rafter-wall-plate',
   'rafter-purlin',
+  'jack-rafter-purlin',
 ];
 const ALL_TIMBER_NODES = (Object.keys(ROOF_NODES) as RoofNodeKind[]).filter(
   (kind) => kind !== 'wall-plate-anchorage',
@@ -343,6 +365,7 @@ export const CONNECTION_TYPES: Record<
       'rafter-ridge',
       'collar-tie-rafter',
       'rafter-purlin',
+      'purlin-hip-rafter',
       'hip-rafter-ridge',
       'opening-header-rafter',
     ],
@@ -382,7 +405,10 @@ export const CONNECTION_TYPES: Record<
       'jack-rafter-wall-plate',
       'hip-rafter-wall-plate',
       'rafter-purlin',
+      'jack-rafter-purlin',
+      'purlin-hip-rafter',
       'opening-header-rafter',
+      'interrupted-rafter-header',
     ],
     operations: [],
     references: [CONNECTOR_PRODUCT, DETAILING],
@@ -397,6 +423,7 @@ export const CONNECTION_TYPES: Record<
       'jack-rafter-wall-plate',
       'hip-rafter-wall-plate',
       'rafter-purlin',
+      'jack-rafter-purlin',
     ],
     operations: [],
     references: [CONNECTOR_PRODUCT, DETAILING],
@@ -406,7 +433,12 @@ export const CONNECTION_TYPES: Record<
   'joist-hanger': {
     id: 'joist-hanger',
     family: 'connector',
-    nodes: ['opening-header-rafter', 'jack-rafter-hip-rafter'],
+    nodes: [
+      'opening-header-rafter',
+      'interrupted-rafter-header',
+      'jack-rafter-hip-rafter',
+      'purlin-hip-rafter',
+    ],
     operations: [],
     references: [CONNECTOR_PRODUCT, DETAILING],
     modelling: 'catalogued',

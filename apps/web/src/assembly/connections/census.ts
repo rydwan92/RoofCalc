@@ -1,65 +1,50 @@
-import type {
-  ModelledInterface,
-  RoofConnectionCensus,
-  RoofNodeOccurrence,
+import {
+  resolveRoofConnectionNodes,
+  type ModelledInterface,
+  type RoofConnectionCensus,
+  type RoofNodeKind,
+  type RoofNodeOccurrence,
+  type RoofNodeProjection,
 } from '@cieslacalc/connection-core';
 import type {
   RoofBuildUp,
   RoofTemplateSpec,
   SkeletonMember3D,
-  SkeletonMemberKind,
 } from '@cieslacalc/timber-model';
 
 /**
  * Web adapter: the resolved roof → the neutral census `connection-core`
- * schedules. Node kinds come from structured member kinds and project
- * intents, never from member IDs (ADR-007). Counts are occurrences in the
- * accepted composition (opening framing included, proposals excluded).
+ * schedules. VNext-3: every count comes from the geometric node projection
+ * (where solved member axes actually meet), not from multiplying member
+ * counts. Node kinds come from structured member kinds and project intents,
+ * never from member IDs (ADR-007). Members are the accepted composition
+ * (opening framing included, proposals excluded).
  */
 
-function countKinds(members: readonly SkeletonMember3D[]) {
-  const counts = new Map<SkeletonMemberKind, number>();
-  for (const member of members)
-    counts.set(member.kind, (counts.get(member.kind) ?? 0) + 1);
-  return (kind: SkeletonMemberKind) => counts.get(kind) ?? 0;
+export interface RoofConnectionModel {
+  census: RoofConnectionCensus;
+  projection: RoofNodeProjection;
 }
 
-/** Rafter axes: whole common rafters plus rafters split by an opening. */
-function rafterAxes(members: readonly SkeletonMember3D[]): number {
-  const count = countKinds(members);
-  // An opening splits one common rafter into a lower and an upper segment.
-  return count('rafter') + Math.floor(count('rafter-segment') / 2);
-}
-
-/** Rafter–purlin crossings, side by side: each rafter crosses its side's purlins. */
-function purlinCrossings(members: readonly SkeletonMember3D[]): number {
-  const purlins = members.filter((member) => member.kind === 'purlin');
-  if (!purlins.length) return 0;
-  let crossings = 0;
-  const sides = new Set(purlins.map((purlin) => purlin.side));
-  for (const side of sides) {
-    const onSide = purlins.filter((purlin) => purlin.side === side).length;
-    crossings +=
-      onSide * rafterAxes(members.filter((member) => member.side === side));
-  }
-  return crossings;
-}
-
-export function roofConnectionCensus(input: {
+export function roofConnectionModel(input: {
   template: RoofTemplateSpec;
   members: readonly SkeletonMember3D[];
   buildUp: RoofBuildUp;
-}): RoofConnectionCensus {
+}): RoofConnectionModel {
   const { template, members, buildUp } = input;
-  const count = countKinds(members);
-  const axes = rafterAxes(members);
-  const hips = count('hip-rafter');
-  const jacks = count('jack-rafter');
+  const ridgeConnection = template.ridge.connection ?? 'ridge-board';
+  const projection = resolveRoofConnectionNodes({
+    members,
+    ridgeJoint: ridgeConnection === 'ridge-board' ? 'board' : 'paired',
+  });
+  const count = (kind: RoofNodeKind) =>
+    projection.nodes.filter((item) => item.kind === kind).length;
+  const axes = projection.axes.commonRafters + projection.axes.jackRafters;
+
   const seat: ModelledInterface | undefined =
     template.wallPlate.joint.kind === 'seat-notch'
       ? { type: 'seat-notch', status: 'resolved' }
       : undefined;
-  const ridgeConnection = template.ridge.connection ?? 'ridge-board';
   const ridge: ModelledInterface =
     ridgeConnection === 'ridge-board'
       ? { type: 'ridge-board-butt', status: 'resolved' }
@@ -70,48 +55,62 @@ export function roofConnectionCensus(input: {
     template.type === 'hip' ? template.hipExecution?.jackConnection : undefined;
 
   const nodes: RoofNodeOccurrence[] = [
-    { kind: 'wall-plate-anchorage', count: count('wall-plate') },
+    {
+      kind: 'wall-plate-anchorage',
+      count: projection.wallPlates.count,
+      // Anchors repeat at a spacing the roof model does not define.
+      unit: 'member',
+      extentMm: projection.wallPlates.lengthMm,
+    },
     {
       kind: 'rafter-wall-plate',
-      count: axes,
+      count: count('rafter-wall-plate'),
       ...(seat ? { modelled: seat } : {}),
     },
     {
       kind: 'jack-rafter-wall-plate',
-      count: jacks,
+      count: count('jack-rafter-wall-plate'),
       ...(seat ? { modelled: seat } : {}),
     },
-    { kind: 'hip-rafter-wall-plate', count: hips },
+    { kind: 'hip-rafter-wall-plate', count: count('hip-rafter-wall-plate') },
     {
       kind: 'rafter-purlin',
-      count: purlinCrossings(members),
+      count: count('rafter-purlin'),
       modelled: { type: 'seat-notch', status: 'resolved' },
     },
+    // J1 fabrication reports purlin joinery as not resolved: no modelled
+    // interface is claimed for jack–purlin or purlin–hip nodes.
+    { kind: 'jack-rafter-purlin', count: count('jack-rafter-purlin') },
+    { kind: 'purlin-hip-rafter', count: count('purlin-hip-rafter') },
     {
       kind: 'collar-tie-rafter',
-      count: count('collar-tie') * 2,
+      count: count('collar-tie-rafter'),
       modelled: { type: 'collar-lap', status: 'named' },
     },
-    { kind: 'opening-header-rafter', count: count('opening-header') * 2 },
+    { kind: 'opening-header-rafter', count: count('opening-header-rafter') },
+    {
+      kind: 'interrupted-rafter-header',
+      count: count('interrupted-rafter-header'),
+    },
     {
       kind: 'jack-rafter-hip-rafter',
-      count: jacks,
+      count: count('jack-rafter-hip-rafter'),
       modelled: {
         type: 'hip-face-butt',
         status: jackConnection === 'hip-face-butt' ? 'resolved' : 'undecided',
       },
     },
-    { kind: 'rafter-ridge', count: axes, modelled: ridge },
+    { kind: 'rafter-ridge', count: count('rafter-ridge'), modelled: ridge },
     {
       kind: 'hip-rafter-ridge',
-      count: hips,
+      count: count('hip-rafter-ridge'),
       modelled: { type: 'hip-ridge-cheek-cut', status: 'resolved' },
     },
     ...(buildUp.counterBattens?.enabled
       ? [
           {
             kind: 'counter-batten-rafter' as const,
-            count: axes + jacks,
+            count: axes,
             unit: 'axis' as const,
           },
         ]
@@ -120,7 +119,7 @@ export function roofConnectionCensus(input: {
       ? [
           {
             kind: 'batten-counter-batten' as const,
-            count: axes + jacks,
+            count: axes,
             unit: 'axis' as const,
           },
         ]
@@ -164,5 +163,11 @@ export function roofConnectionCensus(input: {
       widthMm: collar.section.widthMm,
       depthMm: collar.section.depthMm,
     };
-  return { nodes, sections };
+  return { census: { nodes, sections }, projection };
+}
+
+export function roofConnectionCensus(
+  input: Parameters<typeof roofConnectionModel>[0],
+): RoofConnectionCensus {
+  return roofConnectionModel(input).census;
 }
