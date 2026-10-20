@@ -49,8 +49,7 @@ export function ConnectionPractice({
     {},
   );
   const proposals = useMemo(
-    () =>
-      style ? proposeConnectionPractice(kinds, { style, anchorage }) : [],
+    () => (style ? proposeConnectionPractice(kinds, { style, anchorage }) : []),
     [anchorage, kinds, style],
   );
   const plannedOf = (proposal: PracticeProposal) => {

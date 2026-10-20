@@ -307,7 +307,8 @@ export const PRACTICE_SOURCES: Record<
 > = {
   'murator-laczniki': {
     publisher: 'Murator',
-    title: 'Łączniki i okucia ciesielskie do więźby. Jak łączyć elementy więźby?',
+    title:
+      'Łączniki i okucia ciesielskie do więźby. Jak łączyć elementy więźby?',
     url: 'https://muratordom.pl/budowa/dach/laczniki-ciesielskie-okucia-ciesielskie-do-wiezby-jak-laczyc-elementy-wiezby-aa-ZzYd-k88V-Jv7U.html',
   },
   'kb-murlata': {

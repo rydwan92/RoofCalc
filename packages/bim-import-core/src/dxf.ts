@@ -99,7 +99,7 @@ export type DxfReadResult =
 
 /** True when the first bytes look like an ASCII DXF (group code 0 SECTION). */
 export function looksLikeAsciiDxf(head: string): boolean {
-  const lines = head.replace(/^﻿/, '').split(/\r?\n/);
+  const lines = head.replace(/^\uFEFF/, '').split(/\r?\n/);
   // Optional leading comments (999) before the first section.
   for (let index = 0; index + 1 < lines.length && index < 40; index += 2) {
     const code = lines[index]!.trim();
@@ -166,7 +166,7 @@ interface EntityList {
 }
 
 function tokenize(text: string): Pair[] | undefined {
-  const lines = text.replace(/^﻿/, '').split(/\r?\n/);
+  const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/);
   const pairs: Pair[] = [];
   for (let index = 0; index + 1 < lines.length; index += 2) {
     const code = Number(lines[index]!.trim());
@@ -210,7 +210,8 @@ export function readDxf(text: string): DxfReadResult {
     const { code, value } = pairs[index]!;
     const trimmed = value.trim();
     if (code === 0 && trimmed === 'SECTION') {
-      section = pairs[index + 1]?.code === 2 ? pairs[index + 1]!.value.trim() : '';
+      section =
+        pairs[index + 1]?.code === 2 ? pairs[index + 1]!.value.trim() : '';
       index += 1;
       continue;
     }
@@ -399,9 +400,7 @@ export function readDxf(text: string): DxfReadResult {
             ...(firstNumber(p, 42) !== undefined
               ? { measurement: firstNumber(p, 42) }
               : {}),
-            ...(override?.trim()
-              ? { text: cleanDxfText(override) }
-              : {}),
+            ...(override?.trim() ? { text: cleanDxfText(override) } : {}),
             layer,
           });
           break;

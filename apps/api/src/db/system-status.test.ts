@@ -18,10 +18,11 @@ describe('system readiness projection', () => {
       applied: 8,
       expected: 8,
     });
+    // VNext-4: + Galeco STAL² colour variants (11 catalogue batches).
     expect(current.seeds.catalogue).toEqual({
       state: 'current',
-      current: 10,
-      expected: 10,
+      current: 11,
+      expected: 11,
     });
     expect(current.seeds.pricing).toEqual({
       state: 'current',

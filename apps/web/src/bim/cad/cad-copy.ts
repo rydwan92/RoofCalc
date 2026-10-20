@@ -77,11 +77,14 @@ const pl = {
   },
   evidence: 'Co rozpoznano',
   evidenceItem: {
-    'nested-outlines': 'Dwa równoległe obrysy z równym odstępem — ściany i okap.',
+    'nested-outlines':
+      'Dwa równoległe obrysy z równym odstępem — ściany i okap.',
     'ridge-full-length': 'Kalenica na całej długości — dach dwuspadowy.',
-    'ridge-shortened': 'Kalenica krótsza o szerokość — typowe dla dachu kopertowego.',
+    'ridge-shortened':
+      'Kalenica krótsza o szerokość — typowe dla dachu kopertowego.',
     'hip-diagonals': 'Linie naroży z narożników pod 45°.',
-    'hip-geometry-consistent': 'Długość kalenicy zgadza się z geometrią koperty (L − B).',
+    'hip-geometry-consistent':
+      'Długość kalenicy zgadza się z geometrią koperty (L − B).',
     'dimension-matches-length': 'Wymiar na rysunku potwierdza długość.',
     'dimension-matches-width': 'Wymiar na rysunku potwierdza szerokość.',
     'roof-type-text': 'Rodzaj dachu odczytany z opisu.',
@@ -104,8 +107,7 @@ const pl = {
   } satisfies Record<CadWarning, string>,
   dxfWarning: {
     'arcs-ignored': 'Łuki i okręgi pominięto — rozpoznawane są odcinki proste.',
-    'bulges-ignored':
-      'Zaokrąglone odcinki polilinii potraktowano jako proste.',
+    'bulges-ignored': 'Zaokrąglone odcinki polilinii potraktowano jako proste.',
     'entity-limit': 'Rysunek jest bardzo duży — przeanalizowano jego część.',
     'vertex-limit': 'Rysunek jest bardzo duży — przeanalizowano jego część.',
     'nested-blocks-ignored': 'Głęboko zagnieżdżone bloki pominięto.',
@@ -143,7 +145,8 @@ const en: CadCopy = {
     'unsupported-format': 'This file cannot be loaded as a DXF drawing.',
     'too-large': 'The file is too large (25 MB limit).',
     empty: 'The file is empty.',
-    'heic-photo': 'This is a HEIC photo — use the PDF or photo import (JPG/PNG).',
+    'heic-photo':
+      'This is a HEIC photo — use the PDF or photo import (JPG/PNG).',
     'no-geometry': 'Model space has no lines or polylines.',
     'no-rectangular-outline':
       'No rectangular outline was found. RoofCalc recognises roofs on a rectangular plan — create the project manually or from a PDF.',
@@ -196,7 +199,8 @@ const en: CadCopy = {
   },
   evidence: 'What was recognised',
   evidenceItem: {
-    'nested-outlines': 'Two parallel outlines with an even offset — walls and eave.',
+    'nested-outlines':
+      'Two parallel outlines with an even offset — walls and eave.',
     'ridge-full-length': 'A ridge along the full length — a gable roof.',
     'ridge-shortened': 'A ridge shorter by the width — typical of a hip roof.',
     'hip-diagonals': 'Hip lines from the corners at 45°.',

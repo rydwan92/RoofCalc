@@ -49,8 +49,13 @@ describe('catalogue template for the assortment import', () => {
   it('one row per active variant with its RoofCalc ID; nothing invented', () => {
     expect(template.rows).toBe(1);
     expect(template.withoutVariants).toEqual(['Galeco STAL² Mufa']);
-    const lines = template.csv.replace(/^﻿/, '').trim().split('\r\n');
-    expect(lines[0]).toBe('Kod;Nazwa;Producent;EAN;Cena netto;VAT;Jednostka;ID RoofCalc');
+    const lines = template.csv
+      .replace(/^\uFEFF/, '')
+      .trim()
+      .split('\r\n');
+    expect(lines[0]).toBe(
+      'Kod;Nazwa;Producent;EAN;Cena netto;VAT;Jednostka;ID RoofCalc',
+    );
     // Code, EAN, price, VAT and unit are the wholesaler's to fill.
     expect(lines[1]).toBe(
       ';STAL² Rynna 3 m — Czarny RAL 9005;Galeco;;;;;variant:galeco:stal2-rynna-3m:czarny-ral-9005',
@@ -62,7 +67,7 @@ describe('catalogue template for the assortment import', () => {
       ';STAL² Rynna 3 m',
       'GAL-R3-CZ;STAL² Rynna 3 m',
     );
-    const parsed = parseAssortmentCsv(filled.replace(/^﻿/, ''));
+    const parsed = parseAssortmentCsv(filled.replace(/^\uFEFF/, ''));
     const mapping = guessMapping(parsed.headers);
     expect(mapping).toMatchObject({
       externalKey: 'Kod',

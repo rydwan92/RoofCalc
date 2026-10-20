@@ -35,7 +35,9 @@ afterEach(cleanup);
 
 describe('CAD (DXF) plan import', () => {
   it('reads a hip plan with walls and eave outlines, asks for confirmation, creates the start template', async () => {
-    const onCreate = vi.fn(async (_template: RoofTemplateSpec) => {});
+    const onCreate = vi.fn<
+      (template: RoofTemplateSpec, name: string) => Promise<void>
+    >(async () => {});
     render(
       <CadImportWorkspace
         initialFile={fileOf(fixture, 'dom-kopertowy.dxf')}

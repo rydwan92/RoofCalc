@@ -108,11 +108,7 @@ export function AdminWorkspace({ onClose }: { onClose: () => void }) {
         >
           {(
             [
-              [
-                'overview',
-                pl ? 'Przegląd' : 'Overview',
-                'assortment.manage',
-              ],
+              ['overview', pl ? 'Przegląd' : 'Overview', 'assortment.manage'],
               [
                 'company',
                 pl ? 'Dane firmy' : 'Company details',

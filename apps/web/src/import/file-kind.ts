@@ -44,7 +44,7 @@ export function classifyProjectFileBytes(input: {
   const text = Array.from(input.header.slice(0, HEADER_BYTES), (byte) =>
     String.fromCharCode(byte),
   ).join('');
-  const start = text.replace(/^﻿|^ï»¿/, '').trimStart();
+  const start = text.replace(/^\uFEFF|^ï»¿/, '').trimStart();
   const within = (limit: number, kind: ProjectFileKind) =>
     input.byteLength > limit
       ? ({ status: 'rejected', reason: 'too-large' } as const)

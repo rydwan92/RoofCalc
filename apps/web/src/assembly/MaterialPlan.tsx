@@ -9,11 +9,7 @@ import { useCatalogSource } from '../catalog/catalog-source';
 import { parseDecimal } from '../format';
 import { usePriceOptions } from '../pricing/use-prices';
 import { useAssembly } from './store';
-import {
-  materialCopy,
-  materialText,
-  timberMemberLabel,
-} from './material-copy';
+import { materialCopy, materialText, timberMemberLabel } from './material-copy';
 import {
   acceptMaterialRow,
   compatibleMaterialPrices,

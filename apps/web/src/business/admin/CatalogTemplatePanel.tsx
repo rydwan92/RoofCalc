@@ -44,7 +44,8 @@ const copy = {
       'Delete the rows you do not sell.',
       'Load the file with “Import” and check the preview.',
     ],
-    unavailable: 'The catalogue is unavailable — the template cannot be downloaded now.',
+    unavailable:
+      'The catalogue is unavailable — the template cannot be downloaded now.',
     close: 'Close',
     failed: 'The catalogue products could not be loaded.',
   },
@@ -187,7 +188,9 @@ export function CatalogTemplatePanel({
       {result && (
         <p role="status" data-testid="admin-template-result">
           {c.done(result.rows)}
-          {result.without.length > 0 && <> {c.without(result.without.join(', '))}</>}
+          {result.without.length > 0 && (
+            <> {c.without(result.without.join(', '))}</>
+          )}
         </p>
       )}
       {error && <p role="alert">{c.failed}</p>}

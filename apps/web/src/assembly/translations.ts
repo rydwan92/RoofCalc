@@ -4616,7 +4616,8 @@ export const assemblyEn: typeof assemblyPl = {
           'This is a DWG file. Save the drawing as DXF (File → Save as → DXF) and load it again.',
         'binary-dxf':
           'This is a binary DXF. Save the drawing as a text (ASCII) DXF and load it again.',
-        'heic-photo': 'This is a HEIC photo. Save it as JPG or PNG and load it again.',
+        'heic-photo':
+          'This is a HEIC photo. Save it as JPG or PNG and load it again.',
         'unsupported-format':
           'The format was not recognised. Supported: RoofCalc project, PDF, JPG/PNG/WebP, DXF and IFC.',
       },

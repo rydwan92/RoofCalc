@@ -1297,6 +1297,73 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+## VNext-4 (2026-10-19/20) — UX polish, carpentry practice, CAD import, wholesale
+
+- Authorized by the user's 2026-10-19 message (continue, finish VNext-3
+  leftovers, UI/UX and looks from 5 screenshots, more catalogue products,
+  wholesale admin, better imports, calculations, carpentry connection rules
+  asking for choices; push to main and try Cloudflare) and the 2026-10-20
+  "kontynuuj" after a token pause. The screenshots came from the stale
+  Apache `apps/web/dist` build; each reported issue was re-checked on the
+  current code with a Playwright QA script (not committed).
+- Definition of Ready (major parts):
+  1. User: carpenters/wholesalers who have a DXF or need connection types and
+     a working admin; today they retype dimensions and plan joints by hand.
+  2. Owners: `bim-import-core` (DXF reading + plan recognition, pure),
+     `connection-core` (practice table), `business-core` (import match),
+     web for intent capture only.
+  3–4. Persistence: none new in the project document; connection practice
+     writes existing plan fields; catalogue batch additive; import mapping
+     additive (SCHEMA_REGISTRY §15–16).
+  5. Undo: applying the practice is one history entry; import creates a
+     project through the existing path; nothing else enters history.
+  6–9. No quantity, procurement or price concept added; no prices invented.
+  10. Offline: DXF import, file routing and practice work without network;
+     the catalogue template needs the catalogue API.
+  11. Mobile: CAD import, practice panel and start dialog checked at 390 px.
+  12. Research: `docs/domain/CARPENTRY_CONNECTION_PRACTICE.md`,
+     `docs/domain/CAD_PLAN_IMPORT.md`.
+  13. Regression: unit tests per module, `fixtures/cad/hip-12x8-eave-50.dxf`,
+     `e2e/cad-import.spec.ts`.
+  14. Multi-structure: nothing parses IDs (SkeletonCanvas labels now from
+     `memberLabelIndex`); L/T plans are refused, not guessed.
+- Done:
+  - UI: `.a-primary` without `.a-button` no longer shows the browser bevel;
+    plain buttons in drainage/roof-system/readiness get the secondary look;
+    `.a-link-button` styled; duplicated "Otwórz łaty" removed; roof-system
+    checklist rows; drainage: readable clickable "R1 · wys.?" labels, named
+    missing inputs instead of "WYMAGA USTALENIA", "Uzupełnij pion R1";
+    material plan timber rows named "Kulawka J1 80×200 · 8 szt. × 1,59 m"
+    (structured `timberMember`, also in CSV); covering summary never shows
+    an assignment ID.
+  - Calculation/flow: modular sheets with a fixed support spacing get
+    "Popraw rozstaw" (`use-product-gauge`, one history entry) instead of a
+    "fit to roof" that kept the wrong gauge.
+  - VNext-3 leftover: SkeletonCanvas member names/codes from structured
+    labels (`memberCode`, `memberLabelIndex`), no ID regex.
+  - Connections: `proposeConnectionPractice` / `applyConnectionPractice`
+    + "Zaproponuj połączenia" (two questions, per-node proposal, reason,
+    sources, alternatives, decided nodes kept, one undo).
+  - Import: universal "Otwórz plik…" / drop on the start dialog
+    (`classifyProjectFile` by bytes → project / PDF-photo / IFC / DXF);
+    new CAD (DXF) import with preview and confirmation; "Import z CAD lub
+    BIM" card; DXF in Projekty menu; importers accept `initialFile`.
+  - Catalogue: `drainage-galeco-stal2-colours-2026-10-vnext4.json` — 20
+    colour variants (gutters, downpipes) from galeco.pl; CREATON ridge-tile
+    data was ambiguous on the manufacturer page and was NOT added.
+  - Wholesale admin: "Przegląd" landing tab (counts + one-click fixes +
+    quick actions); "Szablon z katalogu" CSV with RoofCalc IDs; import
+    column `ID RoofCalc` → exact `catalog-id` match.
+- Validation: see the end of this entry (verify/e2e results recorded after
+  the run).
+- Known limitations: kształtki Galeco without colour variants (source does
+  not list them); DXF: rectangular plans only, no DWG/binary DXF, pitch
+  from texts only; practice proposes types, never sizes.
+- NEXT ACTION: after green verify/e2e, merge to `main`, push (authorized),
+  rebuild the local Apache dist, then check Cloudflare readiness; the remote
+  database migration/seed and secrets remain the user's step
+  (`pnpm configure:cloudflare`).
+
 ## VNext-3 (2026-10-18) — functional excellence: connections, drawing, code
 
 - Authorized by the VNext-3 prompt (P0 connection correctness, P1 plan ↔

@@ -622,6 +622,26 @@ workbench. No migration.
   open newer files in the current app. Node occurrences themselves are
   derived (`resolveRoofConnectionNodes`), never persisted; the census row
   unit `member` (wall-plate anchorage) is derived as well.
+- VNext-4: the "Zaproponuj połączenia" assistant writes only existing plan
+  fields (fastening `type`, `connector`); no new key, no version change.
+
+## 16. VNext-4 additive contracts (no project schema change)
+
+- Business assortment import (API request, not persisted as a schema):
+  column mapping gains optional `catalogVariantId`; match reason
+  `catalog-id`; issue `unknown-catalog-variant` (warning). An older API
+  rejects the unknown mapping key (strict schema) — deploy API and web
+  together. Persisted assortment rows are unchanged.
+- Catalogue seed batch `drainage-galeco-stal2-colours-2026-10-vnext4.json`:
+  commercial variants only (20 colour variants of Galeco STAL² gutters and
+  downpipes), registered in `CATALOGUE_SEED_BATCHES` and the Worker
+  readiness manifest (checksum). Additive; no migration.
+- CAD (DXF) import produces session-only analysis objects
+  (`CadPlanAnalysis`); only the confirmed project-start values become a
+  project through the existing path. Nothing new is persisted.
+- Universal file opening classifies by bytes (`apps/web/src/import`); no
+  storage key.
+
 - RecognitionResult (§13) additions in VNext-2, session-only: mode
   `transcription`; evidence `dimension-row`, `chain-total`, `chain-part`,
   `transcribed`; relation `dimension-chain`; warnings `scaled-value-only`,

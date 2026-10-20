@@ -128,7 +128,11 @@ test('V51 hip: add gutters → system → proposed layout → outlets → BOM �
   const bom = page.getByTestId('drainage-bom');
   await expect(bom).toContainText('Narożnik zewnętrzny');
   await expect(bom).not.toContainText('Zaślepka');
-  await expect(bom).not.toContainText('WYMAGA USTALENIA');
+  // Every row resolved: no row still names a missing input.
+  await expect(bom.locator('li[data-status="requires-decision"]')).toHaveCount(
+    0,
+  );
+  await expect(page.getByTestId('drainage-next-pipe')).toHaveCount(0);
   await expect(bom).toContainText('Rura spustowa 3 m');
   await noHorizontalOverflow(page);
   await page.screenshot({

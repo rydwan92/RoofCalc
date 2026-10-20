@@ -1597,11 +1597,7 @@ export function DrainageWorkspace({
       {pendingPipe && (
         <div className="dw-next" data-testid="drainage-next-pipe">
           <p className="dw-muted">{c.nextPipeHelp}</p>
-          <button
-            type="button"
-            className="a-primary"
-            onClick={openPendingPipe}
-          >
+          <button type="button" className="a-primary" onClick={openPendingPipe}>
             {c.nextPipe(`R${pendingPipe.index + 1}`)}
           </button>
         </div>

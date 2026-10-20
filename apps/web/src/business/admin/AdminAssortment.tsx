@@ -57,9 +57,7 @@ export function AdminAssortment({
   const [bulkVat, setBulkVat] = useState('23,00');
   const [importing, setImporting] = useState(initialPanel === 'import');
   const [creating, setCreating] = useState(false);
-  const [templating, setTemplating] = useState(
-    initialPanel === 'template',
-  );
+  const [templating, setTemplating] = useState(initialPanel === 'template');
   const queryClient = useQueryClient();
   const assortment = useInfiniteAssortment({
     filter,

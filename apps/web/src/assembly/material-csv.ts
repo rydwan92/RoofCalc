@@ -1,10 +1,6 @@
 import type { MaterialPlanRow, MaterialPriceSelection } from './material-plan';
 import { materialValue } from './material-plan';
-import {
-  materialCopy,
-  materialText,
-  timberMemberLabel,
-} from './material-copy';
+import { materialCopy, materialText, timberMemberLabel } from './material-copy';
 
 function cell(value: string | number) {
   const text = String(value);

@@ -44,8 +44,8 @@ test('DXF hip plan → recognised walls, eave, hips and pitch → confirmed proj
   await page.getByTestId('cad-create').click();
   await expect(workspace).toHaveCount(0);
   await expect(page.getByTestId('skeleton-drawing')).toBeVisible();
-  await expect(page.locator('.a-project-trigger:visible').first()).toContainText(
-    'hip-12x8-eave-50',
-  );
+  await expect(
+    page.locator('.a-project-trigger:visible').first(),
+  ).toContainText('hip-12x8-eave-50');
   expect(errors).toEqual([]);
 });

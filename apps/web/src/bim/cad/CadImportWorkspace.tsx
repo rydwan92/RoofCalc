@@ -18,7 +18,10 @@ import {
   validateProjectStart,
   type ProjectStartField,
 } from '../../assembly/project-start';
-import { createDefaultProjectDocument, useAssembly } from '../../assembly/store';
+import {
+  createDefaultProjectDocument,
+  useAssembly,
+} from '../../assembly/store';
 import { formatLength, formatNumber, parseDecimal } from '../../format';
 import { classifyProjectFile } from '../../import/file-kind';
 import { cadCopy, type CadCopy } from './cad-copy';
@@ -390,16 +393,17 @@ function CadPreview({
       </figcaption>
       <div className="cad-preview-actions">
         <span data-testid="cad-unit">
-          {c.fileUnit(c.units[analysis.unit.unit], c.unitBasis[analysis.unit.basis])}
+          {c.fileUnit(
+            c.units[analysis.unit.unit],
+            c.unitBasis[analysis.unit.basis],
+          )}
         </span>
         {analysis.unit.basis !== 'declared' && (
           <label className="cad-inline">
             {c.changeUnit}
             <select
               value={analysis.unit.unit}
-              onChange={(event) =>
-                onUnit(event.target.value as CadLengthUnit)
-              }
+              onChange={(event) => onUnit(event.target.value as CadLengthUnit)}
             >
               {(['mm', 'cm', 'm'] as const).map((unit) => (
                 <option key={unit} value={unit}>
@@ -552,8 +556,7 @@ function CadConfirmation({
       return derived
         ? c.derived
         : `${nested ? c.source.walls : c.source.outline}${dimensionNote(field)}`;
-    if (field === 'eave')
-      return nested ? c.source.nested : c.source.defaults;
+    if (field === 'eave') return nested ? c.source.nested : c.source.defaults;
     if (field === 'pitch')
       return analysis.pitchCandidates[0]
         ? c.pitchFromText(analysis.pitchCandidates[0].text)
@@ -656,7 +659,8 @@ function CadConfirmation({
         {ALL_FIELDS.map((field) => {
           const issue = issues.find((item) => item.field === field);
           const derivedField =
-            derived && (field === 'buildingLength' || field === 'buildingWidth');
+            derived &&
+            (field === 'buildingLength' || field === 'buildingWidth');
           const value = derivedField
             ? numbers[field] === null
               ? ''
@@ -682,13 +686,21 @@ function CadConfirmation({
                         field === 'pitch'
                           ? issue.min
                           : issue.min !== undefined
-                            ? formatLength(issue.min, displayUnit, i18n.language)
+                            ? formatLength(
+                                issue.min,
+                                displayUnit,
+                                i18n.language,
+                              )
                             : undefined,
                       max:
                         field === 'pitch'
                           ? issue.max
                           : issue.max !== undefined
-                            ? formatLength(issue.max, displayUnit, i18n.language)
+                            ? formatLength(
+                                issue.max,
+                                displayUnit,
+                                i18n.language,
+                              )
                             : undefined,
                       unit: unitLabel(field),
                     })

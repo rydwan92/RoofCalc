@@ -346,7 +346,10 @@ const HEADER_HINTS: Array<[AssortmentImportField, RegExp]> = [
   ['vatRate', /^(vat|stawka_?vat|vat_?rate|podatek)$/i],
   ['saleUnit', /^(jm|j_?m|jednostka|unit|uom)$/i],
   ['active', /^(aktywny|active|status)$/i],
-  ['catalogVariantId', /^(id[ _]?roofcalc|roofcalc[ _]?id|catalog_?variant_?id)$/i],
+  [
+    'catalogVariantId',
+    /^(id[ _]?roofcalc|roofcalc[ _]?id|catalog_?variant_?id)$/i,
+  ],
 ];
 
 export function guessMapping(

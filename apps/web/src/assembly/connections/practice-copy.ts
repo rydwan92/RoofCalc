@@ -32,7 +32,8 @@ const pl = {
   pickStyle: 'Wybierz sposób łączenia, aby zobaczyć propozycję.',
   proposalTitle: 'Propozycja dla tego dachu',
   include: 'Przyjmij',
-  yourDecision: (text: string) => `Masz już: ${text}. Zostanie, jeśli nie zaznaczysz.`,
+  yourDecision: (text: string) =>
+    `Masz już: ${text}. Zostanie, jeśli nie zaznaczysz.`,
   noProposal: 'Bez propozycji — szczegół ustala projektant.',
   change: 'Inny rodzaj',
   proposed: 'proponowane',
@@ -67,7 +68,8 @@ const pl = {
       'Murłata na kotwach (prętach gwintowanych) osadzonych w wieńcu, na izolacji przeciwwilgociowej.',
     'anchorage-straps':
       'Murłata przytrzymana taśmami perforowanymi zakotwionymi w ścianie lub wieńcu.',
-    'layer-nails': 'Łaty i kontrłaty przybite gwoździami na każdym skrzyżowaniu.',
+    'layer-nails':
+      'Łaty i kontrłaty przybite gwoździami na każdym skrzyżowaniu.',
     'designer-detail':
       'Brak jednego typowego rozwiązania — ten węzeł szczegółowo rozwiązuje projektant.',
   } satisfies Record<PracticeRationale, string>,

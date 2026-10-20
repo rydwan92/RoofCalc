@@ -1,9 +1,4 @@
-import {
-  DXF_UNIT_MM,
-  type DxfDocument,
-  type DxfUnit,
-  type Vec2,
-} from './dxf';
+import { DXF_UNIT_MM, type DxfDocument, type DxfUnit, type Vec2 } from './dxf';
 
 /**
  * VNext-4 roof plan recognition from CAD geometry (DXF model space).
@@ -233,8 +228,7 @@ function loopsFromLines(
       const segment = segments[next[0]!]!;
       used.add(next[0]!);
       currentIndex = next[0]!;
-      current =
-        key(segment.from) === key(current) ? segment.to : segment.from;
+      current = key(segment.from) === key(current) ? segment.to : segment.from;
     }
     if (closed && points.length >= 4)
       loops.push({ points, layer: startSegment.layer });
@@ -275,14 +269,14 @@ function nestedOffset(outer: CadRectangle, inner: CadRectangle) {
 const ANGLE_TOKEN =
   /(?:^|[^\d.,])(\d{1,2}(?:[.,]\d{1,2})?)\s*(?:°|º|˚|st\b|stopni|deg)/gi;
 const PERCENT_TOKEN = /(?:^|[^\d.,])(\d{1,3}(?:[.,]\d{1,2})?)\s*%/g;
-const PITCH_WORDS =
-  /\b(?:k[aą]t|nachyl|spad|pochyl|pitch|slope|alfa|α)/i;
+const PITCH_WORDS = /\b(?:k[aą]t|nachyl|spad|pochyl|pitch|slope|alfa|α)/i;
 const HIP_WORDS = /kopertow|czterospadow|namiotow|\bhip\b|hipped/i;
 const GABLE_WORDS = /dwuspadow|siod[lł]ow|\bgable\b/i;
 
-export function pitchCandidatesFromTexts(
-  texts: readonly { text: string }[],
-): { candidates: CadPitchCandidate[]; percent: boolean } {
+export function pitchCandidatesFromTexts(texts: readonly { text: string }[]): {
+  candidates: CadPitchCandidate[];
+  percent: boolean;
+} {
   const candidates: CadPitchCandidate[] = [];
   let percent = false;
   for (const { text } of texts) {
@@ -375,8 +369,9 @@ export function analyzeCadRoofPlan(
   for (const polyline of document.polylines) {
     const closed =
       polyline.closed ||
-      len(sub(polyline.points[0]!, polyline.points[polyline.points.length - 1]!)) <=
-        tolerance;
+      len(
+        sub(polyline.points[0]!, polyline.points[polyline.points.length - 1]!),
+      ) <= tolerance;
     if (!closed) continue;
     const rect = rectangleOf(polyline.points, polyline.layer, tolerance);
     if (rect) rawRects.push(rect);
@@ -489,7 +484,8 @@ export function analyzeCadRoofPlan(
         lines.push({ kind: 'ridge', from, to });
         continue;
       }
-      const angle = (Math.atan2(Math.abs(d[1]), Math.abs(d[0])) * 180) / Math.PI;
+      const angle =
+        (Math.atan2(Math.abs(d[1]), Math.abs(d[0])) * 180) / Math.PI;
       if (Math.abs(angle - 45) > 6) continue;
       const nearCorner = [a, b].some((end) =>
         rect.corners.some(
@@ -558,20 +554,25 @@ export function analyzeCadRoofPlan(
     (line, index) =>
       roofLines.findIndex(
         (other) =>
-          len(sub(other.from, line.from)) < 1 && len(sub(other.to, line.to)) < 1,
+          len(sub(other.from, line.from)) < 1 &&
+          len(sub(other.to, line.to)) < 1,
       ) === index,
   );
   const reference = eaveOutline ?? chosen.rect;
   const ridges = uniqueLines.filter((line) => line.kind === 'ridge');
   const hips = uniqueLines.filter((line) => line.kind === 'hip');
-  const ridgeLength = Math.max(0, ...ridges.map((line) => len(sub(line.to, line.from))));
+  const ridgeLength = Math.max(
+    0,
+    ...ridges.map((line) => len(sub(line.to, line.from))),
+  );
   let roofType: CadRoofType | undefined;
   if (hips.length >= 3) {
     roofType = 'hip';
     evidence.push('hip-diagonals');
     const expected = reference.longMm - reference.shortMm;
     if (
-      (ridges.length && Math.abs(ridgeLength - expected) < 0.03 * reference.longMm) ||
+      (ridges.length &&
+        Math.abs(ridgeLength - expected) < 0.03 * reference.longMm) ||
       (!ridges.length && expected < 0.03 * reference.longMm)
     )
       evidence.push('hip-geometry-consistent');
@@ -603,14 +604,17 @@ export function analyzeCadRoofPlan(
       reference.longMm - reference.shortMm > 0.05 * reference.longMm
     );
   });
-  if (crossRidge && roofType !== 'hip') warnings.push('ridge-across-short-side');
+  if (crossRidge && roofType !== 'hip')
+    warnings.push('ridge-across-short-side');
 
   const building = wallOutline ?? chosen.rect;
   for (const dimension of document.dimensions) {
     if (dimension.kind !== 'linear' || dimension.measurement === undefined)
       continue;
     const mm = dimension.measurement * factor;
-    for (const outline of [building, eaveOutline].filter(Boolean) as CadRectangle[]) {
+    for (const outline of [building, eaveOutline].filter(
+      Boolean,
+    ) as CadRectangle[]) {
       if (Math.abs(mm - outline.longMm) <= 0.005 * outline.longMm)
         evidence.push('dimension-matches-length');
       if (Math.abs(mm - outline.shortMm) <= 0.005 * outline.shortMm)

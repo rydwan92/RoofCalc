@@ -32,7 +32,9 @@ describe('universal file classification (bytes, never names)', () => {
     expect(
       classifyProjectFileBytes({
         byteLength: 100,
-        header: Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+        header: Uint8Array.from([
+          0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+        ]),
       }),
     ).toEqual({ status: 'accepted', kind: 'document' });
   });

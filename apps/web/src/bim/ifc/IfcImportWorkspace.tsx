@@ -204,7 +204,6 @@ export function IfcImportWorkspace({
     initialStarted.current = true;
     start(initialFile);
     // Once, for the file the workspace was opened with.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialFile]);
 
   return (

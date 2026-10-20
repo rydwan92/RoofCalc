@@ -191,9 +191,7 @@ describe('keyboard in the connection plan', () => {
       within(practice).getByTestId('connection-practice-style-connectors'),
     );
     fireEvent.click(
-      within(practice).getByTestId(
-        'connection-practice-anchorage-anchor-rod',
-      ),
+      within(practice).getByTestId('connection-practice-anchorage-anchor-rod'),
     );
     const seat = within(practice).getByTestId(
       'connection-practice-rafter-wall-plate',

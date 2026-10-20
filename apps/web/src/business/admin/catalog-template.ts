@@ -45,7 +45,9 @@ export function catalogTemplateCsv(
   for (const detail of sorted) {
     const variants = detail.variants.filter((variant) => variant.active);
     if (!variants.length) {
-      withoutVariants.push(`${detail.manufacturer.name} ${detail.product.name}`);
+      withoutVariants.push(
+        `${detail.manufacturer.name} ${detail.product.name}`,
+      );
       continue;
     }
     for (const variant of variants) {
@@ -67,5 +69,5 @@ export function catalogTemplateCsv(
     }
   }
   // A BOM lets spreadsheet programs open the UTF-8 file with Polish letters.
-  return { csv: `﻿${lines.join('\r\n')}\r\n`, rows, withoutVariants };
+  return { csv: `\uFEFF${lines.join('\r\n')}\r\n`, rows, withoutVariants };
 }

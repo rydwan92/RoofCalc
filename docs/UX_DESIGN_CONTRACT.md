@@ -582,6 +582,32 @@ line and manual lengths keep working.
   answers five separate questions — occurs, joint, fasteners, spacing,
   capacity (always the designer's). Wall plates are members with a length,
   never an anchor count. A member's inspector lists its own nodes.
+- **VNext-4: suggest, then the carpenter decides.** "Zaproponuj połączenia"
+  asks two questions (carpentry joints or steel connectors; how the wall
+  plate is anchored), shows one row per node of this roof with the proposed
+  TYPE, the reason and the sources, lets the user tick, untick or choose
+  another type, and applies everything as one undoable change. A node the
+  user already decided is unticked and says so. No diameter, count or
+  spacing is ever proposed.
+- **VNext-4: one place for any file.** The start dialog accepts a dropped
+  file or "Otwórz plik…": a saved project, PDF, photo, DXF drawing or IFC
+  model is recognised from its bytes and opened in the right importer. A
+  file that cannot be opened says why and what to do (e.g. DWG → save as
+  DXF). The CAD import shows the drawing as read (walls, eave, ridge, hips),
+  asks only what the drawing cannot tell (unit, outline meaning, pitch) and
+  labels every value with its source before one confirmation.
+- **VNext-4: every button is a button.** A primary action never renders
+  with the browser bevel; plain buttons in workspaces get the secondary
+  look; a text action next to a primary one is a link-style button. A
+  readiness card never repeats its primary action as a secondary one.
+- **VNext-4: say what is missing, not "WYMAGA USTALENIA".** Drainage rows
+  name the missing input ("podaj wysokość pionu", "potwierdź kolana") and
+  offer the next step ("Uzupełnij pion R1"); downpipe labels on the plan are
+  readable and open their eave.
+- **VNext-4: administration opens on an overview** — assortment, without
+  price, without VAT, not linked, team, company details — each with one
+  button to the fix, plus quick actions (prices from CSV, catalogue
+  template, assortment import).
 - **Built-in catalogue** is offered only where the server catalogue is
   unavailable, and while used it is always labelled with its data date and a
   way back.

@@ -331,9 +331,9 @@ describe('roof plan from CAD geometry', () => {
     if (analysis.status !== 'supported') return;
     expect(analysis.warnings).toContain('several-outlines');
     // The user can pick the other outline.
-    expect(
-      analyzeCadRoofPlan(read(source), { outlineIndex: 1 }),
-    ).toMatchObject({ proposed: { buildingLengthMm: 40000 } });
+    expect(analyzeCadRoofPlan(read(source), { outlineIndex: 1 })).toMatchObject(
+      { proposed: { buildingLengthMm: 40000 } },
+    );
   });
 
   it('reads the roof type from text when no roof lines are drawn', () => {

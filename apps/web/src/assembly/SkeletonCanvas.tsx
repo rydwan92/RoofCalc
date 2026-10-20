@@ -2028,9 +2028,7 @@ function SkeletonCanvasComponent({
                     {collides && (
                       <title>
                         {t('assembly.windowCollision')}:{' '}
-                        {[...overlay.collisionIds]
-                          .map(codeOf)
-                          .join(', ')}
+                        {[...overlay.collisionIds].map(codeOf).join(', ')}
                       </title>
                     )}
                   </g>
@@ -2261,18 +2259,12 @@ function SkeletonCanvasComponent({
             {length(selectedWindowOverlay.feature.heightMm)}
           </strong>
           {selectedBay && (
-            <span>
-              {selectedBay.memberInstanceIds
-                .map(codeOf)
-                .join(' — ')}
-            </span>
+            <span>{selectedBay.memberInstanceIds.map(codeOf).join(' — ')}</span>
           )}
           {selectedWindowOverlay.collisionIds.size > 0 && (
             <span>
               ⚠ {t('assembly.windowCollision')}:{' '}
-              {[...selectedWindowOverlay.collisionIds]
-                .map(codeOf)
-                .join(', ')}
+              {[...selectedWindowOverlay.collisionIds].map(codeOf).join(', ')}
             </span>
           )}
         </div>
