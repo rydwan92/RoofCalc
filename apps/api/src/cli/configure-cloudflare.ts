@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join, relative } from 'node:path';
+import { stripVTControlCharacters } from 'node:util';
 import { createInterface, type Interface } from 'node:readline/promises';
 import {
   analyzeDeployment,
@@ -93,6 +94,8 @@ function describeDeploymentIssue(issue: DeploymentIssue): string {
 interface Run {
   code: number;
   stdout: string;
+  /** First meaningful error line from wrangler (never a secret value). */
+  reason?: string;
 }
 
 /** The workspace's pinned wrangler, run by this Node — no shell, no PATH. */
@@ -110,10 +113,19 @@ function wrangler(root: string, args: string[], input?: string): Promise<Run> {
       env: { ...process.env, WRANGLER_SEND_METRICS: 'false' },
     });
     let stdout = '';
+    let stderr = '';
     child.stdout.on('data', (chunk: Buffer) => (stdout += chunk.toString()));
-    child.stderr.on('data', () => undefined);
-    child.once('error', () => resolve({ code: 1, stdout }));
-    child.once('exit', (code) => resolve({ code: code ?? 1, stdout }));
+    child.stderr.on('data', (chunk: Buffer) => (stderr += chunk.toString()));
+    const reason = () =>
+      stderr
+        .split(/\r?\n/)
+        .map((line) => stripVTControlCharacters(line).trim())
+        .find((line) => /error|failed|\bnot\b|nie /i.test(line))
+        ?.slice(0, 240);
+    child.once('error', () => resolve({ code: 1, stdout, reason: reason() }));
+    child.once('exit', (code) =>
+      resolve({ code: code ?? 1, stdout, reason: reason() }),
+    );
     child.stdin.end(input ?? '');
   });
 }
@@ -144,6 +156,13 @@ async function putSecret(root: string, key: string): Promise<boolean> {
   );
   if (put.code !== 0) {
     fail(`Nie udało się zapisać ${key}.`);
+    if (put.reason) info(`wrangler: ${put.reason}`);
+    if (/latest version|deployed|wdro/i.test(put.reason ?? ''))
+      info(
+        'Najnowsza wersja Workera nie jest wdrożona (np. podgląd z innej gałęzi). Ustaw sekret w panelu: Workers → roofcalc → Settings → Variables and Secrets.',
+      );
+    if (key === 'ROOFCALC_BOOTSTRAP_TOKEN')
+      info('Poprzedni kod konfiguracji pozostaje ważny — nic nie zmieniono.');
     return false;
   }
   ok(`${key} zapisany w Cloudflare.`);
@@ -261,6 +280,18 @@ async function remoteDatabaseStep(
             ? 'Baza o tej nazwie nie istnieje.'
             : 'Połączenie nie powiodło się (TLS, sieć lub uprawnienia).',
     );
+    if (state.detail) info(`Serwer: ${state.detail}`);
+    if (state.status === 'access-denied') {
+      info(
+        `Potrzebne jest hasło UŻYTKOWNIKA BAZY ${origin.user} (u dostawcy bazy: MySQL → Użytkownicy),`,
+      );
+      info(
+        'nie hasło do panelu konta. Hyperdrive łączy się tym samym hasłem — Worker ma połączenie,',
+      );
+      info(
+        'więc w razie wątpliwości ustaw nowe hasło użytkownika u dostawcy i to samo w Hyperdrive.',
+      );
+    }
     return true;
   }
   if (state.schema === 'current') {

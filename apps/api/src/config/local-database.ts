@@ -14,7 +14,14 @@ import { isSafeIdentifier, localDatabaseUrl } from './env-file';
 
 export type ConnectionCheck =
   | { status: 'connected'; version: string; schema: SchemaState }
-  | { status: 'server-down' | 'access-denied' | 'database-missing' | 'failed' };
+  | {
+      status: 'server-down' | 'access-denied' | 'database-missing' | 'failed';
+      /**
+       * The server's message, e.g. "Access denied for user 'x'@'1.2.3.4'
+       * (using password: YES)". MySQL never includes the password in it.
+       */
+      detail?: string;
+    };
 
 export async function checkDatabaseConnection(
   databaseUrl: string,
@@ -36,15 +43,19 @@ export async function checkDatabaseConnection(
     };
   } catch (error) {
     const code = databaseErrorCode(error);
+    const message =
+      error instanceof Error ? error.message.split(/\r?\n/)[0]!.trim() : '';
+    const detail = message ? { detail: message.slice(0, 200) } : {};
     if (code === 'ECONNREFUSED' || code === 'ETIMEDOUT')
-      return { status: 'server-down' };
+      return { status: 'server-down', ...detail };
     if (
       code === 'ER_ACCESS_DENIED_ERROR' ||
       code === 'ER_DBACCESS_DENIED_ERROR'
     )
-      return { status: 'access-denied' };
-    if (code === 'ER_BAD_DB_ERROR') return { status: 'database-missing' };
-    return { status: 'failed' };
+      return { status: 'access-denied', ...detail };
+    if (code === 'ER_BAD_DB_ERROR')
+      return { status: 'database-missing', ...detail };
+    return { status: 'failed', ...detail };
   } finally {
     await connection?.end().catch(() => undefined);
   }
