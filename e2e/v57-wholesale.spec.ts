@@ -234,6 +234,19 @@ test('V57 salesperson: customer → roof → company tile → materials → draf
   await home
     .getByRole('button', { name: 'Administracja', exact: true })
     .click();
+  // VNext-4: administration opens on the overview — what needs attention.
+  const overview = page.getByTestId('admin-overview');
+  await expect(overview).toBeVisible();
+  await expect(page.getByTestId('overview-assortment')).not.toHaveText('—');
+  if (process.env.V57_VISUAL_QA === '1')
+    await page.screenshot({
+      path: `test-results/vnext4-admin-overview-${testInfo.project.name}.png`,
+      fullPage: true,
+    });
+  await page
+    .getByRole('navigation', { name: 'Administracja hurtowni' })
+    .getByRole('button', { name: 'Dane firmy', exact: true })
+    .click();
   const settings = page.getByTestId('company-settings');
   await settings.getByLabel('Telefon').fill('71 123 45 67');
   await settings.getByLabel('Domyślna ważność (dni)').fill('21');

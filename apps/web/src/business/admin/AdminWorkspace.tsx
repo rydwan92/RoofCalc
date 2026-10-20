@@ -64,19 +64,24 @@ export function AdminWorkspace({ onClose }: { onClose: () => void }) {
     business.session?.memberships.find(
       (item) => item.organizationId === business.organizationId,
     )?.capabilities ?? [];
-  const [tab, setTab] = useState<
-    'company' | 'team' | 'assortment' | 'pricing' | 'quality' | 'system'
-  >(
-    capabilities.includes('organization.manage')
-      ? 'company'
-      : capabilities.includes('assortment.manage')
-        ? 'assortment'
+  const [tab, setTab] = useState<AdminTab>(
+    capabilities.includes('assortment.manage')
+      ? 'overview'
+      : capabilities.includes('organization.manage')
+        ? 'company'
         : 'pricing',
   );
   const [assortmentFilter, setAssortmentFilter] =
     useState<AssortmentFilter>('all');
-  const openAssortment = (filter: AssortmentFilter) => {
+  const [assortmentPanel, setAssortmentPanel] = useState<
+    'template' | 'import'
+  >();
+  const openAssortment = (
+    filter: AssortmentFilter,
+    panel?: 'template' | 'import',
+  ) => {
     setAssortmentFilter(filter);
+    setAssortmentPanel(panel);
     setTab('assortment');
   };
   if (
@@ -103,6 +108,11 @@ export function AdminWorkspace({ onClose }: { onClose: () => void }) {
         >
           {(
             [
+              [
+                'overview',
+                pl ? 'Przegląd' : 'Overview',
+                'assortment.manage',
+              ],
               [
                 'company',
                 pl ? 'Dane firmy' : 'Company details',
@@ -135,7 +145,13 @@ export function AdminWorkspace({ onClose }: { onClose: () => void }) {
             ))}
         </nav>
         <div className="bz-admin-content">
-          {tab === 'company' ? (
+          {tab === 'overview' ? (
+            <AdminOverview
+              capabilities={capabilities}
+              onOpen={setTab}
+              onAssortment={openAssortment}
+            />
+          ) : tab === 'company' ? (
             <CompanySettings key={business.organizationId} />
           ) : tab === 'team' ? (
             <Team key={business.organizationId} />
@@ -147,14 +163,224 @@ export function AdminWorkspace({ onClose }: { onClose: () => void }) {
             <PricingWorkspace />
           ) : (
             <AdminAssortment
-              key={assortmentFilter}
+              key={`${assortmentFilter}:${assortmentPanel ?? ''}`}
               onClose={onClose}
               initialFilter={assortmentFilter}
+              {...(assortmentPanel ? { initialPanel: assortmentPanel } : {})}
             />
           )}
         </div>
       </div>
     </main>
+  );
+}
+
+type AdminTab =
+  | 'overview'
+  | 'company'
+  | 'team'
+  | 'assortment'
+  | 'pricing'
+  | 'quality'
+  | 'system';
+
+/**
+ * VNext-4: the administration landing page — what is set up, what needs
+ * attention right now, and one click to each fix. Counts come from the
+ * same assortment summary as the lists; nothing is computed here.
+ */
+function AdminOverview({
+  capabilities,
+  onOpen,
+  onAssortment,
+}: {
+  capabilities: readonly string[];
+  onOpen: (tab: AdminTab) => void;
+  onAssortment: (
+    filter: AssortmentFilter,
+    panel?: 'template' | 'import',
+  ) => void;
+}) {
+  const { i18n } = useTranslation();
+  const pl = i18n.language.startsWith('pl');
+  const { organization: org } = useBusiness();
+  const assortment = useAssortment({ limit: 1 });
+  const summary = assortment.data?.summary;
+  const canUsers = capabilities.includes('users.manage');
+  const canCompany = capabilities.includes('organization.manage');
+  const team = useQuery({
+    queryKey: ['business', org?.id, 'users', '', 0],
+    queryFn: () => workspaceClient.team(org!.id),
+    enabled: canUsers && !!org,
+    retry: false,
+  });
+  const company = !!(org?.name && org.taxId && org.address);
+  const active = summary ? summary.total - summary.inactive : undefined;
+  const attention = summary
+    ? summary.withoutPrice + summary.withoutVat + summary.unmatched
+    : undefined;
+  const number = (value: number | undefined) =>
+    value === undefined ? '—' : String(value);
+  return (
+    <section className="bz-overview" data-testid="admin-overview">
+      <header>
+        <h2>{pl ? 'Przegląd hurtowni' : 'Wholesale overview'}</h2>
+        <p>
+          {attention === 0
+            ? pl
+              ? 'Wszystko gotowe do wycen — asortyment ma ceny i powiązania z katalogiem.'
+              : 'Ready for estimates — the assortment has prices and catalogue links.'
+            : pl
+              ? 'Co wymaga uwagi, żeby wyceny miały ceny i dane techniczne z katalogu.'
+              : 'What needs attention so estimates get prices and catalogue data.'}
+        </p>
+      </header>
+      {assortment.isError && (
+        <p role="alert">{pl ? 'Dane niedostępne' : 'Data unavailable'}</p>
+      )}
+      <div className="bz-overview-grid">
+        <article>
+          <small>{pl ? 'Asortyment' : 'Assortment'}</small>
+          <strong data-testid="overview-assortment">{number(active)}</strong>
+          <span>
+            {pl ? 'aktywnych pozycji' : 'active items'}
+            {summary?.inactive
+              ? ` · ${summary.inactive} ${pl ? 'nieaktywnych' : 'inactive'}`
+              : ''}
+          </span>
+          <button
+            type="button"
+            className="a-button"
+            onClick={() => onAssortment('all')}
+          >
+            {pl ? 'Otwórz asortyment' : 'Open assortment'}
+          </button>
+        </article>
+        <article data-tone={summary?.withoutPrice ? 'warn' : 'ok'}>
+          <small>{pl ? 'Bez ceny' : 'Without price'}</small>
+          <strong data-testid="overview-without-price">
+            {number(summary?.withoutPrice)}
+          </strong>
+          <span>
+            {pl
+              ? 'aktywne pozycje — w wycenie pokażą „brak ceny”'
+              : 'active items — estimates show “no price”'}
+          </span>
+          <button
+            type="button"
+            className="a-button"
+            disabled={!summary?.withoutPrice}
+            onClick={() => onAssortment('without-price')}
+          >
+            {pl ? 'Uzupełnij ceny' : 'Add prices'}
+          </button>
+        </article>
+        <article data-tone={summary?.withoutVat ? 'warn' : 'ok'}>
+          <small>{pl ? 'Bez stawki VAT' : 'Without VAT rate'}</small>
+          <strong>{number(summary?.withoutVat)}</strong>
+          <span>
+            {pl ? 'oferta nie pokaże ceny brutto' : 'offers cannot show gross'}
+          </span>
+          <button
+            type="button"
+            className="a-button"
+            disabled={!summary?.withoutVat}
+            onClick={() => onAssortment('without-vat')}
+          >
+            {pl ? 'Ustaw VAT' : 'Set VAT'}
+          </button>
+        </article>
+        <article data-tone={summary?.unmatched ? 'warn' : 'ok'}>
+          <small>
+            {pl ? 'Bez powiązania z katalogiem' : 'Not linked to catalogue'}
+          </small>
+          <strong>{number(summary?.unmatched)}</strong>
+          <span>
+            {pl
+              ? 'bez danych technicznych RoofCalc (wymiary, krycie)'
+              : 'without RoofCalc technical data'}
+          </span>
+          <button
+            type="button"
+            className="a-button"
+            disabled={!summary?.unmatched}
+            onClick={() => onAssortment('unmatched')}
+          >
+            {pl ? 'Powiąż' : 'Link'}
+          </button>
+        </article>
+        {canUsers && (
+          <article>
+            <small>{pl ? 'Zespół' : 'Team'}</small>
+            <strong>{number(team.data?.activeUsers)}</strong>
+            <span>{pl ? 'aktywnych użytkowników' : 'active users'}</span>
+            <button
+              type="button"
+              className="a-button"
+              onClick={() => onOpen('team')}
+            >
+              {pl ? 'Zarządzaj' : 'Manage'}
+            </button>
+          </article>
+        )}
+        {canCompany && (
+          <article data-tone={company ? 'ok' : 'warn'}>
+            <small>{pl ? 'Dane firmy' : 'Company details'}</small>
+            <strong>{company ? '✓' : '!'}</strong>
+            <span>
+              {company
+                ? pl
+                  ? 'na ofertach i dokumentach'
+                  : 'on offers and documents'
+                : pl
+                  ? 'uzupełnij NIP i adres — trafią na oferty'
+                  : 'add the tax ID and address for offers'}
+            </span>
+            <button
+              type="button"
+              className="a-button"
+              onClick={() => onOpen('company')}
+            >
+              {pl ? 'Edytuj' : 'Edit'}
+            </button>
+          </article>
+        )}
+      </div>
+      <section
+        className="bz-overview-actions"
+        aria-label={pl ? 'Szybkie akcje' : 'Quick actions'}
+      >
+        <h3>{pl ? 'Szybkie akcje' : 'Quick actions'}</h3>
+        <div>
+          {capabilities.includes('prices.manage') && (
+            <button
+              type="button"
+              className="a-button a-primary"
+              onClick={() => onOpen('pricing')}
+            >
+              {pl ? 'Aktualizuj ceny z CSV' : 'Update prices from CSV'}
+            </button>
+          )}
+          <button
+            type="button"
+            className="a-button"
+            data-testid="overview-template"
+            onClick={() => onAssortment('all', 'template')}
+          >
+            {pl
+              ? 'Szablon asortymentu z katalogu'
+              : 'Assortment template from catalogue'}
+          </button>
+          <button
+            type="button"
+            className="a-button"
+            onClick={() => onAssortment('all', 'import')}
+          >
+            {pl ? 'Importuj asortyment (CSV)' : 'Import assortment (CSV)'}
+          </button>
+        </div>
+      </section>
+    </section>
   );
 }
 

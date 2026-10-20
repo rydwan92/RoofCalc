@@ -327,6 +327,7 @@ function fieldLabel(m: BusinessCopy, field: AssortmentImportField): string {
     vatRate: m.fieldVatRate,
     saleUnit: m.fieldSaleUnit,
     active: m.fieldActive,
+    catalogVariantId: m.fieldCatalogVariantId,
   }[field];
 }
 
@@ -340,11 +341,12 @@ const HEADER_HINTS: Array<[AssortmentImportField, RegExp]> = [
   ['sourceName', /^(nazwa|nazwa_tow|name|opis|description)$/i],
   ['ean', /^(ean|ean13|barcode|kod_kreskowy)$/i],
   ['manufacturerName', /^(producent|marka|manufacturer|brand)$/i],
-  ['netAmount', /^(cena_?netto|netto|net|net_?price|cena)$/i],
-  ['grossAmount', /^(cena_?brutto|brutto|gross|gross_?price)$/i],
+  ['netAmount', /^(cena[ _]?netto|netto|net|net_?price|cena)$/i],
+  ['grossAmount', /^(cena[ _]?brutto|brutto|gross|gross_?price)$/i],
   ['vatRate', /^(vat|stawka_?vat|vat_?rate|podatek)$/i],
   ['saleUnit', /^(jm|j_?m|jednostka|unit|uom)$/i],
   ['active', /^(aktywny|active|status)$/i],
+  ['catalogVariantId', /^(id[ _]?roofcalc|roofcalc[ _]?id|catalog_?variant_?id)$/i],
 ];
 
 export function guessMapping(

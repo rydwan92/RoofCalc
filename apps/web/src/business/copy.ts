@@ -241,6 +241,8 @@ const pl = {
   fieldVatRate: 'Stawka VAT',
   fieldSaleUnit: 'Jednostka sprzedaży',
   fieldActive: 'Aktywny',
+  fieldCatalogVariantId: 'ID RoofCalc (z szablonu katalogu)',
+  catalogTemplate: 'Szablon z katalogu',
   mappingIgnore: '— pomiń —',
   mappingRequired: 'Kod hurtowni i Nazwa są wymagane.',
   issue: {
@@ -251,6 +253,7 @@ const pl = {
     'gross-price-without-vat-rate': 'Brak stawki VAT / ceny netto',
     'invalid-sale-unit': 'Nieznana jednostka sprzedaży',
     'duplicate-external-key': 'Powtórzony kod hurtowni',
+    'unknown-catalog-variant': 'Nieznane ID RoofCalc — sprawdź szablon',
   } as Record<string, string>,
   matchState: {
     matched: 'DOPASOWANO',
@@ -488,6 +491,8 @@ const en: Copy = {
   fieldVatRate: 'VAT rate',
   fieldSaleUnit: 'Sale unit',
   fieldActive: 'Active',
+  fieldCatalogVariantId: 'RoofCalc ID (from a catalogue template)',
+  catalogTemplate: 'Catalogue template',
   mappingIgnore: '— skip —',
   mappingRequired: 'Wholesaler code and Name are required.',
   issue: {
@@ -498,6 +503,7 @@ const en: Copy = {
     'gross-price-without-vat-rate': 'No VAT rate / net price',
     'invalid-sale-unit': 'Unknown sale unit',
     'duplicate-external-key': 'Duplicate wholesaler code',
+    'unknown-catalog-variant': 'Unknown RoofCalc ID — check the template',
   },
   matchState: {
     matched: 'MATCHED',

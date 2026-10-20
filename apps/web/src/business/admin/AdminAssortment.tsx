@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Plus, Upload, X } from 'lucide-react';
+import { ArrowLeft, FileSpreadsheet, Plus, Upload, X } from 'lucide-react';
 import {
   ASSORTMENT_FILTERS,
   type AssortmentFilter,
@@ -13,6 +13,7 @@ import { businessCopy, type BusinessCopy } from '../copy';
 import { AssortmentDetail } from './AssortmentDetail';
 import { AssortmentImport } from './AssortmentImport';
 import { ManualAssortmentEntry } from './ManualAssortmentEntry';
+import { CatalogTemplatePanel } from './CatalogTemplatePanel';
 import { catalogClient, type CatalogClient } from '../../catalog/client';
 
 /**
@@ -30,10 +31,13 @@ import { catalogClient, type CatalogClient } from '../../catalog/client';
 export function AdminAssortment({
   onClose,
   initialFilter = 'all',
+  initialPanel,
   catalog = catalogClient,
 }: {
   onClose: () => void;
   initialFilter?: AssortmentFilter;
+  /** VNext-4: open with the catalogue template or the CSV import. */
+  initialPanel?: 'template' | 'import';
   catalog?: CatalogClient;
 }) {
   const { i18n } = useTranslation();
@@ -51,8 +55,11 @@ export function AdminAssortment({
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkError, setBulkError] = useState<string>();
   const [bulkVat, setBulkVat] = useState('23,00');
-  const [importing, setImporting] = useState(false);
+  const [importing, setImporting] = useState(initialPanel === 'import');
   const [creating, setCreating] = useState(false);
+  const [templating, setTemplating] = useState(
+    initialPanel === 'template',
+  );
   const queryClient = useQueryClient();
   const assortment = useInfiniteAssortment({
     filter,
@@ -333,7 +340,22 @@ export function AdminAssortment({
         >
           <Plus size={15} aria-hidden="true" /> {m.manualEntry}
         </button>
+        <button
+          type="button"
+          className="a-button"
+          aria-expanded={templating}
+          onClick={() => setTemplating((open) => !open)}
+          data-testid="admin-template-open"
+        >
+          <FileSpreadsheet size={15} aria-hidden="true" /> {m.catalogTemplate}
+        </button>
       </div>
+      {templating && (
+        <CatalogTemplatePanel
+          catalog={catalog}
+          onClose={() => setTemplating(false)}
+        />
+      )}
       {selectedIds.size > 0 && (
         <div className="bz-bulk-actions" data-testid="admin-bulk-actions">
           <strong>{m.selectedCount(selectedIds.size)}</strong>

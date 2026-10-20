@@ -217,6 +217,8 @@ export function mapAssortmentRows(
     if (ean) row.ean = ean;
     const manufacturerName = read(mapping.manufacturerName).trim();
     if (manufacturerName) row.manufacturerName = manufacturerName;
+    const catalogVariantId = read(mapping.catalogVariantId).trim();
+    if (catalogVariantId) row.catalogVariantId = catalogVariantId;
 
     const vatRaw = read(mapping.vatRate).trim();
     const vatRateBps = vatRaw ? parseRateBps(vatRaw) : undefined;
@@ -353,8 +355,16 @@ export function buildAssortmentImportPreview(
   }
 
   const rows: AssortmentImportPreviewRow[] = input.rows.map((row) => {
-    const issues = issuesByLine.get(row.sourceLine) ?? [];
+    const issues = [...(issuesByLine.get(row.sourceLine) ?? [])];
     const match = matchAssortmentRow(row, index, existing);
+    // A named catalogue ID that is not in the catalogue is said, not ignored.
+    if (row.catalogVariantId && !index.byId.has(row.catalogVariantId))
+      issues.push({
+        sourceLine: row.sourceLine,
+        externalKey: row.externalKey,
+        code: 'unknown-catalog-variant',
+        severity: 'warning',
+      });
     const previous = existing.get(row.externalKey);
     const blocked = issues.some((issue) => issue.severity === 'blocker');
     const action: AssortmentImportPreviewRow['action'] = blocked

@@ -192,6 +192,60 @@ describe('matching engine', () => {
     });
   });
 
+  it('matches a RoofCalc catalogue ID from a template exactly, and only a known one', () => {
+    expect(
+      matchAssortmentRow(
+        line('HURT-001', 'dowolna nazwa', {
+          catalogVariantId: 'variant:swissporton:domino:natural-red',
+        }),
+        index,
+        new Map(),
+      ),
+    ).toEqual({
+      state: 'matched',
+      commercialVariantId: 'variant:swissporton:domino:natural-red',
+      reason: 'catalog-id',
+    });
+    // An unknown ID is not trusted: matching falls through to the rest.
+    expect(
+      matchAssortmentRow(
+        line('HURT-002', 'dowolna nazwa', { catalogVariantId: 'variant:nope' }),
+        index,
+        new Map(),
+      ).state,
+    ).toBe('no-match');
+  });
+
+  it('reads the catalogue ID column and warns about an unknown one in the preview', () => {
+    const parsed = parseAssortmentCsv(
+      [
+        'KOD;NAZWA;ID ROOFCALC',
+        'H1;Dachówka;variant:swissporton:domino:natural-red',
+        'H2;Inna;variant:nope',
+        '',
+      ].join('\n'),
+    );
+    const { rows, issues } = mapAssortmentRows(parsed, {
+      externalKey: 'KOD',
+      sourceName: 'NAZWA',
+      catalogVariantId: 'ID ROOFCALC',
+    });
+    expect(rows[0]!.catalogVariantId).toBe(
+      'variant:swissporton:domino:natural-red',
+    );
+    const preview = buildAssortmentImportPreview({
+      organizationId: 'org:a',
+      rows,
+      issues,
+      existing: [],
+      candidates: CANDIDATES,
+    });
+    expect(preview.counts.matched).toBe(1);
+    expect(preview.rows[1]!.issues.map((issue) => issue.code)).toEqual([
+      'unknown-catalog-variant',
+    ]);
+  });
+
   it('matches on an exact EAN when the catalogue carries one', () => {
     expect(
       matchAssortmentRow(

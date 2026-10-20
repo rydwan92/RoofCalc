@@ -143,6 +143,8 @@ export const ASSORTMENT_IMPORT_FIELDS = [
   'vatRate',
   'saleUnit',
   'active',
+  /** VNext-4: the RoofCalc catalogue variant ID from a catalogue template. */
+  'catalogVariantId',
 ] as const;
 export type AssortmentImportField = (typeof ASSORTMENT_IMPORT_FIELDS)[number];
 
@@ -157,6 +159,7 @@ export const assortmentColumnMappingSchema = z
     vatRate: z.string().min(1).optional(),
     saleUnit: z.string().min(1).optional(),
     active: z.string().min(1).optional(),
+    catalogVariantId: z.string().min(1).optional(),
   })
   .strict();
 export type AssortmentColumnMapping = z.infer<

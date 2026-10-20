@@ -153,6 +153,11 @@ export interface AssortmentImportRow {
   saleUnit?: PriceListEntry['saleUnit'];
   active?: boolean;
   preferred?: boolean;
+  /**
+   * VNext-4: the RoofCalc commercial variant this row is, as written by a
+   * catalogue template. Exact evidence — still checked against the catalogue.
+   */
+  catalogVariantId?: string;
 }
 
 /** Named import problems. No row is written while it carries a blocker. */
@@ -163,7 +168,9 @@ export type AssortmentImportIssueCode =
   | 'invalid-vat-rate'
   | 'gross-price-without-vat-rate'
   | 'invalid-sale-unit'
-  | 'duplicate-external-key';
+  | 'duplicate-external-key'
+  /** VNext-4: a catalogue variant ID the catalogue does not know. */
+  | 'unknown-catalog-variant';
 
 export interface AssortmentImportIssue {
   sourceLine: number;
@@ -179,7 +186,12 @@ export type AssortmentMatchState =
 
 /** Why a row matched. Only deterministic, verifiable evidence (§27). */
 export type AssortmentMatchReason =
-  'existing-mapping' | 'variant-sku' | 'ean' | 'normalized-name';
+  | 'existing-mapping'
+  /** VNext-4: the row names a RoofCalc catalogue variant ID. */
+  | 'catalog-id'
+  | 'variant-sku'
+  | 'ean'
+  | 'normalized-name';
 
 /**
  * The narrow view of a catalogue variant this package needs to match against.

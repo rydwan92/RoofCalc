@@ -18,6 +18,8 @@ import type {
  *
  * 1. an existing mapping for this organization's own `externalKey` — the
  *    admin already decided, and a re-import must not undo that (§29);
+ * 1b. a RoofCalc catalogue variant ID written by a catalogue template
+ *    (VNext-4) — exact, but only when the catalogue really has that ID;
  * 2. an exact commercial-variant SKU;
  * 3. an exact EAN, where the global catalogue actually carries one;
  * 4. a normalized manufacturer + name equality → `suggested`, never applied.
@@ -51,6 +53,7 @@ function indexBy(
 }
 
 export interface AssortmentMatchIndex {
+  byId: Map<string, AssortmentMatchCandidate>;
   bySku: Map<string, AssortmentMatchCandidate[]>;
   byEan: Map<string, AssortmentMatchCandidate[]>;
   byName: Map<string, AssortmentMatchCandidate[]>;
@@ -61,6 +64,9 @@ export function createMatchIndex(
   candidates: readonly AssortmentMatchCandidate[],
 ): AssortmentMatchIndex {
   return {
+    byId: new Map(
+      candidates.map((candidate) => [candidate.commercialVariantId, candidate]),
+    ),
     bySku: indexBy(candidates, (candidate) =>
       candidate.sku ? normalizeKey(candidate.sku) : undefined,
     ),
@@ -115,6 +121,13 @@ export function matchAssortmentRow(
       state: 'matched',
       commercialVariantId: previous.commercialVariantId,
       reason: 'existing-mapping',
+    };
+
+  if (row.catalogVariantId && index.byId.has(row.catalogVariantId))
+    return {
+      state: 'matched',
+      commercialVariantId: row.catalogVariantId,
+      reason: 'catalog-id',
     };
 
   const bySku = decide(
