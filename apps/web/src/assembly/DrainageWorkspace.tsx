@@ -89,7 +89,21 @@ const copy = {
     pieces: 'szt.',
     bom: 'Elementy do zakupu',
     bomNone: 'Brak elementów — uzupełnij dane powyżej.',
-    needsDecision: 'WYMAGA USTALENIA',
+    needsDecision: 'do ustalenia',
+    reason: {
+      'downpipe-height-missing': 'podaj wysokość pionu',
+      'elbows-unconfirmed': 'potwierdź kolana',
+      'clamps-unresolved': 'po podaniu wysokości',
+      'component-missing': 'brak w wybranym systemie',
+      'downpipe-length-missing': 'brak długości rur w systemie',
+      'gutter-length-missing': 'brak długości rynien w systemie',
+      'outlets-unconfirmed': 'potwierdź odpływy',
+      'corner-undecided': 'wybierz narożniki',
+    } as Partial<Record<string, string>>,
+    nextPipe: (label: string) => `Uzupełnij pion ${label}`,
+    nextPipeHelp:
+      'Rury, kolana i obejmy RoofCalc policzy po podaniu wysokości każdego pionu.',
+    heightUnknown: 'wys.?',
     openPlan: 'Otwórz plan materiałów',
     disable: 'Wyłącz odwodnienie',
     eave: 'OKAP',
@@ -192,7 +206,21 @@ const copy = {
     pieces: 'pcs',
     bom: 'Components to buy',
     bomNone: 'No components yet — complete the data above.',
-    needsDecision: 'NEEDS A DECISION',
+    needsDecision: 'needs a decision',
+    reason: {
+      'downpipe-height-missing': 'enter the downpipe height',
+      'elbows-unconfirmed': 'confirm the elbows',
+      'clamps-unresolved': 'after the height',
+      'component-missing': 'not in the chosen system',
+      'downpipe-length-missing': 'no pipe lengths in the system',
+      'gutter-length-missing': 'no gutter lengths in the system',
+      'outlets-unconfirmed': 'confirm the outlets',
+      'corner-undecided': 'choose the corners',
+    } as Partial<Record<string, string>>,
+    nextPipe: (label: string) => `Complete downpipe ${label}`,
+    nextPipeHelp:
+      'RoofCalc counts pipes, elbows and clamps once every downpipe has a height.',
+    heightUnknown: 'h?',
     openPlan: 'Open material plan',
     disable: 'Turn drainage off',
     eave: 'EAVE',
@@ -940,19 +968,25 @@ export function DrainageWorkspace({
                 onClick={(event) => event.stopPropagation()}
               />
               <text
-                className="dw-label is-pipe"
+                className={`dw-label is-pipe${
+                  resolved.downpipe.heightMm === undefined ? ' is-missing' : ''
+                }`}
                 x={labelAt.x}
                 y={labelAt.y}
-                fontSize={labelScale * 0.9}
+                fontSize={labelScale}
                 textAnchor={
                   out.x < -0.5 ? 'end' : out.x > 0.5 ? 'start' : 'middle'
                 }
                 dominantBaseline="middle"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setSelectedEaveId(resolved.eaveId);
+                }}
               >
                 ↓R{index + 1}
                 {resolved.downpipe.heightMm !== undefined
-                  ? ` ${length(resolved.downpipe.heightMm)}`
-                  : ' ?'}
+                  ? ` · ${length(resolved.downpipe.heightMm)}`
+                  : ` · ${c.heightUnknown}`}
               </text>
             </g>
           );
@@ -1015,7 +1049,11 @@ export function DrainageWorkspace({
                 );
                 const pipe = resolved?.downpipe;
                 return (
-                  <li key={outlet.id} data-testid="drainage-outlet-editor">
+                  <li
+                    key={outlet.id}
+                    data-testid="drainage-outlet-editor"
+                    data-outlet-id={outlet.id}
+                  >
                     <strong>{c.outlet}</strong>
                     <LengthField
                       label={c.station}
@@ -1522,10 +1560,52 @@ export function DrainageWorkspace({
     </details>
   );
 
+  // The first downpipe still waiting for its height or elbows, if any.
+  const pendingPipe = plan.issues
+    .filter(
+      (issue) =>
+        (issue.code === 'downpipe-height-missing' ||
+          issue.code === 'elbows-unconfirmed') &&
+        issue.outletId,
+    )
+    .map((issue) => ({
+      index: plan.outlets.findIndex((outlet) => outlet.id === issue.outletId),
+      issue,
+    }))
+    .filter((item) => item.index >= 0)
+    .sort((a, b) => a.index - b.index)[0];
+  const openPendingPipe = () => {
+    if (!pendingPipe) return;
+    const outlet = plan.outlets[pendingPipe.index]!;
+    setSelectedEaveId(outlet.eaveId);
+    requestAnimationFrame(() => {
+      const editor = document.querySelector<HTMLElement>(
+        `[data-outlet-id="${CSS.escape(outlet.id)}"]`,
+      );
+      editor?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      editor
+        ?.querySelector<HTMLInputElement>(
+          '[data-testid="drainage-downpipe-height"] input, input[data-testid="drainage-downpipe-height"]',
+        )
+        ?.focus();
+    });
+  };
   const bom = system && (
     <div className="dw-step" data-testid="drainage-bom">
       <h4>{c.bom}</h4>
       {!plan.bom.length && <p className="dw-muted">{c.bomNone}</p>}
+      {pendingPipe && (
+        <div className="dw-next" data-testid="drainage-next-pipe">
+          <p className="dw-muted">{c.nextPipeHelp}</p>
+          <button
+            type="button"
+            className="a-primary"
+            onClick={openPendingPipe}
+          >
+            {c.nextPipe(`R${pendingPipe.index + 1}`)}
+          </button>
+        </div>
+      )}
       <ul className="dw-bom">
         {plan.bom.map((row) => (
           <li key={row.key} data-status={row.status}>
@@ -1542,13 +1622,13 @@ export function DrainageWorkspace({
             <strong>
               {row.quantity !== undefined && row.status !== 'requires-decision'
                 ? `${row.quantity} ${c.pieces}`
-                : c.needsDecision}
+                : ((row.reason && c.reason[row.reason]) ?? c.needsDecision)}
             </strong>
           </li>
         ))}
       </ul>
       {onOpenPlan && (
-        <button type="button" onClick={onOpenPlan}>
+        <button type="button" className="a-button" onClick={onOpenPlan}>
           {c.openPlan}
         </button>
       )}

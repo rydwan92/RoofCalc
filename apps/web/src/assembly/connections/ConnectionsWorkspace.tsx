@@ -18,6 +18,7 @@ import {
   ChevronRight,
   CircleDashed,
   Crosshair,
+  Hammer,
   Info,
   Link2,
 } from 'lucide-react';
@@ -49,6 +50,8 @@ import {
   type NodeMissing,
 } from './copy';
 import type { MemberLabel } from './labels';
+import { ConnectionPractice } from './ConnectionPractice';
+import { practiceCopy } from './practice-copy';
 import './connections.css';
 
 /**
@@ -95,6 +98,9 @@ export function ConnectionsWorkspace({
 }) {
   const { i18n } = useTranslation();
   const m = connectionsCopy(i18n.language);
+  const p = practiceCopy(i18n.language);
+  const [practiceOpen, setPracticeOpen] = useState(false);
+  const [practiceApplied, setPracticeApplied] = useState(false);
   // Stable while language and labels are, so the drawing keeps its memo.
   const markerLabel = useCallback(
     (node: ResolvedRoofConnectionNode, index: number) =>
@@ -139,6 +145,19 @@ export function ConnectionsWorkspace({
           </h2>
           <p>{m.subtitle}</p>
         </div>
+        <button
+          type="button"
+          className="a-button a-primary cn-practice-open"
+          aria-expanded={practiceOpen}
+          data-testid="connection-practice-open"
+          onClick={() => {
+            setPracticeOpen((open) => !open);
+            setPracticeApplied(false);
+          }}
+        >
+          <Hammer size={15} aria-hidden="true" />
+          {p.open}
+        </button>
         <dl className="cn-summary">
           <div>
             <dt>{m.summary.nodeKinds}</dt>
@@ -162,6 +181,30 @@ export function ConnectionsWorkspace({
         <Info size={16} aria-hidden="true" />
         {m.boundary}
       </p>
+      {practiceOpen && (
+        <ConnectionPractice
+          kinds={rows.map((row) => row.kind)}
+          plan={plan}
+          copy={m}
+          onApply={(next) => {
+            onChange(next);
+            setPracticeOpen(false);
+            setPracticeApplied(true);
+          }}
+          onClose={() => setPracticeOpen(false)}
+        />
+      )}
+      {practiceApplied && (
+        <p
+          className="cn-boundary"
+          data-tone="ok"
+          role="status"
+          data-testid="connection-practice-applied"
+        >
+          <CheckCircle2 size={16} aria-hidden="true" />
+          {p.applied}
+        </p>
+      )}
       {projection.limitations.includes('apex-without-ridge') && (
         <p
           className="cn-boundary"

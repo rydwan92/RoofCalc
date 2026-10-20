@@ -72,6 +72,7 @@ export function ProjectManager({
   onStartNew,
   onEditBasics,
   onImportIfc,
+  onImportCad,
   onImportDocument,
 }: {
   session: ProjectSession;
@@ -80,6 +81,8 @@ export function ProjectManager({
   onStartNew?: () => void;
   onEditBasics?: () => void;
   onImportIfc?: () => void;
+  /** VNext-4: CAD (DXF) plan import. */
+  onImportCad?: () => void;
   /** VNext: PDF/photo document import. */
   onImportDocument?: () => void;
 }) {
@@ -256,6 +259,18 @@ export function ProjectManager({
           }}
         >
           {m.import} · IFC
+        </button>
+      )}
+      {onImportCad && (
+        <button
+          className="a-project-import"
+          data-testid="project-import-cad"
+          onClick={() => {
+            setOpen(false);
+            onImportCad();
+          }}
+        >
+          {m.import} · DXF (CAD)
         </button>
       )}
       {onImportDocument && (

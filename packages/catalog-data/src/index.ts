@@ -25,9 +25,10 @@ export const CATALOGUE_SEED_BATCHES = [
   'tiles-commercial-2026-09-v50.json',
   'drainage-galeco-stal2-2026-09-v51.json',
   'roof-system-2026-09-v52.json',
+  'drainage-galeco-stal2-colours-2026-10-vnext4.json',
 ] as const;
 
 export type CatalogueSeedBatch = (typeof CATALOGUE_SEED_BATCHES)[number];
 
 /** Month of the newest batch, shown as the data date of the offline catalogue. */
-export const CATALOGUE_DATA_AS_OF = '2026-09';
+export const CATALOGUE_DATA_AS_OF = '2026-10';

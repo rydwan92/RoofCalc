@@ -71,9 +71,13 @@ import {
 import {
   deriveWorkbenchProjectionPolicy,
   initialWorkbenchViewState,
-  memberInstanceCode,
   resolveMemberVisualState,
 } from './workbench';
+import {
+  memberCode,
+  memberLabelIndex,
+  type MemberLabel,
+} from './connections/labels';
 
 type HandleKind = 'pitch' | 'span' | 'length' | 'purlin';
 interface Handle {
@@ -119,28 +123,30 @@ function clampCanvasViewport(
   };
 }
 
-function memberLabel(member: SkeletonMember3D, t: (key: string) => string) {
+/**
+ * A member's name on the drawing, from structured labels (kind, side,
+ * ordinal along the building, hip corner) — never parsed from its ID
+ * (ADR-007). The numbering is the schedule's: K1-04 is "Krokiew #4".
+ */
+function memberLabel(
+  member: SkeletonMember3D,
+  label: MemberLabel | undefined,
+  t: (key: string) => string,
+) {
   if (member.kind === 'hip-rafter')
     return `${t('assembly.hipRafter')} H1 · ${t(`assembly.${member.side}`)}`;
-  if (member.kind === 'jack-rafter') {
-    const match =
-      /^instance:jack:(front-left|front-right|rear-left|rear-right):(left|right|front|rear):(\d+)$/.exec(
-        member.id,
-      );
-    return match
-      ? `${t('assembly.jackRafter')} J1/${match[3]} · ${t(`assembly.${match[2]}`)} · ${t(`assembly.${match[1]}`)}`
+  if (member.kind === 'jack-rafter')
+    return label?.ordinal !== undefined
+      ? [
+          `${t('assembly.jackRafter')} J1/${label.ordinal}`,
+          t(`assembly.${member.side}`),
+          ...(label.corner ? [t(`assembly.${label.corner}`)] : []),
+        ].join(' · ')
       : `${t('assembly.jackRafter')} J1`;
-  }
-  if (member.kind === 'rafter') {
-    const hipCommon = /^instance:hip-common:(front|rear|left|right)$/.exec(
-      member.id,
-    );
-    if (hipCommon) {
-      return `${t('assembly.commonRafter')} K1 · ${t(`assembly.${hipCommon[1]}`)}`;
-    }
-    const number = /pair-(\d+)/.exec(member.id)?.[1] ?? '';
-    return `${t('assembly.rafter')} #${number} - ${t(`assembly.${member.side}`)}`;
-  }
+  if (member.kind === 'rafter')
+    return label?.ordinal !== undefined
+      ? `${t('assembly.rafter')} #${label.ordinal} - ${t(`assembly.${member.side}`)}`
+      : `${t('assembly.commonRafter')} K1 · ${t(`assembly.${member.side}`)}`;
   return t(`assembly.${member.kind}`);
 }
 
@@ -246,6 +252,19 @@ function SkeletonCanvasComponent({
     },
   };
   const { t, i18n } = useTranslation();
+  // Schedule codes and names from structure + geometry, one walk per skeleton.
+  const memberLabels = useMemo(
+    () => memberLabelIndex(skeleton.members),
+    [skeleton.members],
+  );
+  /** "K1-04" for a member ID, else its translated kind (never the ID). */
+  const codeOf = (id: string) => {
+    const label = memberLabels.get(id);
+    return (
+      memberCode(label) ??
+      (label ? t(`assembly.${label.kind}`) : t('assembly.rafter'))
+    );
+  };
   const mobile = useMobileWorkbench();
   const container = useRef<HTMLDivElement>(null),
     svg = useRef<SVGSVGElement>(null),
@@ -526,7 +545,7 @@ function SkeletonCanvasComponent({
       ...skeleton.members.flatMap((member) =>
         (['from', 'to'] as const).map((end) => ({
           id: `measure:${member.id}:${end}`,
-          label: `${memberInstanceCode(member.id)} · ${end === 'from' ? 'A' : 'B'}`,
+          label: `${memberCode(memberLabels.get(member.id)) ?? t(`assembly.${member.kind}`)} · ${end === 'from' ? 'A' : 'B'}`,
           point: member[end],
         })),
       ),
@@ -569,7 +588,14 @@ function SkeletonCanvasComponent({
       if (!unique.has(key)) unique.set(key, candidate);
     }
     return [...unique.values()];
-  }, [roofWindows, skeleton.members, surfaceGeometry.planes, t, template]);
+  }, [
+    memberLabels,
+    roofWindows,
+    skeleton.members,
+    surfaceGeometry.planes,
+    t,
+    template,
+  ]);
   const windowCollisionIds = useMemo(
     () =>
       new Map(
@@ -1809,7 +1835,11 @@ function SkeletonCanvasComponent({
                     }
                     role="button"
                     tabIndex={0}
-                    aria-label={memberLabel(member, t)}
+                    aria-label={memberLabel(
+                      member,
+                      memberLabels.get(member.id),
+                      t,
+                    )}
                     aria-pressed={selected}
                     data-drag-state={
                       activeHandle === purlinHandle?.id ? 'dragging' : undefined
@@ -1999,7 +2029,7 @@ function SkeletonCanvasComponent({
                       <title>
                         {t('assembly.windowCollision')}:{' '}
                         {[...overlay.collisionIds]
-                          .map(memberInstanceCode)
+                          .map(codeOf)
                           .join(', ')}
                       </title>
                     )}
@@ -2203,9 +2233,12 @@ function SkeletonCanvasComponent({
             {/* A schedule code (K1-04, J1-12, H1) when the member has one;
                 otherwise its translated kind — never an opaque ID (ADR-007). */}
             <strong>
-              {memberInstanceCode(identityMember.id) === identityMember.id
-                ? memberLabel(identityMember, t)
-                : memberInstanceCode(identityMember.id)}
+              {memberCode(memberLabels.get(identityMember.id)) ??
+                memberLabel(
+                  identityMember,
+                  memberLabels.get(identityMember.id),
+                  t,
+                )}
             </strong>
             <span>{length(identityMemberLengthMm)}</span>
             <span>
@@ -2230,7 +2263,7 @@ function SkeletonCanvasComponent({
           {selectedBay && (
             <span>
               {selectedBay.memberInstanceIds
-                .map(memberInstanceCode)
+                .map(codeOf)
                 .join(' — ')}
             </span>
           )}
@@ -2238,7 +2271,7 @@ function SkeletonCanvasComponent({
             <span>
               ⚠ {t('assembly.windowCollision')}:{' '}
               {[...selectedWindowOverlay.collisionIds]
-                .map(memberInstanceCode)
+                .map(codeOf)
                 .join(', ')}
             </span>
           )}
@@ -2305,7 +2338,7 @@ function SkeletonCanvasComponent({
       </dl>
       <p className="a-canvas-hint">
         {selectedMember
-          ? memberLabel(selectedMember, t)
+          ? memberLabel(selectedMember, memberLabels.get(selectedMember.id), t)
           : t(
               `assembly.${template.type === 'hip' ? 'hipSkeletonHint' : 'skeletonHint'}`,
             )}

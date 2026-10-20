@@ -90,6 +90,13 @@ export const EXPECTED_SEEDS: readonly ExpectedSeed[] = [
       'f859edaa0212ddacce3fcb428c480b15613e482883b6a0d4d4f6d95b5b41948a',
   },
   {
+    file: 'drainage-galeco-stal2-colours-2026-10-vnext4.json',
+    category: 'catalogue',
+    sourceId: 'manufacturer-research-2026-10-vnext4-galeco-colours',
+    checksum:
+      '4dc7f8b82dfa6048e7a77738e3fdda1dc45ece82d32052128e60e8d79d1b6f07',
+  },
+  {
     file: 'prices-2026-09.json',
     category: 'pricing',
     sourceId: 'manufacturer-research-2026-09',

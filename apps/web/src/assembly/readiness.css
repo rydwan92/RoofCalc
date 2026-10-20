@@ -917,3 +917,31 @@
   flex: none;
   color: var(--ui-accent);
 }
+
+/* VNext-4: one place for any file — drop it on the start dialog. */
+.a-start-drop-hint {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px dashed var(--ui-line-strong, #80978c);
+  border-radius: 10px;
+  background: var(--ui-canvas, #f4f7f3);
+  color: var(--ui-text-muted, #667b71);
+  font-size: 13px;
+}
+.a-start-drop-hint svg {
+  flex: none;
+  color: var(--ui-accent, #235344);
+}
+.a-project-start-layer.is-dragging .a-project-start {
+  outline: 3px dashed var(--ui-accent, #235344);
+  outline-offset: -8px;
+}
+.a-project-start-layer.is-dragging .a-start-drop-hint {
+  border-color: var(--ui-accent, #235344);
+  background: #e6f0eb;
+  color: var(--ui-accent, #235344);
+}

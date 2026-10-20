@@ -84,6 +84,19 @@ export interface MaterialPlanRow {
   /** V52: the roof opening (roof-window feature) a row belongs to. */
   openingFeatureId?: string;
   openingOrdinal?: number;
+  /**
+   * VNext-4: the member a timber evidence row stands for, as structured
+   * schedule facts (never recovered from an ID), so rows of one family read
+   * apart: "Kulawka J1 · 8 szt. × 1,59 m".
+   */
+  timberMember?: {
+    memberKind: string;
+    familyKey: string;
+    pieceCount: number;
+    pieceLengthMm: number;
+    widthMm?: number;
+    depthMm?: number;
+  };
 }
 
 export interface MaterialPriceSelection {
@@ -496,6 +509,18 @@ export function createMaterialPlanRows(
           ? ['k1-execution-unresolved']
           : ['no-allowance-no-stock-length'],
       sourceReferences: [item.id],
+      timberMember: {
+        memberKind: item.memberKind,
+        familyKey: item.familyKey,
+        pieceCount: item.quantity,
+        pieceLengthMm: item.lengthMm,
+        ...(item.section.widthMm !== undefined
+          ? { widthMm: item.section.widthMm }
+          : {}),
+        ...(item.section.depthMm !== undefined
+          ? { depthMm: item.section.depthMm }
+          : {}),
+      },
     });
   }
   return rows;

@@ -537,3 +537,36 @@
 .dw-advanced[open] > summary {
   margin-bottom: 6px;
 }
+
+/* VNext-4: readable downpipe labels, a named next step, quieter rows. */
+.dw-label.is-pipe {
+  pointer-events: auto;
+  cursor: pointer;
+}
+.dw-label.is-pipe.is-missing {
+  fill: var(--ui-warning, #b35b2d);
+}
+.dw-next {
+  display: grid;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid #f0d2b4;
+  border-radius: 8px;
+  background: #fff6ec;
+}
+.dw-next > .a-primary {
+  justify-self: stretch;
+}
+.dw-bom li[data-status='requires-decision'] strong,
+.dw-bom li[data-status='incompatible'] strong {
+  font-size: 12px;
+  font-weight: 650;
+  text-align: right;
+}
+.dw-chips button {
+  padding: 0 10px;
+  font-size: 12px;
+}
+.dw-eave-list .dw-toggle {
+  min-height: 32px;
+}

@@ -1351,6 +1351,7 @@ export const assemblyPl = {
       'assign-covering-to-roof': 'Przypisz pokrycie do całego dachu',
       'extend-scope-to-roof': 'Rozszerz łaty na cały dach',
       'fit-roof': 'Dopasuj pokrycie i łaty do dachu',
+      'use-product-gauge': 'Ustaw rozstaw z produktu',
       'enable-counter-battens': 'Dodaj kontrłaty z konstrukcji',
       'choose-hip-detail': 'Uzupełnij detal grzbietu',
     },
@@ -2015,6 +2016,25 @@ export const assemblyPl = {
       openFile: 'Otwórz plik projektu (.cieslacalc.json)',
       openFileError:
         'Nie udało się otworzyć pliku projektu. Sprawdź, czy to plik zapisany przez RoofCalc.',
+      openAnyFile: 'Otwórz plik…',
+      cad: 'Import z CAD lub BIM',
+      cadHint:
+        'Rysunek DXF (AutoCAD, ArchiCAD…) lub model IFC — rozpoznamy obrys, okap, kalenicę i naroża.',
+      dropAny:
+        'Masz już plik? Przeciągnij go tutaj — projekt RoofCalc, PDF, zdjęcie, rysunek DXF lub model IFC. Rozpoznamy format.',
+      dropProject: 'Przeciągnij tutaj plik projektu RoofCalc, aby go otworzyć.',
+      fileError: {
+        empty: 'Plik jest pusty.',
+        'too-large': 'Plik jest za duży, aby go bezpiecznie wczytać.',
+        'dwg-drawing':
+          'To plik DWG. Zapisz rysunek jako DXF (Plik → Zapisz jako → DXF) i wczytaj ponownie.',
+        'binary-dxf':
+          'To binarny DXF. Zapisz rysunek jako DXF tekstowy (ASCII) i wczytaj ponownie.',
+        'heic-photo':
+          'To zdjęcie HEIC. Zapisz je jako JPG lub PNG i wczytaj ponownie.',
+        'unsupported-format':
+          'Nie rozpoznano formatu. Obsługiwane: projekt RoofCalc, PDF, JPG/PNG/WebP, DXF i IFC.',
+      },
       recent: 'Ostatnio otwierane projekty',
       recentHint:
         'Projekty z tego urządzenia. Starsze projekty bez historii otwierania są uporządkowane według ostatniej zmiany.',
@@ -2188,6 +2208,7 @@ export const assemblyPl = {
       repaired: 'Dopasowano pokrycie i warstwy do dachu.',
       roofTypeChanged: 'Zmieniono typ dachu. Pokrycie i warstwy dopasowano.',
       autoGauge: 'Łaty ustawiono na rozstaw automatyczny.',
+      productGauge: 'Łaty ustawiono na rozstaw podany przez producenta.',
       undo: 'Cofnij',
       dismiss: 'Zamknij powiadomienie',
     },
@@ -2218,6 +2239,7 @@ export const assemblyPl = {
       'set-manual': 'Ustaw ręcznie',
       'enable-auto-battens': 'Włącz łaty Auto',
       'review-battens': 'Otwórz łaty',
+      'use-product-gauge': 'Popraw rozstaw',
       'review-eave-detail': 'Ustaw pierwszą łatę od okapu',
       'enable-counter-battens': 'Dodaj kontrłaty',
       'choose-hip-detail': 'Uzupełnij detal H1',
@@ -3922,6 +3944,7 @@ export const assemblyEn: typeof assemblyPl = {
       'assign-covering-to-roof': 'Assign covering to the whole roof',
       'extend-scope-to-roof': 'Extend battens to the whole roof',
       'fit-roof': 'Fit covering and battens to this roof',
+      'use-product-gauge': 'Use the product spacing',
       'enable-counter-battens': 'Add structure-derived counter-battens',
       'choose-hip-detail': 'Complete the hip detail',
     },
@@ -4579,6 +4602,24 @@ export const assemblyEn: typeof assemblyPl = {
       openFile: 'Open project file (.cieslacalc.json)',
       openFileError:
         'The project file could not be opened. Check that it was saved by RoofCalc.',
+      openAnyFile: 'Open a file…',
+      cad: 'Import from CAD or BIM',
+      cadHint:
+        'A DXF drawing (AutoCAD, ArchiCAD…) or an IFC model — outline, eave, ridge and hips are recognised.',
+      dropAny:
+        'Already have a file? Drop it here — a RoofCalc project, PDF, photo, DXF drawing or IFC model. The format is recognised.',
+      dropProject: 'Drop a RoofCalc project file here to open it.',
+      fileError: {
+        empty: 'The file is empty.',
+        'too-large': 'The file is too large to load safely.',
+        'dwg-drawing':
+          'This is a DWG file. Save the drawing as DXF (File → Save as → DXF) and load it again.',
+        'binary-dxf':
+          'This is a binary DXF. Save the drawing as a text (ASCII) DXF and load it again.',
+        'heic-photo': 'This is a HEIC photo. Save it as JPG or PNG and load it again.',
+        'unsupported-format':
+          'The format was not recognised. Supported: RoofCalc project, PDF, JPG/PNG/WebP, DXF and IFC.',
+      },
       recent: 'Recently opened projects',
       recentHint:
         'Projects on this device. Older projects without visit history are sorted by their last edit.',
@@ -4750,6 +4791,7 @@ export const assemblyEn: typeof assemblyPl = {
       repaired: 'Covering and layers fitted to the roof.',
       roofTypeChanged: 'Roof type changed. Covering and layers were fitted.',
       autoGauge: 'Battens set to the automatic gauge.',
+      productGauge: 'Battens set to the spacing the manufacturer states.',
       undo: 'Undo',
       dismiss: 'Dismiss notification',
     },
@@ -4780,6 +4822,7 @@ export const assemblyEn: typeof assemblyPl = {
       'set-manual': 'Set manually',
       'enable-auto-battens': 'Switch Auto battens on',
       'review-battens': 'Open battens',
+      'use-product-gauge': 'Fix the spacing',
       'review-eave-detail': 'Set the first batten from the eave',
       'enable-counter-battens': 'Add counter-battens',
       'choose-hip-detail': 'Complete H1 detail',

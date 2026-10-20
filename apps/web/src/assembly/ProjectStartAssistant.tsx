@@ -7,7 +7,9 @@ import {
   BookOpen,
   Check,
   CircleCheck,
+  DraftingCompass,
   FileScan,
+  FileUp,
   FolderOpen,
   PencilRuler,
   Sparkles,
@@ -247,14 +249,23 @@ export function ProjectStartAssistant({
   onQuick,
   onBeginProject,
   onImportIfc,
+  onImportCad,
   onImportDocument,
   onOpenArchive,
+  onOpenFile,
   projects = [],
   onOpenProject,
 }: {
   onQuick?: () => void;
   onBeginProject?: () => void;
   onImportIfc?: () => void;
+  /** VNext-4: CAD (DXF) or BIM (IFC) import. */
+  onImportCad?: () => void;
+  /**
+   * VNext-4: any file — a saved project, PDF, photo, DXF or IFC — routed
+   * by its bytes. Rejects with an Error whose message is shown.
+   */
+  onOpenFile?: (file: File) => Promise<void>;
   /** VNext: PDF/photo document import. */
   onImportDocument?: () => void;
   /** Opens a saved `.cieslacalc.json` archive as a project. */
@@ -280,6 +291,24 @@ export function ProjectStartAssistant({
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const archiveInput = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false);
+  const openFile = (file: File) => {
+    setBusy(true);
+    setError('');
+    const opening = onOpenFile
+      ? onOpenFile(file)
+      : file.text().then((contents) => onOpenArchive?.(contents));
+    void opening
+      .catch((cause: unknown) =>
+        setError(
+          onOpenFile && cause instanceof Error && cause.message
+            ? cause.message
+            : t('assembly.journey.start.openFileError'),
+        ),
+      )
+      .finally(() => setBusy(false));
+  };
+  const acceptsDrop = stage === 'choose' && !!(onOpenFile || onOpenArchive);
 
   const numbers = useMemo(() => {
     const read = (field: ProjectStartField) => {
@@ -518,8 +547,26 @@ export function ProjectStartAssistant({
 
   return (
     <div
-      className="a-project-start-layer"
+      className={`a-project-start-layer${dragging ? ' is-dragging' : ''}`}
       data-testid="project-start-assistant"
+      onDragEnter={(event) => {
+        if (!acceptsDrop) return;
+        event.preventDefault();
+        setDragging(true);
+      }}
+      onDragOver={(event) => {
+        if (acceptsDrop) event.preventDefault();
+      }}
+      onDragLeave={(event) => {
+        if (event.currentTarget === event.target) setDragging(false);
+      }}
+      onDrop={(event) => {
+        if (!acceptsDrop) return;
+        event.preventDefault();
+        setDragging(false);
+        const file = event.dataTransfer.files[0];
+        if (file) openFile(file);
+      }}
     >
       <section
         className="a-project-start is-v37"
@@ -604,17 +651,43 @@ export function ProjectStartAssistant({
                 <span>{t('assembly.journey.start.documentHint')}</span>
               </button>
             )}
-            {onImportIfc && (
+            {onImportCad ? (
               <button
                 type="button"
                 className="a-start-path"
-                data-testid="project-start-ifc"
-                onClick={onImportIfc}
+                data-testid="project-start-cad"
+                onClick={onImportCad}
               >
-                <BookOpen size={24} aria-hidden="true" />
-                <strong>{t('assembly.journey.start.ifc')}</strong>
-                <span>{t('assembly.journey.start.ifcHint')}</span>
+                <DraftingCompass size={24} aria-hidden="true" />
+                <strong>{t('assembly.journey.start.cad')}</strong>
+                <span>{t('assembly.journey.start.cadHint')}</span>
               </button>
+            ) : (
+              onImportIfc && (
+                <button
+                  type="button"
+                  className="a-start-path"
+                  data-testid="project-start-ifc"
+                  onClick={onImportIfc}
+                >
+                  <BookOpen size={24} aria-hidden="true" />
+                  <strong>{t('assembly.journey.start.ifc')}</strong>
+                  <span>{t('assembly.journey.start.ifcHint')}</span>
+                </button>
+              )
+            )}
+            {acceptsDrop && (
+              <p
+                className="a-start-drop-hint"
+                data-testid="project-start-drop-hint"
+              >
+                <FileUp size={16} aria-hidden="true" />
+                {t(
+                  onOpenFile
+                    ? 'assembly.journey.start.dropAny'
+                    : 'assembly.journey.start.dropProject',
+                )}
+              </p>
             )}
             <section className="a-start-recent">
               <h3>{t('assembly.journey.start.recent')}</h3>
@@ -637,7 +710,7 @@ export function ProjectStartAssistant({
                   />
                 ))}
               </div>
-              {onOpenArchive && (
+              {(onOpenArchive || onOpenFile) && (
                 <>
                   <button
                     type="button"
@@ -647,27 +720,30 @@ export function ProjectStartAssistant({
                     onClick={() => archiveInput.current?.click()}
                   >
                     <FolderOpen size={16} aria-hidden="true" />
-                    {t('assembly.journey.start.openFile')}
+                    {t(
+                      onOpenFile
+                        ? 'assembly.journey.start.openAnyFile'
+                        : 'assembly.journey.start.openFile',
+                    )}
                   </button>
                   <input
                     ref={archiveInput}
                     type="file"
                     hidden
-                    accept=".json,.cieslacalc.json,application/json"
-                    aria-label={t('assembly.journey.start.openFile')}
+                    accept={
+                      onOpenFile
+                        ? '.cieslacalc.json,.json,.pdf,.png,.jpg,.jpeg,.webp,.dxf,.ifc'
+                        : '.json,.cieslacalc.json,application/json'
+                    }
+                    aria-label={t(
+                      onOpenFile
+                        ? 'assembly.journey.start.openAnyFile'
+                        : 'assembly.journey.start.openFile',
+                    )}
                     onChange={(event) => {
                       const file = event.target.files?.[0];
                       event.target.value = '';
-                      if (!file) return;
-                      setBusy(true);
-                      setError('');
-                      void file
-                        .text()
-                        .then(onOpenArchive)
-                        .catch(() =>
-                          setError(t('assembly.journey.start.openFileError')),
-                        )
-                        .finally(() => setBusy(false));
+                      if (file) openFile(file);
                     }}
                   />
                 </>

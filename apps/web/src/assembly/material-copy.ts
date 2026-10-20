@@ -111,6 +111,16 @@ const pl = {
   membrane: 'Membrana',
   tile: 'Dachówka',
   timberEvidence: 'Drewno · zestawienie geometryczne',
+  'timberKind.wall-plate': 'Murłata',
+  'timberKind.ridge': 'Kalenica',
+  'timberKind.rafter': 'Krokiew',
+  'timberKind.hip-rafter': 'Krokiew narożna',
+  'timberKind.jack-rafter': 'Kulawka',
+  'timberKind.purlin': 'Płatew',
+  'timberKind.opening-header': 'Wymian',
+  'timberKind.rafter-segment': 'Segment krokwi',
+  'timberKind.collar-tie': 'Jętka',
+  timberPieces: 'szt.',
   blankLength: 'Długość blanku',
   consumption: 'Deklarowane zużycie producenta',
   netArea: 'Powierzchnia netto',
@@ -395,6 +405,16 @@ const en: typeof pl = {
   membrane: 'Membrane',
   tile: 'Roof tile',
   timberEvidence: 'Timber · geometric schedule',
+  'timberKind.wall-plate': 'Wall plate',
+  'timberKind.ridge': 'Ridge',
+  'timberKind.rafter': 'Rafter',
+  'timberKind.hip-rafter': 'Hip rafter',
+  'timberKind.jack-rafter': 'Jack rafter',
+  'timberKind.purlin': 'Purlin',
+  'timberKind.opening-header': 'Header',
+  'timberKind.rafter-segment': 'Rafter segment',
+  'timberKind.collar-tie': 'Collar tie',
+  timberPieces: 'pcs',
   blankLength: 'Blank length',
   consumption: 'Declared manufacturer consumption',
   netArea: 'Net area',
@@ -571,4 +591,27 @@ export function materialCopy(locale: string) {
 export function materialText(locale: string, key: string) {
   const copy = materialCopy(locale);
   return copy[key as keyof typeof copy] ?? key;
+}
+
+/** "Kulawka J1 80×200 · 8 szt. × 1,59 m" from structured schedule facts. */
+export function timberMemberLabel(
+  member: {
+    memberKind: string;
+    familyKey: string;
+    pieceCount: number;
+    pieceLengthMm: number;
+    widthMm?: number;
+    depthMm?: number;
+  },
+  locale: string,
+): string {
+  const section =
+    member.widthMm !== undefined && member.depthMm !== undefined
+      ? ` ${member.widthMm}×${member.depthMm}`
+      : '';
+  const length = new Intl.NumberFormat(locale, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(member.pieceLengthMm / 1000);
+  return `${materialText(locale, `timberKind.${member.memberKind}`)} ${member.familyKey}${section} · ${member.pieceCount} ${materialText(locale, 'timberPieces')} × ${length} m`;
 }

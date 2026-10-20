@@ -11,6 +11,7 @@ import type {
   CoveringAssignmentSpec,
   RoofTileInstallationMode,
 } from '@cieslacalc/covering-core';
+import { deriveCoveringSupportCapability } from '@cieslacalc/covering-core';
 import type {
   BattenLayoutResult,
   CounterBattenLayoutResult,
@@ -69,6 +70,16 @@ function useMetres() {
     `${new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 1 }).format(valueMm / 1000)} m`;
 }
 
+/** The one fixed support spacing a single modular-sheet covering states. */
+function productSupportGaugeMm(
+  coverings: readonly CoveringAssignmentSpec[],
+): number | undefined {
+  if (coverings.length !== 1) return undefined;
+  return deriveCoveringSupportCapability(
+    coverings[0]!.product.technicalSpecSnapshot,
+  ).fixedSupportGaugeMm;
+}
+
 /** One action vocabulary for every workflow surface; each is one history entry at most. */
 export function useInstallationActions() {
   const state = useAssembly();
@@ -111,6 +122,18 @@ export function useInstallationActions() {
       case 'fit-roof':
         state.fitInstallationToRoof();
         return;
+      case 'use-product-gauge': {
+        const fixed = productSupportGaugeMm(project.coverings);
+        if (fixed === undefined) return;
+        const base = layout ?? newBattenLayer();
+        state.setBattenLayout({
+          ...base,
+          enabled: true,
+          mode: 'manual',
+          gaugeMm: fixed,
+        });
+        return;
+      }
       case 'extend-scope-to-roof':
         if (layout) state.setBattenLayout(battenLayerForWholeRoof(layout));
         return;

@@ -44,13 +44,15 @@ export interface TilePurchasePlan {
   lines: RoofLineLengths;
 }
 
+/**
+ * The product's display name, or '' for a covering without one. Never the
+ * assignment ID (ADR-007): callers add a translated generic name.
+ */
 export function tileProductName(assignment: CoveringAssignmentSpec): string {
   const display = assignment.product.displaySnapshot;
-  return (
-    [display?.manufacturer, display?.familyName, display?.variantName]
-      .filter(Boolean)
-      .join(' · ') || assignment.id
-  );
+  return [display?.manufacturer, display?.familyName, display?.variantName]
+    .filter(Boolean)
+    .join(' · ');
 }
 
 /** The one default: no reserve, no reuse of offcuts, sold per piece. */

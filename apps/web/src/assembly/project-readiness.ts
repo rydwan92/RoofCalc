@@ -55,6 +55,7 @@ export type ReadinessAction =
   | 'set-manual'
   | 'enable-auto-battens'
   | 'review-battens'
+  | 'use-product-gauge'
   | 'review-eave-detail'
   | 'enable-counter-battens'
   | 'choose-hip-detail'
@@ -588,10 +589,15 @@ export function deriveProjectReadiness(
               : {}),
           ...(battens.productLabel ? { product: battens.productLabel } : {}),
         },
-        action: capability?.supportsAutoBattenGauge
-          ? 'fit-auto'
-          : 'review-battens',
-        secondaryAction: 'review-battens',
+        // The second button only when it differs from the first.
+        ...(capability?.supportsAutoBattenGauge
+          ? { action: 'fit-auto', secondaryAction: 'review-battens' }
+          : capability?.fixedSupportGaugeMm !== undefined
+            ? {
+                action: 'use-product-gauge',
+                secondaryAction: 'review-battens',
+              }
+            : { action: 'review-battens' }),
         affects: QUANTITY_DOCUMENTS,
         source: 'batten-workflow',
       });

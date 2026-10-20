@@ -59,7 +59,12 @@ export type BattenWorkflowAction =
   | 'assign-covering-to-roof'
   | 'extend-scope-to-roof'
   /** V46: covering + battens + layers follow every plane of this roof. */
-  | 'fit-roof';
+  | 'fit-roof'
+  /**
+   * VNext-4: a modular sheet states one fixed support spacing; a different
+   * manual gauge is repaired by taking that spacing (one history entry).
+   */
+  | 'use-product-gauge';
 
 export interface BattenWorkflow {
   state: BattenWorkflowState;
@@ -305,7 +310,7 @@ export function deriveBattenWorkflow(args: {
   if (capability?.fixedSupportGaugeMm !== undefined)
     return Math.abs(layout.gaugeMm - capability.fixedSupportGaugeMm) <= 0.5
       ? build('manual-compatible', 'ready', [], manual)
-      : build('manual-incompatible', 'blocked', ['fit-roof'], manual);
+      : build('manual-incompatible', 'blocked', ['use-product-gauge'], manual);
   return build(
     'manual-unverified',
     'attention',

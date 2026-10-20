@@ -11,7 +11,7 @@ test('start → geometry → structure → next action, with exact inputs and no
   const start = page.getByTestId('project-start-assistant');
   await expect(start.getByTestId('project-start-guided')).toBeVisible();
   await expect(start.getByTestId('project-start-quick')).toBeVisible();
-  await expect(start.getByTestId('project-start-ifc')).toBeVisible();
+  await expect(start.getByTestId('project-start-cad')).toBeVisible();
   await expect(start.getByTestId('project-start-advanced')).toBeHidden();
   await page.screenshot({
     path: `test-results/guided-start-${testInfo.project.name}.png`,
@@ -83,8 +83,8 @@ test('home quick path creates no project and IFC path opens the existing importe
     ),
   ).toEqual([]);
   await page.reload();
-  await page.getByTestId('project-start-ifc').click();
-  await expect(page.getByTestId('ifc-import-workspace')).toBeVisible();
+  await page.getByTestId('project-start-cad').click();
+  await expect(page.getByTestId('cad-import-workspace')).toBeVisible();
 });
 
 test('an unresolved structure leads to its exact decision, then updates to covering', async ({
@@ -213,7 +213,7 @@ test('recent and all projects reopen local records; start copy follows English',
   await expect(start.getByTestId('project-start-guided')).toContainText(
     'New project',
   );
-  await expect(start.getByTestId('project-start-ifc')).toContainText(
-    'Import IFC project',
+  await expect(start.getByTestId('project-start-cad')).toContainText(
+    'Import from CAD or BIM',
   );
 });

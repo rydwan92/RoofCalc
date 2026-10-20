@@ -129,9 +129,12 @@ function SpatialBranch({
 }
 
 export function IfcImportWorkspace({
+  initialFile,
   onClose,
   onCreate,
 }: {
+  /** VNext-4: a file already chosen elsewhere (universal file opening). */
+  initialFile?: File;
   onClose: () => void;
   onCreate: (template: RoofTemplateSpec) => Promise<void>;
 }) {
@@ -194,6 +197,15 @@ export function IfcImportWorkspace({
         setStage('');
       });
   }
+
+  const initialStarted = useRef(false);
+  useEffect(() => {
+    if (!initialFile || initialStarted.current) return;
+    initialStarted.current = true;
+    start(initialFile);
+    // Once, for the file the workspace was opened with.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialFile]);
 
   return (
     <div

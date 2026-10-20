@@ -148,6 +148,8 @@ import {
   type JourneyStageKey,
 } from './project-journey';
 import { tileProductName } from './tile-purchase';
+import { coveringKindLabelKey } from './covering-presentation';
+import { classifyProjectFile } from '../import/file-kind';
 import {
   createMaterialPlanRows,
   materialScenarioPrices,
@@ -299,6 +301,11 @@ const DocumentImportWorkspace = lazy(() =>
     default: module.DocumentImportWorkspace,
   })),
 );
+const CadImportWorkspace = lazy(() =>
+  import('../bim/cad/CadImportWorkspace').then((module) => ({
+    default: module.CadImportWorkspace,
+  })),
+);
 const IfcImportWorkspace = lazy(() =>
   import('../bim/ifc/IfcImportWorkspace').then((module) => ({
     default: module.IfcImportWorkspace,
@@ -435,6 +442,9 @@ function AssemblyPageContent({
   }, [activeProjectId, projectSessionState.freshProject]);
   const [ifcImportOpen, setIfcImportOpen] = useState(false);
   const [documentImportOpen, setDocumentImportOpen] = useState(false);
+  const [cadImportOpen, setCadImportOpen] = useState(false);
+  /** VNext-4: the file an importer opens with (universal file opening). */
+  const [importFile, setImportFile] = useState<File>();
   const [reuseFreshProject, setReuseFreshProject] = useState(false);
   const workbench = state.workbench;
   const mobile = useMobileWorkbench();
@@ -1495,7 +1505,11 @@ function AssemblyPageContent({
         .sort()
         .join(' + '),
       ...(primaryCovering
-        ? { covering: tileProductName(primaryCovering) }
+        ? {
+            covering:
+              tileProductName(primaryCovering) ||
+              t(coveringKindLabelKey(primaryCovering)),
+          }
         : {}),
     },
     openingsNeedingFlashing: roofSystem.openingSystems.filter(
@@ -1938,6 +1952,10 @@ function AssemblyPageContent({
       case 'review-battens':
         openLayerView('battens', 'layer:battens');
         return;
+      case 'use-product-gauge':
+        runInstallationAction('use-product-gauge');
+        showFeedback('assembly.readiness.feedback.productGauge');
+        return;
       case 'review-eave-detail':
         openLayerView('battens', 'layer:battens');
         requestAnimationFrame(() => {
@@ -1998,6 +2016,40 @@ function AssemblyPageContent({
    * drawing; Konstrukcja also reveals the structure settings group, without
    * moving keyboard focus into a field.
    */
+  /** Opens a saved `.cieslacalc.json` project archive. */
+  const openArchive = async (contents: string) => {
+    await projectSession.initialize();
+    await projectSession.import(contents);
+    state.setMode('builder');
+    rememberCreatorStart();
+    setReuseFreshProject(false);
+    setProjectStartMode(undefined);
+    state.navigatePerspective('project');
+  };
+  /**
+   * VNext-4 universal file opening: the bytes decide the importer — a saved
+   * project, a PDF or photo, a DXF drawing or an IFC model. A file that
+   * cannot be opened rejects with a message the start dialog shows.
+   */
+  const openAnyFile = async (file: File) => {
+    const kind = await classifyProjectFile(file);
+    if (kind.status === 'rejected')
+      throw new Error(t(`assembly.journey.start.fileError.${kind.reason}`));
+    if (kind.kind === 'roofcalc-project') {
+      try {
+        await openArchive(await file.text());
+      } catch {
+        throw new Error(t('assembly.journey.start.openFileError'));
+      }
+      return;
+    }
+    state.setMode('builder');
+    setProjectStartMode(undefined);
+    setImportFile(file);
+    if (kind.kind === 'document') setDocumentImportOpen(true);
+    else if (kind.kind === 'ifc') setIfcImportOpen(true);
+    else setCadImportOpen(true);
+  };
   const openSection = (perspective: WorkbenchPerspective) => {
     setReadinessOpen(false);
     closeDocument();
@@ -2363,6 +2415,7 @@ function AssemblyPageContent({
               setProjectStartMode('edit');
             }}
             onImportIfc={() => setIfcImportOpen(true)}
+            onImportCad={() => setCadImportOpen(true)}
             onImportDocument={() => setDocumentImportOpen(true)}
           />
         )}
@@ -3477,25 +3530,19 @@ function AssemblyPageContent({
             setProjectStartMode(undefined);
             state.setMode('quick');
           }}
-          onImportIfc={() => {
+          onImportCad={() => {
             state.setMode('builder');
             setProjectStartMode(undefined);
-            setIfcImportOpen(true);
+            setImportFile(undefined);
+            setCadImportOpen(true);
           }}
+          onOpenFile={openAnyFile}
           onImportDocument={() => {
             state.setMode('builder');
             setProjectStartMode(undefined);
             setDocumentImportOpen(true);
           }}
-          onOpenArchive={async (contents) => {
-            await projectSession.initialize();
-            await projectSession.import(contents);
-            state.setMode('builder');
-            rememberCreatorStart();
-            setReuseFreshProject(false);
-            setProjectStartMode(undefined);
-            state.navigatePerspective('project');
-          }}
+          onOpenArchive={openArchive}
           onOpenProject={async (id) => {
             await projectSession.initialize();
             await projectSession.open(id);
@@ -3572,7 +3619,11 @@ function AssemblyPageContent({
           }
         >
           <DocumentImportWorkspace
-            onClose={() => setDocumentImportOpen(false)}
+            initialFile={importFile}
+            onClose={() => {
+              setDocumentImportOpen(false);
+              setImportFile(undefined);
+            }}
             onCreate={async (template, name) => {
               await projectSession.initialize();
               // Like the Creator: an untouched project that the session has
@@ -3592,6 +3643,39 @@ function AssemblyPageContent({
               setReuseFreshProject(false);
               setProjectStartMode(undefined);
               setDocumentImportOpen(false);
+              setImportFile(undefined);
+              state.setMode('builder');
+              state.navigatePerspective('project');
+              state.setViewPreset('construction');
+            }}
+          />
+        </Suspense>
+      )}
+      {cadImportOpen && (
+        <Suspense fallback={<p className="a-loading-overlay" role="status" />}>
+          <CadImportWorkspace
+            initialFile={importFile}
+            onClose={() => {
+              setCadImportOpen(false);
+              setImportFile(undefined);
+            }}
+            onOpenIfc={(file) => {
+              setCadImportOpen(false);
+              setImportFile(file);
+              setIfcImportOpen(true);
+            }}
+            onCreate={async (template, name) => {
+              await projectSession.initialize();
+              await projectSession.createFromDocument(
+                createRoofProjectDocument(template),
+                name,
+              );
+              rememberCreatorStart();
+              projectSession.acknowledgeFreshProject();
+              setReuseFreshProject(false);
+              setProjectStartMode(undefined);
+              setCadImportOpen(false);
+              setImportFile(undefined);
               state.setMode('builder');
               state.navigatePerspective('project');
               state.setViewPreset('construction');
@@ -3602,7 +3686,11 @@ function AssemblyPageContent({
       {ifcImportOpen && (
         <Suspense fallback={<p>Uruchamianie importera IFC…</p>}>
           <IfcImportWorkspace
-            onClose={() => setIfcImportOpen(false)}
+            initialFile={importFile}
+            onClose={() => {
+              setIfcImportOpen(false);
+              setImportFile(undefined);
+            }}
             onCreate={async (template) => {
               await projectSession.createFromDocument(
                 createRoofProjectDocument(template),
@@ -3615,6 +3703,7 @@ function AssemblyPageContent({
               setReuseFreshProject(false);
               setProjectStartMode(undefined);
               setIfcImportOpen(false);
+              setImportFile(undefined);
               state.setMode('builder');
               state.navigatePerspective('project');
               state.setViewPreset('construction');

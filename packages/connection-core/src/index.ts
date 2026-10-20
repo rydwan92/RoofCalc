@@ -10,6 +10,8 @@
  *   plan        the canonical, persisted connection plan + its schema
  *   schedule    census + plan → the connection schedule (plan połączeń)
  *   nodes       where solved member axes actually meet (VNext-3)
+ *   practice    carpentry-practice proposal of connection TYPES from two
+ *               answers (VNext-4); never a diameter, count or capacity
  *   junctions   roof-to-roof junction vocabulary for ADR-008 (research)
  *
  * Geometry and detailing only. Capacity, the number of fasteners a node
@@ -23,4 +25,5 @@ export * from './spacing';
 export * from './plan';
 export * from './schedule';
 export * from './nodes';
+export * from './practice';
 export * from './junctions';

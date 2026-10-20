@@ -172,4 +172,63 @@ describe('keyboard in the connection plan', () => {
     expect(useAssembly.getState().workbench.connectionFocus).toBeUndefined();
     expect(useAssembly.getState().workbench.viewPreset).toBe('connections');
   });
+
+  it('suggests connection types from two answers, applies them as one undoable change and keeps a decided node', async () => {
+    const plan = await openConnections();
+    // The user already decided the ridge: the suggestion must not touch it.
+    act(() =>
+      useAssembly.getState().setConnectionPlan(
+        withPlannedConnection(undefined, 'rafter-ridge', {
+          fastening: { type: 'bolts', diameterMm: 12, perNode: 2 },
+        }),
+      ),
+    );
+    const history = useAssembly.getState().historyPast.length;
+    fireEvent.click(within(plan).getByTestId('connection-practice-open'));
+    const practice = screen.getByTestId('connection-practice');
+    expect(practice.textContent).toContain('Wybierz sposób łączenia');
+    fireEvent.click(
+      within(practice).getByTestId('connection-practice-style-connectors'),
+    );
+    fireEvent.click(
+      within(practice).getByTestId(
+        'connection-practice-anchorage-anchor-rod',
+      ),
+    );
+    const seat = within(practice).getByTestId(
+      'connection-practice-rafter-wall-plate',
+    );
+    expect(seat.textContent).toContain('Łącznik krokwiowy');
+    const ridge = within(practice).getByTestId(
+      'connection-practice-rafter-ridge',
+    );
+    expect(ridge.textContent).toContain('Masz już');
+    expect(
+      (within(ridge).getByRole('checkbox') as HTMLInputElement).checked,
+    ).toBe(false);
+    // Nothing is stored until the user applies.
+    expect(useAssembly.getState().historyPast).toHaveLength(history);
+    fireEvent.click(within(practice).getByTestId('connection-practice-apply'));
+    expect(useAssembly.getState().historyPast).toHaveLength(history + 1);
+    const stored =
+      useAssembly.getState().projectDocument.project.connectionPlan!;
+    expect(stored.nodes['rafter-wall-plate']).toEqual({
+      fastening: { type: 'nails' },
+      connector: 'rafter-tie',
+    });
+    expect(stored.nodes['wall-plate-anchorage']).toEqual({
+      connector: 'anchor-rod',
+    });
+    // No diameter or count is ever suggested; the decided ridge stays.
+    expect(stored.nodes['rafter-ridge']).toEqual({
+      fastening: { type: 'bolts', diameterMm: 12, perNode: 2 },
+    });
+    expect(screen.getByTestId('connection-practice-applied')).toBeTruthy();
+    act(() => useAssembly.getState().undo());
+    expect(
+      useAssembly.getState().projectDocument.project.connectionPlan?.nodes[
+        'rafter-wall-plate'
+      ],
+    ).toBeUndefined();
+  });
 });

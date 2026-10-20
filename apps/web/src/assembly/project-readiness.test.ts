@@ -137,29 +137,34 @@ function facts(args: {
     surfaceIssueCount: 0,
     openingWarningCount: 0,
     coverings,
-    coveringLayouts: coverings.map((assignment) =>
-      resolveRoofTileLayout({
-        assignmentId: assignment.id,
-        roofPlaneIds:
-          ownership.trustedRoofPlaneIdsByAssignment[assignment.id] ?? [],
-        roofSurfaceGeometry: surface.planes.map((plane) => ({
-          roofPlaneId: plane.roofPlaneId,
-          pitchDeg: template.pitchDeg,
-          localPolygon: plane.polygon,
-          netAreaMm2: plane.netAreaMm2,
-        })),
-        openings: [],
-        battens: battens.battens.map((row) => ({
-          id: row.id,
-          roofPlaneId: row.roofPlaneId,
-          stationVMm: row.stationMm,
-          segments: row.segments,
-        })),
-        productSpec: assignment.product
-          .technicalSpecSnapshot as RoofTileTechnicalSpec,
-        layoutIntent: { kind: 'roof-tile', horizontalAlignment: 'centered' },
-      }),
-    ),
+    coveringLayouts: coverings
+      .filter(
+        (assignment) =>
+          assignment.product.technicalSpecSnapshot.kind === 'roof-tile',
+      )
+      .map((assignment) =>
+        resolveRoofTileLayout({
+          assignmentId: assignment.id,
+          roofPlaneIds:
+            ownership.trustedRoofPlaneIdsByAssignment[assignment.id] ?? [],
+          roofSurfaceGeometry: surface.planes.map((plane) => ({
+            roofPlaneId: plane.roofPlaneId,
+            pitchDeg: template.pitchDeg,
+            localPolygon: plane.polygon,
+            netAreaMm2: plane.netAreaMm2,
+          })),
+          openings: [],
+          battens: battens.battens.map((row) => ({
+            id: row.id,
+            roofPlaneId: row.roofPlaneId,
+            stationVMm: row.stationMm,
+            segments: row.segments,
+          })),
+          productSpec: assignment.product
+            .technicalSpecSnapshot as RoofTileTechnicalSpec,
+          layoutIntent: { kind: 'roof-tile', horizontalAlignment: 'centered' },
+        }),
+      ),
     buildUp,
     battenWorkflow: deriveBattenWorkflow({
       layout: buildUp.battenLayout,
@@ -352,6 +357,38 @@ describe('V47 project readiness', () => {
     expect(readiness.documents.materials.state).toBe('blocked');
     // An expert manual gauge is never part of the safe repair group.
     expect(readiness.safeRepair.issueIds).toEqual([]);
+  });
+
+  it('a modular sheet with another manual gauge offers the product spacing, once', () => {
+    const sheet: CoveringAssignmentSpec = {
+      id: 'covering:sheet',
+      roofPlaneIds: roofPlaneIds(gable),
+      product: {
+        catalogRef: { productId: 'p', technicalRevisionId: 'r' },
+        displaySnapshot: { familyName: 'Sheet' },
+        technicalSpecSnapshot: {
+          schemaVersion: 1,
+          kind: 'modular-sheet',
+          effectiveWidthMm: 1100,
+          lengthModel: { kind: 'fixed-sheet', effectiveLengthMm: 700 },
+          moduleLengthMm: 350,
+        },
+      },
+    };
+    const readiness = deriveProjectReadiness(
+      facts({
+        coverings: [sheet],
+        buildUp: {
+          battenLayout: { ...newBattenLayer(), mode: 'manual', gaugeMm: 340 },
+        },
+      }),
+    );
+    expect(readiness.primary).toMatchObject({
+      code: 'battens-incompatible',
+      action: 'use-product-gauge',
+      secondaryAction: 'review-battens',
+      params: { gaugeMm: 340, minMm: 350, maxMm: 350 },
+    });
   });
 
   it('unresolved H1 counter-batten detail is a warning with a direct action, not a safe repair', () => {

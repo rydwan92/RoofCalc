@@ -1,0 +1,288 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "id": "manufacturer-research-2026-10-vnext4-galeco-colours",
+    "label": "VNext-4: Galeco STAL² 125/80×80 colour variants of gutters and downpipes from the galeco.pl colour tables, retrieved 2026-10-19. No technical change, no prices; fittings get no colours (not listed).",
+    "sourceRevision": "2026-10-vnext4",
+    "sourceUrl": "https://galeco.pl/produkty/systemy-rynnowe/galeco-stal2/"
+  },
+  "manufacturers": [
+    {
+      "id": "manufacturer:galeco",
+      "slug": "galeco",
+      "name": "Galeco",
+      "countryCode": "PL",
+      "websiteUrl": "https://galeco.pl",
+      "active": true
+    }
+  ],
+  "products": [
+    {
+      "id": "product:galeco:stal2-rynna-3m",
+      "manufacturerId": "manufacturer:galeco",
+      "slug": "stal2-rynna-3m",
+      "name": "STAL² Rynna 3 m",
+      "coveringKind": "roof-drainage-component",
+      "active": true
+    },
+    {
+      "id": "product:galeco:stal2-rynna-4m",
+      "manufacturerId": "manufacturer:galeco",
+      "slug": "stal2-rynna-4m",
+      "name": "STAL² Rynna 4 m",
+      "coveringKind": "roof-drainage-component",
+      "active": true
+    },
+    {
+      "id": "product:galeco:stal2-rura-spustowa-1m",
+      "manufacturerId": "manufacturer:galeco",
+      "slug": "stal2-rura-spustowa-1m",
+      "name": "STAL² Rura spustowa 1 m",
+      "coveringKind": "roof-drainage-component",
+      "active": true
+    },
+    {
+      "id": "product:galeco:stal2-rura-spustowa-3m",
+      "manufacturerId": "manufacturer:galeco",
+      "slug": "stal2-rura-spustowa-3m",
+      "name": "STAL² Rura spustowa 3 m",
+      "coveringKind": "roof-drainage-component",
+      "active": true
+    }
+  ],
+  "revisions": [],
+  "variants": [
+    {
+      "id": "variant:galeco:stal2-rynna-3m:grafitowy-ral-7015",
+      "productId": "product:galeco:stal2-rynna-3m",
+      "name": "Grafitowy RAL 7015",
+      "color": "Grafitowy RAL 7015",
+      "metadata": {
+        "sourceLabel": "galeco.pl Galeco STAL²: tabela „Kolorystyka orynnowania”, „125 / 80x80” — „Grafitowy RAL 7015” (pobrano 2026-10-19). Kolor dotyczy rynien i rur; dostępność kształtek w tym kolorze potwierdź u dystrybutora.",
+        "sourceUrl": "https://galeco.pl/produkty/systemy-rynnowe/galeco-stal2/"
+      },
+      "active": true
+    },
+    {
+      "id": "variant:galeco:stal2-rynna-3m:czarny-ral-9005",
+      "productId": "product:galeco:stal2-rynna-3m",
+      "name": "Czarny RAL 9005",
+      "color": "Czarny RAL 9005",
+      "metadata": {
+        "sourceLabel": "galeco.pl Galeco STAL²: tabela „Kolorystyka orynnowania”, „125 / 80x80” — „Czarny RAL 9005” (pobrano 2026-10-19). Kolor dotyczy rynien i rur; dostępność kształtek w tym kolorze potwierdź u dystrybutora.",
+        "sourceUrl": "https://galeco.pl/produkty/systemy-rynnowe/galeco-stal2/"
+      },
+      "active": true
+    },
+    {
+      "id": "variant:galeco:stal2-rynna-3m:greencoat-grafitowy-ral-7016",
+      "productId": "product:galeco:stal2-rynna-3m",
+      "name": "Grafitowy RAL 7016 — GREENCOAT® RWS PURAL BT MAT",
+      "color": "Grafitowy RAL 7016",
+      "finish": "GREENCOAT® RWS PURAL BT MAT",
+      "metadata": {
+        "sourceLabel": "galeco.pl Galeco STAL²: tabela „Stal w powłoce GREENCOAT® RWS PURAL BT MAT”, „125 / 80x80” — „Grafitowy RAL 7016” (pobrano 2026-10-19). Kolor dotyczy rynien i rur; dostępność kształtek w tym kolorze potwierdź u dystrybutora.",
+        "sourceUrl": "https://galeco.pl/produkty/systemy-rynnowe/galeco-stal2/"
+      },
+      "active": true
+    },
+    {
+      "id": "variant:galeco:stal2-rynna-3m:greencoat-czarny-ral-9005",
+      "productId": "product:galeco:stal2-rynna-3m",
+      "name": "Czarny RAL 9005 — GREENCOAT® RWS PURAL BT MAT",
+      "color": "Czarny RAL 9005",
+      "finish": "GREENCOAT® RWS PURAL BT MAT",
+      "metadata": {
+        "sourceLabel": "galeco.pl Galeco STAL²: tabela „Stal w powłoce GREENCOAT® RWS PURAL BT MAT”, „125 / 80x80” — „Czarny RAL 9005” (pobrano 2026-10-19). Kolor dotyczy rynien i rur; dostępność kształtek w tym kolorze potwierdź u dystrybutora.",
+        "sourceUrl": "https://galeco.pl/produkty/systemy-rynnowe/galeco-stal2/"
+      },
+      "active": true
+    },
+    {
+      "id": "variant:galeco:stal2-rynna-3m:metalic-ciemnosrebrny-ral-9007",
+      "productId": "product:galeco:stal2-rynna-3m",
+      "name": "Ciemnosrebrny RAL 9007 — STAL Metalic",
+      "color": "Ciemnosrebrny RAL 9007",
+      "finish": "STAL Metalic",
+      "metadata": {
+        "sourceLabel": "galeco.pl Galeco STAL²: tabela „STAL Metalic”, „125 / 80x80” — „Ciemnosrebrny RAL 9007” (pobrano 2026-10-19). Kolor dotyczy rynien i rur; dostępność kształtek w tym kolorze potwierdź u dystrybutora.",
+        "sourceUrl": "https://galeco.pl/produkty/systemy-rynnowe/galeco-stal2/"
+      },
+      "active": true
+    },
+    {
+      "id": "variant:galeco:stal2-rynna-4m:grafitowy-ral-7015",
+      "productId": "product:galeco:stal2-rynna-4m",
+      "name": "Grafitowy RAL 7015",
+      "color": "Grafitowy RAL 7015",
+      "metadata": {
+        "sourceLabel": "galeco.pl Galeco STAL²: tabela „Kolorystyka orynnowania”, „125 / 80x80” — „Grafitowy RAL 7015” (pobrano 2026-10-19). Kolor dotyczy rynien i rur; dostępność kształtek w tym kolorze potwierdź u dystrybutora.",
+        "sourceUrl": "https://galeco.pl/produkty/systemy-rynnowe/galeco-stal2/"
+      },
+      "active": true
+    },
+    {
+      "id": "variant:galeco:stal2-rynna-4m:czarny-ral-9005",
+      "productId": "product:galeco:stal2-rynna-4m",
+      "name": "Czarny RAL 9005",
+      "color": "Czarny RAL 9005",
+      "metadata": {
+        "sourceLabel": "galeco.pl Galeco STAL²: tabela „Kolorystyka orynnowania”, „125 / 80x80” — „Czarny RAL 9005” (pobrano 2026-10-19). Kolor dotyczy rynien i rur; dostępność kształtek w tym kolorze potwierdź u dystrybutora.",
+        "sourceUrl": "https://galeco.pl/produkty/systemy-rynnowe/galeco-stal2/"
+      },
+      "active": true
+    },
+    {
+      "id": "variant:galeco:stal2-rynna-4m:greencoat-grafitowy-ral-7016",
+      "productId": "product:galeco:stal2-rynna-4m",
+      "name": "Grafitowy RAL 7016 — GREENCOAT® RWS PURAL BT MAT",
+      "color": "Grafitowy RAL 7016",
+      "finish": "GREENCOAT® RWS PURAL BT MAT",
+      "metadata": {
+        "sourceLabel": "galeco.pl Galeco STAL²: tabela „Stal w powłoce GREENCOAT® RWS PURAL BT MAT”, „125 / 80x80” — „Grafitowy RAL 7016” (pobrano 2026-10-19). Kolor dotyczy rynien i rur; dostępność kształtek w tym kolorze potwierdź u dystrybutora.",
+        "sourceUrl": "https://galeco.pl/produkty/systemy-rynnowe/galeco-stal2/"
+      },
+      "active": true
+    },
+    {
+      "id": "variant:galeco:stal2-rynna-4m:greencoat-czarny-ral-9005",
+      "productId": "product:galeco:stal2-rynna-4m",
+      "name": "Czarny RAL 9005 — GREENCOAT® RWS PURAL BT MAT",
+      "color": "Czarny RAL 9005",
+      "finish": "GREENCOAT® RWS PURAL BT MAT",
+      "metadata": {
+        "sourceLabel": "galeco.pl Galeco STAL²: tabela „Stal w powłoce GREENCOAT® RWS PURAL BT MAT”, „125 / 80x80” — „Czarny RAL 9005” (pobrano 2026-10-19). Kolor dotyczy rynien i rur; dostępność kształtek w tym kolorze potwierdź u dystrybutora.",
+        "sourceUrl": "https://galeco.pl/produkty/systemy-rynnowe/galeco-stal2/"
+      },
+      "active": true
+    },
+    {
+      "id": "variant:galeco:stal2-rynna-4m:metalic-ciemnosrebrny-ral-9007",
+      "productId": "product:galeco:stal2-rynna-4m",
+      "name": "Ciemnosrebrny RAL 9007 — STAL Metalic",
+      "color": "Ciemnosrebrny RAL 9007",
+      "finish": "STAL Metalic",
+      "metadata": {
+        "sourceLabel": "galeco.pl Galeco STAL²: tabela „STAL Metalic”, „125 / 80x80” — „Ciemnosrebrny RAL 9007” (pobrano 2026-10-19). Kolor dotyczy rynien i rur; dostępność kształtek w tym kolorze potwierdź u dystrybutora.",
+        "sourceUrl": "https://galeco.pl/produkty/systemy-rynnowe/galeco-stal2/"
+      },
+      "active": true
+    },
+    {
+      "id": "variant:galeco:stal2-rura-spustowa-1m:grafitowy-ral-7015",
+      "productId": "product:galeco:stal2-rura-spustowa-1m",
+      "name": "Grafitowy RAL 7015",
+      "color": "Grafitowy RAL 7015",
+      "metadata": {
+        "sourceLabel": "galeco.pl Galeco STAL²: tabela „Kolorystyka orynnowania”, „125 / 80x80” — „Grafitowy RAL 7015” (pobrano 2026-10-19). Kolor dotyczy rynien i rur; dostępność kształtek w tym kolorze potwierdź u dystrybutora.",
+        "sourceUrl": "https://galeco.pl/produkty/systemy-rynnowe/galeco-stal2/"
+      },
+      "active": true
+    },
+    {
+      "id": "variant:galeco:stal2-rura-spustowa-1m:czarny-ral-9005",
+      "productId": "product:galeco:stal2-rura-spustowa-1m",
+      "name": "Czarny RAL 9005",
+      "color": "Czarny RAL 9005",
+      "metadata": {
+        "sourceLabel": "galeco.pl Galeco STAL²: tabela „Kolorystyka orynnowania”, „125 / 80x80” — „Czarny RAL 9005” (pobrano 2026-10-19). Kolor dotyczy rynien i rur; dostępność kształtek w tym kolorze potwierdź u dystrybutora.",
+        "sourceUrl": "https://galeco.pl/produkty/systemy-rynnowe/galeco-stal2/"
+      },
+      "active": true
+    },
+    {
+      "id": "variant:galeco:stal2-rura-spustowa-1m:greencoat-grafitowy-ral-7016",
+      "productId": "product:galeco:stal2-rura-spustowa-1m",
+      "name": "Grafitowy RAL 7016 — GREENCOAT® RWS PURAL BT MAT",
+      "color": "Grafitowy RAL 7016",
+      "finish": "GREENCOAT® RWS PURAL BT MAT",
+      "metadata": {
+        "sourceLabel": "galeco.pl Galeco STAL²: tabela „Stal w powłoce GREENCOAT® RWS PURAL BT MAT”, „125 / 80x80” — „Grafitowy RAL 7016” (pobrano 2026-10-19). Kolor dotyczy rynien i rur; dostępność kształtek w tym kolorze potwierdź u dystrybutora.",
+        "sourceUrl": "https://galeco.pl/produkty/systemy-rynnowe/galeco-stal2/"
+      },
+      "active": true
+    },
+    {
+      "id": "variant:galeco:stal2-rura-spustowa-1m:greencoat-czarny-ral-9005",
+      "productId": "product:galeco:stal2-rura-spustowa-1m",
+      "name": "Czarny RAL 9005 — GREENCOAT® RWS PURAL BT MAT",
+      "color": "Czarny RAL 9005",
+      "finish": "GREENCOAT® RWS PURAL BT MAT",
+      "metadata": {
+        "sourceLabel": "galeco.pl Galeco STAL²: tabela „Stal w powłoce GREENCOAT® RWS PURAL BT MAT”, „125 / 80x80” — „Czarny RAL 9005” (pobrano 2026-10-19). Kolor dotyczy rynien i rur; dostępność kształtek w tym kolorze potwierdź u dystrybutora.",
+        "sourceUrl": "https://galeco.pl/produkty/systemy-rynnowe/galeco-stal2/"
+      },
+      "active": true
+    },
+    {
+      "id": "variant:galeco:stal2-rura-spustowa-1m:metalic-ciemnosrebrny-ral-9007",
+      "productId": "product:galeco:stal2-rura-spustowa-1m",
+      "name": "Ciemnosrebrny RAL 9007 — STAL Metalic",
+      "color": "Ciemnosrebrny RAL 9007",
+      "finish": "STAL Metalic",
+      "metadata": {
+        "sourceLabel": "galeco.pl Galeco STAL²: tabela „STAL Metalic”, „125 / 80x80” — „Ciemnosrebrny RAL 9007” (pobrano 2026-10-19). Kolor dotyczy rynien i rur; dostępność kształtek w tym kolorze potwierdź u dystrybutora.",
+        "sourceUrl": "https://galeco.pl/produkty/systemy-rynnowe/galeco-stal2/"
+      },
+      "active": true
+    },
+    {
+      "id": "variant:galeco:stal2-rura-spustowa-3m:grafitowy-ral-7015",
+      "productId": "product:galeco:stal2-rura-spustowa-3m",
+      "name": "Grafitowy RAL 7015",
+      "color": "Grafitowy RAL 7015",
+      "metadata": {
+        "sourceLabel": "galeco.pl Galeco STAL²: tabela „Kolorystyka orynnowania”, „125 / 80x80” — „Grafitowy RAL 7015” (pobrano 2026-10-19). Kolor dotyczy rynien i rur; dostępność kształtek w tym kolorze potwierdź u dystrybutora.",
+        "sourceUrl": "https://galeco.pl/produkty/systemy-rynnowe/galeco-stal2/"
+      },
+      "active": true
+    },
+    {
+      "id": "variant:galeco:stal2-rura-spustowa-3m:czarny-ral-9005",
+      "productId": "product:galeco:stal2-rura-spustowa-3m",
+      "name": "Czarny RAL 9005",
+      "color": "Czarny RAL 9005",
+      "metadata": {
+        "sourceLabel": "galeco.pl Galeco STAL²: tabela „Kolorystyka orynnowania”, „125 / 80x80” — „Czarny RAL 9005” (pobrano 2026-10-19). Kolor dotyczy rynien i rur; dostępność kształtek w tym kolorze potwierdź u dystrybutora.",
+        "sourceUrl": "https://galeco.pl/produkty/systemy-rynnowe/galeco-stal2/"
+      },
+      "active": true
+    },
+    {
+      "id": "variant:galeco:stal2-rura-spustowa-3m:greencoat-grafitowy-ral-7016",
+      "productId": "product:galeco:stal2-rura-spustowa-3m",
+      "name": "Grafitowy RAL 7016 — GREENCOAT® RWS PURAL BT MAT",
+      "color": "Grafitowy RAL 7016",
+      "finish": "GREENCOAT® RWS PURAL BT MAT",
+      "metadata": {
+        "sourceLabel": "galeco.pl Galeco STAL²: tabela „Stal w powłoce GREENCOAT® RWS PURAL BT MAT”, „125 / 80x80” — „Grafitowy RAL 7016” (pobrano 2026-10-19). Kolor dotyczy rynien i rur; dostępność kształtek w tym kolorze potwierdź u dystrybutora.",
+        "sourceUrl": "https://galeco.pl/produkty/systemy-rynnowe/galeco-stal2/"
+      },
+      "active": true
+    },
+    {
+      "id": "variant:galeco:stal2-rura-spustowa-3m:greencoat-czarny-ral-9005",
+      "productId": "product:galeco:stal2-rura-spustowa-3m",
+      "name": "Czarny RAL 9005 — GREENCOAT® RWS PURAL BT MAT",
+      "color": "Czarny RAL 9005",
+      "finish": "GREENCOAT® RWS PURAL BT MAT",
+      "metadata": {
+        "sourceLabel": "galeco.pl Galeco STAL²: tabela „Stal w powłoce GREENCOAT® RWS PURAL BT MAT”, „125 / 80x80” — „Czarny RAL 9005” (pobrano 2026-10-19). Kolor dotyczy rynien i rur; dostępność kształtek w tym kolorze potwierdź u dystrybutora.",
+        "sourceUrl": "https://galeco.pl/produkty/systemy-rynnowe/galeco-stal2/"
+      },
+      "active": true
+    },
+    {
+      "id": "variant:galeco:stal2-rura-spustowa-3m:metalic-ciemnosrebrny-ral-9007",
+      "productId": "product:galeco:stal2-rura-spustowa-3m",
+      "name": "Ciemnosrebrny RAL 9007 — STAL Metalic",
+      "color": "Ciemnosrebrny RAL 9007",
+      "finish": "STAL Metalic",
+      "metadata": {
+        "sourceLabel": "galeco.pl Galeco STAL²: tabela „STAL Metalic”, „125 / 80x80” — „Ciemnosrebrny RAL 9007” (pobrano 2026-10-19). Kolor dotyczy rynien i rur; dostępność kształtek w tym kolorze potwierdź u dystrybutora.",
+        "sourceUrl": "https://galeco.pl/produkty/systemy-rynnowe/galeco-stal2/"
+      },
+      "active": true
+    }
+  ]
+}

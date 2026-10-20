@@ -1,4 +1,6 @@
 export * from './analysis';
+export * from './dxf';
+export * from './cad-plan';
 
 export type IfcElementGroup = 'roof' | 'structure' | 'opening' | 'other';
 

@@ -9,7 +9,11 @@ import { useCatalogSource } from '../catalog/catalog-source';
 import { parseDecimal } from '../format';
 import { usePriceOptions } from '../pricing/use-prices';
 import { useAssembly } from './store';
-import { materialCopy, materialText } from './material-copy';
+import {
+  materialCopy,
+  materialText,
+  timberMemberLabel,
+} from './material-copy';
 import {
   acceptMaterialRow,
   compatibleMaterialPrices,
@@ -568,8 +572,9 @@ export function MaterialPlan({
                   item.assignmentId === tileAssignment.id,
               )
             : undefined;
-          const label =
-            row.openingOrdinal !== undefined
+          const label = row.timberMember
+            ? timberMemberLabel(row.timberMember, locale)
+            : row.openingOrdinal !== undefined
               ? `${rs.opening(row.openingOrdinal)} · ${row.description?.split(' · ')[1] ?? ''} — ${materialText(locale, row.labelKey)}`
               : `${materialText(locale, row.labelKey)}${
                   section ? ` ${section.widthMm}×${section.depthMm}` : ''

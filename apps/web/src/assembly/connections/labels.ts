@@ -64,6 +64,23 @@ const distanceToAxis = (
   );
 };
 
+/**
+ * The short schedule code of a member — "K1-04", "J1-02", "H1" — or
+ * undefined when it has none (wall plates, ridge, purlins…).
+ */
+export function memberCode(label: MemberLabel | undefined): string | undefined {
+  if (!label?.code) return undefined;
+  if (label.kind === 'hip-rafter') return label.code;
+  if (
+    (label.kind === 'rafter' ||
+      label.kind === 'rafter-segment' ||
+      label.kind === 'jack-rafter') &&
+    label.ordinal !== undefined
+  )
+    return `${label.code}-${String(label.ordinal).padStart(2, '0')}`;
+  return undefined;
+}
+
 export function memberLabelIndex(
   members: readonly SkeletonMember3D[],
   prototypes: readonly ResolvedMemberPrototype[] = [],

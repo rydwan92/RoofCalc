@@ -209,9 +209,12 @@ function displayNumber(value: number, digits: number) {
 }
 
 export function DocumentImportWorkspace({
+  initialFile,
   onClose,
   onCreate,
 }: {
+  /** VNext-4: a file already chosen elsewhere (universal file opening). */
+  initialFile?: File;
   onClose: () => void;
   onCreate: (template: RoofTemplateSpec, name: string) => Promise<void>;
 }) {
@@ -453,6 +456,15 @@ export function DocumentImportWorkspace({
     setReviewed(false);
     setCreateError(undefined);
   }
+
+  const initialLoaded = useRef(false);
+  useEffect(() => {
+    if (!initialFile || initialLoaded.current) return;
+    initialLoaded.current = true;
+    void chooseFile(initialFile);
+    // Once, for the file the workspace was opened with.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialFile]);
 
   async function chooseFile(file: File | undefined) {
     if (!file) return;

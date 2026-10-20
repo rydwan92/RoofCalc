@@ -415,6 +415,24 @@
   border-color: var(--a-green);
   width: 100%;
 }
+/*
+ * VNext-4: a primary button without the .a-button base still looks like one
+ * (no browser bevel, the workbench radius, height and type size). Low
+ * specificity, so every contextual rule keeps winning.
+ */
+:where(button.a-primary:not(.a-button)) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 8px 16px;
+  border: 1px solid var(--a-green);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.25;
+}
 .a-primary:hover {
   background: #326c58;
 }
@@ -8320,6 +8338,57 @@ button.a-quick-fact[aria-pressed='true'] {
 .mp-workspace .a-primary,
 .cw-workspace .a-primary {
   width: auto;
+}
+/*
+ * VNext-4: the same secondary look for plain buttons in the drainage and
+ * roof-system workspaces (they rendered as grey browser buttons). :where()
+ * keeps it below every contextual rule (chips, links, list rows).
+ */
+:where(.dw-workspace, .rs-workspace, .a-readiness-issue-actions)
+  :where(button:not([class])) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 6px 12px;
+  border: 1px solid var(--a-line);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--a-text);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.2;
+}
+:where(.dw-workspace, .rs-workspace, .a-readiness-issue-actions)
+  :where(button:not([class])):hover:not(:disabled) {
+  border-color: var(--a-line-strong);
+  background: #eaf0e9;
+}
+/* A text action next to a primary one (readiness, feedback). */
+:where(button.a-link-button) {
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--a-green);
+  font-size: 12px;
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+:where(button.a-link-button):hover:not(:disabled) {
+  background: #eaf0e9;
+}
+:where(.dw-workspace, .rs-workspace) :where(select) {
+  min-height: 34px;
+  padding: 5px 9px;
+  border: 1px solid var(--a-line);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--a-text);
+  font-size: 12px;
 }
 .cw-empty-state {
   display: grid;

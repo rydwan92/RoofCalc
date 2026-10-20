@@ -348,9 +348,15 @@ describe('V43B batten workflow', () => {
     expect(
       run({ layout: manual(350), assignments: [sheet] }).workflow,
     ).toMatchObject({ state: 'manual-compatible', fixedSupportGaugeMm: 350 });
+    // A different manual gauge is repaired by the product's own spacing,
+    // not by "fit to roof" (which keeps a user-owned gauge).
     expect(
-      run({ layout: manual(340), assignments: [sheet] }).workflow.state,
-    ).toBe('manual-incompatible');
+      run({ layout: manual(340), assignments: [sheet] }).workflow,
+    ).toMatchObject({
+      state: 'manual-incompatible',
+      actions: ['use-product-gauge'],
+      fixedSupportGaugeMm: 350,
+    });
   });
 
   it('a narrowed plane scope is explicit and repairable', () => {
