@@ -1354,8 +1354,12 @@ If code is temporarily incomplete, explicitly list:
   - Wholesale admin: "Przegląd" landing tab (counts + one-click fixes +
     quick actions); "Szablon z katalogu" CSV with RoofCalc IDs; import
     column `ID RoofCalc` → exact `catalog-id` match.
-- Validation: see the end of this entry (verify/e2e results recorded after
-  the run).
+- Validation: `pnpm verify` green — 190 files (2 skipped), 1945 tests
+  passed, 13 skipped, build OK; full `pnpm e2e` 158 passed, 32 conditionally
+  skipped, 0 failed (desktop 1440×900, phone 390×844) after the offline
+  catalogue spec read its data date from `CATALOGUE_DATA_AS_OF`. Visual QA of
+  drainage, roof system, checklist, connections practice, CAD import, start
+  dialog and wholesale overview on desktop and phone.
 - Known limitations: kształtki Galeco without colour variants (source does
   not list them); DXF: rectangular plans only, no DWG/binary DXF, pitch
   from texts only; practice proposes types, never sizes.

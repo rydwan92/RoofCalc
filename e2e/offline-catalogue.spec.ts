@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { CATALOGUE_DATA_AS_OF } from '../packages/catalog-data/src/index';
 
 /**
  * ADR-013: with the catalogue API down, the user can deliberately switch to
@@ -37,7 +38,7 @@ test('chooses a tile from the built-in catalogue when the server is down', async
 
   await results.getByTestId('catalog-use-bundled').click();
   await expect(page.getByTestId('catalog-bundled-notice')).toContainText(
-    '2026-09',
+    CATALOGUE_DATA_AS_OF,
   );
   const card = results
     .locator('.a-catalog-card')
