@@ -74,6 +74,11 @@ export type CadPlanAnalysis =
       /** The outline the proposal uses as the walls, if known. */
       wallOutline?: CadRectangle;
       roofLines: CadRoofLine[];
+      /**
+       * VNext-5: the ridge runs along the outline's SHORT side, so the
+       * building length (along the ridge) is the short side.
+       */
+      ridgeAlongShortSide?: true;
       proposed: {
         roofType?: CadRoofType;
         buildingLengthMm: number;
@@ -581,6 +586,29 @@ export function analyzeCadRoofPlan(
     roofType = 'gable';
     evidence.push('ridge-full-length');
   }
+  // VNext-5: a full-span ridge across the SHORT side is a gable whose ridge
+  // runs along the shorter dimension (a deep building): the building length
+  // — measured along the ridge — is then the short side of the outline.
+  const crossRidge = roofType
+    ? undefined
+    : segments.find(([from, to]) => {
+        const a = toLocal(from, reference),
+          b = toLocal(to, reference);
+        const length = len(sub(b, a));
+        return (
+          length >= 0.9 * reference.shortMm &&
+          Math.abs(b[1] - a[1]) / length > 0.999 &&
+          Math.abs((a[0] + b[0]) / 2) < 0.02 * reference.longMm &&
+          reference.longMm - reference.shortMm > 0.05 * reference.longMm
+        );
+      });
+  const ridgeAcross = !!crossRidge;
+  if (crossRidge) {
+    roofType = 'gable';
+    evidence.push('ridge-full-length');
+    warnings.push('ridge-across-short-side');
+    uniqueLines.push({ kind: 'ridge', from: crossRidge[0], to: crossRidge[1] });
+  }
   // Written roof type, when the lines did not decide it.
   const typeText = document.texts.find(
     (text) => HIP_WORDS.test(text.text) || GABLE_WORDS.test(text.text),
@@ -591,23 +619,12 @@ export function analyzeCadRoofPlan(
   }
   if (!roofType) warnings.push('roof-type-not-recognized');
 
-  // A ridge drawn across the short side would make the short side the
-  // building length; RoofCalc's start keeps the ridge along the length.
-  const crossRidge = segments.some(([from, to]) => {
-    const a = toLocal(from, reference),
-      b = toLocal(to, reference);
-    const length = len(sub(b, a));
-    return (
-      length >= 0.9 * reference.shortMm &&
-      Math.abs(b[1] - a[1]) / length > 0.999 &&
-      Math.abs((a[0] + b[0]) / 2) < 0.02 * reference.longMm &&
-      reference.longMm - reference.shortMm > 0.05 * reference.longMm
-    );
-  });
-  if (crossRidge && roofType !== 'hip')
-    warnings.push('ridge-across-short-side');
-
   const building = wallOutline ?? chosen.rect;
+  /** Along the ridge, then across it. */
+  const alongRidge = (rect: CadRectangle) =>
+    ridgeAcross ? rect.shortMm : rect.longMm;
+  const acrossRidge = (rect: CadRectangle) =>
+    ridgeAcross ? rect.longMm : rect.shortMm;
   for (const dimension of document.dimensions) {
     if (dimension.kind !== 'linear' || dimension.measurement === undefined)
       continue;
@@ -615,9 +632,9 @@ export function analyzeCadRoofPlan(
     for (const outline of [building, eaveOutline].filter(
       Boolean,
     ) as CadRectangle[]) {
-      if (Math.abs(mm - outline.longMm) <= 0.005 * outline.longMm)
+      if (Math.abs(mm - alongRidge(outline)) <= 0.005 * alongRidge(outline))
         evidence.push('dimension-matches-length');
-      if (Math.abs(mm - outline.shortMm) <= 0.005 * outline.shortMm)
+      if (Math.abs(mm - acrossRidge(outline)) <= 0.005 * acrossRidge(outline))
         evidence.push('dimension-matches-width');
     }
   }
@@ -637,10 +654,11 @@ export function analyzeCadRoofPlan(
     ...(eaveOutline ? { eaveOutline } : {}),
     ...(wallOutline ? { wallOutline } : {}),
     roofLines: uniqueLines,
+    ...(ridgeAcross ? { ridgeAlongShortSide: true as const } : {}),
     proposed: {
       ...(roofType ? { roofType } : {}),
-      buildingLengthMm: round(building.longMm),
-      buildingWidthMm: round(building.shortMm),
+      buildingLengthMm: round(alongRidge(building)),
+      buildingWidthMm: round(acrossRidge(building)),
       ...(overhang !== undefined ? { eaveOverhangMm: round(overhang) } : {}),
       ...(pitch.candidates[0]
         ? { pitchDeg: pitch.candidates[0].valueDeg }

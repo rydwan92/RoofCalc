@@ -40,6 +40,7 @@ file ── classifyProjectFile (bytes, never the name) ──► dxf
 | Walls + eave | Two parallel, concentric outlines with an even offset on all four sides (≤ 2 m) → inner = walls, offset = horizontal overhang | `nested-outlines` |
 | Single outline | The user says whether it is the walls or the eave edge; eave edge → walls = outline − 2 × overhang | `single-outline-meaning` warning |
 | Gable | A centre line along the long axis spanning ≥ 90 % of the length | `ridge-full-length` |
+| Gable on a deep plan (VNext-5) | A centre line across the long axis spanning ≥ 90 % of the short side → the building length (along the ridge) is the short side, the width the long side | `ridge-full-length`, `ridge-across-short-side` (informs), `ridgeAlongShortSide` |
 | Hip | ≥ 3 lines at 45° (± 6°) from outline corners | `hip-diagonals`; `hip-geometry-consistent` when the ridge equals L − W |
 | Roof type text | "kopertowy", "czterospadowy", "namiotowy", "hip" / "dwuspadowy", "siodłowy", "gable" — only when the lines decided nothing | `roof-type-text` |
 | Pitch | "35°", "35 st.", "%%d" in texts, labelled texts first; a labelled "spadek 70 %" is converted with atan | `pitch-text`, `pitch-percent-converted` |

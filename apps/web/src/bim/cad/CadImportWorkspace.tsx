@@ -501,16 +501,23 @@ function CadConfirmation({
   const eaveMm = read('eave');
   // A single outline that is the eave edge: walls = outline − 2 × overhang.
   const derived = !nested && meaning === 'eaves';
+  // Length is measured along the ridge (the short side of a deep plan).
+  const alongRidge = analysis.ridgeAlongShortSide
+    ? outline.shortMm
+    : outline.longMm;
+  const acrossRidge = analysis.ridgeAlongShortSide
+    ? outline.longMm
+    : outline.shortMm;
   const numbers = {
     buildingLength: derived
       ? eaveMm === null
         ? null
-        : outline.longMm - 2 * eaveMm
+        : alongRidge - 2 * eaveMm
       : read('buildingLength'),
     buildingWidth: derived
       ? eaveMm === null
         ? null
-        : outline.shortMm - 2 * eaveMm
+        : acrossRidge - 2 * eaveMm
       : read('buildingWidth'),
     pitch: read('pitch'),
     eave: eaveMm,

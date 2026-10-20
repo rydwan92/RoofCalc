@@ -103,7 +103,7 @@ const pl = {
       'Nie rozpoznano rodzaju dachu z rysunku — wybierz go.',
     'pitch-not-found': 'Rzut nie podaje kąta — wpisz go z przekroju.',
     'ridge-across-short-side':
-      'Kalenica biegnie wzdłuż krótszego boku — sprawdź, która strona jest długością budynku (wzdłuż kalenicy).',
+      'Kalenica biegnie wzdłuż krótszego boku obrysu — długość budynku (wzdłuż kalenicy) przyjęto z krótszego boku. Sprawdź.',
   } satisfies Record<CadWarning, string>,
   dxfWarning: {
     'arcs-ignored': 'Łuki i okręgi pominięto — rozpoznawane są odcinki proste.',
@@ -223,7 +223,7 @@ const en: CadCopy = {
       'The roof type was not recognised from the drawing — choose it.',
     'pitch-not-found': 'The plan states no pitch — enter it from a section.',
     'ridge-across-short-side':
-      'The ridge runs along the shorter side — check which side is the building length (along the ridge).',
+      'The ridge runs along the shorter side of the outline — the building length (along the ridge) was taken from the short side. Check it.',
   },
   dxfWarning: {
     'arcs-ignored': 'Arcs and circles were skipped — straight pieces are read.',

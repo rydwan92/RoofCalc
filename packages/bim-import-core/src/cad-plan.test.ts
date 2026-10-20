@@ -336,6 +336,36 @@ describe('roof plan from CAD geometry', () => {
     );
   });
 
+  it('a deep plan whose ridge spans the short side: length is taken along the ridge', () => {
+    // 12 m wide, 8 m deep, ridge across the 8 m side at the middle.
+    const analysis = analyzeCadRoofPlan(
+      read(
+        dxf(
+          [
+            rect(0, 0, 12000, 8000),
+            line(6000, 0, 6000, 8000),
+            [0, 'DIMENSION', 8, 'WYM', 70, 0, 42, 8000],
+          ],
+          4,
+        ),
+      ),
+    );
+    expect(analysis).toMatchObject({
+      status: 'supported',
+      ridgeAlongShortSide: true,
+      proposed: {
+        roofType: 'gable',
+        buildingLengthMm: 8000,
+        buildingWidthMm: 12000,
+      },
+    });
+    if (analysis.status !== 'supported') return;
+    expect(analysis.warnings).toContain('ridge-across-short-side');
+    // The written 8 m dimension confirms the length along the ridge.
+    expect(analysis.evidence).toContain('dimension-matches-length');
+    expect(analysis.roofLines.some((item) => item.kind === 'ridge')).toBe(true);
+  });
+
   it('reads the roof type from text when no roof lines are drawn', () => {
     const analysis = analyzeCadRoofPlan(
       read(dxf([rect(0, 0, 12000, 8000), text('DACH KOPERTOWY 30°')], 4)),
