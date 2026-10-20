@@ -4,6 +4,7 @@ export type SectionKind =
   | 'roof-overview'
   | 'member-schedule'
   | 'member-fabrication'
+  | 'connection-plan'
   | 'cutting-plan'
   | 'layers'
   | 'covering'
@@ -18,6 +19,7 @@ export const sectionOrder: readonly SectionKind[] = [
   'roof-overview',
   'member-schedule',
   'member-fabrication',
+  'connection-plan',
   'cutting-plan',
   'layers',
   'covering',
@@ -457,7 +459,32 @@ export interface RoofDetailsSection {
   }[];
 }
 
+/**
+ * VNext-5 connection plan for the crew: per kind of node, how many there
+ * are, the carpentry joint the model resolves and the fastening the
+ * carpenter planned. Codes only (the renderer translates). Capacity — how
+ * many fasteners a node needs — is never stated here (ADR-014).
+ */
+export interface ConnectionPlanSection {
+  kind: 'connection-plan';
+  rows: {
+    /** `RoofNodeKind` code. */
+    nodeKind: string;
+    count: number;
+    unit: 'node' | 'axis' | 'member';
+    extentMm?: number;
+    carpentry?: { type: string; status: 'resolved' | 'named' | 'undecided' };
+    fastening?: { type: string; diameterMm?: number; perNode?: number };
+    connector?: string;
+    note?: string;
+    status: 'planned' | 'not-planned' | 'check-detailing';
+  }[];
+  /** Always true: the number and capacity of fasteners are the designer's. */
+  capacityNotVerified: true;
+}
+
 export type ExecutionSection =
+  | ConnectionPlanSection
   | RoofDetailsSection
   | ProjectSummarySection
   | RoofOverviewSection

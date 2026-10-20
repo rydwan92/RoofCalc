@@ -26,6 +26,7 @@ import { MATERIAL_CATEGORY_ORDER } from './material-plan';
 import type { DocumentStatus } from '@cieslacalc/document-core';
 import type { ReadinessDocumentKind } from './project-readiness';
 import { readinessIssueText } from './readiness-copy';
+import { connectionsCopy } from './connections/copy';
 
 type Params = Record<string, string | number | undefined>;
 /** The document follows the application language (set on <html lang>). */
@@ -169,6 +170,17 @@ const copy = {
     tileCut: 'Docinane',
     tileAccessories: 'Elementy systemowe pokrycia',
     'drainage-plan': 'Plan odwodnienia',
+    'connection-plan': 'Plan połączeń',
+    connectionNode: 'Węzeł',
+    connectionCount: 'Ile',
+    connectionCarpentry: 'Połączenie ciesielskie',
+    connectionPlanned: 'Łączenie (zaplanowane)',
+    connectionNote: 'Uwagi',
+    connectionNotPlanned: 'do ustalenia',
+    connectionCheck: 'sprawdź rozstaw',
+    connectionPerNode: (count: number) => `${count} szt. / węzeł`,
+    connectionCapacity:
+      'Liczbę, średnicę i rozstaw łączników oraz nośność połączeń ustala projektant konstrukcji (PN-EN 1995-1-1). Plan zapisuje decyzje wykonawcze.',
     'roof-details': 'Detale dachu',
     detailArea: {
       ridge: 'Kalenica / grzbiety',
@@ -354,6 +366,10 @@ const copy = {
       'no-cost-lines': 'Nie dodano żadnej pozycji kosztorysu.',
       'no-drainage': 'Odwodnienie nie jest skonfigurowane.',
       'drainage-incomplete': 'Plan odwodnienia ma nieuzupełnione dane.',
+      'connections-not-planned':
+        'Nie zaplanowano połączeń (Konstrukcja → Połączenia).',
+      'connections-check-detailing':
+        'Część połączeń ma rozstaw łączników do sprawdzenia.',
       'no-roof-details': 'Brak elementów kalenicy, okapu i otworów.',
       'roof-details-incomplete': 'Część elementów systemowych czeka na wybór.',
       'cost-incomplete': 'Część pozycji wymaga jeszcze ceny lub ilości.',
@@ -455,6 +471,17 @@ const copy = {
     tileCut: 'Cut',
     tileAccessories: 'Covering system elements',
     'drainage-plan': 'Drainage plan',
+    'connection-plan': 'Connection plan',
+    connectionNode: 'Node',
+    connectionCount: 'How many',
+    connectionCarpentry: 'Carpentry joint',
+    connectionPlanned: 'Fixing (planned)',
+    connectionNote: 'Notes',
+    connectionNotPlanned: 'to decide',
+    connectionCheck: 'check spacing',
+    connectionPerNode: (count: number) => `${count} pcs / node`,
+    connectionCapacity:
+      'The number, diameter and spacing of fasteners and the capacity of joints are set by the structural designer (EN 1995-1-1). The plan records site decisions.',
     'roof-details': 'Roof details',
     detailArea: {
       ridge: 'Ridge / hips',
@@ -643,6 +670,10 @@ const copy = {
       'no-cost-lines': 'No estimate lines added yet.',
       'no-drainage': 'Drainage is not configured.',
       'drainage-incomplete': 'The drainage plan has missing inputs.',
+      'connections-not-planned':
+        'No connection is planned yet (Structure → Connections).',
+      'connections-check-detailing':
+        'Some connections have a fastener spacing to check.',
       'no-roof-details': 'No ridge, eave or opening elements.',
       'roof-details-incomplete': 'Some system elements still need a choice.',
       'cost-incomplete': 'Some lines still need a price or quantity.',
@@ -1025,6 +1056,68 @@ function SectionBody({
           <p className="doc-note">{m.drainageNote}</p>
         </div>
       );
+    case 'connection-plan': {
+      const names = connectionsCopy(locale);
+      const typeName = (id: string) =>
+        names.types[id as keyof typeof names.types] ?? id;
+      return (
+        <div data-testid="doc-connection-plan">
+          <table>
+            <thead>
+              <tr>
+                <th>{m.connectionNode}</th>
+                <th>{m.connectionCount}</th>
+                <th>{m.connectionCarpentry}</th>
+                <th>{m.connectionPlanned}</th>
+                <th>{m.connectionNote}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {section.rows.map((row) => (
+                <tr key={row.nodeKind} data-status={row.status}>
+                  <th>
+                    {names.nodes[row.nodeKind as keyof typeof names.nodes] ??
+                      row.nodeKind}
+                  </th>
+                  <td>
+                    {row.unit === 'axis'
+                      ? names.axes(row.count)
+                      : row.unit === 'member'
+                        ? names.members(row.count, row.extentMm)
+                        : names.count(row.count)}
+                  </td>
+                  <td>{row.carpentry ? typeName(row.carpentry.type) : '—'}</td>
+                  <td>
+                    {[
+                      row.connector ? typeName(row.connector) : '',
+                      row.fastening
+                        ? [
+                            typeName(row.fastening.type),
+                            row.fastening.diameterMm !== undefined
+                              ? `Ø${String(row.fastening.diameterMm).replace('.', ',')} mm`
+                              : '',
+                            row.fastening.perNode !== undefined
+                              ? m.connectionPerNode(row.fastening.perNode)
+                              : '',
+                          ]
+                            .filter(Boolean)
+                            .join(' ')
+                        : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' + ') || m.connectionNotPlanned}
+                    {row.status === 'check-detailing' &&
+                      ` · ${m.connectionCheck}`}
+                  </td>
+                  <td>{row.note ?? ''}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="doc-note">{m.connectionCapacity}</p>
+        </div>
+      );
+    }
     case 'roof-details':
       return (
         <div data-testid="doc-roof-details">

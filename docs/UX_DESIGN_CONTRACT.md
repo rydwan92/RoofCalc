@@ -602,7 +602,8 @@ line and manual lengths keep working.
   readiness card never repeats its primary action as a secondary one.
 - **VNext-4: say what is missing, not "WYMAGA USTALENIA".** Drainage rows
   name the missing input ("podaj wysokość pionu", "potwierdź kolana") and
-  offer the next step ("Uzupełnij pion R1"); downpipe labels on the plan are
+  offer the next step ("Uzupełnij pion P1"); downpipe labels (P1, P2 — the
+  same as in the execution package, where R1 is a gutter run) on the plan are
   readable and open their eave.
 - **VNext-4: administration opens on an overview** — assortment, without
   price, without VAT, not linked, team, company details — each with one

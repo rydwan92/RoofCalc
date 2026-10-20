@@ -999,7 +999,7 @@ export function DrainageWorkspace({
                   setSelectedEaveId(resolved.eaveId);
                 }}
               >
-                ↓R{index + 1}
+                ↓P{index + 1}
                 {resolved.downpipe.heightMm !== undefined
                   ? ` · ${length(resolved.downpipe.heightMm)}`
                   : ` · ${c.heightUnknown}`}
@@ -1689,7 +1689,7 @@ export function DrainageWorkspace({
         <div className="dw-next" data-testid="drainage-next-pipe">
           <p className="dw-muted">{c.nextPipeHelp}</p>
           <button type="button" className="a-primary" onClick={openPendingPipe}>
-            {c.nextPipe(`R${pendingPipe.index + 1}`)}
+            {c.nextPipe(`P${pendingPipe.index + 1}`)}
           </button>
         </div>
       )}

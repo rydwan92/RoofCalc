@@ -298,6 +298,7 @@ export const DOCUMENT_SECTIONS: Record<
     'roof-overview',
     'member-schedule',
     'member-fabrication',
+    'connection-plan',
     'cutting-plan',
     'layers',
     'covering',
@@ -311,6 +312,7 @@ export const DOCUMENT_SECTIONS: Record<
 
 /** Sections that exist only when the user configured them (V51). */
 const OPTIONAL_SECTIONS: readonly SectionKind[] = [
+  'connection-plan',
   'drainage-plan',
   'roof-details',
 ];

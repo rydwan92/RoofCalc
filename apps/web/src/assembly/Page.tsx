@@ -150,6 +150,7 @@ import {
 import { tileProductName } from './tile-purchase';
 import { coveringKindLabelKey } from './covering-presentation';
 import { classifyProjectFile } from '../import/file-kind';
+import { deriveConnectionSchedule } from '@cieslacalc/connection-core';
 import {
   createMaterialPlanRows,
   materialScenarioPrices,
@@ -1169,11 +1170,17 @@ function AssemblyPageContent({
     setReuseFreshProject,
     setProjectStartMode,
   });
+  const connectionPlan = state.projectDocument.project.connectionPlan;
+  const connectionRows = useMemo(
+    () => deriveConnectionSchedule(connectionModel.census, connectionPlan),
+    [connectionModel.census, connectionPlan],
+  );
   const documentFacts: ExportFacts = {
     ...materialFacts,
     membraneProduct,
     materialRows,
     materialPrices: effectiveMaterialPrices,
+    connectionRows,
   };
   const projectWorkflowFacts = useMemo(
     () => ({
@@ -1360,6 +1367,7 @@ function AssemblyPageContent({
       costScenario,
       membraneProduct,
       resolvedCoveringLayouts,
+      connectionRows,
     ],
   );
   const projectReadiness = useMemo(

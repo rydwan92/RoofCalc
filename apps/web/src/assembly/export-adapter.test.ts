@@ -1,3 +1,8 @@
+import {
+  deriveConnectionSchedule,
+  withPlannedConnection,
+} from '@cieslacalc/connection-core';
+import { roofConnectionCensus } from './connections/census';
 import { describe, expect, it } from 'vitest';
 import { createRoofMemberSchedule } from '@cieslacalc/quantity-core';
 import { createCuttingPlan } from '@cieslacalc/procurement-core';
@@ -470,6 +475,50 @@ describe('execution export adapter', () => {
       axisCount: 12,
       segmentCount: 13,
     });
+  });
+
+  it('offers the connection plan only once something is planned, and copies decisions, never capacity', () => {
+    const base = facts();
+    const census = roofConnectionCensus({
+      template: base.template,
+      members: base.skeleton.members,
+      buildUp: {},
+    });
+    const none = createExportCandidates({
+      ...base,
+      connectionRows: deriveConnectionSchedule(census, undefined),
+    }).find((row) => row.kind === 'connection-plan');
+    expect(none).toMatchObject({
+      readiness: 'unavailable',
+      reason: 'connections-not-planned',
+    });
+    const plan = withPlannedConnection(undefined, 'rafter-wall-plate', {
+      connector: 'rafter-tie',
+      fastening: { type: 'nails' },
+      note: 'Łącznik z każdej strony',
+    });
+    const planned = createExportCandidates({
+      ...base,
+      connectionRows: deriveConnectionSchedule(census, plan),
+    }).find((row) => row.kind === 'connection-plan');
+    expect(planned?.readiness).toBe('available');
+    const section = planned?.section;
+    if (section?.kind !== 'connection-plan') throw new Error('no section');
+    expect(section.capacityNotVerified).toBe(true);
+    const seat = section.rows.find(
+      (row) => row.nodeKind === 'rafter-wall-plate',
+    );
+    expect(seat).toMatchObject({
+      connector: 'rafter-tie',
+      fastening: { type: 'nails' },
+      note: 'Łącznik z każdej strony',
+      status: 'planned',
+    });
+    expect(seat!.count).toBeGreaterThan(0);
+    // Nothing is invented for an unplanned node.
+    const ridge = section.rows.find((row) => row.nodeKind === 'rafter-ridge');
+    expect(ridge?.fastening).toBeUndefined();
+    expect(ridge?.status).toBe('not-planned');
   });
 
   it('has no cost-estimate section before any line has been added', () => {

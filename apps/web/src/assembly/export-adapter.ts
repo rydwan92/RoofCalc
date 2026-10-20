@@ -1,3 +1,4 @@
+import type { ConnectionScheduleRow } from '@cieslacalc/connection-core';
 import {
   createAssemblyDrawing,
   type ResolvedRoofProject,
@@ -128,6 +129,11 @@ export type ExportFacts = {
    * Absent on older callers → no roof-system rows or drainage sections.
    */
   roofSystem?: RoofSystemFacts;
+  /**
+   * VNext-5: the connection schedule (census + plan) the Połączenia plan
+   * shows. Absent on older callers → no connection section.
+   */
+  connectionRows?: readonly ConnectionScheduleRow[];
 };
 
 function drawing(model: DrawingModel): DocumentDrawing {
@@ -333,6 +339,52 @@ function drainagePlanCandidate(facts: ExportFacts): SectionCandidate {
     kind: 'drainage-plan',
     readiness: plan.status === 'complete' ? 'available' : 'warning',
     ...(plan.status === 'complete' ? {} : { reason: 'drainage-incomplete' }),
+    section,
+  };
+}
+
+/**
+ * VNext-5 connection plan for the execution package, copied from the same
+ * schedule the Połączenia plan shows. Offered only once something is
+ * planned; a row whose spacing does not fit is reported, never hidden.
+ */
+function connectionPlanCandidate(facts: ExportFacts): SectionCandidate {
+  const rows = facts.connectionRows ?? [];
+  if (!rows.some((row) => row.status !== 'not-planned'))
+    return {
+      kind: 'connection-plan',
+      readiness: 'unavailable',
+      reason: 'connections-not-planned',
+    };
+  const section: ExecutionSection = {
+    kind: 'connection-plan',
+    rows: rows.map((row) => ({
+      nodeKind: row.kind,
+      count: row.count,
+      unit: row.unit,
+      ...(row.extentMm !== undefined ? { extentMm: row.extentMm } : {}),
+      ...(row.modelled
+        ? {
+            carpentry: {
+              type: row.modelled.type,
+              status: row.modelled.status,
+            },
+          }
+        : {}),
+      ...(row.planned?.fastening
+        ? { fastening: { ...row.planned.fastening } }
+        : {}),
+      ...(row.planned?.connector ? { connector: row.planned.connector } : {}),
+      ...(row.planned?.note ? { note: row.planned.note } : {}),
+      status: row.status,
+    })),
+    capacityNotVerified: true,
+  };
+  const check = rows.some((row) => row.status === 'check-detailing');
+  return {
+    kind: 'connection-plan',
+    readiness: check ? 'warning' : 'available',
+    ...(check ? { reason: 'connections-check-detailing' } : {}),
     section,
   };
 }
@@ -977,6 +1029,7 @@ export function createExportCandidates(facts: ExportFacts): SectionCandidate[] {
       section: coveringRows.length ? covering : undefined,
     },
     drainagePlanCandidate(facts),
+    connectionPlanCandidate(facts),
     roofDetailsCandidate(facts),
     { kind: 'assumptions', readiness: 'available', section: assumptions },
     (() => {
