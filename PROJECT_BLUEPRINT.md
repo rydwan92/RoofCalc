@@ -1297,6 +1297,38 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+## VNext-5 (2026-10-20) — polish pass, repeated input once, plan to the crew
+
+- Authorized by "pracuj dalej nad projektem" after VNext-4 was on main
+  (1abb140). Small/local changes — no Definition of Ready needed except the
+  document section (additive transient contract, SCHEMA_REGISTRY §16).
+- Visual QA (desktop 1440, phone 390) found and fixed:
+  - the desktop section row wrapped to two lines on every page with a long
+    readiness action (now nowrap ≥1025 px, label ellipsis + tooltip);
+  - covering inspector fields rendered borderless with the unit on its own
+    line (`.a-field > .a-input-with-unit` was styled as a label) — the
+    "empty input" from the user's screenshot 20; bare inputs/selects boxed;
+  - covering totals of mixed sizes → equal tiles;
+  - phone covering card left ~300 px empty (`flex: 1 1 520px` inside a
+    column is a height);
+  - layer "Wł." pills → switches; product name placeholder.
+- Function:
+  - drainage "Wszystkie piony naraz" (one height + route for all, one undo);
+    downpipes labelled P1, P2 in the UI as in the execution package;
+  - number fields: select on focus, ↑/↓ 1 cm / 1° (Shift ×10), one undo
+    per edit session (VNext-3 leftover);
+  - drawing camera remembered per roof type for the session, refit on
+    another project (VNext-3 leftover "camera retention");
+  - execution package section `connection-plan` from the same schedule.
+- Checked, no change needed: J1 against the hip face already deducts
+  t/√2 in plan (V39 `hip-face-butt`).
+- Not added: Galeco PVC data (only generic or 2011 brochure sources).
+- Tests: arrow-key stepping, camera memory, connection-plan candidate,
+  drainage bulk e2e (desktop + phone).
+- NEXT ACTION: full verify + e2e, merge to `main`, push, rebuild the
+  Apache dist; Cloudflare remote DB migration/seed and secrets remain the
+  user's step (`pnpm configure:cloudflare`).
+
 ## VNext-4 (2026-10-19/20) — UX polish, carpentry practice, CAD import, wholesale
 
 - Authorized by the user's 2026-10-19 message (continue, finish VNext-3

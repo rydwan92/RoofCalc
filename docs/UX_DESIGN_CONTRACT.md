@@ -605,6 +605,18 @@ line and manual lengths keep working.
   offer the next step ("Uzupełnij pion P1"); downpipe labels (P1, P2 — the
   same as in the execution package, where R1 is a gutter run) on the plan are
   readable and open their eave.
+- **VNext-5: one line, one box, one switch.** The desktop section row never
+  wraps (long readiness text and action labels end in an ellipsis, full
+  text in the tooltip); a value with a unit sits in one box; layer on/off
+  are switches; covering totals are equal tiles (label above, number
+  below). A number field selects its value on focus; ↑/↓ step 1 cm or 1°
+  (Shift ×10); the whole edit session is one undo step. The drawing keeps
+  its zoom between tasks for the same roof; another project starts fitted.
+- **VNext-5: repeated input once.** Drainage offers "Wszystkie piony
+  naraz" — one height and one route for every downpipe, one undo step.
+- **VNext-5: what was planned reaches the crew.** The execution package
+  carries the connection plan (node, how many, carpentry joint, planned
+  fixing, notes) with the designer-capacity note.
 - **VNext-4: administration opens on an overview** — assortment, without
   price, without VAT, not linked, team, company details — each with one
   button to the fix, plus quick actions (prices from CSV, catalogue

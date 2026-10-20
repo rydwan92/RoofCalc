@@ -641,6 +641,14 @@ workbench. No migration.
   project through the existing path. Nothing new is persisted.
 - Universal file opening classifies by bytes (`apps/web/src/import`); no
   storage key.
+- VNext-5: `ExecutionDocument` (§7, transient output) gains the additive
+  section kind `connection-plan` (`ConnectionPlanSection`: per node kind
+  count/unit, modelled carpentry type, planned fastening/connector/note,
+  status; `capacityNotVerified: true`). Offered only when something is
+  planned. Nothing persisted.
+- VNext-5: the drawing camera is remembered per roof type for the session
+  (`apps/web/src/assembly/camera-memory.ts`) — view state, never in the
+  project, cleared when another project document is loaded.
 
 - RecognitionResult (§13) additions in VNext-2, session-only: mode
   `transcription`; evidence `dimension-row`, `chain-total`, `chain-part`,
