@@ -91,6 +91,7 @@ import {
   type WorkspaceRenderer,
   type TileHighlight,
 } from './workbench';
+import { canvasCamera } from './camera-memory';
 
 export type SupportField = 'xMm' | 'widthMm' | 'heightMm' | 'valueMm';
 export type EditField =
@@ -2507,30 +2508,37 @@ export const useAssembly = create<AssemblyState>((set) => ({
       );
     }),
   reset: () =>
-    set((state) => ({
-      projectDocument: createRoofProjectDocument(
-        structuredClone(templateDefaults),
-      ),
-      template: structuredClone(templateDefaults),
-      spec: assemblyFromRoofTemplate(templateDefaults),
-      drafts: {},
-      invalidFields: {},
-      workbench: {
-        ...structuredClone(initialWorkbenchViewState),
-        mode: state.workbench.mode,
-      },
-      historyPast: [],
-      historyFuture: [],
-      activeTransaction: undefined,
-    })),
+    set((state) => {
+      canvasCamera.forgetAll();
+      return {
+        projectDocument: createRoofProjectDocument(
+          structuredClone(templateDefaults),
+        ),
+        template: structuredClone(templateDefaults),
+        spec: assemblyFromRoofTemplate(templateDefaults),
+        drafts: {},
+        invalidFields: {},
+        workbench: {
+          ...structuredClone(initialWorkbenchViewState),
+          mode: state.workbench.mode,
+        },
+        historyPast: [],
+        historyFuture: [],
+        activeTransaction: undefined,
+      };
+    }),
   replaceProjectDocument: (input) =>
     set((state) => {
+      // Another project starts with a fitted drawing (view state only).
+      canvasCamera.forgetAll();
       const document = parseRoofProjectDocument(JSON.stringify(input));
       return {
         ...committedDocument(document, {}, {}),
         workbench: {
           ...structuredClone(initialWorkbenchViewState),
           mode: state.workbench.mode,
+          // A mounted drawing refits too (monotonic request).
+          fitRequestId: state.workbench.fitRequestId + 1,
         },
         historyPast: [],
         historyFuture: [],

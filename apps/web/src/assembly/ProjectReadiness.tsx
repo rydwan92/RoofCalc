@@ -304,6 +304,7 @@ export function ProjectReadinessBar({
                 className="a-button a-primary"
                 data-testid="project-next-action"
                 data-readiness-action={primary.action}
+                title={t(`assembly.readiness.action.${primary.action}`)}
                 onClick={() => onAction(primary.action!)}
               >
                 {t(`assembly.readiness.action.${primary.action}`)}

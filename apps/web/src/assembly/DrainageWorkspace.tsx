@@ -104,6 +104,13 @@ const copy = {
     nextPipeHelp:
       'Rury, kolana i obejmy RoofCalc policzy po podaniu wysokości każdego pionu.',
     heightUnknown: 'wys.?',
+    bulkTitle: (n: number) => `Wszystkie piony naraz (${n})`,
+    bulkHelp:
+      'Ta sama wysokość i prowadzenie dla każdego pionu — jedna zmiana, którą cofniesz jednym krokiem. Pojedynczy pion zmienisz potem na okapie.',
+    bulkHeight: 'Wysokość każdego pionu',
+    bulkStraightElbow: 'PROSTY PION + KOLANO NA DOLE',
+    bulkRouteHelp:
+      'Pion z odsadzką ustaw na okapie — długość odsadzki zależy od ściany.',
     openPlan: 'Otwórz plan materiałów',
     disable: 'Wyłącz odwodnienie',
     eave: 'OKAP',
@@ -221,6 +228,13 @@ const copy = {
     nextPipeHelp:
       'RoofCalc counts pipes, elbows and clamps once every downpipe has a height.',
     heightUnknown: 'h?',
+    bulkTitle: (n: number) => `All downpipes at once (${n})`,
+    bulkHelp:
+      'The same height and route for every downpipe — one change, undone in one step. Change a single downpipe on its eave afterwards.',
+    bulkHeight: 'Height of every downpipe',
+    bulkStraightElbow: 'STRAIGHT + ELBOW AT THE BOTTOM',
+    bulkRouteHelp:
+      'Set an offset route on the eave — its length depends on the wall.',
     openPlan: 'Open material plan',
     disable: 'Turn drainage off',
     eave: 'EAVE',
@@ -553,6 +567,8 @@ export function DrainageWorkspace({
   const [selectedEaveId, setSelectedEaveId] = useState<string>();
   const [changingSystem, setChangingSystem] = useState(false);
   const [showHooks, setShowHooks] = useState(false);
+  /** The "all downpipes" panel: open while heights are missing, then the user's. */
+  const [bulkOpen, setBulkOpen] = useState<boolean>();
   const svgRef = useRef<SVGSVGElement>(null);
   const drag = useRef<
     { outletId: string; eave: ResolvedRoofFeature } | undefined
@@ -1408,6 +1424,81 @@ export function DrainageWorkspace({
         )}
         {!plan.proposedOutlets.length && (
           <p className="dw-muted">{c.selectEave}</p>
+        )}
+        {outlets.length >= 2 && (
+          <details
+            className="dw-bulk"
+            data-testid="drainage-bulk"
+            open={
+              bulkOpen ??
+              plan.outlets.some((item) => item.downpipe.heightMm === undefined)
+            }
+            onToggle={(event) => setBulkOpen(event.currentTarget.open)}
+          >
+            <summary>{c.bulkTitle(outlets.length)}</summary>
+            <p className="dw-muted">{c.bulkHelp}</p>
+            <LengthField
+              label={c.bulkHeight}
+              unit={unit}
+              valueMm={
+                outlets.every(
+                  (item) =>
+                    item.downpipeHeightMm === outlets[0]!.downpipeHeightMm,
+                )
+                  ? outlets[0]!.downpipeHeightMm
+                  : undefined
+              }
+              testId="drainage-bulk-height"
+              onCommit={(value) =>
+                value !== undefined &&
+                commit({
+                  ...drainage,
+                  outlets: outlets.map((item) => ({
+                    ...item,
+                    downpipeHeightMm: value,
+                  })),
+                })
+              }
+            />
+            <div className="dw-field">
+              <span>{c.route}</span>
+              <div className="dw-chips" role="group">
+                {(['straight', 'straight-elbow'] as const).map((kind) => {
+                  const pressed = outlets.every(
+                    (item) =>
+                      item.route?.kind === 'straight' &&
+                      !!item.route.dischargeElbow ===
+                        (kind === 'straight-elbow'),
+                  );
+                  return (
+                    <button
+                      key={kind}
+                      type="button"
+                      aria-pressed={pressed}
+                      data-testid={`drainage-bulk-${kind}`}
+                      onClick={() =>
+                        commit({
+                          ...drainage,
+                          outlets: outlets.map((item) => ({
+                            ...item,
+                            route: {
+                              kind: 'straight',
+                              dischargeElbow: kind === 'straight-elbow',
+                            },
+                          })),
+                        })
+                      }
+                    >
+                      {kind === 'straight'
+                        ? c.routeStraight
+                        : c.bulkStraightElbow}
+                    </button>
+                  );
+                })}
+              </div>
+              <small className="dw-muted">{c.bulkRouteHelp}</small>
+            </div>
+          </details>
         )}
       </div>
       <div className="dw-step" data-testid="drainage-hooks">

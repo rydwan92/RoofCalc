@@ -725,3 +725,36 @@
     animation: none;
   }
 }
+
+/* VNext-5: on desktop the section row never wraps. The section names keep
+   their size; the readiness text shrinks (full text in the tooltip) and a
+   long action label ends in an ellipsis instead of pushing the bar onto a
+   second line on every page. */
+@media (min-width: 1025px) {
+  .a-section-row {
+    flex-wrap: nowrap;
+  }
+  .a-section-row .a-section-nav {
+    flex: 0 0 auto;
+  }
+  .a-section-row .a-readiness-bar.is-compact {
+    flex: 1 1 auto;
+    justify-content: flex-end;
+    min-width: 0;
+  }
+  .a-section-row .a-readiness-bar.is-compact .a-readiness-primary {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+  .a-section-row .a-readiness-bar.is-compact .a-readiness-actions {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+  .a-section-row .a-readiness-bar.is-compact .a-readiness-actions .a-primary {
+    display: block;
+    max-width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

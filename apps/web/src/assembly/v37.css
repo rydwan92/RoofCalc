@@ -2107,3 +2107,12 @@
   stroke: #ffffffcc;
   stroke-width: 4px;
 }
+
+/* VNext-5: in the phone's column layout a flex-basis is a HEIGHT — the
+   product card's 520 px basis left a ~300 px empty block on phones. */
+@media (max-width: 800px) {
+  .a-covering-product-card {
+    flex: 0 0 auto;
+    width: 100%;
+  }
+}

@@ -8514,3 +8514,129 @@ button.a-quick-fact[aria-pressed='true'] {
       minmax(0, 1.2fr);
   }
 }
+
+/* VNext-5: one look for every labelled field. A value with a unit sits in
+   one box (the unit inside it, not on the next line); a bare text input or
+   select gets the same box instead of rendering borderless or native. */
+.a-field > .a-input-with-unit {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid #d6dfd4;
+  border-radius: 6px;
+  background: #f7f9f5;
+  font-size: inherit;
+  font-weight: inherit;
+}
+.a-field > .a-input-with-unit:focus-within,
+.a-field > input:focus,
+.a-field > select:focus {
+  border-color: #46836b;
+  box-shadow: 0 0 0 2px #46836b20;
+  outline: none;
+}
+.a-field > .a-input-with-unit > input {
+  flex: 1 1 auto;
+  padding: 9px 12px;
+  font-size: 16px;
+}
+.a-field > .a-input-with-unit > small {
+  flex: none;
+  margin: 0;
+  padding: 0 12px;
+  color: var(--a-muted);
+  font-size: 12px;
+}
+.a-field > input,
+.a-field > select {
+  display: block;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid #d6dfd4;
+  border-radius: 6px;
+  background: #f7f9f5;
+  color: #193e2e;
+  font-size: 15px;
+}
+.a-covering-draft-grid .a-input-with-unit small {
+  margin-left: 0;
+}
+
+/* VNext-5: covering totals read as one row of equal tiles — the label above,
+   the number below — instead of sentences of different sizes. */
+.a-covering-counts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+  gap: 8px;
+}
+.a-covering-counts .a-covering-scope {
+  grid-column: 1 / -1;
+}
+.a-covering-counts span,
+.a-covering-counts span:first-of-type,
+.a-covering-counts span:nth-child(1),
+.a-covering-counts span:nth-child(3) {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 4px;
+  min-height: 62px;
+  padding: 8px 10px;
+  color: var(--a-muted);
+  font-size: 11px;
+  line-height: 1.3;
+}
+.a-covering-counts span b,
+.a-covering-counts span:first-of-type b {
+  color: var(--a-text);
+  font-size: 18px;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.a-covering-counts .a-covering-count-primary b {
+  font-size: 26px;
+}
+
+/* VNext-5: layer on/off is a switch, not a dark text pill. */
+.a-layer-toggle,
+.a-layer-toggle[aria-checked='true'] {
+  display: inline-grid;
+  place-items: center;
+  min-width: 52px;
+  min-height: 38px !important;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+}
+.a-switch-track {
+  position: relative;
+  display: block;
+  width: 38px;
+  height: 22px;
+  border-radius: 999px;
+  background: #cfd8d1;
+  transition: background-color 120ms ease;
+}
+.a-switch-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 25%);
+  transition: transform 120ms ease;
+}
+.a-layer-toggle[aria-checked='true'] .a-switch-track {
+  background: var(--a-green);
+}
+.a-layer-toggle[aria-checked='true'] .a-switch-knob {
+  transform: translateX(16px);
+}
+.a-layer-toggle:hover .a-switch-track {
+  box-shadow: 0 0 0 3px #46836b22;
+}

@@ -162,6 +162,11 @@ export const assemblyPl = {
   manualParameters: 'Parametry ręczne',
   manualRoofTile: 'Dachówka ręczna',
   productName: 'Nazwa produktu',
+  productNamePlaceholder: 'np. nazwa z oferty lub karty producenta',
+  arrowHintLength:
+    'Strzałki ↑ ↓: o 1 cm (z Shift: o 10 cm). Enter zatwierdza, Esc cofa.',
+  arrowHintAngle:
+    'Strzałki ↑ ↓: o 1° (z Shift: o 10°). Enter zatwierdza, Esc cofa.',
   installationMode: 'Tryb montażu',
   selectInstallationMode: 'Wybierz tryb',
   coverWidth: 'Szerokość krycia',
@@ -2767,6 +2772,11 @@ export const assemblyEn: typeof assemblyPl = {
   manualParameters: 'Manual parameters',
   manualRoofTile: 'Manual roof tile',
   productName: 'Product name',
+  productNamePlaceholder: 'e.g. the name from the offer or data sheet',
+  arrowHintLength:
+    'Arrows ↑ ↓: by 1 cm (with Shift: 10 cm). Enter confirms, Esc reverts.',
+  arrowHintAngle:
+    'Arrows ↑ ↓: by 1° (with Shift: 10°). Enter confirms, Esc reverts.',
   installationMode: 'Installation mode',
   selectInstallationMode: 'Select mode',
   coverWidth: 'Cover width',

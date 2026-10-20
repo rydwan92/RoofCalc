@@ -58,6 +58,7 @@ import type {
 } from '@cieslacalc/timber-model';
 import { formatLength } from '../format';
 import { MemberInstanceOverlay } from './MemberInstanceOverlay';
+import { canvasCamera } from './camera-memory';
 import { roofPlaneShortLabelKey } from './covering-presentation';
 import { useAssembly } from './store';
 import { uniformBattenGauge } from './batten-installation';
@@ -285,7 +286,17 @@ function SkeletonCanvasComponent({
         : width > 1000
           ? 640
           : 570;
-  const [viewport, setViewport] = useState<ViewportState>(fittedViewport);
+  const cameraKey = template.type;
+  const [viewport, setViewport] = useState<ViewportState>(
+    () => canvasCamera.get(cameraKey) ?? fittedViewport,
+  );
+  /** A remembered camera is kept through the first size measurement. */
+  const restoredCamera = useRef(canvasCamera.has(cameraKey));
+  const measured = useRef(false);
+  const lastFitRequest = useRef(selectedStore.fitRequestId);
+  useEffect(() => {
+    canvasCamera.set(cameraKey, viewport);
+  }, [cameraKey, viewport]);
   const [activeHandle, setActiveHandle] = useState<string | null>(null);
   const [hoveredPurlin, setHoveredPurlin] = useState<string | null>(null);
   const [hoveredMemberId, setHoveredMemberId] = useState<string | null>(null);
@@ -302,7 +313,9 @@ function SkeletonCanvasComponent({
   useEffect(() => {
     if (!container.current || typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(([entry]) => {
-      if (entry?.contentRect.width) setWidth(entry.contentRect.width);
+      if (!entry?.contentRect.width) return;
+      measured.current = true;
+      setWidth(entry.contentRect.width);
     });
     observer.observe(container.current);
     return () => observer.disconnect();
@@ -422,6 +435,15 @@ function SkeletonCanvasComponent({
   const activeFitRef = useRef(candidateFit);
   useEffect(() => {
     activeFitRef.current = candidateFitRef.current;
+    const requested = lastFitRequest.current !== selectedStore.fitRequestId;
+    lastFitRequest.current = selectedStore.fitRequestId;
+    // Coming back to the same roof keeps its camera until the canvas has
+    // its real size; an explicit "fit" always wins.
+    if (restoredCamera.current && !requested) {
+      if (measured.current) restoredCamera.current = false;
+      return;
+    }
+    restoredCamera.current = false;
     setViewport({ ...fittedViewport });
   }, [height, selectedStore.fitRequestId, width]);
   const fit = activeFitRef.current;

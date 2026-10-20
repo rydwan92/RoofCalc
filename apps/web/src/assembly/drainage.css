@@ -570,3 +570,21 @@
 .dw-eave-list .dw-toggle {
   min-height: 32px;
 }
+
+/* VNext-5: one height and route for every downpipe at once. */
+.dw-bulk {
+  display: grid;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--ui-line, #dce3dc);
+  border-radius: 8px;
+  background: var(--ui-canvas, #f4f7f3);
+}
+.dw-bulk > summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+}
+.dw-bulk[open] > summary {
+  margin-bottom: 4px;
+}

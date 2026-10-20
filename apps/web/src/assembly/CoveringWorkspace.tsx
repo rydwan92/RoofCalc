@@ -320,6 +320,7 @@ function NumericField({
           inputMode="decimal"
           defaultValue={display}
           aria-invalid={invalid || undefined}
+          onFocus={(event) => event.currentTarget.select()}
           onChange={() => invalid && setInvalid(false)}
           onBlur={(event) => {
             if (!event.currentTarget.value.trim()) {
@@ -2270,6 +2271,7 @@ function TileCoveringEditor({
       <label className="a-field">
         <span>{t('assembly.productName')}</span>
         <input
+          placeholder={t('assembly.productNamePlaceholder')}
           defaultValue={assignment.product.displaySnapshot?.familyName ?? ''}
           onBlur={(event) =>
             update((draft) => {
@@ -2608,6 +2610,7 @@ function ModularSheetEditor({
       <label className="a-field">
         <span>{t('assembly.productName')}</span>
         <input
+          placeholder={t('assembly.productNamePlaceholder')}
           defaultValue={assignment.product.displaySnapshot?.familyName ?? ''}
           onBlur={(event) =>
             update((draft) => {

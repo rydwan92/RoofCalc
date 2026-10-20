@@ -73,11 +73,32 @@ export function NumberField({
           autoComplete="off"
           value={display}
           aria-invalid={invalid}
-          onFocus={() => state.beginTransaction()}
+          title={t(
+            angle ? 'assembly.arrowHintAngle' : 'assembly.arrowHintLength',
+          )}
+          onFocus={(event) => {
+            state.beginTransaction();
+            // VNext-5: the whole value is selected, so typing replaces it.
+            const input = event.currentTarget;
+            requestAnimationFrame(() => {
+              if (document.activeElement === input) input.select();
+            });
+          }}
           onBlur={() => state.commitTransaction()}
           onChange={(e) => state.setField(field, e.target.value)}
           onKeyDown={(event) => {
-            if (event.key === 'Enter') {
+            if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+              // VNext-5: 1° or 1 cm per press, Shift for 10; the open edit
+              // transaction keeps the whole session one undo step.
+              event.preventDefault();
+              const base = step ?? (angle ? 1 : 10);
+              state.stepField(
+                field,
+                (event.key === 'ArrowUp' ? 1 : -1) *
+                  base *
+                  (event.shiftKey ? 10 : 1),
+              );
+            } else if (event.key === 'Enter') {
               event.preventDefault();
               state.commitTransaction();
               event.currentTarget.blur();

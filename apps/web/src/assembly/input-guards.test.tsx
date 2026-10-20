@@ -55,6 +55,31 @@ describe('V44 input guards', () => {
     },
   );
 
+  it('arrow keys step a value (Shift ×10) and one edit session is one undo step', () => {
+    render(<App />);
+    const pitch = input('Kąt połaci');
+    const run = input('Rzut do osi kalenicy');
+    const startPitch = useAssembly.getState().template.pitchDeg;
+    const startRun = useAssembly.getState().template.halfRunMm;
+    const history = useAssembly.getState().historyPast.length;
+    fireEvent.focus(pitch);
+    fireEvent.keyDown(pitch, { key: 'ArrowUp' });
+    fireEvent.keyDown(pitch, { key: 'ArrowUp', shiftKey: true });
+    fireEvent.blur(pitch);
+    expect(useAssembly.getState().template.pitchDeg).toBe(startPitch + 11);
+    expect(useAssembly.getState().historyPast).toHaveLength(history + 1);
+    fireEvent.focus(run);
+    fireEvent.keyDown(run, { key: 'ArrowDown' });
+    fireEvent.blur(run);
+    // 1 cm per press on a length.
+    expect(useAssembly.getState().template.halfRunMm).toBe(startRun - 10);
+    expect(useAssembly.getState().historyPast).toHaveLength(history + 2);
+    act(() => useAssembly.getState().undo());
+    act(() => useAssembly.getState().undo());
+    expect(useAssembly.getState().template.pitchDeg).toBe(startPitch);
+    expect(useAssembly.getState().template.halfRunMm).toBe(startRun);
+  });
+
   it('a result explains itself with "Jak policzono?" built from the same facts', () => {
     render(<App />);
     const evidence = screen.getByTestId('k1-evidence');

@@ -283,3 +283,44 @@ test('V51 catalogue system: Galeco STAL2 from the seed batch, hooks at the sourc
   await expect(bom).toContainText('Rynna 4 m');
   await noHorizontalOverflow(page);
 });
+
+test('VNext-5 hip: every downpipe at once — one height, one route, one undo', async ({
+  page,
+}) => {
+  await openProject(
+    page,
+    '09-hip-catalogue-snapshot.cieslacalc.json',
+    'vnext5-bulk',
+  );
+  await page.getByTestId('material-add-gutters').click();
+  await useManualSystem(page, {
+    name: 'System zbiorczy 125/90',
+    gutters: '3; 4',
+    pipes: '3',
+    hook: '60',
+  });
+  await page.getByTestId('drainage-confirm-proposed').click();
+  await expect(page.getByTestId('drainage-outlet')).toHaveCount(2);
+  const bom = page.getByTestId('drainage-bom');
+  await expect(page.getByTestId('drainage-next-pipe')).toBeVisible();
+  const bulk = page.getByTestId('drainage-bulk');
+  await expect(bulk).toHaveAttribute('open', '');
+  await bulk.getByTestId('drainage-bulk-height').fill('540');
+  await bulk.getByTestId('drainage-bulk-height').press('Enter');
+  await bulk.getByTestId('drainage-bulk-straight-elbow').click();
+  await expect(bom.locator('li[data-status="requires-decision"]')).toHaveCount(
+    0,
+  );
+  await expect(page.getByTestId('drainage-next-pipe')).toHaveCount(0);
+  await expect(bom).toContainText('Rura spustowa 3 m');
+  await expect(bom).toContainText('Kolano');
+  // The route was one change: one undo brings back the open elbows.
+  await page
+    .getByRole('button', { name: 'Cofnij zmianę' })
+    .locator('visible=true')
+    .first()
+    .click();
+  await expect(
+    bom.locator('li[data-status="requires-decision"]').first(),
+  ).toBeVisible();
+});

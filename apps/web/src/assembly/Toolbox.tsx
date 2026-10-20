@@ -477,9 +477,13 @@ export function Toolbox({
               data-layer-toggle={layer.id}
               aria-checked={layer.enabled}
               aria-label={`${t(`assembly.${layer.label}`)} · ${t(`assembly.${layer.enabled ? 'enabled' : 'disabled'}`)}`}
+              title={t(`assembly.${layer.enabled ? 'enabled' : 'disabled'}`)}
               onClick={layer.toggle}
             >
-              {layer.enabled ? t('assembly.on') : t('assembly.off')}
+              {/* VNext-5: a real switch; the state is in the label and title. */}
+              <span className="a-switch-track" aria-hidden="true">
+                <span className="a-switch-knob" />
+              </span>
             </button>
           </div>
         ))}
