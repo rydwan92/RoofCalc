@@ -386,7 +386,8 @@ async function main() {
               false,
             ))
           )
-            blocking ||= !(await putSecret(root, 'ROOFCALC_BOOTSTRAP_TOKEN'));
+            blocking =
+              !(await putSecret(root, 'ROOFCALC_BOOTSTRAP_TOKEN')) || blocking;
         } else {
           fail(`Brakuje: ${missing.join(', ')}.`);
           if (
@@ -398,7 +399,7 @@ async function main() {
             ))
           ) {
             for (const key of missing)
-              blocking ||= !(await putSecret(root, key));
+              blocking = !(await putSecret(root, key)) || blocking;
             info('Sekrety obowiązują od razu w bieżącej wersji Workera.');
           } else blocking = true;
         }
@@ -452,7 +453,9 @@ async function main() {
     if (check)
       warn('W trybie --check pominięto (wymaga hasła) — patrz krok 6.');
     else if (!origin) warn('Pominięto — brak danych źródła Hyperdrive.');
-    else blocking ||= await remoteDatabaseStep(rl, root, origin);
+    // Run the step first: a compound OR-assignment would skip it whenever an
+    // earlier step already needed attention (it did, silently).
+    else blocking = (await remoteDatabaseStep(rl, root, origin)) || blocking;
 
     step(6, 'Wdrożona aplikacja (publiczne, tylko do odczytu)');
     let ownerNeeded = false;
