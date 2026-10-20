@@ -27,3 +27,4 @@ Several ADRs here are executable: `tools/architecture/*.test.ts` fails
 | [012](ADR-012-document-import-intermediate-model.md) | Document import goes through a versioned intermediate model; engines are adapters | `layering.test.ts`, document-import-core tests |
 | [013](ADR-013-bundled-technical-catalogue.md) | A bundled technical catalogue is an explicit offline choice; the server stays the source | `offline.test.ts`, `e2e/offline-catalogue.spec.ts` |
 | [014](ADR-014-connection-plan-is-detailing-not-design.md) | The connection plan records decisions and checks detailing, never capacity | `connection-core` tests, `layering.test.ts` |
+| [015](ADR-015-roof-topology-graph.md) | One roof topology graph; a recognised drawing, a proposal and a calculation are separate layers; V2 migration designed, not executed | `layering.test.ts`, `roof-topology-core` tests |

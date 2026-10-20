@@ -28,8 +28,11 @@ export function ProjectSummary({
   unit,
   onOpenCutting,
   onOpenCovering,
+  onPreparation,
 }: {
   facts: ProjectSummaryFacts;
+  /** VNext-6: reopens the compact "Przygotowanie projektu" card. */
+  onPreparation?: () => void;
   journey?: ProjectJourney;
   readiness?: ProjectReadiness;
   onJourneyAction?: (action: JourneyAction) => void;
@@ -50,6 +53,16 @@ export function ProjectSummary({
         <small>{t('assembly.workflow.title')}</small>
         <h2>{t('assembly.workflow.summaryTitle')}</h2>
         <p>{t('assembly.workflow.summaryDescription')}</p>
+        {onPreparation && (
+          <button
+            type="button"
+            className="a-link-button"
+            data-testid="summary-open-preparation"
+            onClick={onPreparation}
+          >
+            {t('assembly.preparation.title')}
+          </button>
+        )}
       </header>
       {journey && onJourneyAction && (
         <>

@@ -1,0 +1,11 @@
+{
+  "name": "@cieslacalc/roof-topology-core",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": "./src/index.ts",
+  "devDependencies": {
+    "@cieslacalc/roof-math": "workspace:*",
+    "@cieslacalc/timber-model": "workspace:*"
+  }
+}

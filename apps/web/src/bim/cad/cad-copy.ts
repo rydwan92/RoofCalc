@@ -122,6 +122,21 @@ const pl = {
   failure: 'Nie udało się zapisać projektu. Spróbuj ponownie.',
   name: (file: string) => `Projekt z ${file}`,
   another: 'Wczytaj inny plik',
+  compound: {
+    titleL: 'Rozpoznano obrys budynku w kształcie litery L',
+    titleOther: 'Rozpoznano obrys złożony (T, U lub podobny)',
+    corners: (corners: number, inner: number) =>
+      `${corners} narożników, w tym ${inner} ${inner === 1 ? 'wewnętrzny' : inner < 5 ? 'wewnętrzne' : 'wewnętrznych'}`,
+    area: (area: string) => `Pole obrysu: ${area} m²`,
+    wings: 'Bryły (kandydaci)',
+    wing: (index: number): string =>
+      index === 0 ? 'bryła główna' : 'skrzydło',
+    limitation:
+      'RoofCalc nie liczy jeszcze dachów złożonych: połączeń brył, koszy i więźby w miejscu styku. Nie tworzymy z tego rysunku projektu, który wyglądałby na policzony.',
+    next: 'Możesz sprawdzić wymiary brył powyżej, a projekt prostokątnej części dachu utworzyć ręcznie — z wyraźną świadomością, że styk z drugą bryłą pozostaje nierozwiązany.',
+    legend: 'rozpoznany obrys',
+    wingLegend: 'podział na bryły',
+  },
 };
 
 type CadCopy = typeof pl;
@@ -242,6 +257,20 @@ const en: CadCopy = {
   failure: 'The project could not be saved. Try again.',
   name: (file: string) => `Project from ${file}`,
   another: 'Load another file',
+  compound: {
+    titleL: 'An L-shaped building outline was recognised',
+    titleOther: 'A compound outline was recognised (T, U or similar)',
+    corners: (corners: number, inner: number) =>
+      `${corners} corners, ${inner} of them inner`,
+    area: (area: string) => `Outline area: ${area} m²`,
+    wings: 'Building parts (candidates)',
+    wing: (index: number) => (index === 0 ? 'main body' : 'wing'),
+    limitation:
+      'RoofCalc does not calculate compound roofs yet: junctions between building parts, valleys and the framing where they meet. No project that would look calculated is created from this drawing.',
+    next: 'You can check the parts above and start a project for the rectangular part manually — knowing that its junction with the other part stays unresolved.',
+    legend: 'recognised outline',
+    wingLegend: 'split into parts',
+  },
 };
 
 export function cadCopy(language: string): CadCopy {

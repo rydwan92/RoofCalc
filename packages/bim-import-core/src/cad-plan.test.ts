@@ -376,6 +376,137 @@ describe('roof plan from CAD geometry', () => {
   });
 });
 
+/** Closed LWPOLYLINE through the given points. */
+const polygon = (points: [number, number][], layer = '0') =>
+  [
+    0,
+    'LWPOLYLINE',
+    8,
+    layer,
+    90,
+    points.length,
+    70,
+    1,
+    ...points.flatMap(([x, y]) => [10, x, 20, y]),
+  ] as Entity;
+/** 12 × 8 m main body with a 6 × 6 m wing: the classic L-shaped house. */
+const L_HOUSE: [number, number][] = [
+  [0, 0],
+  [12000, 0],
+  [12000, 8000],
+  [6000, 8000],
+  [6000, 14000],
+  [0, 14000],
+];
+
+describe('compound outlines (VNext-6)', () => {
+  it('an L-shaped plan is recognised with its wings and NOT turned into a roof', () => {
+    const analysis = analyzeCadRoofPlan(
+      read(dxf([polygon(L_HOUSE), text('Dach dwuspadowy 40°')], 4)),
+    );
+    expect(analysis).toMatchObject({
+      status: 'unsupported',
+      reason: 'compound-outline',
+      unit: { unit: 'mm', basis: 'declared' },
+      outline: { shape: 'l-shape', corners: 6, areaMm2: 132_000_000 },
+    });
+    if (
+      analysis.status !== 'unsupported' ||
+      analysis.reason !== 'compound-outline'
+    )
+      return;
+    expect(
+      analysis.outline.wings.map((wing) => [wing.longMm, wing.shortMm]),
+    ).toEqual([
+      [12000, 8000],
+      [6000, 6000],
+    ]);
+    // Nothing that looks like a calculated roof is proposed.
+    expect('proposed' in analysis).toBe(false);
+  });
+
+  it('an L drawn with loose lines in cm, unit inferred', () => {
+    const lines = L_HOUSE.map(([x, y], index) => {
+      const [nx, ny] = L_HOUSE[(index + 1) % L_HOUSE.length]!;
+      return line(x / 10, y / 10, nx / 10, ny / 10);
+    });
+    const analysis = analyzeCadRoofPlan(read(dxf(lines)));
+    expect(analysis).toMatchObject({
+      reason: 'compound-outline',
+      unit: { unit: 'cm', basis: 'inferred' },
+      outline: { shape: 'l-shape' },
+    });
+  });
+
+  it('a frame around an L does not hide the L', () => {
+    const analysis = analyzeCadRoofPlan(
+      read(
+        dxf([rect(-5000, -5000, 40000, 28000, 'RAMKA'), polygon(L_HOUSE)], 4),
+      ),
+    );
+    expect(analysis).toMatchObject({
+      reason: 'compound-outline',
+      outline: { shape: 'l-shape' },
+    });
+  });
+
+  it('a T-shaped plan is a compound outline too', () => {
+    const analysis = analyzeCadRoofPlan(
+      read(
+        dxf(
+          [
+            polygon([
+              [0, 0],
+              [12000, 0],
+              [12000, 8000],
+              [9000, 8000],
+              [9000, 14000],
+              [3000, 14000],
+              [3000, 8000],
+              [0, 8000],
+            ]),
+          ],
+          4,
+        ),
+      ),
+    );
+    expect(analysis).toMatchObject({
+      reason: 'compound-outline',
+      outline: { shape: 'compound-orthogonal', reflexCorners: 2 },
+    });
+  });
+
+  it('a rectangular roof with a ridge keeps working beside a small L detail', () => {
+    const analysis = analyzeCadRoofPlan(
+      read(
+        dxf(
+          [
+            rect(0, 0, 12000, 8000, 'DACH'),
+            line(0, 4000, 12000, 4000, 'DACH'),
+            // An L-shaped terrace outline next to the house.
+            polygon(
+              [
+                [13000, 0],
+                [17000, 0],
+                [17000, 2000],
+                [15000, 2000],
+                [15000, 5000],
+                [13000, 5000],
+              ],
+              'TARAS',
+            ),
+          ],
+          4,
+        ),
+      ),
+    );
+    expect(analysis).toMatchObject({
+      status: 'supported',
+      proposed: { roofType: 'gable', buildingLengthMm: 12000 },
+    });
+  });
+});
+
 describe('pitch candidates', () => {
   it('prefers labelled angles and converts a labelled percent slope', () => {
     const { candidates, percent } = pitchCandidatesFromTexts([

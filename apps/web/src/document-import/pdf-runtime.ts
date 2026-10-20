@@ -69,6 +69,15 @@ export interface OpenedPdf {
     canvas: HTMLCanvasElement,
     cssScale: number,
   ): Promise<void>;
+  /**
+   * VNext-6: a small page preview for the page navigator. Independent of
+   * `render`, so drawing thumbnails never cancels the page being read.
+   */
+  thumbnail(
+    page: number,
+    canvas: HTMLCanvasElement,
+    cssWidth: number,
+  ): Promise<void>;
   close(): Promise<void>;
 }
 
@@ -132,6 +141,7 @@ export async function openPdf(bytes: ArrayBuffer): Promise<OpenedPdf> {
   }
 
   let activeRender: { cancel(): void } | undefined;
+  const thumbnails = new Set<{ cancel(): void }>();
   return {
     pageCount,
     pages,
@@ -161,8 +171,33 @@ export async function openPdf(bytes: ArrayBuffer): Promise<OpenedPdf> {
         if (activeRender === task) activeRender = undefined;
       }
     },
+    async thumbnail(number, canvas, cssWidth) {
+      const page = await document_.getPage(number);
+      const ratio = Math.min(window.devicePixelRatio || 1, 2);
+      const unscaled = page.getViewport({ scale: 1 });
+      const viewport = page.getViewport({
+        scale: (cssWidth / unscaled.width) * ratio,
+      });
+      canvas.width = Math.floor(viewport.width);
+      canvas.height = Math.floor(viewport.height);
+      const job = page.render({ canvas, viewport });
+      thumbnails.add(job);
+      try {
+        await job.promise;
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          error.name === 'RenderingCancelledException'
+        )
+          return;
+        throw error;
+      } finally {
+        thumbnails.delete(job);
+      }
+    },
     async close() {
       activeRender?.cancel();
+      for (const job of thumbnails) job.cancel();
       await task.destroy();
     },
   };

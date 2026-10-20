@@ -124,6 +124,26 @@
   fill: none;
   stroke: #0f7c8c;
 }
+/* VNext-6: candidate parts of an L/T/U outline (never roof planes). */
+.cad-wing {
+  fill: none;
+  stroke: #0f7c8c;
+}
+.cad-compound h4 {
+  margin: 0;
+  font-size: 13px;
+}
+.cad-compound ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+}
+.cad-compound p {
+  margin: 0;
+  font-size: 13px;
+}
 .cad-roof-line {
   stroke-linecap: round;
 }

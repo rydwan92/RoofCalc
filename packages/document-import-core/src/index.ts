@@ -13,12 +13,15 @@
  *                         cross-check only), calibrateFromPoints,
  *                         calibrateFromDrawingScale
  *   5. semantics          recognizeTextLayer (labels, dimension rows),
- *                         manualMeasurementResult
+ *                         manualMeasurementResult, suggestPageRoles (VNext-6:
+ *                         roof plan / section / schedule from page titles)
  *   6. units              resolveMeasurementValue
  *   7. validation         deriveImportedRoofDraft (dimension-first policy,
  *                         analyzeDimensionChains, plausibility, conflicts)
  *   8. template mapping   mapDraftToRoofStart → existing project start
- *   9. confirmation       ImportDecisions (choices, entries, confirmations)
+ *   9. confirmation       ImportDecisions (choices, entries, confirmations,
+ *                         pages set aside), summarizeIntake (one next step),
+ *                         fieldProvenance (where a value came from)
  *  10. project creation   (app) existing createProjectStartTemplate path
  */
 export * from './model';
@@ -33,4 +36,6 @@ export * from './calibration';
 export * from './geometry';
 export * from './chains';
 export * from './transcription';
+export * from './pages';
+export * from './intake';
 export { normalizeForMatching } from './vocabulary';

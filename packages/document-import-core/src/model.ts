@@ -317,6 +317,12 @@ export interface DocumentPageInfo {
 
 export interface ImportSource {
   fileName: string;
+  /**
+   * VNext-6: content fingerprint of the file (SHA-256 hex, computed on the
+   * device). Lets a reading be traced to the exact document it came from.
+   * Optional and session-only; never derived from the name.
+   */
+  fingerprint?: string;
   kind: DocumentSourceKind;
   byteLength: number;
   pageCount: number;

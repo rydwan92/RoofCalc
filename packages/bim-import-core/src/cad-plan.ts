@@ -1,3 +1,7 @@
+import {
+  classifyPlanOutline,
+  type PlanOutlineClassification,
+} from '@cieslacalc/roof-topology-core';
 import { DXF_UNIT_MM, type DxfDocument, type DxfUnit, type Vec2 } from './dxf';
 
 /**
@@ -97,6 +101,20 @@ export type CadPlanAnalysis =
       reason: 'no-rectangular-outline' | 'unit-unknown';
       /** Longest outline side in drawing units (to help the unit choice). */
       longestSide?: number;
+    }
+  | {
+      /**
+       * VNext-6: the building outline is an L (or T, U…): recognised and
+       * shown, but today's single-roof start cannot describe its roof, so
+       * nothing is proposed (ADR-015 layer a, never a calculated roof).
+       */
+      status: 'unsupported';
+      reason: 'compound-outline';
+      unit: { unit: CadLengthUnit; basis: 'declared' | 'inferred' | 'user' };
+      /** The outline in millimetres, with its wings for an L. */
+      outline: PlanOutlineClassification;
+      warnings: CadWarning[];
+      preview: { segments: [Vec2, Vec2][] };
     };
 
 /** Plausible building (or eave) long side: 4–60 m. */
@@ -369,28 +387,52 @@ export function analyzeCadRoofPlan(
   );
   const tolerance = Math.max(extent * 1e-7, 1e-6);
 
-  // Rectangles in drawing units.
-  const rawRects: CadRectangle[] = [];
+  // Closed loops in drawing units: closed polylines and chained lines.
+  const loops: { points: Vec2[]; layer: string; tolerance: number }[] = [];
   for (const polyline of document.polylines) {
     const closed =
       polyline.closed ||
       len(
         sub(polyline.points[0]!, polyline.points[polyline.points.length - 1]!),
       ) <= tolerance;
-    if (!closed) continue;
-    const rect = rectangleOf(polyline.points, polyline.layer, tolerance);
-    if (rect) rawRects.push(rect);
-    if (rawRects.length >= MAX_RECTANGLES) break;
+    if (closed)
+      loops.push({ points: polyline.points, layer: polyline.layer, tolerance });
   }
-  for (const loop of loopsFromLines(document.lines, tolerance * 10)) {
-    const rect = rectangleOf(loop.points, loop.layer, tolerance * 10);
-    if (rect) rawRects.push(rect);
-    if (rawRects.length >= MAX_RECTANGLES) break;
+  for (const loop of loopsFromLines(document.lines, tolerance * 10))
+    loops.push({ ...loop, tolerance: tolerance * 10 });
+
+  // Rectangles in drawing units.
+  const rawRects: CadRectangle[] = [];
+  // VNext-6: closed orthogonal outlines with inner corners (L, T, U).
+  const rawCompound: Vec2[][] = [];
+  for (const loop of loops) {
+    const rect = rectangleOf(loop.points, loop.layer, loop.tolerance);
+    if (rect) {
+      if (rawRects.length < MAX_RECTANGLES) rawRects.push(rect);
+      continue;
+    }
+    if (rawCompound.length >= MAX_RECTANGLES) continue;
+    const shape = classifyPlanOutline(
+      loop.points.map(([x, y]) => ({ x, y })),
+      loop.tolerance,
+    ).shape;
+    if (shape === 'l-shape' || shape === 'compound-orthogonal')
+      rawCompound.push(loop.points);
   }
-  if (!rawRects.length)
+  if (!rawRects.length && !rawCompound.length)
     return { status: 'unsupported', reason: 'no-rectangular-outline' };
 
-  const longest = Math.max(...rawRects.map((rect) => rect.longMm));
+  const spanOf = (points: readonly Vec2[]) =>
+    Math.max(
+      Math.max(...points.map((point) => point[0])) -
+        Math.min(...points.map((point) => point[0])),
+      Math.max(...points.map((point) => point[1])) -
+        Math.min(...points.map((point) => point[1])),
+    );
+  const longest = Math.max(
+    ...rawRects.map((rect) => rect.longMm),
+    ...rawCompound.map(spanOf),
+  );
   const declared =
     document.unitDeclared && document.unit !== 'unitless'
       ? document.unit
@@ -451,12 +493,36 @@ export function analyzeCadRoofPlan(
             Math.abs(other.shortMm - rect.shortMm) < 1,
         ) === index,
     );
+  // VNext-6: the largest plausible L/T/U outline, in millimetres.
+  const compound = rawCompound
+    .map((points) =>
+      classifyPlanOutline(
+        points.map(([x, y]) => ({ x: x * factor, y: y * factor })),
+      ),
+    )
+    .filter((outline) => {
+      const span = spanOf(outline.outline.map(({ x, y }) => [x, y] as Vec2));
+      return (
+        span >= PLAUSIBLE_LONG_MM.min / 2 && span <= PLAUSIBLE_LONG_MM.max * 1.5
+      );
+    })
+    .sort((a, b) => b.areaMm2 - a.areaMm2)[0];
+  const compoundOutline = compound && {
+    status: 'unsupported' as const,
+    reason: 'compound-outline' as const,
+    unit: { unit, basis },
+    outline: compound,
+    warnings,
+    preview: { segments: segments.slice(0, 20_000) },
+  };
   if (!rects.length)
-    return {
-      status: 'unsupported',
-      reason: 'no-rectangular-outline',
-      longestSide: longest,
-    };
+    return (
+      compoundOutline ?? {
+        status: 'unsupported',
+        reason: 'no-rectangular-outline',
+        longestSide: longest,
+      }
+    );
 
   // Roof lines inside an outline make it the roof, not a title block.
   const roofLinesIn = (rect: CadRectangle) => {
@@ -508,6 +574,9 @@ export function analyzeCadRoofPlan(
         Number(b.lines.length > 0) - Number(a.lines.length > 0) ||
         b.rect.longMm * b.rect.shortMm - a.rect.longMm * a.rect.shortMm,
     );
+  // An L-shaped building beside rectangles that hold no roof line (a frame,
+  // a chimney, a terrace): the L is the building, and it is not supported.
+  if (compoundOutline && !scored[0]!.lines.length) return compoundOutline;
   const outlineIndex = Math.min(
     Math.max(0, options.outlineIndex ?? 0),
     scored.length - 1,

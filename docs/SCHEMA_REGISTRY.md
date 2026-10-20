@@ -654,3 +654,24 @@ workbench. No migration.
   `transcription`; evidence `dimension-row`, `chain-total`, `chain-part`,
   `transcribed`; relation `dimension-chain`; warnings `scaled-value-only`,
   `dimension-chain-mismatch`.
+
+## 17. VNext-6 additive contracts (session-only, no project schema change)
+
+- `ImportSource.fingerprint?` (§13): SHA-256 hex of the file computed on
+  the device. Optional; never derived from the name; never persisted.
+- `ImportDecisions.excludedPages?` / `pageRoles?`: pages set aside and
+  corrected page roles. Session-only review decisions; `withoutPages`
+  drops readings, statements, segments and relations of a set-aside page.
+- `PageRoleSuggestion`, `IntakeSummary`, `FieldProvenance`: derived views of
+  a draft (`suggestPageRoles`, `summarizeIntake`, `fieldProvenance`).
+- `CadPlanAnalysis` gains the variant `{ status: 'unsupported', reason:
+  'compound-outline', unit, outline, warnings, preview }` — a recognised
+  L/T/U outline in mm (`PlanOutlineClassification`). Nothing is proposed.
+- `ImportIntakeReport` (`apps/web/src/assembly/project-preparation.ts`): what
+  an import gave the project it created (value sources, pages read/skipped,
+  read time, fingerprint). React state bound to that project; dropped when
+  another project opens; never stored.
+- `RoofSceneGraph` `contractVersion: 1` (`packages/roof-topology-core`,
+  ADR-015): derived from solver output or recognition; not persisted, no
+  storage key, no SQL. The V1 → V2 document migration that would persist it
+  is designed in ADR-015 and not executed.

@@ -63,6 +63,20 @@ nigdy nie wyświetla haseł ani sekretów.
 podczas `pnpm build`). Zmieniasz go tylko w `.env`. Nie używaj 5173 — to port
 Vite.
 
+### Aktualizacja wersji lokalnej — jedno polecenie
+
+```powershell
+pnpm deploy:local
+```
+
+W głównym katalogu projektu (gałąź `main`): przewija `main` do `origin/main`
+tylko wtedy, gdy nie masz niezatwierdzonych zmian (nic nie nadpisuje),
+instaluje zablokowane zależności, buduje `apps/web/dist` dla XAMPP i na końcu
+uruchamia `pnpm check:local` (tylko odczyt — także stan schematu bazy). Bazy
+nie migruje samodzielnie: gdy sprawdzenie pokaże brakujące migracje,
+uruchom `pnpm configure:local`. Zdalnej bazy nigdy nie dotyka; Cloudflare
+wdraża `main` po pushu (Workers Builds).
+
 ### Ręcznie przez phpMyAdmin (zamiast kroku 3)
 
 Polecenia SQL wykonuje się w **phpMyAdmin → zakładka SQL**, nigdy w `.env`:

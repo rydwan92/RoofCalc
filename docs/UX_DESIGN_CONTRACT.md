@@ -617,6 +617,19 @@ line and manual lengths keep working.
 - **VNext-5: what was planned reaches the crew.** The execution package
   carries the connection plan (node, how many, carpentry joint, planned
   fixing, notes) with the designer-capacity note.
+- **VNext-6: one count, one next step.** An import review shows how many
+  values were read ("Rozpoznano 6 z 8"), how many need the user, and ONE
+  button that takes the focus to the exact control; on a phone it stays
+  pinned above the document. A multi-page design shows every sheet with its
+  role and lets a sheet be set aside — a value is never chosen silently
+  when two sheets disagree.
+- **VNext-6: after an import, one card — not a new screen.** "Przygotowanie
+  projektu" lists five groups and one "Dalej" step, opens the existing
+  editor and folds into a one-line pill; "Edytuj szczegółowo" is the
+  Creator. What the document did not give is named, never hidden.
+- **VNext-6: drawn is not calculated.** An L-shaped plan is shown as
+  recognised, with its parts, and stated as not calculated — no button that
+  would produce a calculated-looking roof.
 - **VNext-4: administration opens on an overview** — assortment, without
   price, without VAT, not linked, team, company details — each with one
   button to the fix, plus quick actions (prices from CSV, catalogue

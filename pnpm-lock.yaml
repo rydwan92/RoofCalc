@@ -284,7 +284,11 @@ importers:
         specifier: ^6.1.0
         version: 6.4.3(@types/node@20.19.43)(tsx@4.23.13)
 
-  packages/bim-import-core: {}
+  packages/bim-import-core:
+    dependencies:
+      '@cieslacalc/roof-topology-core':
+        specifier: workspace:*
+        version: link:../roof-topology-core
 
   packages/business-core:
     dependencies:
@@ -427,6 +431,15 @@ importers:
       zod:
         specifier: ^3.25.0
         version: 3.25.76
+
+  packages/roof-topology-core:
+    devDependencies:
+      '@cieslacalc/roof-math':
+        specifier: workspace:*
+        version: link:../roof-math
+      '@cieslacalc/timber-model':
+        specifier: workspace:*
+        version: link:../timber-model
 
   packages/shared: {}
 

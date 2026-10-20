@@ -117,4 +117,41 @@ describe('CAD (DXF) plan import', () => {
     const error = await screen.findByTestId('cad-error', {}, { timeout: 5000 });
     expect(error.textContent).toContain('Zapisz rysunek jako DXF');
   });
+
+  it('VNext-6: shows an L-shaped plan and its parts, and creates nothing', async () => {
+    const onCreate = vi.fn(async () => {});
+    render(
+      <CadImportWorkspace
+        initialFile={fileOf(
+          readFileSync(
+            resolve(
+              __dirname,
+              '../../../../../fixtures/cad/l-shape-12x8-wing-6x6.dxf',
+            ),
+            'utf8',
+          ),
+          'dom-L.dxf',
+        )}
+        onClose={() => {}}
+        onCreate={onCreate}
+      />,
+    );
+    const panel = await screen.findByTestId(
+      'cad-compound-outline',
+      {},
+      { timeout: 5000 },
+    );
+    expect(panel.textContent).toContain('w kształcie litery L');
+    expect(panel.textContent).toContain('6 narożników, w tym 1 wewnętrzny');
+    expect(screen.getByTestId('cad-compound-wings').textContent).toMatch(
+      /12 m × 8 m — bryła główna.*6 m × 6 m — skrzydło/,
+    );
+    expect(screen.getByTestId('cad-compound-limit').textContent).toContain(
+      'nie liczy jeszcze dachów złożonych',
+    );
+    // No confirmation form and no way to create a calculated-looking roof.
+    expect(screen.queryByTestId('cad-confirmation')).toBeNull();
+    expect(screen.queryByTestId('cad-create')).toBeNull();
+    expect(onCreate).not.toHaveBeenCalled();
+  });
 });

@@ -326,6 +326,27 @@ describe('package dependency direction', () => {
     ).toEqual([]);
   });
 
+  /**
+   * VNext-6 / ADR-015: the roof topology graph is a contract, not a solver.
+   * It records and checks planes that a solver, a drawing or a fixture
+   * supplies. If roof-math (or any other workspace package) enters it, the
+   * graph has started to compute roofs on its own — a second geometry
+   * engine. Tests may use roof-math to prove the adapter keeps every number.
+   */
+  it('roof-topology-core stays a pure contract: no solver, renderer or UI', () => {
+    expect(
+      forbiddenImports('packages/roof-topology-core', [
+        ...PURE_DOMAIN,
+        ...RENDERERS,
+        /^@cieslacalc\//,
+      ]),
+    ).toEqual([]);
+    expect(
+      forbiddenText('packages/roof-topology-core', BROWSER_GLOBALS),
+    ).toEqual([]);
+    expect(forbiddenText('packages/roof-topology-core', NETWORK)).toEqual([]);
+  });
+
   it('the PDF parser stays inside the web document-import folder', () => {
     const offenders = forbiddenImports('apps/web', PDF_PARSERS).filter(
       (entry) => !entry.file.startsWith('apps/web/src/document-import/'),
@@ -350,6 +371,7 @@ describe('package dependency direction', () => {
       'packages/drawing-engine',
       'packages/technical-scene',
       'packages/quote-core',
+      'packages/roof-topology-core',
     ])
       expect({
         directory,

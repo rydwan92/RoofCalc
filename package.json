@@ -41,7 +41,8 @@
     "db:setup:shared-dev": "pnpm --filter @cieslacalc/api db:setup:shared-dev",
     "dev:full": "pnpm db:bootstrap && pnpm dev",
     "dev:remote": "pnpm db:doctor && pnpm dev",
-    "deploy:cloudflare": "pnpm build:edge && pnpm --filter @cieslacalc/api deploy:cloudflare"
+    "deploy:cloudflare": "pnpm build:edge && pnpm --filter @cieslacalc/api deploy:cloudflare",
+    "deploy:local": "node tools/deploy-local.mjs"
   },
   "devDependencies": {
     "@cieslacalc/calculator-core": "workspace:*",

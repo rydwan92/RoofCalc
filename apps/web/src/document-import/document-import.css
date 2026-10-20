@@ -904,3 +904,274 @@
   color: var(--ui-text-muted);
   font-size: var(--ui-text-xs);
 }
+
+/* ------------------------------------------------------------------ */
+/* VNext-6: page navigator, reading status with one next step, source  */
+/* details.                                                            */
+/* ------------------------------------------------------------------ */
+.dimp-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.dimp-pages {
+  display: grid;
+  gap: var(--ui-space-2);
+  padding: var(--ui-space-2) var(--ui-space-3);
+  border-bottom: 1px solid var(--ui-line);
+  background: var(--ui-surface);
+}
+.dimp-pages ol {
+  display: flex;
+  gap: var(--ui-space-2);
+  margin: 0;
+  padding: 2px 2px 4px;
+  overflow-x: auto;
+  list-style: none;
+  scrollbar-width: thin;
+}
+.dimp-pages li {
+  flex: none;
+}
+.dimp-pages li button {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  width: 92px;
+  padding: 6px 6px 5px;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  cursor: pointer;
+}
+.dimp-pages li button[aria-current='page'] {
+  border-color: var(--ui-accent);
+  box-shadow: 0 0 0 2px var(--ui-accent-soft);
+}
+.dimp-pages li button[data-skipped] {
+  opacity: 0.55;
+}
+.dimp-pages li button[data-skipped] canvas {
+  filter: grayscale(1);
+}
+.dimp-pages canvas {
+  display: block;
+  width: 76px;
+  height: 54px;
+  object-fit: contain;
+  border-radius: var(--ui-radius-sm);
+  background: #fff;
+}
+.dimp-page-number {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  min-width: 18px;
+  padding: 0 4px;
+  border-radius: var(--ui-radius-pill);
+  background: var(--ui-text);
+  color: var(--ui-surface);
+  font-size: var(--ui-text-xs);
+  font-weight: var(--ui-weight-bold);
+  line-height: 18px;
+}
+.dimp-page-role {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: var(--ui-text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dimp-pages li button[data-role='roof-plan'] .dimp-page-role,
+.dimp-pages li button[data-role='section'] .dimp-page-role,
+.dimp-pages li button[data-role='framing-plan'] .dimp-page-role {
+  font-weight: var(--ui-weight-bold);
+  color: var(--ui-accent);
+}
+.dimp-page-count {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-width: 18px;
+  border-radius: var(--ui-radius-pill);
+  background: var(--ui-success);
+  color: #fff;
+  font-size: var(--ui-text-xs);
+  font-weight: var(--ui-weight-bold);
+  line-height: 18px;
+}
+.dimp-page-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ui-space-2) var(--ui-space-3);
+  font-size: var(--ui-text-sm);
+}
+.dimp-page-meta label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ui-space-2);
+}
+.dimp-page-meta select,
+.dimp-page-skip {
+  min-height: 32px;
+  padding: 0 var(--ui-space-2);
+  border: 1px solid var(--ui-line);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-surface);
+  color: var(--ui-text);
+}
+.dimp-page-meta small {
+  color: var(--ui-text-muted);
+}
+.dimp-page-skip {
+  margin-left: auto;
+  cursor: pointer;
+}
+.dimp-page-skip[aria-pressed='true'] {
+  border-color: var(--ui-attention);
+  color: var(--ui-attention);
+}
+.dimp-body {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+.dimp-body > .dimp-document {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+}
+.dimp-body > .dimp-review {
+  grid-column: 2;
+  grid-row: 2;
+}
+.dimp-intake {
+  grid-column: 2;
+  grid-row: 1;
+  display: grid;
+  gap: var(--ui-space-2);
+  padding: var(--ui-space-3) var(--ui-space-5);
+  border-bottom: 1px solid var(--ui-line);
+  background: var(--ui-surface-sunken);
+}
+.dimp-intake-counts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--ui-space-1) var(--ui-space-3);
+  font-size: var(--ui-text-sm);
+}
+.dimp-intake-counts strong {
+  font-size: var(--ui-text-md);
+}
+.dimp-intake-counts [data-tone='attention'] {
+  color: var(--ui-attention);
+}
+.dimp-intake-counts [data-tone='danger'] {
+  color: var(--ui-danger);
+}
+.dimp-intake-counts [data-tone='muted'] {
+  color: var(--ui-text-muted);
+}
+.dimp-intake-items {
+  display: flex;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dimp-intake-items li {
+  flex: 1;
+  height: 6px;
+  border-radius: var(--ui-radius-pill);
+  background: var(--ui-line-strong);
+}
+.dimp-intake-items
+  li:is(
+    [data-state='recognized'],
+    [data-state='confirmed'],
+    [data-state='entered']
+  ) {
+  background: var(--ui-success);
+}
+.dimp-intake-items li[data-state='to-confirm'] {
+  background: var(--ui-attention);
+}
+.dimp-intake-items
+  li:is(
+    [data-state='conflict'],
+    [data-state='missing'],
+    [data-state='unsupported']
+  ) {
+  background: var(--ui-danger);
+}
+.dimp-intake-items li[data-state='defaulted'] {
+  background: var(--ui-line);
+}
+.dimp-intake-next {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--ui-space-2);
+  width: 100%;
+  text-align: left;
+}
+.dimp-intake-next small {
+  grid-column: 1;
+  font-size: var(--ui-text-xs);
+  font-weight: var(--ui-weight-medium);
+  opacity: 0.85;
+}
+.dimp-intake-next span {
+  grid-column: 1;
+}
+.dimp-intake-next svg {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+.dimp-provenance {
+  font-size: var(--ui-text-xs);
+  color: var(--ui-text-muted);
+}
+.dimp-provenance summary {
+  cursor: pointer;
+  width: fit-content;
+}
+.dimp-provenance ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px var(--ui-space-2);
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.dimp-provenance li + li::before {
+  content: '·';
+  margin-right: var(--ui-space-2);
+}
+@media (max-width: 800px) {
+  /* The next step stays in view above the document while scrolling. */
+  .dimp-intake {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    padding: var(--ui-space-2) var(--ui-space-3);
+    box-shadow: var(--ui-shadow-1);
+  }
+  .dimp-intake-items {
+    display: none;
+  }
+  .dimp-pages li button {
+    width: 78px;
+  }
+  .dimp-pages canvas {
+    width: 64px;
+    height: 46px;
+  }
+  .dimp-page-skip {
+    margin-left: 0;
+  }
+}

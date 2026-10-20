@@ -1297,6 +1297,59 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+## VNext-6 (2026-10-20) — intelligent project intake, guided completion, compound-roof foundation
+
+- Authorized by the user's VNext-6 brief and "pushnijmy teraz zmiany,
+  zacommitujmy i pracujmy na nowej gałęzi … na koniec wdróżmy lokalnie oraz
+  na Cloudflare". Branch `feature/vnext-6-project-intake` from
+  `main` @ `fe7b6b3`. Definition of Ready, audit, design and measured
+  numbers: `docs/ARCHITECTURE_VNEXT6_PROJECT_INTAKE.md`; ADR-015.
+- Baseline before changes: `pnpm verify` green, 193 files / 1953 tests.
+- P0 (import): page roles from sheet titles (`suggestPageRoles`), set a
+  sheet aside (`excludedPages`, text layer re-read from the rest), two
+  explicitly written values that disagree are always a conflict, one count +
+  ONE next step (`summarizeIntake`) pinned in the review (phone: above the
+  document), provenance with the file fingerprint (`fieldProvenance`),
+  page navigator with thumbnails; DXF L/T/U → `reason: 'compound-outline'`
+  shown with its parts, nothing created.
+- P1 (preparation): `deriveProjectPreparation` + "Przygotowanie projektu"
+  card after every import (PDF/image, DXF, IFC): five groups, values from the
+  document vs RoofCalc defaults, documents available now, prices counted
+  (never 0), one "Dalej" step through `runJourneyAction`, "Edytuj
+  szczegółowo" = Creator; collapses to a pill; reopens from "Przegląd
+  projektu". Session-only, no undo entries.
+- P2 (foundation): new `packages/roof-topology-core` — contract,
+  `assessRoofScene` (geometry complete/partial/invalid vs calculation
+  supported/not-supported), metrics, adjacency, solver adapter (gable/hip
+  identical numbers), outline classifier; hand-checked mono-pitch,
+  asymmetric gable, L with valley, unresolved L. V1→V2 migration designed in
+  ADR-015, not executed. Architecture rule added.
+- Fixes found while testing: a title sheet's drawing list no longer names
+  it a roof plan; CAD "create" protected against a double click (ref).
+- Fixtures: `fixtures/documents/projekt-domu-4-strony.pdf` (generator
+  `createDesignPdf`/`houseDesignSpecs`), `fixtures/cad/l-shape-12x8-wing-6x6.dxf`.
+- Measured (fixture): 7/7 values + roof type read; 2 decisions left; 4
+  actions from the loaded file to the project; import ≡ manual start
+  (deep-equal template); ≈1.1 s cold / 0.11 s warm reading.
+- Validation: `pnpm verify` green — 198 files / 2014 tests (13 skipped),
+  builds and bundle boundaries clean; `pnpm e2e` 160 passed / 32
+  conditionally skipped / 0 failed (desktop 1440 + phone 390), including the
+  4 new VNext-6 scenarios; visual QA at 1440, 1024 and 390 in the browser.
+- Local SQL (XAMPP): `db:status` showed catalogue seeds 10/11 (the VNext-4
+  Galeco batch missing); `db:setup:local` (loopback only, additive) →
+  DATABASE READY 8/8 migrations, 11/11 catalogue, 4/4 pricing, 1/1 business.
+- New: `pnpm deploy:local` (ff-only update of main, install, build
+  apps/web/dist, read-only `check:local`) — docs/KONFIGURACJA.md.
+- Nothing persisted changed: `RoofProjectDocumentV1`, SQL schema, seeds,
+  Worker and Hyperdrive untouched (SCHEMA_REGISTRY §17).
+- Not done / limits: OCR/AI reading of scans; calculating any non gable/hip
+  roof; pitch from section geometry; graph persistence (V2); page roles need
+  a written title.
+- NEXT ACTION: VNext-7 — mono-pitch roof solver in roof-math producing a
+  `RoofSceneGraph`, then covering/battens/membrane/drainage/quantities/
+  documents for it, before marking it supported; start a licensed corpus of
+  real Polish designs to measure recognition.
+
 ## VNext-5 (2026-10-20) — polish pass, repeated input once, plan to the crew
 
 - Authorized by "pracuj dalej nad projektem" after VNext-4 was on main

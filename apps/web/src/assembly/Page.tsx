@@ -167,6 +167,11 @@ import {
   type ProjectWorkflowAction,
 } from './project-workflow';
 import { ProjectSummary } from './ProjectWorkflow';
+import { ProjectPreparationCard } from './ProjectPreparation';
+import {
+  deriveProjectPreparation,
+  type ImportIntakeReport,
+} from './project-preparation';
 import {
   ActionFeedback,
   ProjectReadinessBar,
@@ -447,6 +452,34 @@ function AssemblyPageContent({
   /** VNext-4: the file an importer opens with (universal file opening). */
   const [importFile, setImportFile] = useState<File>();
   const [reuseFreshProject, setReuseFreshProject] = useState(false);
+  /**
+   * VNext-6: what the last import gave the project it created, and the
+   * "Przygotowanie projektu" card. Session-only view state (ADR-002): it
+   * belongs to that one project and is dropped when another one opens.
+   */
+  const [intake, setIntake] = useState<{
+    projectId?: string;
+    report?: ImportIntakeReport;
+    reviewed: boolean;
+  }>();
+  const [preparationView, setPreparationView] = useState<
+    'open' | 'collapsed' | 'closed'
+  >('closed');
+  useEffect(() => {
+    if (!intake?.projectId || activeProjectId === intake.projectId) return;
+    setIntake(undefined);
+    setPreparationView('closed');
+  }, [activeProjectId, intake?.projectId]);
+  /** After an import: bind the report to the new project, open the card. */
+  const openPreparation = (report?: ImportIntakeReport) => {
+    const projectId = projectSession.snapshot().active?.id;
+    setIntake({
+      ...(projectId ? { projectId } : {}),
+      ...(report ? { report } : {}),
+      reviewed: false,
+    });
+    setPreparationView('open');
+  };
   const workbench = state.workbench;
   const mobile = useMobileWorkbench();
   const checklistDockAvailable = useChecklistDockAvailable() && !mobile;
@@ -1533,6 +1566,22 @@ function AssemblyPageContent({
         costScenario && costScenario.lines.length
           ? summarizeCostScenario(costScenario).needsPriceCount
           : 0,
+    },
+  });
+  const costSummary =
+    costScenario && costScenario.lines.length
+      ? summarizeCostScenario(costScenario)
+      : undefined;
+  const projectPreparation = deriveProjectPreparation({
+    journey: projectJourney,
+    readiness: projectReadiness,
+    ...(intake?.report
+      ? { intake: intake.report, intakeReviewed: intake.reviewed }
+      : {}),
+    cost: {
+      started: !!costSummary,
+      priced: costSummary?.pricedLineCount ?? 0,
+      missing: costSummary?.needsPriceCount ?? 0,
     },
   });
   const documentFactsWithLimits: ExportFacts = {
@@ -3069,6 +3118,7 @@ function AssemblyPageContent({
                       <div data-material-surface="summary">
                         <ProjectSummary
                           facts={projectSummary}
+                          onPreparation={() => setPreparationView('open')}
                           journey={projectJourney}
                           onJourneyAction={runJourneyAction}
                           readiness={projectReadiness}
@@ -3632,7 +3682,7 @@ function AssemblyPageContent({
               setDocumentImportOpen(false);
               setImportFile(undefined);
             }}
-            onCreate={async (template, name) => {
+            onCreate={async (template, name, report) => {
               await projectSession.initialize();
               // Like the Creator: an untouched project that the session has
               // just created is reused, so the import leaves one record.
@@ -3655,6 +3705,7 @@ function AssemblyPageContent({
               state.setMode('builder');
               state.navigatePerspective('project');
               state.setViewPreset('construction');
+              openPreparation(report);
             }}
           />
         </Suspense>
@@ -3672,7 +3723,7 @@ function AssemblyPageContent({
               setImportFile(file);
               setIfcImportOpen(true);
             }}
-            onCreate={async (template, name) => {
+            onCreate={async (template, name, report) => {
               await projectSession.initialize();
               await projectSession.createFromDocument(
                 createRoofProjectDocument(template),
@@ -3687,6 +3738,7 @@ function AssemblyPageContent({
               state.setMode('builder');
               state.navigatePerspective('project');
               state.setViewPreset('construction');
+              openPreparation(report);
             }}
           />
         </Suspense>
@@ -3715,10 +3767,40 @@ function AssemblyPageContent({
               state.setMode('builder');
               state.navigatePerspective('project');
               state.setViewPreset('construction');
+              openPreparation();
             }}
           />
         </Suspense>
       )}
+      {preparationView !== 'closed' &&
+        workbench.mode === 'builder' &&
+        !projectStartMode &&
+        !documentImportOpen &&
+        !cadImportOpen &&
+        !ifcImportOpen &&
+        !businessHomeOpen && (
+          <ProjectPreparationCard
+            preparation={projectPreparation}
+            {...(intake?.report ? { intake: intake.report } : {})}
+            collapsed={preparationView === 'collapsed'}
+            onAction={(action, reason) => {
+              if (reason === 'intake-defaults')
+                setIntake((current) =>
+                  current ? { ...current, reviewed: true } : current,
+                );
+              setPreparationView('collapsed');
+              runJourneyAction(action);
+            }}
+            onDetailed={() => {
+              setPreparationView('collapsed');
+              setReuseFreshProject(false);
+              setProjectStartMode('edit');
+            }}
+            onCollapse={() => setPreparationView('collapsed')}
+            onExpand={() => setPreparationView('open')}
+            onClose={() => setPreparationView('closed')}
+          />
+        )}
       {quickDetail && workbench.mode === 'quick' && (
         <QuickDetailDialog
           preview={quickDetail}

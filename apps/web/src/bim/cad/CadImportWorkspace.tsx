@@ -24,6 +24,10 @@ import {
 } from '../../assembly/store';
 import { formatLength, formatNumber, parseDecimal } from '../../format';
 import { classifyProjectFile } from '../../import/file-kind';
+import type {
+  ImportIntakeReport,
+  IntakeValueSource,
+} from '../../assembly/project-preparation';
 import { cadCopy, type CadCopy } from './cad-copy';
 import './cad-import.css';
 
@@ -43,7 +47,12 @@ export function CadImportWorkspace({
 }: {
   initialFile?: File;
   onClose: () => void;
-  onCreate: (template: RoofTemplateSpec, name: string) => Promise<void>;
+  onCreate: (
+    template: RoofTemplateSpec,
+    name: string,
+    /** VNext-6: what the drawing gave — for the preparation card. */
+    intake: ImportIntakeReport,
+  ) => Promise<void>;
   /** An IFC model dropped here goes to the IFC importer. */
   onOpenIfc?: (file: File) => void;
 }) {
@@ -190,29 +199,43 @@ export function CadImportWorkspace({
           }}
         />
 
-        {document && analysis?.status === 'unsupported' && (
-          <div className="cad-step">
-            {analysis.reason === 'unit-unknown' ? (
-              <UnitQuestion
-                c={c}
-                longest={analysis.longestSide ?? 0}
-                locale={i18n.language}
-                onUnit={setUnit}
-              />
-            ) : (
-              <p role="alert" className="cad-error" data-testid="cad-error">
-                {failure}
-              </p>
-            )}
-            <button
-              type="button"
-              className="a-button"
-              onClick={() => setDocument(undefined)}
-            >
-              {c.another}
-            </button>
-          </div>
-        )}
+        {document &&
+          analysis?.status === 'unsupported' &&
+          analysis.reason === 'compound-outline' && (
+            <CompoundOutline
+              c={c}
+              analysis={analysis}
+              locale={i18n.language}
+              onAnother={() => setDocument(undefined)}
+              onClose={onClose}
+            />
+          )}
+
+        {document &&
+          analysis?.status === 'unsupported' &&
+          analysis.reason !== 'compound-outline' && (
+            <div className="cad-step">
+              {analysis.reason === 'unit-unknown' ? (
+                <UnitQuestion
+                  c={c}
+                  longest={analysis.longestSide ?? 0}
+                  locale={i18n.language}
+                  onUnit={setUnit}
+                />
+              ) : (
+                <p role="alert" className="cad-error" data-testid="cad-error">
+                  {failure}
+                </p>
+              )}
+              <button
+                type="button"
+                className="a-button"
+                onClick={() => setDocument(undefined)}
+              >
+                {c.another}
+              </button>
+            </div>
+          )}
 
         {document && analysis?.status === 'supported' && (
           <div className="cad-body">
@@ -431,6 +454,136 @@ function CadPreview({
   );
 }
 
+type Compound = Extract<CadPlanAnalysis, { reason: 'compound-outline' }>;
+
+/**
+ * VNext-6: an L/T/U plan. The outline and its candidate parts are shown
+ * exactly as read; nothing is proposed, because today's single-roof start
+ * cannot describe the junction between the parts (ADR-015).
+ */
+function CompoundOutline({
+  c,
+  analysis,
+  locale,
+  onAnother,
+  onClose,
+}: {
+  c: CadCopy;
+  analysis: Compound;
+  locale: string;
+  onAnother: () => void;
+  onClose: () => void;
+}) {
+  const { outline } = analysis;
+  const xs = outline.outline.map((point) => point.x);
+  const ys = outline.outline.map((point) => point.y);
+  const span = Math.max(
+    Math.max(...xs) - Math.min(...xs),
+    Math.max(...ys) - Math.min(...ys),
+  );
+  const pad = span * 0.12;
+  const minX = Math.min(...xs) - pad;
+  const maxX = Math.max(...xs) + pad;
+  const minY = Math.min(...ys) - pad;
+  const maxY = Math.max(...ys) + pad;
+  const stroke = Math.max(maxX - minX, maxY - minY) / 400;
+  // CAD y points up; SVG y points down.
+  const flipY = (y: number) => maxY + minY - y;
+  const points = (list: readonly { x: number; y: number }[]) =>
+    list.map((point) => `${point.x},${flipY(point.y)}`).join(' ');
+  const length = (mm: number) => `${formatLength(mm, 'm', locale)} m`;
+  return (
+    <div className="cad-body" data-testid="cad-compound-outline">
+      <figure className="cad-preview" aria-label={c.preview}>
+        <svg
+          viewBox={`${minX} ${minY} ${maxX - minX} ${maxY - minY}`}
+          role="img"
+          aria-label={c.preview}
+          data-testid="cad-preview"
+        >
+          {analysis.preview.segments.map(([from, to], index) => (
+            <line
+              key={index}
+              className="cad-line"
+              x1={from[0]}
+              y1={flipY(from[1])}
+              x2={to[0]}
+              y2={flipY(to[1])}
+              strokeWidth={stroke}
+            />
+          ))}
+          {outline.wings.map((wing, index) => (
+            <polygon
+              key={index}
+              className="cad-wing"
+              points={points(wing.corners)}
+              strokeWidth={stroke * 2}
+              strokeDasharray={`${stroke * 6} ${stroke * 4}`}
+            />
+          ))}
+          <polygon
+            className="cad-outline"
+            points={points(outline.outline)}
+            strokeWidth={stroke * 3}
+          />
+        </svg>
+        <figcaption>
+          <span className="cad-key is-walls">{c.compound.legend}</span>
+          {outline.wings.length > 0 && (
+            <span className="cad-key is-eaves">{c.compound.wingLegend}</span>
+          )}
+          <span className="cad-key is-other">{c.legend.other}</span>
+        </figcaption>
+      </figure>
+      <section className="cad-confirmation cad-compound" aria-live="polite">
+        <h3>
+          {outline.shape === 'l-shape'
+            ? c.compound.titleL
+            : c.compound.titleOther}
+        </h3>
+        <p>
+          {c.compound.corners(outline.corners, outline.reflexCorners)} ·{' '}
+          {c.compound.area(
+            formatNumber(outline.areaMm2 / 1_000_000, locale, 1),
+          )}
+          {' · '}
+          {c.fileUnit(
+            c.units[analysis.unit.unit],
+            c.unitBasis[analysis.unit.basis],
+          )}
+        </p>
+        {outline.wings.length > 0 && (
+          <>
+            <h4>{c.compound.wings}</h4>
+            <ul data-testid="cad-compound-wings">
+              {outline.wings.map((wing, index) => (
+                <li key={index}>
+                  <strong>
+                    {length(wing.longMm)} × {length(wing.shortMm)}
+                  </strong>{' '}
+                  — {c.compound.wing(index)}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+        <p className="cad-error" role="note" data-testid="cad-compound-limit">
+          {c.compound.limitation}
+        </p>
+        <p>{c.compound.next}</p>
+        <div className="cad-actions">
+          <button type="button" className="a-button" onClick={onAnother}>
+            {c.another}
+          </button>
+          <button type="button" className="a-button" onClick={onClose}>
+            {c.close}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 const LENGTH_FIELDS: readonly ProjectStartField[] = [
   'buildingLength',
   'buildingWidth',
@@ -461,7 +614,11 @@ function CadConfirmation({
   analysis: Supported;
   warnings: DxfDocument['warnings'];
   fileName: string;
-  onCreate: (template: RoofTemplateSpec, name: string) => Promise<void>;
+  onCreate: (
+    template: RoofTemplateSpec,
+    name: string,
+    intake: ImportIntakeReport,
+  ) => Promise<void>;
   onAnother: () => void;
 }) {
   const { t, i18n } = useTranslation();
@@ -490,6 +647,8 @@ function CadConfirmation({
   const [confirmed, setConfirmed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+  // A ref, not state: a fast double click must never create two projects.
+  const submitting = useRef(false);
 
   const read = (field: ProjectStartField) => {
     const value = parseDecimal(draft[field]);
@@ -570,6 +729,15 @@ function CadConfirmation({
         : c.pitchMissing;
     return c.source.defaults;
   };
+  /** VNext-6: the same provenance, as data for the preparation card. */
+  const sourceOf = (field: ProjectStartField): IntakeValueSource => {
+    if (changed.has(field)) return 'user';
+    if (field === 'buildingLength' || field === 'buildingWidth')
+      return 'document';
+    if (field === 'eave') return nested ? 'document' : 'roofcalc-default';
+    if (field === 'pitch') return 'document';
+    return 'roofcalc-default';
+  };
   const edit = (field: ProjectStartField, value: string) => {
     setDraft({ ...draft, [field]: value });
     setChanged((current) => new Set([...current, field]));
@@ -592,10 +760,18 @@ function CadConfirmation({
       data-testid="cad-confirmation"
       onSubmit={(event) => {
         event.preventDefault();
-        if (!template || !confirmed || busy) return;
+        if (!template || !confirmed || submitting.current) return;
+        submitting.current = true;
         setBusy(true);
         setFailed(false);
-        void onCreate(template, c.name(fileName)).catch(() => {
+        void onCreate(template, c.name(fileName), {
+          source: 'dxf',
+          fileName: `${fileName}.dxf`,
+          values: Object.fromEntries(
+            ALL_FIELDS.map((field) => [field, sourceOf(field)]),
+          ),
+        }).catch(() => {
+          submitting.current = false;
           setFailed(true);
           setBusy(false);
         });

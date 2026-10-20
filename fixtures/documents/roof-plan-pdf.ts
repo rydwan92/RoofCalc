@@ -226,3 +226,115 @@ export function hipRoofPlanSpec(): RoofPlanSpec {
     ],
   };
 }
+
+/**
+ * VNext-6: a multi-page PDF with one content stream per page and the same
+ * two fonts — the shape of a real issued building design.
+ */
+export function createDesignPdf(specs: readonly RoofPlanSpec[]): Uint8Array {
+  const firstPage = 6;
+  const kids = specs
+    .map((_, index) => `${firstPage + index * 2} 0 R`)
+    .join(' ');
+  const objects = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    `<< /Type /Pages /Kids [${kids}] /Count ${specs.length} >>`,
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding 5 0 R >>',
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding 5 0 R >>',
+    `<< /Type /Encoding /BaseEncoding /WinAnsiEncoding /Differences [128 ${DIFFERENCES}] >>`,
+  ];
+  specs.forEach((spec, index) => {
+    const content = contentStream(spec);
+    objects.push(
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${spec.width ?? 842} ${spec.height ?? 595}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${firstPage + index * 2 + 1} 0 R >>`,
+      `<< /Length ${content.length} >>\nstream\n${content}\nendstream`,
+    );
+  });
+  let body = '%PDF-1.4\n%âãÏÓ\n';
+  const offsets: number[] = [];
+  objects.forEach((object, index) => {
+    offsets.push(body.length);
+    body += `${index + 1} 0 obj\n${object}\nendobj\n`;
+  });
+  const xref = body.length;
+  body += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  for (const offset of offsets)
+    body += `${String(offset).padStart(10, '0')} 00000 n \n`;
+  body += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  return Uint8Array.from(body, (char) => char.charCodeAt(0));
+}
+
+/**
+ * VNext-6 fixture: a four-page design as an architect issues it — a title
+ * sheet, the roof plan (dimensions, 1:100 outline), section A-A (pitch,
+ * rafters) and a window schedule that also quotes a different building
+ * length. The pages disagree on purpose: the import must ask, not choose.
+ */
+export function houseDesignSpecs(): RoofPlanSpec[] {
+  const { lines, x0, y0, w, h } = planGeometry(12.4, 9.6, false);
+  return [
+    {
+      lines: [{ from: [40, 40], to: [802, 40], width: 0.4 }],
+      texts: [
+        { text: 'PROJEKT BUDOWLANY', x: 60, y: 520, size: 20, bold: true },
+        { text: 'Dom jednorodzinny — dach dwuspadowy', x: 60, y: 480 },
+        {
+          text: 'Stadium: projekt budowlany, branża architektura',
+          x: 60,
+          y: 462,
+        },
+        {
+          text: 'Spis rysunków: rzut dachu, przekrój, zestawienie',
+          x: 60,
+          y: 444,
+          size: 8,
+        },
+      ],
+    },
+    {
+      lines,
+      texts: [
+        { text: 'RZUT DACHU', x: 60, y: 555, size: 16, bold: true },
+        { text: '1240', x: x0 + w / 2 - 11, y: y0 - 32, size: 9 },
+        { text: '960', x: x0 - 30, y: y0 + h / 2 - 8, size: 9, rotate: 90 },
+        { text: 'Długość budynku:', x: 500, y: 478 },
+        { text: '12,40 m', x: 650, y: 478 },
+        { text: 'Szerokość budynku:', x: 500, y: 462 },
+        { text: '9,60 m', x: 650, y: 462 },
+        { text: 'Okap:', x: 500, y: 446 },
+        { text: '50 cm', x: 650, y: 446 },
+        { text: 'patrz przekrój A-A', x: 500, y: 300, size: 7 },
+        { text: 'Wszystkie wymiary podano w cm', x: 500, y: 120, size: 8 },
+        { text: 'Skala 1:100', x: 500, y: 104, size: 8 },
+      ],
+    },
+    {
+      lines: [
+        { from: [100, 150], to: [400, 150], width: 1 },
+        { from: [100, 150], to: [250, 276], width: 1 },
+        { from: [400, 150], to: [250, 276], width: 1 },
+      ],
+      texts: [
+        { text: 'PRZEKRÓJ A-A', x: 60, y: 555, size: 16, bold: true },
+        { text: 'Kąt nachylenia dachu', x: 500, y: 478 },
+        { text: '40°', x: 650, y: 478 },
+        { text: 'Krokwie 8×20 cm co 80 cm', x: 500, y: 462 },
+      ],
+    },
+    {
+      lines: [],
+      texts: [
+        {
+          text: 'ZESTAWIENIE STOLARKI OKIENNEJ',
+          x: 60,
+          y: 555,
+          size: 16,
+          bold: true,
+        },
+        { text: 'O1 okno 120×150 cm, 4 szt.', x: 60, y: 500 },
+        { text: 'Długość budynku (wariant z garażem)', x: 60, y: 460 },
+        { text: '12,00 m', x: 60, y: 446 },
+      ],
+    },
+  ];
+}

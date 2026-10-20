@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   AlertTriangle,
+  ArrowRight,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -31,6 +32,7 @@ import {
   DOCUMENT_IMPORT_LIMITS,
   EMPTY_DECISIONS,
   enterValue,
+  fieldProvenance,
   manualMeasurementResult,
   mapDraftToRoofStart,
   measurementValueSource,
@@ -39,9 +41,14 @@ import {
   recognizeVectorGeometry,
   REQUIRED_ROOF_FIELDS,
   START_PARAMETER_OF,
+  suggestPageRoles,
+  summarizeIntake,
   transcribeDimension,
   transcriptionResult,
   type DocumentPageInfo,
+  type DocumentPageRole,
+  type IntakeNextStep,
+  type PageRoleSuggestion,
   type DraftRelation,
   type DocumentSourceKind,
   type DraftField,
@@ -67,6 +74,7 @@ import {
   projectStartValuesFromTemplate,
 } from '../assembly/project-start';
 import { RoofPlanPreview } from '../assembly/ProjectStartAssistant';
+import type { ImportIntakeReport } from '../assembly/project-preparation';
 import { importCopy, type ImportCopy } from './copy';
 import {
   fingerprintBytes,
@@ -100,6 +108,10 @@ interface LoadedDocument {
   vector?: RecognitionResult;
   pdf?: OpenedPdf;
   image?: OpenedImage;
+  /** VNext-6: time spent reading on this device (open + recognition), ms. */
+  readMs: number;
+  /** VNext-6: suggested role of every analysed page (from page titles). */
+  roles: PageRoleSuggestion[];
 }
 
 type LoadFailure =
@@ -120,6 +132,7 @@ async function loadDocument(file: File): Promise<LoadedDocument> {
   if (verdict.status === 'rejected')
     throw new DocumentLoadError(verdict.reason);
   const bytes = await file.arrayBuffer();
+  const started = performance.now();
   const fingerprint = await fingerprintBytes(bytes);
   const common = {
     fileName: file.name,
@@ -133,20 +146,26 @@ async function loadDocument(file: File): Promise<LoadedDocument> {
       const text = recognizeTextLayer(pdf.textPages, {
         totalPages: pdf.pageCount,
       });
+      const vector = recognizeVectorGeometry({
+        pages: pdf.pages.map((page) => ({
+          ...page,
+          segments: pdf.segments.filter((item) => item.page === page.page),
+        })),
+        scale: text.scale,
+        written: text.measurements,
+      });
       return {
         ...common,
         pdf,
         pages: pdf.pages,
         pageCount: pdf.pageCount,
         text,
-        vector: recognizeVectorGeometry({
-          pages: pdf.pages.map((page) => ({
-            ...page,
-            segments: pdf.segments.filter((item) => item.page === page.page),
-          })),
-          scale: text.scale,
-          written: text.measurements,
+        vector,
+        roles: suggestPageRoles({
+          pages: pdf.textPages,
+          results: [text, vector],
         }),
+        readMs: Math.round(performance.now() - started),
       };
     } catch (error) {
       // The technical reason only (never document content), for support.
@@ -160,7 +179,14 @@ async function loadDocument(file: File): Promise<LoadedDocument> {
     const image = await openImage(
       new Blob([bytes], { type: `image/${verdict.kind}` }),
     );
-    return { ...common, image, pages: image.pages, pageCount: 1 };
+    return {
+      ...common,
+      image,
+      pages: image.pages,
+      pageCount: 1,
+      roles: [],
+      readMs: Math.round(performance.now() - started),
+    };
   } catch (error) {
     throw new DocumentLoadError(
       error instanceof ImageTooLargeError ? 'image-too-large' : 'failed',
@@ -216,7 +242,12 @@ export function DocumentImportWorkspace({
   /** VNext-4: a file already chosen elsewhere (universal file opening). */
   initialFile?: File;
   onClose: () => void;
-  onCreate: (template: RoofTemplateSpec, name: string) => Promise<void>;
+  onCreate: (
+    template: RoofTemplateSpec,
+    name: string,
+    /** VNext-6: what the document gave — for the preparation card. */
+    intake: ImportIntakeReport,
+  ) => Promise<void>;
 }) {
   const { t, i18n } = useTranslation();
   const m = importCopy(i18n.language);
@@ -266,6 +297,7 @@ export function DocumentImportWorkspace({
   const viewer = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
+  const reviewPanel = useRef<HTMLElement>(null);
   const loadToken = useRef(0);
   const submitting = useRef(false);
 
@@ -331,10 +363,44 @@ export function DocumentImportWorkspace({
         kind: doc.kind,
         byteLength: doc.byteLength,
         pageCount: doc.pageCount,
+        fingerprint: doc.fingerprint,
         pages: doc.pages,
       },
     [doc],
   );
+  /**
+   * VNext-6: with pages set aside, the text layer is read again from the
+   * remaining pages, so a unit, scale or roof type written elsewhere in the
+   * document still applies (the core also drops readings of those pages).
+   */
+  const excludedPages = decisions.excludedPages;
+  const engines = useMemo(() => {
+    if (!doc?.pdf || !excludedPages?.length)
+      return { text: doc?.text, vector: doc?.vector };
+    const pdf = doc.pdf;
+    const kept = (page: number) => !excludedPages.includes(page);
+    const text = recognizeTextLayer(
+      pdf.textPages.filter((page) => kept(page.page)),
+      {
+        totalPages:
+          pdf.pageCount -
+          excludedPages.filter((page) => page <= pdf.textPages.length).length,
+      },
+    );
+    return {
+      text,
+      vector: recognizeVectorGeometry({
+        pages: pdf.pages
+          .filter((page) => kept(page.page))
+          .map((page) => ({
+            ...page,
+            segments: pdf.segments.filter((item) => item.page === page.page),
+          })),
+        scale: text.scale,
+        written: text.measurements,
+      }),
+    };
+  }, [doc, excludedPages]);
   const manualResult = useMemo(
     () =>
       calibration && manual.length
@@ -357,15 +423,15 @@ export function DocumentImportWorkspace({
         ? deriveImportedRoofDraft({
             source,
             results: [
-              ...(doc?.text ? [doc.text] : []),
+              ...(engines.text ? [engines.text] : []),
               ...(transcribed ? [transcribed] : []),
-              ...(doc?.vector ? [doc.vector] : []),
+              ...(engines.vector ? [engines.vector] : []),
               ...(manualResult ? [manualResult] : []),
             ],
             decisions,
           })
         : undefined,
-    [decisions, doc?.text, doc?.vector, manualResult, source, transcribed],
+    [decisions, engines, manualResult, source, transcribed],
   );
   const chainOf = useMemo(() => {
     const byTotal = new Map<
@@ -486,7 +552,17 @@ export function DocumentImportWorkspace({
       const first = loaded.text?.measurements.find(
         (measurement) => measurement.region,
       );
-      if (first?.region) setPageNumber(first.region.page);
+      // VNext-6: open a multi-page design on its roof plan, else on the
+      // page that names the most roof parameters.
+      const plan =
+        loaded.roles.find(
+          (role) => role.role === 'roof-plan' && role.fields.length,
+        ) ??
+        [...loaded.roles]
+          .filter((role) => role.fields.length)
+          .sort((a, b) => b.fields.length - a.fields.length)[0];
+      if (plan) setPageNumber(plan.page);
+      else if (first?.region) setPageNumber(first.region.page);
       // A scan or photo has nothing to point at: start by reading the
       // dimensions written on it.
       if (isRasterPage(loaded, first?.region?.page ?? 1))
@@ -807,14 +883,31 @@ export function DocumentImportWorkspace({
   }
 
   async function create() {
-    if (!template || !reviewed || submitting.current || !doc) return;
+    if (
+      !template ||
+      !reviewed ||
+      submitting.current ||
+      !doc ||
+      mapping?.status !== 'ready'
+    )
+      return;
     submitting.current = true;
     setBusy(true);
     setCreateError(undefined);
+    const skipped = decisions.excludedPages?.length ?? 0;
     try {
       await onCreate(
         template,
         m.projectName(doc.fileName.replace(/\.[^.]+$/, '')),
+        {
+          source: doc.kind === 'pdf' ? 'pdf' : 'image',
+          fileName: doc.fileName,
+          fingerprint: doc.fingerprint,
+          values: { ...mapping.provenance },
+          pagesRead: doc.pages.length - skipped,
+          pagesSkipped: skipped,
+          readMs: doc.readMs,
+        },
       );
     } catch {
       setCreateError(m.createFailed);
@@ -826,6 +919,68 @@ export function DocumentImportWorkspace({
   // File → Recognition → Review → Project; the review is current until the
   // mapping is ready and the user ticked the final check.
   const step = !doc ? 0 : mapping?.status === 'ready' && reviewed ? 3 : 2;
+  const intakeSummary = useMemo(
+    () => (draft ? summarizeIntake(draft, { reviewed }) : undefined),
+    [draft, reviewed],
+  );
+
+  /** VNext-6: takes the user to exactly the control the next step needs. */
+  function goTo(next: IntakeNextStep) {
+    const panel = reviewPanel.current;
+    const reveal = (element: Element | null | undefined) => {
+      element?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      if (element instanceof HTMLElement) element.focus();
+    };
+    switch (next.kind) {
+      case 'unsupported-roof':
+      case 'choose-roof-type':
+      case 'confirm-roof-type': {
+        const row = panel?.querySelector(
+          '[data-testid="document-import-roof-type"]',
+        );
+        reveal(
+          next.kind === 'confirm-roof-type'
+            ? row?.querySelector('.dimp-confirm')
+            : row?.querySelector('button'),
+        );
+        scrollToRegion(draft?.roofType.detected?.region);
+        return;
+      }
+      case 'resolve-conflict':
+      case 'enter-value':
+      case 'confirm-value': {
+        activate(next.field);
+        requestAnimationFrame(() => {
+          const row = panel?.querySelector(`[data-field="${next.field}"]`);
+          reveal(
+            next.kind === 'confirm-value'
+              ? row?.querySelector('.dimp-confirm')
+              : next.kind === 'resolve-conflict'
+                ? row?.querySelector('.dimp-conflict-option')
+                : row?.querySelector('input'),
+          );
+        });
+        return;
+      }
+      case 'final-review':
+        reveal(
+          panel?.querySelector('[data-testid="document-import-reviewed"]'),
+        );
+        return;
+      case 'create':
+        void create();
+    }
+  }
+
+  function togglePage(page: number) {
+    const excluded = decisions.excludedPages ?? [];
+    update({
+      ...decisions,
+      excludedPages: excluded.includes(page)
+        ? excluded.filter((item) => item !== page)
+        : [...excluded, page].sort((a, b) => a - b),
+    });
+  }
   const textCount =
     doc?.text?.measurements.filter((measurement) => measurement.field).length ??
     0;
@@ -923,7 +1078,34 @@ export function DocumentImportWorkspace({
           </div>
         ) : (
           <div className="dimp-body">
+            {/* VNext-6: one grid item — top of the review column on a
+                desktop, pinned above the document on a phone. */}
+            {intakeSummary && (
+              <IntakeSummaryBar
+                summary={intakeSummary}
+                copy={m}
+                fieldLabel={fieldLabel}
+                onNext={goTo}
+              />
+            )}
             <section className="dimp-document" aria-label={m.document}>
+              {doc.pages.length > 1 && doc.roles.length > 0 && (
+                <PageNavigator
+                  doc={doc}
+                  current={pageNumber}
+                  excluded={decisions.excludedPages ?? []}
+                  corrections={decisions.pageRoles ?? {}}
+                  copy={m}
+                  onSelect={setPageNumber}
+                  onToggle={togglePage}
+                  onRole={(page, role) =>
+                    setDecisions({
+                      ...decisions,
+                      pageRoles: { ...decisions.pageRoles, [page]: role },
+                    })
+                  }
+                />
+              )}
               <div className="dimp-toolbar">
                 <div className="dimp-group">
                   <button
@@ -1283,6 +1465,7 @@ export function DocumentImportWorkspace({
             </section>
             {draft && (
               <section
+                ref={reviewPanel}
                 className="dimp-review"
                 aria-label={m.review}
                 data-testid="document-import-review"
@@ -1326,6 +1509,11 @@ export function DocumentImportWorkspace({
                     <li data-available="true">{m.engineManual}</li>
                     <li data-available="false">{m.engineOcr}</li>
                     <li data-available="false">{m.engineAi}</li>
+                    <li data-testid="document-import-read-time">
+                      {m.readTime(
+                        new Intl.NumberFormat(i18n.language).format(doc.readMs),
+                      )}
+                    </li>
                   </ul>
                 </details>
                 <RoofTypeRow
@@ -1436,6 +1624,7 @@ export function DocumentImportWorkspace({
                             (item): item is RecognizedMeasurement => !!item,
                           )}
                         conflict={conflictingReadings(draft, field)}
+                        provenance={fieldProvenance(draft, field)}
                         copy={m}
                         label={fieldLabel(field)}
                         unitLabel={field === 'pitch' ? '°' : unit}
@@ -1578,6 +1767,198 @@ export function DocumentImportWorkspace({
   );
 }
 
+/** VNext-6: every page with its role, readings and a way to set it aside. */
+function PageNavigator({
+  doc,
+  current,
+  excluded,
+  corrections,
+  copy: m,
+  onSelect,
+  onToggle,
+  onRole,
+}: {
+  doc: LoadedDocument;
+  current: number;
+  excluded: readonly number[];
+  corrections: Readonly<Partial<Record<number, DocumentPageRole>>>;
+  copy: ImportCopy;
+  onSelect: (page: number) => void;
+  onToggle: (page: number) => void;
+  onRole: (page: number, role: DocumentPageRole) => void;
+}) {
+  const canvases = useRef(new Map<number, HTMLCanvasElement>());
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      for (const page of doc.pages) {
+        const canvas = canvases.current.get(page.page);
+        if (cancelled || !canvas || !doc.pdf) return;
+        await doc.pdf.thumbnail(page.page, canvas, 76).catch(() => undefined);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [doc]);
+  const role = doc.roles.find((item) => item.page === current);
+  const skipped = excluded.includes(current);
+  return (
+    <div className="dimp-pages" data-testid="document-import-pages">
+      <ol aria-label={m.pages}>
+        {doc.roles.map((item) => {
+          const effective = corrections[item.page] ?? item.role;
+          const off = excluded.includes(item.page);
+          return (
+            <li key={item.page}>
+              <button
+                type="button"
+                aria-current={item.page === current ? 'page' : undefined}
+                aria-label={m.pageButton(
+                  item.page,
+                  m.pageRole[effective],
+                  item.readings,
+                  off,
+                )}
+                data-role={effective}
+                data-skipped={off || undefined}
+                data-testid={`document-import-page-${item.page}`}
+                onClick={() => onSelect(item.page)}
+              >
+                <canvas
+                  ref={(element) => {
+                    if (element) canvases.current.set(item.page, element);
+                  }}
+                  aria-hidden="true"
+                />
+                <span className="dimp-page-number">{item.page}</span>
+                <span className="dimp-page-role">{m.pageRole[effective]}</span>
+                {item.fields.length > 0 && (
+                  <span className="dimp-page-count" aria-hidden="true">
+                    {item.fields.length}
+                  </span>
+                )}
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+      {role && (
+        <div className="dimp-page-meta" data-testid="document-import-page-meta">
+          <label>
+            {m.pageRoleLabel}
+            <select
+              value={corrections[current] ?? role.role}
+              data-testid="document-import-page-role"
+              onChange={(event) =>
+                onRole(current, event.target.value as DocumentPageRole)
+              }
+            >
+              {(
+                [
+                  'roof-plan',
+                  'framing-plan',
+                  'section',
+                  'floor-plan',
+                  'elevation',
+                  'schedule',
+                  'unknown',
+                ] as const
+              ).map((value) => (
+                <option key={value} value={value}>
+                  {m.pageRole[value]}
+                </option>
+              ))}
+            </select>
+          </label>
+          {role.evidence && corrections[current] === undefined && (
+            <small>{m.pageRoleFrom(role.evidence.text)}</small>
+          )}
+          <small>
+            {skipped ? m.pageSkippedHint : m.pageReadings(role.readings)}
+          </small>
+          <button
+            type="button"
+            className="dimp-page-skip"
+            aria-pressed={skipped}
+            data-testid="document-import-page-skip"
+            onClick={() => onToggle(current)}
+          >
+            {skipped ? m.pageInclude : m.pageSkip}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** VNext-6: what was read, what is left, and ONE next step. */
+function IntakeSummaryBar({
+  summary,
+  copy: m,
+  fieldLabel,
+  onNext,
+}: {
+  summary: ReturnType<typeof summarizeIntake>;
+  copy: ImportCopy;
+  fieldLabel: (field: NumericRoofField) => string;
+  onNext: (step: IntakeNextStep) => void;
+}) {
+  const { counts } = summary;
+  return (
+    <section
+      className="dimp-intake"
+      aria-label={m.intakeTitle}
+      data-testid="document-import-intake"
+    >
+      <div className="dimp-intake-counts">
+        <strong data-testid="document-import-settled">
+          {m.intakeSettled(counts.settled, counts.total)}
+        </strong>
+        {counts.toConfirm > 0 && (
+          <span data-tone="attention">
+            {m.intakeToConfirm(counts.toConfirm)}
+          </span>
+        )}
+        {counts.missing > 0 && (
+          <span data-tone="danger">{m.intakeMissing(counts.missing)}</span>
+        )}
+        {counts.defaulted > 0 && (
+          <span data-tone="muted">{m.intakeDefaulted(counts.defaulted)}</span>
+        )}
+        {counts.unsupported > 0 && (
+          <span data-tone="danger">{m.intakeUnsupported}</span>
+        )}
+      </div>
+      <ol className="dimp-intake-items">
+        {summary.items.map((item) => (
+          <li
+            key={item.key}
+            data-state={item.state}
+            title={`${item.key === 'roofType' ? m.roofType : fieldLabel(item.key)}: ${m.intakeItem[item.state]}`}
+          >
+            <span className="dimp-visually-hidden">
+              {item.key === 'roofType' ? m.roofType : fieldLabel(item.key)}:{' '}
+              {m.intakeItem[item.state]}
+            </span>
+          </li>
+        ))}
+      </ol>
+      <button
+        type="button"
+        className="dimp-primary dimp-intake-next"
+        data-testid="document-import-next"
+        data-step={summary.next.kind}
+        onClick={() => onNext(summary.next)}
+      >
+        <small>{m.intakeNext}</small>
+        <span>{m.intakeStep(summary.next, fieldLabel)}</span>
+        <ArrowRight size={16} aria-hidden="true" />
+      </button>
+    </section>
+  );
+}
+
 function RoofTypeRow({
   draft,
   copy: m,
@@ -1638,6 +2019,7 @@ function FieldRow({
   measurement,
   alternatives,
   conflict,
+  provenance,
   copy: m,
   label,
   unitLabel,
@@ -1661,6 +2043,8 @@ function FieldRow({
   alternatives: RecognizedMeasurement[];
   /** VNext-3: the disagreeing readings, side by side (empty if none). */
   conflict: readonly RecognizedMeasurement[];
+  /** VNext-6: where the value came from (document, page, engine). */
+  provenance: ReturnType<typeof fieldProvenance>;
   copy: ImportCopy;
   label: string;
   unitLabel: string;
@@ -1791,6 +2175,33 @@ function FieldRow({
             <em> — {m.basis[state.unitBasis]}</em>
           )}
         </button>
+      )}
+      {provenance.engine && state.status !== 'user-entered' && (
+        <details
+          className="dimp-provenance"
+          data-testid={`document-import-provenance-${field}`}
+        >
+          <summary>{m.provenance}</summary>
+          <ul>
+            {provenance.documentFingerprint && (
+              <li>{m.provenanceDocument(provenance.documentFingerprint)}</li>
+            )}
+            {provenance.page !== undefined && (
+              <li>{m.pageShort(provenance.page)}</li>
+            )}
+            <li>{m.provenanceEngine[provenance.engine.mode]}</li>
+            {provenance.unitBasis && <li>{m.basis[provenance.unitBasis]}</li>}
+            {provenance.confidence && (
+              <li>{m.confidence[provenance.confidence]}</li>
+            )}
+            {provenance.alternatives.length > 0 && (
+              <li>{m.alternatives(provenance.alternatives.length)}</li>
+            )}
+            {provenance.warnings.length > 0 && (
+              <li>{m.provenanceWarnings(provenance.warnings.length)}</li>
+            )}
+          </ul>
+        </details>
       )}
       {chain && state.status !== 'user-entered' && (
         <small

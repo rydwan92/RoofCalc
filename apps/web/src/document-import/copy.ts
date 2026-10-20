@@ -1,11 +1,23 @@
 import type {
   Confidence,
+  DocumentPageRole,
   DraftWarning,
   ImportBlocker,
   IngestionRejection,
+  IntakeItemState,
+  IntakeNextStep,
   NumericRoofField,
+  RecognitionMode,
   UnitBasis,
 } from '@cieslacalc/document-import-core';
+
+/** Polish plural: 1 odczyt, 2–4 odczyty, 5+ odczytów (12–14 too). */
+function plPlural(count: number, one: string, few: string, many: string) {
+  if (count === 1) return one;
+  const tens = count % 100;
+  const units = count % 10;
+  return units >= 2 && units <= 4 && (tens < 12 || tens > 14) ? few : many;
+}
 
 /**
  * Copy for the lazily loaded document importer (PL/EN), kept beside the
@@ -245,6 +257,87 @@ const pl = {
   invalidTemplate:
     'Wartości nie tworzą poprawnego dachu RoofCalc — sprawdź zakresy.',
   projectName: (file: string) => `Projekt z dokumentu ${file}`,
+  // VNext-6: pages, intake summary, provenance.
+  pages: 'Strony dokumentu',
+  pageRole: {
+    'roof-plan': 'Rzut dachu',
+    'framing-plan': 'Rzut więźby',
+    section: 'Przekrój',
+    'floor-plan': 'Rzut kondygnacji',
+    elevation: 'Elewacja',
+    schedule: 'Zestawienie',
+    unknown: 'Inna strona',
+  } satisfies Record<DocumentPageRole, string>,
+  pageRoleLabel: 'Rola strony',
+  pageRoleFrom: (text: string) => `z tytułu na stronie: „${text}”`,
+  pageReadings: (count: number) =>
+    `${count} ${plPlural(count, 'odczyt', 'odczyty', 'odczytów')}`,
+  pageSkip: 'Pomiń tę stronę',
+  pageInclude: 'Uwzględnij stronę',
+  pageSkippedHint: 'Odczyty z tej strony nie są używane.',
+  pageButton: (
+    page: number,
+    role: string,
+    readings: number,
+    skipped: boolean,
+  ) =>
+    `Strona ${page}: ${role}, ${readings} ${plPlural(readings, 'odczyt', 'odczyty', 'odczytów')}${skipped ? ', pominięta' : ''}`,
+  intakeTitle: 'Stan odczytu',
+  intakeSettled: (count: number, total: number) =>
+    `Rozpoznano ${count} z ${total}`,
+  intakeToConfirm: (count: number) => `${count} do potwierdzenia`,
+  intakeMissing: (count: number) => `${count} brak`,
+  intakeDefaulted: (count: number) =>
+    `${count} ${plPlural(count, 'wartość domyślna', 'wartości domyślne', 'wartości domyślnych')}`,
+  intakeUnsupported: 'nieobsługiwany typ dachu',
+  intakeNext: 'Następny krok',
+  intakeItem: {
+    recognized: 'rozpoznane',
+    confirmed: 'potwierdzone',
+    entered: 'wpisane',
+    'to-confirm': 'do potwierdzenia',
+    conflict: 'sprzeczne odczyty',
+    missing: 'brak',
+    defaulted: 'wartość domyślna RoofCalc',
+    unsupported: 'nieobsługiwane',
+  } satisfies Record<IntakeItemState, string>,
+  intakeStep: (
+    step: IntakeNextStep,
+    field: (name: NumericRoofField) => string,
+  ): string => {
+    switch (step.kind) {
+      case 'unsupported-roof':
+        return `Dach „${step.text}” — wybierz typ ręcznie tylko, jeśli to uprawnione`;
+      case 'choose-roof-type':
+        return 'Wybierz typ dachu';
+      case 'confirm-roof-type':
+        return 'Potwierdź typ dachu';
+      case 'resolve-conflict':
+        return `Rozstrzygnij: ${field(step.field)} — dokument podaje różne wartości`;
+      case 'enter-value':
+        return `Uzupełnij: ${field(step.field)}`;
+      case 'confirm-value':
+        return `Potwierdź: ${field(step.field)}`;
+      case 'final-review':
+        return 'Sprawdź całość i zaznacz potwierdzenie';
+      case 'create':
+        return 'Utwórz projekt';
+    }
+  },
+  readTime: (ms: string) => `odczyt na tym urządzeniu: ${ms} ms`,
+  provenance: 'Szczegóły źródła',
+  provenanceEngine: {
+    'text-layer': 'warstwa tekstowa PDF',
+    'vector-geometry': 'geometria wektorowa PDF',
+    ocr: 'OCR',
+    'ai-vision': 'AI Vision',
+    transcription: 'Twój odczyt z rysunku',
+    manual: 'pomiar ze skali',
+  } satisfies Record<RecognitionMode, string>,
+  provenanceDocument: (fingerprint: string) =>
+    `dokument (odcisk ${fingerprint.slice(0, 10)})`,
+  provenanceWarnings: (count: number) =>
+    `${count} ${plPlural(count, 'uwaga', 'uwagi', 'uwag')}`,
 };
 
 type Copy = typeof pl;
@@ -464,6 +557,75 @@ const en: Copy = {
   invalidTemplate:
     'The values do not form a valid RoofCalc roof — check the ranges.',
   projectName: (file) => `Project from document ${file}`,
+  pages: 'Document pages',
+  pageRole: {
+    'roof-plan': 'Roof plan',
+    'framing-plan': 'Framing plan',
+    section: 'Section',
+    'floor-plan': 'Floor plan',
+    elevation: 'Elevation',
+    schedule: 'Schedule',
+    unknown: 'Other page',
+  },
+  pageRoleLabel: 'Page role',
+  pageRoleFrom: (text) => `from the page title: “${text}”`,
+  pageReadings: (count) => `${count} ${count === 1 ? 'reading' : 'readings'}`,
+  pageSkip: 'Skip this page',
+  pageInclude: 'Use this page',
+  pageSkippedHint: 'Readings on this page are not used.',
+  pageButton: (page, role, readings, skipped) =>
+    `Page ${page}: ${role}, ${readings} ${readings === 1 ? 'reading' : 'readings'}${skipped ? ', skipped' : ''}`,
+  intakeTitle: 'Reading status',
+  intakeSettled: (count, total) => `Recognised ${count} of ${total}`,
+  intakeToConfirm: (count) => `${count} to confirm`,
+  intakeMissing: (count) => `${count} missing`,
+  intakeDefaulted: (count) =>
+    `${count} ${count === 1 ? 'default value' : 'default values'}`,
+  intakeUnsupported: 'unsupported roof type',
+  intakeNext: 'Next step',
+  intakeItem: {
+    recognized: 'recognised',
+    confirmed: 'confirmed',
+    entered: 'typed',
+    'to-confirm': 'to confirm',
+    conflict: 'conflicting readings',
+    missing: 'missing',
+    defaulted: 'RoofCalc default',
+    unsupported: 'unsupported',
+  },
+  intakeStep: (step, field) => {
+    switch (step.kind) {
+      case 'unsupported-roof':
+        return `A “${step.text}” roof — choose a type manually only if valid`;
+      case 'choose-roof-type':
+        return 'Choose the roof type';
+      case 'confirm-roof-type':
+        return 'Confirm the roof type';
+      case 'resolve-conflict':
+        return `Decide: ${field(step.field)} — the document states different values`;
+      case 'enter-value':
+        return `Complete: ${field(step.field)}`;
+      case 'confirm-value':
+        return `Confirm: ${field(step.field)}`;
+      case 'final-review':
+        return 'Check everything and tick the confirmation';
+      case 'create':
+        return 'Create the project';
+    }
+  },
+  readTime: (ms) => `read on this device: ${ms} ms`,
+  provenance: 'Source details',
+  provenanceEngine: {
+    'text-layer': 'PDF text layer',
+    'vector-geometry': 'PDF vector geometry',
+    ocr: 'OCR',
+    'ai-vision': 'AI Vision',
+    transcription: 'your reading from the drawing',
+    manual: 'measured at scale',
+  },
+  provenanceDocument: (fingerprint) =>
+    `document (fingerprint ${fingerprint.slice(0, 10)})`,
+  provenanceWarnings: (count) => `${count} ${count === 1 ? 'note' : 'notes'}`,
 };
 
 export function importCopy(language: string): Copy {

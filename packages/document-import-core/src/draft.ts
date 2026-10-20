@@ -17,6 +17,7 @@ import {
   type RecognizedMeasurement,
   type ValueSource,
 } from './model';
+import { withoutPages, type DocumentPageRole } from './pages';
 import {
   fieldQuantity,
   isPlausible,
@@ -40,6 +41,13 @@ export interface ImportDecisions {
   entries: Partial<Record<NumericRoofField, number>>;
   /** Field → the value key that was confirmed (see `valueKey`). */
   confirmed: Partial<Record<NumericRoofField, string>>;
+  /**
+   * VNext-6: pages the user set aside (a window schedule, a site plan).
+   * Nothing read on them can fill a field.
+   */
+  excludedPages?: readonly number[];
+  /** VNext-6: the user's corrections of suggested page roles. */
+  pageRoles?: Readonly<Partial<Record<number, DocumentPageRole>>>;
 }
 
 export const EMPTY_DECISIONS: ImportDecisions = {
@@ -214,16 +222,23 @@ function deriveField(
       requiresConfirmation: true,
       confirmed: false,
     };
-  // Two labelled readings that disagree at the same confidence are a
-  // conflict until the user picks one; a choice resolves it.
+  // Two labelled readings that disagree are a conflict until the user
+  // picks one; a choice resolves it. VNext-6: two EXPLICITLY described
+  // dimensions ("Długość budynku 12,40 m" on the plan, "długość budynku
+  // 12,00 m" on another sheet) conflict whatever their confidence — the
+  // more certain-looking one is never chosen silently. A weaker generic
+  // reading ("długość 4,5 m") stays an alternative.
+  const explicit = (item: Resolved) =>
+    item.measurement.evidence.includes('explicit-label');
   const conflict =
     !chosen &&
     labelled.some(
       (other) =>
         other !== best &&
-        RANK[other.measurement.confidence] ===
-          RANK[best.measurement.confidence] &&
-        !sameValue(other.value, best.value),
+        !sameValue(other.value, best.value) &&
+        (RANK[other.measurement.confidence] >=
+          RANK[best.measurement.confidence] ||
+          (explicit(other) && explicit(best))),
     );
   const confidence = effectiveConfidence(best);
   if (best.source === 'scaled')
@@ -256,7 +271,9 @@ export function deriveImportedRoofDraft(input: {
   decisions?: ImportDecisions;
 }): ImportedRoofDraftV1 {
   const decisions = input.decisions ?? EMPTY_DECISIONS;
-  const recognized = input.results.flatMap((result) => result.measurements);
+  // VNext-6: pages the user set aside take no part in the draft.
+  const results = withoutPages(input.results, decisions.excludedPages);
+  const recognized = results.flatMap((result) => result.measurements);
   // Dimension chains are a draft-level analysis over every written number,
   // whichever engine read it (text layer, OCR or the user's transcription).
   const { chains, mismatches } = analyzeDimensionChains(recognized);
@@ -274,9 +291,7 @@ export function deriveImportedRoofDraft(input: {
       ? { ...measurement, evidence: [...measurement.evidence, ...extra] }
       : measurement;
   });
-  const declared = input.results.find(
-    (result) => result.documentUnit,
-  )?.documentUnit;
+  const declared = results.find((result) => result.documentUnit)?.documentUnit;
   const documentUnit: ImportedRoofDraftV1['documentUnit'] =
     decisions.documentUnit
       ? {
@@ -289,7 +304,7 @@ export function deriveImportedRoofDraft(input: {
         ? { ...declared, basis: 'document' }
         : undefined;
   const warnings: DraftWarning[] = [
-    ...input.results.flatMap((result) => result.warnings),
+    ...results.flatMap((result) => result.warnings),
     ...mismatches,
   ];
 
@@ -332,7 +347,7 @@ export function deriveImportedRoofDraft(input: {
       });
   }
 
-  const detected = input.results.find((result) => result.roofType)?.roofType;
+  const detected = results.find((result) => result.roofType)?.roofType;
   const roofTypeValue: ImportRoofType | undefined =
     decisions.roofType ??
     (detected && detected.value !== 'unsupported' ? detected.value : undefined);
@@ -362,19 +377,19 @@ export function deriveImportedRoofDraft(input: {
   return {
     schemaVersion: IMPORTED_ROOF_DRAFT_SCHEMA_VERSION,
     source: input.source,
-    engines: input.results.map((result) => result.engine),
+    engines: results.map((result) => result.engine),
     ...(documentUnit ? { documentUnit } : {}),
     ...(() => {
-      const scale = input.results.find((result) => result.scale)?.scale;
+      const scale = results.find((result) => result.scale)?.scale;
       return scale ? { scale } : {};
     })(),
     roofType,
     measurements,
     fields,
-    points: input.results.flatMap((result) => result.points ?? []),
-    segments: input.results.flatMap((result) => result.segments ?? []),
+    points: results.flatMap((result) => result.points ?? []),
+    segments: results.flatMap((result) => result.segments ?? []),
     relations: [
-      ...input.results.flatMap((result) => result.relations ?? []),
+      ...results.flatMap((result) => result.relations ?? []),
       ...chains,
     ],
     warnings: dedupeWarnings(warnings),

@@ -2,19 +2,26 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   classifyDocumentBytes,
+  confirmField,
   deriveImportedRoofDraft,
   EMPTY_DECISIONS,
+  fieldProvenance,
   mapDraftToRoofStart,
   recognizeTextLayer,
   recognizeVectorGeometry,
+  suggestPageRoles,
+  summarizeIntake,
+  type ImportDecisions,
   type ImportSource,
   type PageSegment,
   type TextLayerPage,
 } from '@cieslacalc/document-import-core';
 import {
+  createDesignPdf,
   createRoofPlanPdf,
   gableRoofPlanSpec,
   hipRoofPlanSpec,
+  houseDesignSpecs,
 } from '../../../../fixtures/documents/roof-plan-pdf';
 import { createDefaultProjectDocument } from '../assembly/store';
 import {
@@ -253,6 +260,131 @@ describe('PDF document import (real pdf.js parser)', () => {
       value: 10_000,
       unitBasis: 'drawing-scale',
     });
+  });
+
+  /**
+   * VNext-6: a four-page design. Dimensions on the plan, pitch on the
+   * section, a different length on the schedule. Every assertion below is
+   * what the review shows the user — and the confirmed import must give
+   * EXACTLY the project a manual start with the same values gives.
+   */
+  it('a four-page design: page roles, a cross-page conflict, then the same project as a manual start', async () => {
+    const bytes = createDesignPdf(houseDesignSpecs());
+    const committed = readFileSync(
+      new URL(
+        '../../../../fixtures/documents/projekt-domu-4-strony.pdf',
+        import.meta.url,
+      ),
+    );
+    expect(new Uint8Array(committed)).toEqual(bytes);
+    const started = performance.now();
+    const { pages, segments } = await readPdfDocument(bytes);
+    const text = recognizeTextLayer(pages);
+    const vector = recognizeVectorGeometry({
+      pages: pages.map((page) => ({
+        ...page,
+        segments: segments.filter((item) => item.page === page.page),
+      })),
+      scale: text.scale,
+      written: text.measurements,
+    });
+    const roles = suggestPageRoles({ pages, results: [text, vector] });
+    const readMs = performance.now() - started;
+    // Generous bound: this is a smoke check, not a benchmark.
+    expect(readMs).toBeLessThan(10_000);
+    expect(roles.map((role) => role.role)).toEqual([
+      'unknown',
+      'roof-plan',
+      'section',
+      'schedule',
+    ]);
+    expect(roles[1]!.hasOutline).toBe(true);
+
+    const importSource = { ...source(bytes, pages), fingerprint: 'test' };
+    const draftWith = (decisions: ImportDecisions) =>
+      deriveImportedRoofDraft({
+        source: importSource,
+        results: [text, vector],
+        decisions,
+      });
+    // The schedule quotes 12,00 m: a decision, never a silent choice.
+    let decisions: ImportDecisions = { ...EMPTY_DECISIONS };
+    let draft = draftWith(decisions);
+    expect(draft.fields.buildingLength.status).toBe('conflict');
+    expect(summarizeIntake(draft, { reviewed: false }).next).toEqual({
+      kind: 'resolve-conflict',
+      field: 'buildingLength',
+    });
+    // The user sets the schedule aside; the plan's value stands, with its page.
+    decisions = { ...decisions, excludedPages: [4] };
+    draft = draftWith(decisions);
+    expect(fieldProvenance(draft, 'buildingLength')).toMatchObject({
+      value: 12_400,
+      page: 2,
+      engine: { mode: 'text-layer' },
+    });
+    expect(fieldProvenance(draft, 'pitch')).toMatchObject({
+      value: 40,
+      page: 3,
+    });
+    // Walk the one-next-step path to the end, counting the user's actions.
+    let actions = 1; // setting the schedule aside
+    let summary = summarizeIntake(draft, { reviewed: false });
+    for (let guard = 0; guard < 12; guard += 1) {
+      const next = summary.next;
+      if (next.kind === 'final-review') break;
+      if (next.kind === 'confirm-roof-type')
+        decisions = { ...decisions, roofTypeConfirmed: true };
+      else if (next.kind === 'confirm-value')
+        decisions = confirmField(decisions, draft, next.field);
+      else throw new Error(`unexpected step ${next.kind}`);
+      actions += 1;
+      draft = draftWith(decisions);
+      summary = summarizeIntake(draft, { reviewed: false });
+    }
+    actions += 2; // final review tick + "Utwórz projekt"
+    expect(summary.counts).toMatchObject({ missing: 0, toConfirm: 0 });
+    expect(actions).toBeLessThanOrEqual(8);
+
+    const mapping = mapDraftToRoofStart(draft, {
+      buildingLengthMm: defaults.buildingLengthMm,
+      buildingWidthMm: defaults.buildingWidthMm,
+      pitchDeg: defaults.pitchDeg,
+      eaveOverhangMm: defaults.eaveOverhangMm,
+      rafterSpacingMm: defaults.rafterSpacingMm,
+      rafterWidthMm: defaults.rafterWidthMm!,
+      rafterDepthMm: defaults.rafterDepthMm!,
+    });
+    expect(mapping.status).toBe('ready');
+    if (mapping.status !== 'ready') return;
+    expect(mapping.values).toEqual({
+      roofType: 'gable',
+      buildingLengthMm: 12_400,
+      buildingWidthMm: 9_600,
+      pitchDeg: 40,
+      eaveOverhangMm: 500,
+      rafterSpacingMm: 800,
+      rafterWidthMm: 80,
+      rafterDepthMm: 200,
+    });
+    expect(Object.values(mapping.provenance)).toEqual(
+      Array(7).fill('document'),
+    );
+    // Equality with the manual project start: the import adds nothing.
+    const manual = createProjectStartTemplate(
+      {
+        roofType: 'gable',
+        buildingLengthMm: 12_400,
+        buildingWidthMm: 9_600,
+        pitchDeg: 40,
+        eaveOverhangMm: 500,
+        rafterSpacingMm: 800,
+        rafterWidthMm: 80,
+        rafterDepthMm: 200,
+      },
+      base,
+    );
+    expect(createProjectStartTemplate(mapping.values, base)).toEqual(manual);
   });
 
   it('keeps unitless hip values uncertain from the text alone', async () => {

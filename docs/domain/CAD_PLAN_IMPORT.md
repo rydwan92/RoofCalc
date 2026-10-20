@@ -60,10 +60,22 @@ own solvers compute everything afterwards.
 - Parsing runs on the device; nothing is uploaded; the file is data, never
   evaluated.
 
+## Compound outlines (VNext-6)
+
+A closed orthogonal outline with inner corners is classified by
+`classifyPlanOutline` (`roof-topology-core`, ADR-015): one inner corner is an L
+(split at that corner into the main body and the wing — the cut that leaves
+the larger body), two or more a compound outline (T, U, …). When the
+drawing holds such an outline and no rectangle with a roof line, the
+analysis returns `reason: 'compound-outline'` with the outline in mm. A
+rectangle holding a ridge still wins over a small L detail (a terrace). The
+importer shows the outline and its parts and says that compound roofs are
+not calculated; it offers no "create" button.
+
 ## Not supported (yet)
 
-L-, T- and U-shaped plans (compound roofs, ADR-008), roofs on
-non-rectangular plans, reading pitch from a section drawing's geometry, and
+Calculating L-, T- and U-shaped roofs (compound roofs, ADR-008), roofs on
+non-orthogonal plans, reading pitch from a section drawing's geometry, and
 DWG. They fail with a named reason and a way forward (manual start or PDF).
 
 ## Regression
@@ -78,3 +90,6 @@ DWG. They fail with a named reason and a way forward (manual start or PDF).
 - `apps/web/src/import/file-kind.test.ts` — classification by bytes.
 - `e2e/cad-import.spec.ts` — start dialog "Otwórz plik…" → DXF → project,
   desktop and phone.
+- VNext-6: `cad-plan.test.ts` "compound outlines" (L polyline, L from loose
+  lines in cm, a frame around an L, a T, a rectangle beside an L terrace);
+  `fixtures/cad/l-shape-12x8-wing-6x6.dxf`; `e2e/vnext6-intake.spec.ts`.
