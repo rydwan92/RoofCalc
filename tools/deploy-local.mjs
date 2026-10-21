@@ -51,7 +51,9 @@ function git(...args) {
 
 console.log('CieślaCalc — wdrożenie lokalne (XAMPP)');
 const branch = git('rev-parse', '--abbrev-ref', 'HEAD');
-const dirty = git('status', '--porcelain');
+// Tracked changes only: untracked notes (e.g. docs/Vnext/) do not block an
+// update, and `merge --ff-only` itself refuses to overwrite an untracked file.
+const dirty = git('status', '--porcelain', '--untracked-files=no');
 if (branch === undefined) {
   console.log('! To nie jest repozytorium Git — buduję bieżące pliki.');
 } else if (branch !== 'main') {

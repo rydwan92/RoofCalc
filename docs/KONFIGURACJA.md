@@ -70,7 +70,8 @@ pnpm deploy:local
 ```
 
 W głównym katalogu projektu (gałąź `main`): przewija `main` do `origin/main`
-tylko wtedy, gdy nie masz niezatwierdzonych zmian (nic nie nadpisuje),
+tylko wtedy, gdy nie masz niezatwierdzonych zmian w śledzonych plikach (nic
+nie nadpisuje; nieśledzone notatki, np. `docs/Vnext/`, nie przeszkadzają),
 instaluje zablokowane zależności, buduje `apps/web/dist` dla XAMPP i na końcu
 uruchamia `pnpm check:local` (tylko odczyt — także stan schematu bazy). Bazy
 nie migruje samodzielnie: gdy sprawdzenie pokaże brakujące migracje,
