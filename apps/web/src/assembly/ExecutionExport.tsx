@@ -334,6 +334,8 @@ const copy = {
         `Kosztorys: ${p.missingPrices} pozycji bez ceny nie wchodzi do sumy.`,
       'drainage-hydraulics-not-verified': () =>
         'Odwodnienie: rozmieszczenie elementów jest planem materiałowym. Dobór średnicy i wydajności systemu odwodnienia nie został jeszcze zweryfikowany hydraulicznie.',
+      'import-defaults-unconfirmed': (p: Params) =>
+        `Import: ${p.count} wartości konstrukcyjnych (np. rozstaw lub przekrój krokwi) to niepotwierdzone wartości domyślne RoofCalc — dokument ich nie podał. Sprawdź je przed cięciem.`,
     },
     notModelledText: {
       'structural-check': 'Weryfikacja nośności, ugięć i stateczności',
@@ -636,6 +638,8 @@ const copy = {
         `Cost estimate: ${p.missingPrices} items without a price are excluded from the total.`,
       'drainage-hydraulics-not-verified': () =>
         'Drainage: component placement is a material plan. The gutter size and capacity have not been verified hydraulically.',
+      'import-defaults-unconfirmed': (p: Params) =>
+        `Import: ${p.count} structural values (e.g. rafter spacing or section) are unconfirmed RoofCalc defaults — the document did not state them. Check them before cutting.`,
     },
     notModelledText: {
       'structural-check':

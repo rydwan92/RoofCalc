@@ -873,6 +873,18 @@ export const assemblyPl = {
   },
   docs: {
     eyebrow: 'Dokumenty',
+    scope: {
+      label: 'Zakres obliczeń',
+      geometry: {
+        complete: 'geometria dachu zamknięta i sprawdzona',
+        partial: 'geometria dachu niepełna — dokumenty ograniczone',
+        invalid: 'geometria dachu niespójna — dokumenty wstrzymane',
+      },
+      supported: 'dach {{roof}} liczony przez RoofCalc',
+      roof: { gable: 'dwuspadowy', hip: 'kopertowy' },
+      notSupported: 'tego kształtu dachu RoofCalc jeszcze nie liczy',
+      capacity: 'nośność, ugięcia i stateczność nie są sprawdzane',
+    },
     title: 'Centrum dokumentów',
     description:
       'Wybierz dokument, sprawdź jego stan i otwórz podgląd do wydruku lub PDF.',
@@ -2173,8 +2185,8 @@ export const assemblyPl = {
     intake: {
       document: 'Z dokumentu',
       entered: 'Wpisane przy imporcie',
-      defaults: 'Wartości domyślne RoofCalc — sprawdź',
-      reviewed: 'Wartości domyślne RoofCalc (otwarte do sprawdzenia)',
+      defaults: 'Wartości domyślne RoofCalc — dokument ich nie podał',
+      reviewed: 'Wartości domyślne RoofCalc — sprawdzone',
       pages_one: '{{count}} strona',
       pages_few: '{{count}} strony',
       pages_many: '{{count}} stron',
@@ -2200,7 +2212,19 @@ export const assemblyPl = {
     },
     prices:
       'Ceny: {{priced}} pozycji z ceną, {{missing}} bez aktualnej ceny (nie liczymy ich jako 0 zł)',
-    checkDefaults: 'Sprawdź rozstaw i przekrój krokwi',
+    checkDefaults: 'Sprawdź wartości domyślne',
+    confirmDefaults: 'Potwierdź wartości domyślne',
+    showField: 'Pokaż w edytorze',
+    fieldState: {
+      'needs-review': 'do potwierdzenia',
+      confirmed: 'potwierdzone',
+      changed: 'zmienione przez Ciebie',
+    },
+    confirmValues_one: 'Potwierdzam tę wartość',
+    confirmValues_few: 'Potwierdzam te {{count}} wartości',
+    confirmValues_many: 'Potwierdzam te {{count}} wartości',
+    confirmValues_other: 'Potwierdzam te {{count}} wartości',
+    allConfirmed: 'Wszystkie wartości domyślne potwierdzone lub zmienione.',
     next: 'Dalej: {{action}}',
     express:
       'Szybka ścieżka: RoofCalc prowadzi tylko przez brakujące decyzje, a każdy krok otwiera właściwy edytor. Pełna edycja jest zawsze dostępna.',
@@ -2323,6 +2347,7 @@ export const assemblyPl = {
       'open-roof-system': 'Otwórz system dachu',
       'open-documents': 'Otwórz dokumenty',
       'open-cost': 'Otwórz kosztorys',
+      'review-import-defaults': 'Sprawdź wartości z importu',
     },
     issue: {
       'geometry-invalid': {
@@ -2530,6 +2555,16 @@ export const assemblyPl = {
       'cost-quantities-missing': {
         title: '{{count}} pozycje wymagają ilości',
         description: 'Pozycja bez ilości nie wchodzi do sumy kosztorysu.',
+      },
+      'roof-graph-inconsistent': {
+        title: 'Połacie i krawędzie dachu nie zamykają się',
+        description:
+          'Kontrola spójności geometrii wykryła problem ({{codes}}). Dokumenty są wstrzymane, żeby nie drukować niezamkniętej geometrii — sprawdź wymiary dachu.',
+      },
+      'import-defaults-unconfirmed': {
+        title: 'Wartości domyślne z importu do potwierdzenia ({{count}})',
+        description:
+          'Dokument ich nie podał, więc RoofCalc przyjął swoje wartości. Sprawdź je i potwierdź przed cięciem i zamówieniem.',
       },
     },
     document: {
@@ -3542,6 +3577,18 @@ export const assemblyEn: typeof assemblyPl = {
   },
   docs: {
     eyebrow: 'Documents',
+    scope: {
+      label: 'Calculation scope',
+      geometry: {
+        complete: 'roof geometry closes and is checked',
+        partial: 'roof geometry incomplete — documents limited',
+        invalid: 'roof geometry inconsistent — documents held back',
+      },
+      supported: '{{roof}} roof calculated by RoofCalc',
+      roof: { gable: 'gable', hip: 'hip' },
+      notSupported: 'RoofCalc does not calculate this roof shape yet',
+      capacity: 'load capacity, deflection and stability are not checked',
+    },
     title: 'Document hub',
     description:
       'Choose a document, check its state and open a preview for print or PDF.',
@@ -4826,8 +4873,8 @@ export const assemblyEn: typeof assemblyPl = {
     intake: {
       document: 'From the document',
       entered: 'Typed during import',
-      defaults: 'RoofCalc defaults — check',
-      reviewed: 'RoofCalc defaults (opened for checking)',
+      defaults: 'RoofCalc defaults — the document did not state them',
+      reviewed: 'RoofCalc defaults — checked',
       pages_one: '{{count}} page',
       pages_few: '{{count}} pages',
       pages_many: '{{count}} pages',
@@ -4853,7 +4900,19 @@ export const assemblyEn: typeof assemblyPl = {
     },
     prices:
       'Prices: {{priced}} lines priced, {{missing}} without a current price (never counted as 0)',
-    checkDefaults: 'Check rafter spacing and section',
+    checkDefaults: 'Check the default values',
+    confirmDefaults: 'Confirm the default values',
+    showField: 'Show in the editor',
+    fieldState: {
+      'needs-review': 'to confirm',
+      confirmed: 'confirmed',
+      changed: 'changed by you',
+    },
+    confirmValues_one: 'I confirm this value',
+    confirmValues_few: 'I confirm these {{count}} values',
+    confirmValues_many: 'I confirm these {{count}} values',
+    confirmValues_other: 'I confirm these {{count}} values',
+    allConfirmed: 'All default values are confirmed or changed.',
     next: 'Next: {{action}}',
     express:
       'Quick path: RoofCalc only walks you through the missing decisions, and each step opens the right editor. Full editing is always available.',
@@ -4978,6 +5037,7 @@ export const assemblyEn: typeof assemblyPl = {
       'open-roof-system': 'Open roof system',
       'open-documents': 'Open documents',
       'open-cost': 'Open cost estimate',
+      'review-import-defaults': 'Check imported values',
     },
     issue: {
       'geometry-invalid': {
@@ -5183,6 +5243,16 @@ export const assemblyEn: typeof assemblyPl = {
       'cost-quantities-missing': {
         title: '{{count}} items need a quantity',
         description: 'An item without a quantity is not in the total.',
+      },
+      'roof-graph-inconsistent': {
+        title: 'Roof planes and lines do not close',
+        description:
+          'The geometry consistency check found a problem ({{codes}}). Documents are held back so geometry that does not close is never printed — check the roof dimensions.',
+      },
+      'import-defaults-unconfirmed': {
+        title: 'Imported default values to confirm ({{count}})',
+        description:
+          'The document did not state them, so RoofCalc used its own values. Check and confirm them before cutting and ordering.',
       },
     },
     document: {

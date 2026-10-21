@@ -9,6 +9,8 @@ import {
   analyzeDeployment,
   analyzeWranglerConfig,
   hyperdriveCachingDisabled,
+  hyperdrivePasswordUpdateArgs,
+  hyperdriveSslMode,
   missingWorkerSecrets,
   parseHyperdriveOrigin,
   parseJsonc,
@@ -77,7 +79,13 @@ function describeDeploymentIssue(issue: DeploymentIssue): string {
     case 'not-worker':
       return `Odpowiada środowisko "${issue.runtime ?? 'nieznane'}" zamiast cloudflare-worker.`;
     case 'database-not-connected':
-      return 'Worker nie łączy się z bazą — sprawdź dane źródła w Hyperdrive (host, użytkownik, hasło, TLS).';
+      return issue.reason === 'access-denied'
+        ? 'Worker nie łączy się z bazą — baza odrzuciła hasło zapisane w Hyperdrive.'
+        : issue.reason === 'tls'
+          ? 'Worker nie łączy się z bazą — błąd TLS między Hyperdrive a bazą.'
+          : issue.reason === 'timeout' || issue.reason === 'unreachable'
+            ? 'Worker nie łączy się z bazą — serwer bazy nie odpowiada Hyperdrive.'
+            : 'Worker nie łączy się z bazą — sprawdź dane źródła w Hyperdrive (host, użytkownik, hasło, TLS).';
     case 'readiness-missing':
       return 'Brak /api/readiness — wdrożona jest starsza wersja kodu. Wypchnij zmiany do gałęzi produkcyjnej (main) albo wdroż ręcznie.';
     case 'schema-not-current':
@@ -249,6 +257,8 @@ async function remoteDatabaseStep(
   rl: Interface | undefined,
   root: string,
   origin: DatabaseOrigin,
+  /** Receives the password once the database itself accepted it. */
+  onVerified: (password: string) => void = () => undefined,
 ): Promise<boolean> {
   ok(
     `Źródło Hyperdrive: ${origin.user}@${origin.host}:${origin.port}/${origin.database}`,
@@ -294,6 +304,7 @@ async function remoteDatabaseStep(
     }
     return true;
   }
+  onVerified(password);
   if (state.schema === 'current') {
     ok(`Połączono (${state.version}). Schemat aktualny.`);
     return false;
@@ -480,13 +491,19 @@ async function main() {
     } else warn('Pominięto.');
 
     step(5, 'Zdalna baza (źródło Hyperdrive)');
+    /** Kept in memory only, for the Hyperdrive offer in step 6. */
+    let verifiedPassword: string | undefined;
     const origin = hyperdrive ? parseHyperdriveOrigin(hyperdrive) : undefined;
     if (check)
       warn('W trybie --check pominięto (wymaga hasła) — patrz krok 6.');
     else if (!origin) warn('Pominięto — brak danych źródła Hyperdrive.');
     // Run the step first: a compound OR-assignment would skip it whenever an
     // earlier step already needed attention (it did, silently).
-    else blocking = (await remoteDatabaseStep(rl, root, origin)) || blocking;
+    else
+      blocking =
+        (await remoteDatabaseStep(rl, root, origin, (password) => {
+          verifiedPassword = password;
+        })) || blocking;
 
     step(6, 'Wdrożona aplikacja (publiczne, tylko do odczytu)');
     let ownerNeeded = false;
@@ -497,11 +514,77 @@ async function main() {
         probe(summary.authUrl, '/api/readiness'),
         probe(summary.authUrl, '/api/setup/status'),
       ]);
-      const issues = analyzeDeployment({ health, readiness, setup });
+      let issues = analyzeDeployment({ health, readiness, setup });
       for (const issue of issues)
         (issue.code === 'first-owner-required' ? warn : fail)(
           describeDeploymentIssue(issue),
         );
+      // VNext-6.1: the database accepted the password typed in step 5, but
+      // the Worker cannot connect — Hyperdrive most likely holds another
+      // (old) one. Offer to store the verified one; nothing else changes.
+      if (
+        !check &&
+        verifiedPassword &&
+        origin &&
+        summary.hyperdriveId &&
+        issues.some((issue) => issue.code === 'database-not-connected')
+      ) {
+        info(
+          'Ta sama baza przyjęła hasło z kroku 5 — Hyperdrive ma najpewniej inne (stare) hasło.',
+        );
+        if (
+          await confirm(
+            rl,
+            'Zapisać hasło z kroku 5 w Hyperdrive (zmiana na koncie Cloudflare; host, użytkownik i TLS bez zmian)?',
+            false,
+          )
+        ) {
+          const update = await wrangler(
+            root,
+            hyperdrivePasswordUpdateArgs({
+              id: summary.hyperdriveId,
+              origin,
+              password: verifiedPassword,
+              sslmode: hyperdriveSslMode(hyperdrive ?? ''),
+            }),
+          );
+          if (update.code !== 0) {
+            fail('Nie udało się zapisać hasła w Hyperdrive.');
+            if (update.reason)
+              info(
+                `wrangler: ${update.reason.split(verifiedPassword).join('••••')}`,
+              );
+            info(
+              'Ustaw je w panelu: Hyperdrive → roofcalc-dev → Settings → edycja połączenia.',
+            );
+          } else {
+            ok('Hasło zapisane w Hyperdrive. Czekam na połączenie Workera…');
+            let connected = false;
+            for (let attempt = 0; attempt < 12 && !connected; attempt += 1) {
+              await new Promise((resolve) => setTimeout(resolve, 5000));
+              const again = await probe(summary.authUrl, '/api/health');
+              connected =
+                (again?.body as { database?: string } | undefined)?.database ===
+                'connected';
+            }
+            if (connected) {
+              ok('Worker połączony z bazą.');
+              issues = analyzeDeployment({
+                health: await probe(summary.authUrl, '/api/health'),
+                readiness: await probe(summary.authUrl, '/api/readiness'),
+                setup: await probe(summary.authUrl, '/api/setup/status'),
+              });
+              for (const issue of issues)
+                (issue.code === 'first-owner-required' ? warn : fail)(
+                  describeDeploymentIssue(issue),
+                );
+            } else
+              fail(
+                'Worker nadal bez połączenia po minucie — sprawdź TLS i dostęp z zewnątrz u dostawcy bazy.',
+              );
+          }
+        }
+      }
       if (!issues.length)
         ok(
           'Worker działa: baza połączona, schemat aktualny, Business skonfigurowany.',

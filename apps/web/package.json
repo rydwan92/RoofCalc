@@ -28,6 +28,7 @@
     "@cieslacalc/quote-core": "workspace:*",
     "@cieslacalc/roof-math": "workspace:*",
     "@cieslacalc/roof-system-core": "workspace:*",
+    "@cieslacalc/roof-topology-core": "workspace:*",
     "@cieslacalc/shared": "workspace:*",
     "@cieslacalc/technical-scene": "workspace:*",
     "@cieslacalc/tile-procurement": "workspace:*",

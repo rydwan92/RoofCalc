@@ -297,3 +297,79 @@ describe('intake summary (VNext-6)', () => {
     expect(summary.counts.unsupported).toBe(1);
   });
 });
+
+describe('VNext-6.1 evidence across sheets', () => {
+  const plan = (value: string) =>
+    page(1, [
+      item('RZUT DACHU', 50, 30, 16),
+      item('Długość budynku:', 500, 80),
+      item(value, 650, 80),
+    ]);
+  const section = (value: string) =>
+    page(2, [
+      item('PRZEKRÓJ A-A', 50, 30, 16),
+      item('Długość budynku:', 500, 80),
+      item(value, 650, 80),
+    ]);
+  const draftOf = (
+    pages: TextLayerPage[],
+    decisions: ImportDecisions = EMPTY_DECISIONS,
+  ) =>
+    deriveImportedRoofDraft({
+      source: { ...SOURCE, pageCount: pages.length },
+      results: [recognizeTextLayer(pages)],
+      decisions,
+    });
+
+  it('the same length written in metres on one sheet and centimetres on another agrees', () => {
+    const draft = draftOf([plan('12,40 m'), section('1240 cm')]);
+    expect(draft.fields.buildingLength).toMatchObject({
+      status: 'recognized',
+      value: 12_400,
+    });
+    expect(draft.fields.buildingLength.alternatives).toHaveLength(1);
+    expect(draft.warnings.map((warning) => warning.code)).not.toContain(
+      'conflicting-values',
+    );
+  });
+
+  it('a different value hidden by another unit is a conflict, not a choice', () => {
+    // "1240 mm" is 1.24 m — a typo on one sheet must not pass silently.
+    const draft = draftOf([plan('12,40 m'), section('1240 mm')]);
+    expect(draft.fields.buildingLength.status).toBe('conflict');
+  });
+
+  it('setting aside the sheet whose value was confirmed withdraws the confirmation', () => {
+    const pages = [plan('12,40 m'), section('12,00 m')];
+    const first = draftOf(pages);
+    // The user picks and confirms the section's 12,00 m…
+    const fromSection = first.measurements.find(
+      (measurement) =>
+        measurement.field === 'buildingLength' &&
+        measurement.region?.page === 2,
+    )!;
+    let decisions = chooseMeasurement(
+      EMPTY_DECISIONS,
+      'buildingLength',
+      fromSection.id,
+    );
+    decisions = confirmField(
+      decisions,
+      draftOf(pages, decisions),
+      'buildingLength',
+    );
+    const confirmed = draftOf(pages, decisions);
+    expect(confirmed.fields.buildingLength).toMatchObject({
+      value: 12_000,
+      confirmed: true,
+    });
+    // …then sets that sheet aside: the value comes from the plan now, and
+    // the confirmation of 12,00 m does not carry over to 12,40 m.
+    const withoutSection = draftOf(pages, {
+      ...decisions,
+      excludedPages: [2],
+    });
+    expect(withoutSection.fields.buildingLength.value).toBe(12_400);
+    expect(withoutSection.fields.buildingLength.confirmed).toBe(false);
+  });
+});

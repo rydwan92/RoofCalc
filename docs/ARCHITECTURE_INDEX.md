@@ -625,6 +625,7 @@ pnpm e2e      # real-browser smoke, desktop 1440x900 and mobile 390x844 (pnpm e2
 
 | Document | Read when |
 | --- | --- |
+| `ROOFCALC_VNEXT7_PREFLIGHT` | **VNext-6.1:** audit-driven findings with evidence (confirmed defect / test gap / recommendation) and what VNext-7A builds on |
 | `ARCHITECTURE_VNEXT6_PROJECT_INTAKE` | **VNext-6:** multi-page intake (page roles, cross-page conflicts, one next step, provenance), the "Przygotowanie projektu" card, the roof topology graph and its limits; Definition of Ready and measured numbers |
 | `ROOFCALC_VNEXT_AUDIT` | current verified state, baseline, SQL findings and priorities (VNext) |
 | `ARCHITECTURE_VNEXT_WORKSPACE_AND_DOCUMENT_IMPORT` | the one six-section navigation, design tokens, document import pipeline, SQL first-run fixes |

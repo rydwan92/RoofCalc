@@ -174,3 +174,151 @@ test('an L-shaped DXF is recognised, split into its parts and not calculated', a
   });
   expect(errors).toEqual([]);
 });
+
+/** Imports a PDF from the start dialog and walks the review to a project. */
+async function importToProject(page: Page, file: string) {
+  const start = await openStart(page);
+  await start.locator('input[type="file"]').setInputFiles(resolve(file));
+  const importer = page.getByTestId('document-import');
+  await expect(importer.getByTestId('document-import-review')).toBeVisible({
+    timeout: 20_000,
+  });
+  const next = importer.getByTestId('document-import-next');
+  for (let guard = 0; guard < 8; guard += 1) {
+    const step = await next.getAttribute('data-step');
+    if (step === 'create') break;
+    if (step === 'final-review') {
+      await importer.getByTestId('document-import-reviewed').check();
+      continue;
+    }
+    // Keyboard: the next step moves the focus to the exact control, and
+    // Enter there decides.
+    await next.focus();
+    await page.keyboard.press('Enter');
+    await expect(next).not.toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(next).not.toHaveAttribute('data-step', step ?? '');
+  }
+  await importer.getByTestId('document-import-create').click();
+  await expect(importer).toBeHidden();
+}
+
+test('VNext-6.1: imported defaults stay unconfirmed until confirmed explicitly — also after a reload', async ({
+  page,
+}, testInfo) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  // The hip plan states length, width and slope — not eave, spacing, section.
+  await importToProject(page, 'fixtures/documents/rzut-dachu-kopertowy.pdf');
+  const card = page.getByTestId('project-preparation');
+  const defaults = card.getByTestId('project-preparation-defaults');
+  await expect(defaults).toHaveAttribute('data-status', 'needs-review');
+  for (const key of ['eave', 'spacing', 'rafterWidth', 'rafterDepth'])
+    await expect(
+      card.getByTestId(`project-preparation-default-${key}`),
+    ).toHaveAttribute('data-state', 'needs-review');
+  await expect(
+    page.locator('[data-testid="project-next-action"]:visible').first(),
+  ).toHaveAttribute('data-readiness-action', 'review-import-defaults');
+
+  // Opening the editor is NOT a confirmation (audit P0).
+  await card.getByTestId('project-preparation-next').click();
+  await expect(card).toHaveAttribute('data-collapsed', 'true');
+  await expect(card.getByTestId('project-preparation-next')).toContainText(
+    'Potwierdź wartości domyślne',
+  );
+  // Leave without confirming, then come back after a reload.
+  const closeSheet = async () => {
+    if (testInfo.project.name === 'mobile')
+      await page
+        .locator('.a-mobile-sheet-header')
+        .getByRole('button', { name: 'Zamknij', exact: true })
+        .click();
+  };
+  await closeSheet();
+  await card
+    .getByRole('button', { name: 'Zamknij przygotowanie projektu' })
+    .click();
+  await expect(card).toHaveCount(0);
+  await page.reload();
+  await page.locator('[data-mode="builder"]').click();
+  // The last project reopens directly, or from the start dialog's list.
+  const start = page.getByTestId('project-start-assistant');
+  await expect(card.or(start)).toBeVisible();
+  if (await start.isVisible())
+    await start
+      .locator('.a-start-recent-list')
+      .first()
+      .getByRole('button')
+      .first()
+      .click();
+  await expect(card).toHaveAttribute('data-collapsed', 'true');
+  await expect(
+    page.locator('[data-testid="project-next-action"]:visible').first(),
+  ).toHaveAttribute('data-readiness-action', 'review-import-defaults');
+
+  // "Pokaż w edytorze" puts the cursor in the exact numeric input.
+  await card.getByTestId('project-preparation-expand').click();
+  await card
+    .getByTestId('project-preparation-default-spacing')
+    .getByRole('button')
+    .click();
+  const spacing = page.locator('[id="template.rafterSpacingMm"]');
+  await expect(spacing).toBeFocused();
+  await spacing.fill('90');
+  await spacing.press('Enter');
+  // On a phone the inspector is a sheet over the card: close it first.
+  await closeSheet();
+  await card.getByTestId('project-preparation-expand').click();
+  await expect(
+    card.getByTestId('project-preparation-default-spacing'),
+  ).toHaveAttribute('data-state', 'changed');
+
+  // The explicit confirmation settles exactly the values shown.
+  await card.getByTestId('project-preparation-confirm-defaults').click();
+  await expect(defaults).toHaveAttribute('data-status', 'reviewed');
+  await expect(
+    card.getByTestId('project-preparation-structure'),
+  ).toHaveAttribute('data-state', 'done');
+  expect(await noHorizontalOverflow(page)).toBe(true);
+  await page.screenshot({
+    path: testInfo.outputPath(`vnext61-review-${testInfo.project.name}.png`),
+  });
+
+  // Undo brings the spacing back to the unconfirmed default: the
+  // confirmation was for 90 cm's absence, so 80 cm needs a look again.
+  await page
+    .getByRole('button', { name: 'Cofnij zmianę' })
+    .locator('visible=true')
+    .first()
+    .click();
+  await expect(
+    card.getByTestId('project-preparation-default-spacing'),
+  ).toHaveAttribute('data-state', 'needs-review');
+  expect(errors).toEqual([]);
+});
+
+test('VNext-6.1: the same import path on a 1366×768 laptop', async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'laptop viewport only');
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await importToProject(page, 'fixtures/documents/projekt-domu-4-strony.pdf');
+  const card = page.getByTestId('project-preparation');
+  await expect(card).toBeVisible();
+  // The card's next step stays reachable without scrolling the page.
+  const next = card.getByTestId('project-preparation-next');
+  await expect(next).toBeInViewport();
+  expect(await noHorizontalOverflow(page)).toBe(true);
+  // Documents are one click away and say what they rest on.
+  await card
+    .getByTestId('project-preparation-documents')
+    .getByRole('button')
+    .click();
+  await expect(page.getByTestId('document-scope')).toContainText(
+    'geometria dachu zamknięta i sprawdzona',
+  );
+  await page.screenshot({
+    path: testInfo.outputPath('vnext61-laptop-documents.png'),
+  });
+});

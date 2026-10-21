@@ -627,6 +627,14 @@ line and manual lengths keep working.
   projektu" lists five groups and one "Dalej" step, opens the existing
   editor and folds into a one-line pill; "Edytuj szczegółowo" is the
   Creator. What the document did not give is named, never hidden.
+- **VNext-6.1: looking is not confirming.** Values an import defaulted
+  are listed with their current value; "Pokaż w edytorze" puts the cursor in
+  the one exact input; only "Potwierdzam" confirms — exactly those values —
+  and the confirmation lapses when a value changes back. The reminder
+  survives a reload and also stands in the "Co teraz" row.
+- **VNext-6.1: documents say what they rest on.** The document centre states
+  whether the roof geometry closes, whether RoofCalc calculates this roof
+  and that load capacity is not checked.
 - **VNext-6: drawn is not calculated.** An L-shaped plan is shown as
   recognised, with its parts, and stated as not calculated — no button that
   would produce a calculated-looking roof.

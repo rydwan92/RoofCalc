@@ -675,3 +675,28 @@ workbench. No migration.
   ADR-015): derived from solver output or recognition; not persisted, no
   storage key, no SQL. The V1 → V2 document migration that would persist it
   is designed in ADR-015 and not executed.
+
+## 18. VNext-6.1 contracts
+
+- **Import evidence sidecar** (persisted, browser only): key
+  `cieslacalc.importEvidence.v1.<projectId>`, `importEvidenceV1Schema`
+  (`apps/web/src/projects/import-evidence.ts`), `schemaVersion: 1`:
+  source kind, file name, device fingerprint (hex), import time, where each
+  start value came from, the start values the project was created with, page
+  and timing facts, and the review state (`opened`, `confirmed`
+  field → exact value, `confirmedAt`). No file bytes, text or images.
+  Outside `RoofProjectDocumentV1` / `ProjectRecordV1` (like the cost
+  sidecar §9): exports, fingerprints and Undo are unchanged. Invalid or
+  foreign data is ignored; unknown keys are stripped; entries of deleted
+  projects are pruned. Version 2 would need a reader for version 1.
+- `HealthResponse.databaseReason?` (`@cieslacalc/shared`, additive):
+  `access-denied | database-missing | timeout | unreachable | tls | unknown`
+  when `database` is `unavailable`. A generic class only — the server
+  message never leaves the API. Older clients ignore it.
+- `ReadinessIssueCode` gains `import-defaults-unconfirmed` (warning) and
+  `roof-graph-inconsistent`; `ProjectLimitation` gains
+  `import-defaults-unconfirmed`; `ReadinessAction` gains
+  `review-import-defaults`. Derived, never persisted.
+- `RoofSceneAssessment` gains `tolerances`; `RoofSceneIssue.severity` gains
+  `note`; `RoofPlaneMetrics` gains `openingAreaExact` / `netAreaMm2?`.
+  Derived only.

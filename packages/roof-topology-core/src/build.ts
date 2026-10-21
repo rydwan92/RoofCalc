@@ -1,11 +1,12 @@
 import {
+  distance,
   perimeter,
   pitchOf,
   planArea,
   planeFrame,
   polygonArea,
+  polygonsOverlap,
   upwardNormal,
-  distance,
 } from './geometry';
 import {
   ROOF_EDGE_KINDS,
@@ -76,17 +77,86 @@ export function emptyRoofScene(): RoofSceneGraph {
   };
 }
 
-/** Puts several structure graphs into one scene (IDs must already differ). */
+export class RoofSceneMergeError extends Error {
+  override readonly name = 'RoofSceneMergeError';
+  constructor(readonly ids: readonly string[]) {
+    super(`Roof scenes share entity IDs: ${ids.join(', ')}`);
+  }
+}
+
+/**
+ * Puts several structure graphs into one scene. IDs are opaque and must
+ * already differ: a collision throws instead of silently letting one
+ * entity shadow another (VNext-6.1 audit).
+ */
 export function mergeRoofScenes(
   ...scenes: readonly RoofSceneGraph[]
 ): RoofSceneGraph {
-  return {
+  const merged: RoofSceneGraph = {
     contractVersion: ROOF_SCENE_CONTRACT_VERSION,
     structures: scenes.flatMap((scene) => scene.structures),
     planes: scenes.flatMap((scene) => scene.planes),
     edges: scenes.flatMap((scene) => scene.edges),
     openings: scenes.flatMap((scene) => scene.openings),
     connections: scenes.flatMap((scene) => scene.connections),
+  };
+  const seen = new Set<string>();
+  const collisions = new Set<string>();
+  for (const entity of [
+    ...merged.structures,
+    ...merged.planes,
+    ...merged.edges,
+    ...merged.openings,
+    ...merged.connections,
+  ]) {
+    if (seen.has(entity.id)) collisions.add(entity.id);
+    seen.add(entity.id);
+  }
+  if (collisions.size) throw new RoofSceneMergeError([...collisions]);
+  return merged;
+}
+
+/**
+ * Places a structure's graph in the world (ADR-008): rotation about the
+ * vertical axis through the origin, then translation. Frames, normals and
+ * pitches are recomputed from the moved polygons, so the result is
+ * described exactly like any other graph.
+ */
+export function transformRoofScene(
+  scene: RoofSceneGraph,
+  transform: { translation: Vec3; rotationAboutVerticalDeg: number },
+): RoofSceneGraph {
+  const radians = (transform.rotationAboutVerticalDeg * Math.PI) / 180;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  const move = (point: Vec3): Vec3 => ({
+    x: point.x * cos - point.y * sin + transform.translation.x,
+    y: point.x * sin + point.y * cos + transform.translation.y,
+    z: point.z + transform.translation.z,
+  });
+  return {
+    ...scene,
+    structures: scene.structures.map((structure) => ({
+      ...structure,
+      transform: {
+        translation: move(structure.transform.translation),
+        rotationAboutVerticalDeg:
+          structure.transform.rotationAboutVerticalDeg +
+          transform.rotationAboutVerticalDeg,
+      },
+    })),
+    planes: scene.planes.map((plane) =>
+      createRoofPlane({ ...plane, polygon: plane.polygon.map(move) }),
+    ),
+    edges: scene.edges.map((edge) => ({
+      ...edge,
+      from: move(edge.from),
+      to: move(edge.to),
+    })),
+    openings: scene.openings.map((opening) => ({
+      ...opening,
+      polygon: opening.polygon.map(move),
+    })),
   };
 }
 
@@ -99,8 +169,15 @@ export interface RoofPlaneMetrics {
   areaMm2: number;
   /** Horizontal projection, mm². */
   planAreaMm2: number;
-  /** Sum of the openings' areas on this plane (overlaps counted twice). */
+  /** Sum of the openings' areas on this plane. */
   openingAreaMm2: number;
+  /**
+   * False when openings on this plane overlap: the sum then counts the
+   * shared part twice, so no net area is given (VNext-6.1 audit).
+   */
+  openingAreaExact: boolean;
+  /** Sloped area minus openings — only when the opening area is exact. */
+  netAreaMm2?: number;
   pitchDeg: number;
   perimeterMm: number;
 }
@@ -110,21 +187,40 @@ export interface RoofSceneMetrics {
   totalAreaMm2: number;
   totalPlanAreaMm2: number;
   totalOpeningAreaMm2: number;
+  /** False when any plane's openings overlap (no exact net area). */
+  openingAreaExact: boolean;
   edges: Record<RoofEdgeKind, { count: number; lengthMm: number }>;
 }
 
 export function roofSceneMetrics(graph: RoofSceneGraph): RoofSceneMetrics {
-  const planes = graph.planes.map((plane) => ({
-    planeId: plane.id,
-    structureId: plane.structureId,
-    areaMm2: polygonArea(plane.polygon),
-    planAreaMm2: planArea(plane.polygon),
-    openingAreaMm2: graph.openings
+  const planes = graph.planes.map((plane): RoofPlaneMetrics => {
+    const openings = graph.openings
       .filter((opening) => opening.planeId === plane.id)
-      .reduce((sum, opening) => sum + polygonArea(opening.polygon), 0),
-    pitchDeg: plane.pitchDeg,
-    perimeterMm: perimeter(plane.polygon),
-  }));
+      .map((opening) => opening.polygon);
+    const areaMm2 = polygonArea(plane.polygon);
+    const openingAreaMm2 = openings.reduce(
+      (sum, polygon) => sum + polygonArea(polygon),
+      0,
+    );
+    const openingAreaExact = openings.every((polygon, index) =>
+      openings
+        .slice(index + 1)
+        .every((other) => !polygonsOverlap(polygon, other)),
+    );
+    return {
+      planeId: plane.id,
+      structureId: plane.structureId,
+      areaMm2,
+      planAreaMm2: planArea(plane.polygon),
+      openingAreaMm2,
+      openingAreaExact,
+      ...(openingAreaExact
+        ? { netAreaMm2: Math.max(0, areaMm2 - openingAreaMm2) }
+        : {}),
+      pitchDeg: plane.pitchDeg,
+      perimeterMm: perimeter(plane.polygon),
+    };
+  });
   const edges = Object.fromEntries(
     ROOF_EDGE_KINDS.map((kind) => {
       const ofKind = graph.edges.filter((edge) => edge.kind === kind);
@@ -148,6 +244,7 @@ export function roofSceneMetrics(graph: RoofSceneGraph): RoofSceneMetrics {
       (sum, plane) => sum + plane.openingAreaMm2,
       0,
     ),
+    openingAreaExact: planes.every((plane) => plane.openingAreaExact),
     edges,
   };
 }

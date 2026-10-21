@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { deriveProjectJourney } from './project-journey';
 import {
+  confirmIntakeDefaults,
+  deriveIntakeReview,
   deriveProjectPreparation,
   intakeDefaults,
   type ImportIntakeReport,
+  type IntakeReviewState,
+  type IntakeValueKey,
 } from './project-preparation';
 import type {
   ProjectReadiness,
@@ -104,6 +108,82 @@ const PDF_INTAKE: ImportIntakeReport = {
   readMs: 120,
 };
 
+/** The project as created from that import (mm, degrees). */
+const START: Partial<Record<IntakeValueKey, number>> = {
+  buildingLength: 12_400,
+  buildingWidth: 9_600,
+  pitch: 40,
+  eave: 500,
+  spacing: 800,
+  rafterWidth: 80,
+  rafterDepth: 200,
+};
+const NOT_OPENED: IntakeReviewState = { opened: false, confirmed: {} };
+const reviewOf = (
+  state: IntakeReviewState,
+  current: Partial<Record<IntakeValueKey, number>> = START,
+) =>
+  deriveIntakeReview({
+    report: PDF_INTAKE,
+    startValues: START,
+    currentValues: current,
+    state,
+  })!;
+
+describe('VNext-6.1 review of imported defaults', () => {
+  it('starts as needs-review with the current value of every default', () => {
+    const review = reviewOf(NOT_OPENED);
+    expect(review.status).toBe('needs-review');
+    expect(review.fields).toEqual([
+      { key: 'spacing', value: 800, state: 'needs-review' },
+      { key: 'rafterWidth', value: 80, state: 'needs-review' },
+      { key: 'rafterDepth', value: 200, state: 'needs-review' },
+    ]);
+  });
+
+  it('opening the editor is NOT a confirmation (audit P0)', () => {
+    const review = reviewOf({ opened: true, confirmed: {} });
+    expect(review.status).toBe('reviewing');
+    expect(review.pending).toEqual(['spacing', 'rafterWidth', 'rafterDepth']);
+  });
+
+  it('only the explicit confirmation settles the exact values shown', () => {
+    const opened: IntakeReviewState = { opened: true, confirmed: {} };
+    const confirmed = confirmIntakeDefaults(opened, reviewOf(opened));
+    expect(confirmed.confirmed).toEqual({
+      spacing: 800,
+      rafterWidth: 80,
+      rafterDepth: 200,
+    });
+    expect(reviewOf(confirmed).status).toBe('reviewed');
+  });
+
+  it('a value the user changes is their decision; changing it back to the default needs a confirmation again', () => {
+    const edited = reviewOf(NOT_OPENED, { ...START, spacing: 900 });
+    expect(edited.fields.find((field) => field.key === 'spacing')?.state).toBe(
+      'changed',
+    );
+    expect(edited.pending).toEqual(['rafterWidth', 'rafterDepth']);
+    // Confirmed at 900 would not cover 800: the confirmation is the value.
+    const confirmedOther: IntakeReviewState = {
+      opened: true,
+      confirmed: { spacing: 900, rafterWidth: 80, rafterDepth: 200 },
+    };
+    expect(reviewOf(confirmedOther).pending).toEqual(['spacing']);
+  });
+
+  it('an import without defaults has nothing to review', () => {
+    expect(
+      deriveIntakeReview({
+        report: { ...PDF_INTAKE, values: { buildingLength: 'document' } },
+        startValues: START,
+        currentValues: START,
+        state: NOT_OPENED,
+      }),
+    ).toBeUndefined();
+  });
+});
+
 describe('VNext-6 project preparation', () => {
   const freshAfterImport = () => {
     const ready = readiness([
@@ -123,6 +203,7 @@ describe('VNext-6 project preparation', () => {
       journey,
       readiness: ready,
       intake: PDF_INTAKE,
+      review: reviewOf(NOT_OPENED),
     });
     expect(intakeDefaults(PDF_INTAKE)).toEqual([
       'spacing',
@@ -134,11 +215,11 @@ describe('VNext-6 project preparation', () => {
       action: { action: 'review-structure' },
       reason: 'intake-defaults',
     });
-    expect(preparation.intake).toEqual({
+    expect(preparation.intake).toMatchObject({
       fromDocument: ['buildingLength', 'buildingWidth', 'pitch'],
       entered: ['eave'],
       defaults: ['spacing', 'rafterWidth', 'rafterDepth'],
-      reviewed: false,
+      review: { status: 'needs-review' },
     });
     expect(
       preparation.groups.find((group) => group.key === 'structure'),
@@ -149,13 +230,32 @@ describe('VNext-6 project preparation', () => {
     });
   });
 
-  it('once reviewed, the journey leads: choose the covering; later groups wait', () => {
+  it('after opening the editor the next step is the explicit confirmation', () => {
     const { ready, journey } = freshAfterImport();
     const preparation = deriveProjectPreparation({
       journey,
       readiness: ready,
       intake: PDF_INTAKE,
-      intakeReviewed: true,
+      review: reviewOf({ opened: true, confirmed: {} }),
+    });
+    expect(preparation.next).toMatchObject({
+      group: 'structure',
+      reason: 'intake-confirm',
+    });
+    expect(preparation.groups[0]).toMatchObject({
+      state: 'check',
+      defaultsToCheck: true,
+    });
+  });
+
+  it('once confirmed, the journey leads: choose the covering; later groups wait', () => {
+    const { ready, journey } = freshAfterImport();
+    const opened: IntakeReviewState = { opened: true, confirmed: {} };
+    const preparation = deriveProjectPreparation({
+      journey,
+      readiness: ready,
+      intake: PDF_INTAKE,
+      review: reviewOf(confirmIntakeDefaults(opened, reviewOf(opened))),
     });
     expect(preparation.next).toMatchObject({
       group: 'covering',

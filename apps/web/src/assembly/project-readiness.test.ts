@@ -734,3 +734,68 @@ describe('V52 roof-detail readiness', () => {
     );
   });
 });
+
+describe('VNext-6.1 imported defaults', () => {
+  it('unconfirmed import defaults are a warning on every document, with the card as the action', () => {
+    const readiness = deriveProjectReadiness({
+      ...facts({}),
+      importDefaultsUnconfirmed: ['spacing', 'rafterWidth'],
+    });
+    const issue = readiness.issues.find(
+      (item) => item.code === 'import-defaults-unconfirmed',
+    );
+    expect(issue).toMatchObject({
+      severity: 'warning',
+      area: 'construction',
+      action: 'review-import-defaults',
+      params: { count: 2 },
+    });
+    expect(readiness.documents.execution.state).toBe('warning');
+    expect(readiness.limitations).toContainEqual({
+      code: 'import-defaults-unconfirmed',
+      params: { count: 2 },
+    });
+  });
+
+  it('confirmed (empty) defaults add nothing', () => {
+    const readiness = deriveProjectReadiness({
+      ...facts({}),
+      importDefaultsUnconfirmed: [],
+    });
+    expect(codes(readiness)).not.toContain('import-defaults-unconfirmed');
+    expect(
+      readiness.limitations.some(
+        (item) => item.code === 'import-defaults-unconfirmed',
+      ),
+    ).toBe(false);
+  });
+});
+
+describe('VNext-6.1 roof graph consistency gate', () => {
+  it('an invalid graph blocks every document; a gap is a warning; complete adds nothing', () => {
+    const invalid = deriveProjectReadiness({
+      ...facts({}),
+      roofGraph: { geometry: 'invalid', issueCodes: ['edge-overlap'] },
+    });
+    expect(
+      invalid.issues.find((item) => item.code === 'roof-graph-inconsistent'),
+    ).toMatchObject({
+      severity: 'blocker',
+      params: { codes: 'edge-overlap' },
+    });
+    expect(invalid.documents.execution.state).toBe('blocked');
+    const partial = deriveProjectReadiness({
+      ...facts({}),
+      roofGraph: { geometry: 'partial', issueCodes: ['boundary-unclassified'] },
+    });
+    expect(
+      partial.issues.find((item) => item.code === 'roof-graph-inconsistent')
+        ?.severity,
+    ).toBe('warning');
+    const complete = deriveProjectReadiness({
+      ...facts({}),
+      roofGraph: { geometry: 'complete', issueCodes: [] },
+    });
+    expect(codes(complete)).not.toContain('roof-graph-inconsistent');
+  });
+});

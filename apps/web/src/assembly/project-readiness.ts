@@ -67,10 +67,14 @@ export type ReadinessAction =
   | 'open-drainage'
   | 'open-roof-system'
   | 'open-documents'
-  | 'open-cost';
+  | 'open-cost'
+  /** VNext-6.1: the preparation card's list of unconfirmed import defaults. */
+  | 'review-import-defaults';
 
 export type ReadinessIssueCode =
   | 'geometry-invalid'
+  | 'roof-graph-inconsistent'
+  | 'import-defaults-unconfirmed'
   | 'roof-surface-issue'
   | 'opening-collision'
   | 'covering-missing'
@@ -174,6 +178,8 @@ export type ProjectLimitation =
   /** VNext-3: purlin ends on hip rafters — the joint is not modelled. */
   | { code: 'purlin-hip-joint-unresolved'; params: { count: number } }
   | { code: 'cost-incomplete'; params: { missingPrices: number } }
+  /** VNext-6.1: construction values an import defaulted, never confirmed. */
+  | { code: 'import-defaults-unconfirmed'; params: { count: number } }
   | { code: 'drainage-hydraulics-not-verified' };
 
 export interface MembraneFacts {
@@ -207,6 +213,20 @@ export interface UnresolvedNodeFacts {
 
 export interface ReadinessFacts {
   template: RoofTemplateSpec;
+  /**
+   * VNext-6.1: start values an import could not read, so RoofCalc used its
+   * defaults, and nobody has confirmed them yet (import evidence).
+   */
+  importDefaultsUnconfirmed?: readonly string[];
+  /**
+   * VNext-6.1 (ADR-015): the neutral roof graph built from the solver's
+   * planes and lines, as a consistency gate. A V1 gable/hip is always
+   * complete; anything else means the geometry does not close.
+   */
+  roofGraph?: {
+    geometry: 'complete' | 'partial' | 'invalid';
+    issueCodes: readonly string[];
+  };
   /** From the connection node projection; absent = nothing located. */
   connectionNodes?: UnresolvedNodeFacts;
   constructionReady: boolean;
@@ -389,6 +409,35 @@ export function deriveProjectReadiness(
       action: 'review-geometry',
       affects: ALL_DOCUMENTS,
       source: 'roof-surface',
+    });
+  if (
+    facts.constructionReady &&
+    facts.roofGraph &&
+    facts.roofGraph.geometry !== 'complete'
+  )
+    add({
+      code: 'roof-graph-inconsistent',
+      // Never print geometry that does not close; a gap is a warning.
+      severity: facts.roofGraph.geometry === 'invalid' ? 'blocker' : 'warning',
+      area: 'construction',
+      params: {
+        count: facts.roofGraph.issueCodes.length,
+        codes: facts.roofGraph.issueCodes.join(', '),
+      },
+      action: 'review-geometry',
+      affects: ALL_DOCUMENTS,
+      source: 'roof-topology-core',
+    });
+  if (facts.importDefaultsUnconfirmed?.length)
+    add({
+      code: 'import-defaults-unconfirmed',
+      severity: 'warning',
+      area: 'construction',
+      params: { count: facts.importDefaultsUnconfirmed.length },
+      action: 'review-import-defaults',
+      // A rafter section or spacing changes members, cuts and quantities.
+      affects: ALL_DOCUMENTS,
+      source: 'import-evidence',
     });
   if (facts.surfaceIssueCount > 0)
     add({
@@ -1186,6 +1235,11 @@ export function deriveProjectLimitations(
   );
   if (facts.drainage && facts.drainage.status !== 'disabled')
     limitations.push({ code: 'drainage-hydraulics-not-verified' });
+  if (facts.importDefaultsUnconfirmed?.length)
+    limitations.push({
+      code: 'import-defaults-unconfirmed',
+      params: { count: facts.importDefaultsUnconfirmed.length },
+    });
   if (facts.cost && facts.cost.includedLineCount > 0 && !facts.cost.complete)
     limitations.push({
       code: 'cost-incomplete',

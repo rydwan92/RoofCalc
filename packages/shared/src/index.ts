@@ -7,6 +7,18 @@ export type FeatureKey =
  */
 export type DatabaseHealth = 'connected' | 'unavailable' | 'not-configured';
 
+/**
+ * Why a configured database is unavailable — a generic class only. The
+ * server's own message (host, user, detail) never leaves the API.
+ */
+export type DatabaseUnavailableReason =
+  | 'access-denied'
+  | 'database-missing'
+  | 'timeout'
+  | 'unreachable'
+  | 'tls'
+  | 'unknown';
+
 export interface HealthResponse {
   /** `ok` only when the database is connected; the API itself is always up. */
   status: 'ok' | 'degraded';
@@ -14,5 +26,7 @@ export interface HealthResponse {
   version: string;
   runtime: 'node' | 'cloudflare-worker';
   database: DatabaseHealth;
+  /** Present only when `database` is `unavailable`. */
+  databaseReason?: DatabaseUnavailableReason;
   auth: 'configured' | 'unconfigured';
 }

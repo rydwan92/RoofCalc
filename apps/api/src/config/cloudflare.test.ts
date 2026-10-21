@@ -5,6 +5,8 @@ import {
   analyzeDeployment,
   analyzeWranglerConfig,
   hyperdriveCachingDisabled,
+  hyperdrivePasswordUpdateArgs,
+  hyperdriveSslMode,
   isDeployedOrigin,
   missingWorkerSecrets,
   parseJsonc,
@@ -106,6 +108,62 @@ describe('wrangler output', () => {
     });
     expect(parseHyperdriveOrigin('{"origin":{"host":"h"}}')).toBeUndefined();
     expect(parseHyperdriveOrigin('Not logged in')).toBeUndefined();
+  });
+
+  it('VNext-6.1: a password update keeps the rest of the origin and TLS mode', () => {
+    const output = `{ "origin": { "host": "h.example", "port": 3306,
+      "database": "d_dev", "scheme": "mysql", "user": "u" },
+      "mtls": { "sslmode": "REQUIRED" } }`;
+    const origin = parseHyperdriveOrigin(output)!;
+    expect(hyperdriveSslMode(output)).toBe('REQUIRED');
+    expect(hyperdriveSslMode('{"origin":{}}')).toBeUndefined();
+    const args = hyperdrivePasswordUpdateArgs({
+      id: 'abc',
+      origin,
+      password: 'p@ss word',
+      sslmode: 'REQUIRED',
+    });
+    expect(args).toEqual([
+      'hyperdrive',
+      'update',
+      'abc',
+      '--origin-scheme',
+      'mysql',
+      '--origin-host',
+      'h.example',
+      '--origin-port',
+      '3306',
+      '--database',
+      'd_dev',
+      '--origin-user',
+      'u',
+      '--origin-password',
+      'p@ss word',
+      '--sslmode',
+      'REQUIRED',
+    ]);
+    // The password is one argument, never split or joined into another.
+    expect(args.filter((arg) => arg.includes('p@ss'))).toEqual(['p@ss word']);
+  });
+
+  it('VNext-6.1: the Worker reports why the database is unavailable', () => {
+    expect(
+      analyzeDeployment({
+        health: {
+          status: 200,
+          body: {
+            runtime: 'cloudflare-worker',
+            database: 'unavailable',
+            databaseReason: 'access-denied',
+            auth: 'configured',
+          },
+        },
+        readiness: { status: 200, body: { schema: 'unavailable' } },
+      }),
+    ).toContainEqual({
+      code: 'database-not-connected',
+      reason: 'access-denied',
+    });
   });
 
   it('reads the Hyperdrive caching flag', () => {

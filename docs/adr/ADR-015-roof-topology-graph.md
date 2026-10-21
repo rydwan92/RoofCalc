@@ -94,3 +94,19 @@ and L-with-valley scenes; an overlapping L without a solved junction is
   `reason: 'compound-outline'`) without pretending to calculate it.
 - Until V2 exists, the graph is derived and session-only; nothing persisted
   changes, and old projects keep their exact semantics and results.
+
+## Addendum — VNext-6.1 (2026-10-21)
+
+- The adapter is in production: `apps/web/src/assembly/roof-scene.ts`
+  builds the graph from the same resolved surface and roof lines the
+  workbench already uses, and its assessment is a readiness gate
+  (`roof-graph-inconsistent`: invalid → documents blocked, partial →
+  warning). All ten reference projects pass with identical planes, areas,
+  pitches, lines, openings and source references.
+- Checks hardened after the audit: interval-union boundary coverage
+  (gaps and double-counted lines), self-intersection, repeated vertices
+  (notes), stored frame/normal/pitch consistency, opening sides on concave
+  planes, overlapping openings (no net area then), structure overlap by plan
+  outlines instead of bounding boxes, foreign junction lines, contract
+  version, and `mergeRoofScenes` refusing colliding IDs. The tolerances
+  are reported with every assessment. None of this changes a solver result.

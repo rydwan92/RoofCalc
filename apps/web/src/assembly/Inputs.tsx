@@ -47,7 +47,9 @@ export function NumberField({
     state.drafts[field] ??
     (Number.isFinite(value)
       ? angle
-        ? String(value)
+        ? // A converted slope (70 % → 34.992…°) is shown to 0.0001°; the
+          // stored value keeps every digit until the user types a new one.
+          String(Number(value.toFixed(4)))
         : editableLength(value, state.unit)
       : '');
   return (

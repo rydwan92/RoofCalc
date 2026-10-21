@@ -9,6 +9,7 @@ import type {
   ProjectReadiness,
   ReadinessDocumentKind,
 } from './project-readiness';
+import type { ProjectStartValues } from './project-start';
 
 /**
  * VNext-6 PROJECT PREPARATION — the compact "Przygotowanie projektu" card.
@@ -18,7 +19,7 @@ import type {
  * ONE next step. It decides nothing: every state comes from the V53
  * journey and V47 readiness that the workbench already derives, plus what
  * an import reported about where each start value came from. No geometry,
- * no quantity, no price is computed here, and nothing is stored (ADR-002).
+ * no quantity and no price is computed here.
  */
 
 /** Start values an import can supply; names match the project start. */
@@ -44,8 +45,9 @@ export const INTAKE_VALUE_KEYS: readonly IntakeValueKey[] = [
 export type IntakeValueSource = 'document' | 'user' | 'roofcalc-default';
 
 /**
- * What an import gave the new project. Session-only: the file, the draft
- * and this report never enter the saved project (ADR-012).
+ * What an import gave the new project. Persisted only as the minimal
+ * import-evidence sidecar (`projects/import-evidence.ts`): never the file,
+ * never its text — just where each start value came from (ADR-012).
  */
 export interface ImportIntakeReport {
   source: 'pdf' | 'image' | 'dxf' | 'ifc';
@@ -65,6 +67,109 @@ export function intakeDefaults(report: ImportIntakeReport): IntakeValueKey[] {
     (key) => report.values[key] === 'roofcalc-default',
   );
 }
+
+/** The project-start values of a roof, keyed like an intake report. */
+export function intakeValuesFromStart(
+  values: ProjectStartValues,
+): Partial<Record<IntakeValueKey, number>> {
+  return {
+    buildingLength: values.buildingLengthMm,
+    buildingWidth: values.buildingWidthMm,
+    pitch: values.pitchDeg,
+    eave: values.eaveOverhangMm,
+    spacing: values.rafterSpacingMm,
+    ...(values.rafterWidthMm !== undefined
+      ? { rafterWidth: values.rafterWidthMm }
+      : {}),
+    ...(values.rafterDepthMm !== undefined
+      ? { rafterDepth: values.rafterDepthMm }
+      : {}),
+  };
+}
+
+/* ------------------------------------------------------------------------ */
+/* VNext-6.1 review of the RoofCalc defaults an import left in the project.  */
+/* Opening the editor is NOT a confirmation: only the explicit "Potwierdzam" */
+/* records the exact values; a confirmation applies to those values only.   */
+/* ------------------------------------------------------------------------ */
+
+export interface IntakeReviewState {
+  /** The user opened the editor for these values at least once. */
+  opened: boolean;
+  /** Field → the exact value the user confirmed. */
+  confirmed: Partial<Record<IntakeValueKey, number>>;
+}
+
+export type IntakeFieldReviewState =
+  /** Still the RoofCalc default nobody confirmed. */
+  | 'needs-review'
+  /** The user confirmed exactly this value. */
+  | 'confirmed'
+  /** The user set another value — their own decision now. */
+  | 'changed';
+
+export interface IntakeReview {
+  status: 'needs-review' | 'reviewing' | 'reviewed';
+  fields: {
+    key: IntakeValueKey;
+    value: number;
+    state: IntakeFieldReviewState;
+  }[];
+  pending: IntakeValueKey[];
+}
+
+const SAME = 1e-6;
+const same = (a: number, b: number) => Math.abs(a - b) <= SAME;
+
+export function deriveIntakeReview(input: {
+  report: ImportIntakeReport;
+  /** The values the project was created with (at import). */
+  startValues: Partial<Record<IntakeValueKey, number>>;
+  /** The values the project has now. */
+  currentValues: Partial<Record<IntakeValueKey, number>>;
+  state: IntakeReviewState;
+}): IntakeReview | undefined {
+  const defaults = intakeDefaults(input.report);
+  if (!defaults.length) return undefined;
+  const fields = defaults.flatMap((key) => {
+    const value = input.currentValues[key] ?? input.startValues[key];
+    if (value === undefined) return [];
+    const start = input.startValues[key];
+    const confirmed = input.state.confirmed[key];
+    const state: IntakeFieldReviewState =
+      start !== undefined && !same(start, value)
+        ? 'changed'
+        : confirmed !== undefined && same(confirmed, value)
+          ? 'confirmed'
+          : 'needs-review';
+    return [{ key, value, state }];
+  });
+  const pending = fields
+    .filter((field) => field.state === 'needs-review')
+    .map((field) => field.key);
+  return {
+    status: !pending.length
+      ? 'reviewed'
+      : input.state.opened
+        ? 'reviewing'
+        : 'needs-review',
+    fields,
+    pending,
+  };
+}
+
+/** The explicit confirmation: records exactly the values shown. */
+export function confirmIntakeDefaults(
+  state: IntakeReviewState,
+  review: IntakeReview,
+): IntakeReviewState {
+  const confirmed = { ...state.confirmed };
+  for (const field of review.fields)
+    if (field.state === 'needs-review') confirmed[field.key] = field.value;
+  return { ...state, confirmed };
+}
+
+/* ------------------------------------------------------------------------ */
 
 export type PreparationGroupKey =
   'structure' | 'covering' | 'roof-system' | 'materials' | 'documents';
@@ -88,7 +193,7 @@ export interface PreparationGroup {
   /** Ready-made summary from the journey (e.g. roof type and size). */
   summary?: string;
   waitingFor?: PreparationGroupKey;
-  /** Structure: start values the document did not give are unchecked. */
+  /** Structure: start values the document did not give are unconfirmed. */
   defaultsToCheck?: true;
   /** Documents: how many of the required ones can be produced now. */
   available?: { ready: number; total: number };
@@ -99,13 +204,19 @@ export interface PreparationDocument {
   state: DocumentReadinessState;
 }
 
+export type PreparationNextReason =
+  /** Open the editor to look at the RoofCalc defaults. */
+  | 'intake-defaults'
+  /** Already looked: confirm (or change) them explicitly. */
+  | 'intake-confirm'
+  | 'journey';
+
 export interface ProjectPreparation {
   groups: PreparationGroup[];
   next?: {
     group: PreparationGroupKey;
     action: JourneyAction;
-    /** `intake-defaults`: check values the document did not give. */
-    reason: 'intake-defaults' | 'journey';
+    reason: PreparationNextReason;
   };
   done: number;
   /** Start values from the document / typed / RoofCalc defaults. */
@@ -113,7 +224,7 @@ export interface ProjectPreparation {
     fromDocument: IntakeValueKey[];
     entered: IntakeValueKey[];
     defaults: IntakeValueKey[];
-    reviewed: boolean;
+    review?: IntakeReview;
   };
   documents: PreparationDocument[];
   prices?: { priced: number; missing: number };
@@ -160,8 +271,8 @@ export function deriveProjectPreparation(input: {
   journey: ProjectJourney;
   readiness: ProjectReadiness;
   intake?: ImportIntakeReport;
-  /** The user has opened and accepted the structure values once. */
-  intakeReviewed?: boolean;
+  /** VNext-6.1: the review of the defaults that import left behind. */
+  review?: IntakeReview;
   cost?: { started: boolean; priced: number; missing: number };
 }): ProjectPreparation {
   const { journey, readiness } = input;
@@ -172,8 +283,8 @@ export function deriveProjectPreparation(input: {
     'materials',
     'documents',
   ];
-  const defaults = input.intake ? intakeDefaults(input.intake) : [];
-  const checkDefaults = defaults.length > 0 && !input.intakeReviewed;
+  const review = input.intake ? input.review : undefined;
+  const defaultsPending = !!review && review.status !== 'reviewed';
   const groups = order.map((key): PreparationGroup => {
     const stages = journey.stages.filter(
       (stage) => GROUP_OF[stage.key] === key,
@@ -192,7 +303,7 @@ export function deriveProjectPreparation(input: {
         : {}),
     };
     const defaultsToCheck =
-      key === 'structure' && checkDefaults && state === 'done';
+      key === 'structure' && defaultsPending && state === 'done';
     if (defaultsToCheck) {
       state = 'check';
       action = { action: 'review-structure' };
@@ -229,19 +340,24 @@ export function deriveProjectPreparation(input: {
   });
 
   const recommended = journey.recommended;
-  const next: ProjectPreparation['next'] = checkDefaults
-    ? {
-        group: 'structure',
-        action: { action: 'review-structure' },
-        reason: 'intake-defaults',
-      }
-    : recommended
+  const geometryBroken = groups[0]?.state === 'todo';
+  const next: ProjectPreparation['next'] =
+    defaultsPending && !geometryBroken
       ? {
-          group: GROUP_OF[recommended.stage],
-          action: recommended,
-          reason: 'journey',
+          group: 'structure',
+          action: { action: 'review-structure' },
+          reason:
+            review!.status === 'reviewing'
+              ? 'intake-confirm'
+              : 'intake-defaults',
         }
-      : undefined;
+      : recommended
+        ? {
+            group: GROUP_OF[recommended.stage],
+            action: recommended,
+            reason: 'journey',
+          }
+        : undefined;
 
   const intake = input.intake
     ? {
@@ -251,8 +367,8 @@ export function deriveProjectPreparation(input: {
         entered: (Object.keys(input.intake.values) as IntakeValueKey[])
           .filter((key) => input.intake!.values[key] === 'user')
           .sort(byKeyOrder),
-        defaults,
-        reviewed: !!input.intakeReviewed,
+        defaults: intakeDefaults(input.intake),
+        ...(review ? { review } : {}),
       }
     : undefined;
 

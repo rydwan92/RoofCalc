@@ -1,5 +1,10 @@
 import { ZodError, z } from 'zod';
-import type { DatabaseHealth, HealthResponse } from '@cieslacalc/shared';
+import type {
+  DatabaseHealth,
+  DatabaseUnavailableReason,
+  HealthResponse,
+} from '@cieslacalc/shared';
+import { databaseErrorCode } from '../db/errors';
 import {
   catalogIdSchema,
   catalogManufacturersResponseSchema,
@@ -90,21 +95,54 @@ export interface HealthContext {
 
 const HEALTH_PROBE_TIMEOUT_MS = 5000;
 
+const PROBE_TIMEOUT = Symbol('probe-timeout');
+
+/**
+ * VNext-6.1: a generic class of a connection failure, so an operator can
+ * tell a rejected password from a network or TLS problem. Driver codes are
+ * mapped; the message is read only to classify and is never returned.
+ */
+export function classifyDatabaseError(
+  error: unknown,
+): DatabaseUnavailableReason {
+  if (error === PROBE_TIMEOUT) return 'timeout';
+  const code = databaseErrorCode(error) ?? '';
+  const message = error instanceof Error ? error.message : '';
+  if (
+    /^ER_(DB)?ACCESS_DENIED/.test(code) ||
+    /access denied|authentication failed|password/i.test(message)
+  )
+    return 'access-denied';
+  if (code === 'ER_BAD_DB_ERROR' || /unknown database/i.test(message))
+    return 'database-missing';
+  if (code === 'ETIMEDOUT' || /timed? ?out/i.test(message)) return 'timeout';
+  if (/SSL|TLS|CERT/i.test(code) || /\b(ssl|tls|certificate)\b/i.test(message))
+    return 'tls';
+  if (
+    /^(ECONNREFUSED|ENOTFOUND|ECONNRESET|EHOSTUNREACH|ENETUNREACH)$/.test(code)
+  )
+    return 'unreachable';
+  return 'unknown';
+}
+
 export async function databaseHealth(
   probe: HealthContext['probeDatabase'],
-): Promise<DatabaseHealth> {
-  if (!probe) return 'not-configured';
+): Promise<{ database: DatabaseHealth; reason?: DatabaseUnavailableReason }> {
+  if (!probe) return { database: 'not-configured' };
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     await Promise.race([
       probe(),
       new Promise((_, reject) => {
-        timer = setTimeout(reject, HEALTH_PROBE_TIMEOUT_MS);
+        timer = setTimeout(
+          () => reject(PROBE_TIMEOUT),
+          HEALTH_PROBE_TIMEOUT_MS,
+        );
       }),
     ]);
-    return 'connected';
-  } catch {
-    return 'unavailable';
+    return { database: 'connected' };
+  } catch (error) {
+    return { database: 'unavailable', reason: classifyDatabaseError(error) };
   } finally {
     clearTimeout(timer);
   }
@@ -115,13 +153,14 @@ export async function databaseHealth(
  * core does not need the database, so a DB outage is `degraded`, not down.
  */
 export async function healthResult(context: HealthContext): Promise<ApiResult> {
-  const database = await databaseHealth(context.probeDatabase);
+  const { database, reason } = await databaseHealth(context.probeDatabase);
   const body: HealthResponse = {
     status: database === 'connected' ? 'ok' : 'degraded',
     service: 'cieslacalc-api',
     version: '0.1.0',
     runtime: context.runtime,
     database,
+    ...(reason ? { databaseReason: reason } : {}),
     auth: context.auth ?? 'unconfigured',
   };
   return json(body);

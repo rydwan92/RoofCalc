@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ArrowRight,
+  Check,
   CheckCircle2,
   ChevronUp,
   Circle,
@@ -13,9 +14,13 @@ import {
   X,
   XCircle,
 } from 'lucide-react';
+import type { LengthUnit } from '@cieslacalc/roof-math';
+import { formatLength } from '../format';
 import type { JourneyAction } from './project-journey';
 import type {
   ImportIntakeReport,
+  IntakeReview,
+  IntakeValueKey,
   PreparationGroup,
   PreparationState,
   ProjectPreparation,
@@ -41,8 +46,11 @@ function StateIcon({ state }: { state: PreparationState }) {
 export function ProjectPreparationCard({
   preparation,
   intake,
+  unit,
   collapsed,
   onAction,
+  onRevealField,
+  onConfirmDefaults,
   onDetailed,
   onCollapse,
   onExpand,
@@ -50,9 +58,14 @@ export function ProjectPreparationCard({
 }: {
   preparation: ProjectPreparation;
   intake?: ImportIntakeReport;
+  unit: LengthUnit;
   collapsed: boolean;
   /** Runs a journey action (opens the existing editor). */
   onAction: (action: JourneyAction, reason?: 'intake-defaults') => void;
+  /** VNext-6.1: opens the exact numeric input of one start value. */
+  onRevealField: (key: IntakeValueKey) => void;
+  /** VNext-6.1: the explicit confirmation of the values shown. */
+  onConfirmDefaults: () => void;
   /** The full Creator with every parameter. */
   onDetailed: () => void;
   onCollapse: () => void;
@@ -61,23 +74,47 @@ export function ProjectPreparationCard({
 }) {
   const { t, i18n } = useTranslation();
   const heading = useRef<HTMLHeadingElement>(null);
+  const confirmButton = useRef<HTMLButtonElement>(null);
+  /** "Potwierdź…" from the pill: expand, then put focus on the button. */
+  const [focusConfirm, setFocusConfirm] = useState(false);
   useEffect(() => {
-    if (!collapsed) heading.current?.focus();
+    if (collapsed) return;
+    if (focusConfirm) {
+      confirmButton.current?.focus();
+      confirmButton.current?.scrollIntoView({ block: 'nearest' });
+      setFocusConfirm(false);
+    } else heading.current?.focus();
+    // Focus follows the expansion only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [collapsed]);
   const total = preparation.groups.length;
   const next = preparation.next;
   const nextLabel = next
     ? next.reason === 'intake-defaults'
       ? t('assembly.preparation.checkDefaults')
-      : t(`assembly.readiness.action.${next.action.action}`)
+      : next.reason === 'intake-confirm'
+        ? t('assembly.preparation.confirmDefaults')
+        : t(`assembly.readiness.action.${next.action.action}`)
     : t('assembly.readiness.action.open-documents');
-  const runNext = () =>
-    next
-      ? onAction(
-          next.action,
-          next.reason === 'intake-defaults' ? 'intake-defaults' : undefined,
-        )
-      : onAction({ action: 'open-documents' });
+  const runNext = () => {
+    if (next?.reason === 'intake-confirm') {
+      if (collapsed) {
+        setFocusConfirm(true);
+        onExpand();
+      } else confirmButton.current?.focus();
+      return;
+    }
+    if (next)
+      onAction(
+        next.action,
+        next.reason === 'intake-defaults' ? 'intake-defaults' : undefined,
+      );
+    else onAction({ action: 'open-documents' });
+  };
+  const formatValue = (key: IntakeValueKey, value: number) =>
+    key === 'pitch'
+      ? `${new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 2 }).format(value)}°`
+      : `${formatLength(value, unit, i18n.language)} ${unit}`;
   const fieldList = (keys: readonly string[]) =>
     keys.map((key) => t(`assembly.creator.field.${key}`)).join(', ');
 
@@ -190,18 +227,14 @@ export function ProjectPreparationCard({
               <dd>{fieldList(preparation.intake.entered)}</dd>
             </div>
           )}
-          {preparation.intake.defaults.length > 0 && (
-            <div
-              data-source="default"
-              data-reviewed={preparation.intake.reviewed || undefined}
-            >
-              <dt>
-                {preparation.intake.reviewed
-                  ? t('assembly.preparation.intake.reviewed')
-                  : t('assembly.preparation.intake.defaults')}
-              </dt>
-              <dd>{fieldList(preparation.intake.defaults)}</dd>
-            </div>
+          {preparation.intake.review && (
+            <DefaultsReview
+              review={preparation.intake.review}
+              formatValue={formatValue}
+              confirmButton={confirmButton}
+              onReveal={onRevealField}
+              onConfirm={onConfirmDefaults}
+            />
           )}
           <p className="a-prep-read">
             {[
@@ -283,6 +316,86 @@ export function ProjectPreparationCard({
         <small>{t('assembly.journey.overviewHint')}</small>
       </footer>
     </section>
+  );
+}
+
+/**
+ * VNext-6.1: the values RoofCalc defaulted, with their CURRENT value, what
+ * happened to each, a way to the exact input and one explicit confirmation
+ * of exactly these values. Looking is not confirming.
+ */
+function DefaultsReview({
+  review,
+  formatValue,
+  confirmButton,
+  onReveal,
+  onConfirm,
+}: {
+  review: IntakeReview;
+  formatValue: (key: IntakeValueKey, value: number) => string;
+  confirmButton: React.RefObject<HTMLButtonElement | null>;
+  onReveal: (key: IntakeValueKey) => void;
+  onConfirm: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div
+      className="a-prep-defaults"
+      data-source="default"
+      data-status={review.status}
+      data-testid="project-preparation-defaults"
+    >
+      <dt>
+        {review.status === 'reviewed'
+          ? t('assembly.preparation.intake.reviewed')
+          : t('assembly.preparation.intake.defaults')}
+      </dt>
+      <dd>
+        <ul>
+          {review.fields.map((field) => (
+            <li
+              key={field.key}
+              data-state={field.state}
+              data-testid={`project-preparation-default-${field.key}`}
+            >
+              <span>
+                {t(`assembly.creator.field.${field.key}`)}:{' '}
+                <strong>{formatValue(field.key, field.value)}</strong>
+              </span>
+              <small>
+                {t(`assembly.preparation.fieldState.${field.state}`)}
+              </small>
+              <button
+                type="button"
+                className="a-link-button"
+                onClick={() => onReveal(field.key)}
+              >
+                {t('assembly.preparation.showField')}
+              </button>
+            </li>
+          ))}
+        </ul>
+        {review.pending.length > 0 ? (
+          <button
+            ref={confirmButton}
+            type="button"
+            className="a-button a-prep-confirm"
+            data-testid="project-preparation-confirm-defaults"
+            onClick={onConfirm}
+          >
+            <Check size={15} aria-hidden="true" />
+            {t('assembly.preparation.confirmValues', {
+              count: review.pending.length,
+            })}
+          </button>
+        ) : (
+          <p className="a-prep-confirmed" role="status">
+            <Check size={14} aria-hidden="true" />
+            {t('assembly.preparation.allConfirmed')}
+          </p>
+        )}
+      </dd>
+    </div>
   );
 }
 

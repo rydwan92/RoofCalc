@@ -48,7 +48,18 @@ export function DocumentHub({
   onOpen,
   onMaterialCsv,
   onCostCsv,
+  scope,
 }: {
+  /**
+   * VNext-6.1: what these documents rest on — whether the roof geometry
+   * closes (roof graph) and whether RoofCalc calculates this roof — so a
+   * preview is never mistaken for a verified execution document.
+   */
+  scope?: {
+    geometry: 'complete' | 'partial' | 'invalid';
+    calculation: 'supported' | 'not-supported';
+    roofType: 'gable' | 'hip';
+  };
   facts: ExportFacts;
   readiness: ProjectReadiness;
   unit: LengthUnit;
@@ -65,6 +76,25 @@ export function DocumentHub({
         <small>{t('assembly.docs.eyebrow')}</small>
         <h2>{t('assembly.docs.title')}</h2>
         <p>{t('assembly.docs.description')}</p>
+        {scope && (
+          <p
+            className="a-document-scope"
+            data-geometry={scope.geometry}
+            data-calculation={scope.calculation}
+            data-testid="document-scope"
+          >
+            <strong>{t('assembly.docs.scope.label')}:</strong>{' '}
+            {t(`assembly.docs.scope.geometry.${scope.geometry}`)}
+            {' · '}
+            {scope.calculation === 'supported'
+              ? t('assembly.docs.scope.supported', {
+                  roof: t(`assembly.docs.scope.roof.${scope.roofType}`),
+                })
+              : t('assembly.docs.scope.notSupported')}
+            {' · '}
+            {t('assembly.docs.scope.capacity')}
+          </p>
+        )}
       </header>
       <div className="a-document-cards">
         {(['execution', 'materials', 'cost'] as const).map((kind) => {

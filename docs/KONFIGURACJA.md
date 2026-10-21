@@ -153,6 +153,14 @@ tylko odczyt) przechodzi sześć kroków i przed każdą zmianą pyta:
 Na końcu: otwórz `https://roofcalc.michal-rydwanski.workers.dev` → Business →
 utwórz pierwsze konto kodem z kroku 3.
 
+**Worker bez połączenia z bazą, choć hasło działa z komputera** (VNext-6.1)
+— Hyperdrive ma zapisane inne (stare) hasło. `pnpm configure:cloudflare`:
+w kroku 5 sprawdź bazę swoim hasłem (niewidoczne), a w kroku 6 odpowiedz
+„t” na „Zapisać hasło z kroku 5 w Hyperdrive?”. Zmienia się tylko hasło
+(host, użytkownik i TLS bez zmian); kreator czeka do minuty na połączenie.
+`/api/health` podaje ogólną przyczynę (`databaseReason`: np.
+`access-denied`, `tls`, `timeout`) bez treści komunikatu serwera.
+
 **Wdrażanie** — Workers Builds buduje każdy push do `main` (gałęzie robocze
 dostają tylko wersje podglądu). Obecne polecenia budowania działają; nie
 trzeba ich zmieniać. Opcjonalna bramka (zatrzymuje wdrożenie, gdy zdalna

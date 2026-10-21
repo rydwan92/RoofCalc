@@ -167,11 +167,25 @@ import {
   type ProjectWorkflowAction,
 } from './project-workflow';
 import { ProjectSummary } from './ProjectWorkflow';
+import type { RoofTemplateSpec } from '@cieslacalc/timber-model';
 import { ProjectPreparationCard } from './ProjectPreparation';
 import {
+  confirmIntakeDefaults,
+  deriveIntakeReview,
   deriveProjectPreparation,
+  intakeValuesFromStart,
   type ImportIntakeReport,
+  type IntakeValueKey,
 } from './project-preparation';
+import { projectStartValuesFromTemplate } from './project-start';
+import { deriveProjectRoofScene } from './roof-scene';
+import {
+  createImportEvidence,
+  evidenceReport,
+  LocalImportEvidenceRepository,
+  useImportEvidence,
+  withReview,
+} from '../projects/import-evidence';
 import {
   ActionFeedback,
   ProjectReadinessBar,
@@ -453,32 +467,49 @@ function AssemblyPageContent({
   const [importFile, setImportFile] = useState<File>();
   const [reuseFreshProject, setReuseFreshProject] = useState(false);
   /**
-   * VNext-6: what the last import gave the project it created, and the
-   * "Przygotowanie projektu" card. Session-only view state (ADR-002): it
-   * belongs to that one project and is dropped when another one opens.
+   * VNext-6.1: what an import gave the project — the persisted, minimal
+   * import-evidence sidecar of the active project (no document content) —
+   * and the "Przygotowanie projektu" card, a view bound to one project
+   * (ADR-002): another project never shows it.
    */
-  const [intake, setIntake] = useState<{
+  const [importEvidence, saveImportEvidence] =
+    useImportEvidence(activeProjectId);
+  const [preparation, setPreparation] = useState<{
+    view: 'open' | 'collapsed' | 'closed';
     projectId?: string;
-    report?: ImportIntakeReport;
-    reviewed: boolean;
-  }>();
-  const [preparationView, setPreparationView] = useState<
-    'open' | 'collapsed' | 'closed'
-  >('closed');
-  useEffect(() => {
-    if (!intake?.projectId || activeProjectId === intake.projectId) return;
-    setIntake(undefined);
-    setPreparationView('closed');
-  }, [activeProjectId, intake?.projectId]);
-  /** After an import: bind the report to the new project, open the card. */
-  const openPreparation = (report?: ImportIntakeReport) => {
-    const projectId = projectSession.snapshot().active?.id;
-    setIntake({
-      ...(projectId ? { projectId } : {}),
-      ...(report ? { report } : {}),
-      reviewed: false,
+  }>({ view: 'closed' });
+  const preparationView =
+    preparation.projectId === activeProjectId ? preparation.view : 'closed';
+  const setPreparationView = (view: 'open' | 'collapsed' | 'closed') =>
+    setPreparation({
+      view,
+      ...(activeProjectId ? { projectId: activeProjectId } : {}),
     });
-    setPreparationView('open');
+  /** Projects whose card the user closed in this session. */
+  const preparationDismissed = useRef(new Set<string>());
+  useEffect(() => {
+    if (projectSessionState.initialized)
+      new LocalImportEvidenceRepository().prune(
+        projectSessionState.projects.map((project) => project.id),
+      );
+  }, [projectSessionState.initialized, projectSessionState.projects]);
+  /** After an import: record the evidence for the new project, open the card. */
+  const openPreparation = (
+    report?: ImportIntakeReport,
+    template?: RoofTemplateSpec,
+  ) => {
+    const projectId = projectSession.snapshot().active?.id;
+    if (projectId && report && template)
+      saveImportEvidence(
+        projectId,
+        createImportEvidence({
+          report,
+          startValues: intakeValuesFromStart(
+            projectStartValuesFromTemplate(template),
+          ),
+        }),
+      );
+    setPreparation({ view: 'open', ...(projectId ? { projectId } : {}) });
   };
   const workbench = state.workbench;
   const mobile = useMobileWorkbench();
@@ -540,6 +571,17 @@ function AssemblyPageContent({
   const roofTopology = useMemo(
     () => resolveRoofFeatureTopology(surfaceProjection),
     [surfaceProjection],
+  );
+  // VNext-6.1: the same resolved roof as a neutral graph — the one adapter,
+  // used as a consistency gate before documents (ADR-015).
+  const projectRoofScene = useMemo(
+    () =>
+      deriveProjectRoofScene({
+        template: state.template,
+        surface: surfaceProjection,
+        topology: roofTopology,
+      }),
+    [state.template, surfaceProjection, roofTopology],
   );
   const membraneAreaMm2 = membrane?.enabled
     ? surfaceProjection.planes
@@ -1403,10 +1445,34 @@ function AssemblyPageContent({
       connectionRows,
     ],
   );
+  const importReport = useMemo(
+    () => (importEvidence ? evidenceReport(importEvidence) : undefined),
+    [importEvidence],
+  );
+  const intakeReview = useMemo(
+    () =>
+      importEvidence && importReport
+        ? deriveIntakeReview({
+            report: importReport,
+            startValues: importEvidence.startValues,
+            currentValues: intakeValuesFromStart(
+              projectStartValuesFromTemplate(state.template),
+            ),
+            state: importEvidence.review,
+          })
+        : undefined,
+    [importEvidence, importReport, state.template],
+  );
+  const importDefaultsPending = useMemo(
+    () => intakeReview?.pending ?? [],
+    [intakeReview],
+  );
   const projectReadiness = useMemo(
     () =>
       deriveProjectReadiness({
         template: state.template,
+        importDefaultsUnconfirmed: importDefaultsPending,
+        roofGraph: projectRoofScene.gate,
         connectionNodes: {
           jackPurlin: connectionModel.projection.nodes.filter(
             (node) => node.kind === 'jack-rafter-purlin',
@@ -1501,6 +1567,8 @@ function AssemblyPageContent({
       }),
     [
       state.template,
+      importDefaultsPending,
+      projectRoofScene.gate,
       connectionModel.projection.nodes,
       state.projectDocument.project.buildUp,
       projectWorkflowFacts.constructionReady,
@@ -1575,9 +1643,8 @@ function AssemblyPageContent({
   const projectPreparation = deriveProjectPreparation({
     journey: projectJourney,
     readiness: projectReadiness,
-    ...(intake?.report
-      ? { intake: intake.report, intakeReviewed: intake.reviewed }
-      : {}),
+    ...(importReport ? { intake: importReport } : {}),
+    ...(intakeReview ? { review: intakeReview } : {}),
     cost: {
       started: !!costSummary,
       priced: costSummary?.pricedLineCount ?? 0,
@@ -2066,8 +2133,63 @@ function AssemblyPageContent({
       case 'open-cost':
         state.navigateTo(workbenchLocation('costing'));
         return;
+      case 'review-import-defaults':
+        setPreparationView('open');
+        return;
     }
   };
+  /** VNext-6.1: the user started looking at the imported defaults. */
+  const markIntakeOpened = () => {
+    if (!activeProjectId || !importEvidence || importEvidence.review.opened)
+      return;
+    saveImportEvidence(
+      activeProjectId,
+      withReview(importEvidence, { ...importEvidence.review, opened: true }),
+    );
+  };
+  /** Opens the inspector on the exact numeric input of one start value. */
+  const revealStartField = (key: IntakeValueKey) => {
+    const structure = key === 'rafterWidth' || key === 'rafterDepth';
+    runReadinessAction(structure ? 'review-structure' : 'review-geometry');
+    const id = {
+      buildingLength: 'template.buildingLengthMm',
+      buildingWidth: 'roof.runMm',
+      pitch: 'roof.pitchDeg',
+      eave: 'roof.overhangMm',
+      spacing: 'template.rafterSpacingMm',
+      rafterWidth: 'member.widthMm',
+      rafterDepth: 'member.depthMm',
+    }[key];
+    // The review action re-renders the inspector and sets its own focus:
+    // keep trying for a few frames until THIS input holds the focus.
+    let frames = 0;
+    const focusField = () => {
+      const input = document.getElementById(id);
+      if (input instanceof HTMLInputElement && input.isConnected) {
+        if (document.activeElement !== input) {
+          input.closest('details')?.setAttribute('open', '');
+          input.focus();
+          input.select();
+          input.scrollIntoView({ block: 'center' });
+        } else if (frames > 3) return;
+      }
+      if ((frames += 1) < 20) requestAnimationFrame(focusField);
+    };
+    requestAnimationFrame(focusField);
+  };
+  // A project reopened with unconfirmed import defaults shows the card
+  // folded — once per project and session, unless the user closed it.
+  useEffect(() => {
+    if (
+      !activeProjectId ||
+      !intakeReview ||
+      intakeReview.status === 'reviewed' ||
+      preparation.projectId === activeProjectId ||
+      preparationDismissed.current.has(activeProjectId)
+    )
+      return;
+    setPreparation({ view: 'collapsed', projectId: activeProjectId });
+  }, [activeProjectId, intakeReview, preparation.projectId]);
   /**
    * VNext primary navigation. Projekt and Konstrukcja share the construction
    * drawing; Konstrukcja also reveals the structure settings group, without
@@ -3302,6 +3424,11 @@ function AssemblyPageContent({
                     </Suspense>
                   ) : workbench.viewPreset === 'documents' ? (
                     <DocumentHub
+                      scope={{
+                        geometry: projectRoofScene.gate.geometry,
+                        calculation: projectRoofScene.gate.calculation,
+                        roofType: state.template.type,
+                      }}
                       facts={documentFactsWithLimits}
                       readiness={projectReadiness}
                       unit={state.unit}
@@ -3705,7 +3832,7 @@ function AssemblyPageContent({
               state.setMode('builder');
               state.navigatePerspective('project');
               state.setViewPreset('construction');
-              openPreparation(report);
+              openPreparation(report, template);
             }}
           />
         </Suspense>
@@ -3738,7 +3865,7 @@ function AssemblyPageContent({
               state.setMode('builder');
               state.navigatePerspective('project');
               state.setViewPreset('construction');
-              openPreparation(report);
+              openPreparation(report, template);
             }}
           />
         </Suspense>
@@ -3781,15 +3908,30 @@ function AssemblyPageContent({
         !businessHomeOpen && (
           <ProjectPreparationCard
             preparation={projectPreparation}
-            {...(intake?.report ? { intake: intake.report } : {})}
+            {...(importReport ? { intake: importReport } : {})}
+            unit={state.unit}
             collapsed={preparationView === 'collapsed'}
             onAction={(action, reason) => {
-              if (reason === 'intake-defaults')
-                setIntake((current) =>
-                  current ? { ...current, reviewed: true } : current,
-                );
+              // Opening the editor is NOT a confirmation (VNext-6.1 audit):
+              // it only records that the user started reviewing.
+              if (reason === 'intake-defaults') markIntakeOpened();
               setPreparationView('collapsed');
               runJourneyAction(action);
+            }}
+            onRevealField={(key) => {
+              markIntakeOpened();
+              setPreparationView('collapsed');
+              revealStartField(key);
+            }}
+            onConfirmDefaults={() => {
+              if (!activeProjectId || !importEvidence || !intakeReview) return;
+              saveImportEvidence(
+                activeProjectId,
+                withReview(
+                  importEvidence,
+                  confirmIntakeDefaults(importEvidence.review, intakeReview),
+                ),
+              );
             }}
             onDetailed={() => {
               setPreparationView('collapsed');
@@ -3798,7 +3940,11 @@ function AssemblyPageContent({
             }}
             onCollapse={() => setPreparationView('collapsed')}
             onExpand={() => setPreparationView('open')}
-            onClose={() => setPreparationView('closed')}
+            onClose={() => {
+              if (activeProjectId)
+                preparationDismissed.current.add(activeProjectId);
+              setPreparationView('closed');
+            }}
           />
         )}
       {quickDetail && workbench.mode === 'quick' && (

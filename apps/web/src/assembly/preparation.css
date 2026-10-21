@@ -90,8 +90,61 @@
 .a-prep-intake dd {
   margin: 0;
 }
-.a-prep-intake [data-source='default']:not([data-reviewed]) dt {
+/* VNext-6.1: defaults with their current value and an explicit confirm. */
+.a-prep-defaults {
+  display: grid !important;
+  gap: 4px;
+}
+.a-prep-defaults dt {
   color: var(--ui-warning, #b45309);
+}
+.a-prep-defaults[data-status='reviewed'] dt {
+  color: var(--ui-success, #1f7a4d);
+}
+.a-prep-defaults dd {
+  display: grid;
+  gap: 6px;
+}
+.a-prep-defaults ul {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.a-prep-defaults li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0 8px;
+}
+.a-prep-defaults li small {
+  grid-column: 1;
+  color: var(--ui-text-muted, #667b71);
+}
+.a-prep-defaults li[data-state='needs-review'] small {
+  color: var(--ui-warning, #b45309);
+  font-weight: var(--ui-weight-bold, 700);
+}
+.a-prep-defaults li .a-link-button {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  min-height: 32px;
+}
+.a-prep-confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  justify-self: start;
+  width: auto;
+  min-height: var(--ui-touch-target, 44px);
+}
+.a-prep-confirmed {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--ui-success, #1f7a4d);
 }
 .a-prep-read {
   margin: 2px 0 0;

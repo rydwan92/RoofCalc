@@ -20,7 +20,11 @@ export type CloudflareIssue =
 export type DeploymentIssue =
   | { code: 'unreachable'; path: string }
   | { code: 'not-worker'; runtime: string | undefined }
-  | { code: 'database-not-connected' }
+  | {
+      code: 'database-not-connected';
+      /** VNext-6.1: the Worker's generic class of the failure, if reported. */
+      reason?: string;
+    }
   | { code: 'readiness-missing' }
   | { code: 'schema-not-current'; schema: string }
   | { code: 'auth-unconfigured' }
@@ -205,6 +209,53 @@ export function hyperdriveCachingDisabled(output: string): boolean | undefined {
   }
 }
 
+/** The MySQL TLS mode stored for the Hyperdrive origin, if any. */
+export function hyperdriveSslMode(output: string): string | undefined {
+  const start = output.indexOf('{');
+  const end = output.lastIndexOf('}');
+  if (start < 0 || end < start) return undefined;
+  try {
+    const mode = record(
+      record(JSON.parse(output.slice(start, end + 1)))?.mtls,
+    )?.sslmode;
+    return typeof mode === 'string' ? mode : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * VNext-6.1: wrangler arguments that store a new origin password in
+ * Hyperdrive while keeping everything else of the origin exactly as it is
+ * (host, port, database, user, scheme, TLS mode). The password is one
+ * argument of a shell-less child process — never logged, never in a file.
+ */
+export function hyperdrivePasswordUpdateArgs(input: {
+  id: string;
+  origin: DatabaseOrigin;
+  password: string;
+  sslmode?: string;
+}): string[] {
+  return [
+    'hyperdrive',
+    'update',
+    input.id,
+    '--origin-scheme',
+    'mysql',
+    '--origin-host',
+    input.origin.host,
+    '--origin-port',
+    String(input.origin.port),
+    '--database',
+    input.origin.database,
+    '--origin-user',
+    input.origin.user,
+    '--origin-password',
+    input.password,
+    ...(input.sslmode ? ['--sslmode', input.sslmode] : []),
+  ];
+}
+
 /** The origin database behind a Hyperdrive configuration — never a password. */
 export interface DatabaseOrigin {
   host: string;
@@ -266,7 +317,12 @@ export function analyzeDeployment(probes: DeploymentProbes): DeploymentIssue[] {
       runtime: typeof health.runtime === 'string' ? health.runtime : undefined,
     });
   if (health.database !== 'connected')
-    issues.push({ code: 'database-not-connected' });
+    issues.push({
+      code: 'database-not-connected',
+      ...(typeof health.databaseReason === 'string'
+        ? { reason: health.databaseReason }
+        : {}),
+    });
   // An older deployment predates the readiness endpoint: the SPA or a
   // generic 404 answers instead of `{ schema }`.
   const schema = record(probes.readiness?.body)?.schema;

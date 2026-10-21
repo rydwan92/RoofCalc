@@ -2116,3 +2116,21 @@
     width: 100%;
   }
 }
+
+/* VNext-6.1: what the documents rest on, stated above the cards. */
+.a-document-hub > header .a-document-scope {
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-left: 3px solid var(--ui-success, #1f7a4d);
+  border-radius: var(--ui-radius-sm, 6px);
+  background: var(--ui-surface-sunken, #f4f7f3);
+  color: var(--ui-text, #24382f);
+  font-size: var(--ui-text-sm, 13px);
+}
+.a-document-hub > header .a-document-scope[data-geometry='partial'],
+.a-document-hub > header .a-document-scope[data-calculation='not-supported'] {
+  border-left-color: var(--ui-warning, #b45309);
+}
+.a-document-hub > header .a-document-scope[data-geometry='invalid'] {
+  border-left-color: var(--ui-danger, #b42318);
+}

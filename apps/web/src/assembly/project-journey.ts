@@ -129,6 +129,7 @@ export interface JourneyFacts {
 
 const GEOMETRY_CODES = new Set([
   'geometry-invalid',
+  'roof-graph-inconsistent',
   'roof-surface-issue',
   'opening-collision',
 ]);

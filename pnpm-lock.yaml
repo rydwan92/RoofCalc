@@ -17,6 +17,9 @@ importers:
       '@cieslacalc/document-core':
         specifier: workspace:*
         version: link:packages/document-core
+      '@cieslacalc/document-import-core':
+        specifier: workspace:*
+        version: link:packages/document-import-core
       '@cieslacalc/linear-procurement':
         specifier: workspace:*
         version: link:packages/linear-procurement
@@ -222,6 +225,9 @@ importers:
       '@cieslacalc/roof-system-core':
         specifier: workspace:*
         version: link:../../packages/roof-system-core
+      '@cieslacalc/roof-topology-core':
+        specifier: workspace:*
+        version: link:../../packages/roof-topology-core
       '@cieslacalc/shared':
         specifier: workspace:*
         version: link:../../packages/shared
