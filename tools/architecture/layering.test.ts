@@ -347,6 +347,17 @@ describe('package dependency direction', () => {
     expect(forbiddenText('packages/roof-topology-core', NETWORK)).toEqual([]);
   });
 
+  it('no application reads or writes the designed V2 project document yet (ADR-015 gate)', () => {
+    // VNext-7A designs and tests V1 → V2 in calculator-core. Turning it on
+    // is a deliberate gate: change ADR-015 and this test first.
+    expect(
+      forbiddenText(
+        'apps',
+        /\broofProjectDocument(?:V2Schema|V2FromV1|V1FromV2)\b|\bRoofProjectDocumentV2\b/,
+      ),
+    ).toEqual([]);
+  });
+
   it('the PDF parser stays inside the web document-import folder', () => {
     const offenders = forbiddenImports('apps/web', PDF_PARSERS).filter(
       (entry) => !entry.file.startsWith('apps/web/src/document-import/'),

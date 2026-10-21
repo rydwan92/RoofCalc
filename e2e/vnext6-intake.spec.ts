@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
@@ -295,6 +296,29 @@ test('VNext-6.1: imported defaults stay unconfirmed until confirmed explicitly �
   await expect(
     card.getByTestId('project-preparation-default-spacing'),
   ).toHaveAttribute('data-state', 'needs-review');
+  // Redo restores 90 cm — the user's own value, not a default any more.
+  await page
+    .getByRole('button', { name: 'Ponów zmianę' })
+    .locator('visible=true')
+    .first()
+    .click();
+  await expect(
+    card.getByTestId('project-preparation-default-spacing'),
+  ).toHaveAttribute('data-state', 'changed');
+  await expect(defaults).toHaveAttribute('data-status', 'reviewed');
+
+  // The exported project file is the canonical document only: where the
+  // values came from and what was confirmed stays a browser sidecar.
+  await page.locator('.a-project-trigger').click();
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Eksportuj' }).click();
+  const text = readFileSync((await (await download).path())!, 'utf8');
+  const record = JSON.parse(text);
+  expect(record.document.schemaVersion).toBe(1);
+  expect(record.document.project.roof.rafterSpacing.spacingMm).toBe(900);
+  expect(text).not.toMatch(
+    /importEvidence|fingerprint|confirmedAt|startValues/,
+  );
   expect(errors).toEqual([]);
 });
 

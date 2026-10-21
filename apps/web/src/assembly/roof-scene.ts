@@ -1,3 +1,4 @@
+import { PROJECT_ROOF_STRUCTURE_ID } from '@cieslacalc/calculator-core';
 import {
   projectPlaneLocalToWorld,
   resolveRoofPlaneBasis,
@@ -23,9 +24,9 @@ import type { RoofTemplateSpec } from '@cieslacalc/timber-model';
  * Today the graph is a consistency gate: a V1 gable/hip must come out
  * `complete` and `supported`; anything else stops documents rather than
  * printing geometry that does not close. Later solvers (mono-pitch first)
- * produce the same graph and plug in here.
+ * produce the same graph and plug in here. The structure ID is the one the
+ * designed V2 document gives the single roof of a V1 project.
  */
-export const PROJECT_ROOF_STRUCTURE_ID = 'structure:roof';
 
 /** Graph issues another readiness rule already reports to the user. */
 const REPORTED_ELSEWHERE: ReadonlySet<RoofSceneIssueCode> = new Set([

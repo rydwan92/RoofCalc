@@ -700,3 +700,30 @@ workbench. No migration.
 - `RoofSceneAssessment` gains `tolerances`; `RoofSceneIssue.severity` gains
   `note`; `RoofPlaneMetrics` gains `openingAreaExact` / `netAreaMm2?`.
   Derived only.
+
+## 19. VNext-7A contracts (designed; nothing the app persists changes)
+
+- `MonoPitchRoofSpec` / `monoPitchRoofSpecSchema`
+  (`packages/roof-math/src/mono-pitch-roof.ts`): `type: 'mono-pitch'`,
+  building length, run, pitch, low eave / high / verge overhangs, top edge
+  `free | abutment` (an abutment has no high overhang), optional low
+  bearing elevation. Same ranges as the gable/hip schema. **Not** a
+  `RoofTemplateSpec` and not part of `RoofProjectDocumentV1`.
+- `RoofProjectDocumentV2` / `roofProjectDocumentV2Schema`
+  (`packages/calculator-core/src/project-document-v2.ts`),
+  `schemaVersion: 2`: `structures[]` (`template-roof` holding exactly
+  a V1 `project`, read by the V1 reader; or `mono-pitch` holding a
+  `MonoPitchRoofSpec`), each with an opaque ID and a transform
+  (`translationMm`, `rotationAboutVerticalDeg`); `connections` must be
+  empty (none are modelled yet); duplicate structure IDs are rejected.
+  `roofProjectDocumentV2FromV1` gives one structure `structure:roof` with
+  the identity transform and byte-identical content;
+  `roofProjectDocumentV1FromV2` returns V1 only when nothing is lost (one
+  template roof, identity transform, no connections) and otherwise a
+  reason. Tested over all ten reference projects.
+- **Gate:** no application reads or writes V2
+  (`tools/architecture/layering.test.ts`). Turning V2 on requires a
+  version bump here, a reader for V1 and V2, and downstream adapters
+  (covering, quantities, documents) for every structure kind — ADR-015.
+- `ResolvedRoofLineInput.kind` in `roof-topology-core` gains
+  `abutment`; the adapter's `template` gains `mono-pitch`. Derived only.

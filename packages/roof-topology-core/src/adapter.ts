@@ -19,7 +19,8 @@ export interface ResolvedRoofPlaneInput {
 
 export interface ResolvedRoofLineInput {
   id: string;
-  kind: 'eave' | 'ridge' | 'hip' | 'verge' | 'valley';
+  /** `abutment`: a mono-pitch top edge against a wall (VNext-7A). */
+  kind: 'eave' | 'ridge' | 'hip' | 'verge' | 'valley' | 'abutment';
   start: Vec3;
   end: Vec3;
   incidentPlaneIds: readonly string[];
@@ -35,7 +36,11 @@ export function roofSceneFromResolvedRoof(input: {
   /** Scene-unique; the single roof of a V1 project is one structure. */
   structureId: string;
   name?: string;
-  template: 'gable' | 'hip';
+  /**
+   * `mono-pitch` (VNext-7A) is adapted the same way; the assessment still
+   * reports it `not-supported` until its downstream modules exist.
+   */
+  template: 'gable' | 'hip' | 'mono-pitch';
   planes: readonly ResolvedRoofPlaneInput[];
   lines: readonly ResolvedRoofLineInput[];
   openings?: readonly ResolvedRoofOpeningInput[];

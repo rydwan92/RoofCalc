@@ -110,3 +110,20 @@ and L-with-valley scenes; an overlapping L without a solved junction is
   outlines instead of bounding boxes, foreign junction lines, contract
   version, and `mergeRoofScenes` refusing colliding IDs. The tolerances
   are reported with every assessment. None of this changes a solver result.
+
+## Addendum — VNext-7A (2026-10-21)
+
+- First non-gable/hip solver: `resolveMonoPitchRoof` in `roof-math`
+  (surface geometry only; `docs/domain/MONO_PITCH_ROOF.md`). Its planes and
+  lines go through the unchanged `roofSceneFromResolvedRoof`
+  (template `mono-pitch`, line kind `abutment` allowed) and come out
+  `geometry: complete`, `calculation: not-supported`
+  (`template-not-calculated`). The solver states its own scope
+  (`MONO_PITCH_SOLVER_SCOPE`: framing, fabrication, covering and drainage
+  not supported) and emits no rafters, cuts or supports.
+- The V1 → V2 migration above is now code
+  (`packages/calculator-core/src/project-document-v2.ts`) with tests over
+  every reference project, and stays switched off: an architecture test
+  forbids any application from reading or writing V2. The single roof of a
+  V1 project and the production scene adapter share one structure ID
+  constant.

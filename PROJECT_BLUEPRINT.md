@@ -1297,6 +1297,64 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+## VNext-6.1 + VNext-7A (2026-10-21) — audit-driven hardening, mono-pitch surface slice
+
+- Authorized by the user's audit (`docs/Vnext/AUDYT_ROOFCALC_VNEXT6.md`) and
+  brief (`docs/Vnext/COPILOT_NEXT_ITERATION_VNEXT7.md`), both kept
+  untracked in the main checkout, plus "ulepsz też UI/UX" and "na koniec
+  pushnij też zmiany". Branch `feature/vnext-6-1-hardening` from
+  `main` @ `6d391ef`. Findings, evidence and classes:
+  `docs/ROOFCALC_VNEXT7_PREFLIGHT.md`.
+- Baseline: `pnpm verify` green on `6d391ef` (198 files / 2014 tests);
+  `pnpm e2e` 160 passed / 32 conditionally skipped.
+- P0-A (import review, confirmed defect): opening the editor no longer
+  counts as review. `needs-review → reviewing → reviewed`, bound to the
+  exact values; "Pokaż w edytorze" focuses the one numeric input;
+  "Potwierdzam" confirms; a change, Undo or Redo re-derives the state. Import
+  evidence sidecar `cieslacalc.importEvidence.v1.<projectId>` keeps
+  provenance and review across reloads (no file content; pruned with deleted
+  projects). Readiness `import-defaults-unconfirmed` (warning + export
+  limitation) and "Co teraz" action.
+- P0-B (roof graph in production): `apps/web/src/assembly/roof-scene.ts`
+  → `roof-graph-inconsistent` gate; 10/10 reference projects identical.
+- P0-C (topology hardening): interval-union coverage, self-intersection,
+  repeated vertices, frame/normal/pitch consistency, concave openings,
+  overlapping openings, narrow-phase structure overlap, foreign junction
+  lines, contract version, `mergeRoofScenes` collisions, tolerances.
+- P0-D (UX): document centre states what documents rest on; slope shown to
+  0.0001°; e2e at 1440×900, 1366×768 and 390×844: keyboard path, reload,
+  focus, change, confirm, Undo, Redo, project export without evidence.
+- Import tests: same dimension on two sheets in m/cm/mm, excluded sheet
+  withdraws a confirmation; `fixtures/import-benchmark` (3 synthetic cases,
+  real pdf.js; recall 7/7, 3/3, 7/7; 0 false accepted).
+- Operations: `/api/health` gives a generic `databaseReason`;
+  `pnpm configure:cloudflare` step 6 can store the step-5-verified password
+  in Hyperdrive after consent (shell-less, never logged). Worker DB is still
+  unavailable until the user runs it (they type the password themselves).
+- VNext-7A (bounded, after P0 green): `docs/domain/MONO_PITCH_ROOF.md`;
+  `resolveMonoPitchRoof` / `monoPitchRoofSpecSchema` /
+  `monoPitchFromBearingElevations` in `roof-math` — surface only, no
+  members; 6 × 4 m at 15°: rise 1071.797 mm, 24/cos 15° = 24.846628 m²;
+  same scene adapter → `complete` / `not-supported`.
+  `RoofProjectDocumentV2` + V1 ↔ V2 adapter in `calculator-core`, tested
+  over 10 projects, kept out of every app by an architecture test.
+- Nothing persisted changed: `RoofProjectDocumentV1`, SQL schema, seeds
+  (SCHEMA_REGISTRY §18–§19). Hyperdrive and Worker secrets untouched by the
+  agent.
+- Validation: `pnpm verify` green — 205 files / 2150 tests
+  (13 skipped), builds and bundle boundaries clean; `pnpm e2e`
+  163 passed / 33 conditionally skipped / 0 failed;
+  `git diff --check` clean.
+- Not done / limits: mono-pitch has no UI, rafters, covering, drainage,
+  quantities, cost or documents (VNext-7B); cost-sidecar prune (finding 13);
+  `Page.tsx` still large (only touched parts extracted); recognition
+  benchmark is synthetic — a licensed corpus of real designs is needed.
+- NEXT ACTION: user runs `pnpm configure:cloudflare` (step 5 password,
+  step 6 "t") to repair the Worker database link, then rotates that
+  password; then VNext-7B — reference-plane ↔ rafter seat semantics in
+  `MONO_PITCH_ROOF.md`, mono-pitch rafters, covering/battens/membrane,
+  drainage, quantities, cost, documents, and only then the V2 writer gate.
+
 ## VNext-6 (2026-10-20) — intelligent project intake, guided completion, compound-roof foundation
 
 - Authorized by the user's VNext-6 brief and "pushnijmy teraz zmiany,

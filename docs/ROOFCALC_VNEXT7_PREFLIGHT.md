@@ -64,3 +64,14 @@ DocumentImportWorkspace (apps/web/src/document-import)
   sessions, so a future import of a mono-pitch design can reuse it.
 - `RoofProjectDocumentV1` stays the only persisted roof; V2 remains a
   designed, not executed, migration (ADR-015).
+
+## 4. VNext-7A outcome (bounded slice, started after P0 was green)
+
+| Brief item | Done | Evidence |
+| --- | --- | --- |
+| Domain document | `docs/domain/MONO_PITCH_ROOF.md` — frame, wall heights, run/rise/pitch, low/high overhang, supports, top edge free/abutment, ranges, formulas, six reference vectors | V1–V6 hand-checked (exact `tan 15° = 2 − √3`) |
+| Independent solver, discriminated type with validation | `resolveMonoPitchRoof`, `monoPitchRoofSpecSchema`, `monoPitchFromBearingElevations` in `roof-math` | 15 tests; 6 × 4 m, 15°: rise 1071.797 mm, area 24/cos 15° = 24.846628 m² |
+| No invented rafters | the result has no members, cuts or supports; `MONO_PITCH_SOLVER_SCOPE` says framing/fabrication/covering/drainage `not-supported` | key-set test |
+| Existing scene adapter, one model | same `roofSceneFromResolvedRoof` → `complete` / `not-supported` | 3 tests next to the production adapter's |
+| V1 readable; V1→V2 designed and tested; V2 writing a separate gate | `project-document-v2.ts`; architecture test keeps it out of `apps/` | 45 tests over the 10 reference projects |
+| Not end-to-end | no UI entry, nothing persisted, documents unchanged | VNext-7B: covering, battens, membrane, drainage, quantities, cost, documents, V2 on |
