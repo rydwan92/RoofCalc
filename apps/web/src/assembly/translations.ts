@@ -1666,7 +1666,8 @@ export const assemblyPl = {
   stock: 'Długość krokwi (geometryczna)',
   reference: 'Górna krawędź',
   toNotch: 'Od okapu do zaciosu',
-  ridgeAngle: 'Cięcie kalenicy',
+  // VNext-6.2: an angle always names what it is measured from (AGENTS).
+  ridgeAngle: 'Cięcie kalenicy · do krawędzi krokwi',
   remaining: 'Pozostały przekrój',
   removed: 'Usunięta głębokość',
   station: 'Od punktu {{datum}} · górna krawędź',
@@ -4367,7 +4368,7 @@ export const assemblyEn: typeof assemblyPl = {
   stock: 'Rafter length (geometric)',
   reference: 'Top edge',
   toNotch: 'Eave to notch',
-  ridgeAngle: 'Ridge cut',
+  ridgeAngle: 'Ridge cut · to the rafter edge',
   remaining: 'Remaining depth',
   removed: 'Removed depth',
   station: 'From {{datum}} · top edge',

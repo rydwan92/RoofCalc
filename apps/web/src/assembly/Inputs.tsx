@@ -75,6 +75,8 @@ export function NumberField({
           autoComplete="off"
           value={display}
           aria-invalid={invalid}
+          // VNext-6.2: the range or the error below is read with the field.
+          aria-describedby={`${field}-hint`}
           title={t(
             angle ? 'assembly.arrowHintAngle' : 'assembly.arrowHintLength',
           )}
@@ -124,7 +126,7 @@ export function NumberField({
           </button>
         )}
       </div>
-      <small>
+      <small id={`${field}-hint`}>
         {invalid
           ? t('assembly.invalidField')
           : optional && !Number.isFinite(value)

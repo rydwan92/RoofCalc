@@ -1297,6 +1297,41 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+## VNext-6.2 (2026-10-22) — self-audit: data safety, readability, real tokens
+
+- Requested: "kontynuuj prace, audyt własny, testy, scenariusze i poprawki
+  obecnych funkcjonalności, wyglądu, UI/UX, architektury i kodu". Branch
+  `feature/vnext-6-2-self-audit` from `main` @ `b2055dd`. Report with
+  method, evidence and status: `docs/ROOFCALC_VNEXT6_2_SELF_AUDIT.md`.
+- P0 fixed: "Przywróć przykład" (header icon beside the language switch)
+  replaced the open autosaved project and cleared the history — now
+  `restoreExample`, one undoable edit with a "Cofnij" notice.
+- Fixed: dev proxy self-loop on `PORT` (`apps/web/dev-api-port.ts`);
+  7 undefined CSS tokens (Business had no borders); 182 rules below 11px;
+  next action truncated at 1366–1440px; duplicate phone button; dock labels;
+  sidecar prune by project record (also prunes cost estimates — preflight
+  finding 13); invisible checkbox/radio focus; field hints not announced;
+  ridge-cut angle without its reference; header tooltips.
+- Code: `HeaderSettings.tsx` extracted from `Page.tsx` (3 970 → 3 898
+  lines); ~300 lines of dead Summary components removed; Business screens
+  lazy (main chunk 1 259 → 1 172 kB, gzip 365 → 345 kB).
+- New executable contracts: `readable-text.test.ts` (screen text ≥ 11px),
+  `token-contract.test.ts` (every `var()` without fallback is declared),
+  `dev-api-port.test.ts`, `HeaderSettings.test.tsx`, store and prune
+  tests; e2e `e2e/vnext62-self-audit.spec.ts` (restore + Cofnij, whole next
+  action at 1366/1440, phone dock and one parameters button).
+- Nothing persisted changed (no schema, document or SQL change).
+- Validation: `pnpm verify` green — 208 files / 2163 tests
+  (13 skipped), builds and bundle boundaries clean; `pnpm e2e`
+  168 passed / 36 conditionally skipped / 0 failed;
+  `git diff --check` clean. Visual QA at 1440, 1366 and 390.
+- Not done (recommendations in the report): English translations on
+  demand; "1 200" in exact inputs (product decision); further Quick/Creator
+  bundle split.
+- NEXT ACTION: VNext-7B — mono-pitch reference-plane ↔ rafter seat
+  semantics in `docs/domain/MONO_PITCH_ROOF.md`, then rafters, covering,
+  drainage, quantities, cost and documents for it; V2 writer gate last.
+
 ## VNext-6.1 + VNext-7A (2026-10-21) — audit-driven hardening, mono-pitch surface slice
 
 - Authorized by the user's audit (`docs/Vnext/AUDYT_ROOFCALC_VNEXT6.md`) and

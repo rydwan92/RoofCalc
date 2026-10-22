@@ -37,9 +37,6 @@ import {
 import {
   ArrowLeft,
   House,
-  RotateCcw,
-  Redo2,
-  Undo2,
   X,
   SlidersHorizontal,
   Wrench,
@@ -49,7 +46,6 @@ import {
 import {
   HIP_RAFTER_PROTOTYPE_ID,
   JACK_RAFTER_PROTOTYPE_ID,
-  lengthUnits,
   resolveBattenLayout,
   resolveCounterBattenLayout,
   resolveFinishedRafterSolid,
@@ -90,11 +86,7 @@ import {
 import { ContextualResults } from './Summary';
 import { Toolbox } from './Toolbox';
 import { WorkbenchControls, MobileViewSettings } from './WorkbenchControls';
-import {
-  ContextualTaskTabs,
-  ShortcutHelp,
-  WorkspaceNav,
-} from './PerspectiveBar';
+import { ContextualTaskTabs, WorkspaceNav } from './PerspectiveBar';
 import {
   DocumentHub,
   HUB_DOCUMENT_SECTIONS,
@@ -130,7 +122,8 @@ import { usePriceOptions } from '../pricing/use-prices';
 import { BusinessContextProvider } from '../business/context';
 import { useBusiness } from '../business/context';
 import { useEffectiveVariantPrices } from '../business/use-effective-prices';
-import { BusinessHeader, BusinessModeToggle } from '../business/BusinessHeader';
+import { BusinessHeader } from '../business/BusinessHeader';
+import { HeaderSettings } from './HeaderSettings';
 import { WorkspaceStatus } from '../business/workspace/WorkspaceStatus';
 import { useBusinessWorkspace } from '../business/workspace/useBusinessWorkspace';
 import { BusinessJourney } from '../business/BusinessJourney';
@@ -2626,130 +2619,12 @@ function AssemblyPageContent({
         )}
         {exportError && <span role="alert">{exportError}</span>}
         <BusinessHeader onHome={returnHome} />
-        <div className="a-settings">
-          <div className="a-units" role="group" aria-label={t('assembly.unit')}>
-            {lengthUnits.map((unit) => (
-              <button
-                key={unit}
-                aria-pressed={state.unit === unit}
-                onClick={() => state.setUnit(unit)}
-              >
-                {unit}
-              </button>
-            ))}
-          </div>
-          {workbench.mode === 'builder' && (
-            <div
-              className="a-history"
-              role="group"
-              aria-label={t('assembly.history')}
-            >
-              <button
-                className="a-icon"
-                aria-label={t('assembly.undoChange')}
-                title={`${t('assembly.undoChange')} (Ctrl+Z)`}
-                disabled={!state.historyPast.length}
-                onClick={state.undo}
-              >
-                <Undo2 size={18} />
-              </button>
-              <button
-                className="a-icon"
-                aria-label={t('assembly.redoChange')}
-                title={`${t('assembly.redoChange')} (Ctrl+Y)`}
-                disabled={!state.historyFuture.length}
-                onClick={state.redo}
-              >
-                <Redo2 size={18} />
-              </button>
-            </div>
-          )}
-          {workbench.mode === 'builder' && !mobile && <ShortcutHelp />}
-          {mobile && (
-            <details className="a-header-overflow">
-              <summary
-                className="a-icon"
-                aria-label={t('assembly.settings')}
-                title={t('assembly.settings')}
-              >
-                <SlidersHorizontal size={18} />
-              </summary>
-              <div>
-                <div
-                  className="a-overflow-units"
-                  role="group"
-                  aria-label={t('assembly.unit')}
-                >
-                  {lengthUnits.map((unit) => (
-                    <button
-                      key={unit}
-                      className="a-button"
-                      aria-pressed={state.unit === unit}
-                      onClick={() => state.setUnit(unit)}
-                    >
-                      {unit}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  className="a-button"
-                  onClick={() => {
-                    state.restoreExample();
-                    state.setFocusId(undefined);
-                    if (workbench.mode === 'builder')
-                      showFeedback(
-                        'assembly.readiness.feedback.exampleRestored',
-                      );
-                  }}
-                >
-                  <RotateCcw size={18} />
-                  {t('assembly.reset')}
-                </button>
-                <button
-                  className="a-button"
-                  onClick={() => {
-                    void i18n.changeLanguage(
-                      i18n.language === 'pl' ? 'en' : 'pl',
-                    );
-                  }}
-                >
-                  {t('assembly.language')} · {i18n.language.toUpperCase()}
-                </button>
-                <BusinessModeToggle />
-              </div>
-            </details>
-          )}
-          {!mobile && (
-            <button
-              className="a-icon a-desktop-setting"
-              aria-label={t('assembly.reset')}
-              title={t('assembly.reset')}
-              onClick={() => {
-                state.restoreExample();
-                state.setFocusId(undefined);
-                if (workbench.mode === 'builder')
-                  showFeedback('assembly.readiness.feedback.exampleRestored');
-              }}
-            >
-              <RotateCcw size={18} />
-            </button>
-          )}
-          {!mobile && (
-            <button
-              className="a-icon a-desktop-setting"
-              aria-label={t('assembly.language')}
-              title={t('assembly.language')}
-              onClick={() => {
-                void i18n.changeLanguage(i18n.language === 'pl' ? 'en' : 'pl');
-              }}
-            >
-              {i18n.language.toUpperCase()}
-            </button>
-          )}
-          {/* An application capability, beside unit and language (§14). On a
-              phone it lives in the settings menu to keep one header row. */}
-          {!mobile && <BusinessModeToggle />}
-        </div>
+        <HeaderSettings
+          mobile={mobile}
+          onExampleRestored={() =>
+            showFeedback('assembly.readiness.feedback.exampleRestored')
+          }
+        />
       </header>
       {business.mode === 'business' &&
         activeEstimation &&

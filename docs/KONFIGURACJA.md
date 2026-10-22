@@ -58,6 +58,11 @@ Przed każdym zapisem powstaje kopia `.env.backup-<data>` (ignorowana przez
 Git). `pnpm check:local` wykonuje te same sprawdzenia tylko do odczytu i
 nigdy nie wyświetla haseł ani sekretów.
 
+**`PORT` serwera WWW ≠ port API** (VNext-6.2): narzędzia podglądu i
+hostingi ustawiają `PORT` dla serwera Vite. Gdy wskazuje on port samego
+Vite, proxy go pomija i bierze `PORT` z `.env` (inaczej każde
+`/api` kończyło się 500 i „Katalog niedostępny”).
+
 **Port w jednym miejscu:** `PORT` z `.env` czyta API, serwer Vite (proxy
 `/api`) i statyczny build otwierany z XAMPP (`apps/web/dist`, port wpisany
 podczas `pnpm build`). Zmieniasz go tylko w `.env`. Nie używaj 5173 — to port

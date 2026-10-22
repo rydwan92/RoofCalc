@@ -625,6 +625,7 @@ pnpm e2e      # real-browser smoke, desktop 1440x900 and mobile 390x844 (pnpm e2
 
 | Document | Read when |
 | --- | --- |
+| `ROOFCALC_VNEXT6_2_SELF_AUDIT` | **VNext-6.2:** self-audit method (visual tour, keyboard walk, input probe, code scans), 15 findings with evidence and the tests that keep them fixed |
 | `ROOFCALC_VNEXT7_PREFLIGHT` | **VNext-6.1:** audit-driven findings with evidence (confirmed defect / test gap / recommendation); **VNext-7A** outcome (mono-pitch surface solver, V2 adapter behind a gate) |
 | `ARCHITECTURE_VNEXT6_PROJECT_INTAKE` | **VNext-6:** multi-page intake (page roles, cross-page conflicts, one next step, provenance), the "Przygotowanie projektu" card, the roof topology graph and its limits; Definition of Ready and measured numbers |
 | `ROOFCALC_VNEXT_AUDIT` | current verified state, baseline, SQL findings and priorities (VNext) |

@@ -627,6 +627,21 @@ line and manual lengths keep working.
   projektu" lists five groups and one "Dalej" step, opens the existing
   editor and folds into a one-line pill; "Edytuj szczegółowo" is the
   Creator. What the document did not give is named, never hidden.
+- **VNext-6.2: text is never below 11px.** Screen text uses the type scale
+  (`--ui-text-xs` is the floor); an unstyled `<small>` is floored too.
+  SVG drawing labels scale with the drawing and the print sheet has its own
+  scale. Executable: `apps/web/src/assembly/readable-text.test.ts`.
+- **VNext-6.2: only real tokens.** Every `var(--…)` without a fallback
+  names a declared property (`token-contract.test.ts`); an undefined one
+  silently drops the declaration.
+- **VNext-6.2: a header click never loses a project.** "Przywróć przykład"
+  is an ordinary undoable edit with a "Cofnij" notice; nothing in the header
+  clears the history.
+- **VNext-6.2: the next action is read whole.** In the section row the
+  action keeps its label; the issue title yields first (its text is the
+  action's tooltip).
+- **VNext-6.2: an angle names its reference** in every label, also for a
+  common rafter ("Cięcie kalenicy · do krawędzi krokwi").
 - **VNext-6.1: looking is not confirming.** Values an import defaulted
   are listed with their current value; "Pokaż w edytorze" puts the cursor in
   the one exact input; only "Potwierdzam" confirms — exactly those values —

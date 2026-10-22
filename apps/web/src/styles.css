@@ -36,8 +36,14 @@ svg [tabindex]:focus-visible {
   outline: 3px solid #658e66;
   outline-offset: 3px;
 }
-input:focus-visible {
+/* Text fields draw focus on their own frame. VNext-6.2: checkboxes and
+   radios have no frame, so the reset hid keyboard focus on every one. */
+input:not([type='checkbox'], [type='radio']):focus-visible {
   outline: none;
+}
+input:is([type='checkbox'], [type='radio']):focus-visible {
+  outline: 3px solid #658e66;
+  outline-offset: 2px;
 }
 .button {
   display: inline-flex;
