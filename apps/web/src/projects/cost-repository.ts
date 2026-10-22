@@ -1,9 +1,13 @@
 import { costScenarioV1Schema, type CostScenario } from '@cieslacalc/cost-core';
+import { pruneOrphanSidecars } from './sidecar-prune';
 
 const namespace = 'cieslacalc.costEstimate.v1';
 const recordKey = (projectId: string) => `${namespace}.${projectId}`;
 
-type CostStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
+type CostStorage = Pick<
+  Storage,
+  'getItem' | 'setItem' | 'removeItem' | 'key' | 'length'
+>;
 
 function browserStorage(): CostStorage | undefined {
   try {
@@ -49,5 +53,14 @@ export class LocalCostRepository {
 
   async delete(projectId: string): Promise<void> {
     this.storage?.removeItem(recordKey(projectId));
+  }
+
+  /**
+   * Removes estimates of deleted projects (VNext-6.2; preflight finding 13).
+   * Driven by the project record, never by the index — see
+   * `pruneOrphanSidecars`.
+   */
+  prune(): void {
+    pruneOrphanSidecars(this.storage, namespace);
   }
 }

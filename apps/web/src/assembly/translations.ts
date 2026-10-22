@@ -2304,6 +2304,8 @@ export const assemblyPl = {
       roofTypeChanged: 'Zmieniono typ dachu. Pokrycie i warstwy dopasowano.',
       autoGauge: 'Łaty ustawiono na rozstaw automatyczny.',
       productGauge: 'Łaty ustawiono na rozstaw podany przez producenta.',
+      exampleRestored:
+        'Wczytano przykładowy dach. „Cofnij” przywraca poprzedni projekt.',
       undo: 'Cofnij',
       dismiss: 'Zamknij powiadomienie',
     },
@@ -4994,6 +4996,8 @@ export const assemblyEn: typeof assemblyPl = {
       roofTypeChanged: 'Roof type changed. Covering and layers were fitted.',
       autoGauge: 'Battens set to the automatic gauge.',
       productGauge: 'Battens set to the spacing the manufacturer states.',
+      exampleRestored:
+        'The example roof was loaded. “Undo” brings your project back.',
       undo: 'Undo',
       dismiss: 'Dismiss notification',
     },

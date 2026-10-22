@@ -80,7 +80,7 @@
   height: 20px;
   border-radius: 50%;
   border: 1px solid var(--ui-line-strong);
-  font-size: 10px;
+  font-size: var(--ui-text-xs);
 }
 .dimp-steps li[data-state='current'] {
   color: var(--ui-accent);

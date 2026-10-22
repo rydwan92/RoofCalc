@@ -131,11 +131,9 @@ import { BusinessContextProvider } from '../business/context';
 import { useBusiness } from '../business/context';
 import { useEffectiveVariantPrices } from '../business/use-effective-prices';
 import { BusinessHeader, BusinessModeToggle } from '../business/BusinessHeader';
-import { BusinessHome } from '../business/BusinessHome';
 import { WorkspaceStatus } from '../business/workspace/WorkspaceStatus';
 import { useBusinessWorkspace } from '../business/workspace/useBusinessWorkspace';
 import { BusinessJourney } from '../business/BusinessJourney';
-import { QuoteWorkspace } from '../business/QuoteWorkspace';
 import { createTilePurchasePlans } from './tile-purchase';
 import { resolveRoofSystemFacts, ridgeTileCount } from './roof-system';
 import {
@@ -179,6 +177,7 @@ import {
 } from './project-preparation';
 import { projectStartValuesFromTemplate } from './project-start';
 import { deriveProjectRoofScene } from './roof-scene';
+import { LocalCostRepository } from '../projects/cost-repository';
 import {
   createImportEvidence,
   evidenceReport,
@@ -313,6 +312,20 @@ const ConnectionsWorkspace = lazy(() =>
 const TechnicalScene3D = lazy(() =>
   import('./scene3d/TechnicalScene3D').then((module) => ({
     default: module.TechnicalScene3D,
+  })),
+);
+/**
+ * VNext-6.2: Business screens load only in Business mode, so the Quick /
+ * Creator first load does not carry them.
+ */
+const BusinessHome = lazy(() =>
+  import('../business/BusinessHome').then((module) => ({
+    default: module.BusinessHome,
+  })),
+);
+const QuoteWorkspace = lazy(() =>
+  import('../business/QuoteWorkspace').then((module) => ({
+    default: module.QuoteWorkspace,
   })),
 );
 /** VNext: PDF/photo import; pdf.js and its worker load only with it. */
@@ -488,10 +501,11 @@ function AssemblyPageContent({
   /** Projects whose card the user closed in this session. */
   const preparationDismissed = useRef(new Set<string>());
   useEffect(() => {
-    if (projectSessionState.initialized)
-      new LocalImportEvidenceRepository().prune(
-        projectSessionState.projects.map((project) => project.id),
-      );
+    // Sidecars of deleted projects (import evidence, cost estimate).
+    if (projectSessionState.initialized) {
+      new LocalImportEvidenceRepository().prune();
+      new LocalCostRepository().prune();
+    }
   }, [projectSessionState.initialized, projectSessionState.projects]);
   /** After an import: record the evidence for the new project, open the card. */
   const openPreparation = (
@@ -2680,8 +2694,12 @@ function AssemblyPageContent({
                 <button
                   className="a-button"
                   onClick={() => {
-                    state.reset();
+                    state.restoreExample();
                     state.setFocusId(undefined);
+                    if (workbench.mode === 'builder')
+                      showFeedback(
+                        'assembly.readiness.feedback.exampleRestored',
+                      );
                   }}
                 >
                   <RotateCcw size={18} />
@@ -2705,9 +2723,12 @@ function AssemblyPageContent({
             <button
               className="a-icon a-desktop-setting"
               aria-label={t('assembly.reset')}
+              title={t('assembly.reset')}
               onClick={() => {
-                state.reset();
+                state.restoreExample();
                 state.setFocusId(undefined);
+                if (workbench.mode === 'builder')
+                  showFeedback('assembly.readiness.feedback.exampleRestored');
               }}
             >
               <RotateCcw size={18} />
@@ -2717,6 +2738,7 @@ function AssemblyPageContent({
             <button
               className="a-icon a-desktop-setting"
               aria-label={t('assembly.language')}
+              title={t('assembly.language')}
               onClick={() => {
                 void i18n.changeLanguage(i18n.language === 'pl' ? 'en' : 'pl');
               }}
@@ -2746,12 +2768,14 @@ function AssemblyPageContent({
           />
         )}
       {businessHomeOpen ? (
-        <BusinessHome
-          projects={projectSessionState.projects}
-          onCreate={startBusinessEstimation}
-          onOpenProject={openBusinessProject}
-          onContinue={() => business.setHomeOpen(false)}
-        />
+        <Suspense fallback={<div className="a-loading-panel" />}>
+          <BusinessHome
+            projects={projectSessionState.projects}
+            onCreate={startBusinessEstimation}
+            onOpenProject={openBusinessProject}
+            onContinue={() => business.setHomeOpen(false)}
+          />
+        </Suspense>
       ) : (
         <main className="a-main">
           <div className="a-page-heading">
@@ -3679,22 +3703,24 @@ function AssemblyPageContent({
         </main>
       )}
       {quoteOpen && currentQuoteDraft && (
-        <QuoteWorkspace
-          draft={currentQuoteDraft}
-          saveStatus={saveStatus}
-          onRetrySave={retrySave}
-          onReload={reloadRemote}
-          comparison={compareDraft}
-          currentFingerprint={currentCommercialFingerprint}
-          locale={i18n.language}
-          onChange={changeQuote}
-          onRefresh={refreshQuote}
-          onOpenMaterials={() => {
-            setQuoteOpen(false);
-            state.navigateTo(workbenchLocation('materials', 'plan'));
-          }}
-          onClose={() => setQuoteOpen(false)}
-        />
+        <Suspense fallback={null}>
+          <QuoteWorkspace
+            draft={currentQuoteDraft}
+            saveStatus={saveStatus}
+            onRetrySave={retrySave}
+            onReload={reloadRemote}
+            comparison={compareDraft}
+            currentFingerprint={currentCommercialFingerprint}
+            locale={i18n.language}
+            onChange={changeQuote}
+            onRefresh={refreshQuote}
+            onOpenMaterials={() => {
+              setQuoteOpen(false);
+              state.navigateTo(workbenchLocation('materials', 'plan'));
+            }}
+            onClose={() => setQuoteOpen(false)}
+          />
+        </Suspense>
       )}
       {projectStartMode && !businessHomeOpen && (
         <ProjectStartAssistant

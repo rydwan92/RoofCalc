@@ -271,6 +271,25 @@ it('undoes and redoes a committed numeric template edit without recording displa
   useAssembly.getState().redo();
   expect(useAssembly.getState().template.pitchDeg).toBe(42);
 });
+it('"Przywróć przykład" is one undoable edit, never a history wipe (VNext-6.2)', () => {
+  useAssembly.getState().setField('roof.pitchDeg', '42');
+  useAssembly.getState().setRoofType('hip');
+  const project = useAssembly.getState().projectDocument;
+  const history = useAssembly.getState().historyPast.length;
+  useAssembly.getState().restoreExample();
+  const example = useAssembly.getState().projectDocument;
+  expect(example.project.roof.type).toBe('gable');
+  expect(example.project.roof.pitchDeg).not.toBe(42);
+  expect(useAssembly.getState().historyPast).toHaveLength(history + 1);
+  // The earlier edits stay reachable, and Undo brings the project back.
+  useAssembly.getState().undo();
+  expect(useAssembly.getState().projectDocument).toEqual(project);
+  useAssembly.getState().redo();
+  expect(useAssembly.getState().projectDocument).toEqual(example);
+  // Restoring the example over the example records nothing.
+  useAssembly.getState().restoreExample();
+  expect(useAssembly.getState().historyPast).toHaveLength(history + 1);
+});
 it('updates canonical millimetres directly for drawing handles without display-unit conversion', () => {
   useAssembly.getState().setUnit('m');
   useAssembly.getState().setCanonicalField('roof.runMm', 4210.5);

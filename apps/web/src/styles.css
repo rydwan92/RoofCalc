@@ -85,7 +85,7 @@ input:focus-visible {
   background: #264f42;
 }
 .brand-subtitle {
-  font-size: 9px;
+  font-size: var(--ui-text-xs);
   color: #65775d;
   letter-spacing: 1.8px;
   font-weight: 500;
@@ -152,7 +152,7 @@ main {
   color: #697c5a;
   text-transform: uppercase;
   letter-spacing: 1.9px;
-  font-size: 9px;
+  font-size: var(--ui-text-xs);
   font-weight: 600;
 }
 h1 {
@@ -217,7 +217,7 @@ h1 > span {
   margin-bottom: 22px;
 }
 .tool-group h2 {
-  font-size: 9px;
+  font-size: var(--ui-text-xs);
   text-transform: uppercase;
   letter-spacing: 1.6px;
   font-weight: 600;
@@ -250,7 +250,7 @@ h1 > span {
   font-weight: 550;
 }
 .tool-item small {
-  font-size: 10px;
+  font-size: var(--ui-text-xs);
   color: #78896a;
   display: block;
   margin-top: 5px;
@@ -281,7 +281,7 @@ h1 > span {
   margin: 30px 10px 0;
   padding-top: 17px;
   border-top: 1px solid #dce3d3;
-  font-size: 10px;
+  font-size: var(--ui-text-xs);
   line-height: 1.7;
   color: #6e8060;
 }
@@ -325,7 +325,7 @@ h1 > span {
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: 10px;
+  font-size: var(--ui-text-xs);
   color: #627752;
   cursor: pointer;
   min-height: 44px;
@@ -342,7 +342,7 @@ h1 > span {
   padding: 17px 22px 0;
   gap: 12px;
   background: #fbfcf7;
-  font-size: 9px;
+  font-size: var(--ui-text-xs);
   color: #77896a;
 }
 .canvas-info > span:first-child {
@@ -474,7 +474,7 @@ h1 > span {
   box-shadow: 0 2px 8px #263c1610;
 }
 .canvas-navigation > span {
-  font-size: 10px;
+  font-size: var(--ui-text-xs);
   min-width: 42px;
   text-align: center;
   color: #718363;
@@ -502,7 +502,7 @@ h1 > span {
   align-items: center;
   gap: 7px;
   color: #738563;
-  font-size: 9px;
+  font-size: var(--ui-text-xs);
 }
 .swatch {
   width: 12px;
@@ -533,7 +533,7 @@ h1 > span {
   justify-content: space-between;
   gap: 15px;
   color: #738965;
-  font-size: 9px;
+  font-size: var(--ui-text-xs);
 }
 .canvas-footnote > span:first-child {
   display: flex;
@@ -619,7 +619,7 @@ h1 > span {
   margin: 8px 0 18px;
 }
 .selected-object .overline {
-  font-size: 8px;
+  font-size: var(--ui-text-xs);
   letter-spacing: 1.6px;
 }
 .selected-rule {
@@ -665,7 +665,7 @@ h1 > span {
   color: #758769;
 }
 .field-hint {
-  font-size: 10px;
+  font-size: var(--ui-text-xs);
   line-height: 1.65;
   color: #6e7f61;
   margin: 8px 0 0;
@@ -692,7 +692,7 @@ h1 > span {
   border: 1px solid #dce5d3;
   border-radius: 5px;
   background: #fff;
-  font-size: 10px;
+  font-size: var(--ui-text-xs);
 }
 .pitch-presets button[aria-pressed='true'] {
   border-color: #8ea879;
@@ -716,7 +716,7 @@ h1 > span {
   border-bottom: 1px solid #edf0e7;
 }
 .joint-readouts dt {
-  font-size: 10px;
+  font-size: var(--ui-text-xs);
   line-height: 1.5;
   color: #6f8460;
 }
@@ -734,7 +734,7 @@ h1 > span {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  font-size: 10px;
+  font-size: var(--ui-text-xs);
   color: #6f825f;
 }
 .notch-ratio strong {
@@ -762,7 +762,7 @@ meter::-moz-meter-bar {
   display: flex;
   gap: 7px;
   color: #777454;
-  font-size: 10px;
+  font-size: var(--ui-text-xs);
   line-height: 1.7;
   margin: 16px 0 0;
 }
@@ -774,7 +774,7 @@ meter::-moz-meter-bar {
   padding-top: 17px;
   margin: 20px 0 0;
   border-top: 1px solid #e9eddf;
-  font-size: 9px;
+  font-size: var(--ui-text-xs);
   line-height: 1.6;
   color: #7c896c;
 }
@@ -799,7 +799,7 @@ meter::-moz-meter-bar {
 }
 .fabrication-heading > span {
   color: #6c805b;
-  font-size: 10px;
+  font-size: var(--ui-text-xs);
 }
 .fabrication-metrics {
   display: grid;
@@ -825,7 +825,7 @@ meter::-moz-meter-bar {
 }
 .metric > span,
 .primary-metric > span {
-  font-size: 10px;
+  font-size: var(--ui-text-xs);
   color: #6c805b;
   line-height: 1.5;
 }
@@ -849,7 +849,7 @@ meter::-moz-meter-bar {
 .metric p {
   margin: 0;
   color: #788769;
-  font-size: 10px;
+  font-size: var(--ui-text-xs);
   line-height: 1.5;
 }
 .primary-metric {
@@ -956,12 +956,12 @@ meter::-moz-meter-bar {
   border-radius: 4px;
   width: 22px;
   height: 22px;
-  font-size: 10px;
+  font-size: var(--ui-text-xs);
   font-weight: 600;
   flex-shrink: 0;
 }
 .fabrication-details p {
-  font-size: 10px;
+  font-size: var(--ui-text-xs);
   color: #6b805d;
   line-height: 1.7;
   margin: 14px 0 0;
@@ -984,7 +984,7 @@ meter::-moz-meter-bar {
 .marking-instructions li::before {
   counter-increment: marking;
   content: '0' counter(marking);
-  font-size: 10px;
+  font-size: var(--ui-text-xs);
   color: #849770;
   border-bottom: 1px solid #b0c597;
   padding: 1px 1px 3px;
@@ -1029,7 +1029,7 @@ footer {
   margin-top: 15px;
   padding-top: 18px;
   border-top: 1px solid #dce4d2;
-  font-size: 10px;
+  font-size: var(--ui-text-xs);
   color: #708660;
 }
 .footer-slash {
@@ -1071,10 +1071,10 @@ footer {
     gap: 8px;
   }
   .tool-item strong {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
   }
   .tool-item small {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
   }
   .toolbox {
     padding-right: 0;
@@ -1296,7 +1296,7 @@ footer {
   }
   .reset-button > span {
     display: inline;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
   }
   .segmented button {
     min-height: 40px;
@@ -1312,17 +1312,17 @@ footer {
     gap: 10px;
   }
   .overline {
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
   }
   h1 {
     font-size: 23px;
     gap: 9px;
   }
   h1 > span {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
   }
   .session-status {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
   }
   .tool-item {
     min-width: 128px;
@@ -1331,7 +1331,7 @@ footer {
     font-size: 11px;
   }
   .tool-item small {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
   }
   .canvas-toolbar {
     flex-direction: column;
@@ -1354,7 +1354,7 @@ footer {
   }
   .canvas-info {
     padding: 14px 13px 0;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
   }
   .canvas-legend {
     gap: 13px;
@@ -1362,7 +1362,7 @@ footer {
     flex-wrap: wrap;
   }
   .canvas-legend > span {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
   }
   .detail-selector button {
     min-height: 44px;
@@ -1398,12 +1398,12 @@ footer {
   }
   .metric strong > small,
   .primary-metric strong > small {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     margin-left: 4px;
   }
   .metric > span,
   .primary-metric > span {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
   }
   .metric-link > span:last-child > svg {
     display: none;

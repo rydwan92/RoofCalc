@@ -224,7 +224,7 @@
   padding: 2px 7px;
   border-radius: 999px;
   border: 1px solid var(--ui-line-strong, #80978c);
-  font-size: 10px;
+  font-size: var(--ui-text-xs);
   font-style: normal;
   font-weight: 700;
   letter-spacing: 0.05em;

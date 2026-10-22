@@ -540,7 +540,7 @@ p.cn-detailing {
 }
 .cn-ladder small {
   color: var(--ui-text-muted);
-  font-size: 10px;
+  font-size: var(--ui-text-xs);
   font-weight: var(--ui-weight-bold);
   letter-spacing: var(--ui-tracking-caps);
   text-transform: uppercase;
@@ -915,7 +915,7 @@ p.cn-detailing {
 .cn-practice-options button[aria-pressed='true'],
 .cn-practice-chips button[aria-pressed='true'] {
   border-color: var(--ui-accent);
-  background: var(--ui-selected-soft, #e6f0eb);
+  background: var(--ui-accent-soft);
   box-shadow: inset 0 0 0 1px var(--ui-accent);
 }
 .cn-practice-chips {

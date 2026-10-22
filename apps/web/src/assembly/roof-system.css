@@ -310,7 +310,7 @@
   padding: 2px 7px;
   border: 1px solid var(--ui-line-strong, #80978c);
   border-radius: 999px;
-  font-size: 10px;
+  font-size: var(--ui-text-xs);
   font-style: normal;
   font-weight: 700;
   letter-spacing: 0.04em;

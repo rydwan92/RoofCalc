@@ -5,6 +5,7 @@ import type {
   IntakeReviewState,
   IntakeValueKey,
 } from '../assembly/project-preparation';
+import { pruneOrphanSidecars } from './sidecar-prune';
 
 /**
  * VNext-6.1 import evidence — the minimum a project needs to keep showing
@@ -175,22 +176,9 @@ export class LocalImportEvidenceRepository {
     }
   }
 
-  /** Removes evidence of projects that no longer exist. */
-  prune(existingIds: readonly string[]): void {
-    const storage = this.storage;
-    if (!storage) return;
-    const keep = new Set(existingIds.map(recordKey));
-    const stale: string[] = [];
-    try {
-      for (let index = 0; index < storage.length; index += 1) {
-        const name = storage.key(index);
-        if (name?.startsWith(`${namespace}.`) && !keep.has(name))
-          stale.push(name);
-      }
-      for (const name of stale) storage.removeItem(name);
-    } catch {
-      /* Storage unavailable: nothing to prune. */
-    }
+  /** Removes evidence of projects whose record no longer exists. */
+  prune(): void {
+    pruneOrphanSidecars(this.storage, namespace);
   }
 }
 

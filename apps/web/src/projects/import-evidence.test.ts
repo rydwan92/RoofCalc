@@ -5,6 +5,7 @@ import {
   LocalImportEvidenceRepository,
   withReview,
 } from './import-evidence';
+import { projectRecordKey } from './local-repository';
 import { MemoryStorage } from './memory-storage';
 import type { ImportIntakeReport } from '../assembly/project-preparation';
 
@@ -92,11 +93,27 @@ describe('VNext-6.1 import evidence sidecar', () => {
     });
     repository.save('kept', evidence);
     repository.save('deleted', evidence);
+    storage.setItem(projectRecordKey('kept'), '{}');
     storage.setItem('unrelated', 'x');
-    repository.prune(['kept']);
+    repository.prune();
     expect(repository.get('kept')).toBeDefined();
     expect(repository.get('deleted')).toBeUndefined();
     expect(storage.getItem('unrelated')).toBe('x');
+  });
+
+  it('keeps evidence while the project record exists, even if the index is unreadable', () => {
+    // VNext-6.2: a damaged index lists no projects; pruning on that list
+    // would have erased the evidence of every project.
+    const storage = new MemoryStorage();
+    const repository = new LocalImportEvidenceRepository(storage);
+    repository.save(
+      'p1',
+      createImportEvidence({ report: REPORT, startValues: START, now: NOW }),
+    );
+    storage.setItem(projectRecordKey('p1'), '{}');
+    storage.setItem('cieslacalc.projects.v1.index', 'not json');
+    repository.prune();
+    expect(repository.get('p1')).toBeDefined();
   });
 
   it('never throws when the browser storage refuses to write', () => {

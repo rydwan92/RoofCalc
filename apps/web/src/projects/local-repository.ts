@@ -11,6 +11,8 @@ import { z } from 'zod';
 const namespace = 'cieslacalc.projects.v1';
 const indexKey = `${namespace}.index`;
 const recordKey = (id: string) => `${namespace}.record.${id}`;
+/** Where a project record lives; sidecars use it to tell a deleted project. */
+export const projectRecordKey = recordKey;
 const activeKey = 'cieslacalc.activeProject.v1';
 const indexSchema = z.object({
   schemaVersion: z.literal(1),

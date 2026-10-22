@@ -483,7 +483,7 @@
 /* V53 project journey: stage list in the check panel, "Co teraz" eyebrow. */
 .a-journey-now {
   display: block;
-  font-size: 10px;
+  font-size: var(--ui-text-xs);
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -906,7 +906,7 @@
   border-radius: 999px;
   background: var(--ui-accent);
   color: #fff;
-  font-size: 10px;
+  font-size: var(--ui-text-xs);
   font-style: normal;
   font-weight: 700;
   letter-spacing: 0.04em;

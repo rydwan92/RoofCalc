@@ -517,7 +517,10 @@ export interface AssemblyState {
     id: string,
     control: SupportSpec['joint']['control'],
   ) => void;
+  /** A clean slate for tests and a new session: also clears the history. */
   reset: () => void;
+  /** "Przywróć przykład": the example roof as ONE undoable edit. */
+  restoreExample: () => void;
   replaceProjectDocument: (document: RoofProjectDocumentV1) => void;
 }
 function withHistory(
@@ -2525,6 +2528,41 @@ export const useAssembly = create<AssemblyState>((set) => ({
         historyPast: [],
         historyFuture: [],
         activeTransaction: undefined,
+      };
+    }),
+  // VNext-6.2 self-audit: the header button used `reset`, which also wiped
+  // the history — one click next to the language switch replaced the open
+  // (autosaved) project with the example and left Undo disabled. Now it is
+  // an ordinary edit of the current project that "Cofnij" takes back.
+  restoreExample: () =>
+    set((state) => {
+      canvasCamera.forgetAll();
+      const next = committedDocument(
+        createRoofProjectDocument(structuredClone(templateDefaults)),
+        {},
+        {},
+      );
+      const changed = !sameDocument(
+        state.projectDocument,
+        next.projectDocument,
+      );
+      return {
+        ...next,
+        workbench: {
+          ...structuredClone(initialWorkbenchViewState),
+          mode: state.workbench.mode,
+          fitRequestId: state.workbench.fitRequestId + 1,
+        },
+        activeTransaction: undefined,
+        ...(changed
+          ? {
+              historyPast: [
+                ...state.historyPast,
+                snapshot(state.projectDocument),
+              ].slice(-historyLimit),
+              historyFuture: [],
+            }
+          : {}),
       };
     }),
   replaceProjectDocument: (input) =>

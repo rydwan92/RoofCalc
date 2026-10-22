@@ -5,6 +5,7 @@ import {
   createEmptyCostScenario,
 } from '@cieslacalc/cost-core';
 import { LocalCostRepository } from './cost-repository';
+import { projectRecordKey } from './local-repository';
 import { MemoryStorage } from './memory-storage';
 
 function sampleScenario() {
@@ -68,4 +69,19 @@ it('is unavailable without storage rather than throwing on read', async () => {
   await expect(
     repository.save('project-a', sampleScenario()),
   ).rejects.toThrow();
+});
+
+it('removes estimates of deleted projects only, never one with a record (VNext-6.2)', async () => {
+  const storage = new MemoryStorage();
+  const repository = new LocalCostRepository(storage);
+  await repository.save('kept', sampleScenario());
+  await repository.save('deleted', sampleScenario());
+  storage.setItem(projectRecordKey('kept'), '{}');
+  // An unreadable project index must not count as "no projects".
+  storage.setItem('cieslacalc.projects.v1.index', 'not json');
+  storage.setItem('cieslacalc.costEstimateNotes', 'unrelated');
+  repository.prune();
+  expect(await repository.get('kept')).toBeDefined();
+  expect(await repository.get('deleted')).toBeUndefined();
+  expect(storage.getItem('cieslacalc.costEstimateNotes')).toBe('unrelated');
 });

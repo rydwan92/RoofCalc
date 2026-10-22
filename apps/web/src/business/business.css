@@ -24,9 +24,9 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.25rem 0.6rem;
-  border: 1px solid var(--ui-border);
+  border: 1px solid var(--ui-line);
   border-radius: 999px;
-  background: var(--ui-surface-2, var(--ui-surface));
+  background: var(--ui-surface-sunken);
   font-size: 0.82rem;
   min-width: 0;
 }
@@ -89,7 +89,7 @@
 .bz-mode-toggle select {
   font: inherit;
   padding: 0.2rem 0.3rem;
-  border: 1px solid var(--ui-border);
+  border: 1px solid var(--ui-line);
   border-radius: 6px;
   background: var(--ui-surface);
   color: var(--ui-text);
@@ -121,10 +121,10 @@
 .bz-picker-tabs button {
   flex: 1 1 0;
   padding: 0.5rem 0.75rem;
-  border: 1px solid var(--ui-border);
+  border: 1px solid var(--ui-line);
   border-bottom: 0;
   border-radius: 8px 8px 0 0;
-  background: var(--ui-surface-2, var(--ui-surface));
+  background: var(--ui-surface-sunken);
   color: var(--ui-text-muted);
   font: inherit;
   font-size: 0.86rem;
@@ -170,7 +170,7 @@
   align-items: center;
   gap: 0.45rem;
   padding: 0.4rem 0.6rem;
-  border: 1px solid var(--ui-border);
+  border: 1px solid var(--ui-line);
   border-radius: 8px;
   background: var(--ui-surface);
 }
@@ -203,7 +203,7 @@
   justify-content: space-between;
   gap: 0.75rem;
   padding: 0.6rem 0.7rem;
-  border: 1px solid var(--ui-border);
+  border: 1px solid var(--ui-line);
   border-radius: 8px;
   background: var(--ui-surface);
   flex-wrap: wrap;
@@ -236,9 +236,9 @@
   font-size: 0.7rem;
   font-weight: 600;
   text-transform: uppercase;
-  background: var(--ui-surface-2, var(--ui-surface));
+  background: var(--ui-surface-sunken);
   color: var(--ui-text-muted);
-  border: 1px solid var(--ui-border);
+  border: 1px solid var(--ui-line);
 }
 
 .bz-row-commerce {
@@ -270,9 +270,9 @@
   flex-direction: column;
   gap: 0.4rem;
   padding: 0.7rem 0.8rem;
-  border: 1px solid var(--ui-warning, var(--ui-border));
+  border: 1px solid var(--ui-warning);
   border-radius: 8px;
-  background: var(--ui-surface-2, var(--ui-surface));
+  background: var(--ui-surface-sunken);
 }
 
 .bz-outside-head {
@@ -339,7 +339,7 @@
   display: inline-flex;
   gap: 0.6rem;
   padding-left: 0.55rem;
-  border-left: 1px solid var(--ui-border);
+  border-left: 1px solid var(--ui-line);
   color: var(--ui-text-muted);
   white-space: nowrap;
 }
@@ -389,7 +389,7 @@
 
 .bz-product-detail dl > div {
   padding: 0.65rem;
-  border: 1px solid var(--ui-border);
+  border: 1px solid var(--ui-line);
   border-radius: 8px;
 }
 
@@ -413,7 +413,7 @@
       color-mix(in srgb, var(--ui-accent) 9%, transparent),
       transparent 32rem
     ),
-    var(--ui-background, var(--ui-surface-2));
+    var(--ui-background);
   color: var(--ui-text);
 }
 
@@ -466,7 +466,7 @@
   border: 0;
   border-radius: 12px;
   background: var(--ui-accent);
-  color: var(--ui-on-accent, white);
+  color: var(--ui-text-on-accent);
   text-align: left;
   cursor: pointer;
   box-shadow: 0 10px 30px color-mix(in srgb, var(--ui-accent) 25%, transparent);
@@ -494,7 +494,7 @@
 .bz-home-section,
 .bz-estimation-form {
   padding: 1rem;
-  border: 1px solid var(--ui-border);
+  border: 1px solid var(--ui-line);
   border-radius: 12px;
   background: var(--ui-surface);
 }
@@ -522,7 +522,7 @@
 }
 
 .bz-recent-list li + li {
-  border-top: 1px solid var(--ui-border);
+  border-top: 1px solid var(--ui-line);
 }
 
 .bz-recent-list button {
@@ -549,7 +549,7 @@
 .bz-home-stats div {
   padding: 0.55rem;
   border-radius: 8px;
-  background: var(--ui-surface-2, var(--ui-surface));
+  background: var(--ui-surface-sunken);
 }
 
 .bz-home-stats dt {
@@ -590,7 +590,7 @@
   font: inherit;
   color: var(--ui-text);
   background: var(--ui-surface);
-  border: 1px solid var(--ui-border);
+  border: 1px solid var(--ui-line);
   border-radius: 8px;
 }
 
@@ -632,7 +632,7 @@
   padding: 0.7rem 0.8rem;
   border: 1.5px solid var(--ui-text-muted);
   border-radius: 8px;
-  background: var(--ui-surface-2, var(--ui-surface));
+  background: var(--ui-surface-sunken);
   color: var(--ui-text);
 }
 .bz-login .bz-form-grid input:focus-visible {
@@ -655,7 +655,7 @@
   flex-wrap: wrap;
   gap: 0.5rem;
   padding: 0.45rem clamp(0.7rem, 2vw, 1.2rem);
-  border-bottom: 1px solid var(--ui-border);
+  border-bottom: 1px solid var(--ui-line);
   background: var(--ui-surface);
   font-size: 0.82rem;
 }
@@ -688,7 +688,7 @@
 .bz-form-grid input {
   min-width: 0;
   padding: 0.58rem 0.65rem;
-  border: 1px solid var(--ui-border);
+  border: 1px solid var(--ui-line);
   border-radius: 8px;
   background: var(--ui-surface);
   color: var(--ui-text);
@@ -717,7 +717,7 @@
   align-items: center;
   gap: 0.6rem 1rem;
   padding: 0.6rem clamp(0.7rem, 2vw, 1.2rem);
-  border-bottom: 1px solid var(--ui-border);
+  border-bottom: 1px solid var(--ui-line);
   background: var(--ui-surface);
 }
 
@@ -744,7 +744,7 @@
   place-items: center;
   width: 20px;
   height: 20px;
-  border: 1px solid var(--ui-border);
+  border: 1px solid var(--ui-line);
   border-radius: 50%;
   font-size: 0.68rem;
 }
@@ -814,7 +814,7 @@
   align-items: center;
   gap: 0.6rem;
   padding: 0.65rem;
-  border-bottom: 1px solid var(--ui-border);
+  border-bottom: 1px solid var(--ui-line);
   background: var(--ui-surface);
   color: var(--ui-text);
 }
@@ -1018,7 +1018,7 @@
 
 .bz-quality {
   padding: 0.7rem;
-  border: 1px solid var(--ui-border);
+  border: 1px solid var(--ui-line);
   border-radius: 9px;
 }
 
@@ -1034,7 +1034,7 @@
   align-items: center;
   gap: 0.65rem;
   padding: 0.7rem;
-  border: 1px solid var(--ui-warning, var(--ui-border));
+  border: 1px solid var(--ui-warning);
   border-radius: 8px;
 }
 
@@ -1158,7 +1158,7 @@
   width: min(1100px, 100%);
   max-height: min(90vh, 900px);
   overflow: auto;
-  border: 1px solid var(--ui-border);
+  border: 1px solid var(--ui-line);
   border-radius: 12px;
   background: var(--ui-surface);
   box-shadow: 0 20px 60px rgb(0 0 0 / 35%);
@@ -1196,9 +1196,9 @@
   grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
   gap: 0.45rem;
   padding: 0.65rem;
-  border: 1px solid var(--ui-border);
+  border: 1px solid var(--ui-line);
   border-radius: 10px;
-  background: var(--ui-surface-muted);
+  background: var(--ui-surface-sunken);
 }
 
 .bz-system-status > div:first-child,
@@ -1209,7 +1209,7 @@
 }
 .bz-system-panel {
   padding: 1rem;
-  border: 1px solid var(--ui-border);
+  border: 1px solid var(--ui-line);
   border-radius: 10px;
   background: var(--ui-surface);
 }
@@ -1227,7 +1227,7 @@
   gap: 0.75rem;
   flex-wrap: wrap;
   padding: 0.7rem;
-  border: 1px solid var(--ui-border);
+  border: 1px solid var(--ui-line);
   border-radius: 8px;
 }
 .bz-system-panel dt {
@@ -1243,9 +1243,9 @@
   flex-direction: column;
   gap: 0.15rem;
   padding: 0.55rem 0.7rem;
-  border: 1px solid var(--ui-border);
+  border: 1px solid var(--ui-line);
   border-radius: 8px;
-  background: var(--ui-surface-2, var(--ui-surface));
+  background: var(--ui-surface-sunken);
 }
 
 .bz-count span {
@@ -1270,7 +1270,7 @@
 
 .bz-admin-toolbar input {
   padding: 0.4rem 0.6rem;
-  border: 1px solid var(--ui-border);
+  border: 1px solid var(--ui-line);
   border-radius: 8px;
   background: var(--ui-surface);
   color: inherit;
@@ -1284,9 +1284,9 @@
   gap: 0.45rem;
   flex-wrap: wrap;
   padding: 0.55rem 0.7rem;
-  border: 1px solid var(--ui-border);
+  border: 1px solid var(--ui-line);
   border-radius: 8px;
-  background: var(--ui-surface-2, var(--ui-surface));
+  background: var(--ui-surface-sunken);
 }
 
 .bz-load-more {
@@ -1301,7 +1301,7 @@
 
 .bz-filters button {
   padding: 0.35rem 0.7rem;
-  border: 1px solid var(--ui-border);
+  border: 1px solid var(--ui-line);
   border-radius: 999px;
   background: var(--ui-surface);
   color: var(--ui-text-muted);
@@ -1311,7 +1311,7 @@
 }
 
 .bz-filters button[aria-selected='true'] {
-  background: var(--ui-surface-2, var(--ui-surface));
+  background: var(--ui-surface-sunken);
   color: var(--ui-text);
   font-weight: 600;
 }
@@ -1326,7 +1326,7 @@
 .bz-admin-table td {
   text-align: left;
   padding: 0.45rem 0.5rem;
-  border-bottom: 1px solid var(--ui-border);
+  border-bottom: 1px solid var(--ui-line);
   vertical-align: top;
 }
 
@@ -1343,7 +1343,7 @@
 
 .bz-admin-table tbody tr:hover,
 .bz-admin-table tbody tr:focus-visible {
-  background: var(--ui-surface-2, var(--ui-surface));
+  background: var(--ui-surface-sunken);
 }
 
 .bz-state {
@@ -1352,13 +1352,13 @@
   border-radius: 4px;
   font-size: 0.72rem;
   font-weight: 600;
-  border: 1px solid var(--ui-border);
+  border: 1px solid var(--ui-line);
   color: var(--ui-text-muted);
 }
 
 .bz-state[data-state='unmatched'] {
   color: var(--ui-warning, var(--ui-text));
-  border-color: var(--ui-warning, var(--ui-border));
+  border-color: var(--ui-warning);
 }
 
 .bz-back {
@@ -1418,7 +1418,7 @@
   gap: 0.4rem;
   margin: 0;
   padding: 0.6rem 0.7rem;
-  border: 1px solid var(--ui-warning, var(--ui-border));
+  border: 1px solid var(--ui-warning);
   border-radius: 8px;
   font-size: 0.84rem;
 }
@@ -1450,7 +1450,7 @@
   justify-content: space-between;
   gap: 0.75rem;
   padding: 0.5rem 0.6rem;
-  border: 1px solid var(--ui-border);
+  border: 1px solid var(--ui-line);
   border-radius: 8px;
   flex-wrap: wrap;
 }
@@ -1494,7 +1494,7 @@
 .bz-price-editor input,
 .bz-price-editor select {
   padding: 0.45rem 0.55rem;
-  border: 1px solid var(--ui-border);
+  border: 1px solid var(--ui-line);
   border-radius: 7px;
   background: var(--ui-surface);
   color: var(--ui-text);
@@ -1503,7 +1503,7 @@
 
 .bz-manual-entry fieldset {
   grid-column: 1 / -1;
-  border: 1px solid var(--ui-border);
+  border: 1px solid var(--ui-line);
   border-radius: 8px;
   padding: 0.7rem;
 }
@@ -1522,7 +1522,7 @@
   justify-content: space-between;
   gap: 0.75rem;
   padding: 0.4rem 0;
-  border-bottom: 1px solid var(--ui-border);
+  border-bottom: 1px solid var(--ui-line);
 }
 
 /* -------------------------------------------------------- CSV import */
@@ -1581,7 +1581,7 @@
 
 .bz-mapping select {
   padding: 0.35rem 0.4rem;
-  border: 1px solid var(--ui-border);
+  border: 1px solid var(--ui-line);
   border-radius: 6px;
   background: var(--ui-surface);
   color: inherit;
@@ -1594,9 +1594,9 @@
   flex-direction: column;
   gap: 0.5rem;
   padding: 0.7rem 0.8rem;
-  border: 1px solid var(--ui-border);
+  border: 1px solid var(--ui-line);
   border-radius: 8px;
-  background: var(--ui-surface-2, var(--ui-surface));
+  background: var(--ui-surface-sunken);
 }
 
 .bz-preview-total {
@@ -1634,7 +1634,7 @@
 .bz-preview-problems td {
   text-align: left;
   padding: 0.35rem 0.45rem;
-  border-bottom: 1px solid var(--ui-border);
+  border-bottom: 1px solid var(--ui-line);
 }
 
 .bz-preview-problems small[data-severity='blocker'] {
@@ -1704,7 +1704,7 @@
   }
 
   .bz-admin-table tr {
-    border: 1px solid var(--ui-border);
+    border: 1px solid var(--ui-line);
     border-radius: 8px;
     margin-bottom: 0.4rem;
     padding: 0.3rem 0.4rem;
@@ -1738,7 +1738,7 @@
   flex-wrap: wrap;
   gap: 0.65rem;
   padding: 0.55rem 1rem;
-  border-bottom: 1px solid var(--ui-border);
+  border-bottom: 1px solid var(--ui-line);
   background: var(--ui-surface);
   font-size: 0.82rem;
 }
@@ -1774,8 +1774,8 @@
   flex-wrap: wrap;
   gap: 0.75rem;
   padding: 0.85rem;
-  background: var(--ui-surface-muted);
-  border: 1px solid var(--ui-border);
+  background: var(--ui-surface-sunken);
+  border: 1px solid var(--ui-line);
   border-radius: 8px;
 }
 .bz-selected-customer > span,
@@ -1800,7 +1800,7 @@
   padding: 1rem;
   color: var(--ui-text);
   background: var(--ui-surface);
-  border: 1px solid var(--ui-border);
+  border: 1px solid var(--ui-line);
   border-radius: 10px;
   font: inherit;
   cursor: pointer;
@@ -1879,7 +1879,7 @@
   .bz-quote-shell[data-preview='true'] .bz-quote-table tr {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    border-bottom: 1px solid var(--ui-border);
+    border-bottom: 1px solid var(--ui-line);
     padding: 0.5rem 0;
   }
   .bz-quote-shell[data-preview='true'] .bz-quote-table td {
@@ -1914,7 +1914,7 @@
   display: flex;
   gap: 0.4rem;
   flex-wrap: wrap;
-  border-bottom: 1px solid var(--ui-border);
+  border-bottom: 1px solid var(--ui-line);
 }
 .bz-sales-nav button {
   padding: 0.7rem 1rem;
@@ -1960,7 +1960,7 @@
 .bz-desk select {
   font: inherit;
   padding: 0.55rem;
-  border: 1px solid var(--ui-border);
+  border: 1px solid var(--ui-line);
   border-radius: 6px;
   background: var(--ui-surface);
   color: var(--ui-text);
@@ -1980,7 +1980,7 @@
 .bz-desk-table td {
   text-align: left;
   padding: 0.75rem 0.55rem;
-  border-bottom: 1px solid var(--ui-border);
+  border-bottom: 1px solid var(--ui-line);
 }
 .bz-desk-table th {
   font-size: 0.72rem;
@@ -2008,7 +2008,7 @@
 .bz-desk-actions details button {
   color: inherit;
   background: var(--ui-surface);
-  border: 1px solid var(--ui-border);
+  border: 1px solid var(--ui-line);
   border-radius: 5px;
   padding: 0.5rem;
   cursor: pointer;
@@ -2019,7 +2019,7 @@
   gap: 0.7rem;
   flex-wrap: wrap;
   padding: 1rem 0;
-  border-block: 1px solid var(--ui-border);
+  border-block: 1px solid var(--ui-line);
 }
 .bz-duplicate-form label {
   flex: 1;
@@ -2029,7 +2029,7 @@
 }
 .bz-comparison {
   margin-top: 1rem;
-  border-top: 2px solid var(--ui-border);
+  border-top: 2px solid var(--ui-line);
   padding-top: 1rem;
 }
 .bz-comparison-grid {
@@ -2038,7 +2038,7 @@
 }
 .bz-comparison article {
   padding: 1rem;
-  border-right: 1px solid var(--ui-border);
+  border-right: 1px solid var(--ui-line);
 }
 .bz-comparison h4 {
   margin: 0 0 0.5rem;
@@ -2049,7 +2049,7 @@
   justify-content: space-between;
   gap: 1rem;
   padding: 0.5rem 0;
-  border-bottom: 1px solid var(--ui-border);
+  border-bottom: 1px solid var(--ui-line);
 }
 .bz-comparison dd {
   margin: 0;
@@ -2070,7 +2070,7 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     padding: 0.5rem;
-    border-bottom: 1px solid var(--ui-border);
+    border-bottom: 1px solid var(--ui-line);
   }
   .bz-desk-table td {
     border: 0;
@@ -2110,7 +2110,7 @@
 }
 .bz-company-settings h3 {
   padding-top: 1rem;
-  border-top: 1px solid var(--ui-border);
+  border-top: 1px solid var(--ui-line);
 }
 .bz-company-settings input,
 .bz-company-settings textarea {
@@ -2118,7 +2118,7 @@
   font: inherit;
   color: var(--ui-text);
   background: var(--ui-surface);
-  border: 1px solid var(--ui-border);
+  border: 1px solid var(--ui-line);
   border-radius: 6px;
   width: 100%;
 }

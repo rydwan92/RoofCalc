@@ -1277,7 +1277,7 @@
   padding: 1px 7px;
   border: 1px solid currentColor;
   border-radius: 5px;
-  font-size: 10px;
+  font-size: var(--ui-text-xs);
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1577,7 +1577,7 @@
   .assembly-app .a-mobile-task-dock button span {
     max-width: 100%;
     overflow: hidden;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -1899,7 +1899,7 @@
     grid-area: length;
   }
   .a-scene3d-hud span i {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
   }
   .a-scene3d-hud em {
     grid-area: note;

@@ -429,7 +429,7 @@
 /* Compact bar details: the label "next" only on wide screens */
 .a-readiness-bar.is-compact .a-journey-now {
   display: block;
-  font-size: 10px;
+  font-size: var(--ui-text-xs);
   letter-spacing: var(--ui-tracking-caps);
   text-transform: uppercase;
   color: var(--ui-text-subtle);
@@ -726,10 +726,14 @@
   }
 }
 
-/* VNext-5: on desktop the section row never wraps. The section names keep
-   their size; the readiness text shrinks (full text in the tooltip) and a
-   long action label ends in an ellipsis instead of pushing the bar onto a
-   second line on every page. */
+/* VNext-5: on desktop the section row never wraps; the section names keep
+   their size and the bar takes what is left.
+   VNext-6.2 (self-audit): at 1366–1440px the one next action read
+   "Ustaw pierwszą łatę od ok…". The action is what the user reads and
+   clicks, so it keeps its whole label; the issue title gives way first
+   (the action's tooltip carries the full reason) and leaves only its icon
+   rather than a two-letter stub; the progress dots fold into the count
+   below 1600px. */
 @media (min-width: 1025px) {
   .a-section-row {
     flex-wrap: nowrap;
@@ -743,18 +747,62 @@
     min-width: 0;
   }
   .a-section-row .a-readiness-bar.is-compact .a-readiness-primary {
-    flex: 0 1 auto;
+    flex: 1 1 0;
     min-width: 0;
+    container-type: inline-size;
   }
   .a-section-row .a-readiness-bar.is-compact .a-readiness-actions {
-    flex: 0 1 auto;
-    min-width: 0;
+    flex: 0 0 auto;
+  }
+  .a-section-row .a-readiness-bar.is-compact .a-readiness-actions .a-button {
+    flex: none;
   }
   .a-section-row .a-readiness-bar.is-compact .a-readiness-actions .a-primary {
     display: block;
-    max-width: 260px;
+    width: auto;
+    max-width: 320px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+}
+@container (max-width: 96px) {
+  .a-section-row .a-readiness-primary > div {
+    display: none;
+  }
+}
+@media (min-width: 1025px) and (max-width: 1599px) {
+  .a-section-row .a-readiness-bar.is-compact .a-readiness-dots {
+    display: none;
+  }
+}
+
+/* VNext-6.2 (self-audit): on a phone the workspace toolbar already offers
+   "Parametry / Popraw" for the covering; the same button inside the card
+   was a second, identical way to the same sheet on one screen. */
+.assembly-app:has(.a-mobile-workspace-actions) .a-covering-parameters {
+  display: none;
+}
+
+/* VNext-6.2: an unstyled <small> follows the browser's "smaller" (≈10px in
+   12.5px text). It never drops below the type scale's smallest step; any
+   rule that styles a specific <small> still wins (zero specificity). */
+:where(.assembly-app) small {
+  font-size: max(var(--ui-text-xs), 0.83em);
+}
+
+/* VNext-6.2: with readable 11px labels the six dock sections still fit a
+   390px phone ("Dokumenty" was cut to "Dokume…"); narrower phones keep the
+   ellipsis and the accessible name. */
+@media (max-width: 800px) {
+  .assembly-app .a-mobile-task-dock {
+    padding-inline: 2px;
+  }
+  .assembly-app .a-mobile-task-dock button {
+    padding-inline: 1px;
+  }
+  .assembly-app .a-mobile-task-dock button span {
+    font-weight: 650;
+    letter-spacing: -0.01em;
   }
 }
