@@ -7564,6 +7564,18 @@
 .cw-suggestions h3 {
   margin: 0 0 2px;
 }
+/* One heading row: the bulk action sits beside the title, wraps on a phone. */
+.cw-suggestions-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.cw-suggestions-heading .a-button {
+  width: auto;
+  min-height: 40px;
+}
 .cw-intro {
   margin: 0 0 10px;
   color: var(--a-muted);

@@ -40,7 +40,11 @@ export interface EndCut {
   kind: 'end-cut';
   id: string;
   supportId?: string;
-  end: 'eave' | 'ridge';
+  /**
+   * `top` (VNext-7B): the upper plumb end of a rafter that meets no ridge —
+   * a mono-pitch rafter ending past the high wall or against an abutment.
+   */
+  end: 'eave' | 'ridge' | 'top';
   edge: MemberEdge;
   line: [Point2D, Point2D];
   angleToMemberDeg: number;

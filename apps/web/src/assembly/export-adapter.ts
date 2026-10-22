@@ -1,14 +1,12 @@
 import type { ConnectionScheduleRow } from '@cieslacalc/connection-core';
 import {
   createAssemblyDrawing,
+  type ResolvedCoveringLayout,
   type ResolvedRoofProject,
 } from '@cieslacalc/calculator-core';
 import type {
   CoveringAssignmentSpec,
-  CutToLengthSheetLayoutResult,
-  ModularSheetLayoutResult,
   RoofTileLayoutResult,
-  StandingSeamLayoutResult,
 } from '@cieslacalc/covering-core';
 import {
   calculateLine,
@@ -67,11 +65,7 @@ import {
 } from './project-readiness';
 
 type ResolvedK1 = Extract<K1CuttingRequirement, { status: 'resolved' }>;
-export type ResolvedCoveringLayout =
-  | RoofTileLayoutResult
-  | ModularSheetLayoutResult
-  | CutToLengthSheetLayoutResult
-  | StandingSeamLayoutResult;
+export type { ResolvedCoveringLayout };
 export type ExportFacts = {
   source: DocumentSource;
   template: RoofTemplateSpec;

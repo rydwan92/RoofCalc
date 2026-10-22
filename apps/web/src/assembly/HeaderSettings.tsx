@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { switchLanguage } from '../i18n';
 import { Redo2, RotateCcw, SlidersHorizontal, Undo2 } from 'lucide-react';
 import { lengthUnits } from '@cieslacalc/roof-math';
 import { BusinessModeToggle } from '../business/BusinessHeader';
@@ -33,8 +34,8 @@ export function HeaderSettings({
     state.setFocusId(undefined);
     if (state.workbench.mode === 'builder') onExampleRestored();
   };
-  const switchLanguage = () =>
-    void i18n.changeLanguage(i18n.language === 'pl' ? 'en' : 'pl');
+  const toggleLanguage = () =>
+    void switchLanguage(i18n.language === 'pl' ? 'en' : 'pl');
   const units = (className?: string) =>
     lengthUnits.map((option) => (
       <button
@@ -99,7 +100,7 @@ export function HeaderSettings({
               <RotateCcw size={18} />
               {t('assembly.reset')}
             </button>
-            <button className="a-button" onClick={switchLanguage}>
+            <button className="a-button" onClick={toggleLanguage}>
               {t('assembly.language')} · {i18n.language.toUpperCase()}
             </button>
             <BusinessModeToggle />
@@ -119,7 +120,7 @@ export function HeaderSettings({
             className="a-icon a-desktop-setting"
             aria-label={t('assembly.language')}
             title={t('assembly.language')}
-            onClick={switchLanguage}
+            onClick={toggleLanguage}
           >
             {i18n.language.toUpperCase()}
           </button>

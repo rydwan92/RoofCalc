@@ -127,3 +127,15 @@ and L-with-valley scenes; an overlapping L without a solved junction is
   forbids any application from reading or writing V2. The single roof of a
   V1 project and the production scene adapter share one structure ID
   constant.
+
+## Addendum — VNext-7B-1 (2026-10-22)
+
+- Mono-pitch framing reuses the single rafter solver: `resolveAssembly`
+  is now `assemblySpecSchema` + `resolveAssemblyGeometry(spec, upperEnd)`;
+  `upperEnd: top` gives a plain plumb end (`EndCut.end` gains `top`). The
+  gable/hip results are unchanged (all reference projects).
+- The batten engine and the covering dispatch are plane-generic
+  (`resolveBattenLayoutOnPlanes`, `calculator-core`
+  `resolveCoveringLayout`); the workbench and the mono-pitch composition
+  call the same functions — no per-shape copy.
+- Still derived and session-only; the V2 writer gate is unchanged.

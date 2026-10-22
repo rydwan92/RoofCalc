@@ -1,9 +1,11 @@
-# Mono-pitch roof (dach jednospadowy / pulpitowy) — VNext-7A
+# Mono-pitch roof (dach jednospadowy / pulpitowy) — VNext-7A / 7B
 
-Status: **surface geometry only.** VNext-7A adds a pure solver
-(`packages/roof-math/src/mono-pitch-roof.ts`) for one planar roof. Nothing
-else is resolved yet. Rafters, cuts, supports, covering, drainage,
-quantities, cost and documents for this roof are VNext-7B.
+Status: **surface (7A) and framing, battens and covering (7B-1), domain
+only.** `packages/roof-math/src/mono-pitch-roof.ts` resolves the plane;
+`mono-pitch-framing.ts` the rafters on two supports through the shared
+rafter solver (§8); `calculator-core`'s `resolveMonoPitchRoofSystem`
+adds battens and the covering through the same engines as a gable. No UI,
+no persistence, no documents yet.
 
 ## 1. What the solver resolves and what it does not
 
@@ -19,6 +21,9 @@ The solver produces **no fabrication data**. A rafter list would need the
 seat geometry, the height above the plate and the support semantics fixed
 first, and generating member positions without them would be fiction.
 `MONO_PITCH_SOLVER_SCOPE` records this in code.
+Since VNext-7B-1 a separate framing solver (§8) resolves the rafters,
+birdsmouths, plumb ends, plate heights and the rafter layout; the surface
+solver itself still emits no members.
 
 ## 2. Reference frame
 
@@ -45,9 +50,9 @@ line, and overhangs are measured **horizontally** beyond the bearing lines.
 - Plane local frame (as for every roof-math plane): origin at the low-left
   corner of the plane, `u` along the eave (`+x`), `v` uphill along the slope.
 
-How the reference plane relates to the top or underside of a rafter, or to
-the seat on a wall plate, is **not defined in VNext-7A**. That is the
-"semantics of eaves, wall plates and rafters" the brief defers.
+How the reference plane sits on the rafters is fixed in §8 (VNext-7B): it
+passes through the heel–seat corner of the birdsmouth on the low plate —
+the same convention the gable and hip solvers already use.
 
 ## 3. Inputs and legal ranges
 
@@ -153,3 +158,75 @@ anything. `assessRoofScene` then returns:
 and the V2 → V1 inverse are tested over every reference project. The app
 neither reads nor writes V2. Writing V2 is a separate, explicit gate after
 the downstream adapters exist (ADR-015, `SCHEMA_REGISTRY.md` §19).
+
+## 8. Framing (VNext-7B-1)
+
+### 8.1 Frame and definitions
+
+The rafter is solved by the shared single-rafter solver
+(`resolveAssemblyGeometry`, upper end `top`) — the one behind every gable
+and hip rafter; `resolveMonoPitchFraming` only builds its input.
+
+- `x = 0`: the **outer face of the low wall plate**. `runMm` (R) runs to the
+  **outer face of the high support** — the outside of the high wall's plate,
+  or the face of the higher wall for an abutment.
+- Each support carries a birdsmouth: heel (plumb) on the support's
+  downslope face, seat horizontal on its top, seat length `s` ≤ support
+  width. The low plate occupies `0 … w_low`, the high support
+  `R − w_high … R`.
+- The rafter's lower edge passes through the low seat's toe `(s_low, 0)`.
+  The **roof reference plane** of §2 passes through the low heel–seat corner
+  `(0, 0)` parallel to the rafter: the top of the rafter lies
+  `d − s_low·sin α` above it, square to the slope. This is the gable/hip
+  convention, now stated.
+- Ends: the eave is cut plumb at `x = −e_low`; the top end plumb at
+  `x_end = R + e_high` (free top edge) or `x_end = R` at the wall face
+  (abutment).
+- Supports: the low support is a wall plate; a free top edge rests on the
+  high wall's plate; an **abutment rests on a ledger** fixed to the higher
+  wall (`abutment_needs_ledger` / `ledger_needs_abutment`).
+
+### 8.2 Formulas (t = tan α, c = cos α)
+
+| Quantity | Formula |
+| --- | --- |
+| top edge between the plumb cuts | `(x_end + e_low) / c` |
+| straight stock per rafter | `(x_end + e_low) / c + d·t` |
+| heel station on the top edge, from the eave | `(x_heel + e_low) / c` |
+| notch depth square to the edge | `s·sin α` (remaining `d − s·sin α`) |
+| high plate top above the low plate top | `(R − w_high + s_high − s_low)·t` |
+| pitch from two plate tops | `atan(Δh / (R − w_high + s_high − s_low))` |
+| rafters | `resolveRafterSpacing` along `L`, as for a gable |
+
+The surface slope length (§4) equals the rafter's top edge between the same
+plan lines — a test checks it.
+
+### 8.3 Reference vectors (hand-checked, independent of the solver)
+
+| # | Input | Expected |
+| --- | --- | --- |
+| F1 | `L` 6000, `R` 4000, 15°, `e_low` 500, free top `e_high` 300, rafter 80×200, plates 140×140 with 100 seats, max-even 900 | top edge 4969.326 mm; stock 5022.916 mm; heels at 517.638 / 4513.804 mm; notch 25.882 mm (174.118 left); high plate 1034.284 mm higher; 8 rafters at 857.14 mm |
+| F2 | `L` 5000, `R` 3000, 10°, `e_low` 400, abutment, rafter 60×180, low plate 120 (seat 80), ledger 60×160 (seat 50) | rafter ends at the wall (x 3000); top edge 3452.450; stock 3484.189; notches 13.892 / 8.682; ledger seat 513.112 mm above the low plate |
+
+### 8.4 Battens and covering (one engine each)
+
+- Battens: `resolveMonoPitchBattens` calls the plane-generic
+  `resolveBattenLayoutOnPlanes` that the gable/hip wrapper now uses too.
+  `ridgeOffsetMm` is measured below the top edge.
+- Covering: `resolveCoveringLayout` (`calculator-core`) is the one dispatch
+  to the tile / modular / cut-to-length / standing-seam engines, used by the
+  workbench and by `resolveMonoPitchRoofSystem`; compatibility (minimum
+  pitch, gauge) is the same `checkCoveringCompatibility`.
+- Example (test): F1 at 25° with the roof tile of reference project 05
+  (≥ 20°, 9.8–10.7 pcs/m²), battens every 340 mm from 50 mm: 16 courses,
+  105.6 m of battens, 22 × 16 = 352 tile positions on 34.955 m² (declared
+  band 342.6–374.0). At 15° the same tile is refused
+  (`below-minimum-pitch`).
+
+### 8.5 Still not resolved
+
+Intermediate purlins and spans, the 3D skeleton (so counter-battens and
+the timber schedule), membrane, drainage, documents, the workbench UI and
+persistence (V2 writer gate). No structural check (ADR-014).
+`MONO_PITCH_FRAMING_SCOPE` states it in code; the topology assessment keeps
+the roof `not-supported` until documents can show it.

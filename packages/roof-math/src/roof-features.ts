@@ -841,16 +841,42 @@ export function resolveBattenLayout(args: {
   features?: RoofFeature[];
   autoSource?: BattenAutoSource;
 }): BattenLayoutResult {
+  return resolveBattenLayoutOnPlanes({
+    knownRoofPlaneIds:
+      args.template.type === 'gable'
+        ? ['roof-plane:left', 'roof-plane:right']
+        : [
+            'roof-plane:left',
+            'roof-plane:right',
+            'roof-plane:front',
+            'roof-plane:rear',
+          ],
+    planeBasis: (roofPlaneId) =>
+      resolveRoofPlaneBasis(args.template, roofPlaneId),
+    geometryValid: roofTemplateSchema.safeParse(args.template).success,
+    layout: args.layout,
+    features: args.features,
+    autoSource: args.autoSource,
+  });
+}
+
+/**
+ * VNext-7B: the batten engine on any set of resolved roof planes. The
+ * gable/hip wrapper above and the mono-pitch roof both use it, so a course
+ * is placed by one rule whatever produced the plane. "Ridge offset" is the
+ * distance below the plane's upper boundary (a ridge, or a mono-pitch top
+ * edge).
+ */
+export function resolveBattenLayoutOnPlanes(args: {
+  knownRoofPlaneIds: readonly string[];
+  planeBasis: (roofPlaneId: string) => RoofPlaneBasis;
+  geometryValid?: boolean;
+  layout: BattenLayoutSpec;
+  features?: readonly RoofFeature[];
+  autoSource?: BattenAutoSource;
+}): BattenLayoutResult {
   const mode = battenLayoutMode(args.layout);
-  const knownPlanes =
-    args.template.type === 'gable'
-      ? ['roof-plane:left', 'roof-plane:right']
-      : [
-          'roof-plane:left',
-          'roof-plane:right',
-          'roof-plane:front',
-          'roof-plane:rear',
-        ];
+  const knownPlanes = [...args.knownRoofPlaneIds];
   const planeIds = args.layout.roofPlaneIds ?? knownPlanes;
   const scope: BattenLayoutResult['scope'] = {
     kind: knownPlanes.every((id) => planeIds.includes(id))
@@ -892,7 +918,7 @@ export function resolveBattenLayout(args: {
   )
     return empty('incomplete', ['invalid-batten-offset']);
   if (
-    !roofTemplateSchema.safeParse(args.template).success ||
+    args.geometryValid === false ||
     (args.features ?? []).some(
       (feature) =>
         feature.kind === 'roof-window' &&
@@ -923,7 +949,7 @@ export function resolveBattenLayout(args: {
     args.autoSource?.status === 'resolved' ? args.autoSource : undefined;
   const planes: BattenPlaneLayoutResult[] = [];
   const battens = planeIds.flatMap((roofPlaneId) => {
-    const basis = resolveRoofPlaneBasis(args.template, roofPlaneId);
+    const basis = args.planeBasis(roofPlaneId);
     const minV = Math.min(...basis.polygon.map((item) => item.vMm));
     const maxV = Math.max(...basis.polygon.map((item) => item.vMm));
     const slopeLengthMm = maxV - minV;

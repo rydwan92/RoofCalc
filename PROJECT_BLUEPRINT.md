@@ -1297,6 +1297,41 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+## VNext-7B-1 (2026-10-22) — mono-pitch framing, battens and covering through the shared engines
+
+- Requested: "pracuj dalej, ulepszaj aplikację". Branch
+  `feature/vnext-7b-mono-pitch-framing` from `main` @ `81d9692`.
+- Framing: `resolveMonoPitchFraming` (`roof-math`) — common rafters on a low
+  plate and a high plate or ledger, birdsmouth on each, plumb eave and top
+  ends, plate height difference, inverse pitch from plate tops, layout by
+  `resolveRafterSpacing`, one shared K1 prototype. It builds the input of
+  the ONE rafter solver: `resolveAssembly` = schema +
+  `resolveAssemblyGeometry(spec, upperEnd)`; `EndCut.end` gains `top`.
+  Gable/hip results unchanged (all reference projects, 2 163 prior tests).
+- Battens: `resolveBattenLayoutOnPlanes` is the plane-generic engine; the
+  gable/hip `resolveBattenLayout` is a wrapper; `resolveMonoPitchBattens`.
+- Covering: `resolveCoveringLayout` / `coveringLayoutQuantitySource` moved
+  from `Page.tsx` into `calculator-core` (one dispatch for every
+  structure; `Page.tsx` 3 898 → 3 743 lines); `resolveMonoPitchRoofSystem`
+  composes framing + battens + covering + compatibility + rafter evidence.
+- Reference vectors (hand-checked): F1 15° free top, F2 10° abutment on a
+  ledger (`docs/domain/MONO_PITCH_ROOF.md` §8); example at 25° with the
+  reference tile: 352 positions, 16 courses, 105.6 m battens; refused at 15°.
+- Visible improvements: Kosztorys "Dodaj wszystkie gotowe (N)" (one change;
+  manual proposals stay); English texts load on the first switch (main
+  chunk 1 172 → 1 081 kB, gzip 345 → 317 kB).
+- Nothing persisted changed (SCHEMA_REGISTRY §20). Mono-pitch still has no
+  UI, 3D skeleton, counter-battens, membrane, drainage, documents or V2
+  writer; the topology gate keeps it `not-supported`.
+- Validation: `pnpm verify` green — 210 files / 2184 tests
+  (13 skipped), builds and bundle boundaries clean; `pnpm e2e`
+  168 passed / 36 conditionally skipped / 0 failed;
+  `git diff --check` clean.
+- NEXT ACTION: VNext-7B-2 — mono-pitch 3D skeleton (rafters and plates in
+  world XYZ from the framing result), then counter-battens, membrane and the
+  timber schedule from it; then documents and the workbench entry behind
+  the V2 writer gate.
+
 ## VNext-6.2 (2026-10-22) — self-audit: data safety, readability, real tokens
 
 - Requested: "kontynuuj prace, audyt własny, testy, scenariusze i poprawki

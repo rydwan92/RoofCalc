@@ -101,6 +101,8 @@ export * from './hip-rafter';
 export * from './detail-preview';
 export * from './project-document';
 export * from './project-document-v2';
+export * from './covering-layouts';
+export * from './mono-pitch-roof-system';
 export * from './fabrication-package';
 export * from './member-instance';
 export * from './plane-scope';

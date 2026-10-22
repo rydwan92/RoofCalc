@@ -47,6 +47,19 @@ describe('header settings (VNext-6.2)', () => {
     );
   });
 
+  it('loads English on the first switch, then shows it', async () => {
+    render(
+      <HeaderSettings mobile={false} onExampleRestored={() => undefined} />,
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Zmień język na angielski' }),
+    );
+    expect(
+      await screen.findByRole('button', { name: 'Restore example' }),
+    ).toBeTruthy();
+    expect(i18n.language).toBe('en');
+  });
+
   it('switches the display unit without touching the history', () => {
     render(
       <HeaderSettings mobile={false} onExampleRestored={() => undefined} />,

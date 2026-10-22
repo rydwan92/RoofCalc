@@ -40,8 +40,9 @@ Checked and found correct: decimal comma, out-of-range values (marked, last vali
 
 ## 3. Not changed (recommendations)
 
-- Both languages are bundled (`translations.ts`, 225 kB source); loading
-  English on demand would save about 25 kB gzip for Polish users.
+- ~~Both languages are bundled~~ — done in VNext-7B-1: English loads on
+  the first switch (`switchLanguage`); main chunk 1 172 → 1 081 kB, gzip
+  345 → 317 kB.
 - `1 200` (space as a thousands separator) is rejected by the exact inputs.
   The rejection is an explicit test from the first commit; accepting it is a
   product decision, not a defect.

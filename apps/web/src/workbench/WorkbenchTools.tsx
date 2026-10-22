@@ -11,6 +11,7 @@ import {
   Triangle,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { switchLanguage } from '../i18n';
 import { lengthUnits, type RafterWorkbenchResult } from '@cieslacalc/roof-math';
 import type { WorkbenchObject } from '@cieslacalc/calculator-core';
 import { Button } from '@cieslacalc/ui';
@@ -72,7 +73,7 @@ export function WorkbenchToolbar({ brand }: { brand: string }) {
           className="language-button"
           aria-label={t('language')}
           onClick={() => {
-            void i18n.changeLanguage(i18n.language === 'pl' ? 'en' : 'pl');
+            void switchLanguage(i18n.language === 'pl' ? 'en' : 'pl');
           }}
         >
           {i18n.language.toUpperCase()}

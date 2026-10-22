@@ -120,6 +120,73 @@ describe('CostWorkspace', () => {
     expect(screen.queryByText('Proponowane z projektu')).toBeNull();
   });
 
+  it('adds every proposal with a project quantity in one click, leaving manual ones listed', () => {
+    const scenarios: CostScenario[] = [];
+    const ready = facts({
+      battensEnabled: true,
+      counterBattensEnabled: true,
+      schedule: createRoofMemberSchedule({
+        skeleton: facts().skeleton,
+        buildUp: [
+          {
+            id: 'batten:1',
+            familyKey: 'L',
+            memberKind: 'batten',
+            lengthMm: 100_000,
+            section: { widthMm: 60, depthMm: 40 },
+          },
+          {
+            id: 'counter-batten:1',
+            familyKey: 'KL',
+            memberKind: 'counter-batten',
+            lengthMm: 40_000,
+            section: { widthMm: 50, depthMm: 25 },
+          },
+        ],
+        covering: [
+          {
+            id: 'covering:1',
+            coveringAssignmentId: 'assignment-1',
+            sourceRoofPlaneIds: ['roof-plane:left'],
+            quantity: 2070,
+            requirementReadiness: 'geometric-only',
+            layoutKind: 'roof-tile',
+            semantic: 'effective-coverage-position',
+            unit: 'coverage-position',
+            fullPositions: 2000,
+            cutPositions: 70,
+          },
+        ],
+      }),
+    });
+    function Recording() {
+      const [scenario, setScenario] = useState<CostScenario>(() =>
+        createEmptyCostScenario('PLN'),
+      );
+      return (
+        <CostWorkspace
+          facts={ready}
+          scenario={scenario}
+          onScenarioChange={(next) => {
+            scenarios.push(next);
+            setScenario(next);
+          }}
+          onOpenDocuments={() => {}}
+        />
+      );
+    }
+    render(<Recording />);
+    fireEvent.click(screen.getByTestId('cost-add-ready'));
+    // One change, two lines, the covering still waiting for its product data.
+    expect(scenarios).toHaveLength(1);
+    expect(scenarios[0]!.lines.map((line) => line.label)).toEqual([
+      'Łaty',
+      'Kontrłaty',
+    ]);
+    expect(screen.getByRole('button', { name: 'Uzupełnij' })).toBeTruthy();
+    expect(screen.queryByTestId('cost-add-ready')).toBeNull();
+  });
+
   it('never pre-fills a covering suggestion with the geometric count as quantity', () => {
     const withCovering = facts({
       schedule: createRoofMemberSchedule({

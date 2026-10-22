@@ -23,3 +23,4 @@ export * from './finished-rafter-solid';
 export * from './opening-framing';
 export * from './roof-topology';
 export * from './mono-pitch-roof';
+export * from './mono-pitch-framing';

@@ -208,10 +208,30 @@ export function resolveSupportJoint(
 }
 
 export function resolveAssembly(raw: AssemblySpec): ResolvedAssembly {
-  const spec = assemblySpecSchema.parse(raw);
+  return resolveAssemblyGeometry(assemblySpecSchema.parse(raw));
+}
+
+/**
+ * The one rafter solver behind every template. `ridge`: the upper end
+ * meets a ridge (gable, hip). `top` (VNext-7B): a plain plumb end with no
+ * terminal member — a mono-pitch rafter past its high wall or against an
+ * abutment; `spec.ridge` then names that end with zero thickness. The
+ * caller validates: gable/hip through `assemblySpecSchema`, mono-pitch
+ * through its own framing schema (two plates, the high one may end flush
+ * with the rafter's end).
+ */
+export function resolveAssemblyGeometry(
+  spec: AssemblySpec,
+  upperEnd: 'ridge' | 'top' = 'ridge',
+): ResolvedAssembly {
   const { runMm, pitchDeg, overhangMm } = spec.roof;
   const { depthMm } = spec.member.section;
-  const wall = spec.supports.find((s) => s.kind === 'wall-plate')!;
+  // The rafter line starts on the plate at the origin; a mono-pitch rafter
+  // has a second plate further up the slope.
+  const wall =
+    spec.supports.find(
+      (s) => s.kind === 'wall-plate' && s.placement.xMm === 0,
+    ) ?? spec.supports.find((s) => s.kind === 'wall-plate')!;
   const theta = (pitchDeg * Math.PI) / 180;
   const direction = { x: Math.cos(theta), y: Math.sin(theta) };
   const bottom: Line2D = {
@@ -260,7 +280,7 @@ export function resolveAssembly(raw: AssemblySpec): ResolvedAssembly {
     },
     ...resolved.flatMap((r) => r.datums),
     {
-      id: 'datum:ridge-face',
+      id: upperEnd === 'ridge' ? 'datum:ridge-face' : 'datum:top-end',
       entityId: spec.ridge.id,
       semanticRole: 'member-end',
       edge: 'top',
@@ -286,24 +306,29 @@ export function resolveAssembly(raw: AssemblySpec): ResolvedAssembly {
     joints: resolved.map((r) => r.joint),
     supports: [
       ...resolved.map((r) => r.support),
-      {
-        id: spec.ridge.id,
-        kind: 'ridge',
-        visualExtentOnly: true,
-        topReference: [ridgeBottom, ridgeTop],
-        worldProfile:
-          ridge.horizontalDeductionMm === 0
-            ? []
-            : [
-                { x: ridgeBottom.x, y: ridgeBottom.y - 70 },
-                {
-                  x: ridgeBottom.x + spec.ridge.thicknessMm,
-                  y: ridgeBottom.y - 70,
-                },
-                { x: ridgeTop.x + spec.ridge.thicknessMm, y: ridgeTop.y },
-                ridgeTop,
-              ],
-      },
+      // A plain top end has no terminal member to draw.
+      ...(upperEnd === 'top'
+        ? []
+        : [
+            {
+              id: spec.ridge.id,
+              kind: 'ridge',
+              visualExtentOnly: true,
+              topReference: [ridgeBottom, ridgeTop],
+              worldProfile:
+                ridge.horizontalDeductionMm === 0
+                  ? []
+                  : [
+                      { x: ridgeBottom.x, y: ridgeBottom.y - 70 },
+                      {
+                        x: ridgeBottom.x + spec.ridge.thicknessMm,
+                        y: ridgeBottom.y - 70,
+                      },
+                      { x: ridgeTop.x + spec.ridge.thicknessMm, y: ridgeTop.y },
+                      ridgeTop,
+                    ],
+            } satisfies Support2D,
+          ]),
     ],
     endCuts: [
       {
@@ -317,11 +342,11 @@ export function resolveAssembly(raw: AssemblySpec): ResolvedAssembly {
         stationMm: 0,
       },
       {
-        id: 'cut:ridge',
+        id: upperEnd === 'ridge' ? 'cut:ridge' : 'cut:top',
         kind: 'end-cut',
-        end: 'ridge',
+        end: upperEnd,
         edge: 'top',
-        supportId: spec.ridge.id,
+        ...(upperEnd === 'ridge' ? { supportId: spec.ridge.id } : {}),
         line: [dBottom, dTop],
         angleToMemberDeg: ridge.angleToMemberDeg,
         fromDatumId: 'datum:eave-top',
@@ -365,15 +390,19 @@ export function createFabricationPlan(
       remainingDepthMm: j.remainingDepthMm,
     },
   ]);
-  const ridge = endCuts.find((c) => c.end === 'ridge')!;
+  // The upper end: a ridge face, or a mono-pitch rafter's plain top end.
+  const upper = endCuts.find((c) => c.end !== 'eave')!;
+  const upperDatum = member.datums.find(
+    (d) => d.semanticRole === 'member-end',
+  )!;
   steps.push({
     action: 'mark-plumb',
-    operationId: ridge.id,
+    operationId: upper.id,
     from: reference.id,
-    target: 'datum:ridge-face',
+    target: upperDatum.id,
     edge: 'top',
-    distanceMm: ridge.stationMm,
-    angleDeg: ridge.angleToMemberDeg,
+    distanceMm: upper.stationMm,
+    angleDeg: upper.angleToMemberDeg,
   });
   return {
     memberId: member.id,

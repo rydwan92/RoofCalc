@@ -727,3 +727,15 @@ workbench. No migration.
   (covering, quantities, documents) for every structure kind — ADR-015.
 - `ResolvedRoofLineInput.kind` in `roof-topology-core` gains
   `abutment`; the adapter's `template` gains `mono-pitch`. Derived only.
+
+## 20. VNext-7B-1 contracts (derived; nothing persisted changes)
+
+- `EndCut.end` (`timber-model`) gains `top`: the upper plumb end of a
+  rafter that meets no ridge. Derived geometry only.
+- `MonoPitchFramingSpec` / `monoPitchFramingSpecSchema` (`roof-math`):
+  the 7A surface spec + rafter section and spacing + low and high support
+  (`wall-plate | ledger`, width, height, seat). Not stored anywhere; the
+  designed V2 `mono-pitch` structure still holds only the surface spec and
+  will gain these fields with the V2 writer.
+- `ResolvedCoveringLayout` now lives in `calculator-core`
+  (`covering-layouts.ts`); the web export adapter re-exports it.

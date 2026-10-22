@@ -11,7 +11,7 @@ import { createRoofProjectDocument } from '@cieslacalc/calculator-core';
 import type { RoofTemplateSpec } from '@cieslacalc/timber-model';
 import { IfcRoofConfirmation } from './IfcRoofConfirmation';
 import type { IfcReferenceModel } from './ifc-runtime-types';
-import i18n from '../../i18n';
+import { switchLanguage } from '../../i18n';
 import {
   createDefaultProjectDocument,
   useAssembly,
@@ -76,7 +76,7 @@ function model(): IfcReferenceModel {
   };
 }
 beforeEach(async () => {
-  await i18n.changeLanguage('en');
+  await switchLanguage('en');
 });
 afterEach(cleanup);
 

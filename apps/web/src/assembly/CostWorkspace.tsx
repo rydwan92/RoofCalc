@@ -201,7 +201,11 @@ export function CostWorkspace({
   );
   const grouped = linesByCategory(scenario);
 
-  const addSuggestion = (suggestion: CostSuggestion, manual: boolean) => {
+  /** Needs manual data first (a manual quantity, or a covering product). */
+  const needsManualData = (suggestion: CostSuggestion) =>
+    suggestion.suitability === 'manual-required' ||
+    suggestion.kind === 'covering-consumption';
+  const lineFor = (suggestion: CostSuggestion, manual: boolean) => {
     const quantity =
       suggestion.kind === 'covering-consumption'
         ? { value: 0, unit: 'piece' as const }
@@ -233,8 +237,22 @@ export function CostWorkspace({
       noteKeys: suggestion.noteKeys,
       projectQuantityValue: manual ? undefined : quantity.value,
     });
-    onScenarioChange(addCostLine(scenario, line));
+    return line;
   };
+  const addSuggestion = (suggestion: CostSuggestion, manual: boolean) =>
+    onScenarioChange(addCostLine(scenario, lineFor(suggestion, manual)));
+  // VNext-6.2+: one click for every proposal that already has a project
+  // quantity; proposals needing manual data stay listed. One change.
+  const readySuggestions = openSuggestions.filter(
+    (suggestion) => !needsManualData(suggestion),
+  );
+  const addReadySuggestions = () =>
+    onScenarioChange(
+      readySuggestions.reduce(
+        (next, suggestion) => addCostLine(next, lineFor(suggestion, false)),
+        scenario,
+      ),
+    );
 
   const updateLine = (next: CostLine) =>
     onScenarioChange(replaceCostLine(scenario, next));
@@ -373,7 +391,22 @@ export function CostWorkspace({
           className="cw-suggestions"
           aria-label={t('assembly.cost.suggestionsHeading')}
         >
-          <h3>{t('assembly.cost.suggestionsHeading')}</h3>
+          <div className="cw-suggestions-heading">
+            <h3>{t('assembly.cost.suggestionsHeading')}</h3>
+            {readySuggestions.length > 1 && (
+              <button
+                type="button"
+                className="a-button"
+                data-testid="cost-add-ready"
+                title={t('assembly.cost.addReadyHint')}
+                onClick={addReadySuggestions}
+              >
+                {t('assembly.cost.addReady', {
+                  count: readySuggestions.length,
+                })}
+              </button>
+            )}
+          </div>
           <p className="cw-intro">{t('assembly.cost.intro')}</p>
           <ul>
             {openSuggestions.map((suggestion) => (
@@ -446,15 +479,10 @@ export function CostWorkspace({
                   <button
                     type="button"
                     onClick={() =>
-                      addSuggestion(
-                        suggestion,
-                        suggestion.suitability === 'manual-required' ||
-                          suggestion.kind === 'covering-consumption',
-                      )
+                      addSuggestion(suggestion, needsManualData(suggestion))
                     }
                   >
-                    {suggestion.suitability === 'manual-required' ||
-                    suggestion.kind === 'covering-consumption'
+                    {needsManualData(suggestion)
                       ? t('assembly.cost.fillManually')
                       : t('assembly.cost.add')}
                   </button>

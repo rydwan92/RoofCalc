@@ -1,6 +1,15 @@
 import { z } from 'zod';
-import type { Point3D, RoofPlanePosition } from '@cieslacalc/timber-model';
-import type { RoofPlaneBasis } from './roof-features';
+import type {
+  BattenLayoutSpec,
+  Point3D,
+  RoofPlanePosition,
+} from '@cieslacalc/timber-model';
+import {
+  resolveBattenLayoutOnPlanes,
+  type BattenAutoSource,
+  type BattenLayoutResult,
+  type RoofPlaneBasis,
+} from './roof-features';
 
 /**
  * VNext-7A mono-pitch (pulpitowy) roof: SURFACE GEOMETRY ONLY.
@@ -263,4 +272,23 @@ export function resolveMonoPitchRoof(
     planAreaMm2: plane.planAreaMm2,
     scope: MONO_PITCH_SOLVER_SCOPE,
   };
+}
+
+/**
+ * VNext-7B: battens on the mono-pitch plane through the one batten engine
+ * (`resolveBattenLayoutOnPlanes`); `ridgeOffsetMm` is measured below the top
+ * edge.
+ */
+export function resolveMonoPitchBattens(
+  roof: MonoPitchRoofGeometry,
+  layout: BattenLayoutSpec,
+  autoSource?: BattenAutoSource,
+): BattenLayoutResult {
+  const [plane] = roof.planes;
+  return resolveBattenLayoutOnPlanes({
+    knownRoofPlaneIds: [plane.roofPlaneId],
+    planeBasis: () => plane.basis,
+    layout,
+    autoSource,
+  });
 }

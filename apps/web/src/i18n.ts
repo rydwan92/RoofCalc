@@ -1,6 +1,6 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import { assemblyPl, assemblyEn } from './assembly/translations';
+import { assemblyPl } from './assembly/translations';
 
 const pl = {
   commonRafter: 'Krokiew zwykła',
@@ -266,10 +266,33 @@ const en: typeof pl = {
 void i18n.use(initReactI18next).init({
   resources: {
     pl: { translation: { ...pl, assembly: assemblyPl } },
-    en: { translation: { ...en, assembly: assemblyEn } },
+    en: { translation: { ...en } },
   },
   lng: 'pl',
   fallbackLng: 'pl',
   interpolation: { escapeValue: false },
 });
+
+let englishLoad: Promise<void> | undefined;
+/** Adds the English workbench texts once; later calls reuse the same load. */
+export function loadLanguage(language: string): Promise<void> {
+  if (language !== 'en') return Promise.resolve();
+  englishLoad ??= import('./assembly/translations-en').then(
+    ({ assemblyEn }) => {
+      i18n.addResourceBundle(
+        'en',
+        'translation',
+        { assembly: assemblyEn },
+        true,
+        true,
+      );
+    },
+  );
+  return englishLoad;
+}
+/** Changes the language only after its texts are present (no key flash). */
+export async function switchLanguage(language: string): Promise<void> {
+  await loadLanguage(language);
+  await i18n.changeLanguage(language);
+}
 export default i18n;

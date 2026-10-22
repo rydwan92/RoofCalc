@@ -11,25 +11,12 @@ import {
 import { useTranslation } from 'react-i18next';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
+  coveringLayoutQuantitySource,
   createRoofProjectDocument,
   currentMemberInstance,
+  resolveCoveringLayout,
 } from '@cieslacalc/calculator-core';
-import {
-  createCutToLengthSheetQuantitySource,
-  createModularSheetQuantitySource,
-  createRoofTileQuantitySource,
-  createStandingSeamQuantitySource,
-  resolveCutToLengthSheetLayout,
-  resolveModularSheetLayout,
-  resolvePrimaryCoveringAssignments,
-  resolveRoofTileLayout,
-  resolveStandingSeamLayout,
-  type CoveringAssignmentSpec,
-  type CutToLengthSheetLayoutResult,
-  type ModularSheetLayoutResult,
-  type RoofTileLayoutResult,
-  type StandingSeamLayoutResult,
-} from '@cieslacalc/covering-core';
+import { resolvePrimaryCoveringAssignments } from '@cieslacalc/covering-core';
 import {
   createRoofMemberSchedule,
   type RoofMemberScheduleRow,
@@ -337,74 +324,6 @@ const IfcImportWorkspace = lazy(() =>
     default: module.IfcImportWorkspace,
   })),
 );
-
-type TileAssignment = CoveringAssignmentSpec & {
-  product: CoveringAssignmentSpec['product'] & {
-    technicalSpecSnapshot: Extract<
-      CoveringAssignmentSpec['product']['technicalSpecSnapshot'],
-      { kind: 'roof-tile' }
-    >;
-  };
-};
-
-type ModularSheetAssignment = CoveringAssignmentSpec & {
-  product: CoveringAssignmentSpec['product'] & {
-    technicalSpecSnapshot: Extract<
-      CoveringAssignmentSpec['product']['technicalSpecSnapshot'],
-      { kind: 'modular-sheet' }
-    >;
-  };
-};
-
-type ResolvedCoveringLayout =
-  | RoofTileLayoutResult
-  | ModularSheetLayoutResult
-  | CutToLengthSheetLayoutResult
-  | StandingSeamLayoutResult;
-
-function isTileAssignment(
-  assignment: CoveringAssignmentSpec,
-): assignment is TileAssignment {
-  return assignment.product.technicalSpecSnapshot.kind === 'roof-tile';
-}
-
-function isModularSheetAssignment(
-  assignment: CoveringAssignmentSpec,
-): assignment is ModularSheetAssignment {
-  return assignment.product.technicalSpecSnapshot.kind === 'modular-sheet';
-}
-
-function isCutToLengthSheetAssignment(
-  assignment: CoveringAssignmentSpec,
-): assignment is ModularSheetAssignment & {
-  product: ModularSheetAssignment['product'] & {
-    technicalSpecSnapshot: ModularSheetAssignment['product']['technicalSpecSnapshot'] & {
-      lengthModel: Extract<
-        ModularSheetAssignment['product']['technicalSpecSnapshot']['lengthModel'],
-        { kind: 'cut-to-length' }
-      >;
-    };
-  };
-} {
-  return (
-    isModularSheetAssignment(assignment) &&
-    assignment.product.technicalSpecSnapshot.lengthModel.kind ===
-      'cut-to-length'
-  );
-}
-
-function isStandingSeamAssignment(
-  assignment: CoveringAssignmentSpec,
-): assignment is CoveringAssignmentSpec & {
-  product: CoveringAssignmentSpec['product'] & {
-    technicalSpecSnapshot: Extract<
-      CoveringAssignmentSpec['product']['technicalSpecSnapshot'],
-      { kind: 'standing-seam' }
-    >;
-  };
-} {
-  return assignment.product.technicalSpecSnapshot.kind === 'standing-seam';
-}
 
 function AssemblyPageContent({
   startAtHome = false,
@@ -873,102 +792,48 @@ function AssemblyPageContent({
     }),
     [battenWorkflow, counterBattenWorkflow, hipPairedRunsPreviewMm],
   );
-  const resolvedCoveringLayouts = useMemo(
-    () =>
-      coveringAssignments.flatMap<ResolvedCoveringLayout>((assignment) => {
-        const common = {
-          assignmentId: assignment.id,
-          roofPlaneIds:
-            coveringOwnership.trustedRoofPlaneIdsByAssignment[assignment.id] ??
-            [],
-          roofSurfaceGeometry: surfaceProjection.planes.map((plane) => ({
-            roofPlaneId: plane.roofPlaneId,
-            pitchDeg: state.template.pitchDeg,
-            localPolygon: plane.polygon,
-            netAreaMm2: plane.netAreaMm2,
-          })),
-          openings: roofWindows.map((feature) => ({
-            id: feature.id,
-            roofPlaneId: feature.roofPlaneId,
-            fromUMm: feature.position.uMm,
-            toUMm: feature.position.uMm + feature.widthMm,
-            fromVMm: feature.position.vMm,
-            toVMm: feature.position.vMm + feature.heightMm,
-          })),
-          battens: battenProjection.battens.map((batten) => ({
-            id: batten.id,
-            roofPlaneId: batten.roofPlaneId,
-            stationVMm: batten.stationMm,
-            segments: batten.segments,
-          })),
-        };
-        if (isTileAssignment(assignment))
-          return [
-            resolveRoofTileLayout({
-              ...common,
-              productSpec: assignment.product.technicalSpecSnapshot,
-              selectedInstallationModeId: assignment.selectedInstallationModeId,
-              layoutIntent:
-                assignment.layoutIntent?.kind === 'roof-tile'
-                  ? assignment.layoutIntent
-                  : { kind: 'roof-tile', horizontalAlignment: 'centered' },
-            }),
-          ];
-        if (isCutToLengthSheetAssignment(assignment)) {
-          const previous = assignment.layoutIntent;
-          return [
-            resolveCutToLengthSheetLayout({
-              ...common,
-              productSpec: assignment.product.technicalSpecSnapshot,
-              layoutIntent:
-                previous?.kind === 'modular-sheet-cut-to-length'
-                  ? previous
-                  : previous?.kind === 'modular-sheet'
-                    ? { ...previous, kind: 'modular-sheet-cut-to-length' }
-                    : {
-                        kind: 'modular-sheet-cut-to-length',
-                        horizontalAlignment: 'centered',
-                      },
-            }),
-          ];
-        }
-        if (isModularSheetAssignment(assignment))
-          return [
-            resolveModularSheetLayout({
-              ...common,
-              productSpec: assignment.product.technicalSpecSnapshot,
-              layoutIntent:
-                assignment.layoutIntent?.kind === 'modular-sheet'
-                  ? assignment.layoutIntent
-                  : {
-                      kind: 'modular-sheet',
-                      horizontalAlignment: 'centered',
-                    },
-            }),
-          ];
-        if (isStandingSeamAssignment(assignment))
-          return [
-            resolveStandingSeamLayout({
-              ...common,
-              productSpec: assignment.product.technicalSpecSnapshot,
-              selectedInstallationModeId: assignment.selectedInstallationModeId,
-              layoutIntent:
-                assignment.layoutIntent?.kind === 'standing-seam'
-                  ? assignment.layoutIntent
-                  : { kind: 'standing-seam', horizontalAlignment: 'centered' },
-            }),
-          ];
-        return [];
-      }),
-    [
-      battenProjection.battens,
-      coveringAssignments,
-      coveringOwnership.trustedRoofPlaneIdsByAssignment,
-      roofWindows,
-      state.template.pitchDeg,
-      surfaceProjection.planes,
-    ],
-  );
+  const resolvedCoveringLayouts = useMemo(() => {
+    // VNext-7B: one dispatch for every structure (calculator-core).
+    const geometry = {
+      roofSurfaceGeometry: surfaceProjection.planes.map((plane) => ({
+        roofPlaneId: plane.roofPlaneId,
+        pitchDeg: state.template.pitchDeg,
+        localPolygon: plane.polygon,
+        netAreaMm2: plane.netAreaMm2,
+      })),
+      openings: roofWindows.map((feature) => ({
+        id: feature.id,
+        roofPlaneId: feature.roofPlaneId,
+        fromUMm: feature.position.uMm,
+        toUMm: feature.position.uMm + feature.widthMm,
+        fromVMm: feature.position.vMm,
+        toVMm: feature.position.vMm + feature.heightMm,
+      })),
+      battens: battenProjection.battens.map((batten) => ({
+        id: batten.id,
+        roofPlaneId: batten.roofPlaneId,
+        stationVMm: batten.stationMm,
+        segments: batten.segments,
+      })),
+    };
+    return coveringAssignments.flatMap((assignment) => {
+      const layout = resolveCoveringLayout({
+        assignment,
+        roofPlaneIds:
+          coveringOwnership.trustedRoofPlaneIdsByAssignment[assignment.id] ??
+          [],
+        geometry,
+      });
+      return layout ? [layout] : [];
+    });
+  }, [
+    battenProjection.battens,
+    coveringAssignments,
+    coveringOwnership.trustedRoofPlaneIdsByAssignment,
+    roofWindows,
+    state.template.pitchDeg,
+    surfaceProjection.planes,
+  ]);
   const activeCoveringAssignment =
     coveringAssignments.find(
       (assignment) => assignment.id === workbench.selectedCoveringAssignmentId,
@@ -997,26 +862,7 @@ function AssemblyPageContent({
         const assignment = coveringAssignments.find(
           (candidate) => candidate.id === layout.assignmentId,
         );
-        const source =
-          layout.kind === 'roof-tile'
-            ? createRoofTileQuantitySource({
-                layout,
-                productDisplay: assignment?.product.displaySnapshot,
-              })
-            : layout.kind === 'modular-sheet-cut-to-length'
-              ? createCutToLengthSheetQuantitySource({
-                  layout,
-                  productDisplay: assignment?.product.displaySnapshot,
-                })
-              : layout.kind === 'modular-sheet'
-                ? createModularSheetQuantitySource({
-                    layout,
-                    productDisplay: assignment?.product.displaySnapshot,
-                  })
-                : createStandingSeamQuantitySource({
-                    layout,
-                    productDisplay: assignment?.product.displaySnapshot,
-                  });
+        const source = coveringLayoutQuantitySource(layout, assignment);
         return source ? [source] : [];
       }),
     [coveringAssignments, resolvedCoveringLayouts],
