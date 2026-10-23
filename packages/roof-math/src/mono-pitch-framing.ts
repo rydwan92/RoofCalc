@@ -49,11 +49,23 @@ export interface MonoPitchSupportSpec {
   seatMm: number;
 }
 
+/** VNext-7B-5: an intermediate purlin under the rafters (płatew pośrednia). */
+export interface MonoPitchPurlinSpec {
+  /** Horizontal distance from the low plate's outer face to the purlin's
+   *  downslope face (where the birdsmouth heel sits). */
+  positionMm: number;
+  widthMm: number;
+  heightMm: number;
+  seatMm: number;
+}
+
 export interface MonoPitchFramingSpec {
   roof: MonoPitchRoofSpec;
   rafter: { section: TimberSection; spacing: RafterSpacingSpec };
   lowSupport: MonoPitchSupportSpec;
   highSupport: MonoPitchSupportSpec;
+  /** Absent or empty: the rafters span plate to plate. */
+  intermediateSupports?: MonoPitchPurlinSpec[];
 }
 
 const mm = (min: number, max: number) => z.number().finite().min(min).max(max);
@@ -73,6 +85,17 @@ export const monoPitchFramingSpecSchema: z.ZodType<MonoPitchFramingSpec> = z
     }),
     lowSupport: supportSchema,
     highSupport: supportSchema,
+    intermediateSupports: z
+      .array(
+        z.object({
+          positionMm: mm(1, 100000),
+          widthMm: mm(1, 2000),
+          heightMm: mm(1, 2000),
+          seatMm: mm(0.001, 2000),
+        }),
+      )
+      .max(4)
+      .optional(),
   })
   .superRefine((spec, ctx) => {
     const issue = (path: (string | number)[], message: string) =>
@@ -98,6 +121,33 @@ export const monoPitchFramingSpecSchema: z.ZodType<MonoPitchFramingSpec> = z
       spec.roof.runMm - spec.highSupport.widthMm
     )
       issue(['highSupport', 'widthMm'], 'supports_overlap');
+    // Purlins sit between the plates and never touch each other (1 mm gap,
+    // as the gable `supports_overlap` rule).
+    const between = {
+      from: spec.lowSupport.widthMm + 1,
+      to: spec.roof.runMm - spec.highSupport.widthMm - 1,
+    };
+    const purlins = spec.intermediateSupports ?? [];
+    purlins.forEach((purlin, index) => {
+      const path = ['intermediateSupports', index];
+      if (purlin.seatMm > purlin.widthMm + 1e-8)
+        issue([...path, 'seatMm'], 'seat_exceeds_support');
+      if (purlin.seatMm * sin >= spec.rafter.section.depthMm)
+        issue([...path, 'seatMm'], 'notch_consumes_depth');
+      if (
+        purlin.positionMm < between.from ||
+        purlin.positionMm + purlin.widthMm > between.to
+      )
+        issue([...path, 'positionMm'], 'support_outside_span');
+      purlins.forEach((other, j) => {
+        if (
+          j < index &&
+          purlin.positionMm < other.positionMm + other.widthMm + 1 &&
+          other.positionMm < purlin.positionMm + purlin.widthMm + 1
+        )
+          issue([...path, 'positionMm'], 'supports_overlap');
+      });
+    });
   }) as z.ZodType<MonoPitchFramingSpec>;
 
 /** What the framing solver answers; anything else is reported, not guessed. */
@@ -105,7 +155,7 @@ export const MONO_PITCH_FRAMING_SCOPE = {
   surfaceGeometry: 'supported',
   framing: 'supported',
   fabrication: 'supported',
-  intermediateSupports: 'not-supported',
+  intermediateSupports: 'supported',
   covering: 'not-supported',
   drainage: 'not-supported',
   structuralCheck: 'not-checked',
@@ -132,8 +182,21 @@ export interface MonoPitchFraming {
   };
   /** Horizontal x of the rafter's top plumb end in the frame. */
   topEndXmm: number;
+  /** Intermediate purlins along the slope: seat level above the low plate. */
+  purlins: { id: string; positionMm: number; seatTopMm: number }[];
   supportIds: { low: string; high: string };
   scope: typeof MONO_PITCH_FRAMING_SCOPE;
+}
+
+/**
+ * Purlin IDs in the gable's `support:purlin-N` family, so the schedule
+ * labels them P1, P2… (`purlinFamilyCode`) like on any other roof.
+ * Numbered along the slope, from the low plate.
+ */
+function purlinIds(spec: MonoPitchFramingSpec): string[] {
+  return (spec.intermediateSupports ?? []).map(
+    (_, index) => `support:purlin-${index + 1}`,
+  );
 }
 
 /** The single rafter as the shared solver's input. */
@@ -166,6 +229,17 @@ export function monoPitchRafterAssembly(spec: MonoPitchFramingSpec): {
       member: { id: MONO_PITCH_RAFTER_ID, section: spec.rafter.section },
       supports: [
         support(LOW_SUPPORT_ID, spec.lowSupport, 0),
+        ...purlinIds(spec).map((id, index) => {
+          const purlin = spec.intermediateSupports![index]!;
+          return {
+            ...support(
+              id,
+              { kind: 'wall-plate', ...purlin },
+              purlin.positionMm,
+            ),
+            kind: 'purlin' as const,
+          };
+        }),
         support(
           HIGH_SUPPORT_ID,
           spec.highSupport,
@@ -203,7 +277,15 @@ export function monoPitchFromPlateTops(input: {
 export function resolveMonoPitchFraming(
   input: MonoPitchFramingSpec,
 ): MonoPitchFraming {
-  const spec = monoPitchFramingSpecSchema.parse(input);
+  const parsed = monoPitchFramingSpecSchema.parse(input);
+  const spec: MonoPitchFramingSpec = parsed.intermediateSupports?.length
+    ? {
+        ...parsed,
+        intermediateSupports: [...parsed.intermediateSupports].sort(
+          (a, b) => a.positionMm - b.positionMm,
+        ),
+      }
+    : parsed;
   const surface = resolveMonoPitchRoof(spec.roof);
   const { assembly: assemblySpec, topEndXmm } = monoPitchRafterAssembly(spec);
   const assembly = resolveAssemblyGeometry(assemblySpec, 'top');
@@ -217,7 +299,9 @@ export function resolveMonoPitchFraming(
     (station) => `${station.id}:mono`,
   );
   const tan = Math.tan((spec.roof.pitchDeg * Math.PI) / 180);
-  const [low, high] = assemblySpec.supports;
+  // The low plate is first, the high support last; purlins sit between.
+  const low = assemblySpec.supports[0];
+  const high = assemblySpec.supports.at(-1);
   // Each seat is horizontal through its toe on the rafter's lower edge.
   const lowSeat = seatLength(low!, spec.roof.pitchDeg);
   const toeRise =
@@ -250,6 +334,14 @@ export function resolveMonoPitchFraming(
       differenceMm: toeRise,
     },
     topEndXmm,
+    purlins: purlinIds(spec).map((id, index) => {
+      const purlin = spec.intermediateSupports![index]!;
+      return {
+        id,
+        positionMm: purlin.positionMm,
+        seatTopMm: datum + (purlin.positionMm + purlin.seatMm - lowSeat) * tan,
+      };
+    }),
     supportIds: { low: LOW_SUPPORT_ID, high: HIGH_SUPPORT_ID },
     scope: MONO_PITCH_FRAMING_SCOPE,
   };
@@ -297,6 +389,20 @@ export function createMonoPitchSkeleton(
       framing.plates.differenceMm,
       'right',
     ),
+    ...framing.purlins.map((purlin, index): SkeletonMember3D => {
+      const support = framing.spec.intermediateSupports![index]!;
+      const z = purlin.seatTopMm - (roof.lowBearingElevationMm ?? 0);
+      return {
+        id: `instance:mono-${purlin.id.replace('support:', '')}`,
+        prototypeId: purlin.id,
+        selectionId: purlin.id,
+        kind: 'purlin',
+        from: { x: purlin.positionMm, y: 0, z },
+        to: { x: purlin.positionMm, y: length, z },
+        section: { widthMm: support.widthMm, depthMm: support.heightMm },
+        side: 'center',
+      };
+    }),
     ...framing.rafterSpacing.stations.map((station, index) => ({
       id: prototype!.instanceIds[index]!,
       prototypeId: prototype!.id,

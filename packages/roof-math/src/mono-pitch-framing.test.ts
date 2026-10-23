@@ -382,3 +382,106 @@ describe('counter-battens and membrane on the mono-pitch roof (VNext-7B-2)', () 
     expect(membrane.ridgeOverrunAreaMm2).toBeCloseTo((5700 - slope) * 6600, 3);
   });
 });
+
+describe('mono-pitch with an intermediate purlin (VNext-7B-5)', () => {
+  // F3 = F1 + a 100 × 160 purlin at x = 2000 mm with a 60 mm seat:
+  // heel (2000 + 500) / cos 15° = 2588.190 mm, notch 60 · sin 15° =
+  // 15.529 mm, seat (2000 + 60 − 100) · tan 15° = 525.180 mm above the
+  // low plate top.
+  const F3: MonoPitchFramingSpec = {
+    ...F1,
+    intermediateSupports: [
+      { positionMm: 2000, widthMm: 100, heightMm: 160, seatMm: 60 },
+    ],
+  };
+  const framing = resolveMonoPitchFraming(F3);
+  const { assembly, plan } = framing.calculation;
+
+  it('notches the rafter on the purlin by the same rule as on the plates', () => {
+    expect(assembly.joints).toHaveLength(3);
+    const purlinJoint = assembly.joints[1]!;
+    expect(purlinJoint.stationMm).toBeCloseTo(2588.190451, 5);
+    expect(purlinJoint.normalDepthMm).toBeCloseTo(15.529143, 5);
+    expect(purlinJoint.remainingDepthMm).toBeCloseTo(184.470857, 5);
+    expect(assembly.supports.map((support) => support.kind)).toEqual([
+      'wall-plate',
+      'purlin',
+      'wall-plate',
+    ]);
+    // Three birdsmouths, three marking groups, then the top plumb end.
+    expect(
+      plan.steps.filter((step) => step.action === 'mark-seat'),
+    ).toHaveLength(3);
+  });
+
+  it('leaves the rafter length and the plates unchanged', () => {
+    const plain = resolveMonoPitchFraming(F1);
+    expect(plan.minimumStockLengthMm).toBeCloseTo(
+      plain.calculation.plan.minimumStockLengthMm,
+      9,
+    );
+    expect(framing.plates).toEqual(plain.plates);
+  });
+
+  it('reports the purlin seat level and draws it along the building', () => {
+    expect(framing.purlins).toEqual([
+      {
+        id: 'support:purlin-1',
+        positionMm: 2000,
+        seatTopMm: expect.closeTo(525.180417, 5),
+      },
+    ]);
+    const purlin = createMonoPitchSkeleton(framing).members.find(
+      (member) => member.kind === 'purlin',
+    )!;
+    expect(purlin.from).toEqual({
+      x: 2000,
+      y: 0,
+      z: expect.closeTo(525.180417, 5),
+    });
+    expect(purlin.to.y).toBe(6000);
+    expect(purlin.section).toEqual({ widthMm: 100, depthMm: 160 });
+  });
+
+  it('numbers purlins along the slope whatever order they were entered in', () => {
+    const two = resolveMonoPitchFraming({
+      ...F1,
+      intermediateSupports: [
+        { positionMm: 3000, widthMm: 100, heightMm: 160, seatMm: 60 },
+        { positionMm: 1500, widthMm: 100, heightMm: 160, seatMm: 60 },
+      ],
+    });
+    expect(two.purlins.map((p) => [p.id, p.positionMm])).toEqual([
+      ['support:purlin-1', 1500],
+      ['support:purlin-2', 3000],
+    ]);
+  });
+
+  it('refuses a purlin outside the span, on a plate or on another purlin', () => {
+    const issues = (purlins: MonoPitchFramingSpec['intermediateSupports']) => {
+      const result = monoPitchFramingSpecSchema.safeParse({
+        ...F1,
+        intermediateSupports: purlins,
+      });
+      return result.success ? [] : result.error.issues.map((i) => i.message);
+    };
+    const purlin = {
+      positionMm: 2000,
+      widthMm: 100,
+      heightMm: 160,
+      seatMm: 60,
+    };
+    expect(issues([{ ...purlin, positionMm: 100 }])).toEqual([
+      'support_outside_span',
+    ]);
+    expect(issues([{ ...purlin, positionMm: 3800 }])).toEqual([
+      'support_outside_span',
+    ]);
+    expect(issues([purlin, { ...purlin, positionMm: 2050 }])).toEqual([
+      'supports_overlap',
+    ]);
+    expect(issues([{ ...purlin, seatMm: 120 }])).toEqual([
+      'seat_exceeds_support',
+    ]);
+  });
+});

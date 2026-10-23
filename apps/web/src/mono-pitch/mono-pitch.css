@@ -150,6 +150,38 @@
   height: 20px;
   accent-color: var(--ui-accent);
 }
+.mono-purlins {
+  display: grid;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--ui-line);
+}
+.mono-purlin {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--ui-line);
+  border-radius: 8px;
+  background: var(--ui-surface-sunken);
+}
+.mono-purlin .mono-field > div {
+  background: var(--ui-surface);
+}
+.mono-purlin-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.mono-purlins > .a-button {
+  justify-self: start;
+  width: auto;
+  min-height: 40px;
+}
+.mono-purlins > small {
+  color: var(--ui-text-muted);
+  font-size: var(--ui-text-xs);
+}
 .mono-layer-group {
   display: grid;
   gap: 8px;

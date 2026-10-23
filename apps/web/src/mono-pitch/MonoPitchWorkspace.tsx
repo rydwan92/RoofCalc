@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { Printer, RotateCcw, X } from 'lucide-react';
+import { Plus, Printer, RotateCcw, Trash2, X } from 'lucide-react';
 import {
   resolveMonoPitchRoofSystem,
   type MonoPitchRoofSystem,
@@ -18,11 +18,16 @@ import {
   defaultMonoPitchDraft,
   loadMonoPitchDraft,
   MONO_PITCH_ANGLE_FIELDS,
+  MONO_PITCH_MAX_PURLINS,
+  MONO_PITCH_PURLIN_FIELDS,
   monoPitchDraftIssues,
   monoPitchSystemInput,
+  newMonoPitchPurlin,
+  purlinFieldKey,
   saveMonoPitchDraft,
   type MonoPitchDraft,
   type MonoPitchFieldIssue,
+  type MonoPitchInputKey,
   type MonoPitchNumberField,
 } from './mono-pitch-draft';
 import { MonoPitchSection } from './MonoPitchSection';
@@ -105,8 +110,12 @@ export function MonoPitchWorkspace({
   const [draft, setDraft] = useState<MonoPitchDraft>(() =>
     loadMonoPitchDraft(),
   );
-  const [texts, setTexts] = useState<Partial<Record<Field, string>>>({});
-  const [unparsable, setUnparsable] = useState<ReadonlySet<Field>>(new Set());
+  const [texts, setTexts] = useState<
+    Partial<Record<MonoPitchInputKey, string>>
+  >({});
+  const [unparsable, setUnparsable] = useState<ReadonlySet<MonoPitchInputKey>>(
+    new Set(),
+  );
   useEffect(() => saveMonoPitchDraft(draft), [draft]);
   useEffect(() => {
     const close = (event: KeyboardEvent) => {
@@ -138,61 +147,73 @@ export function MonoPitchWorkspace({
 
   const length = (mm: number) => formatLength(mm, unit, locale);
   const angle = (deg: number) => formatNumber(deg, locale, 1);
-  const shown = (field: Field) =>
-    MONO_PITCH_ANGLE_FIELDS.has(field)
-      ? String(Number(draft[field].toFixed(4)))
-      : String(fromMillimetres(draft[field], unit));
-  const setNumber = (field: Field, raw: string) => {
-    setTexts((current) => ({ ...current, [field]: raw }));
-    const value = parseDecimal(raw);
-    setUnparsable((current) => {
-      const next = new Set(current);
-      if (value === null) next.add(field);
-      else next.delete(field);
-      return next;
-    });
-    if (value === null) return;
-    setDraft((current) => ({
-      ...current,
-      [field]: MONO_PITCH_ANGLE_FIELDS.has(field)
-        ? value
-        : toMillimetres(value, unit),
-    }));
-  };
   const highSupport = t(
     `assembly.monoPitch.highSupport.${draft.topEdge === 'abutment' ? 'ledger' : 'wall-plate'}`,
   );
-  const issueText = (field: Field): string | undefined => {
-    if (unparsable.has(field)) return t('assembly.errors.invalid');
-    const issue: MonoPitchFieldIssue | undefined = issues[field];
+  const issueText = (key: MonoPitchInputKey): string | undefined => {
+    if (unparsable.has(key)) return t('assembly.errors.invalid');
+    const issue: MonoPitchFieldIssue | undefined = issues[key];
     return issue ? t(`assembly.monoPitch.issues.${issue}`) : undefined;
   };
-  const input = (field: Field) => {
-    const id = `mono-pitch.${field}`;
-    const error = issueText(field);
+  /**
+   * One exact numeric input: lengths in the display unit (stored in mm),
+   * angles in degrees; the typed text is kept while it cannot be parsed.
+   */
+  const numberInput = ({
+    key,
+    label,
+    value,
+    angleField = false,
+    apply,
+  }: {
+    key: MonoPitchInputKey;
+    label: string;
+    value: number;
+    angleField?: boolean;
+    apply: (value: number) => void;
+  }) => {
+    const id = `mono-pitch.${key}`;
+    const error = issueText(key);
     return (
-      <label className="mono-field" htmlFor={id} key={field}>
-        <span>{t(`assembly.monoPitch.fields.${field}`)}</span>
+      <label className="mono-field" htmlFor={id} key={key}>
+        <span>{label}</span>
         <div>
           <input
             id={id}
             type="text"
             inputMode="decimal"
             autoComplete="off"
-            value={texts[field] ?? shown(field)}
+            value={
+              texts[key] ??
+              (angleField
+                ? String(Number(value.toFixed(4)))
+                : String(fromMillimetres(value, unit)))
+            }
             aria-invalid={!!error}
             aria-describedby={error ? `${id}-error` : undefined}
-            onChange={(event) => setNumber(field, event.target.value)}
+            onChange={(event) => {
+              const raw = event.target.value;
+              setTexts((current) => ({ ...current, [key]: raw }));
+              const parsed = parseDecimal(raw);
+              setUnparsable((current) => {
+                const next = new Set(current);
+                if (parsed === null) next.add(key);
+                else next.delete(key);
+                return next;
+              });
+              if (parsed !== null)
+                apply(angleField ? parsed : toMillimetres(parsed, unit));
+            }}
             onBlur={() =>
               setTexts((current) => {
-                if (unparsable.has(field)) return current;
+                if (unparsable.has(key)) return current;
                 const next = { ...current };
-                delete next[field];
+                delete next[key];
                 return next;
               })
             }
           />
-          <small>{MONO_PITCH_ANGLE_FIELDS.has(field) ? '°' : unit}</small>
+          <small>{angleField ? '°' : unit}</small>
         </div>
         {error && (
           <small className="mono-error" id={`${id}-error`} role="alert">
@@ -202,6 +223,87 @@ export function MonoPitchWorkspace({
       </label>
     );
   };
+  const input = (field: Field) =>
+    numberInput({
+      key: field,
+      label: t(`assembly.monoPitch.fields.${field}`),
+      value: draft[field],
+      angleField: MONO_PITCH_ANGLE_FIELDS.has(field),
+      apply: (value) => setDraft((current) => ({ ...current, [field]: value })),
+    });
+  const setPurlins = (
+    update: (purlins: MonoPitchDraft['purlins']) => MonoPitchDraft['purlins'],
+  ) => {
+    setDraft((current) => ({ ...current, purlins: update(current.purlins) }));
+    // Texts are keyed by position in the list: start fresh after a change.
+    setTexts((current) =>
+      Object.fromEntries(
+        Object.entries(current).filter(([key]) => !key.startsWith('purlins.')),
+      ),
+    );
+    setUnparsable(
+      (current) =>
+        new Set([...current].filter((key) => !key.startsWith('purlins.'))),
+    );
+  };
+  const purlinInputs = (
+    <div className="mono-purlins" data-testid="mono-pitch-purlins">
+      {draft.purlins.map((purlin, index) => (
+        <div
+          className="mono-purlin"
+          key={index}
+          data-testid={`mono-pitch-purlin-${index}`}
+        >
+          <div className="mono-purlin-head">
+            <strong>
+              {t('assembly.monoPitch.purlin.heading', { n: index + 1 })}
+            </strong>
+            <button
+              type="button"
+              className="mono-icon"
+              aria-label={t('assembly.monoPitch.purlin.remove', {
+                n: index + 1,
+              })}
+              title={t('assembly.monoPitch.purlin.remove', { n: index + 1 })}
+              onClick={() =>
+                setPurlins((purlins) => purlins.filter((_, i) => i !== index))
+              }
+            >
+              <Trash2 size={16} aria-hidden="true" />
+            </button>
+          </div>
+          {MONO_PITCH_PURLIN_FIELDS.map((field) =>
+            numberInput({
+              key: purlinFieldKey(index, field),
+              label: t(`assembly.monoPitch.purlin.${field}`),
+              value: purlin[field],
+              apply: (value) =>
+                setDraft((current) => ({
+                  ...current,
+                  purlins: current.purlins.map((item, i) =>
+                    i === index ? { ...item, [field]: value } : item,
+                  ),
+                })),
+            }),
+          )}
+        </div>
+      ))}
+      {draft.purlins.length < MONO_PITCH_MAX_PURLINS && (
+        <button
+          type="button"
+          className="a-button"
+          data-testid="mono-pitch-add-purlin"
+          onClick={() =>
+            setPurlins((purlins) => [...purlins, newMonoPitchPurlin(draft)])
+          }
+        >
+          <Plus size={16} aria-hidden="true" />
+          {t('assembly.monoPitch.purlin.add')}
+        </button>
+      )}
+      <small>{t('assembly.monoPitch.purlin.hint')}</small>
+    </div>
+  );
 
   return createPortal(
     <div
@@ -321,6 +423,7 @@ export function MonoPitchWorkspace({
                   {group.key === 'supports' ? ` · ${highSupport}` : ''}
                 </legend>
                 {group.fields.map(input)}
+                {group.key === 'supports' && purlinInputs}
               </fieldset>
             ))}
             <fieldset>
@@ -499,7 +602,15 @@ function MonoPitchResults({
   const locale = i18n.language;
   const { framing } = system;
   const { assembly, plan } = framing.calculation;
-  const [lowJoint, highJoint] = assembly.joints;
+  const notches = assembly.joints.map((joint, index) => ({
+    joint,
+    label:
+      index === 0
+        ? t('assembly.monoPitch.cuts.lowNotch')
+        : index === assembly.joints.length - 1
+          ? t('assembly.monoPitch.cuts.highNotch', { support: highSupport })
+          : t('assembly.monoPitch.cuts.purlinNotch', { n: index }),
+  }));
   const eaveCut = assembly.endCuts.find((cut) => cut.end === 'eave')!;
   const topCut = assembly.endCuts.find((cut) => cut.end === 'top')!;
   const [plane] = framing.surface.planes;
@@ -590,36 +701,24 @@ function MonoPitchResults({
               })}
             </dd>
           </div>
-          {(
-            [
-              [t('assembly.monoPitch.cuts.lowNotch'), lowJoint],
-              [
-                t('assembly.monoPitch.cuts.highNotch', {
-                  support: highSupport,
-                }),
-                highJoint,
-              ],
-            ] as const
-          ).map(([label, joint]) =>
-            joint ? (
-              <div key={joint.id}>
-                <dt>{label}</dt>
-                <dd>
-                  {t('assembly.monoPitch.cuts.notch', {
-                    seat: length(joint.seatLengthMm),
-                    depth: length(joint.normalDepthMm),
-                    remaining: length(joint.remainingDepthMm),
-                    unit,
-                  })}
-                  <br />
-                  {t('assembly.monoPitch.cuts.station', {
-                    distance: length(joint.stationMm),
-                    unit,
-                  })}
-                </dd>
-              </div>
-            ) : null,
-          )}
+          {notches.map(({ joint, label }) => (
+            <div key={joint.id}>
+              <dt>{label}</dt>
+              <dd>
+                {t('assembly.monoPitch.cuts.notch', {
+                  seat: length(joint.seatLengthMm),
+                  depth: length(joint.normalDepthMm),
+                  remaining: length(joint.remainingDepthMm),
+                  unit,
+                })}
+                <br />
+                {t('assembly.monoPitch.cuts.station', {
+                  distance: length(joint.stationMm),
+                  unit,
+                })}
+              </dd>
+            </div>
+          ))}
           <div>
             <dt>{t('assembly.monoPitch.cuts.top')}</dt>
             <dd>
@@ -724,6 +823,28 @@ function MonoPitchResults({
                 </tr>
               ) : null,
             )}
+            {rows
+              .filter((row) => row.memberKind === 'purlin')
+              .map((row) => (
+                <tr key={row.id} data-row="purlin">
+                  <th scope="row">
+                    {t('assembly.monoPitch.list.purlin', {
+                      code: row.familyKey,
+                      section: section(
+                        row.section.widthMm ?? 0,
+                        row.section.depthMm ?? 0,
+                      ),
+                    })}
+                  </th>
+                  <td>
+                    {t('assembly.monoPitch.list.pieces', {
+                      count: row.quantity,
+                      length: length(row.lengthMm),
+                      unit,
+                    })}
+                  </td>
+                </tr>
+              ))}
             {system.battens && (
               <tr data-row="battens">
                 <th scope="row">
@@ -834,6 +955,20 @@ function MonoPitchPrintInputs({
           <dt>{t('assembly.monoPitch.topEdge.label')}</dt>
           <dd>{t(`assembly.monoPitch.topEdge.${draft.topEdge}`)}</dd>
         </div>
+        {draft.purlins.map((purlin, index) => (
+          <div key={index}>
+            <dt>{t('assembly.monoPitch.purlin.heading', { n: index + 1 })}</dt>
+            <dd>
+              {t('assembly.monoPitch.purlin.printValue', {
+                position: formatLength(purlin.positionMm, unit, i18n.language),
+                width: formatLength(purlin.widthMm, unit, i18n.language),
+                height: formatLength(purlin.heightMm, unit, i18n.language),
+                seat: formatLength(purlin.seatMm, unit, i18n.language),
+                unit,
+              })}
+            </dd>
+          </div>
+        ))}
       </dl>
     </section>
   );

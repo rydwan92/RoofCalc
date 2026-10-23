@@ -627,6 +627,10 @@ line and manual lengths keep working.
   projektu" lists five groups and one "Dalej" step, opens the existing
   editor and folds into a one-line pill; "Edytuj szczegółowo" is the
   Creator. What the document did not give is named, never hidden.
+- **VNext-7B-4: every screen prints what it shows.** A print rule of one
+  overlay is scoped to that overlay (`body:has(…)`); the mono-pitch sheet
+  prints the inputs as a table, the result, the section, cuts, marking out,
+  schedule and limits — never the form, buttons or a WebGL canvas.
 - **VNext-7B-3: a shape before its project format is a calculation, and
   says so.** The mono-pitch workspace computes everything from the shared
   solvers, shows the last valid result while a field is wrong, keeps the key

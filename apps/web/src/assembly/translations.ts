@@ -1919,6 +1919,7 @@ export const assemblyPl = {
       seat_exceeds_support: 'Siedzisko jest szersze niż podpora.',
       notch_consumes_depth: 'Zacięcie przecina krokiew — zmniejsz siedzisko.',
       supports_overlap: 'Podpory nachodzą na siebie — zwiększ rozpiętość.',
+      support_outside_span: 'Płatew musi leżeć między murłatami.',
     },
     invalidResult:
       'Popraw zaznaczone pola — wyniki pokazują ostatnie poprawne wartości.',
@@ -1941,6 +1942,7 @@ export const assemblyPl = {
       top: 'Cięcie górne',
       lowNotch: 'Zacięcie na murłacie dolnej',
       highNotch: 'Zacięcie: {{support}}',
+      purlinNotch: 'Zacięcie na płatwi P{{n}}',
       plumb: 'pionowe · {{angle}}° do krawędzi krokwi',
       notch:
         'siedzisko {{seat}} {{unit}} · głębokość {{depth}} {{unit}} prostopadle · zostaje {{remaining}} {{unit}}',
@@ -1960,6 +1962,7 @@ export const assemblyPl = {
       battens: 'Łaty · {{section}}',
       counterBattens: 'Kontrłaty · {{section}}',
       membrane: 'Membrana',
+      purlin: 'Płatew {{code}} · {{section}}',
       membraneValue:
         '{{area}} m² brutto · pasy: {{courses}} · rolki: {{rolls}}',
       length: '{{length}} m',
@@ -1967,9 +1970,21 @@ export const assemblyPl = {
     },
     limits: {
       heading: 'Czego jeszcze nie liczy',
-      text: 'Nośności i ugięć (przekroje potwierdź u konstruktora), płatwi pośrednich, pokrycia z katalogu, odwodnienia, kosztorysu i dokumentu wykonawczego.',
+      text: 'Nośności i ugięć (przekroje i rozstaw podpór potwierdź u konstruktora), pokrycia z katalogu, odwodnienia, kosztorysu i dokumentu wykonawczego.',
     },
     drawing: 'Przekrój krokwi na dwóch podporach',
+    purlin: {
+      heading: 'Płatew P{{n}}',
+      positionMm: 'Odległość od murłaty dolnej',
+      widthMm: 'Szerokość',
+      heightMm: 'Wysokość',
+      seatMm: 'Siedzisko',
+      add: 'Dodaj płatew pośrednią',
+      remove: 'Usuń płatew P{{n}}',
+      hint: 'Płatew skraca przęsło krokwi. Jej przekrój i rozstaw podpór sprawdza konstruktor.',
+      printValue:
+        'od murłaty {{position}} {{unit}} · {{width}} × {{height}} {{unit}} · siedzisko {{seat}} {{unit}}',
+    },
     view: { label: 'Widok', section: 'Przekrój', threeD: 'Widok 3D' },
   },
   errors: {

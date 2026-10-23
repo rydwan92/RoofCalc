@@ -753,4 +753,7 @@ workbench. No migration.
   workspace inputs in mm and degrees. Validated on read; anything invalid or
   foreign falls back to the example; a full storage only loses the
   convenience. Not a project, not exported, no Undo history. The V2 project
-  writer gate is unchanged.
+  writer gate is unchanged. VNext-7B-5 adds `purlins[]` (position, width,
+  height, seat; at most four) — additive: a draft saved before has none.
+- `MonoPitchFramingSpec.intermediateSupports?` (VNext-7B-5, derived): up to
+  four purlins; result `MonoPitchFraming.purlins` (ID, position, seat level).

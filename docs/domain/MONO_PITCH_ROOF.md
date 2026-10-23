@@ -228,9 +228,10 @@ plan lines — a test checks it.
 
 ### 8.5 Still not resolved
 
-Intermediate purlins and spans, the 3D skeleton (so counter-battens and
-the timber schedule), membrane, drainage, documents, the workbench UI and
-persistence (V2 writer gate). No structural check (ADR-014).
+Spans and load capacity (no structural check, ADR-014), drainage, the
+execution document and cost, and persistence (V2 writer gate). The
+skeleton, counter-battens, membrane and timber schedule followed in 7B-2
+(§9), the workspace in 7B-3 (§10), intermediate purlins in 7B-5 (§11).
 `MONO_PITCH_FRAMING_SCOPE` states it in code; the topology assessment keeps
 the roof `not-supported` until documents can show it.
 
@@ -272,3 +273,26 @@ the roof `not-supported` until documents can show it.
 - Persistence: a draft of this browser only (SCHEMA_REGISTRY §21). The
   screen says that saving as a project, the cost estimate and the execution
   document come later; load capacity is never claimed.
+
+## 11. Intermediate purlins (VNext-7B-5)
+
+- `intermediateSupports`: up to four purlins, each with its horizontal
+  distance from the low plate's outer face to its downslope face (the
+  birdsmouth heel), width, height and seat. The shared rafter solver
+  notches the rafter on every support by the same rule; the rafter length,
+  the plate heights and the end cuts do not change.
+- Validation: a purlin lies between the plates with at least 1 mm to each
+  (`support_outside_span`), never touches another (`supports_overlap`),
+  and its seat obeys the same seat and notch rules as the plates. Purlins
+  are read along the slope whatever order they were entered in, and named
+  P1, P2… in that order (`support:purlin-N`, the gable family code).
+- Seat level above the low plate top: `(x_p + s_p − s_low) · tan α`.
+- Skeleton: a line along the building at the purlin's downslope face and
+  seat level; the timber schedule lists it as P1 (6 m for F1).
+
+| # | Input | Expected |
+| --- | --- | --- |
+| F3 | F1 + a 100 × 160 purlin at `x_p` 2000 with a 60 mm seat | heel at (2000 + 500)/cos 15° = 2588.190 mm from A; notch 60·sin 15° = 15.529 mm (184.471 mm left); seat 525.180 mm above the low plate; stock 5022.916 mm as F1 |
+
+A purlin shortens the rafter span; whether that span, the purlin's section
+and the support spacing carry the load is the designer's (ADR-014).

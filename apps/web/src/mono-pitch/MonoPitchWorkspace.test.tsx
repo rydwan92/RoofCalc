@@ -87,3 +87,36 @@ describe('mono-pitch workspace (VNext-7B-3)', () => {
     expect(result('stock')).toContain('5022,9 mm');
   });
 });
+
+describe('intermediate purlins in the workspace (VNext-7B-5)', () => {
+  it('adds a purlin: one more notch, P1 in the schedule, rafter unchanged', () => {
+    render(<MonoPitchWorkspace unit="cm" onClose={() => undefined} />);
+    fireEvent.click(screen.getByTestId('mono-pitch-add-purlin'));
+    fireEvent.change(field('purlins.0.positionMm'), {
+      target: { value: '200' },
+    });
+    const cuts = screen.getByTestId('mono-pitch-cuts').textContent ?? '';
+    expect(cuts).toContain('Zacięcie na płatwi P1');
+    expect(cuts).toContain('od A: 258,8 cm');
+    expect(
+      screen.getByTestId('mono-pitch-list').querySelector('[data-row="purlin"]')
+        ?.textContent,
+    ).toContain('Płatew P1 · 10 × 16 cm');
+    expect(result('stock')).toContain('502,3 cm');
+  });
+
+  it('names a purlin outside the span at its own field, then removes it', () => {
+    render(<MonoPitchWorkspace unit="cm" onClose={() => undefined} />);
+    fireEvent.click(screen.getByTestId('mono-pitch-add-purlin'));
+    fireEvent.change(field('purlins.0.positionMm'), { target: { value: '5' } });
+    expect(field('purlins.0.positionMm').getAttribute('aria-invalid')).toBe(
+      'true',
+    );
+    expect(screen.getByRole('alert').textContent).toBe(
+      'Płatew musi leżeć między murłatami.',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Usuń płatew P1' }));
+    expect(screen.queryByTestId('mono-pitch-purlin-0')).toBeNull();
+    expect(screen.queryByTestId('mono-pitch-invalid')).toBeNull();
+  });
+});

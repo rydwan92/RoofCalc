@@ -1297,6 +1297,32 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+## VNext-7B-4 / 7B-5 (2026-10-23) — mono-pitch in 3D, a printed sheet, intermediate purlins; blank printouts fixed
+
+- Same branch `feature/vnext-7b2-mono-pitch-skeleton`.
+- 7B-4a: `TechnicalScene3D` takes an optional `Scene3DController` (view,
+  unit, select, clear, isolation); the workbench keeps the store by default
+  (its 3D e2e unchanged). The mono-pitch workspace switches section ↔ 3D
+  with a local selection.
+- 7B-4b: **bug** — `business.css` hid everything in every printout (an
+  unscoped quote print rule), so e.g. the quick calculator printed blank;
+  now `body:has(.bz-quote-layer)`. The mono-pitch workspace renders into
+  body and prints a crew sheet (inputs table, result, section, cuts,
+  marking, schedule, limits).
+- 7B-5: intermediate purlins — `MonoPitchFramingSpec.intermediateSupports`
+  (≤ 4; between the plates, no overlap, seat rules), notched by the shared
+  solver, numbered P1… along the slope, seat level reported, drawn in the
+  skeleton, P1 in the schedule; workspace add/remove with field errors;
+  vector F3 (MONO_PITCH_ROOF §11). A test caught a real bug on the way: the
+  high plate height was read from the second support (now the last).
+- Validation: `pnpm verify` green — 213 files / 2214 tests
+  (13 skipped); `pnpm e2e` 174 passed / 38 conditionally
+  skipped / 0 failed (3D, print, purlin steps added).
+- NEXT ACTION: mono-pitch execution document through `document-core`
+  (sections need a roof-family field and an upper end that is not a ridge)
+  and cost proposals; then the V2 writer gate (ADR-015) so a mono-pitch roof
+  becomes a saved project.
+
 ## VNext-7B-2 / 7B-3 (2026-10-23) — mono-pitch skeleton, layers and the workspace users can open
 
 - Requested: "lets go, work today hard, make the great application".

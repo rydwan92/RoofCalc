@@ -1914,6 +1914,7 @@ export const assemblyEn: typeof assemblyPl = {
       notch_consumes_depth:
         'The notch cuts through the rafter — reduce the seat.',
       supports_overlap: 'The supports overlap — increase the run.',
+      support_outside_span: 'A purlin must lie between the plates.',
     },
     invalidResult:
       'Correct the marked fields — the results show the last valid values.',
@@ -1936,6 +1937,7 @@ export const assemblyEn: typeof assemblyPl = {
       top: 'Top cut',
       lowNotch: 'Notch on the low plate',
       highNotch: 'Notch: {{support}}',
+      purlinNotch: 'Notch on purlin P{{n}}',
       plumb: 'plumb · {{angle}}° to the rafter edge',
       notch:
         'seat {{seat}} {{unit}} · depth {{depth}} {{unit}} square · {{remaining}} {{unit}} remain',
@@ -1955,6 +1957,7 @@ export const assemblyEn: typeof assemblyPl = {
       battens: 'Battens · {{section}}',
       counterBattens: 'Counter-battens · {{section}}',
       membrane: 'Membrane',
+      purlin: 'Purlin {{code}} · {{section}}',
       membraneValue:
         '{{area}} m² gross · courses: {{courses}} · rolls: {{rolls}}',
       length: '{{length}} m',
@@ -1962,9 +1965,21 @@ export const assemblyEn: typeof assemblyPl = {
     },
     limits: {
       heading: 'Not calculated yet',
-      text: 'Load capacity and deflection (confirm sections with an engineer), intermediate purlins, covering from the catalogue, drainage, cost estimate and execution document.',
+      text: 'Load capacity and deflection (confirm sections and support spacing with an engineer), covering from the catalogue, drainage, cost estimate and execution document.',
     },
     drawing: 'Rafter section on two supports',
+    purlin: {
+      heading: 'Purlin P{{n}}',
+      positionMm: 'Distance from the low plate',
+      widthMm: 'Width',
+      heightMm: 'Height',
+      seatMm: 'Seat',
+      add: 'Add an intermediate purlin',
+      remove: 'Remove purlin P{{n}}',
+      hint: 'A purlin shortens the rafter span. An engineer checks its section and the support spacing.',
+      printValue:
+        '{{position}} {{unit}} from the plate · {{width}} × {{height}} {{unit}} · seat {{seat}} {{unit}}',
+    },
     view: { label: 'View', section: 'Section', threeD: '3D view' },
   },
   errors: {

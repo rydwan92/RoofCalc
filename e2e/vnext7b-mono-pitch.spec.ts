@@ -66,6 +66,16 @@ test('mono-pitch: from the start dialog to rafters, cuts and the schedule', asyn
   await page.getByRole('button', { name: 'Przekrój', exact: true }).click();
   await expect(page.getByTestId('mono-pitch-section')).toBeVisible();
 
+  // An intermediate purlin: one more notch and P1 in the schedule.
+  await page.getByTestId('mono-pitch-add-purlin').click();
+  await expect(page.getByTestId('mono-pitch-cuts')).toContainText(
+    'Zacięcie na płatwi P1',
+  );
+  await expect(
+    page.getByTestId('mono-pitch-list').locator('[data-row="purlin"]'),
+  ).toContainText('Płatew P1');
+  await page.getByRole('button', { name: 'Usuń płatew P1' }).click();
+
   // Against a wall: a ledger and no high overhang.
   await page.getByTestId('mono-pitch-top-abutment').check();
   await expect(page.locator('[id="mono-pitch.highOverhangMm"]')).toHaveCount(0);

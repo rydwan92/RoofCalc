@@ -79,3 +79,23 @@ describe('mono-pitch timber schedule', () => {
     expect(k1.volumeMm3).toBeCloseTo(8 * k1.lengthMm * 80 * 200, 0);
   });
 });
+
+describe('mono-pitch timber schedule with a purlin (VNext-7B-5)', () => {
+  it('adds the purlin as P1 along the building', () => {
+    const withPurlin = resolveMonoPitchFraming({
+      ...framing.spec,
+      intermediateSupports: [
+        { positionMm: 2000, widthMm: 100, heightMm: 160, seatMm: 60 },
+      ],
+    });
+    const schedule = createRoofMemberSchedule({
+      skeleton: createMonoPitchSkeleton(withPurlin),
+    });
+    expect(schedule.issues).toEqual([]);
+    expect(
+      schedule.timberRows
+        .filter((row) => row.memberKind === 'purlin')
+        .map((row) => [row.familyKey, row.quantity, row.lengthMm]),
+    ).toEqual([['P1', 1, 6000]]);
+  });
+});
