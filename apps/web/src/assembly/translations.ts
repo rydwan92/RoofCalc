@@ -1864,6 +1864,9 @@ export const assemblyPl = {
     draftNote:
       'Wartości są zapamiętywane tylko w tej przeglądarce. Zapis jako projekt, kosztorys i dokument wykonawczy — w kolejnym etapie.',
     restore: 'Przywróć przykład',
+    print: 'Drukuj / PDF',
+    printInputs: 'Dane wejściowe',
+    printDate: 'Wydruk z dnia {{date}}',
     groups: {
       building: 'Budynek i spadek',
       eaves: 'Okapy i krawędź górna',

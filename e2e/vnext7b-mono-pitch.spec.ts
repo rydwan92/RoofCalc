@@ -125,3 +125,26 @@ test('mono-pitch: the quick calculator leads there too', async ({ page }) => {
     'K1',
   );
 });
+
+test('printing: every screen prints its content; the mono-pitch sheet lists its inputs', async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'print layout on desktop');
+  await page.route('**/api/**', (route) =>
+    route.fulfill({ status: 503, json: { error: { code: 'unavailable' } } }),
+  );
+  await page.goto('/#/calculators/common-rafter');
+  // VNext-7B-4 regression: the Business quote print rule used to hide the
+  // whole app in every printout, so the quick calculator printed blank.
+  await page.emulateMedia({ media: 'print' });
+  await expect(page.getByTestId('stock-length')).toBeVisible();
+  await page.emulateMedia({ media: 'screen' });
+  await page.getByTestId('quick-open-mono-pitch').click();
+  await expect(page.getByTestId('mono-pitch-workspace')).toBeVisible();
+  await page.emulateMedia({ media: 'print' });
+  await expect(page.locator('.mono-print-inputs')).toBeVisible();
+  await expect(page.locator('.mono-print-inputs dl > div')).toHaveCount(16);
+  await expect(page.getByTestId('mono-pitch-inputs')).toBeHidden();
+  await expect(page.getByTestId('mono-pitch-print')).toBeHidden();
+  await expect(page.getByTestId('mono-pitch-marking')).toBeVisible();
+});

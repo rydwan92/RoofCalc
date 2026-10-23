@@ -1858,6 +1858,9 @@ export const assemblyEn: typeof assemblyPl = {
     draftNote:
       'Values are remembered in this browser only. Saving as a project, cost estimate and execution document come next.',
     restore: 'Restore example',
+    print: 'Print / PDF',
+    printInputs: 'Input data',
+    printDate: 'Printed on {{date}}',
     groups: {
       building: 'Building and slope',
       eaves: 'Eaves and top edge',

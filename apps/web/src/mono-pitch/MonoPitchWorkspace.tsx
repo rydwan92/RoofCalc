@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { RotateCcw, X } from 'lucide-react';
+import { Printer, RotateCcw, X } from 'lucide-react';
 import {
   resolveMonoPitchRoofSystem,
   type MonoPitchRoofSystem,
@@ -202,7 +203,7 @@ export function MonoPitchWorkspace({
     );
   };
 
-  return (
+  return createPortal(
     <div
       className="mono-layer"
       role="dialog"
@@ -229,6 +230,15 @@ export function MonoPitchWorkspace({
             >
               <RotateCcw size={16} aria-hidden="true" />
               {t('assembly.monoPitch.restore')}
+            </button>
+            <button
+              type="button"
+              className="a-button"
+              data-testid="mono-pitch-print"
+              onClick={() => window.print()}
+            >
+              <Printer size={16} aria-hidden="true" />
+              {t('assembly.monoPitch.print')}
             </button>
             <button
               type="button"
@@ -338,6 +348,7 @@ export function MonoPitchWorkspace({
           </form>
 
           <div className="mono-results" aria-live="polite">
+            <MonoPitchPrintInputs draft={draft} unit={unit} />
             {invalid && (
               <p
                 className="mono-invalid"
@@ -365,7 +376,8 @@ export function MonoPitchWorkspace({
           </div>
         </div>
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -443,16 +455,24 @@ function MonoPitchView({
           unit={unit}
         />
       ) : (
-        <div className="mono-scene" data-testid="mono-pitch-scene">
-          <Suspense fallback={<div className="a-loading-panel" />}>
-            <TechnicalScene3D
-              skeleton={system.skeleton}
-              counterBattens={counterBattens}
-              controller={controller}
-              onReturnTo2D={() => setView('section')}
+        <>
+          <div className="mono-print-only">
+            <MonoPitchSection
+              assembly={system.framing.calculation.assembly}
+              unit={unit}
             />
-          </Suspense>
-        </div>
+          </div>
+          <div className="mono-scene" data-testid="mono-pitch-scene">
+            <Suspense fallback={<div className="a-loading-panel" />}>
+              <TechnicalScene3D
+                skeleton={system.skeleton}
+                counterBattens={counterBattens}
+                controller={controller}
+                onReturnTo2D={() => setView('section')}
+              />
+            </Suspense>
+          </div>
+        </>
       )}
     </section>
   );
@@ -759,5 +779,62 @@ function MonoPitchResults({
         </table>
       </section>
     </>
+  );
+}
+
+/** Print only: the inputs as a compact table (the form is not printed). */
+function MonoPitchPrintInputs({
+  draft,
+  unit,
+}: {
+  draft: MonoPitchDraft;
+  unit: LengthUnit;
+}) {
+  const { t, i18n } = useTranslation();
+  const value = (field: Field) =>
+    MONO_PITCH_ANGLE_FIELDS.has(field)
+      ? `${formatNumber(draft[field], i18n.language, 2)}°`
+      : `${formatLength(draft[field], unit, i18n.language)} ${unit}`;
+  const fields: Field[] = [
+    'buildingLengthMm',
+    'runMm',
+    'pitchDeg',
+    'lowEaveOverhangMm',
+    ...(draft.topEdge === 'free' ? (['highOverhangMm'] as const) : []),
+    'vergeOverhangMm',
+    'rafterWidthMm',
+    'rafterDepthMm',
+    'rafterSpacingMm',
+    'lowPlateWidthMm',
+    'lowPlateHeightMm',
+    'lowSeatMm',
+    'highSupportWidthMm',
+    'highSupportHeightMm',
+    'highSeatMm',
+  ];
+  return (
+    <section className="mono-print-only mono-print-inputs">
+      <p className="mono-print-header">
+        <strong>RoofCalc · {t('assembly.monoPitch.title')}</strong>
+        <span>
+          {t('assembly.monoPitch.printDate', {
+            date: new Date().toLocaleDateString(i18n.language),
+          })}
+        </span>
+      </p>
+      <h3>{t('assembly.monoPitch.printInputs')}</h3>
+      <dl>
+        {fields.map((field) => (
+          <div key={field}>
+            <dt>{t(`assembly.monoPitch.fields.${field}`)}</dt>
+            <dd>{value(field)}</dd>
+          </div>
+        ))}
+        <div>
+          <dt>{t('assembly.monoPitch.topEdge.label')}</dt>
+          <dd>{t(`assembly.monoPitch.topEdge.${draft.topEdge}`)}</dd>
+        </div>
+      </dl>
+    </section>
   );
 }

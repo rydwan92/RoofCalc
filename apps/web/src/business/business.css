@@ -1090,7 +1090,9 @@
 }
 
 @media print {
-  body * {
+  /* VNext-7B-4: only while the quote is open. Unscoped, this rule blanked
+     every other printout of the app (the quick calculator printed empty). */
+  body:has(.bz-quote-layer) * {
     visibility: hidden !important;
   }
 

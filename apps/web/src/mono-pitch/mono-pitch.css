@@ -414,3 +414,75 @@
     white-space: normal;
   }
 }
+
+/* Print (VNext-7B-4): the workspace becomes a sheet for the crew — the
+   inputs as a table, no form, no buttons, no 3D canvas. */
+.mono-print-only {
+  display: none;
+}
+@media print {
+  body:has(.mono-layer) #root {
+    display: none !important;
+  }
+  .mono-layer {
+    position: static;
+    display: block;
+    overflow: visible;
+    padding: 0;
+    background: #fff;
+  }
+  .mono-workspace {
+    width: 100%;
+    padding: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .mono-print-only {
+    display: block;
+  }
+  .mono-inputs,
+  .mono-header-actions,
+  .mono-key,
+  .mono-view-switch,
+  .mono-scene,
+  .mono-draft-note,
+  .mono-invalid {
+    display: none !important;
+  }
+  .mono-body {
+    display: block;
+  }
+  .mono-print-header {
+    display: flex;
+    justify-content: space-between;
+    margin: 0 0 6mm;
+    font-size: 10pt;
+  }
+  .mono-print-inputs dl {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1mm 8mm;
+    margin: 0 0 6mm;
+    font-size: 9pt;
+  }
+  .mono-print-inputs dl > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 4mm;
+    border-bottom: 0.2mm solid #ccc;
+  }
+  .mono-print-inputs dd {
+    margin: 0;
+    font-weight: 700;
+  }
+  .mono-cards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .mono-card,
+  .mono-section,
+  .mono-cuts dl > div,
+  .mono-marking li,
+  .mono-list tr {
+    break-inside: avoid;
+  }
+}
