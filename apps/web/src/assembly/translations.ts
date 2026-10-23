@@ -1967,6 +1967,7 @@ export const assemblyPl = {
       text: 'Nośności i ugięć (przekroje potwierdź u konstruktora), płatwi pośrednich, pokrycia z katalogu, odwodnienia, kosztorysu i dokumentu wykonawczego.',
     },
     drawing: 'Przekrój krokwi na dwóch podporach',
+    view: { label: 'Widok', section: 'Przekrój', threeD: 'Widok 3D' },
   },
   errors: {
     invalid: 'Wpisz poprawną liczbę w podanym zakresie.',

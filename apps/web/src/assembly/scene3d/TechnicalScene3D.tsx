@@ -18,6 +18,7 @@ import {
   ScanSearch,
   SlidersHorizontal,
 } from 'lucide-react';
+import type { LengthUnit } from '@cieslacalc/roof-math';
 import type { RoofSkeleton } from '@cieslacalc/timber-model';
 import {
   DEFAULT_SCENE_VISIBILITY_POLICY,
@@ -34,6 +35,7 @@ import {
 } from '@cieslacalc/technical-scene';
 import { formatLength } from '../../format';
 import { useAssembly } from '../store';
+import type { WorkbenchViewState } from '../workbench';
 import {
   sceneEntityEmphasis,
   sceneFamilyFacets,
@@ -52,6 +54,20 @@ import { TechnicalViewport, type EntityPresentation } from './viewport';
  * renderer-local transient state and never enter the project or its history.
  */
 
+/**
+ * VNext-7B-4: who owns the selection. Without a controller the view drives
+ * the workbench store (gable/hip); a workspace outside the project (the
+ * mono-pitch roof) passes its own, so the 3D view never writes a selection
+ * into a project it does not show.
+ */
+export interface Scene3DController {
+  view: WorkbenchViewState;
+  unit: LengthUnit;
+  select: (selectionId: string, prototypeId?: string) => void;
+  clear: () => void;
+  setIsolation: (isolate: boolean) => void;
+}
+
 export function TechnicalScene3D({
   skeleton,
   relatedIds,
@@ -60,8 +76,10 @@ export function TechnicalScene3D({
   finishedMembers,
   onReturnTo2D,
   onOpenPreparation,
+  controller,
 }: {
   skeleton: RoofSkeleton;
+  controller?: Scene3DController;
   relatedIds?: ReadonlySet<string>;
   counterBattens?: readonly SceneCounterBattenInput[];
   unresolvedHipBoundaries?: readonly SceneUnresolvedHipBoundaryInput[];
@@ -69,7 +87,14 @@ export function TechnicalScene3D({
   onReturnTo2D: () => void;
   onOpenPreparation?: (instanceId: string, prototypeId: string) => void;
 }) {
-  const state = useAssembly();
+  const store = useAssembly();
+  const control: Scene3DController = controller ?? {
+    view: store.workbench,
+    unit: store.unit,
+    select: store.select,
+    clear: () => store.select('roof'),
+    setIsolation: store.setIsolation,
+  };
   const { t, i18n } = useTranslation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewportRef = useRef<TechnicalViewport>(null);
@@ -88,7 +113,7 @@ export function TechnicalScene3D({
   const [finishedGeometry, setFinishedGeometry] = useState(true);
   const [hiddenGroups, setHiddenGroups] = useState<SceneSemanticGroup[]>([]);
 
-  const workbench = state.workbench;
+  const workbench = control.view;
   const isolate = workbench.isolateSelection;
 
   // The scene is rebuilt only when the resolved roof geometry changes. Camera
@@ -237,10 +262,10 @@ export function TechnicalScene3D({
     );
     const entity = hit ? viewportRef.current?.entity(hit.entityId) : undefined;
     if (!entity?.selectable || !entity.sourceRef.selectionId) {
-      state.select('roof');
+      control.clear();
       return;
     }
-    state.select(entity.sourceRef.selectionId, entity.sourceRef.prototypeId);
+    control.select(entity.sourceRef.selectionId, entity.sourceRef.prototypeId);
   };
 
   const onDoubleClick = () => {
@@ -287,7 +312,7 @@ export function TechnicalScene3D({
     );
 
   const length = (valueMm: number) =>
-    formatLength(valueMm, state.unit, i18n.language);
+    formatLength(valueMm, control.unit, i18n.language);
 
   if (failed)
     return (
@@ -381,7 +406,7 @@ export function TechnicalScene3D({
             data-scene-action="isolate"
             aria-pressed={isolate}
             disabled={!selectedEntity && !isolate}
-            onClick={() => state.setIsolation(!isolate)}
+            onClick={() => control.setIsolation(!isolate)}
           >
             {isolate ? (
               <Eye size={15} aria-hidden="true" />
@@ -476,7 +501,7 @@ export function TechnicalScene3D({
                 <span data-hud="section">
                   <i>{t('assembly.section')}</i>
                   {length(facts.sectionWidthMm)} ×{' '}
-                  {length(facts.sectionDepthMm)} {state.unit}
+                  {length(facts.sectionDepthMm)} {control.unit}
                 </span>
               )}
             {facts.lengthMm !== undefined && (
@@ -485,7 +510,7 @@ export function TechnicalScene3D({
               // commercial length. The Inspector owns those.
               <span data-hud="length">
                 <i>{t('assembly.resultBasis.title.axisGeometric')}</i>
-                {length(facts.lengthMm)} {state.unit}
+                {length(facts.lengthMm)} {control.unit}
               </span>
             )}
             {facts.limitations.includes('compound-connection-not-resolved') && (

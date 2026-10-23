@@ -266,6 +266,45 @@
   font-size: 11px;
   font-weight: 700;
 }
+.mono-view {
+  display: grid;
+  gap: 8px;
+}
+.mono-view-switch {
+  display: inline-flex;
+  justify-self: start;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 8px;
+  background: var(--ui-surface-sunken);
+}
+.mono-view-switch button {
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ui-text-muted);
+  font-weight: 700;
+}
+.mono-view-switch button[aria-pressed='true'] {
+  border-color: var(--ui-line);
+  background: var(--ui-surface);
+  color: var(--ui-text);
+}
+/* The 3D stage takes its height from a flex column (as in the workbench). */
+.mono-scene {
+  display: flex;
+  flex-direction: column;
+  height: min(560px, 70vh);
+  min-height: 360px;
+  overflow: hidden;
+  border: 1px solid var(--ui-line);
+  border-radius: 10px;
+}
+.mono-scene > * {
+  flex: 1 1 auto;
+}
 .mono-cuts dl {
   display: grid;
   gap: 8px;

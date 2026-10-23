@@ -1962,6 +1962,7 @@ export const assemblyEn: typeof assemblyPl = {
       text: 'Load capacity and deflection (confirm sections with an engineer), intermediate purlins, covering from the catalogue, drainage, cost estimate and execution document.',
     },
     drawing: 'Rafter section on two supports',
+    view: { label: 'View', section: 'Section', threeD: '3D view' },
   },
   errors: {
     invalid: 'Enter a valid number within the shown range.',

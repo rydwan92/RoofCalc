@@ -58,6 +58,14 @@ test('mono-pitch: from the start dialog to rafters, cuts and the schedule', asyn
     path: testInfo.outputPath(`vnext7b-mono-${testInfo.project.name}.png`),
   });
 
+  // The same Three.js view as the workbench, with a selection of its own.
+  await page.getByTestId('mono-pitch-view-3d').click();
+  const scene = page.getByTestId('mono-pitch-scene');
+  await expect(scene.locator('canvas')).toBeVisible();
+  await expect(scene).toContainText('K1');
+  await page.getByRole('button', { name: 'Przekrój', exact: true }).click();
+  await expect(page.getByTestId('mono-pitch-section')).toBeVisible();
+
   // Against a wall: a ledger and no high overhang.
   await page.getByTestId('mono-pitch-top-abutment').check();
   await expect(page.locator('[id="mono-pitch.highOverhangMm"]')).toHaveCount(0);

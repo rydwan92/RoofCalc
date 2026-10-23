@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RotateCcw, X } from 'lucide-react';
 import {
@@ -25,9 +25,18 @@ import {
   type MonoPitchNumberField,
 } from './mono-pitch-draft';
 import { MonoPitchSection } from './MonoPitchSection';
+import type { Scene3DController } from '../assembly/scene3d/TechnicalScene3D';
+import { initialWorkbenchViewState } from '../assembly/workbench';
 import './mono-pitch.css';
 
 type Field = MonoPitchNumberField;
+
+/** The same Three.js view as the workbench, loaded only when opened. */
+const TechnicalScene3D = lazy(() =>
+  import('../assembly/scene3d/TechnicalScene3D').then((module) => ({
+    default: module.TechnicalScene3D,
+  })),
+);
 type LayerToggle =
   'battensEnabled' | 'counterBattensEnabled' | 'membraneEnabled';
 
@@ -360,6 +369,95 @@ export function MonoPitchWorkspace({
   );
 }
 
+function MonoPitchView({
+  system,
+  unit,
+}: {
+  system: MonoPitchRoofSystem;
+  unit: LengthUnit;
+}) {
+  const { t } = useTranslation();
+  const [view, setView] = useState<'section' | '3d'>('section');
+  // A local selection: the 3D view must not select anything in the open
+  // project, which this roof is not part of (Scene3DController).
+  const [selected, setSelected] = useState<{
+    id: string;
+    prototypeId?: string;
+  }>({ id: 'roof' });
+  const [isolate, setIsolate] = useState(false);
+  const controller = useMemo<Scene3DController>(
+    () => ({
+      view: {
+        ...initialWorkbenchViewState,
+        selectedId: selected.id,
+        selectedPrototypeId: selected.prototypeId,
+        isolateSelection: isolate,
+      },
+      unit,
+      select: (id, prototypeId) => setSelected({ id, prototypeId }),
+      clear: () => {
+        setSelected({ id: 'roof' });
+        setIsolate(false);
+      },
+      setIsolation: setIsolate,
+    }),
+    [isolate, selected, unit],
+  );
+  const counterBattens = useMemo(
+    () =>
+      (system.counterBattens?.rows ?? []).map((row) => ({
+        rowId: row.id,
+        roofPlaneId: row.roofPlaneId,
+        sourceMemberId: row.sourceMemberId,
+        section: row.section,
+        segments: row.segments.map(({ from, to }) => ({ from, to })),
+      })),
+    [system.counterBattens],
+  );
+  return (
+    <section className="mono-view">
+      <div
+        className="mono-view-switch"
+        role="group"
+        aria-label={t('assembly.monoPitch.view.label')}
+      >
+        <button
+          type="button"
+          aria-pressed={view === 'section'}
+          onClick={() => setView('section')}
+        >
+          {t('assembly.monoPitch.view.section')}
+        </button>
+        <button
+          type="button"
+          aria-pressed={view === '3d'}
+          data-testid="mono-pitch-view-3d"
+          onClick={() => setView('3d')}
+        >
+          {t('assembly.monoPitch.view.threeD')}
+        </button>
+      </div>
+      {view === 'section' ? (
+        <MonoPitchSection
+          assembly={system.framing.calculation.assembly}
+          unit={unit}
+        />
+      ) : (
+        <div className="mono-scene" data-testid="mono-pitch-scene">
+          <Suspense fallback={<div className="a-loading-panel" />}>
+            <TechnicalScene3D
+              skeleton={system.skeleton}
+              counterBattens={counterBattens}
+              controller={controller}
+              onReturnTo2D={() => setView('section')}
+            />
+          </Suspense>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function MonoPitchResults({
   draft,
   system,
@@ -459,7 +557,7 @@ function MonoPitchResults({
         </div>
       </section>
 
-      <MonoPitchSection assembly={assembly} unit={unit} />
+      <MonoPitchView system={system} unit={unit} />
 
       <section className="mono-cuts" data-testid="mono-pitch-cuts">
         <h3>{t('assembly.monoPitch.cuts.heading')}</h3>
