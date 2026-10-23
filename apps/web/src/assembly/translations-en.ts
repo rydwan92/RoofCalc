@@ -1848,6 +1848,121 @@ export const assemblyEn: typeof assemblyPl = {
     'From {{from}}, measure {{distance}} {{unit}} along the top edge to {{to}}. Project vertically to the bottom edge and mark a {{seat}} {{unit}} seat toward the heel ({{angle}}° to the axis).',
   checkDepth:
     'Check normal notch depth: {{depth}} {{unit}}. Remaining section: {{remaining}} {{unit}}.',
+  // VNext-7B-3: the mono-pitch workspace (docs/domain/MONO_PITCH_ROOF.md).
+  monoPitch: {
+    title: 'Mono-pitch roof',
+    openFromQuick: 'Mono-pitch roof — rafters on two supports →',
+    subtitle:
+      'Carports, lean-tos, garages: rafters on two supports, birdsmouths, battens, counter-battens and membrane — calculated as you type.',
+    close: 'Close mono-pitch roof',
+    draftNote:
+      'Values are remembered in this browser only. Saving as a project, cost estimate and execution document come next.',
+    restore: 'Restore example',
+    groups: {
+      building: 'Building and slope',
+      eaves: 'Eaves and top edge',
+      rafters: 'Rafters',
+      supports: 'Supports',
+      layers: 'Roof layers',
+    },
+    fields: {
+      buildingLengthMm: 'Building length (along the eave)',
+      runMm: 'Run (outer faces of the supports)',
+      pitchDeg: 'Roof pitch',
+      lowEaveOverhangMm: 'Low eave (horizontal)',
+      highOverhangMm: 'High overhang (horizontal)',
+      vergeOverhangMm: 'Verge overhang',
+      rafterWidthMm: 'Rafter width',
+      rafterDepthMm: 'Rafter depth',
+      rafterSpacingMm: 'Rafter spacing (max.)',
+      lowPlateWidthMm: 'Low wall plate — width',
+      lowPlateHeightMm: 'Low wall plate — height',
+      lowSeatMm: 'Seat on the low plate',
+      highSupportWidthMm: 'High support — width',
+      highSupportHeightMm: 'High support — height',
+      highSeatMm: 'Seat on the high support',
+      battenGaugeMm: 'Batten gauge',
+      battenEaveOffsetMm: 'First batten from the eave',
+      battenWidthMm: 'Batten — width',
+      battenHeightMm: 'Batten — height',
+      counterBattenWidthMm: 'Counter-batten — width',
+      counterBattenHeightMm: 'Counter-batten — height',
+      membraneRollWidthMm: 'Membrane — roll width',
+      membraneRollLengthMm: 'Membrane — roll length',
+      membraneOverlapMm: 'Membrane — overlap',
+    },
+    topEdge: {
+      label: 'Top edge',
+      free: 'Free, over the wall',
+      abutment: 'Against a higher wall',
+    },
+    highSupport: {
+      'wall-plate': 'high wall plate',
+      ledger: 'wall ledger',
+    },
+    layers: {
+      battens: 'Battens',
+      counterBattens: 'Counter-battens',
+      membrane: 'Membrane',
+    },
+    issues: {
+      'out-of-range': 'Outside the allowed range.',
+      seat_exceeds_support: 'The seat is wider than the support.',
+      notch_consumes_depth:
+        'The notch cuts through the rafter — reduce the seat.',
+      supports_overlap: 'The supports overlap — increase the run.',
+    },
+    invalidResult:
+      'Correct the marked fields — the results show the last valid values.',
+    results: {
+      heading: 'Result',
+      rafters: 'Rafters K1',
+      rafterCount: '{{count}} pcs · every {{spacing}} {{unit}}',
+      stock: 'Stock per rafter',
+      stockNote: 'shortest straight timber, no cutting allowance',
+      topEdge: 'Top edge between the cuts',
+      plates: 'High support sits higher by',
+      platesNote: 'top of the low plate → top of the {{support}}',
+      rise: 'Rise over the run',
+      area: 'Roof plane',
+      areaValue: '{{area}} m² · {{plan}} m² in plan',
+    },
+    cuts: {
+      heading: 'Cuts and notches',
+      eave: 'Eave cut',
+      top: 'Top cut',
+      lowNotch: 'Notch on the low plate',
+      highNotch: 'Notch: {{support}}',
+      plumb: 'plumb · {{angle}}° to the rafter edge',
+      notch:
+        'seat {{seat}} {{unit}} · depth {{depth}} {{unit}} square · {{remaining}} {{unit}} remain',
+      station: 'from A: {{distance}} {{unit}}',
+    },
+    marking: {
+      heading: 'Marking out',
+      note: 'A is the eave end on the rafter top edge; distances along the top edge.',
+    },
+    list: {
+      heading: 'Schedule',
+      note: 'Axis lengths and areas from the geometry — not a purchase quantity.',
+      rafter: 'Rafter K1 · {{section}}',
+      lowPlate: 'Low wall plate · {{section}}',
+      highSupport: 'High support ({{support}}) · {{section}}',
+      pieces: '{{count}} × {{length}} {{unit}}',
+      battens: 'Battens · {{section}}',
+      counterBattens: 'Counter-battens · {{section}}',
+      membrane: 'Membrane',
+      membraneValue:
+        '{{area}} m² gross · courses: {{courses}} · rolls: {{rolls}}',
+      length: '{{length}} m',
+      unresolved: 'cannot be laid out — check the layer data',
+    },
+    limits: {
+      heading: 'Not calculated yet',
+      text: 'Load capacity and deflection (confirm sections with an engineer), intermediate purlins, covering from the catalogue, drainage, cost estimate and execution document.',
+    },
+    drawing: 'Rafter section on two supports',
+  },
   errors: {
     invalid: 'Enter a valid number within the shown range.',
     duplicate_id: 'Elements must have unique identifiers.',
@@ -2024,6 +2139,9 @@ export const assemblyEn: typeof assemblyPl = {
       cad: 'Import from CAD or BIM',
       cadHint:
         'A DXF drawing (AutoCAD, ArchiCAD…) or an IFC model — outline, eave, ridge and hips are recognised.',
+      monoPitch: 'Mono-pitch roof',
+      monoPitchHint:
+        'Carport, lean-to, garage: rafters, notches, battens and membrane — without creating a project.',
       dropAny:
         'Already have a file? Drop it here — a RoofCalc project, PDF, photo, DXF drawing or IFC model. The format is recognised.',
       dropProject: 'Drop a RoofCalc project file here to open it.',

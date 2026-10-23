@@ -739,3 +739,18 @@ workbench. No migration.
   will gain these fields with the V2 writer.
 - `ResolvedCoveringLayout` now lives in `calculator-core`
   (`covering-layouts.ts`); the web export adapter re-exports it.
+
+## 21. VNext-7B-2 / 7B-3 contracts
+
+- `createMonoPitchSkeleton` returns a `RoofSkeleton` (no type change): the
+  same member conventions as the gable skeleton. Derived only.
+- `counterBattenRowsOnPlane`, `summarizeCounterBattens`,
+  `resolveMembraneLayoutOnPlanes`: plane-generic engines; results keep their
+  existing shapes. `MonoPitchRoofSystem` gains `skeleton`, `counterBattens?`,
+  `membrane?`.
+- **Mono-pitch workspace draft** (persisted, browser only): key
+  `cieslacalc.monoPitchDraft.v1`, `{ schemaVersion: 1, draft }` — the
+  workspace inputs in mm and degrees. Validated on read; anything invalid or
+  foreign falls back to the example; a full storage only loses the
+  convenience. Not a project, not exported, no Undo history. The V2 project
+  writer gate is unchanged.

@@ -13,6 +13,7 @@ import {
   FolderOpen,
   PencilRuler,
   Sparkles,
+  Triangle,
   X,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -250,6 +251,7 @@ export function ProjectStartAssistant({
   onBeginProject,
   onImportIfc,
   onImportCad,
+  onMonoPitch,
   onImportDocument,
   onOpenArchive,
   onOpenFile,
@@ -261,6 +263,8 @@ export function ProjectStartAssistant({
   onImportIfc?: () => void;
   /** VNext-4: CAD (DXF) or BIM (IFC) import. */
   onImportCad?: () => void;
+  /** VNext-7B-3: the mono-pitch roof workspace (no project yet). */
+  onMonoPitch?: () => void;
   /**
    * VNext-4: any file — a saved project, PDF, photo, DXF or IFC — routed
    * by its bytes. Rejects with an Error whose message is shown.
@@ -675,6 +679,18 @@ export function ProjectStartAssistant({
                   <span>{t('assembly.journey.start.ifcHint')}</span>
                 </button>
               )
+            )}
+            {onMonoPitch && (
+              <button
+                type="button"
+                className="a-start-path"
+                data-testid="project-start-mono-pitch"
+                onClick={onMonoPitch}
+              >
+                <Triangle size={24} aria-hidden="true" />
+                <strong>{t('assembly.journey.start.monoPitch')}</strong>
+                <span>{t('assembly.journey.start.monoPitchHint')}</span>
+              </button>
             )}
             {acceptsDrop && (
               <p

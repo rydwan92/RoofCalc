@@ -1297,6 +1297,37 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+## VNext-7B-2 / 7B-3 (2026-10-23) — mono-pitch skeleton, layers and the workspace users can open
+
+- Requested: "lets go, work today hard, make the great application".
+  Branch `feature/vnext-7b2-mono-pitch-skeleton` from `main` @ `b86b9e7`.
+- 7B-2 (domain): 7A plane frame aligned with gable/hip (x across, y along);
+  `createMonoPitchSkeleton`; generic timber schedule (8 × K1 + 2 plates);
+  technical 3D scene draws it unchanged; counter-battens through
+  `counterBattenRowsOnPlane` + `summarizeCounterBattens` (shared with
+  gable/hip); membrane through `resolveMembraneLayoutOnPlanes`;
+  `resolveMonoPitchRoofSystem` returns skeleton, counter-battens, membrane.
+  Hand-checked: 8 × 4969.33 mm counter-battens; membrane 4 courses, 39.6 m².
+- 7B-3 (UI): "Dach jednospadowy" workspace (`apps/web/src/mono-pitch/`,
+  lazy, 17.6 kB): start-dialog card and a link in the quick calculator;
+  exact inputs in the display unit; result cards, the section drawing from
+  `createAssemblyDrawing`, cuts and notches, marking out from the solver's
+  plan, schedule (K1, plates, battens, counter-battens, membrane), limits;
+  field-level errors with the last valid result; ledger against a wall;
+  sticky key numbers on phones; Escape closes; a browser draft
+  `cieslacalc.monoPitchDraft.v1` (SCHEMA_REGISTRY §21). No project, no V2.
+- Validation: `pnpm verify` green — 213 files / 2206 tests
+  (13 skipped); `pnpm e2e` 173 passed / 37 conditionally
+  skipped / 0 failed (new: 5 mono-pitch scenarios, desktop + phone, keyboard,
+  reload); visual QA at 1440 and 390.
+- Not done: mono-pitch cost estimate and execution document, covering from
+  the catalogue in the workspace, intermediate purlins, 3D view inside the
+  workspace (TechnicalScene3D is tied to the gable store), V2 writer.
+- NEXT ACTION: VNext-7B-4 — mono-pitch execution document (document-core)
+  and cost proposals from `MonoPitchRoofSystem`; then decouple
+  TechnicalScene3D from the gable store to show the mono-pitch roof in 3D;
+  then the V2 writer gate (ADR-015).
+
 ## VNext-7B-1 (2026-10-22) — mono-pitch framing, battens and covering through the shared engines
 
 - Requested: "pracuj dalej, ulepszaj aplikację". Branch

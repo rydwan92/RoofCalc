@@ -139,3 +139,14 @@ and L-with-valley scenes; an overlapping L without a solved junction is
   `resolveCoveringLayout`); the workbench and the mono-pitch composition
   call the same functions — no per-shape copy.
 - Still derived and session-only; the V2 writer gate is unchanged.
+
+## Addendum — VNext-7B-2 / 7B-3 (2026-10-23)
+
+- The mono-pitch roof reaches the user before the V2 writer: a calculation
+  workspace fed only by the derived `MonoPitchRoofSystem` (framing,
+  skeleton, schedule, battens, counter-battens, membrane, 3D-ready scene).
+  It creates no project and no V2 document; its inputs are a browser draft.
+  This keeps the gate intact while the downstream adapters (cost, documents)
+  are built.
+- The 7A plane frame now matches gable/hip (x across, y along), so the
+  skeleton, the schedule and the 3D scene read every roof alike.

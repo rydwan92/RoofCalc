@@ -319,6 +319,12 @@ const CadImportWorkspace = lazy(() =>
     default: module.CadImportWorkspace,
   })),
 );
+/** VNext-7B-3: the mono-pitch roof workspace, loaded when opened. */
+const MonoPitchWorkspace = lazy(() =>
+  import('../mono-pitch/MonoPitchWorkspace').then((module) => ({
+    default: module.MonoPitchWorkspace,
+  })),
+);
 const IfcImportWorkspace = lazy(() =>
   import('../bim/ifc/IfcImportWorkspace').then((module) => ({
     default: module.IfcImportWorkspace,
@@ -388,6 +394,7 @@ function AssemblyPageContent({
   const [ifcImportOpen, setIfcImportOpen] = useState(false);
   const [documentImportOpen, setDocumentImportOpen] = useState(false);
   const [cadImportOpen, setCadImportOpen] = useState(false);
+  const [monoPitchOpen, setMonoPitchOpen] = useState(false);
   /** VNext-4: the file an importer opens with (universal file opening). */
   const [importFile, setImportFile] = useState<File>();
   const [reuseFreshProject, setReuseFreshProject] = useState(false);
@@ -2528,7 +2535,10 @@ function AssemblyPageContent({
           {workbench.mode === 'quick' ? (
             <div className="a-quick-layout">
               <section className="a-quick-inputs">
-                <RoofTypeSelector context="member" />
+                <RoofTypeSelector
+                  context="member"
+                  onMonoPitch={() => setMonoPitchOpen(true)}
+                />
                 <div className="a-basic-fields">
                   <GeometryInputs />
                 </div>
@@ -3468,6 +3478,10 @@ function AssemblyPageContent({
             setImportFile(undefined);
             setCadImportOpen(true);
           }}
+          onMonoPitch={() => {
+            setProjectStartMode(undefined);
+            setMonoPitchOpen(true);
+          }}
           onOpenFile={openAnyFile}
           onImportDocument={() => {
             state.setMode('builder');
@@ -3617,6 +3631,14 @@ function AssemblyPageContent({
           />
         </Suspense>
       )}
+      {monoPitchOpen && (
+        <Suspense fallback={<p className="a-loading-overlay" role="status" />}>
+          <MonoPitchWorkspace
+            unit={state.unit}
+            onClose={() => setMonoPitchOpen(false)}
+          />
+        </Suspense>
+      )}
       {ifcImportOpen && (
         <Suspense fallback={<p>Uruchamianie importera IFC…</p>}>
           <IfcImportWorkspace
@@ -3652,6 +3674,7 @@ function AssemblyPageContent({
         !documentImportOpen &&
         !cadImportOpen &&
         !ifcImportOpen &&
+        !monoPitchOpen &&
         !businessHomeOpen && (
           <ProjectPreparationCard
             preparation={projectPreparation}

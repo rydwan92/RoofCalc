@@ -648,7 +648,7 @@ pnpm e2e      # real-browser smoke, desktop 1440x900 and mobile 390x844 (pnpm e2
 | `ARCHITECTURE_V49_STOCK_AWARE_LINEAR_PLANNING` | stock-aware choice between legal assemblies, search bounds and optimality truth, batten catalogue, price provenance, piece pricing |
 | `ARCHITECTURE_V51_ROOF_SYSTEM_AND_DRAINAGE` | canonical roof features, roof-system roles/rules, drainage intent/planner/UI, drainage catalogue and truth limits |
 | `ARCHITECTURE_V52_ROOF_DETAIL_SYSTEM` | opening perimeters and ridge-line ends, hooks vs joints, gutter purchase policy, downpipe routes, ridge/eave/verge components, window flashings, System dachu workspace, checklist, V52 catalogue |
-| `domain/MONO_PITCH_ROOF` | **VNext-7A:** mono-pitch reference frame, inputs and legal ranges, wall heights ↔ pitch, top edge free/abutment, formulas, hand-checked vectors; what is deliberately not resolved |
+| `domain/MONO_PITCH_ROOF` | **VNext-7A/7B:** mono-pitch reference frame, inputs and ranges, wall heights ↔ pitch, top edge free/abutment, formulas and hand-checked vectors; framing (§8), skeleton, schedule and layers (§9), the workspace `apps/web/src/mono-pitch/` (§10) |
 | `domain/BATTEN_COMMERCIAL_PRODUCTS_RESEARCH` | verified Polish-market batten products, what each source states, which prices meet the net-price rule |
 | `domain/BATTEN_STOCK_AND_JOINING_RESEARCH` | where a batten joint may be made, minimum piece and span, stagger, evidence strength per claim |
 | `domain/ROOF_TILE_EDGE_PLACEMENT` | eave/verge evidence; why no physical tile edge projection is modelled |

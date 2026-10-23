@@ -44,11 +44,14 @@ line, and overhangs are measured **horizontally** beyond the bearing lines.
      ╱ (−e_low, z_eave)                            └───────────────────────┘ y=−e_low
 ```
 
-- `x`: along the eave (building length `L`); the plane spans `−v … L + v`.
-- `y`: horizontal, uphill, perpendicular to the eave. The low bearing line is
-  at `y = 0` and the high bearing line at `y = R` (the **run**).
-- Plane local frame (as for every roof-math plane): origin at the low-left
-  corner of the plane, `u` along the eave (`+x`), `v` uphill along the slope.
+- `x`: horizontal, uphill, perpendicular to the eave (the gable/hip axis
+  across the span since VNext-7B-2). The low bearing line is at `x = 0` and
+  the high bearing line at `x = R` (the **run**).
+- `y`: along the eave (building length `L`); the plane spans `−v … L + v`.
+- Plane local frame (as for every roof-math plane): origin at the eave corner
+  `(−e_low, −v)`, `u` along the eave (`+y`), `v` uphill along the slope.
+
+The section figure below is drawn across the span (x horizontal).
 
 How the reference plane sits on the rafters is fixed in §8 (VNext-7B): it
 passes through the heel–seat corner of the birdsmouth on the low plate —
@@ -103,16 +106,16 @@ With `t = tan α` and `c = cos α`:
 | rise between the bearing lines | `H = R · t` |
 | slope length between the bearing lines | `S_b = R / c` |
 | high bearing elevation | `h_high = h_low + H` |
-| eave line | `y = −e_low`, `z_eave = −e_low · t` |
-| top line | `y = R + e_high`, `z_top = (R + e_high) · t` |
+| eave line | `x = −e_low`, `z_eave = −e_low · t` |
+| top line | `x = R + e_high`, `z_top = (R + e_high) · t` |
 | plane width (along the eave) | `W = L + 2v` |
 | plane slope length | `S = (R + e_low + e_high) / c` |
 | plan area | `A_p = W · (R + e_low + e_high)` |
 | gross sloped area | `A = W · S = A_p / c` |
 | eave length = top length | `W` |
 | each verge length | `S` |
-| upward unit normal | `n = (0, −sin α, cos α)` |
-| uphill axis | `v̂ = (0, cos α, sin α)` |
+| upward unit normal | `n = (−sin α, 0, cos α)` |
+| uphill axis | `v̂ = (cos α, 0, sin α)` |
 
 World `z` values are relative to the low bearing line. Add `h_low` for
 elevations above the datum (`elevations` in the result).
@@ -230,3 +233,42 @@ the timber schedule), membrane, drainage, documents, the workbench UI and
 persistence (V2 writer gate). No structural check (ADR-014).
 `MONO_PITCH_FRAMING_SCOPE` states it in code; the topology assessment keeps
 the roof `not-supported` until documents can show it.
+
+## 9. Skeleton, schedule and layers (VNext-7B-2)
+
+- Frame: since 7B-2 the mono-pitch plane uses the gable/hip axes — `x`
+  across the span from the low plate's outer face, `y` along the
+  building, `z` up (§2 updated). The upward
+  normal is `(−sin α, 0, cos α)`; the eave runs `−y` so the roof lies on
+  its left.
+- `createMonoPitchSkeleton`: plates as lines along the building at their
+  outer face and seat level (the gable convention), rafters as lines on the
+  reference plane from the eave to the top plumb end (length = the top edge
+  between the cuts), the roof plane as a guide.
+- The generic `createRoofMemberSchedule` lists 8 × K1 at 4969.33 mm and
+  the two plates (6 m each) for F1; the technical 3D scene draws 8 rafters,
+  2 plates, 8 counter-battens and the plane without any mono-pitch code.
+- Counter-battens: `counterBattenRowsOnPlane` + `summarizeCounterBattens`
+  (shared with gable/hip) — one row per rafter over the whole slope (F1:
+  8 × 4969.33 mm). Membrane: `resolveMembraneLayoutOnPlanes` — F1 with a
+  1500 mm roll and a 100 mm lap: 4 courses, 39.6 m² gross, 1.98 m² of laps.
+
+## 10. The workspace (VNext-7B-3)
+
+- Entry: the start dialog card "Dach jednospadowy" and a link under the
+  quick calculator's element switch. A lazy overlay
+  (`apps/web/src/mono-pitch/`), like the CAD import.
+- Every number on screen comes from `resolveMonoPitchRoofSystem` and
+  `createRoofMemberSchedule`; the section drawing is
+  `createAssemblyDrawing` of the same rafter; the marking steps are the
+  solver's fabrication plan. No formula lives in the UI.
+- Exact inputs in the app's display unit (decimal comma accepted); a
+  blocking value is named at its field (seat wider than the support, notch
+  through the rafter, supports overlapping, out of range) and the last valid
+  result stays visible. "Przy wyższej ścianie" switches to a ledger and
+  hides the high overhang.
+- Phones: one column with a sticky bar of the key numbers (rafters × stock,
+  how much higher the high support sits).
+- Persistence: a draft of this browser only (SCHEMA_REGISTRY §21). The
+  screen says that saving as a project, the cost estimate and the execution
+  document come later; load capacity is never claimed.

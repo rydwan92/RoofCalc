@@ -266,7 +266,14 @@ function roofTypeConsequences(
   ];
   return items;
 }
-export function RoofTypeSelector({ context }: { context: 'roof' | 'member' }) {
+export function RoofTypeSelector({
+  context,
+  onMonoPitch,
+}: {
+  context: 'roof' | 'member';
+  /** VNext-7B-3: opens the separate mono-pitch calculation. */
+  onMonoPitch?: () => void;
+}) {
   const state = useAssembly(),
     { t } = useTranslation();
   const [pending, setPending] = useState<'gable' | 'hip'>();
@@ -309,6 +316,16 @@ export function RoofTypeSelector({ context }: { context: 'roof' | 'member' }) {
           </button>
         ))}
       </div>
+      {onMonoPitch && (
+        <button
+          type="button"
+          className="a-link-button a-mono-pitch-link"
+          data-testid="quick-open-mono-pitch"
+          onClick={onMonoPitch}
+        >
+          {t('assembly.monoPitch.openFromQuick')}
+        </button>
+      )}
       {pending && consequences.length > 0 && (
         <div
           className="a-consequence"

@@ -196,7 +196,14 @@ describe('mono-pitch roof in the technical 3D scene', () => {
   const scene = createRoofTechnicalScene({
     skeleton: system.skeleton,
     includeRoofPlanes: true,
-    counterBattens: system.counterBattens!.rows,
+    // The same row → scene mapping the workbench uses (Page.tsx).
+    counterBattens: system.counterBattens!.rows.map((row) => ({
+      rowId: row.id,
+      roofPlaneId: row.roofPlaneId,
+      sourceMemberId: row.sourceMemberId,
+      section: row.section,
+      segments: row.segments.map(({ from, to }) => ({ from, to })),
+    })),
   });
   const groups = scene.entities.reduce<Record<string, number>>(
     (counts, entity) => ({

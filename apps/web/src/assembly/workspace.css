@@ -806,3 +806,19 @@
     letter-spacing: -0.01em;
   }
 }
+
+/* VNext-7B-3: the way from the quick rafter to the mono-pitch calculation. */
+.a-roof-type > .a-mono-pitch-link {
+  display: block;
+  min-height: 36px;
+  margin-top: 6px;
+  padding: 4px 2px;
+  border: 0;
+  background: none;
+  color: var(--ui-accent);
+  font-size: var(--ui-text-sm);
+  font-weight: 600;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
