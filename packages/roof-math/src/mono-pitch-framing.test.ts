@@ -1,13 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import {
+  createMonoPitchSkeleton,
   MONO_PITCH_FRAMING_SCOPE,
+  resolveMonoPitchCounterBattens,
   monoPitchFramingSpecSchema,
   monoPitchFromPlateTops,
   resolveMonoPitchFraming,
   type MonoPitchFramingSpec,
 } from './mono-pitch-framing';
 import { assemblyDefaults, calculateAssembly } from './assembly';
-import { resolveMonoPitchBattens } from './mono-pitch-roof';
+import {
+  resolveMonoPitchBattens,
+  resolveMonoPitchMembrane,
+} from './mono-pitch-roof';
 
 /**
  * Reference vectors from docs/domain/MONO_PITCH_ROOF.md §8, derived with
@@ -256,5 +261,124 @@ describe('battens on the mono-pitch plane (VNext-7B)', () => {
     });
     expect(battens.status).toBe('incomplete');
     expect(battens.issues).toEqual(['invalid-regular-span']);
+  });
+});
+
+describe('mono-pitch skeleton in world XYZ (VNext-7B-2)', () => {
+  const framing = resolveMonoPitchFraming(F1);
+  const skeleton = createMonoPitchSkeleton(framing);
+  const tan15 = 2 - Math.sqrt(3);
+  const length = (m: { from: Point; to: Point }) =>
+    Math.hypot(m.to.x - m.from.x, m.to.y - m.from.y, m.to.z - m.from.z);
+  type Point = { x: number; y: number; z: number };
+
+  it('holds two plates and one rafter per station, as the gable skeleton does', () => {
+    expect(skeleton.members.map((member) => member.kind)).toEqual([
+      'wall-plate',
+      'wall-plate',
+      ...Array.from({ length: 8 }, () => 'rafter'),
+    ]);
+    const rafters = skeleton.members.filter((m) => m.kind === 'rafter');
+    expect(rafters.map((m) => m.id)).toEqual(
+      framing.memberPrototypes[0]!.instanceIds,
+    );
+    expect(new Set(skeleton.members.map((m) => m.id)).size).toBe(
+      skeleton.members.length,
+    );
+  });
+
+  it('draws each rafter on the reference plane between its plumb ends', () => {
+    for (const rafter of skeleton.members.filter((m) => m.kind === 'rafter')) {
+      expect(length(rafter)).toBeCloseTo(
+        framing.calculation.assembly.member.referenceLengthMm,
+        6,
+      );
+      expect(rafter.from).toMatchObject({
+        x: -500,
+        z: expect.closeTo(-500 * tan15, 9),
+      });
+      expect(rafter.to).toMatchObject({
+        x: 4300,
+        z: expect.closeTo(4300 * tan15, 9),
+      });
+    }
+    expect(skeleton.ridgeHeightMm).toBeCloseTo(4300 * tan15, 9);
+  });
+
+  it('runs the plates along the building at their outer faces and seat levels', () => {
+    const [low, high] = skeleton.members;
+    expect(low!.from).toEqual({ x: 0, y: 0, z: 0 });
+    expect(length(low!)).toBe(6000);
+    expect(high!.from.x).toBe(4000);
+    expect(high!.from.z).toBeCloseTo(1034.283883, 5);
+    expect(high!.section).toEqual({ widthMm: 140, depthMm: 140 });
+  });
+
+  it('guides the roof plane with the surface polygon itself', () => {
+    expect(skeleton.guides![0]!.points).toEqual(
+      framing.surface.planes[0].worldPolygon,
+    );
+  });
+});
+
+describe('counter-battens and membrane on the mono-pitch roof (VNext-7B-2)', () => {
+  const framing = resolveMonoPitchFraming(F1);
+  const skeleton = createMonoPitchSkeleton(framing);
+  const slope = framing.surface.planes[0].slopeLengthMm;
+
+  it('runs one counter-batten along every rafter over the whole slope', () => {
+    const counter = resolveMonoPitchCounterBattens(framing, skeleton, {
+      enabled: true,
+      widthMm: 50,
+      heightMm: 25,
+    });
+    expect(counter.status).toBe('resolved');
+    expect(counter.rows).toHaveLength(8);
+    for (const row of counter.rows)
+      expect(row.visibleLengthMm).toBeCloseTo(slope, 6);
+    expect(counter.totalVisibleLengthMm).toBeCloseTo(8 * slope, 6);
+    expect(counter.rows.map((row) => row.sourceMemberId)).toEqual(
+      framing.memberPrototypes[0]!.instanceIds,
+    );
+  });
+
+  it('reports a bad section or a foreign plane instead of guessing', () => {
+    expect(
+      resolveMonoPitchCounterBattens(framing, skeleton, {
+        enabled: true,
+        widthMm: 0,
+        heightMm: 25,
+      }).issues,
+    ).toEqual([{ code: 'invalid-counter-batten-section' }]);
+    expect(
+      resolveMonoPitchCounterBattens(framing, skeleton, {
+        enabled: true,
+        widthMm: 50,
+        heightMm: 25,
+        roofPlaneIds: ['roof-plane:left'],
+      }).issues,
+    ).toEqual([{ code: 'unknown-roof-plane', roofPlaneId: 'roof-plane:left' }]);
+    expect(
+      resolveMonoPitchCounterBattens(framing, skeleton, {
+        enabled: false,
+        widthMm: 50,
+        heightMm: 25,
+      }).status,
+    ).toBe('disabled');
+  });
+
+  it('lays membrane courses by the same course fit as on a gable', () => {
+    // 1500 mm roll, 100 mm lap: 4 courses cover 4·1500 − 3·100 = 5700 mm
+    // ≥ 4969.33 mm; each course runs the 6600 mm plane width.
+    const membrane = resolveMonoPitchMembrane(
+      framing.surface,
+      { enabled: true },
+      { rollWidthMm: 1500, rollLengthMm: 50_000, minimumOverlapMm: 100 },
+    );
+    expect(membrane.status).toBe('resolved');
+    expect(membrane.courseCount).toBe(4);
+    expect(membrane.overlapAreaMm2).toBeCloseTo(3 * 100 * 6600, 6);
+    expect(membrane.grossAreaMm2).toBeCloseTo(4 * 1500 * 6600, 6);
+    expect(membrane.ridgeOverrunAreaMm2).toBeCloseTo((5700 - slope) * 6600, 3);
   });
 });

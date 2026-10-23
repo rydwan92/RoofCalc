@@ -508,48 +508,16 @@ export function resolveCounterBattenLayout(args: {
       issues.push({ code: 'unknown-roof-plane', roofPlaneId });
       continue;
     }
-    const basis = resolveRoofPlaneBasis(args.template, roofPlaneId);
-    const openings = (args.features ?? []).filter(
-      (feature): feature is RoofWindowFeature =>
-        feature.kind === 'roof-window' && feature.roofPlaneId === roofPlaneId,
-    );
-    const resolvedAxes = planeRafterAxes(args.skeleton, basis, side);
-    for (const axis of resolvedAxes.axes) {
-      const { sourceMemberId, uMm, interval } = axis;
-      const segments = subtractOpenings(interval, uMm, openings).map(
-        ({ fromVMm, toVMm }) => {
-          const fromLocal = { uMm, vMm: fromVMm };
-          const toLocal = { uMm, vMm: toVMm };
-          return {
-            from: projectPlaneLocalToWorld(basis, fromLocal),
-            to: projectPlaneLocalToWorld(basis, toLocal),
-            fromLocal,
-            toLocal,
-            lengthMm: toVMm - fromVMm,
-          };
-        },
-      );
-      rows.push({
-        id: `counter-batten:${roofPlaneId}:${sourceMemberId}`,
-        roofPlaneId,
-        sourceMemberId,
-        segments,
-        visibleLengthMm: segments.reduce(
-          (sum, segment) => sum + segment.lengthMm,
-          0,
-        ),
-        section: {
-          widthMm: args.layout.widthMm,
-          depthMm: args.layout.heightMm,
-        },
-        status: 'resolved',
-        warnings: [],
-        role: 'plane-rafter-axis',
-        reference: 'rafter-axis',
-      });
-    }
-    for (const sourceMemberId of resolvedAxes.invalidSourceMemberIds)
-      issues.push({ code: 'invalid-source-axis', roofPlaneId, sourceMemberId });
+    const plane = counterBattenRowsOnPlane({
+      roofPlaneId,
+      basis: resolveRoofPlaneBasis(args.template, roofPlaneId),
+      rafterSide: side,
+      skeleton: args.skeleton,
+      layout: args.layout,
+      features: args.features,
+    });
+    rows.push(...plane.rows);
+    issues.push(...plane.issues);
   }
   // V39: the hip boundary is now an explicit execution decision rather than a
   // permanent dead end. `not-decided` still refuses to invent a run.
@@ -631,7 +599,80 @@ export function resolveCounterBattenLayout(args: {
       });
     }
   }
-  const orderedIssues = issues.sort(
+  return summarizeCounterBattens(rows, issues, hipBoundaries);
+}
+
+/**
+ * VNext-7B-2: counter-battens of one resolved plane — one row along every
+ * rafter axis of `rafterSide`, minus the openings. Shared by the gable/hip
+ * layout and the mono-pitch roof, so a row is placed by one rule.
+ */
+export function counterBattenRowsOnPlane(args: {
+  roofPlaneId: string;
+  basis: RoofPlaneBasis;
+  rafterSide: SkeletonMember3D['side'];
+  skeleton: RoofSkeleton;
+  layout: CounterBattenLayoutSpec;
+  features?: readonly RoofFeature[];
+}): { rows: ResolvedCounterBatten[]; issues: CounterBattenIssue[] } {
+  const { roofPlaneId, basis } = args;
+  const openings = (args.features ?? []).filter(
+    (feature): feature is RoofWindowFeature =>
+      feature.kind === 'roof-window' && feature.roofPlaneId === roofPlaneId,
+  );
+  const resolvedAxes = planeRafterAxes(args.skeleton, basis, args.rafterSide);
+  const rows = resolvedAxes.axes.map(
+    ({ sourceMemberId, uMm, interval }): ResolvedCounterBatten => {
+      const segments = subtractOpenings(interval, uMm, openings).map(
+        ({ fromVMm, toVMm }) => {
+          const fromLocal = { uMm, vMm: fromVMm };
+          const toLocal = { uMm, vMm: toVMm };
+          return {
+            from: projectPlaneLocalToWorld(basis, fromLocal),
+            to: projectPlaneLocalToWorld(basis, toLocal),
+            fromLocal,
+            toLocal,
+            lengthMm: toVMm - fromVMm,
+          };
+        },
+      );
+      return {
+        id: `counter-batten:${roofPlaneId}:${sourceMemberId}`,
+        roofPlaneId,
+        sourceMemberId,
+        segments,
+        visibleLengthMm: segments.reduce(
+          (sum, segment) => sum + segment.lengthMm,
+          0,
+        ),
+        section: {
+          widthMm: args.layout.widthMm,
+          depthMm: args.layout.heightMm,
+        },
+        status: 'resolved',
+        warnings: [],
+        role: 'plane-rafter-axis',
+        reference: 'rafter-axis',
+      };
+    },
+  );
+  return {
+    rows,
+    issues: resolvedAxes.invalidSourceMemberIds.map((sourceMemberId) => ({
+      code: 'invalid-source-axis' as const,
+      roofPlaneId,
+      sourceMemberId,
+    })),
+  };
+}
+
+/** The one summary of a counter-batten layout (status, totals, counts). */
+export function summarizeCounterBattens(
+  rows: ResolvedCounterBatten[],
+  issues: CounterBattenIssue[],
+  hipBoundaries: CounterBattenHipBoundary[] = [],
+): CounterBattenLayoutResult {
+  const orderedIssues = [...issues].sort(
     (a, b) =>
       a.code.localeCompare(b.code) ||
       (a.roofPlaneId ?? a.roofPlaneIds?.join(',') ?? '').localeCompare(

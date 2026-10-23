@@ -1,7 +1,9 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { resolveMonoPitchRoofSystem } from '@cieslacalc/calculator-core';
 import { projectRecordV1Schema } from '@cieslacalc/project-core';
+import { createRoofTechnicalScene } from '@cieslacalc/technical-scene';
 import {
   resolveMonoPitchRoof,
   resolveRoofFeatureTopology,
@@ -151,5 +153,78 @@ describe('mono-pitch 6 × 4 m at 15° through the roof graph', () => {
       lines: free.lines,
     });
     expect(assessRoofScene(graph).geometry).toBe('complete');
+  });
+});
+
+/**
+ * VNext-7B-2: the mono-pitch roof in the same 3D scene the workbench draws
+ * for every roof — skeleton members, counter-battens and the roof plane.
+ */
+describe('mono-pitch roof in the technical 3D scene', () => {
+  const system = resolveMonoPitchRoofSystem({
+    framing: {
+      roof: {
+        type: 'mono-pitch',
+        id: 'template:lean-to',
+        buildingLengthMm: 6000,
+        runMm: 4000,
+        pitchDeg: 15,
+        lowEaveOverhangMm: 500,
+        topEdge: 'free',
+        highOverhangMm: 300,
+        vergeOverhangMm: 300,
+      },
+      rafter: {
+        section: { widthMm: 80, depthMm: 200 },
+        spacing: { mode: 'max-even-spacing', spacingMm: 900 },
+      },
+      lowSupport: {
+        kind: 'wall-plate',
+        widthMm: 140,
+        heightMm: 140,
+        seatMm: 100,
+      },
+      highSupport: {
+        kind: 'wall-plate',
+        widthMm: 140,
+        heightMm: 140,
+        seatMm: 100,
+      },
+    },
+    counterBattens: { enabled: true, widthMm: 50, heightMm: 25 },
+  });
+  const scene = createRoofTechnicalScene({
+    skeleton: system.skeleton,
+    includeRoofPlanes: true,
+    counterBattens: system.counterBattens!.rows,
+  });
+  const groups = scene.entities.reduce<Record<string, number>>(
+    (counts, entity) => ({
+      ...counts,
+      [entity.semanticGroup]: (counts[entity.semanticGroup] ?? 0) + 1,
+    }),
+    {},
+  );
+
+  it('draws 8 rafters, 2 plates, 8 counter-battens and the roof plane', () => {
+    expect(groups).toMatchObject({
+      'common-rafter': 8,
+      'wall-plate': 2,
+      'counter-batten': 8,
+      'roof-plane': 1,
+    });
+  });
+
+  it('keeps every timber at its real section and axis length', () => {
+    const rafters = scene.entities.filter(
+      (entity) => entity.semanticGroup === 'common-rafter',
+    );
+    for (const rafter of rafters) {
+      expect(rafter.section).toEqual({ widthMm: 80, depthMm: 200 });
+      expect(rafter.lengthMm).toBeCloseTo(
+        system.framing.calculation.assembly.member.referenceLengthMm,
+        6,
+      );
+    }
   });
 });

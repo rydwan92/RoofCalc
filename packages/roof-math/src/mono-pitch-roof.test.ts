@@ -132,10 +132,18 @@ describe('mono-pitch V2 — low eave and verge overhangs', () => {
     });
   });
 
-  it('orients the eave with the roof on its left, outward −y', () => {
+  it('uses the gable frame: x across from the low plate, y along the building', () => {
+    // VNext-7B-2: the same axes as gable/hip, so skeleton, 3D and the
+    // section view read every roof alike.
     const eave = roof.lines.find((line) => line.kind === 'eave')!;
-    expect(eave.start.x).toBeLessThan(eave.end.x);
-    expect(eave.outwardPlan).toEqual({ x: 0, y: -1 });
+    expect(eave.start.x).toBeCloseTo(-500, 9);
+    expect(eave.end.x).toBeCloseTo(-500, 9);
+    // Walking −y along the eave, the roof (uphill, +x) is on the left.
+    expect(eave.start.y).toBeGreaterThan(eave.end.y);
+    expect(eave.outwardPlan).toEqual({ x: -1, y: 0 });
+    expect(plane.basis.uAxis).toEqual({ x: 0, y: 1, z: 0 });
+    expect(plane.basis.normal.x).toBeLessThan(0);
+    expect(plane.basis.normal.z).toBeGreaterThan(0);
   });
 });
 

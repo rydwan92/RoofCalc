@@ -1,11 +1,19 @@
 import { z } from 'zod';
+import {
+  counterBattenRowsOnPlane,
+  summarizeCounterBattens,
+  type CounterBattenLayoutResult,
+} from './counter-battens';
 import type {
   AssemblySpec,
+  CounterBattenLayoutSpec,
   FabricationPlan,
   RafterSpacingSpec,
   ResolvedAssembly,
   ResolvedMemberPrototype,
   ResolvedRafterSpacing,
+  RoofSkeleton,
+  SkeletonMember3D,
   TimberSection,
 } from '@cieslacalc/timber-model';
 import {
@@ -204,7 +212,10 @@ export function resolveMonoPitchFraming(
     spec.roof.buildingLengthMm,
     spec.rafter.spacing,
   );
-  const instanceIds = rafterSpacing.stations.map((station) => station.id);
+  // One rafter per station (a gable has a left and a right one).
+  const instanceIds = rafterSpacing.stations.map(
+    (station) => `${station.id}:mono`,
+  );
   const tan = Math.tan((spec.roof.pitchDeg * Math.PI) / 180);
   const [low, high] = assemblySpec.supports;
   // Each seat is horizontal through its toe on the rafter's lower edge.
@@ -242,4 +253,123 @@ export function resolveMonoPitchFraming(
     supportIds: { low: LOW_SUPPORT_ID, high: HIGH_SUPPORT_ID },
     scope: MONO_PITCH_FRAMING_SCOPE,
   };
+}
+
+/**
+ * VNext-7B-2: the mono-pitch roof in world XYZ for the timber schedule, the
+ * 3D scene and counter-battens — the same conventions as the gable skeleton
+ * (`createGableRoofSkeletonFromResolved`): x across the span from the low
+ * plate's outer face, y along the building, z up; plates as lines along the
+ * building at their outer face and seat level; rafters as lines on the roof
+ * reference plane between the eave and the top plumb end. Explanatory
+ * reference geometry — fabrication stays in the 2D rafter solution.
+ */
+export function createMonoPitchSkeleton(
+  framing: MonoPitchFraming,
+): RoofSkeleton {
+  const { roof } = framing.spec;
+  const tan = Math.tan((roof.pitchDeg * Math.PI) / 180);
+  const length = roof.buildingLengthMm;
+  const eaveX = -roof.lowEaveOverhangMm;
+  const plate = (
+    id: string,
+    support: MonoPitchSupportSpec,
+    x: number,
+    z: number,
+    side: SkeletonMember3D['side'],
+  ): SkeletonMember3D => ({
+    id,
+    prototypeId: id,
+    selectionId: id,
+    kind: 'wall-plate',
+    from: { x, y: 0, z },
+    to: { x, y: length, z },
+    section: { widthMm: support.widthMm, depthMm: support.heightMm },
+    side,
+  });
+  const [prototype] = framing.memberPrototypes;
+  const members: SkeletonMember3D[] = [
+    plate(framing.supportIds.low, framing.spec.lowSupport, 0, 0, 'left'),
+    plate(
+      framing.supportIds.high,
+      framing.spec.highSupport,
+      roof.runMm,
+      framing.plates.differenceMm,
+      'right',
+    ),
+    ...framing.rafterSpacing.stations.map((station, index) => ({
+      id: prototype!.instanceIds[index]!,
+      prototypeId: prototype!.id,
+      selectionId: prototype!.instanceIds[index]!,
+      kind: 'rafter' as const,
+      from: { x: eaveX, y: station.alongBuildingMm, z: eaveX * tan },
+      to: {
+        x: framing.topEndXmm,
+        y: station.alongBuildingMm,
+        z: framing.topEndXmm * tan,
+      },
+      section: prototype!.section,
+      side: 'center' as const,
+      stationMm: station.alongBuildingMm,
+    })),
+  ];
+  return {
+    // The highest point of the reference plane: the rafters' top ends.
+    ridgeHeightMm: framing.topEndXmm * tan,
+    members,
+    guides: [
+      {
+        id: 'guide:roof-plane-mono',
+        kind: 'roof-plane',
+        points: framing.surface.planes[0].worldPolygon.map((p) => ({ ...p })),
+      },
+    ],
+  };
+}
+
+/**
+ * VNext-7B-2: counter-battens along the mono-pitch rafters through the one
+ * per-plane rule (`counterBattenRowsOnPlane`) and the one summary.
+ */
+export function resolveMonoPitchCounterBattens(
+  framing: MonoPitchFraming,
+  skeleton: RoofSkeleton,
+  layout: CounterBattenLayoutSpec,
+): CounterBattenLayoutResult {
+  if (!layout.enabled)
+    return { ...summarizeCounterBattens([], []), status: 'disabled' };
+  if (
+    !(Number.isFinite(layout.widthMm) && layout.widthMm > 0) ||
+    !(Number.isFinite(layout.heightMm) && layout.heightMm > 0)
+  )
+    return summarizeCounterBattens(
+      [],
+      [{ code: 'invalid-counter-batten-section' }],
+    );
+  const [plane] = framing.surface.planes;
+  const unknown = (layout.roofPlaneIds ?? []).filter(
+    (id) => id !== plane.roofPlaneId,
+  );
+  if (layout.roofPlaneIds && !layout.roofPlaneIds.includes(plane.roofPlaneId))
+    return summarizeCounterBattens(
+      [],
+      unknown.map((roofPlaneId) => ({
+        code: 'unknown-roof-plane' as const,
+        roofPlaneId,
+      })),
+    );
+  const { rows, issues } = counterBattenRowsOnPlane({
+    roofPlaneId: plane.roofPlaneId,
+    basis: plane.basis,
+    rafterSide: 'center',
+    skeleton,
+    layout,
+  });
+  return summarizeCounterBattens(rows, [
+    ...issues,
+    ...unknown.map((roofPlaneId) => ({
+      code: 'unknown-roof-plane' as const,
+      roofPlaneId,
+    })),
+  ]);
 }

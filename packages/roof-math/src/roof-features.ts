@@ -1187,6 +1187,37 @@ export function resolveMembraneLayout(args: {
   product: MembraneCourseProduct;
   features?: RoofFeature[];
 }): MembraneLayoutResult {
+  return resolveMembraneLayoutOnPlanes({
+    knownRoofPlaneIds:
+      args.template.type === 'gable'
+        ? ['roof-plane:left', 'roof-plane:right']
+        : [
+            'roof-plane:left',
+            'roof-plane:right',
+            'roof-plane:front',
+            'roof-plane:rear',
+          ],
+    planeBasis: (roofPlaneId) =>
+      resolveRoofPlaneBasis(args.template, roofPlaneId),
+    geometryValid: roofTemplateSchema.safeParse(args.template).success,
+    layout: args.layout,
+    product: args.product,
+    features: args.features,
+  });
+}
+
+/**
+ * VNext-7B-2: the membrane course engine on any set of resolved roof planes
+ * (gable/hip through the wrapper above, the mono-pitch roof directly).
+ */
+export function resolveMembraneLayoutOnPlanes(args: {
+  knownRoofPlaneIds: readonly string[];
+  planeBasis: (roofPlaneId: string) => RoofPlaneBasis;
+  geometryValid?: boolean;
+  layout: MembraneLayerSpec;
+  product: MembraneCourseProduct;
+  features?: readonly RoofFeature[];
+}): MembraneLayoutResult {
   const empty = (
     status: MembraneLayoutResult['status'],
     issues: MembraneLayoutIssueCode[] = [],
@@ -1205,38 +1236,21 @@ export function resolveMembraneLayout(args: {
   });
   if (!args.layout.enabled) return empty('disabled');
   if (
-    !roofTemplateSchema.safeParse(args.template).success ||
+    args.geometryValid === false ||
     !Number.isFinite(args.product.rollWidthMm) ||
     !Number.isFinite(args.product.rollLengthMm) ||
     !Number.isFinite(args.product.minimumOverlapMm)
   )
     return empty('incomplete', ['invalid-layout-geometry']);
-  const planeIds =
-    args.layout.roofPlaneIds ??
-    (args.template.type === 'gable'
-      ? ['roof-plane:left', 'roof-plane:right']
-      : [
-          'roof-plane:left',
-          'roof-plane:right',
-          'roof-plane:front',
-          'roof-plane:rear',
-        ]);
-  const knownPlanes =
-    args.template.type === 'gable'
-      ? ['roof-plane:left', 'roof-plane:right']
-      : [
-          'roof-plane:left',
-          'roof-plane:right',
-          'roof-plane:front',
-          'roof-plane:rear',
-        ];
+  const knownPlanes = [...args.knownRoofPlaneIds];
+  const planeIds = args.layout.roofPlaneIds ?? knownPlanes;
   if (!planeIds.length || planeIds.some((id) => !knownPlanes.includes(id)))
     return empty('incomplete', ['roof-plane-not-found']);
   const windows = (args.features ?? []).filter(
     (feature): feature is RoofWindowFeature => feature.kind === 'roof-window',
   );
   const planes: MembranePlaneLayoutResult[] = planeIds.map((roofPlaneId) => {
-    const basis = resolveRoofPlaneBasis(args.template, roofPlaneId);
+    const basis = args.planeBasis(roofPlaneId);
     const vValues = basis.polygon.map((point) => point.vMm);
     const minV = Math.min(...vValues);
     const maxV = Math.max(...vValues);

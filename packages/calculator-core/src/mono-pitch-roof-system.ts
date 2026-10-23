@@ -6,13 +6,25 @@ import {
   type CoveringQuantitySource,
 } from '@cieslacalc/covering-core';
 import {
+  createMonoPitchSkeleton,
   resolveMonoPitchBattens,
+  resolveMonoPitchCounterBattens,
   resolveMonoPitchFraming,
+  resolveMonoPitchMembrane,
   type BattenLayoutResult,
+  type CounterBattenLayoutResult,
+  type MembraneCourseProduct,
+  type MembraneLayoutResult,
   type MonoPitchFraming,
   type MonoPitchFramingSpec,
 } from '@cieslacalc/roof-math';
-import type { BattenLayoutSpec, TimberSection } from '@cieslacalc/timber-model';
+import type {
+  BattenLayoutSpec,
+  CounterBattenLayoutSpec,
+  MembraneLayerSpec,
+  RoofSkeleton,
+  TimberSection,
+} from '@cieslacalc/timber-model';
 import {
   coveringLayoutQuantitySource,
   resolveCoveringLayout,
@@ -28,6 +40,8 @@ import {
 export interface MonoPitchRoofSystemInput {
   framing: MonoPitchFramingSpec;
   battens?: BattenLayoutSpec;
+  counterBattens?: CounterBattenLayoutSpec;
+  membrane?: { layout: MembraneLayerSpec; product: MembraneCourseProduct };
   coverings?: readonly CoveringAssignmentSpec[];
 }
 
@@ -44,7 +58,11 @@ export interface MonoPitchRafterQuantity {
 
 export interface MonoPitchRoofSystem {
   framing: MonoPitchFraming;
+  /** World XYZ for the timber schedule and the 3D scene (VNext-7B-2). */
+  skeleton: RoofSkeleton;
   battens?: BattenLayoutResult;
+  counterBattens?: CounterBattenLayoutResult;
+  membrane?: MembraneLayoutResult;
   coveringLayouts: ResolvedCoveringLayout[];
   coveringQuantitySources: CoveringQuantitySource[];
   coveringCompatibility: Record<string, CoveringCompatibilityResult>;
@@ -58,6 +76,7 @@ export function resolveMonoPitchRoofSystem(
   input: MonoPitchRoofSystemInput,
 ): MonoPitchRoofSystem {
   const framing = resolveMonoPitchFraming(input.framing);
+  const skeleton = createMonoPitchSkeleton(framing);
   const [plane] = framing.surface.planes;
   const battens = input.battens
     ? resolveMonoPitchBattens(framing.surface, input.battens)
@@ -97,7 +116,26 @@ export function resolveMonoPitchRoofSystem(
   const [prototype] = framing.memberPrototypes;
   return {
     framing,
+    skeleton,
     ...(battens ? { battens } : {}),
+    ...(input.counterBattens
+      ? {
+          counterBattens: resolveMonoPitchCounterBattens(
+            framing,
+            skeleton,
+            input.counterBattens,
+          ),
+        }
+      : {}),
+    ...(input.membrane
+      ? {
+          membrane: resolveMonoPitchMembrane(
+            framing.surface,
+            input.membrane.layout,
+            input.membrane.product,
+          ),
+        }
+      : {}),
     coveringLayouts,
     coveringQuantitySources: coveringLayouts.flatMap((layout) => {
       const source = coveringLayoutQuantitySource(
