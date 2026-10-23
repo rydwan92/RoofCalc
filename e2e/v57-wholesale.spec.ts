@@ -430,6 +430,18 @@ test('V57 salesperson: customer → roof → company tile → materials → draf
       .getByLabel(/Cena netto/),
   ).toHaveValue('3,25');
   await expect(quote.getByTestId('quote-line').first()).toBeVisible();
+  // VNext-7C: the include checkbox never covers the line's name (it was
+  // stretched to the 6rem width of the number inputs and drawn on the name).
+  for (const line of await quote.getByTestId('quote-line').all()) {
+    const covers = await line.evaluate((row) => {
+      const box = row
+        .querySelector('input[type="checkbox"]')!
+        .getBoundingClientRect();
+      const name = row.querySelector('strong')!.getBoundingClientRect();
+      return box.right > name.left && box.left < name.right;
+    });
+    expect(covers).toBe(false);
+  }
   const coveringQuoteLine = quote
     .getByTestId('quote-line')
     .filter({ hasText: 'DACH-00384' })
