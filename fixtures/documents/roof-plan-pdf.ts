@@ -261,6 +261,91 @@ export function asymmetricGableRoofPlanSpec(): RoofPlanSpec {
   };
 }
 
+/**
+ * Fixture 5 (VNext-10C): one sheet, two structures — a house with a gable
+ * roof and a garage with a mono-pitch roof. The plan (1:200, left) carries
+ * its own dimensions; each structure is described under its own heading on
+ * the right, as a building design's title sheet does.
+ */
+export function houseAndGarageRoofPlanSpec(): RoofPlanSpec {
+  const ptPerM = PT_PER_M_AT_1_100 / 2;
+  const outline = (x: number, y: number, w: number, h: number): PlanLine[] => [
+    { from: [x, y], to: [x + w, y], width: 1.2 },
+    { from: [x + w, y], to: [x + w, y + h], width: 1.2 },
+    { from: [x + w, y + h], to: [x, y + h], width: 1.2 },
+    { from: [x, y + h], to: [x, y], width: 1.2 },
+  ];
+  const house = { x: 60, y: 200, w: 12 * ptPerM, h: 9 * ptPerM };
+  const garage = {
+    x: house.x + house.w + 15,
+    y: 200,
+    w: 6 * ptPerM,
+    h: 3.6 * ptPerM,
+  };
+  return {
+    lines: [
+      ...outline(house.x, house.y, house.w, house.h),
+      // The house ridge along its length.
+      {
+        from: [house.x, house.y + house.h / 2],
+        to: [house.x + house.w, house.y + house.h / 2],
+        width: 0.8,
+      },
+      ...outline(garage.x, garage.y, garage.w, garage.h),
+    ],
+    texts: [
+      {
+        text: 'PROJEKT BUDOWLANY — DOM Z GARAŻEM',
+        x: 60,
+        y: 555,
+        size: 14,
+        bold: true,
+      },
+      { text: '1200', x: house.x + house.w / 2 - 11, y: house.y - 16, size: 9 },
+      {
+        text: '600',
+        x: garage.x + garage.w / 2 - 8,
+        y: garage.y - 16,
+        size: 9,
+      },
+      {
+        text: 'Budynek mieszkalny — dach dwuspadowy',
+        x: 500,
+        y: 500,
+        size: 11,
+        bold: true,
+      },
+      { text: 'Długość budynku:', x: 500, y: 482 },
+      { text: '12,00 m', x: 650, y: 482 },
+      { text: 'Szerokość budynku:', x: 500, y: 466 },
+      { text: '9,00 m', x: 650, y: 466 },
+      { text: 'Kąt nachylenia dachu:', x: 500, y: 450 },
+      { text: '38°', x: 650, y: 450 },
+      { text: 'Okap:', x: 500, y: 434 },
+      { text: '60 cm', x: 650, y: 434 },
+      { text: 'Krokwie 8×20 cm co 90 cm', x: 500, y: 418 },
+      {
+        text: 'Garaż — dach jednospadowy',
+        x: 500,
+        y: 386,
+        size: 11,
+        bold: true,
+      },
+      { text: 'Długość budynku:', x: 500, y: 368 },
+      { text: '6,00 m', x: 650, y: 368 },
+      { text: 'Szerokość budynku:', x: 500, y: 352 },
+      { text: '3,60 m', x: 650, y: 352 },
+      { text: 'Spadek dachu:', x: 500, y: 336 },
+      { text: '10°', x: 650, y: 336 },
+      { text: 'Okap:', x: 500, y: 320 },
+      { text: '40 cm', x: 650, y: 320 },
+      { text: 'Krokwie 8×16 cm co 80 cm', x: 500, y: 304 },
+      { text: 'Wszystkie wymiary podano w cm', x: 500, y: 120, size: 8 },
+      { text: 'Skala 1:200', x: 500, y: 104, size: 8 },
+    ],
+  };
+}
+
 /** Fixture 2: a hip plan with unitless values and a slope in percent. */
 export function hipRoofPlanSpec(): RoofPlanSpec {
   const { lines, rects, x0, y0, w } = planGeometry(14, 10, true);

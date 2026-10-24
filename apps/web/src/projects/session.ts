@@ -639,6 +639,26 @@ export class ProjectSession {
     });
   }
 
+  /**
+   * VNext-10C: a project made of several roofs at once (a multi-roof
+   * design): a new record, one structure per roof, placed beside each other
+   * (ADR-017). One roof alone is a project of one roof (V1).
+   */
+  async createFromStructures(
+    parts: readonly { name: string; document: RoofProjectDocumentV1 }[],
+    name: string,
+  ): Promise<void> {
+    const [first, ...rest] = parts;
+    if (!first) throw new Error('Brak brył do utworzenia projektu.');
+    let document = roofProjectDocumentV2FromV1(first.document, first.name);
+    for (const part of rest)
+      document = addRoofStructure(document, {
+        project: part.document.project,
+        name: part.name,
+      }).document;
+    await this.createFromDocument(document, name);
+  }
+
   async rename(name: string): Promise<void> {
     if (!this.record) return;
     await this.flushBeforeChange();

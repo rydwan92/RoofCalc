@@ -3694,6 +3694,33 @@ function AssemblyPageContent({
               state.setViewPreset('construction');
               openPreparation(report, template);
             }}
+            onCreateStructures={async (structures, name, report) => {
+              await projectSession.initialize();
+              // The session's untouched fresh project would stay behind
+              // empty: the import leaves one record, as for one roof.
+              const fresh =
+                reuseFreshProject || projectSession.snapshot().freshProject
+                  ? projectSession.snapshot().active?.id
+                  : undefined;
+              await projectSession.createFromStructures(
+                structures.map((structure) => ({
+                  name: structure.name,
+                  document: createRoofProjectDocument(structure.template),
+                })),
+                name,
+              );
+              if (fresh) await projectSession.delete(fresh);
+              rememberCreatorStart();
+              projectSession.acknowledgeFreshProject();
+              setReuseFreshProject(false);
+              setProjectStartMode(undefined);
+              setDocumentImportOpen(false);
+              setImportFile(undefined);
+              state.setMode('builder');
+              state.navigatePerspective('project');
+              state.setViewPreset('construction');
+              openPreparation(report, structures[0]?.template);
+            }}
           />
         </Suspense>
       )}

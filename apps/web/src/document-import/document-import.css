@@ -1223,3 +1223,52 @@
     margin-left: 0;
   }
 }
+
+/* VNext-10C: the structures a design describes, one chip each. */
+.dimp-structures {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--ui-line, #dce3dc);
+  border-radius: var(--ui-radius-md, 9px);
+  background: var(--ui-surface, #fff);
+}
+.dimp-structures > p {
+  margin: 0;
+  font-size: var(--ui-text-sm, 12.5px);
+  color: var(--ui-text-muted, #667b71);
+}
+.dimp-structures [role='group'] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.dimp-structures button {
+  display: grid;
+  justify-items: start;
+  gap: 2px;
+  min-height: 40px;
+  padding: 6px 12px;
+  border: 1px solid var(--ui-line, #dce3dc);
+  border-radius: var(--ui-radius-md, 9px);
+  background: var(--ui-surface, #fff);
+  color: var(--ui-text, #24382f);
+  cursor: pointer;
+}
+.dimp-structures button[aria-pressed='true'] {
+  border-color: var(--ui-accent, #235344);
+  box-shadow: inset 0 0 0 1px var(--ui-accent, #235344);
+}
+.dimp-structures button small {
+  font-size: var(--ui-text-xs, 11px);
+  color: var(--ui-warning, #b35b2d);
+}
+.dimp-structures button[data-state='ready'] small {
+  color: var(--ui-success, #2f7d4f);
+}
+.dimp-structures button[data-state='skipped'] {
+  opacity: 0.6;
+}
+.dimp-structures button[data-state='skipped'] small {
+  color: var(--ui-text-muted, #667b71);
+}

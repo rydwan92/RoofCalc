@@ -30,6 +30,7 @@ export * from './tokens';
 export * from './units';
 export * from './engines';
 export * from './text-layer';
+export * from './structures';
 export * from './draft';
 export * from './mapping';
 export * from './calibration';

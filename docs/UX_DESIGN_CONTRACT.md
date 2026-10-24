@@ -632,6 +632,11 @@ line and manual lengths keep working.
   is named through one lookup (`ROOF_FAMILY_LABEL`), and never shows
   another family's controls (no ridge settings on a mono-pitch roof). A quick
   calculation offers "Utwórz projekt" instead of retyping.
+- **VNext-10C: a design with several roofs is reviewed roof by roof.**
+  The review lists the structures the document names, each "gotowa" or "do
+  sprawdzenia"; values, confirmations and typed numbers belong to the
+  structure shown, never leak to another; a structure can be left out; the
+  create button says how many structures the project will have.
 - **VNext-11: a member is named, never coded.** A timber row reads
   "Murłata M 140×140 · 2 szt. × 10,00 m" in the material plan, the CSV, the
   quote and the execution document — one rule (`materialRowLabel`), never

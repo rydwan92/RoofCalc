@@ -1297,6 +1297,27 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+## VNext-10C (2026-10-25) — a design with several roofs becomes one project
+
+- Branch `feature/vnext-10c-multi-roof-import` (from VNext-11, `0081998`).
+- document-import-core `recognizeDocumentStructures`: a reading per
+  structure named under a heading (house, garage, carport, outbuilding,
+  extension, porch); text left of the heading column and before the first
+  heading feeds only the shared unit and scale; a document is multi-roof
+  only with two distinct structures that each carry roof data, so every
+  single-roof document reads exactly as before (tested on all samples).
+- Import review: a structure chooser (gotowa / do sprawdzenia / pominięta),
+  decisions, typed values, transcriptions and measurements per structure,
+  "leave this structure out"; creating builds one project of structures
+  (`ProjectSession.createFromStructures`); the session's empty fresh project
+  is removed so the import leaves one record.
+- Sample "Dom z garażem — dwa dachy"; PDF integration, heading unit tests,
+  e2e desktop + phone. ADR-012 addendum; SCHEMA_REGISTRY §29.
+- Validation: `pnpm verify` green — 221 files / 2339 tests (13 skipped);
+  `pnpm e2e` 190 passed / 0 failed.
+- NEXT ACTION: 10D — the site view of all structures with the overlap
+  check from the ADR-015 assessment.
+
 ## VNext-11 (2026-10-25) — example projects, clear labels, a simpler sales desk
 
 - Branch `feature/vnext-11-seeds-admin-pricing` (from 10B, `1ce7511`).

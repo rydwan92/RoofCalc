@@ -51,6 +51,7 @@ const pl = {
     hip: 'Dom — dach kopertowy',
     'mono-pitch': 'Wiata — dach jednospadowy',
     house: 'Projekt domu — 4 strony',
+    'house-and-garage': 'Dom z garażem — dwa dachy',
     'asymmetric-gable': 'Budynek gospodarczy — dach niesymetryczny',
   },
   samplesHint:
@@ -266,6 +267,16 @@ const pl = {
     'Import opiera się na wymiarach zapisanych na rysunku: z warstwy tekstowej PDF automatycznie, ze zdjęć i skanów po przepisaniu. Sprawdza sumy łańcuchów wymiarowych. Linie rysunku i skala służą tylko do kontroli. Tekstu ze zdjęć nie rozpoznaje jeszcze samodzielnie (OCR).',
   reviewCheck: 'Sprawdziłem odczytane wartości i ich źródła w dokumencie.',
   create: 'Utwórz projekt RoofCalc',
+  // VNext-10C: a design with several roof structures.
+  structures: 'Bryły w dokumencie',
+  structuresFound: (count: number) =>
+    `Dokument opisuje ${count} bryły — każda trafi do jednego projektu jako osobna bryła. Sprawdź wartości każdej z nich.`,
+  structureReady: 'gotowa',
+  structureNeedsReview: 'do sprawdzenia',
+  structureSkipped: 'pominięta',
+  skipStructure: 'Pomiń tę bryłę (nie trafi do projektu)',
+  createStructures: (count: number) =>
+    `Utwórz projekt RoofCalc z ${count} ${count === 1 ? 'bryłą' : 'bryłami'}`,
   creating: 'Tworzenie projektu…',
   // VNext-8: a mono-pitch roof is a project like the others.
   monoPitchConstruction:
@@ -382,6 +393,7 @@ const en: Copy = {
     hip: 'House — hip roof',
     'mono-pitch': 'Carport — mono-pitch roof',
     house: 'House design — 4 pages',
+    'house-and-garage': 'House and garage — two roofs',
     'asymmetric-gable': 'Farm building — asymmetric gable',
   },
   samplesHint:
@@ -584,6 +596,15 @@ const en: Copy = {
     'Import relies on the dimensions written on the drawing: automatically from a PDF text layer, after typing from photos and scans. It checks dimension-chain sums. Drawing lines and the scale are for checking only. It does not yet read text in photos on its own (OCR).',
   reviewCheck: 'I checked the read values and their sources in the document.',
   create: 'Create RoofCalc project',
+  structures: 'Structures in the document',
+  structuresFound: (count) =>
+    `The document describes ${count} structures — each becomes a structure of one project. Check the values of each.`,
+  structureReady: 'ready',
+  structureNeedsReview: 'to check',
+  structureSkipped: 'left out',
+  skipStructure: 'Leave this structure out of the project',
+  createStructures: (count) =>
+    `Create a RoofCalc project with ${count} ${count === 1 ? 'structure' : 'structures'}`,
   creating: 'Creating project…',
   monoPitchConstruction:
     'Set the wall plates, purlins and the top edge (free or against a higher wall) in the workshop. The building width is the span between the outer faces of the supports.',

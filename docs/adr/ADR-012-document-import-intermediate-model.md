@@ -54,3 +54,14 @@ application must not depend on one provider.
 - Recognition wording added and benchmarked: "kąt dachu/połaci", "kąt
   pochylenia", "pochylenie dachu", "dach o spadku", a line-leading "α =",
   and the singular "krokiew" as a rafter section.
+
+## Addendum — VNext-10C (2026-10-25): one reading per structure
+
+A design that describes several roof structures is read as one
+`RecognitionResult` per structure (`recognizeDocumentStructures`): the
+text under a structure's heading, in the column of the headings, belongs to
+that structure; the drawing beside it and the text before the first heading
+feed only the shared unit and scale. Each structure then goes through the
+unchanged draft → mapping → project start path, and the project is one
+document of structures (ADR-017). A single-roof document never takes this
+path.

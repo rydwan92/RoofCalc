@@ -43,6 +43,7 @@ import {
   isAngleField,
   measurementValueSource,
   NUMERIC_ROOF_FIELDS,
+  recognizeDocumentStructures,
   recognizeTextLayer,
   recognizeVectorGeometry,
   requiredRoofFieldsFor,
@@ -53,6 +54,7 @@ import {
   transcribeDimension,
   transcriptionResult,
   type DocumentPageInfo,
+  type DocumentStructuresReading,
   type DocumentPageRole,
   type IntakeNextStep,
   type PageRoleSuggestion,
@@ -128,6 +130,28 @@ interface LoadedDocument {
   readMs: number;
   /** VNext-6: suggested role of every analysed page (from page titles). */
   roles: PageRoleSuggestion[];
+  /** VNext-10C: a design describing several roof structures. */
+  structures?: DocumentStructuresReading;
+}
+
+const NO_MANUAL: ManualMeasurementInput[] = [];
+const NO_TRANSCRIPTIONS: {
+  id: string;
+  measurements: RecognizedMeasurement[];
+}[] = [];
+const NO_INPUTS: Partial<Record<NumericRoofField, string>> = {};
+
+/**
+ * VNext-10C: review state kept per structure of a multi-roof design (one
+ * key for a single-roof document), so a value confirmed for the garage
+ * never lands in the house.
+ */
+function useKeyedState<T>(key: string, initial: T) {
+  const [map, setMap] = useState<Record<string, T>>({});
+  const value = map[key] ?? initial;
+  const set = (next: T) => setMap((current) => ({ ...current, [key]: next }));
+  const clear = () => setMap({});
+  return [value, set, map, clear] as const;
 }
 
 type LoadFailure =
@@ -181,6 +205,10 @@ async function loadDocument(file: File): Promise<LoadedDocument> {
           pages: pdf.textPages,
           results: [text, vector],
         }),
+        ...(() => {
+          const structures = recognizeDocumentStructures(pdf.textPages);
+          return structures ? { structures } : {};
+        })(),
         readMs: Math.round(performance.now() - started),
       };
     } catch (error) {
@@ -256,6 +284,7 @@ export function DocumentImportWorkspace({
   initialFile,
   onClose,
   onCreate,
+  onCreateStructures,
 }: {
   /** VNext-4: a file already chosen elsewhere (universal file opening). */
   initialFile?: File;
@@ -266,6 +295,12 @@ export function DocumentImportWorkspace({
     /** VNext-6: what the document gave — for the preparation card. */
     intake: ImportIntakeReport,
   ) => Promise<void>;
+  /** VNext-10C: a multi-roof design — one project, a structure per roof. */
+  onCreateStructures?: (
+    structures: { template: RoofTemplateSpec; name: string }[],
+    name: string,
+    intake: ImportIntakeReport,
+  ) => Promise<void>;
 }) {
   const { t, i18n } = useTranslation();
   const m = importCopy(i18n.language);
@@ -274,9 +309,25 @@ export function DocumentImportWorkspace({
   const [loading, setLoading] = useState<string>();
   const [loadError, setLoadError] = useState<string>();
   const [doc, setDoc] = useState<LoadedDocument>();
-  const [decisions, setDecisions] = useState<ImportDecisions>(EMPTY_DECISIONS);
+  // VNext-10C: the structure under review, and the ones left out.
+  const reading = doc?.structures;
+  const [activeStructureId, setActiveStructureId] = useState<string>();
+  const [skippedStructures, setSkippedStructures] = useState<string[]>([]);
+  const structureKey = reading
+    ? (reading.structures.find(
+        (structure) => structure.id === activeStructureId,
+      )?.id ?? reading.structures[0]!.id)
+    : 'document';
+  const activeStructure = reading?.structures.find(
+    (structure) => structure.id === structureKey,
+  );
+  const [decisions, setDecisions, decisionsByKey, clearDecisions] =
+    useKeyedState<ImportDecisions>(structureKey, EMPTY_DECISIONS);
   const [calibration, setCalibration] = useState<ScaleCalibration>();
-  const [manual, setManual] = useState<ManualMeasurementInput[]>([]);
+  const [manual, setManual, manualByKey, clearManual] = useKeyedState(
+    structureKey,
+    NO_MANUAL,
+  );
   const [tool, setTool] = useState<Tool>({ kind: 'select' });
   const [pending, setPending] = useState<PagePoint[]>([]);
   const [knownLength, setKnownLength] = useState('');
@@ -285,9 +336,10 @@ export function DocumentImportWorkspace({
   const [focusId, setFocusId] = useState<string>();
   const [pageNumber, setPageNumber] = useState(1);
   const [zoom, setZoom] = useState(1);
-  const [inputs, setInputs] = useState<
-    Partial<Record<NumericRoofField, string>>
-  >({});
+  const [inputs, setInputs, , clearInputs] = useKeyedState(
+    structureKey,
+    NO_INPUTS,
+  );
   const [reviewed, setReviewed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [createError, setCreateError] = useState<string>();
@@ -295,9 +347,12 @@ export function DocumentImportWorkspace({
   const [viewerWidth, setViewerWidth] = useState(800);
   // Dimension-first transcription of a scan or photo.
   /** One entry per framed dimension; a section pair yields two readings. */
-  const [transcriptions, setTranscriptions] = useState<
-    { id: string; measurements: RecognizedMeasurement[] }[]
-  >([]);
+  const [
+    transcriptions,
+    setTranscriptions,
+    transcriptionsByKey,
+    clearTranscriptions,
+  ] = useKeyedState(structureKey, NO_TRANSCRIPTIONS);
   const [frame, setFrame] = useState<PendingFrame>();
   const [framing, setFraming] = useState(false);
   const [transcribeText, setTranscribeText] = useState('');
@@ -438,16 +493,34 @@ export function DocumentImportWorkspace({
       source
         ? deriveImportedRoofDraft({
             source,
-            results: [
-              ...(engines.text ? [engines.text] : []),
-              ...(transcribed ? [transcribed] : []),
-              ...(engines.vector ? [engines.vector] : []),
-              ...(manualResult ? [manualResult] : []),
-            ],
+            results:
+              // VNext-10C: a structure's own text plus the shared unit and
+              // scale; the drawing's outline cannot tell two buildings apart.
+              activeStructure && reading
+                ? [
+                    activeStructure.result,
+                    reading.shared,
+                    ...(transcribed ? [transcribed] : []),
+                    ...(manualResult ? [manualResult] : []),
+                  ]
+                : [
+                    ...(engines.text ? [engines.text] : []),
+                    ...(transcribed ? [transcribed] : []),
+                    ...(engines.vector ? [engines.vector] : []),
+                    ...(manualResult ? [manualResult] : []),
+                  ],
             decisions,
           })
         : undefined,
-    [decisions, engines, manualResult, source, transcribed],
+    [
+      activeStructure,
+      decisions,
+      engines,
+      manualResult,
+      reading,
+      source,
+      transcribed,
+    ],
   );
   /** VNext-9B: two pitches read as left and right, as in the Creator. */
   const fieldLabel = (field: NumericRoofField) =>
@@ -485,6 +558,57 @@ export function DocumentImportWorkspace({
       return undefined;
     }
   }, [base, mapping]);
+  /**
+   * VNext-10C: every structure's draft and start, with its own decisions,
+   * transcriptions and measurements — what "create" builds from.
+   */
+  const structureReviews = useMemo(() => {
+    if (!reading || !source) return undefined;
+    return reading.structures.map((structure) => {
+      const own = transcriptionsByKey[structure.id] ?? NO_TRANSCRIPTIONS;
+      const ownManual = manualByKey[structure.id] ?? NO_MANUAL;
+      const draft = deriveImportedRoofDraft({
+        source,
+        results: [
+          structure.result,
+          reading.shared,
+          ...(own.length
+            ? [transcriptionResult(own.flatMap((entry) => entry.measurements))]
+            : []),
+          ...(calibration && ownManual.length
+            ? [manualMeasurementResult(calibration, ownManual)]
+            : []),
+        ],
+        decisions: decisionsByKey[structure.id] ?? EMPTY_DECISIONS,
+      });
+      const mapping = mapDraftToRoofStart(draft, defaults);
+      let template: RoofTemplateSpec | undefined;
+      if (mapping.status === 'ready')
+        try {
+          template = createProjectStartTemplate(mapping.values, base);
+        } catch {
+          template = undefined;
+        }
+      return { structure, mapping, template };
+    });
+  }, [
+    base,
+    calibration,
+    decisionsByKey,
+    defaults,
+    manualByKey,
+    reading,
+    source,
+    transcriptionsByKey,
+  ]);
+  const includedReviews = structureReviews?.filter(
+    (review) => !skippedStructures.includes(review.structure.id),
+  );
+  /** Single roof: the template; several: every included one is ready. */
+  const canCreate = includedReviews
+    ? includedReviews.length > 0 &&
+      includedReviews.every((review) => !!review.template)
+    : !!template;
   /** The model forming while the user reviews — never the confirmed one. */
   const previewTemplate = useMemo(() => {
     if (template) return template;
@@ -536,10 +660,12 @@ export function DocumentImportWorkspace({
   }
 
   function reset() {
-    setDecisions(EMPTY_DECISIONS);
+    clearDecisions();
+    setActiveStructureId(undefined);
+    setSkippedStructures([]);
     setCalibration(undefined);
-    setManual([]);
-    setTranscriptions([]);
+    clearManual();
+    clearTranscriptions();
     setFrame(undefined);
     setFraming(false);
     setTranscribeText('');
@@ -547,7 +673,7 @@ export function DocumentImportWorkspace({
     setTranscribeError(undefined);
     setTool({ kind: 'select' });
     setPending([]);
-    setInputs({});
+    clearInputs();
     setActiveField(undefined);
     setFocusId(undefined);
     setPageNumber(1);
@@ -927,6 +1053,43 @@ export function DocumentImportWorkspace({
   }
 
   async function create() {
+    if (
+      includedReviews &&
+      doc &&
+      reviewed &&
+      canCreate &&
+      !submitting.current
+    ) {
+      const first = includedReviews[0]!;
+      if (first.mapping.status !== 'ready') return;
+      submitting.current = true;
+      setBusy(true);
+      setCreateError(undefined);
+      const skipped = decisions.excludedPages?.length ?? 0;
+      try {
+        await onCreateStructures?.(
+          includedReviews.map((review) => ({
+            template: review.template!,
+            name: review.structure.label,
+          })),
+          m.projectName(doc.fileName.replace(/\.[^.]+$/, '')),
+          {
+            source: 'pdf',
+            fileName: doc.fileName,
+            fingerprint: doc.fingerprint,
+            values: { ...first.mapping.provenance },
+            pagesRead: doc.pages.length - skipped,
+            pagesSkipped: skipped,
+            readMs: doc.readMs,
+          },
+        );
+      } catch {
+        setCreateError(m.createFailed);
+        setBusy(false);
+        submitting.current = false;
+      }
+      return;
+    }
     if (
       !template ||
       !reviewed ||
@@ -1543,6 +1706,70 @@ export function DocumentImportWorkspace({
                 data-testid="document-import-review"
               >
                 <h3>{m.review}</h3>
+                {structureReviews && (
+                  <section
+                    className="dimp-structures"
+                    data-testid="document-import-structures"
+                  >
+                    <p>{m.structuresFound(structureReviews.length)}</p>
+                    <div role="group" aria-label={m.structures}>
+                      {structureReviews.map(({ structure, template }) => {
+                        const skipped = skippedStructures.includes(
+                          structure.id,
+                        );
+                        return (
+                          <button
+                            key={structure.id}
+                            type="button"
+                            aria-pressed={structure.id === structureKey}
+                            data-structure-reading={structure.id}
+                            data-state={
+                              skipped
+                                ? 'skipped'
+                                : template
+                                  ? 'ready'
+                                  : 'review'
+                            }
+                            onClick={() => {
+                              setActiveStructureId(structure.id);
+                              setActiveField(undefined);
+                              setFocusId(undefined);
+                            }}
+                          >
+                            <strong>{structure.label}</strong>
+                            <small>
+                              {skipped
+                                ? m.structureSkipped
+                                : template
+                                  ? m.structureReady
+                                  : m.structureNeedsReview}
+                            </small>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <label className="dimp-check">
+                      <input
+                        type="checkbox"
+                        data-testid="document-import-skip-structure"
+                        checked={skippedStructures.includes(structureKey)}
+                        disabled={
+                          !skippedStructures.includes(structureKey) &&
+                          (includedReviews?.length ?? 0) <= 1
+                        }
+                        onChange={(event) => {
+                          setReviewed(false);
+                          setSkippedStructures((current) =>
+                            event.target.checked
+                              ? [...current, structureKey]
+                              : current.filter((id) => id !== structureKey),
+                          );
+                        }}
+                      />
+                      {m.skipStructure}
+                    </label>
+                  </section>
+                )}
                 <p className="dimp-principle">
                   <Sigma size={14} aria-hidden="true" />
                   {m.dimensionFirst}
@@ -1834,7 +2061,7 @@ export function DocumentImportWorkspace({
                   <input
                     type="checkbox"
                     checked={reviewed}
-                    disabled={!template || busy}
+                    disabled={!canCreate || busy}
                     data-testid="document-import-reviewed"
                     onChange={(event) => setReviewed(event.target.checked)}
                   />
@@ -1849,10 +2076,14 @@ export function DocumentImportWorkspace({
                   type="button"
                   className="dimp-primary dimp-create"
                   data-testid="document-import-create"
-                  disabled={!template || !reviewed || busy}
+                  disabled={!canCreate || !reviewed || busy}
                   onClick={() => void create()}
                 >
-                  {busy ? m.creating : m.create}
+                  {busy
+                    ? m.creating
+                    : includedReviews
+                      ? m.createStructures(includedReviews.length)
+                      : m.create}
                 </button>
               </section>
             )}

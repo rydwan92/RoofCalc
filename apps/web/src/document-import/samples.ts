@@ -13,6 +13,8 @@ export const SAMPLE_DOCUMENTS = [
     fileName: 'rzut-dachu-dwuspadowy-niesymetryczny.pdf',
   },
   { id: 'house', fileName: 'projekt-domu-4-strony.pdf' },
+  // VNext-10C: one design, two roofs — a project of two structures.
+  { id: 'house-and-garage', fileName: 'projekt-dom-z-garazem.pdf' },
 ] as const;
 
 export type SampleDocument = (typeof SAMPLE_DOCUMENTS)[number];

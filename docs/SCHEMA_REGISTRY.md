@@ -884,3 +884,19 @@ workbench. No migration.
 - Creator examples: `ProjectExampleId` adds `mono-pitch-carport`,
   `asymmetric-gable` and `house-and-carport` (fixtures 11, 12 and 13);
   `projectExampleDocument` returns a V1 or V2 document.
+
+## 29. VNext-10C contracts — a design with several roofs (session-only)
+
+- document-import-core `recognizeDocumentStructures(pages)` →
+  `DocumentStructuresReading | undefined`: one `RecognitionResult` per
+  structure the design names under a heading (house, garage, carport,
+  outbuilding, extension, porch), plus a `shared` result holding only the
+  document unit and scale. Undefined unless at least two distinct
+  structures each carry roof data — every single-roof document is read
+  exactly as before. Nothing is persisted.
+- The import review keeps decisions, typed values, transcriptions and
+  measurements per structure (session state). Creating builds one project
+  with a structure per included roof (`ProjectSession.createFromStructures`,
+  ADR-017); the import evidence of the first structure is recorded.
+- New sample `projekt-dom-z-garazem.pdf` (fixtures and `public/samples`,
+  byte-checked).

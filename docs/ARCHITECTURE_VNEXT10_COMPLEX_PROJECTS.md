@@ -96,3 +96,21 @@ skomplikowanych projektów kompleksowo dla całej aplikacji". Decision record:
 - Quantities per structure (timber, layers) as one project schedule remain
   for a later step; the pricing overview is the project total users asked
   for first.
+
+## Delivered — 10C (2026-10-25)
+
+- `recognizeDocumentStructures`: headings at the start of a line (after a
+  numbering or a sheet title), never prose; "Garaż 1" and "Garaż 2" stay
+  apart, "Dom" and "Budynek mieszkalny" on two pages join; text left of the
+  heading column (the drawing, its dimensions) belongs to no structure; a
+  structure without roof data does not make a document multi-roof.
+- The review: a chooser of the structures (ready / to check / left out),
+  per-structure decisions and values, "leave this structure out"; the
+  create button names the structure count; one project, structures placed
+  beside each other.
+- Sample "Dom z garażem — dwa dachy"; integration tests over real pdf.js
+  (two starts, nothing leaking between them, every single-roof sample
+  unchanged); heading unit tests; e2e desktop + phone.
+- Not yet: column layouts with two structures side by side on one sheet are
+  read by vertical order; photos and scans are single-roof (no text layer to
+  split).

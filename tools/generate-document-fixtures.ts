@@ -9,6 +9,7 @@ import {
   createDesignPdf,
   createRoofPlanPdf,
   gableRoofPlanSpec,
+  houseAndGarageRoofPlanSpec,
   hipRoofPlanSpec,
   houseDesignSpecs,
   monoPitchRoofPlanSpec,
@@ -22,6 +23,10 @@ const documents: [string, Uint8Array][] = [
   [
     'rzut-dachu-dwuspadowy-niesymetryczny.pdf',
     createRoofPlanPdf(asymmetricGableRoofPlanSpec()),
+  ],
+  [
+    'projekt-dom-z-garazem.pdf',
+    createRoofPlanPdf(houseAndGarageRoofPlanSpec()),
   ],
 ];
 const targets = [

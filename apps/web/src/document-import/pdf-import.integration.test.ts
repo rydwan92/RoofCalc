@@ -8,6 +8,7 @@ import {
   EMPTY_DECISIONS,
   fieldProvenance,
   mapDraftToRoofStart,
+  recognizeDocumentStructures,
   recognizeTextLayer,
   recognizeVectorGeometry,
   suggestPageRoles,
@@ -23,6 +24,7 @@ import {
   createRoofPlanPdf,
   gableRoofPlanSpec,
   hipRoofPlanSpec,
+  houseAndGarageRoofPlanSpec,
   houseDesignSpecs,
   monoPitchRoofPlanSpec,
 } from '../../../../fixtures/documents/roof-plan-pdf';
@@ -245,6 +247,86 @@ describe('PDF document import (real pdf.js parser)', () => {
     expect(
       resolved.memberPrototypes.map((prototype) => prototype.code),
     ).toEqual(['K1', 'K2']);
+  });
+
+  it('reads a house and a garage as two structures, each its own start (VNext-10C)', async () => {
+    const bytes = createRoofPlanPdf(houseAndGarageRoofPlanSpec());
+    const pages = await readPdf(bytes);
+    const reading = recognizeDocumentStructures(pages);
+    expect(reading).toBeDefined();
+    if (!reading) return;
+    expect(
+      reading.structures.map((structure) => [
+        structure.kind,
+        structure.label,
+        structure.result.roofType?.value,
+      ]),
+    ).toEqual([
+      ['house', 'Budynek mieszkalny', 'gable'],
+      ['garage', 'Garaż', 'mono-pitch'],
+    ]);
+    // The unit and the scale are stated once and serve both.
+    expect(reading.shared.documentUnit?.unit).toBe('cm');
+    expect(reading.shared.scale?.denominator).toBe(200);
+    expect(reading.shared.measurements).toEqual([]);
+    const starts = reading.structures.map((structure) => {
+      const draft = deriveImportedRoofDraft({
+        source: source(bytes, pages),
+        results: [structure.result, reading.shared],
+        decisions: { ...EMPTY_DECISIONS, roofTypeConfirmed: true },
+      });
+      const mapping = mapDraftToRoofStart(draft, {
+        buildingLengthMm: defaults.buildingLengthMm,
+        buildingWidthMm: defaults.buildingWidthMm,
+        pitchDeg: defaults.pitchDeg,
+        eaveOverhangMm: defaults.eaveOverhangMm,
+        rafterSpacingMm: defaults.rafterSpacingMm,
+        rafterWidthMm: defaults.rafterWidthMm!,
+        rafterDepthMm: defaults.rafterDepthMm!,
+      });
+      expect(mapping.status).toBe('ready');
+      return mapping.status === 'ready' ? mapping.values : undefined;
+    });
+    // The plan's own "1200" and "600" never leak into a description.
+    expect(starts).toEqual([
+      expect.objectContaining({
+        roofType: 'gable',
+        buildingLengthMm: 12_000,
+        buildingWidthMm: 9_000,
+        pitchDeg: 38,
+        eaveOverhangMm: 600,
+        rafterSpacingMm: 900,
+        rafterWidthMm: 80,
+        rafterDepthMm: 200,
+      }),
+      expect.objectContaining({
+        roofType: 'mono-pitch',
+        buildingLengthMm: 6_000,
+        buildingWidthMm: 3_600,
+        pitchDeg: 10,
+        eaveOverhangMm: 400,
+        rafterSpacingMm: 800,
+        rafterWidthMm: 80,
+        rafterDepthMm: 160,
+      }),
+    ]);
+  });
+
+  it('reads every single-roof sample exactly as before', async () => {
+    for (const spec of [
+      gableRoofPlanSpec(),
+      hipRoofPlanSpec(),
+      monoPitchRoofPlanSpec(),
+      asymmetricGableRoofPlanSpec(),
+    ])
+      expect(
+        recognizeDocumentStructures(await readPdf(createRoofPlanPdf(spec))),
+      ).toBeUndefined();
+    expect(
+      recognizeDocumentStructures(
+        await readPdf(createDesignPdf(houseDesignSpecs())),
+      ),
+    ).toBeUndefined();
   });
 
   it('never asks a gable plan for a right pitch', async () => {
