@@ -46,12 +46,15 @@ import {
   roofTemplateFromAssembly,
   seatLength,
   toMillimetres,
+  asymmetricGableSeatRefusalOf,
+  type AsymmetricGableSeatRefusal,
   type LengthUnit,
   type RoofWindowAlignmentMode,
   type RoofWindowAlignmentResult,
   type RoofWindowDistributionResult,
 } from '@cieslacalc/roof-math';
 import type {
+  AsymmetricGableRoofTemplateSpec,
   MonoPitchRoofTemplateSpec,
   AssemblySpec,
   BattenLayoutSpec,
@@ -110,8 +113,9 @@ export type EditField =
   | 'collarTie.heightAboveWallPlateMm'
   | 'collarTie.widthMm'
   | 'collarTie.depthMm'
-  /** VNext-8: mono-pitch template lengths with no rafter-section twin. */
+  /** VNext-8/9: family template values with no rafter-section twin. */
   | MonoPitchEditField
+  | AsymmetricGableEditField
   | `support/${string}/${SupportField}`;
 export type MonoPitchEditField =
   'mono.runMm' | 'mono.highOverhangMm' | 'mono.vergeOverhangMm';
@@ -125,9 +129,25 @@ const MONO_PITCH_FIELD_KEY = {
 >;
 const isMonoPitchField = (field: EditField): field is MonoPitchEditField =>
   field in MONO_PITCH_FIELD_KEY;
+/** VNext-9: the asymmetric gable's span and right pitch. */
+export type AsymmetricGableEditField = 'asym.spanMm' | 'asym.rightPitchDeg';
+const ASYMMETRIC_FIELD_KEY = {
+  'asym.spanMm': 'spanMm',
+  'asym.rightPitchDeg': 'rightPitchDeg',
+} as const satisfies Record<
+  AsymmetricGableEditField,
+  keyof AsymmetricGableRoofTemplateSpec
+>;
+const isAsymmetricField = (
+  field: EditField,
+): field is AsymmetricGableEditField => field in ASYMMETRIC_FIELD_KEY;
+/** Angles are typed in degrees; every other field in the display unit. */
+export const isAngleField = (field: EditField) =>
+  field === 'roof.pitchDeg' || field === 'asym.rightPitchDeg';
 type AssemblyEditField = Exclude<
   EditField,
   | MonoPitchEditField
+  | AsymmetricGableEditField
   | 'template.buildingLengthMm'
   | 'template.rafterSpacingMm'
   | 'hip.widthMm'
@@ -166,6 +186,10 @@ export function editValue(
   if (isMonoPitchField(field))
     return template?.type === 'mono-pitch'
       ? template[MONO_PITCH_FIELD_KEY[field]]
+      : NaN;
+  if (isAsymmetricField(field))
+    return template?.type === 'asymmetric-gable'
+      ? template[ASYMMETRIC_FIELD_KEY[field]]
       : NaN;
   if (field === 'template.buildingLengthMm')
     return template?.buildingLengthMm ?? NaN;
@@ -283,6 +307,11 @@ function editedTemplate(
       throw new RangeError('mono_pitch_template_required');
     return { ...template, [MONO_PITCH_FIELD_KEY[field]]: value };
   }
+  if (isAsymmetricField(field)) {
+    if (template.type !== 'asymmetric-gable')
+      throw new RangeError('asymmetric_gable_template_required');
+    return { ...template, [ASYMMETRIC_FIELD_KEY[field]]: value };
+  }
   if (field === 'template.buildingLengthMm')
     return {
       ...template,
@@ -332,10 +361,15 @@ function editedTemplate(
     template,
   );
 }
+/**
+ * A refused field: `true`, or the domain's reason when it has one the user
+ * can act on (VNext-9: an asymmetric gable's right seat).
+ */
+export type FieldInvalidity = true | AsymmetricGableSeatRefusal;
 function committedTemplate(
   template: RoofTemplateSpec,
   drafts: Partial<Record<EditField, string>>,
-  invalidFields: Partial<Record<EditField, boolean>>,
+  invalidFields: Partial<Record<EditField, FieldInvalidity>>,
   currentDocument?: RoofProjectDocumentV1,
 ) {
   const spec = assemblyFromRoofTemplate(template);
@@ -358,7 +392,7 @@ function committedTemplate(
 function committedDocument(
   document: RoofProjectDocumentV1,
   drafts: Partial<Record<EditField, string>>,
-  invalidFields: Partial<Record<EditField, boolean>>,
+  invalidFields: Partial<Record<EditField, FieldInvalidity>>,
 ) {
   return committedTemplate(
     document.project.roof,
@@ -386,7 +420,7 @@ export interface AssemblyState {
   unit: LengthUnit;
   /** Transient editor text; canonical values are committed into projectDocument. */
   drafts: Partial<Record<EditField, string>>;
-  invalidFields: Partial<Record<EditField, boolean>>;
+  invalidFields: Partial<Record<EditField, FieldInvalidity>>;
   historyPast: DomainSnapshot[];
   historyFuture: DomainSnapshot[];
   activeTransaction?: DomainSnapshot;
@@ -1443,7 +1477,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         const value =
           parsed === null
             ? NaN
-            : field === 'roof.pitchDeg'
+            : isAngleField(field)
               ? parsed
               : toMillimetres(parsed, state.unit);
         const template = editedTemplate(
@@ -1462,8 +1496,8 @@ export const useAssembly = create<AssemblyState>((set) => ({
             state.projectDocument,
           ),
         );
-      } catch {
-        invalidFields[field] = true;
+      } catch (cause) {
+        invalidFields[field] = asymmetricGableSeatRefusalOf(cause) ?? true;
         return { drafts, invalidFields };
       }
     }),
@@ -2340,6 +2374,8 @@ export const useAssembly = create<AssemblyState>((set) => ({
     }),
   add: () =>
     set((state) => {
+      // VNext-9: the asymmetric gable has no purlins yet.
+      if (state.template.type === 'asymmetric-gable') return state;
       let template: RoofTemplateSpec;
       let spec: AssemblySpec;
       try {
@@ -2361,7 +2397,9 @@ export const useAssembly = create<AssemblyState>((set) => ({
                 support.kind === 'purlin' &&
                 Math.abs(support.placement.xMm - added!.placement.xMm) < 1e-6,
             )?.id ?? 'roof')
-          : template.intermediateSupports.at(-1)!.id;
+          : template.type === 'asymmetric-gable'
+            ? 'roof'
+            : template.intermediateSupports.at(-1)!.id;
       return {
         ...withHistory(
           state,

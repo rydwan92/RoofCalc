@@ -87,7 +87,10 @@ function instanceName(
     const source = /instance:(?:rafter-pair|hip-common-pair)-(\d+):/.exec(id);
     return `${source ? `K1-${source[1]!.padStart(2, '0')}` : row.familyKey} · ${rowName(row, t)}`;
   }
-  return memberInstanceCode(id);
+  return memberInstanceCode(
+    id,
+    row.memberKind === 'rafter' ? row.familyKey : undefined,
+  );
 }
 
 const coveringKindKeys: Record<CoveringQuantityLayoutKind, string> = {

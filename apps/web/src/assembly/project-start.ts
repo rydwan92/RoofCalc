@@ -1,12 +1,15 @@
 import {
+  asymmetricGableSeatRefusal,
   clampCollarTieHeightMm,
   convertRoofTemplate,
+  type AsymmetricGableSeatRefusal,
   maxCollarTieHeightMm,
   roofTemplateSchema,
   roofTemplateSpanMm,
 } from '@cieslacalc/roof-math';
 import { createRoofMemberSchedule } from '@cieslacalc/quantity-core';
 import type {
+  AsymmetricGableRoofTemplateSpec,
   RidgeConnectionType,
   RoofTemplateSpec,
 } from '@cieslacalc/timber-model';
@@ -18,6 +21,8 @@ export interface ProjectStartValues {
   buildingLengthMm: number;
   buildingWidthMm: number;
   pitchDeg: number;
+  /** VNext-9: the second plane of an asymmetric gable. */
+  rightPitchDeg?: number;
   eaveOverhangMm: number;
   rafterSpacingMm: number;
   /** V37 construction step; absent keeps the base template value. */
@@ -35,6 +40,9 @@ export function projectStartValuesFromTemplate(
     buildingLengthMm: template.buildingLengthMm,
     buildingWidthMm: roofTemplateSpanMm(template),
     pitchDeg: template.pitchDeg,
+    ...(template.type === 'asymmetric-gable'
+      ? { rightPitchDeg: template.rightPitchDeg }
+      : {}),
     eaveOverhangMm: template.eaveOverhangMm,
     rafterSpacingMm: template.rafterSpacing.spacingMm,
     rafterWidthMm: template.rafterSection.widthMm,
@@ -49,6 +57,51 @@ export function projectStartValuesFromTemplate(
   };
 }
 
+/** The asymmetric gable the start values describe, before validation. */
+function asymmetricStartTemplate(
+  values: ProjectStartValues,
+  converted: AsymmetricGableRoofTemplateSpec,
+): AsymmetricGableRoofTemplateSpec {
+  return {
+    ...converted,
+    buildingLengthMm: values.buildingLengthMm,
+    spanMm: values.buildingWidthMm,
+    pitchDeg: values.pitchDeg,
+    rightPitchDeg: values.rightPitchDeg ?? values.pitchDeg,
+    eaveOverhangMm: values.eaveOverhangMm,
+    rafterSpacing: {
+      ...converted.rafterSpacing,
+      spacingMm: values.rafterSpacingMm,
+    },
+    rafterSection: {
+      widthMm: values.rafterWidthMm ?? converted.rafterSection.widthMm,
+      depthMm: values.rafterDepthMm ?? converted.rafterSection.depthMm,
+    },
+  };
+}
+
+/**
+ * VNext-9: why the start values make no asymmetric gable — a right rafter
+ * that cannot sit on its plate (docs/domain/ASYMMETRIC_GABLE.md §2) — or
+ * undefined.
+ */
+export function projectStartSeatRefusal(
+  values: ProjectStartValues,
+  base: RoofTemplateSpec,
+): AsymmetricGableSeatRefusal | undefined {
+  if (values.roofType !== 'asymmetric-gable') return undefined;
+  try {
+    return asymmetricGableSeatRefusal(
+      asymmetricStartTemplate(
+        values,
+        convertRoofTemplate(base, 'asymmetric-gable'),
+      ),
+    );
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * Maps friendly building dimensions onto the one existing canonical roof
  * template. Building width is never persisted separately from halfRunMm
@@ -59,6 +112,8 @@ export function createProjectStartTemplate(
   base: RoofTemplateSpec,
 ): RoofTemplateSpec {
   const converted = convertRoofTemplate(base, values.roofType);
+  if (converted.type === 'asymmetric-gable')
+    return roofTemplateSchema.parse(asymmetricStartTemplate(values, converted));
   if (converted.type === 'mono-pitch')
     return roofTemplateSchema.parse({
       ...converted,

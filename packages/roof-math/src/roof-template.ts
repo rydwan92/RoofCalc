@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type {
   AssemblySpec,
+  AsymmetricGableRoofTemplateSpec,
   GableRoofTemplateSpec,
   HipRoofTemplateSpec,
   MonoPitchRoofTemplateSpec,
@@ -8,6 +9,15 @@ import type {
   RoofTemplateSpec,
 } from '@cieslacalc/timber-model';
 import { assemblyDefaults, seatLength } from './assembly';
+import {
+  ASYMMETRIC_GABLE_TEMPLATE_ID,
+  assemblyFromAsymmetricGableTemplate,
+  asymmetricGableGeometry,
+  asymmetricGableRoofTemplateSchema,
+  asymmetricGableTemplateFromAssembly,
+  createAsymmetricGableRoofSkeletonFromResolved,
+  resolveAsymmetricGableTemplate,
+} from './asymmetric-gable';
 import {
   assemblyFromGableTemplate,
   createGableRoofSkeleton,
@@ -38,6 +48,7 @@ export const roofTemplateSchema: z.ZodType<RoofTemplateSpec> = z.union([
   gableRoofTemplateSchema,
   hipRoofTemplateSchema,
   monoPitchRoofTemplateSchema,
+  asymmetricGableRoofTemplateSchema,
 ]);
 
 /** Gable and hip: a ridge between two eaves (ADR-016 capability check). */
@@ -52,9 +63,40 @@ export function isRidgedRoofTemplate(
  * the half run of a ridged roof, the run of a mono-pitch roof.
  */
 export function roofTemplateSpanMm(template: RoofTemplateSpec): number {
-  return template.type === 'mono-pitch'
-    ? template.runMm
-    : template.halfRunMm * 2;
+  switch (template.type) {
+    case 'mono-pitch':
+      return template.runMm;
+    case 'asymmetric-gable':
+      return template.spanMm;
+    default:
+      return template.halfRunMm * 2;
+  }
+}
+
+/**
+ * The cross section's extent in the family's frame, outer face to outer
+ * face along x: a ridged roof is centred on its ridge, a mono-pitch roof
+ * starts at its low plate, an asymmetric gable's ridge sits off centre.
+ */
+export function roofTemplateFrameMm(template: RoofTemplateSpec): {
+  leftMm: number;
+  rightMm: number;
+} {
+  switch (template.type) {
+    case 'mono-pitch':
+      return { leftMm: 0, rightMm: template.runMm };
+    case 'asymmetric-gable': {
+      const geometry = asymmetricGableGeometry(template);
+      return { leftMm: -geometry.leftRunMm, rightMm: geometry.rightRunMm };
+    }
+    default:
+      return { leftMm: -template.halfRunMm, rightMm: template.halfRunMm };
+  }
+}
+
+/** Families that end their rafters at a ridge (ridge board, connection). */
+export function hasRidge(template: RoofTemplateSpec): boolean {
+  return template.type !== 'mono-pitch';
 }
 
 function unknownFamily(template: never): never {
@@ -71,6 +113,8 @@ export function assemblyFromRoofTemplate(template: RoofTemplateSpec) {
       return assemblyFromHipTemplate(template);
     case 'mono-pitch':
       return assemblyFromMonoPitchTemplate(template);
+    case 'asymmetric-gable':
+      return assemblyFromAsymmetricGableTemplate(template);
     default:
       return unknownFamily(template);
   }
@@ -97,6 +141,8 @@ export function roofTemplateFromAssembly(
       });
     case 'mono-pitch':
       return monoPitchTemplateFromAssembly(assembly, current);
+    case 'asymmetric-gable':
+      return asymmetricGableTemplateFromAssembly(assembly, current);
     default:
       return unknownFamily(current);
   }
@@ -112,11 +158,15 @@ export function resolveRoofTemplate(
   template: MonoPitchRoofTemplateSpec,
 ): ReturnType<typeof resolveMonoPitchRoofTemplate>;
 export function resolveRoofTemplate(
+  template: AsymmetricGableRoofTemplateSpec,
+): ReturnType<typeof resolveAsymmetricGableTemplate>;
+export function resolveRoofTemplate(
   template: RoofTemplateSpec,
 ):
   | ReturnType<typeof resolveGableRoofTemplate>
   | ReturnType<typeof resolveHipRoofTemplate>
-  | ReturnType<typeof resolveMonoPitchRoofTemplate>;
+  | ReturnType<typeof resolveMonoPitchRoofTemplate>
+  | ReturnType<typeof resolveAsymmetricGableTemplate>;
 export function resolveRoofTemplate(template: RoofTemplateSpec) {
   switch (template.type) {
     case 'gable':
@@ -125,6 +175,8 @@ export function resolveRoofTemplate(template: RoofTemplateSpec) {
       return resolveHipRoofTemplate(template);
     case 'mono-pitch':
       return resolveMonoPitchRoofTemplate(template);
+    case 'asymmetric-gable':
+      return resolveAsymmetricGableTemplate(template);
     default:
       return unknownFamily(template);
   }
@@ -142,6 +194,10 @@ export function createRoofSkeleton(template: RoofTemplateSpec) {
       return createMonoPitchRoofSkeletonFromResolved(
         resolveMonoPitchRoofTemplate(template),
       );
+    case 'asymmetric-gable':
+      return createAsymmetricGableRoofSkeletonFromResolved(
+        resolveAsymmetricGableTemplate(template),
+      );
     default:
       return unknownFamily(template);
   }
@@ -150,6 +206,8 @@ export function createRoofSkeleton(template: RoofTemplateSpec) {
 export function createRoofSkeletonFromResolved(resolved: ResolvedRoofTemplate) {
   if ('monoPitch' in resolved)
     return createMonoPitchRoofSkeletonFromResolved(resolved);
+  if ('asymmetric' in resolved)
+    return createAsymmetricGableRoofSkeletonFromResolved(resolved);
   return 'hipRafter' in resolved
     ? createHipRoofSkeletonFromResolved(resolved)
     : createGableRoofSkeletonFromResolved(resolved);
@@ -181,6 +239,48 @@ function gableFromMonoPitch(
       },
     },
     intermediateSupports: [],
+  });
+}
+
+/** The same building as a symmetric gable: the left pitch on both sides. */
+function gableFromAsymmetric(
+  source: AsymmetricGableRoofTemplateSpec,
+): GableRoofTemplateSpec {
+  const base = gableTemplateFromAssembly(assemblyDefaults);
+  return gableRoofTemplateSchema.parse({
+    ...base,
+    buildingLengthMm: source.buildingLengthMm,
+    halfRunMm: source.spanMm / 2,
+    pitchDeg: source.pitchDeg,
+    eaveOverhangMm: source.eaveOverhangMm,
+    rafterSpacing: source.rafterSpacing,
+    rafterSection: source.rafterSection,
+    wallPlate: source.wallPlate,
+    ridge: source.ridge,
+    intermediateSupports: [],
+  });
+}
+
+/**
+ * A ridged roof as an asymmetric gable starts symmetric (both pitches
+ * equal: exactly the gable, docs/domain/ASYMMETRIC_GABLE.md A2); the user
+ * then changes one side.
+ */
+function asymmetricFromRidged(
+  source: RidgedRoofTemplateSpec,
+): AsymmetricGableRoofTemplateSpec {
+  return asymmetricGableRoofTemplateSchema.parse({
+    id: ASYMMETRIC_GABLE_TEMPLATE_ID,
+    type: 'asymmetric-gable',
+    buildingLengthMm: source.buildingLengthMm,
+    spanMm: source.halfRunMm * 2,
+    pitchDeg: source.pitchDeg,
+    rightPitchDeg: source.pitchDeg,
+    eaveOverhangMm: source.eaveOverhangMm,
+    rafterSpacing: source.rafterSpacing,
+    rafterSection: source.rafterSection,
+    wallPlate: source.wallPlate,
+    ridge: source.ridge,
   });
 }
 
@@ -228,6 +328,10 @@ export function convertRoofTemplate(
 ): MonoPitchRoofTemplateSpec;
 export function convertRoofTemplate(
   template: RoofTemplateSpec,
+  type: 'asymmetric-gable',
+): AsymmetricGableRoofTemplateSpec;
+export function convertRoofTemplate(
+  template: RoofTemplateSpec,
   type: RoofTemplateSpec['type'],
 ): RoofTemplateSpec;
 export function convertRoofTemplate(
@@ -235,10 +339,15 @@ export function convertRoofTemplate(
   type: RoofTemplateSpec['type'],
 ): RoofTemplateSpec {
   if (template.type === type) return roofTemplateSchema.parse(template);
-  if (type === 'mono-pitch')
-    return monoPitchFromRidged(template as RidgedRoofTemplateSpec);
+  // Every family converts through the gable: one place per family pair.
   const ridged: RidgedRoofTemplateSpec =
-    template.type === 'mono-pitch' ? gableFromMonoPitch(template) : template;
+    template.type === 'mono-pitch'
+      ? gableFromMonoPitch(template)
+      : template.type === 'asymmetric-gable'
+        ? gableFromAsymmetric(template)
+        : template;
+  if (type === 'mono-pitch') return monoPitchFromRidged(ridged);
+  if (type === 'asymmetric-gable') return asymmetricFromRidged(ridged);
   if (ridged.type === type) return ridged;
   if (type === 'hip') {
     const source = ridged as GableRoofTemplateSpec;

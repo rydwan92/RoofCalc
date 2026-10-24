@@ -10,7 +10,13 @@ import {
 import type { RoofFamily, SupportSpec } from '@cieslacalc/timber-model';
 import { editableLength, formatLength, formatNumber } from '../format';
 import { ROOF_FAMILY_LABEL } from './roof-family';
-import { editValue, supportField, useAssembly, type EditField } from './store';
+import {
+  editValue,
+  isAngleField,
+  supportField,
+  useAssembly,
+  type EditField,
+} from './store';
 
 export type Calculation = ReturnType<typeof calculateAssembly>;
 export function NumberField({
@@ -30,7 +36,7 @@ export function NumberField({
 }) {
   const { t } = useTranslation();
   const state = useAssembly();
-  const angle = field === 'roof.pitchDeg',
+  const angle = isAngleField(field),
     unit = angle ? '°' : state.unit;
   const value = editValue(state.spec, field, state.template);
   const invalid =
@@ -129,7 +135,9 @@ export function NumberField({
       </div>
       <small id={`${field}-hint`}>
         {invalid
-          ? t('assembly.invalidField')
+          ? typeof state.invalidFields[field] === 'string'
+            ? t(`assembly.seatRefusal.${state.invalidFields[field]}`)
+            : t('assembly.invalidField')
           : optional && !Number.isFinite(value)
             ? t('assembly.optionalManualValue')
             : `${limit(min)}–${limit(max)} ${unit}`}
@@ -142,24 +150,35 @@ export function GeometryInputs({
 }: {
   includeLayout?: boolean;
 }) {
-  const monoPitch = useAssembly(
-    (state) => state.template.type === 'mono-pitch',
-  );
+  const family = useAssembly((state) => state.template.type);
+  const monoPitch = family === 'mono-pitch';
+  const asymmetric = family === 'asymmetric-gable';
   return (
     <>
       {includeLayout && <RoofTypeSelector context="roof" />}
       {monoPitch ? (
         <NumberField field="mono.runMm" label="monoRun" min={1} />
+      ) : asymmetric ? (
+        <NumberField field="asym.spanMm" label="asymSpan" min={1} />
       ) : (
         <NumberField field="roof.runMm" label="run" min={1} />
       )}
       <NumberField
         field="roof.pitchDeg"
-        label="pitch"
+        label={asymmetric ? 'leftPitch' : 'pitch'}
         min={1}
         max={80}
         step={1}
       />
+      {asymmetric && (
+        <NumberField
+          field="asym.rightPitchDeg"
+          label="rightPitch"
+          min={1}
+          max={80}
+          step={1}
+        />
+      )}
       <NumberField
         field="roof.overhangMm"
         label={monoPitch ? 'monoEaveOverhang' : 'overhang'}
@@ -337,7 +356,9 @@ export function RoofTypeSelector({
   // VNext-8: a mono-pitch roof is a project roof; Quick Calc stays one
   // rafter (common or hip) and keeps its link to the mono-pitch workspace.
   const families: readonly RoofFamily[] =
-    context === 'roof' ? ['gable', 'hip', 'mono-pitch'] : ['gable', 'hip'];
+    context === 'roof'
+      ? ['gable', 'hip', 'mono-pitch', 'asymmetric-gable']
+      : ['gable', 'hip'];
   const choose = (type: RoofFamily) => {
     if (type === state.template.type) return;
     if (

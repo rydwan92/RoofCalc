@@ -20,7 +20,7 @@ beforeEach(() => {
 describe('a mono-pitch project in the workbench store (VNext-8, ADR-016)', () => {
   it('switches the family as one undoable edit and keeps the building', () => {
     const gable = useAssembly.getState().template;
-    if (gable.type === 'mono-pitch') throw new Error('default is ridged');
+    if (gable.type !== 'gable') throw new Error('default is a gable');
     useAssembly.getState().setRoofType('mono-pitch');
     expect(mono()).toMatchObject({
       buildingLengthMm: gable.buildingLengthMm,

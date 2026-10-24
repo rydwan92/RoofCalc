@@ -10,6 +10,7 @@ import type {
   SkeletonMember3D,
 } from '@cieslacalc/timber-model';
 import type { RoofNodeKind } from '@cieslacalc/connection-core';
+import { RIGHT_RAFTER_ID } from '@cieslacalc/roof-math';
 
 export type WorkbenchMode = 'quick' | 'builder';
 export type WorkbenchCanvasView = 'skeleton' | 'rafter' | 'hip';
@@ -670,9 +671,14 @@ export interface WorkbenchToolDescriptor {
   enabled: boolean;
 }
 
-export function memberInstanceCode(id: string) {
+/**
+ * The schedule code of a member instance ("K1-04"). VNext-9: `familyCode`
+ * names the family when the caller knows it (K2 on an asymmetric gable's
+ * right side); the ID only numbers the pair.
+ */
+export function memberInstanceCode(id: string, familyCode?: string) {
   const common = /instance:(?:rafter-pair|hip-common-pair)-(\d+):/.exec(id);
-  if (common) return `K1-${common[1]!.padStart(2, '0')}`;
+  if (common) return `${familyCode ?? 'K1'}-${common[1]!.padStart(2, '0')}`;
   const jack = /instance:jack:[^:]+:[^:]+:(\d+)$/.exec(id);
   if (jack) return `J1-${jack[1]!.padStart(2, '0')}`;
   if (id.startsWith('instance:hip:')) return 'H1';
@@ -707,6 +713,19 @@ export function createWorkbenchToolRegistry(args: {
       enabled: true,
     },
   ];
+  // VNext-9: the right rafter of an asymmetric gable is its own family.
+  if (args.template.type === 'asymmetric-gable')
+    tools.push({
+      id: 'tool:K2',
+      category: 'timber',
+      action: 'select',
+      selectionId: RIGHT_RAFTER_ID,
+      prototypeId: RIGHT_RAFTER_ID,
+      labelKey: 'rafter',
+      code: 'K2',
+      icon: 'timber',
+      enabled: true,
+    });
   if (args.template.type === 'gable' && args.template.structure?.collarTie) {
     tools.push({
       id: 'tool:collar-tie',
@@ -759,15 +778,17 @@ export function createWorkbenchToolRegistry(args: {
       icon: 'support' as const,
       enabled: true,
     })),
-    {
+  );
+  // VNext-9: an asymmetric gable takes no purlins yet — no dead button.
+  if (args.template.type !== 'asymmetric-gable')
+    tools.push({
       id: 'tool:add-purlin',
       category: 'support',
       action: 'add-purlin',
       labelKey: 'addPurlin',
       icon: 'add',
       enabled: args.canAddPurlin,
-    },
-  );
+    });
   // VNext-8: a mono-pitch roof ends in a top cut, not at a ridge.
   if (args.template.type !== 'mono-pitch')
     tools.push({

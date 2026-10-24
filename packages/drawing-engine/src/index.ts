@@ -353,7 +353,8 @@ export interface DetailPreviewModel {
   type: DetailPreviewType;
   titleKey: string;
   subjectMemberId: string;
-  subjectCode: 'K1' | 'H1';
+  /** `K2` (VNext-9): the right rafter of an asymmetric gable. */
+  subjectCode: 'K1' | 'K2' | 'H1';
   relatedSupportId?: string;
   localFrame: DetailLocalFrame;
   drawing: DrawingModel;

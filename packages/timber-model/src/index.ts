@@ -245,8 +245,36 @@ export interface MonoPitchRoofTemplateSpec {
   intermediateSupports: MonoPitchPurlinSpec[];
 }
 
+/**
+ * VNext-9 (ADR-016): two planes of different pitch meeting in one ridge,
+ * both plates at one height. The right plate repeats the left plate's
+ * section; its seat follows from equal heel heights
+ * (docs/domain/ASYMMETRIC_GABLE.md §2). No purlins or collar ties yet.
+ */
+export interface AsymmetricGableRoofTemplateSpec {
+  id: EntityId;
+  type: 'asymmetric-gable';
+  buildingLengthMm: number;
+  /** Outer face of the left plate to the outer face of the right one. */
+  spanMm: number;
+  /** The left plane (A). */
+  pitchDeg: number;
+  /** The right plane (B). */
+  rightPitchDeg: number;
+  /** Horizontal, both eaves. */
+  eaveOverhangMm: number;
+  rafterSpacing: RafterSpacingSpec;
+  rafterSection: TimberSection;
+  /** The left plate and its seat; the right one has the same section. */
+  wallPlate: SupportSpec;
+  ridge: AssemblySpec['ridge'];
+}
+
 export type RoofTemplateSpec =
-  GableRoofTemplateSpec | HipRoofTemplateSpec | MonoPitchRoofTemplateSpec;
+  | GableRoofTemplateSpec
+  | HipRoofTemplateSpec
+  | MonoPitchRoofTemplateSpec
+  | AsymmetricGableRoofTemplateSpec;
 /** Families with a ridge between two eaves (one rafter cross section per side). */
 export type RidgedRoofTemplateSpec =
   GableRoofTemplateSpec | HipRoofTemplateSpec;
@@ -498,7 +526,8 @@ export type MemberPrototypeKind =
   'common-rafter' | 'hip-rafter' | 'jack-rafter';
 export interface ResolvedMemberPrototype {
   id: EntityId;
-  code: 'K1' | 'H1' | 'J1';
+  /** `K2` (VNext-9): the second common rafter of an asymmetric gable. */
+  code: 'K1' | 'K2' | 'H1' | 'J1';
   kind: MemberPrototypeKind;
   section: TimberSection;
   instanceIds: EntityId[];
@@ -718,6 +747,11 @@ export interface SkeletonMember3D {
   section: TimberSection;
   side: SkeletonMemberSide;
   stationMm?: number;
+  /**
+   * VNext-9: the member family when it is not the kind's default — the right
+   * rafters of an asymmetric gable are `K2`. Absent: the kind decides.
+   */
+  familyCode?: string;
 }
 export interface SkeletonGuide3D {
   id: EntityId;

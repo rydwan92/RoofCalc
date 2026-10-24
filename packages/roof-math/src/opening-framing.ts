@@ -133,7 +133,9 @@ function signature(args: {
     // Gable/hip keys unchanged: saved signatures stay valid.
     ...(template.type === 'mono-pitch'
       ? { runMm: template.runMm }
-      : { halfRunMm: template.halfRunMm }),
+      : template.type === 'asymmetric-gable'
+        ? { spanMm: template.spanMm, rightPitchDeg: template.rightPitchDeg }
+        : { halfRunMm: template.halfRunMm }),
     buildingLengthMm: template.buildingLengthMm,
     pitchDeg: template.pitchDeg,
     eaveOverhangMm: template.eaveOverhangMm,

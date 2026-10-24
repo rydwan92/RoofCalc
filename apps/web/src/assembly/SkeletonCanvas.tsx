@@ -44,6 +44,7 @@ import {
   resolveRoofPlaneBasis,
   roofPlaneIntervalsAtV,
   roofPlaneIds as resolveRoofPlaneIds,
+  roofTemplateFrameMm,
   roofTemplateSpanMm,
   type BattenLayoutResult,
   type CounterBattenLayoutResult,
@@ -150,7 +151,7 @@ function memberLabel(
   if (member.kind === 'rafter')
     return label?.ordinal !== undefined
       ? `${t('assembly.rafter')} #${label.ordinal} - ${t(`assembly.${member.side}`)}`
-      : `${t('assembly.commonRafter')} K1 · ${t(`assembly.${member.side}`)}`;
+      : `${t('assembly.commonRafter')} ${label?.code ?? 'K1'} · ${t(`assembly.${member.side}`)}`;
   return t(`assembly.${member.kind}`);
 }
 
@@ -454,11 +455,17 @@ function SkeletonCanvasComponent({
     viewportPoint(fit.project(point), viewport, { width, height });
   const worldPoint = (point: { x: number; y: number; z: number }) =>
     viewPoint(projectAxonometric(point));
-  // VNext-8: the cross-section frame — a ridged roof is centred on its
-  // ridge, a mono-pitch roof starts at the low plate's outer face (x = 0).
+  // VNext-8/9: each family's cross-section frame (roofTemplateFrameMm).
   const spanMm = roofTemplateSpanMm(template);
-  const frameLeftMm = template.type === 'mono-pitch' ? 0 : -template.halfRunMm;
-  const frameRightMm = frameLeftMm + spanMm;
+  const { leftMm: frameLeftMm, rightMm: frameRightMm } =
+    roofTemplateFrameMm(template);
+  /** The plan run the ridge-height handle turns into the (left) pitch. */
+  const pitchRunMm =
+    template.type === 'asymmetric-gable'
+      ? -frameLeftMm
+      : template.type === 'mono-pitch'
+        ? 0
+        : template.halfRunMm;
   /** Plan x of the mono-pitch rafters' top ends: the pitch handle's base. */
   const topEndXmm =
     template.type === 'mono-pitch'
@@ -927,7 +934,9 @@ function SkeletonCanvasComponent({
           : handle.kind === 'span'
             ? template.type === 'mono-pitch'
               ? template.runMm
-              : template.halfRunMm
+              : template.type === 'asymmetric-gable'
+                ? template.spanMm
+                : template.halfRunMm
             : handle.kind === 'length'
               ? template.buildingLengthMm
               : purlinSupports.find(
@@ -1102,18 +1111,24 @@ function SkeletonCanvasComponent({
       const pitch = clampGablePitchDeg(
         template.type === 'mono-pitch'
           ? (Math.atan(Math.max(0, raw) / topEndXmm) * 180) / Math.PI
-          : gablePitchDegFromRidgeHeight(template.halfRunMm, Math.max(0, raw)),
+          : gablePitchDegFromRidgeHeight(pitchRunMm, Math.max(0, raw)),
       );
       const snappedPitch = Math.round(pitch * 2) / 2;
       state.setCanonicalField('roof.pitchDeg', snappedPitch);
       setPreview(`${t('assembly.pitch')} ${snappedPitch.toFixed(1)}°`);
     } else if (active.kind === 'span') {
-      if (template.type === 'mono-pitch') {
-        // The run is the span; the template's own rules refuse a span the
+      if (
+        template.type === 'mono-pitch' ||
+        template.type === 'asymmetric-gable'
+      ) {
+        // The whole span; the template's own rules refuse a span the
         // supports no longer fit (the last valid value stays).
-        const run = Math.max(1, Math.round(raw / 10) * 10);
-        state.setCanonicalField('mono.runMm', run);
-        setPreview(`${t('assembly.span')} ${length(run)}`);
+        const span = Math.max(1, Math.round(raw / 10) * 10);
+        state.setCanonicalField(
+          template.type === 'mono-pitch' ? 'mono.runMm' : 'asym.spanMm',
+          span,
+        );
+        setPreview(`${t('assembly.span')} ${length(span)}`);
       } else {
         const run = clampRoofHalfRunMm(template, Math.round(raw / 10) * 10);
         state.setCanonicalField('roof.runMm', run);
@@ -1272,6 +1287,11 @@ function SkeletonCanvasComponent({
         state.setCanonicalField(
           'mono.runMm',
           Math.max(1, template.runMm + direction * 10 * multiplier),
+        );
+      else if (template.type === 'asymmetric-gable')
+        state.setCanonicalField(
+          'asym.spanMm',
+          Math.max(1, template.spanMm + direction * 10 * multiplier),
         );
       else
         state.setCanonicalField(
@@ -2367,11 +2387,7 @@ function SkeletonCanvasComponent({
         ) : (
           <div>
             <dt>{t('assembly.ridgeHeight')}</dt>
-            <dd>
-              {length(
-                gableRidgeHeightMm(template.halfRunMm, template.pitchDeg),
-              )}
-            </dd>
+            <dd>{length(gableRidgeHeightMm(pitchRunMm, template.pitchDeg))}</dd>
           </div>
         )}
         {template.type === 'hip' && (
@@ -2422,4 +2438,5 @@ const SKELETON_DRAWING_LABEL: Record<RoofFamily, string> = {
   gable: 'assembly.skeletonDrawing',
   hip: 'assembly.hipSkeletonDrawing',
   'mono-pitch': 'assembly.monoSkeletonDrawing',
+  'asymmetric-gable': 'assembly.asymmetricSkeletonDrawing',
 };

@@ -100,3 +100,33 @@ L with a valley (V2: two structures and a connection, ADR-008).
 Known limits: no wall-flashing role for an abutment line yet; pitch from
 plate tops lives in the quick workspace only; asymmetric gable and the L
 with a valley are next.
+
+## Delivered (VNext-9, 2026-10-24) — the asymmetric gable
+
+- Domain: `AsymmetricGableRoofTemplateSpec`, `resolveAsymmetricGableTemplate`
+  (ridge from the two pitches, equal heel height → right seat, two
+  assemblies through `calculateAssembly`), schema issues on template paths
+  (`right_seat_not_positive`, `right_seat_exceeds_plate`), plane basis,
+  surface metrics, skeleton with K2 rafters, dispatchers, topology
+  `supported`. Vectors A1–A4 (`docs/domain/ASYMMETRIC_GABLE.md`).
+- Project: fixture 12 (A1 + battens, counter-battens); Creator fourth family
+  with a right pitch field; conversion gable ↔ asymmetric in the workbench.
+- Workbench: span, left and right pitch fields (angle input), span handle,
+  frame from `roofTemplateFrameMm`, family label; the canvas edits K1's
+  assembly; a new left pitch keeps the span and moves the ridge; purlins
+  are not offered (no dead "add purlin" button). K2 is in the element list
+  with its derived facts (pitch, seat, stock length, count); drawing and
+  schedule codes read `familyCode` (K2-NN), member family names come from
+  one lookup (`MEMBER_FAMILY_LABEL`), instance codes take the family from
+  the instance context. A refused pair of pitches names its reason
+  (`asymmetricGableSeatRefusal`) in the Creator and the workbench.
+- Downstream: K1 and K2 operations and previews (prefixed selections),
+  member instances, quantity schedule (K2 by `familyCode`), materials,
+  execution document with a K2 page after K1, documents scope.
+- Proof: e2e Creator → project → materials → documents (K1 and K2 pages),
+  desktop and phone.
+
+Known limits: no purlins or collar ties on an asymmetric gable; the import
+does not recognise "niesymetryczny" yet; K2 has no cutting plan of its own
+(the K1 plan is shown); no wall-flashing role for abutment lines. Next: the
+L with a valley (V2 structures and a connection, ADR-008).

@@ -12,6 +12,7 @@ import {
 } from '@cieslacalc/roof-math';
 import type { DetailPreviewModel } from '@cieslacalc/drawing-engine';
 import type { RoofSkeleton, RoofTemplateSpec } from '@cieslacalc/timber-model';
+import { memberInstanceCode } from './workbench';
 
 export interface WorkbenchProjectProjection {
   resolved: ResolvedRoofProject;
@@ -76,3 +77,22 @@ export function createWorkbenchProjectResolver(
 }
 
 export const workbenchProjectResolver = createWorkbenchProjectResolver();
+
+/**
+ * VNext-9: schedule codes for one roof's member instances, the family taken
+ * from each instance's context — K2 on an asymmetric gable's right side —
+ * never from its ID (ADR-007).
+ */
+export function memberInstanceCodes(
+  template: RoofTemplateSpec,
+): (id: string) => string {
+  const families = new Map(
+    workbenchProjectResolver
+      .resolve(template)
+      .memberInstances.map((instance) => [
+        instance.instanceId,
+        instance.familyCode,
+      ]),
+  );
+  return (id) => memberInstanceCode(id, families.get(id));
+}

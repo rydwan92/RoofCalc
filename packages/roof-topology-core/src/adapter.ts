@@ -2,6 +2,7 @@ import { createRoofEdge, createRoofPlane } from './build';
 import {
   ROOF_SCENE_CONTRACT_VERSION,
   type RoofSceneGraph,
+  type StructureTemplate,
   type Vec3,
 } from './model';
 
@@ -36,11 +37,8 @@ export function roofSceneFromResolvedRoof(input: {
   /** Scene-unique; the single roof of a V1 project is one structure. */
   structureId: string;
   name?: string;
-  /**
-   * `mono-pitch` (VNext-7A) is adapted the same way; the assessment still
-   * reports it `not-supported` until its downstream modules exist.
-   */
-  template: 'gable' | 'hip' | 'mono-pitch';
+  /** Every solver family is adapted the same way (ADR-016). */
+  template: Exclude<StructureTemplate, 'unknown'>;
   planes: readonly ResolvedRoofPlaneInput[];
   lines: readonly ResolvedRoofLineInput[];
   openings?: readonly ResolvedRoofOpeningInput[];

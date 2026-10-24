@@ -51,3 +51,13 @@ Two facts make the V2 detour unnecessary for one roof:
   `docs/ARCHITECTURE_VNEXT8_ROOF_FAMILIES.md`.
 - The topology graph reports a solved mono-pitch structure as
   `calculation: supported`.
+
+## Applied again (VNext-9, 2026-10-24): the asymmetric gable
+
+The second family followed the decision without changing it: one template
+variant (`asymmetric-gable`), one resolver in `roof-math` that runs the
+shared rafter solver once per side (K1 left, K2 right), one schema with the
+derived right-seat rules, one fixture (12), and the branch-site audit of
+`docs/ARCHITECTURE_VNEXT8_ROOF_FAMILIES.md`. A family with two rafter
+prototypes is carried by data (`familyCode`, the K2 prototype, document
+`followers`), not by a new branch per consumer.

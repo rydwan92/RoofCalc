@@ -6,9 +6,11 @@ import type {
 } from '@cieslacalc/calculator-core';
 import type { DetailPreviewModel } from '@cieslacalc/drawing-engine';
 import {
+  asymmetricGableGeometry,
   COLLAR_TIE_PROTOTYPE_ID,
   HIP_RAFTER_PROTOTYPE_ID,
   JACK_RAFTER_PROTOTYPE_ID,
+  RIGHT_RAFTER_ID,
   createOpeningFramingDraft,
   distributeRoofWindowsAlongEave,
   resolveOpeningFraming,
@@ -33,7 +35,12 @@ import type {
 } from '@cieslacalc/timber-model';
 import { entityLabel } from './Canvas';
 import { roofPlaneShortLabelKey } from './covering-presentation';
-import { editableLength, formatLength, parseDecimal } from '../format';
+import {
+  editableLength,
+  formatLength,
+  formatNumber,
+  parseDecimal,
+} from '../format';
 import {
   CollarTieInputs,
   GeometryInputs,
@@ -59,7 +66,10 @@ import {
   disabledCounterBattenLayer,
 } from './build-up-defaults';
 import { SpacingSummary } from './Summary';
-import { memberInstanceCode } from './workbench';
+import {
+  memberInstanceCodes,
+  workbenchProjectResolver,
+} from './workbench-project';
 import {
   BattenAutoRepair,
   BattenInstallationDetails,
@@ -134,9 +144,13 @@ export function Inspector({
       candidate.id === workbench.selectedId ||
       `joint:${candidate.id}` === workbench.selectedId,
   );
+  const isRightRafter =
+    workbench.selectedId === RIGHT_RAFTER_ID ||
+    workbench.selectedPrototypeId === RIGHT_RAFTER_ID;
   const isRafter =
     workbench.selectedId === state.spec.member.id ||
-    workbench.selectedPrototypeId === state.spec.member.id;
+    workbench.selectedPrototypeId === state.spec.member.id ||
+    isRightRafter;
   const isHip =
     workbench.selectedId === HIP_RAFTER_PROTOTYPE_ID ||
     workbench.selectedPrototypeId === HIP_RAFTER_PROTOTYPE_ID;
@@ -312,6 +326,7 @@ export function Inspector({
           {(isRafter || isJack || workbench.selectedId === 'cut:eave') && (
             <TimberInputs />
           )}
+          {isRightRafter && <RightRafterFacts />}
           {isHip && hip && (
             <>
               <HipTimberInputs />
@@ -1177,6 +1192,51 @@ function RoofWindowGroupInspector({
   );
 }
 
+/**
+ * VNext-9: the right rafter (K2) of an asymmetric gable. Its section is
+ * K1's; its pitch, seat and length follow from the roof — shown, never
+ * typed here (docs/domain/ASYMMETRIC_GABLE.md §2).
+ */
+function RightRafterFacts() {
+  const state = useAssembly();
+  const { t, i18n } = useTranslation();
+  const template = state.template;
+  if (template.type !== 'asymmetric-gable') return null;
+  const { resolved } = workbenchProjectResolver.resolve(template);
+  if (!('rightCalculation' in resolved)) return null;
+  const length = (value: number) =>
+    `${formatLength(value, state.unit, i18n.language)} ${state.unit}`;
+  const count = resolved.memberPrototypes.find(
+    (prototype) => prototype.code === 'K2',
+  )?.count;
+  return (
+    <section className="a-right-rafter" data-testid="right-rafter-facts">
+      <h3>{t('assembly.rightRafter.title')}</h3>
+      <dl className="a-facts">
+        <div>
+          <dt>{t('assembly.rightPitch')}</dt>
+          <dd>{formatNumber(template.rightPitchDeg, i18n.language, 2)}°</dd>
+        </div>
+        <div>
+          <dt>{t('assembly.rightRafter.seat')}</dt>
+          <dd>{length(asymmetricGableGeometry(template).rightSeatMm)}</dd>
+        </div>
+        <div>
+          <dt>{t('assembly.rightRafter.stock')}</dt>
+          <dd>{length(resolved.rightCalculation.plan.minimumStockLengthMm)}</dd>
+        </div>
+        {count !== undefined && (
+          <div>
+            <dt>{t('assembly.rightRafter.count')}</dt>
+            <dd>{count}</dd>
+          </div>
+        )}
+      </dl>
+      <p className="a-help">{t('assembly.rightRafter.note')}</p>
+    </section>
+  );
+}
+
 function RoofWindowInspector({
   feature,
   skeleton,
@@ -1188,6 +1248,7 @@ function RoofWindowInspector({
   const { t, i18n } = useTranslation();
   const length = (value: number) =>
     `${formatLength(value, state.unit, i18n.language)} ${state.unit}`;
+  const codeOf = memberInstanceCodes(state.template);
   const collisions = resolveRoofFeatureCollisions({
     template: state.template,
     skeleton,
@@ -1280,20 +1341,20 @@ function RoofWindowInspector({
       ))}
       <p className={collisions.length ? 'a-window-warning' : 'a-window-clear'}>
         {collisions.length
-          ? `${t('assembly.windowCollision')}: ${collisions.map((collision) => memberInstanceCode(collision.memberInstanceId)).join(', ')}`
+          ? `${t('assembly.windowCollision')}: ${collisions.map((collision) => codeOf(collision.memberInstanceId)).join(', ')}`
           : t('assembly.windowClear')}
       </p>
       {nearestBay && (
         <p className="a-window-bay">
           {t('assembly.nearestBay')}:{' '}
-          {nearestBay.memberInstanceIds.map(memberInstanceCode).join(' — ')} ·{' '}
+          {nearestBay.memberInstanceIds.map(codeOf).join(' — ')} ·{' '}
           {length(nearestBay.availableWidthMm)}
         </p>
       )}
       {feedback?.status === 'placed' && feedback.memberInstanceIds && (
         <p className="a-window-success">
           {t('assembly.windowPlacedBetween')}:{' '}
-          {feedback.memberInstanceIds.map(memberInstanceCode).join(' — ')}.
+          {feedback.memberInstanceIds.map(codeOf).join(' — ')}.
         </p>
       )}
       {feedback?.status === 'failed' && (
@@ -1329,17 +1390,13 @@ function RoofWindowInspector({
               <div>
                 <dt>{t('assembly.boundingRafters')}</dt>
                 <dd>
-                  {framing.boundingMemberInstanceIds
-                    .map(memberInstanceCode)
-                    .join(' — ')}
+                  {framing.boundingMemberInstanceIds.map(codeOf).join(' — ')}
                 </dd>
               </div>
               <div>
                 <dt>{t('assembly.interruptedRafters')}</dt>
                 <dd>
-                  {framing.affectedMemberInstanceIds
-                    .map(memberInstanceCode)
-                    .join(', ')}
+                  {framing.affectedMemberInstanceIds.map(codeOf).join(', ')}
                 </dd>
               </div>
               <div>

@@ -23,8 +23,8 @@ const fixtures = readdirSync(directory)
   .filter((name) => name.endsWith('.cieslacalc.json'))
   .sort();
 
-it('the corpus is the eleven reference projects (VNext-8: + mono-pitch)', () => {
-  expect(fixtures).toHaveLength(11);
+it('the corpus is the twelve reference projects (VNext-8/9: + mono-pitch, asymmetric)', () => {
+  expect(fixtures).toHaveLength(12);
 });
 
 describe.each(fixtures)('reference project %s', (name) => {

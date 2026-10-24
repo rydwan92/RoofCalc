@@ -797,3 +797,27 @@ workbench. No migration.
 - Mono-pitch workspace draft: the 7C import fields are gone (the import
   makes a project); `monoPitchProjectFromDraft` turns a draft into a
   project (template + build-up).
+
+## 24. VNext-9 contracts — the asymmetric gable is a project roof (ADR-016)
+
+- **`RoofProjectDocumentV1.project.roof`** (persisted): `RoofTemplateSpec`
+  gains `AsymmetricGableRoofTemplateSpec` (`type: 'asymmetric-gable'`:
+  building length, span between the wall plates' outer faces, left pitch
+  `pitchDeg`, right pitch `rightPitchDeg`, eave overhang, rafter spacing
+  and section, wall plate, ridge). Schema version stays **1**: existing
+  documents are unchanged; a document with an asymmetric gable is refused by
+  an older build with its ordinary schema error (forward-incompatible
+  additive variant). The ridge position and the right seat are derived
+  (`docs/domain/ASYMMETRIC_GABLE.md` §2), never stored. Reference fixture
+  `fixtures/projects/12-asymmetric-gable`.
+- `ResolvedMemberPrototype.code` adds `K2` (the right common rafter);
+  `SkeletonMember3D.familyCode?` names a member's family when it is not
+  implied by its role (K2), read first by the quantity schedule (derived).
+- Opaque IDs added: `member:rafter-2` (K2 prototype),
+  `support:wall-plate-right`; K2 preview and operation IDs carry the
+  prototype prefix (`member:rafter-2/…`). No code parses them (ADR-007).
+- document-core: `ProjectSummarySection.roofType` adds `asymmetric-gable`
+  and `rightPitchDeg?`; `MemberFabricationSection.code` is `K1 | K2` and
+  gains `followers?` (K2 prints as its own page after K1). Documents are
+  rendered, not persisted.
+- Creator: the session draft gains `rightPitch` (session-only).

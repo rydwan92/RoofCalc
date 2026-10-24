@@ -15,7 +15,7 @@ import type {
   RoofFabricationPackage,
 } from './fabrication-package';
 
-export type MemberFamilyCode = 'K1' | 'H1' | 'J1';
+export type MemberFamilyCode = 'K1' | 'K2' | 'H1' | 'J1';
 
 export interface MemberInstanceOperationContext {
   operationId: string;
@@ -134,6 +134,8 @@ function instanceLength(
       .outerEaveToHipCenterLineLengthMm;
   if (familyCode === 'H1' && 'hipRafter' in resolved)
     return resolved.hipRafter.result.outerEaveToRidgeFaceMm;
+  if (familyCode === 'K2' && 'rightCalculation' in resolved)
+    return resolved.rightCalculation.plan.minimumStockLengthMm;
   return resolved.calculation.plan.minimumStockLengthMm;
 }
 

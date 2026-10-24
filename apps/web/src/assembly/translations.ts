@@ -360,6 +360,17 @@ export const assemblyPl = {
   gableRoof: 'Dwuspadowy',
   hipRoof: 'Kopertowy',
   monoPitchRoof: 'Jednospadowy',
+  asymmetricGableRoof: 'Dwuspadowy niesymetryczny',
+  asymSpan: 'Rozpiętość (zewnętrzne lica murłat)',
+  leftPitch: 'Kąt lewej połaci',
+  rightPitch: 'Kąt prawej połaci',
+  rightRafter: {
+    title: 'K2 — krokiew prawej połaci',
+    seat: 'Siedzisko na murłacie',
+    stock: 'Minimalna długość materiału',
+    count: 'Liczba sztuk',
+    note: 'Przekrój jak K1. Siedzisko wynika z równej wysokości obu krokwi nad murłatą; kąt i rozpiętość zmienisz w parametrach dachu.',
+  },
   monoRun: 'Rozpiętość (zewnętrzne krawędzie podpór)',
   monoEaveOverhang: 'Okap dolny w poziomie',
   monoHighOverhang: 'Okap górny w poziomie',
@@ -401,6 +412,7 @@ export const assemblyPl = {
       gable: 'Dwie główne połacie i kalenica',
       hip: 'Cztery połacie i naroża',
       'mono-pitch': 'Jedna połać od niższej do wyższej ściany',
+      'asymmetric-gable': 'Dwie połacie o różnych kątach, jedna kalenica',
     },
     building: 'Wymiary budynku',
     roof: 'Dach',
@@ -705,6 +717,8 @@ export const assemblyPl = {
       buildingLength: 'Długość budynku',
       buildingWidth: 'Szerokość budynku',
       pitch: 'Kąt połaci',
+      leftPitch: 'Kąt lewej połaci',
+      rightPitch: 'Kąt prawej połaci',
       eave: 'Okap',
       spacing: 'Rozstaw krokwi',
       rafterWidth: 'Szerokość krokwi b',
@@ -715,6 +729,8 @@ export const assemblyPl = {
       buildingLength: 'Wymiar wzdłuż kalenicy, po zewnętrznym obrysie ścian.',
       buildingWidth: 'Wymiar w poprzek budynku, od ściany do ściany.',
       pitch: 'Kąt pomiędzy połacią a poziomem.',
+      rightPitch:
+        'Kąt połaci po prawej stronie kalenicy; kalenica przesunie się tak, by obie połacie spotkały się w niej.',
       eave: 'Poziomy wysięg dachu poza lico ściany.',
       spacing: 'Największa odległość między osiami sąsiednich krokwi.',
       rafterWidth: 'Grubość krokwi widoczna od czoła.',
@@ -724,6 +740,7 @@ export const assemblyPl = {
       buildingLength: 'Rzut budynku ze strzałką wymiaru wzdłużnego',
       buildingWidth: 'Rzut budynku ze strzałką wymiaru poprzecznego',
       pitch: 'Przekrój połaci z kątem α względem poziomu',
+      rightPitch: 'Przekrój prawej połaci z kątem β względem poziomu',
       eave: 'Ściana, połać i wymiar wysięgu okapu',
       spacing: 'Osie krokwi z wymiarem rozstawu',
       rafterWidth: 'Przekrój krokwi b × h',
@@ -891,6 +908,7 @@ export const assemblyPl = {
         gable: 'dwuspadowy',
         hip: 'kopertowy',
         'mono-pitch': 'jednospadowy',
+        'asymmetric-gable': 'dwuspadowy niesymetryczny',
       },
       notSupported: 'tego kształtu dachu RoofCalc jeszcze nie liczy',
       capacity: 'nośność, ugięcia i stateczność nie są sprawdzane',
@@ -1627,6 +1645,8 @@ export const assemblyPl = {
   monoRafters: 'Krokwie K1',
   monoRafterCount: '{{count}} szt. K1',
   monoSkeletonDrawing: 'Aksonometryczny szkielet dachu jednospadowego',
+  asymmetricSkeletonDrawing:
+    'Aksonometryczny szkielet niesymetrycznego dachu dwuspadowego',
   physicalInstance: 'Sztuka w konstrukcji',
   prototype: 'Wspólny element produkcyjny',
   side: 'Połać',
@@ -1748,6 +1768,12 @@ export const assemblyPl = {
   decrease: 'Zmniejsz wartość',
   increase: 'Zwiększ wartość',
   invalidField: 'Popraw wartość; zachowano ostatnią poprawną geometrię.',
+  seatRefusal: {
+    right_seat_not_positive:
+      'Przy tych spadkach prawa krokiew nie oprze się na murłacie. Zmniejsz różnicę spadków.',
+    right_seat_exceeds_plate:
+      'Przy tych spadkach siedzisko prawej krokwi byłoby szersze niż murłata. Zmniejsz różnicę spadków.',
+  },
   skeletonDrawing: 'Aksonometryczny szkielet dachu dwuspadowego',
   hipSkeletonDrawing: 'Aksonometryczny szkielet regularnego dachu kopertowego',
   hipSkeletonCount: '4 narożne H1 · {{common}} szt. K1 · {{jacks}} szt. J1',
@@ -2043,6 +2069,8 @@ export const assemblyPl = {
   assumptions: 'Założenia geometrii',
   assumptionsText:
     'Murłata: lico x=0, siedzisko y=0. Płatew ma poziomą powierzchnię podparcia; jej wysokość osadzenia dopasowuje się do krokwi i zaciosu. Pozycję mierzymy do lewego lica. Cięcie kalenicowe na bliższym licu symetrycznej deski.',
+  asymmetricAssumptionsText:
+    'Obie murłaty na jednej wysokości, lico x=0. Kalenica leży tam, gdzie obie linie odniesienia osiągają tę samą wysokość. Siedzisko po prawej stronie wynika z równej wysokości krokwi nad licem murłat, aby wierzchy krokwi spotkały się w kalenicy.',
   monoAssumptionsText:
     'Murłata dolna: lico x=0, siedzisko y=0. Rozpiętość mierzymy do zewnętrznego lica podpory górnej (przy ścianie — do lica ściany). Płatwie mają poziomą powierzchnię podparcia. Krokiew kończy się u góry cięciem pionowym; dach jednospadowy nie ma kalenicy.',
   hipAssumptionsText:

@@ -1297,6 +1297,35 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+## VNext-9 (2026-10-24) — the asymmetric gable is a project roof through the whole app (ADR-016)
+
+- Branch `feature/vnext-9-asymmetric-gable` (from VNext-8, `9d5af29`).
+- Owner request (2026-10-23): more, richer roof types through the RoofCalc
+  engine with the whole application connected.
+- Domain: `docs/domain/ASYMMETRIC_GABLE.md` (frame, ridge from two
+  pitches, equal heel height → right seat, vectors A1–A4).
+  `AsymmetricGableRoofTemplateSpec`; `resolveAsymmetricGableTemplate` runs
+  the shared rafter solver per side (K1 left, K2 right); one refusal check
+  `asymmetricGableSeatRefusal` (schema, Creator, workbench).
+- App: Creator fourth family (left/right pitch, refusal at the field),
+  workbench (span, left/right pitch, K2 in the element list with derived
+  facts, no purlin tool), skeleton/3D, covering, materials (K2 by
+  `familyCode`), execution document with a K2 page, documents scope.
+- Fixed on the way: a new left pitch changed the building span (now keeps
+  it and moves the ridge); K2 was named "Kulawka" and coded K1-NN (one
+  `MEMBER_FAMILY_LABEL` lookup; codes from `familyCode` / instance context).
+- Fixture 12 (A1 + layers); schema version unchanged (SCHEMA_REGISTRY §24).
+- Validation: `pnpm verify` green — 218 files / 2292 tests (13 skipped);
+  `pnpm e2e` 182 passed / 38 conditionally skipped / 0 failed (new:
+  Creator → refusal → project → materials → K1/K2 documents, desktop +
+  phone). Visual QA 1440 and 375: inspector type grid, K2 facts, sheet.
+- Known limits: no purlins or collar ties on an asymmetric gable; import
+  does not recognise "niesymetryczny"; K2 has no cutting plan of its own;
+  no wall-flashing role for abutment lines.
+- NEXT ACTION: VNext-9B — import an asymmetric gable (vocabulary, a right
+  pitch field in the draft, mapping, review, a sample drawing); then the L
+  with a valley (V2 structures, ADR-008).
+
 ## VNext-8 (2026-10-24) — mono-pitch is a project roof through the whole app (ADR-016)
 
 - Branch `feature/vnext-8-roof-families` (from 7C, `8ffb3d3`).

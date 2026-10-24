@@ -20,7 +20,8 @@ import { roofPlaneIds as resolveRoofPlaneIds } from '@cieslacalc/roof-math';
 import { formatLength } from '../format';
 import { useAssembly } from './store';
 import { SourceBadge } from './SourceBadge';
-import { workbenchLocation, memberInstanceCode } from './workbench';
+import { workbenchLocation } from './workbench';
+import { memberInstanceCodes } from './workbench-project';
 import type {
   BattenWorkflow,
   BattenWorkflowAction,
@@ -842,9 +843,10 @@ export function CounterBattenAxisDetail({
 }) {
   const { t } = useTranslation();
   const length = useLength();
+  const template = useAssembly((state) => state.template);
   const row = result.rows.find((candidate) => candidate.id === rowId);
   if (!row) return null;
-  const code = memberInstanceCode(row.sourceMemberId);
+  const code = memberInstanceCodes(template)(row.sourceMemberId);
   return (
     <section
       className="a-batten-row-detail"

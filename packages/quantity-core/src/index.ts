@@ -265,6 +265,7 @@ export function physicalAxisLengthMm(from: Point3D, to: Point3D): number {
 }
 
 function familyFor(member: SkeletonMember3D) {
+  if (member.familyCode) return member.familyCode;
   switch (member.kind) {
     case 'rafter':
       return 'K1';

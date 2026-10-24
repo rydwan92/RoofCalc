@@ -28,15 +28,18 @@ import type {
 import type { RoofMemberSchedule } from '@cieslacalc/quantity-core';
 import {
   projectPlaneLocalToWorld,
+  resolveK1FabricationBlank,
   resolveRoofPlaneBasis,
   roofStructureSystem,
   roofTemplateSpanMm,
   type BattenAutoSource,
   type BattenLayoutResult,
   type CounterBattenLayoutResult,
+  type K1FabricationBlankResolution,
   type RoofSurfaceGeometryResult,
 } from '@cieslacalc/roof-math';
 import type {
+  ResolvedAssembly,
   RoofSkeleton,
   RoofTemplateSpec,
   RoofWindowFeature,
@@ -155,25 +158,67 @@ function drawing(model: DrawingModel): DocumentDrawing {
 }
 
 function k1Section(facts: ExportFacts, k1: ResolvedK1): ExecutionSection {
+  const k2 = k2Section(facts);
+  return {
+    ...rafterSection(
+      facts,
+      'K1',
+      k1.requiredPieces.length,
+      k1.blank,
+      facts.resolved.calculation.assembly,
+    ),
+    ...(k2 ? { followers: [k2] } : {}),
+  };
+}
+
+/** VNext-9: the right rafter of an asymmetric gable, as K1's page. */
+function k2Section(
+  facts: ExportFacts,
+): Extract<ExecutionSection, { kind: 'member-fabrication' }> | undefined {
+  const resolved = facts.resolved;
+  if (!('rightCalculation' in resolved)) return undefined;
+  const blank = resolveK1FabricationBlank(
+    resolved.rightCalculation.assembly,
+    resolved.template.ridge.thicknessMm,
+    resolved.template.ridge.connection ?? 'ridge-board',
+  );
+  const prototype = resolved.memberPrototypes.find(
+    (candidate) => candidate.code === 'K2',
+  );
+  if (blank.status !== 'resolved' || !prototype) return undefined;
+  return rafterSection(
+    facts,
+    'K2',
+    prototype.count,
+    blank,
+    resolved.rightCalculation.assembly,
+  );
+}
+
+function rafterSection(
+  facts: ExportFacts,
+  code: 'K1' | 'K2',
+  count: number,
+  blank: Extract<K1FabricationBlankResolution, { status: 'resolved' }>,
+  assembly: ResolvedAssembly,
+): Extract<ExecutionSection, { kind: 'member-fabrication' }> {
   return {
     kind: 'member-fabrication',
-    code: 'K1',
-    count: k1.requiredPieces.length,
-    section: k1.blank.section,
-    requiredBlankLengthMm: k1.blank.requiredBlankLengthMm,
+    code,
+    count,
+    section: blank.section,
+    requiredBlankLengthMm: blank.requiredBlankLengthMm,
     ridgeConnection:
-      k1.blank.ridgeConnection === 'top-plumb-cut'
+      blank.ridgeConnection === 'top-plumb-cut'
         ? 'top-plumb-cut'
-        : k1.blank.ridgeConnection === 'direct-opposing-rafter-plumb-meeting'
+        : blank.ridgeConnection === 'direct-opposing-rafter-plumb-meeting'
           ? 'direct-meeting'
           : 'ridge-board',
-    drawing: drawing(
-      createAssemblyDrawing(facts.resolved.calculation.assembly),
-    ),
+    drawing: drawing(createAssemblyDrawing(assembly)),
     details: facts.details
       .filter(
         (detail) =>
-          detail.subjectCode === 'K1' &&
+          detail.subjectCode === code &&
           (detail.type === 'birdsmouth-detail' ||
             detail.type === 'ridge-cut-detail'),
       )
@@ -472,11 +517,14 @@ export function createExportCandidates(facts: ExportFacts): SectionCandidate[] {
     roofType: facts.template.type,
     structuralSystem: roofStructureSystem(facts.template),
     buildingLengthMm: facts.template.buildingLengthMm,
-    ...(facts.template.type === 'mono-pitch'
-      ? {}
-      : { halfRunMm: facts.template.halfRunMm }),
+    ...(facts.template.type === 'gable' || facts.template.type === 'hip'
+      ? { halfRunMm: facts.template.halfRunMm }
+      : {}),
     spanMm: roofTemplateSpanMm(facts.template),
     pitchDeg: facts.template.pitchDeg,
+    ...(facts.template.type === 'asymmetric-gable'
+      ? { rightPitchDeg: facts.template.rightPitchDeg }
+      : {}),
     netRoofAreaMm2:
       facts.surface.status === 'resolved'
         ? facts.surface.netAreaMm2
@@ -874,6 +922,9 @@ export function createExportCandidates(facts: ExportFacts): SectionCandidate[] {
         params: {
           roofType: facts.template.type,
           pitchDeg: facts.template.pitchDeg,
+          ...(facts.template.type === 'asymmetric-gable'
+            ? { rightPitchDeg: facts.template.rightPitchDeg }
+            : {}),
         },
       },
       ...(facts.k1.status === 'resolved'

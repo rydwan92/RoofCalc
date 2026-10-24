@@ -170,7 +170,9 @@ export function roofConnectionModel(input: {
   const purlin: { widthMm: number; heightMm: number } | undefined =
     template.type === 'mono-pitch'
       ? template.intermediateSupports[0]
-      : template.intermediateSupports[0]?.section;
+      : template.type === 'asymmetric-gable'
+        ? undefined
+        : template.intermediateSupports[0]?.section;
   if (purlin)
     sections.purlin = { widthMm: purlin.widthMm, depthMm: purlin.heightMm };
   const collar =

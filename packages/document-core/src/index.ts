@@ -92,13 +92,15 @@ export interface DocumentDrawing {
 
 export interface ProjectSummarySection {
   kind: 'project-summary';
-  roofType: 'gable' | 'hip' | 'mono-pitch';
+  roofType: 'gable' | 'hip' | 'mono-pitch' | 'asymmetric-gable';
   structuralSystem: 'rafter' | 'rafter-collar-tie';
   buildingLengthMm: number;
-  /** Gable/hip: wall plate to ridge. Absent on a mono-pitch roof. */
+  /** Gable/hip: wall plate to ridge. Absent on other families. */
   halfRunMm?: number;
   /** VNext-8: across the slope, outer face to outer face (2 × half run). */
   spanMm: number;
+  /** VNext-9: the second plane's pitch of an asymmetric gable. */
+  rightPitchDeg?: number;
   pitchDeg: number;
   netRoofAreaMm2?: number;
   openingCount: number;
@@ -134,7 +136,12 @@ export interface MemberScheduleSection {
 }
 export interface MemberFabricationSection {
   kind: 'member-fabrication';
-  code: 'K1';
+  code: 'K1' | 'K2';
+  /**
+   * VNext-9: further common-rafter families prepared the same way (K2 of
+   * an asymmetric gable); each prints as its own page after this one.
+   */
+  followers?: MemberFabricationSection[];
   count: number;
   section: { widthMm: number; depthMm: number };
   requiredBlankLengthMm: number;

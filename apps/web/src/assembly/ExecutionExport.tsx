@@ -91,6 +91,7 @@ const copy = {
     'roof-overview': 'Schemat konstrukcji',
     'member-schedule': 'Zestawienie elementów',
     'member-fabrication': 'K1 - przygotowanie elementu',
+    memberPreparation: 'przygotowanie elementu',
     'cutting-plan': 'Rozkrój K1',
     layers: 'Warstwy dachu',
     covering: 'Pokrycie',
@@ -103,6 +104,7 @@ const copy = {
     gable: 'dwuspadowy',
     hip: 'kopertowy',
     'mono-pitch': 'jednospadowy',
+    'asymmetric-gable': 'dwuspadowy niesymetryczny',
     length: 'Długość budynku',
     halfRun: 'Połowa rozpiętości',
     span: 'Rozpiętość',
@@ -288,7 +290,7 @@ const copy = {
     },
     scopeText: {
       'roof-geometry': (p: Params) =>
-        `Geometria dachu ${p.roofType === 'hip' ? 'kopertowego' : p.roofType === 'mono-pitch' ? 'jednospadowego' : 'dwuspadowego'}, nachylenie ${num(p.pitchDeg)}°.`,
+        `Geometria dachu ${p.roofType === 'hip' ? 'kopertowego' : p.roofType === 'mono-pitch' ? 'jednospadowego' : p.roofType === 'asymmetric-gable' ? 'dwuspadowego niesymetrycznego' : 'dwuspadowego'}, nachylenie ${num(p.pitchDeg)}°${p.rightPitchDeg === undefined ? '' : ` i ${num(p.rightPitchDeg)}°`}.`,
       'k1-ridge-board': (p: Params) =>
         `K1 (${p.count} szt.): przygotowanie i trasowanie z centralną deską kalenicową.`,
       'k1-top-cut': (p: Params) =>
@@ -404,6 +406,7 @@ const copy = {
     'roof-overview': 'Roof overview',
     'member-schedule': 'Member schedule',
     'member-fabrication': 'K1 - member preparation',
+    memberPreparation: 'member preparation',
     'cutting-plan': 'K1 cutting plan',
     layers: 'Roof layers',
     covering: 'Covering',
@@ -416,6 +419,7 @@ const copy = {
     gable: 'gable',
     hip: 'hip',
     'mono-pitch': 'mono-pitch',
+    'asymmetric-gable': 'asymmetric gable',
     length: 'Building length',
     halfRun: 'Half run',
     span: 'Span',
@@ -601,7 +605,7 @@ const copy = {
     },
     scopeText: {
       'roof-geometry': (p: Params) =>
-        `${p.roofType === 'hip' ? 'Hip' : p.roofType === 'mono-pitch' ? 'Mono-pitch' : 'Gable'} roof geometry, pitch ${num(p.pitchDeg)}°.`,
+        `${p.roofType === 'hip' ? 'Hip' : p.roofType === 'mono-pitch' ? 'Mono-pitch' : p.roofType === 'asymmetric-gable' ? 'Asymmetric gable' : 'Gable'} roof geometry, pitch ${num(p.pitchDeg)}°${p.rightPitchDeg === undefined ? '' : ` and ${num(p.rightPitchDeg)}°`}.`,
       'k1-ridge-board': (p: Params) =>
         `K1 (${p.count} pcs): preparation and marking against a centred ridge board.`,
       'k1-top-cut': (p: Params) =>
@@ -960,7 +964,12 @@ function SectionBody({
             )}
             <div>
               <span>{m.pitch}</span>
-              <strong>{section.pitchDeg}°</strong>
+              <strong>
+                {section.pitchDeg}°
+                {section.rightPitchDeg === undefined
+                  ? ''
+                  : ` / ${section.rightPitchDeg}°`}
+              </strong>
             </div>
             <div>
               <span>{m.netArea}</span>
@@ -2034,58 +2043,69 @@ function DocumentPreview({
         </div>
       </header>
       <main className="doc-preview-pages">
-        {execution.sections.map((section, index) => (
-          <article
-            className={`doc-page${section.kind === 'assumptions' ? ' is-compact' : ''}`}
-            key={section.kind}
-            data-section={section.kind}
-            data-document-state={state}
-          >
-            <header className="doc-page-header">
-              <span>
-                {title} / {String(index + 1).padStart(2, '0')}
-                {state !== 'ready' && (
-                  <b className="doc-page-state"> · {m.status[state]}</b>
+        {execution.sections
+          // VNext-9: K2 of an asymmetric gable prints as its own page.
+          .flatMap((section): ExecutionSection[] =>
+            section.kind === 'member-fabrication'
+              ? [section, ...(section.followers ?? [])]
+              : [section],
+          )
+          .map((section, index) => (
+            <article
+              className={`doc-page${section.kind === 'assumptions' ? ' is-compact' : ''}`}
+              key={`${section.kind}-${index}`}
+              data-section={section.kind}
+              data-document-state={state}
+            >
+              <header className="doc-page-header">
+                <span>
+                  {title} / {String(index + 1).padStart(2, '0')}
+                  {state !== 'ready' && (
+                    <b className="doc-page-state"> · {m.status[state]}</b>
+                  )}
+                </span>
+                <h1>
+                  {section.kind === 'member-fabrication'
+                    ? `${section.code} - ${m.memberPreparation}`
+                    : m[section.kind]}
+                </h1>
+                <p>{execution.source.projectName}</p>
+              </header>
+              <div className="doc-page-content">
+                {index === 0 && execution.status && (
+                  <DocumentStatusBanner
+                    status={execution.status}
+                    m={m}
+                    unit={unit}
+                  />
                 )}
-              </span>
-              <h1>{m[section.kind]}</h1>
-              <p>{execution.source.projectName}</p>
-            </header>
-            <div className="doc-page-content">
-              {index === 0 && execution.status && (
-                <DocumentStatusBanner
-                  status={execution.status}
+                <SectionBody
+                  section={section}
                   m={m}
                   unit={unit}
+                  locale={i18n.language}
                 />
-              )}
-              <SectionBody
-                section={section}
-                m={m}
-                unit={unit}
-                locale={i18n.language}
-              />
-            </div>
-            <footer className="doc-page-footer">
-              <span>
-                {m.source}: {date(execution.source.projectUpdatedAt)} ·{' '}
-                {m.schema} {execution.source.projectSchemaVersion}
-                {execution.source.inputFingerprint && (
-                  <>
-                    {' · '}
-                    {m.fingerprint}{' '}
-                    <code data-testid="document-input-fingerprint">
-                      {execution.source.inputFingerprint}
-                    </code>
-                  </>
-                )}
-              </span>
-              <span>
-                {m.generated}: {date(execution.generatedAt)}
-              </span>
-            </footer>
-          </article>
-        ))}
+              </div>
+              <footer className="doc-page-footer">
+                <span>
+                  {m.source}: {date(execution.source.projectUpdatedAt)} ·{' '}
+                  {m.schema} {execution.source.projectSchemaVersion}
+                  {execution.source.inputFingerprint && (
+                    <>
+                      {' · '}
+                      {m.fingerprint}{' '}
+                      <code data-testid="document-input-fingerprint">
+                        {execution.source.inputFingerprint}
+                      </code>
+                    </>
+                  )}
+                </span>
+                <span>
+                  {m.generated}: {date(execution.generatedAt)}
+                </span>
+              </footer>
+            </article>
+          ))}
       </main>
     </div>,
     document.body,

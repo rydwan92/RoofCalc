@@ -6,6 +6,7 @@ import type {
 import type { RoofSkeleton } from '@cieslacalc/timber-model';
 import { formatLength } from '../format';
 import { OrientationMiniMap } from './OrientationMiniMap';
+import { MEMBER_FAMILY_LABEL } from './roof-family';
 import { useAssembly } from './store';
 
 export function MemberInstanceInspector({
@@ -36,10 +37,7 @@ export function MemberInstanceInspector({
           {t('assembly.physicalInstance')}
         </span>
         <strong>
-          {instance.familyCode} ·{' '}
-          {t(
-            `assembly.${instance.familyCode === 'K1' ? 'commonRafter' : instance.familyCode === 'H1' ? 'hipRafter' : 'jackRafter'}`,
-          )}
+          {instance.familyCode} · {t(MEMBER_FAMILY_LABEL[instance.familyCode])}
         </strong>
         <small>
           {t('assembly.instanceOf', {

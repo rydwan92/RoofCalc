@@ -23,15 +23,13 @@ import {
   memberInstanceCode,
   workbenchLocationLabelKey,
 } from './workbench';
-import { ROOF_FAMILY_LABEL } from './roof-family';
+import { MEMBER_FAMILY_LABEL, ROOF_FAMILY_LABEL } from './roof-family';
 
 function familyName(
   code: MemberInstanceContext['familyCode'],
   t: ReturnType<typeof useTranslation>['t'],
 ) {
-  return t(
-    `assembly.${code === 'K1' ? 'commonRafter' : code === 'H1' ? 'hipRafter' : 'jackRafter'}`,
-  );
+  return t(MEMBER_FAMILY_LABEL[code]);
 }
 
 function operationName(
@@ -243,8 +241,11 @@ export function WorkbenchContextBar({
           <>
             <span aria-hidden="true">›</span>
             <button onClick={() => goTo(activeInstance)}>
-              {memberInstanceCode(activeInstance.instanceId)} ·{' '}
-              {familyName(activeInstance.familyCode, t)}
+              {memberInstanceCode(
+                activeInstance.instanceId,
+                activeInstance.familyCode,
+              )}{' '}
+              · {familyName(activeInstance.familyCode, t)}
             </button>
           </>
         )}

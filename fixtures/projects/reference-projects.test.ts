@@ -110,6 +110,20 @@ const ACCEPTANCE: [string, Record<string, number>][] = [
       counterBattenM: 39.8,
     },
   ],
+  [
+    // VNext-9: A1 of docs/domain/ASYMMETRIC_GABLE.md. 49.497 + 64.140 m²;
+    // K1 (3480/cos 45°) + 200·tan 45° = 5121.5 mm; 34 battens x 10 m;
+    // counter-battens 13 x 4949.7 + 13 x 6414.0 mm.
+    '12-asymmetric-gable.cieslacalc.json',
+    {
+      roofAreaM2: 113.6,
+      k1StockCm: 512.1,
+      k1: 13,
+      j1: 0,
+      battenM: 340,
+      counterBattenM: 147.7,
+    },
+  ],
 ];
 
 function loadRecord(file: string) {
@@ -293,6 +307,7 @@ describe('reference project corpus', () => {
       '09-hip-catalogue-snapshot.cieslacalc.json',
       '10-gable-collar-tie-direct-meeting.cieslacalc.json',
       '11-mono-pitch-carport.cieslacalc.json',
+      '12-asymmetric-gable.cieslacalc.json',
     ]);
   });
 
@@ -406,6 +421,26 @@ describe('geometry invariants', () => {
     expect(c1?.quantity).toBe(11);
     expect(c1?.lengthMm).toBeGreaterThan(0);
     expect(c1?.lengthMm).toBeLessThan(project.roof.halfRunMm * 2);
+  });
+});
+
+describe('asymmetric gable family (VNext-9)', () => {
+  it('12 resolves two pitches, one ridge, K1 and K2 from the shared solver', () => {
+    const project = resolveProject('12-asymmetric-gable.cieslacalc.json');
+    const resolved = resolveRoofTemplate(project.roof);
+    if (!('rightCalculation' in resolved)) throw new Error('two rafters');
+    // K2: (5000 - 20 + 500) / cos 30.964 deg + 200 tan 30.964 deg.
+    expect(resolved.rightCalculation.plan.minimumStockLengthMm).toBeCloseTo(
+      5480 * (Math.sqrt(34) / 5) + 120,
+      6,
+    );
+    expect(
+      resolved.memberPrototypes.map((prototype) => prototype.code),
+    ).toEqual(['K1', 'K2']);
+    expect(
+      project.schedule.timberRows.find((row) => row.familyKey === 'K2')
+        ?.quantity,
+    ).toBe(13);
   });
 });
 

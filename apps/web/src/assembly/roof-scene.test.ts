@@ -43,6 +43,12 @@ describe.each(fixtures)('reference project %s', (name) => {
     topology,
   });
   const metrics = roofSceneMetrics(scene);
+  // Planes come in roofPlaneIds order; an asymmetric gable's right plane
+  // (the second) has a pitch of its own (VNext-9).
+  const pitchOf = (index: number) =>
+    template.type === 'asymmetric-gable' && index === 1
+      ? template.rightPitchDeg
+      : template.pitchDeg;
 
   it('passes the consistency gate and is calculated by the solver', () => {
     expect(gate).toEqual({
@@ -62,10 +68,10 @@ describe.each(fixtures)('reference project %s', (name) => {
     surface.planes.forEach((plane, index) => {
       expect(metrics.planes[index]!.areaMm2).toBeCloseTo(plane.grossAreaMm2, 3);
       expect(metrics.planes[index]!.planAreaMm2).toBeCloseTo(
-        plane.grossAreaMm2 * Math.cos((template.pitchDeg * Math.PI) / 180),
+        plane.grossAreaMm2 * Math.cos((pitchOf(index) * Math.PI) / 180),
         3,
       );
-      expect(scene.planes[index]!.pitchDeg).toBeCloseTo(template.pitchDeg, 9);
+      expect(scene.planes[index]!.pitchDeg).toBeCloseTo(pitchOf(index), 9);
     });
   });
 

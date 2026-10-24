@@ -6,6 +6,7 @@ import type {
   RoofWindowFeature,
   SkeletonMemberSide,
 } from '@cieslacalc/timber-model';
+import { asymmetricGableGeometry } from './asymmetric-gable';
 import { MONO_PITCH_PLANE_ID } from './mono-pitch-roof';
 import {
   projectPlaneLocalToWorld,
@@ -247,6 +248,23 @@ function boundaryMetrics(template: RoofTemplateSpec, roofPlaneId: string) {
       // A free top edge is the roof's upper boundary; against a wall it is
       // an abutment (a wall junction), not a ridge.
       ridgeBoundaryLengthMm: template.topEdge === 'free' ? width : 0,
+      hipBoundaryLengthMm: 0,
+    };
+  }
+  if (template.type === 'asymmetric-gable') {
+    const geometry = asymmetricGableGeometry(template);
+    const left = roofPlaneId === 'roof-plane:left';
+    return {
+      slopeLengthsMm: [
+        ((left ? geometry.leftRunMm : geometry.rightRunMm) +
+          template.eaveOverhangMm) /
+          Math.cos(
+            ((left ? template.pitchDeg : template.rightPitchDeg) * Math.PI) /
+              180,
+          ),
+      ],
+      eaveLengthMm: template.buildingLengthMm,
+      ridgeBoundaryLengthMm: template.buildingLengthMm,
       hipBoundaryLengthMm: 0,
     };
   }

@@ -360,6 +360,17 @@ export const assemblyEn: typeof assemblyPl = {
   gableRoof: 'Gable',
   hipRoof: 'Hip',
   monoPitchRoof: 'Mono-pitch',
+  asymmetricGableRoof: 'Asymmetric gable',
+  asymSpan: 'Span (outer faces of the wall plates)',
+  leftPitch: 'Left plane pitch',
+  rightPitch: 'Right plane pitch',
+  rightRafter: {
+    title: 'K2 — right plane rafter',
+    seat: 'Seat on the wall plate',
+    stock: 'Minimum stock length',
+    count: 'Pieces',
+    note: "Same section as K1. The seat follows from both rafters' equal height above the plate; change the pitch and span in the roof parameters.",
+  },
   monoRun: 'Span (outer faces of the supports)',
   monoEaveOverhang: 'Low eave overhang, horizontal',
   monoHighOverhang: 'Top overhang, horizontal',
@@ -401,6 +412,7 @@ export const assemblyEn: typeof assemblyPl = {
       gable: 'Two main planes and a ridge',
       hip: 'Four planes and hip edges',
       'mono-pitch': 'One plane from the lower to the higher wall',
+      'asymmetric-gable': 'Two planes of different pitch, one ridge',
     },
     building: 'Building dimensions',
     roof: 'Roof',
@@ -707,6 +719,8 @@ export const assemblyEn: typeof assemblyPl = {
       buildingLength: 'Building length',
       buildingWidth: 'Building width',
       pitch: 'Roof pitch',
+      leftPitch: 'Left plane pitch',
+      rightPitch: 'Right plane pitch',
       eave: 'Eave overhang',
       spacing: 'Rafter spacing',
       rafterWidth: 'Rafter width b',
@@ -717,6 +731,8 @@ export const assemblyEn: typeof assemblyPl = {
       buildingLength: 'Along the ridge, outer wall line.',
       buildingWidth: 'Across the building, wall to wall.',
       pitch: 'Angle between the roof plane and horizontal.',
+      rightPitch:
+        'The plane right of the ridge; the ridge moves so both planes meet in it.',
       eave: 'Horizontal projection of the roof beyond the wall face.',
       spacing: 'Largest distance between neighbouring rafter axes.',
       rafterWidth: 'Rafter thickness seen from its end.',
@@ -726,6 +742,7 @@ export const assemblyEn: typeof assemblyPl = {
       buildingLength: 'Building plan with a longitudinal dimension arrow',
       buildingWidth: 'Building plan with a transverse dimension arrow',
       pitch: 'Roof section with angle α to horizontal',
+      rightPitch: 'Section of the right plane with angle β to horizontal',
       eave: 'Wall, roof plane and eave projection dimension',
       spacing: 'Rafter axes with spacing dimension',
       rafterWidth: 'Rafter section b × h',
@@ -886,7 +903,12 @@ export const assemblyEn: typeof assemblyPl = {
         invalid: 'roof geometry inconsistent — documents held back',
       },
       supported: '{{roof}} roof calculated by RoofCalc',
-      roof: { gable: 'gable', hip: 'hip', 'mono-pitch': 'mono-pitch' },
+      roof: {
+        gable: 'gable',
+        hip: 'hip',
+        'mono-pitch': 'mono-pitch',
+        'asymmetric-gable': 'asymmetric gable',
+      },
       notSupported: 'RoofCalc does not calculate this roof shape yet',
       capacity: 'load capacity, deflection and stability are not checked',
     },
@@ -1617,6 +1639,7 @@ export const assemblyEn: typeof assemblyPl = {
   monoRafters: 'K1 rafters',
   monoRafterCount: '{{count}} K1 pcs',
   monoSkeletonDrawing: 'Axonometric mono-pitch roof skeleton',
+  asymmetricSkeletonDrawing: 'Axonometric asymmetric gable roof skeleton',
   physicalInstance: 'Physical instance',
   prototype: 'Shared fabrication prototype',
   side: 'Roof side',
@@ -1739,6 +1762,12 @@ export const assemblyEn: typeof assemblyPl = {
   decrease: 'Decrease value',
   increase: 'Increase value',
   invalidField: 'Correct the value; the last valid geometry is retained.',
+  seatRefusal: {
+    right_seat_not_positive:
+      'At these pitches the right rafter does not bear on its wall plate. Reduce the difference between the pitches.',
+    right_seat_exceeds_plate:
+      "At these pitches the right rafter's seat would be wider than the wall plate. Reduce the difference between the pitches.",
+  },
   skeletonDrawing: 'Axonometric gable roof skeleton',
   hipSkeletonDrawing: 'Axonometric regular hip roof skeleton',
   hipSkeletonCount: '4 H1 hips · {{common}} K1 pcs · {{jacks}} J1 pcs',
@@ -2033,6 +2062,8 @@ export const assemblyEn: typeof assemblyPl = {
   assumptions: 'Geometry assumptions',
   assumptionsText:
     'Wall plate: face x=0, seat y=0. The purlin has a horizontal contact plane; its elevation follows the rafter and notch geometry. Position is measured to the left face. The ridge cut is on the near face of a symmetric board.',
+  asymmetricAssumptionsText:
+    'Both wall plates at one height, face x=0. The ridge lies where both reference lines reach the same height. The right seat follows from equal rafter heights over the plate faces, so the rafter tops meet at the ridge.',
   monoAssumptionsText:
     'Low wall plate: face x=0, seat y=0. The span is measured to the outer face of the high support (against a wall: to the wall face). Purlins have a horizontal contact plane. The rafter ends at the top in a plumb cut; a mono-pitch roof has no ridge.',
   hipAssumptionsText:

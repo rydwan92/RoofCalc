@@ -21,6 +21,7 @@ import {
 } from './membrane-layout';
 import { MONO_PITCH_PLANE_ID, monoPitchPlaneBasis } from './mono-pitch-roof';
 import { monoPitchSurfaceFromTemplate } from './mono-pitch-template';
+import { asymmetricGableGeometry } from './asymmetric-gable';
 import { roofTemplateSchema } from './roof-template';
 
 /**
@@ -30,6 +31,7 @@ import { roofTemplateSchema } from './roof-template';
 export function templateRoofPlaneIds(template: RoofTemplateSpec): string[] {
   switch (template.type) {
     case 'gable':
+    case 'asymmetric-gable':
       return ['roof-plane:left', 'roof-plane:right'];
     case 'hip':
       return [
@@ -289,6 +291,28 @@ export function resolveRoofPlaneBasis(
     if (roofPlaneId !== MONO_PITCH_PLANE_ID)
       throw new RangeError('unknown_roof_plane');
     return monoPitchPlaneBasis(monoPitchSurfaceFromTemplate(template));
+  }
+  if (template.type === 'asymmetric-gable') {
+    // Each side as the gable's, with its own run and pitch, one ridge.
+    const left = roofPlaneId === 'roof-plane:left';
+    if (!left && roofPlaneId !== 'roof-plane:right')
+      throw new RangeError('unknown_roof_plane');
+    const geometry = asymmetricGableGeometry(template);
+    const run = left ? geometry.leftRunMm : geometry.rightRunMm;
+    const slope = Math.tan(
+      ((left ? template.pitchDeg : template.rightPitchDeg) * Math.PI) / 180,
+    );
+    const e = template.eaveOverhangMm;
+    const x = left ? -(run + e) : run + e;
+    const origin = point(x, 0, -e * slope);
+    const farEave = point(x, template.buildingLengthMm, -e * slope);
+    const ridge = point(0, 0, geometry.ridgeHeightMm);
+    return withPolygon(createBasis(roofPlaneId, origin, farEave, ridge), [
+      origin,
+      farEave,
+      point(0, template.buildingLengthMm, geometry.ridgeHeightMm),
+      ridge,
+    ]);
   }
   const r = template.halfRunMm;
   const e = template.eaveOverhangMm;

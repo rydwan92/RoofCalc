@@ -26,3 +26,4 @@ export * from './mono-pitch-roof';
 export * from './mono-pitch-framing';
 export * from './mono-pitch-layers';
 export * from './mono-pitch-template';
+export * from './asymmetric-gable';

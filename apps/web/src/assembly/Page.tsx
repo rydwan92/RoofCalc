@@ -3416,7 +3416,7 @@ function AssemblyPageContent({
             <summary>{t('assembly.assumptions')}</summary>
             <p>
               {t(
-                `assembly.${state.template.type === 'hip' ? 'hipAssumptionsText' : state.template.type === 'mono-pitch' ? 'monoAssumptionsText' : 'assumptionsText'}`,
+                `assembly.${state.template.type === 'hip' ? 'hipAssumptionsText' : state.template.type === 'mono-pitch' ? 'monoAssumptionsText' : state.template.type === 'asymmetric-gable' ? 'asymmetricAssumptionsText' : 'assumptionsText'}`,
               )}
             </p>
             <p>{t('assembly.structural')}</p>

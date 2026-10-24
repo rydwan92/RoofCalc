@@ -10,6 +10,7 @@ import type {
   TimberSection,
 } from '@cieslacalc/timber-model';
 import {
+  RIGHT_WALL_PLATE_ID,
   resolveRoofTemplate,
   type OpeningFramingResult,
 } from '@cieslacalc/roof-math';
@@ -147,42 +148,60 @@ function operationFromPreview(
 export function createRoofFabricationPackage(
   resolved: ResolvedRoofProject,
 ): RoofFabricationPackage {
-  const k1Prototype = resolved.memberPrototypes.find(
-    (prototype) => prototype.code === 'K1',
-  )!;
-  const commonPreviews = createAssemblyDetailPreviews(resolved.calculation);
   // Notches on a plate read "wall plate", the rest "purlin"; a mono-pitch
-  // roof bears on two plates (or a plate and a ledger).
+  // roof bears on two plates (or a plate and a ledger), an asymmetric
+  // gable on one plate per side.
   const plateIds: readonly string[] =
     'monoPitch' in resolved
       ? [resolved.monoPitch.supportIds.low, resolved.monoPitch.supportIds.high]
-      : [resolved.template.wallPlate.id];
-  let notchIndex = 0;
-  const k1Operations = commonPreviews.map((preview) => {
-    const notch = preview.type === 'birdsmouth-detail';
-    if (notch) notchIndex += 1;
-    return operationFromPreview(
-      preview,
-      k1Prototype.id,
-      notch ? `Z${notchIndex}` : 'K1',
-      notch
-        ? plateIds.includes(preview.relatedSupportId ?? '')
-          ? 'wall-plate'
-          : 'purlin'
-        : preview.titleKey,
-    );
-  });
-  const families: MemberFabricationPackage[] = [
-    {
-      prototypeId: k1Prototype.id,
-      code: 'K1',
+      : 'asymmetric' in resolved
+        ? [resolved.template.wallPlate.id, RIGHT_WALL_PLATE_ID]
+        : [resolved.template.wallPlate.id];
+  /**
+   * One common-rafter family from its cross section. K2 (the right rafter
+   * of an asymmetric gable) gets selections of its own (preview prefix).
+   */
+  const commonRafterFamily = (
+    code: 'K1' | 'K2',
+    calculation: ResolvedRoofProject['calculation'],
+  ): MemberFabricationPackage => {
+    const prototype = resolved.memberPrototypes.find(
+      (candidate) => candidate.code === code,
+    )!;
+    let notchIndex = 0;
+    const operations = createAssemblyDetailPreviews(calculation, {
+      code,
+      ...(code === 'K2' ? { selectionPrefix: `${prototype.id}/` } : {}),
+    }).map((preview) => {
+      const notch = preview.type === 'birdsmouth-detail';
+      if (notch) notchIndex += 1;
+      return operationFromPreview(
+        preview,
+        prototype.id,
+        notch ? `Z${notchIndex}` : code,
+        notch
+          ? plateIds.includes(preview.relatedSupportId ?? '')
+            ? 'wall-plate'
+            : 'purlin'
+          : preview.titleKey,
+      );
+    });
+    return {
+      prototypeId: prototype.id,
+      code,
       memberType: 'common-rafter',
-      section: k1Prototype.section,
-      quantity: k1Prototype.count,
-      lengthGroups: sharedLengthGroups(k1Prototype),
-      operations: k1Operations,
+      section: prototype.section,
+      quantity: prototype.count,
+      lengthGroups: sharedLengthGroups(prototype),
+      operations,
       warningKeys: [],
-    },
+    };
+  };
+  const families: MemberFabricationPackage[] = [
+    commonRafterFamily('K1', resolved.calculation),
+    ...('asymmetric' in resolved
+      ? [commonRafterFamily('K2', resolved.rightCalculation)]
+      : []),
   ];
 
   if ('hipRafter' in resolved) {

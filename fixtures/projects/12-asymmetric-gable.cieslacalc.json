@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "id": "fixture-12",
+  "name": "Reference — asymmetric gable (A1)",
+  "createdAt": "2026-10-24T00:00:00.000Z",
+  "updatedAt": "2026-10-24T00:00:00.000Z",
+  "document": {
+    "schemaVersion": 1,
+    "project": {
+      "roof": {
+        "id": "template:asymmetric-gable-1",
+        "type": "asymmetric-gable",
+        "buildingLengthMm": 10000,
+        "spanMm": 8000,
+        "pitchDeg": 45,
+        "rightPitchDeg": 30.96375653207352,
+        "eaveOverhangMm": 500,
+        "rafterSpacing": {
+          "mode": "max-even-spacing",
+          "spacingMm": 900
+        },
+        "rafterSection": {
+          "widthMm": 80,
+          "depthMm": 200
+        },
+        "wallPlate": {
+          "id": "support:wall-plate-1",
+          "kind": "wall-plate",
+          "section": {
+            "widthMm": 140,
+            "heightMm": 140
+          },
+          "placement": {
+            "mode": "horizontal-from-wall",
+            "xMm": 0
+          },
+          "joint": {
+            "kind": "seat-notch",
+            "control": "seat",
+            "valueMm": 100
+          }
+        },
+        "ridge": {
+          "id": "terminal:ridge-1",
+          "thicknessMm": 40
+        }
+      },
+      "features": [],
+      "openingFraming": [],
+      "buildUp": {
+        "counterBattens": {
+          "enabled": true,
+          "widthMm": 40,
+          "heightMm": 40
+        },
+        "battenLayout": {
+          "enabled": true,
+          "battenHeightMm": 40,
+          "battenWidthMm": 60,
+          "gaugeMm": 340,
+          "eaveOffsetMm": 50
+        }
+      },
+      "coverings": []
+    }
+  }
+}

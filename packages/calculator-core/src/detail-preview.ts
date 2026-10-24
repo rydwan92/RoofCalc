@@ -65,11 +65,20 @@ function instruction(
   };
 }
 
-/** Builds K1 cut previews from the exact resolved assembly and fabrication plan. */
-export function createAssemblyDetailPreviews(input: {
-  assembly: ResolvedAssembly;
-  plan: FabricationPlan;
-}): DetailPreviewModel[] {
+/**
+ * Builds common-rafter cut previews from the exact resolved assembly and
+ * fabrication plan. VNext-9: `family` names the rafter (K2 of an asymmetric
+ * gable) and prefixes its selections, since both rafters' cuts carry the
+ * same solver IDs.
+ */
+export function createAssemblyDetailPreviews(
+  input: {
+    assembly: ResolvedAssembly;
+    plan: FabricationPlan;
+  },
+  family: { code: 'K1' | 'K2'; selectionPrefix?: string } = { code: 'K1' },
+): DetailPreviewModel[] {
+  const selection = (id: string) => `${family.selectionPrefix ?? ''}${id}`;
   const labels = new Map(
     input.plan.datums.map((datum, index) => [
       datum.id,
@@ -83,12 +92,12 @@ export function createAssemblyDetailPreviews(input: {
   const joints: DetailPreviewModel[] = input.assembly.joints.map((joint) => {
     const cutStates = createAssemblyCutStates(input.assembly, joint.id);
     return {
-      id: `preview:${joint.id}`,
-      sourceSelectionId: joint.id,
+      id: `preview:${selection(joint.id)}`,
+      sourceSelectionId: selection(joint.id),
       type: 'birdsmouth-detail',
       titleKey: 'birdsmouthDetail',
       subjectMemberId: input.assembly.member.id,
-      subjectCode: 'K1',
+      subjectCode: family.code,
       relatedSupportId: joint.supportId,
       localFrame: 'member-elevation',
       drawing: cutStates.before,
@@ -133,12 +142,12 @@ export function createAssemblyDetailPreviews(input: {
     .map((cut) => {
       const cutStates = createAssemblyCutStates(input.assembly, cut.id);
       return {
-        id: `preview:${cut.id}`,
-        sourceSelectionId: cut.id,
+        id: `preview:${selection(cut.id)}`,
+        sourceSelectionId: selection(cut.id),
         type: 'ridge-cut-detail',
         titleKey: cut.end === 'top' ? 'topCutDetail' : 'ridgeCutDetail',
         subjectMemberId: input.assembly.member.id,
-        subjectCode: 'K1',
+        subjectCode: family.code,
         relatedSupportId: cut.supportId,
         localFrame: 'member-elevation',
         drawing: cutStates.before,

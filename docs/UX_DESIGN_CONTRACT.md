@@ -632,6 +632,13 @@ line and manual lengths keep working.
   is named through one lookup (`ROOF_FAMILY_LABEL`), and never shows
   another family's controls (no ridge settings on a mono-pitch roof). A quick
   calculation offers "Utwórz projekt" instead of retyping.
+- **VNext-9: two pitches read as two pitches.** An asymmetric gable asks
+  for the span and a left and a right pitch (never "the pitch"), shows them
+  as "α° / β°" in the review and the documents, and gives each rafter its
+  own page (K1, K2). A pair of pitches that leaves K2 without a seat is
+  refused at the field the user changed, with the reason and what to do;
+  the last valid roof stays. K2 is listed, selectable and named as a
+  common rafter (codes K2-NN); its derived facts are shown, never typed.
 - **VNext-7C: a document goes as far as RoofCalc calculates.** A roof the
   import recognises but cannot make a project of (mono-pitch) opens its
   calculation, prefilled, with every value from the document marked; the

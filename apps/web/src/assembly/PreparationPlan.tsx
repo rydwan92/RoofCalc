@@ -9,21 +9,13 @@ import type {
 import { formatLength, formatNumber } from '../format';
 import { detailStepText } from './DetailPreview';
 import { useAssembly } from './store';
-import { ROOF_FAMILY_LABEL } from './roof-family';
+import { MEMBER_FAMILY_LABEL, ROOF_FAMILY_LABEL } from './roof-family';
 
 function familyName(
   family: MemberFabricationPackage,
   t: ReturnType<typeof useTranslation>['t'],
 ) {
-  return t(
-    `assembly.${
-      family.code === 'K1'
-        ? 'commonRafter'
-        : family.code === 'H1'
-          ? 'hipRafter'
-          : 'jackRafter'
-    }`,
-  );
+  return t(MEMBER_FAMILY_LABEL[family.code]);
 }
 
 function operationName(

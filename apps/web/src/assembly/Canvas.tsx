@@ -18,7 +18,11 @@ import {
   type DrawingDimension,
   type Point,
 } from '@cieslacalc/drawing-engine';
-import { clampPurlinPlacement, purlinRange } from '@cieslacalc/roof-math';
+import {
+  clampPurlinPlacement,
+  purlinRange,
+  RIGHT_RAFTER_ID,
+} from '@cieslacalc/roof-math';
 import { formatLength } from '../format';
 import { useAssembly } from './store';
 import { deriveWorkbenchProjectionPolicy, dimensionAllowed } from './workbench';
@@ -67,6 +71,7 @@ export function entityLabel(
   if (collarTie) return `${t('assembly.collar-tie')} #${collarTie[1]}`;
   if (id === 'member:collar-tie-1') return t('assembly.collar-tie');
   if (id === state.spec.member.id) return t('assembly.rafter');
+  if (id === RIGHT_RAFTER_ID) return `${t('assembly.rafter')} K2`;
   if (id === state.spec.ridge.id) return t('assembly.ridge');
   if (id === 'cut:ridge') return t('assembly.ridgeCut');
   if (id === 'cut:hip-ridge-H1') return t('assembly.hipUpperCutDetail');

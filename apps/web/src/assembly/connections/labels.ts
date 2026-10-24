@@ -141,7 +141,11 @@ export function memberLabelIndex(
     const ordinal = key
       ? ordinals.get(`${key}|${member.sourceMemberId ?? member.id}`)
       : undefined;
-    const code = codes.get(member.prototypeId) ?? KIND_CODES[member.kind];
+    // VNext-9: a member that names its family (K2) keeps it.
+    const code =
+      member.familyCode ??
+      codes.get(member.prototypeId) ??
+      KIND_CODES[member.kind];
     const corner = corners.get(member.id);
     const piece =
       (member.kind === 'rafter-segment' || member.kind === 'opening-header') &&

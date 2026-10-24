@@ -118,6 +118,7 @@ const CALCULATED_TEMPLATES: ReadonlySet<StructureTemplate> = new Set([
   'gable',
   'hip',
   'mono-pitch',
+  'asymmetric-gable',
 ]);
 /** Stored normal/pitch may differ from the polygon's by at most this. */
 const ANGLE_TOLERANCE_DEG = 0.5;

@@ -19,8 +19,10 @@ import {
 import { useTranslation } from 'react-i18next';
 import {
   fromMillimetres,
+  roofTemplateFrameMm,
   roofTemplateSpanMm,
   toMillimetres,
+  type AsymmetricGableSeatRefusal,
 } from '@cieslacalc/roof-math';
 import type {
   RidgeConnectionType,
@@ -40,10 +42,13 @@ import {
 import {
   createProjectStartTemplate,
   deriveProjectStartReadiness,
+  projectStartSeatRefusal,
   projectStartValuesFromTemplate,
+  PROJECT_START_LIMITS,
   validateProjectStart,
   type ProjectStartField,
   type ProjectStartIssue,
+  type ProjectStartValues,
 } from './project-start';
 import { useAssembly } from './store';
 import { workbenchProjectResolver } from './workbench-project';
@@ -91,11 +96,24 @@ type Stage = 'choose' | 'examples' | 1 | 2 | 3 | 4;
 
 const MONO_PITCH_START_PITCH = '15';
 
+/** VNext-9: the Creator's fields — the shared ones and an asymmetric gable's second pitch. */
+type CreatorField = ProjectStartField | 'rightPitch';
+type CreatorIssue = Omit<ProjectStartIssue, 'field' | 'code'> & {
+  field: CreatorField;
+  /** VNext-9: or the domain's reason two pitches make no right rafter. */
+  code: ProjectStartIssue['code'] | AsymmetricGableSeatRefusal;
+};
+const SEAT_REFUSALS: ReadonlySet<CreatorIssue['code']> = new Set([
+  'right_seat_not_positive',
+  'right_seat_exceeds_plate',
+]);
+
 interface Draft {
   roofType: RoofTemplateSpec['type'];
   buildingLength: string;
   buildingWidth: string;
   pitch: string;
+  rightPitch: string;
   eave: string;
   spacing: string;
   rafterWidth: string;
@@ -104,7 +122,7 @@ interface Draft {
   ridgeConnection: RidgeConnectionType;
 }
 
-const LENGTH_FIELDS: ReadonlySet<ProjectStartField> = new Set([
+const LENGTH_FIELDS: ReadonlySet<CreatorField> = new Set([
   'buildingLength',
   'buildingWidth',
   'eave',
@@ -113,22 +131,22 @@ const LENGTH_FIELDS: ReadonlySet<ProjectStartField> = new Set([
   'rafterDepth',
 ]);
 
-const STEP_FIELDS: Record<1 | 2 | 3, ProjectStartField[]> = {
+const STEP_FIELDS: Record<1 | 2 | 3, CreatorField[]> = {
   1: ['buildingLength', 'buildingWidth'],
-  2: ['pitch', 'eave'],
+  2: ['pitch', 'rightPitch', 'eave'],
   3: ['spacing', 'rafterWidth', 'rafterDepth'],
 };
 
-const FIELD_ILLUSTRATION: Record<ProjectStartField, ParameterIllustrationKind> =
-  {
-    buildingLength: 'building-length',
-    buildingWidth: 'building-width',
-    pitch: 'pitch',
-    eave: 'eave',
-    spacing: 'rafter-spacing',
-    rafterWidth: 'rafter-section',
-    rafterDepth: 'rafter-section',
-  };
+const FIELD_ILLUSTRATION: Record<CreatorField, ParameterIllustrationKind> = {
+  buildingLength: 'building-length',
+  buildingWidth: 'building-width',
+  pitch: 'pitch',
+  rightPitch: 'pitch',
+  eave: 'eave',
+  spacing: 'rafter-spacing',
+  rafterWidth: 'rafter-section',
+  rafterDepth: 'rafter-section',
+};
 
 const QUICK_CONFIRMED: readonly ProjectStartField[] = [
   'buildingWidth',
@@ -156,6 +174,7 @@ function initialDraft(
     buildingLength: exact(values.buildingLengthMm, unit),
     buildingWidth: exact(values.buildingWidthMm, unit),
     pitch: String(values.pitchDeg),
+    rightPitch: String(values.rightPitchDeg ?? values.pitchDeg),
     eave: exact(values.eaveOverhangMm, unit),
     spacing: exact(values.rafterSpacingMm, unit),
     rafterWidth: exact(values.rafterWidthMm!, unit),
@@ -227,9 +246,9 @@ export function RoofPlanPreview({
       <rect
         className="plan-building"
         x={0}
-        // A ridged frame is centred on the ridge; a mono-pitch frame starts
-        // at the low plate's outer face (ADR-016).
-        y={template.type === 'mono-pitch' ? 0 : -template.halfRunMm}
+        // Each family's own frame (ADR-016): centred on a ridge, from the
+        // low plate of a mono-pitch roof, off centre on an asymmetric gable.
+        y={roofTemplateFrameMm(template).leftMm}
         width={template.buildingLengthMm}
         height={roofTemplateSpanMm(template)}
       />
@@ -306,7 +325,7 @@ export function ProjectStartAssistant({
     type === 'mono-pitch' && template.type !== 'mono-pitch'
       ? MONO_PITCH_START_PITCH
       : String(projectStartValuesFromTemplate(template).pitchDeg);
-  const [confirmed, setConfirmed] = useState<Set<ProjectStartField>>(
+  const [confirmed, setConfirmed] = useState<Set<CreatorField>>(
     () => new Set(mode === 'quick' ? QUICK_CONFIRMED : []),
   );
   const [attempted, setAttempted] = useState<Set<number>>(new Set());
@@ -333,7 +352,7 @@ export function ProjectStartAssistant({
   const acceptsDrop = stage === 'choose' && !!(onOpenFile || onOpenArchive);
 
   const numbers = useMemo(() => {
-    const read = (field: ProjectStartField) => {
+    const read = (field: CreatorField) => {
       const value = parseDecimal(draft[field]);
       if (value === null) return null;
       return LENGTH_FIELDS.has(field) ? toMillimetres(value, unit) : value;
@@ -343,6 +362,7 @@ export function ProjectStartAssistant({
       buildingLength: read('buildingLength'),
       buildingWidth: read('buildingWidth'),
       pitch: read('pitch'),
+      rightPitch: read('rightPitch'),
       eave: read('eave'),
       spacing: read('spacing'),
       rafterWidth: read('rafterWidth'),
@@ -350,38 +370,63 @@ export function ProjectStartAssistant({
     };
   }, [draft, unit]);
 
-  const allIssues = useMemo(
-    () =>
-      validateProjectStart(numbers, [
-        ...STEP_FIELDS[1],
-        ...STEP_FIELDS[2],
-        ...STEP_FIELDS[3],
-      ]),
-    [numbers],
-  );
-  const nextTemplate = useMemo(() => {
-    if (allIssues.length) return undefined;
+  const inputIssues = useMemo((): CreatorIssue[] => {
+    // The second pitch exists only on an asymmetric gable.
+    const asymmetric = draft.roofType === 'asymmetric-gable';
+    const fields = [...STEP_FIELDS[1], ...STEP_FIELDS[2], ...STEP_FIELDS[3]];
+    const shared = validateProjectStart(
+      numbers,
+      fields.filter((name): name is ProjectStartField => name !== 'rightPitch'),
+    );
+    if (!asymmetric) return shared;
+    const value = numbers.rightPitch;
+    const { min, max } = PROJECT_START_LIMITS.pitch;
+    return [
+      ...shared,
+      ...(value === null || value === undefined
+        ? [{ field: 'rightPitch' as const, code: 'required' as const }]
+        : value < min || value > max
+          ? [{ field: 'rightPitch' as const, code: 'range' as const, min, max }]
+          : []),
+    ];
+  }, [draft.roofType, numbers]);
+  /** The roof about to be created, or the domain's reason it cannot be. */
+  const candidate = useMemo((): {
+    template?: RoofTemplateSpec;
+    refusal?: AsymmetricGableSeatRefusal;
+  } => {
+    if (inputIssues.length) return {};
+    const values: ProjectStartValues = {
+      roofType: draft.roofType,
+      buildingLengthMm: numbers.buildingLength!,
+      buildingWidthMm: numbers.buildingWidth!,
+      pitchDeg: numbers.pitch!,
+      ...(draft.roofType === 'asymmetric-gable'
+        ? { rightPitchDeg: numbers.rightPitch! }
+        : {}),
+      eaveOverhangMm: numbers.eave!,
+      rafterSpacingMm: numbers.spacing!,
+      rafterWidthMm: numbers.rafterWidth!,
+      rafterDepthMm: numbers.rafterDepth!,
+      structureSystem:
+        draft.roofType === 'gable' ? draft.structureSystem : undefined,
+      ridgeConnection: draft.ridgeConnection,
+    };
     try {
-      return createProjectStartTemplate(
-        {
-          roofType: draft.roofType,
-          buildingLengthMm: numbers.buildingLength!,
-          buildingWidthMm: numbers.buildingWidth!,
-          pitchDeg: numbers.pitch!,
-          eaveOverhangMm: numbers.eave!,
-          rafterSpacingMm: numbers.spacing!,
-          rafterWidthMm: numbers.rafterWidth!,
-          rafterDepthMm: numbers.rafterDepth!,
-          structureSystem:
-            draft.roofType === 'gable' ? draft.structureSystem : undefined,
-          ridgeConnection: draft.ridgeConnection,
-        },
-        template,
-      );
+      return { template: createProjectStartTemplate(values, template) };
     } catch {
-      return undefined;
+      const refusal = projectStartSeatRefusal(values, template);
+      return refusal ? { refusal } : {};
     }
-  }, [allIssues.length, draft, numbers, template]);
+  }, [inputIssues.length, draft, numbers, template]);
+  const allIssues = useMemo(
+    (): CreatorIssue[] =>
+      candidate.refusal
+        ? [...inputIssues, { field: 'rightPitch', code: candidate.refusal }]
+        : inputIssues,
+    [candidate.refusal, inputIssues],
+  );
+  const nextTemplate = candidate.template;
   /** The roof the review describes: the one about to be created. */
   const reviewTemplate = nextTemplate ?? template;
   const readiness = useMemo(
@@ -394,12 +439,14 @@ export function ProjectStartAssistant({
 
   const issuesFor = (step: 1 | 2 | 3) =>
     allIssues.filter((issue) => STEP_FIELDS[step].includes(issue.field));
-  const issueText = (issue: ProjectStartIssue) => {
+  const issueText = (issue: CreatorIssue) => {
     const length = LENGTH_FIELDS.has(issue.field);
     const format = (value: number) =>
       length
         ? `${new Intl.NumberFormat(i18n.language).format(fromMillimetres(value, unit))}`
         : String(value);
+    if (SEAT_REFUSALS.has(issue.code))
+      return t(`assembly.seatRefusal.${issue.code}`);
     return t(`assembly.creator.issue.${issue.code}`, {
       min: issue.min === undefined ? '' : format(issue.min),
       max: issue.max === undefined ? '' : format(issue.max),
@@ -412,11 +459,14 @@ export function ProjectStartAssistant({
     setDraft((current) => ({ ...current, [field]: value }));
   };
 
-  const field = (name: ProjectStartField, withIllustration = true) => {
+  const field = (name: CreatorField, withIllustration = true) => {
     const step = (Object.keys(STEP_FIELDS) as unknown as Array<1 | 2 | 3>).find(
       (key) => STEP_FIELDS[key].includes(name),
     )!;
-    const label = t(`assembly.creator.field.${name}`);
+    // Two pitches read as left and right, as in the workbench (VNext-9).
+    const label = t(
+      `assembly.creator.field.${name === 'pitch' && draft.roofType === 'asymmetric-gable' ? 'leftPitch' : name}`,
+    );
     const issue = attempted.has(Number(step))
       ? allIssues.find((candidate) => candidate.field === name)
       : allIssues.find(
@@ -931,15 +981,35 @@ export function ProjectStartAssistant({
                         hint: t('assembly.projectStart.roofHint.mono-pitch'),
                         illustration: 'mono-pitch',
                       },
+                      {
+                        value: 'asymmetric-gable',
+                        label: t('assembly.asymmetricGableRoof'),
+                        hint: t(
+                          'assembly.projectStart.roofHint.asymmetric-gable',
+                        ),
+                        illustration: 'asymmetric-gable',
+                      },
                     ],
                     (roofType) =>
-                      setDraft((current) => ({
-                        ...current,
-                        roofType,
-                        ...(current.pitch === familyPitch(current.roofType)
-                          ? { pitch: familyPitch(roofType) }
-                          : {}),
-                      })),
+                      setDraft((current) => {
+                        const pitch =
+                          current.pitch === familyPitch(current.roofType)
+                            ? familyPitch(roofType)
+                            : current.pitch;
+                        // An asymmetric gable starts visibly asymmetric: the
+                        // second plane 15° flatter, unless already typed.
+                        const flatter = Math.max(5, Number(pitch) - 15);
+                        return {
+                          ...current,
+                          roofType,
+                          pitch,
+                          ...(roofType === 'asymmetric-gable' &&
+                          current.rightPitch === current.pitch &&
+                          Number.isFinite(flatter)
+                            ? { rightPitch: String(flatter) }
+                            : {}),
+                        };
+                      }),
                     'roof-type',
                   )}
                   {field('buildingLength')}
@@ -949,6 +1019,7 @@ export function ProjectStartAssistant({
               {stage === 2 && (
                 <>
                   {field('pitch')}
+                  {draft.roofType === 'asymmetric-gable' && field('rightPitch')}
                   {field('eave')}
                   <details className="a-start-more">
                     <summary>{t('assembly.creator.learnMore')}</summary>
@@ -1052,7 +1123,12 @@ export function ProjectStartAssistant({
                           'buildingLength',
                           `${draft.buildingLength} × ${draft.buildingWidth} ${unit}`,
                         ],
-                        ['pitch', `${draft.pitch}°`],
+                        [
+                          'pitch',
+                          draft.roofType === 'asymmetric-gable'
+                            ? `${draft.pitch}° / ${draft.rightPitch}°`
+                            : `${draft.pitch}°`,
+                        ],
                         ['eave', `${draft.eave} ${unit}`],
                         ['spacing', `≤ ${draft.spacing} ${unit}`],
                         [
