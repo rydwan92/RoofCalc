@@ -4,9 +4,12 @@ import { MemoryStorage } from '../projects/memory-storage';
 import {
   defaultMonoPitchDraft,
   loadMonoPitchDraft,
+  monoPitchDraftFromImport,
   monoPitchDraftIssues,
   monoPitchSystemInput,
+  resolveDraftPitch,
   saveMonoPitchDraft,
+  type MonoPitchDraft,
 } from './mono-pitch-draft';
 
 describe('mono-pitch workspace draft', () => {
@@ -77,5 +80,126 @@ describe('mono-pitch workspace draft', () => {
         },
       }),
     ).not.toThrow();
+  });
+});
+
+describe('pitch from the plate tops (VNext-7C)', () => {
+  const tops: MonoPitchDraft = {
+    ...defaultMonoPitchDraft,
+    pitchSource: 'plate-tops',
+  };
+
+  it('is the exact inverse of the plate difference the framing reports', () => {
+    const { framing } = resolveMonoPitchRoofSystem(
+      monoPitchSystemInput(defaultMonoPitchDraft),
+    );
+    const draft = {
+      ...tops,
+      highPlateTopMm: tops.lowPlateTopMm + framing.plates.differenceMm,
+    };
+    expect(resolveDraftPitch(draft)).toEqual({
+      pitchDeg: expect.closeTo(15, 9),
+    });
+    expect(monoPitchSystemInput(draft).framing.roof.pitchDeg).toBeCloseTo(
+      15,
+      9,
+    );
+  });
+
+  it('the example measured on site: 1034 mm up over 3860 mm', () => {
+    // run − high support width + high seat − low seat = 4000 − 140 + 100 − 100
+    expect(resolveDraftPitch(tops)).toEqual({
+      pitchDeg: expect.closeTo((Math.atan(1034 / 3860) * 180) / Math.PI, 9),
+    });
+    // The typed angle is ignored while the tops decide.
+    expect(
+      monoPitchSystemInput({ ...tops, pitchDeg: 40 }).framing.roof.pitchDeg,
+    ).toBeCloseTo(14.996, 3);
+  });
+
+  it('names the high top when it is not higher or gives a pitch outside 1–80°', () => {
+    expect(monoPitchDraftIssues({ ...tops, highPlateTopMm: 2600 })).toEqual({
+      highPlateTopMm: 'not_rising',
+    });
+    expect(monoPitchDraftIssues({ ...tops, highPlateTopMm: 2650 })).toEqual({
+      highPlateTopMm: 'pitch_out_of_range',
+    });
+    expect(monoPitchDraftIssues(tops)).toEqual({});
+  });
+
+  it('opens a draft saved before VNext-7C with the new fields at their defaults', () => {
+    const storage = new MemoryStorage();
+    const old: Partial<MonoPitchDraft> = {
+      ...defaultMonoPitchDraft,
+      pitchDeg: 20,
+    };
+    delete old.pitchSource;
+    delete old.lowPlateTopMm;
+    delete old.highPlateTopMm;
+    storage.setItem(
+      'cieslacalc.monoPitchDraft.v1',
+      JSON.stringify({ schemaVersion: 1, draft: old }),
+    );
+    expect(loadMonoPitchDraft(storage)).toEqual({
+      ...defaultMonoPitchDraft,
+      pitchDeg: 20,
+    });
+  });
+});
+
+describe('a document import as a mono-pitch draft (VNext-7C)', () => {
+  const values = {
+    buildingLengthMm: 7200,
+    buildingWidthMm: 4200,
+    pitchDeg: 12,
+    eaveOverhangMm: 400,
+    rafterSpacingMm: 800,
+    rafterWidthMm: 80,
+    rafterDepthMm: 200,
+  };
+
+  it('takes what the document gave and the example for the rest', () => {
+    const { draft, fields } = monoPitchDraftFromImport(values, {
+      buildingLength: 'document',
+      buildingWidth: 'document',
+      pitch: 'user',
+      eave: 'document',
+      spacing: 'roofcalc-default',
+      rafterWidth: 'roofcalc-default',
+      rafterDepth: 'roofcalc-default',
+    });
+    expect(draft).toEqual({
+      ...defaultMonoPitchDraft,
+      buildingLengthMm: 7200,
+      runMm: 4200,
+      pitchDeg: 12,
+      lowEaveOverhangMm: 400,
+    });
+    expect(fields).toEqual([
+      'buildingLengthMm',
+      'runMm',
+      'pitchDeg',
+      'lowEaveOverhangMm',
+    ]);
+  });
+
+  it('computes the imported carport with the shared solver', () => {
+    const { draft } = monoPitchDraftFromImport(values, {
+      buildingLength: 'document',
+      buildingWidth: 'document',
+      pitch: 'document',
+      eave: 'document',
+      spacing: 'document',
+      rafterWidth: 'document',
+      rafterDepth: 'document',
+    });
+    expect(monoPitchDraftIssues(draft)).toEqual({});
+    const { framing } = resolveMonoPitchRoofSystem(monoPitchSystemInput(draft));
+    // 7200 − 80 = 7120 between the outer axes at most 800 apart: 9 gaps.
+    expect(framing.rafterSpacing.stationCount).toBe(10);
+    expect(framing.plates.differenceMm).toBeCloseTo(
+      (4200 - 140) * Math.tan((12 * Math.PI) / 180),
+      6,
+    );
   });
 });

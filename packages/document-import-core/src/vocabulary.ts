@@ -74,7 +74,8 @@ export const LABEL_PATTERNS: readonly LabelPattern[] = [
     target: field('pitch'),
     strength: 'explicit',
     pattern:
-      /\bkat\s+nachylenia(?:\s+(?:dachu|polaci(?:\s+dachowych)?))?\b|\b(?:nachylenie|spadek)\s+(?:dachu|polaci(?:\s+dachowych)?)\b|\broof\s+pitch\b|\bpitch\b|\broof\s+slope\b/g,
+      // VNext-7C: "kąt pochylenia", "kąt dachu", "dach o spadku 12°" too.
+      /\bkat\s+(?:nachylenia|pochylenia|spadku)(?:\s+(?:dachu|polaci(?:\s+dachowych)?))?\b|\bkat\s+(?:dachu|polaci)\b|\b(?:nachylenie|pochylenie|spadek)\s+(?:dachu|polaci(?:\s+dachowych)?)\b|\bo\s+(?:nachyleniu|pochyleniu|spadku)\b|\broof\s+pitch\b|\bpitch\b|\broof\s+slope\b/g,
   },
   {
     target: field('eave'),
@@ -100,7 +101,7 @@ export const LABEL_PATTERNS: readonly LabelPattern[] = [
     target: { kind: 'section' },
     strength: 'explicit',
     pattern:
-      /\bprzekroj\s+krokwi\b|\bkrokw(?:ie|ia|i|iami)\b|\brafters?\b(?!\s+spacing)/g,
+      /\bprzekroj\s+krokwi\b|\bkrokw(?:ie|ia|i|iami)\b|\bkrokiew\b|\brafters?\b(?!\s+spacing)/g,
   },
   {
     target: field('buildingLength'),
@@ -115,7 +116,9 @@ export const LABEL_PATTERNS: readonly LabelPattern[] = [
   {
     target: field('pitch'),
     strength: 'generic',
-    pattern: /\bnachylenie\b|\bspadek\b|\bslope\b/g,
+    // "α = 35°" opening a line names an angle, usually but not always the
+    // pitch; after an explicit label ("kąt nachylenia α=40°") it adds nothing.
+    pattern: /\bnachylenie\b|\bspadek\b|\bslope\b|^\s*α(?=\s*=)/g,
   },
   {
     target: field('spacing'),
@@ -131,11 +134,19 @@ export const ROOF_TYPE_PATTERNS: readonly {
   {
     value: 'unsupported',
     pattern:
-      /\b(?:jednospadow\w*|pulpitow\w*|mansardow\w*|naczolkow\w*|wielospadow\w*|namiotow\w*|kopulow\w*|lukow\w*|beczkow\w*|shed\s+roof|mono-?pitch\w*|mansard|gambrel|pyramid\w*|piramid\w*)\b/,
+      /\b(?:mansardow\w*|naczolkow\w*|wielospadow\w*|kopulow\w*|lukow\w*|beczkow\w*|mansard|gambrel|half-?hip\w*|jerkin\w*)\b/,
+  },
+  {
+    value: 'mono-pitch',
+    pattern:
+      /\b(?:jednospadow\w*|pulpitow\w*|shed\s+roof|mono-?pitch\w*|lean-?to|skillion\w*)\b/,
   },
   {
     value: 'hip',
-    pattern: /\b(?:kopertow\w*|czterospadow\w*|hip(?:ped)?\s+roof|hip-roof)\b/,
+    // A tent (pyramid) roof is the hip solver's square case: four hips
+    // meeting in one point, no ridge. A half-hip is not a hip.
+    pattern:
+      /\b(?<!half-)(?:kopertow\w*|czterospadow\w*|namiotow\w*|hip(?:ped)?\s+roof|hip-roof|pyramid(?:al)?\s+roof|piramid\w*)\b/,
   },
   {
     value: 'gable',

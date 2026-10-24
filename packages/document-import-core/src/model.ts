@@ -93,7 +93,19 @@ export const REQUIRED_ROOF_FIELDS: readonly NumericRoofField[] = [
   'pitch',
 ];
 
-export type ImportRoofType = 'gable' | 'hip';
+/**
+ * What a document can be imported as. `gable` and `hip` start a project;
+ * `mono-pitch` opens the mono-pitch calculation (VNext-7C), which has no
+ * project format yet (ADR-015 writer gate).
+ */
+export type ImportRoofType = 'gable' | 'hip' | 'mono-pitch';
+/** The roofs the project start creates (`RoofProjectDocumentV1`). */
+export type ProjectRoofType = Exclude<ImportRoofType, 'mono-pitch'>;
+export const IMPORT_ROOF_TYPES: readonly ImportRoofType[] = [
+  'gable',
+  'hip',
+  'mono-pitch',
+];
 /** `unsupported` = the document names a roof RoofCalc does not compute yet. */
 export type DetectedRoofType = ImportRoofType | 'unsupported';
 
@@ -501,7 +513,7 @@ export const recognitionResultSchema = z.object({
     .optional(),
   roofType: z
     .object({
-      value: z.enum(['gable', 'hip', 'unsupported']),
+      value: z.enum(['gable', 'hip', 'mono-pitch', 'unsupported']),
       text: shortText,
       region: regionSchema.optional(),
     })

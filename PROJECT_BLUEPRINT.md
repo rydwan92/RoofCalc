@@ -1297,6 +1297,29 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+## VNext-7C (2026-10-24) — import → mono-pitch, samples, pitch from plate tops, datum tags
+
+- Branch `feature/vnext-7c-automation`.
+- Import: `mono-pitch` is a recognised, supported import type
+  (jednospadowy / pulpitowy / shed / lean-to / skillion); namiotowy → hip;
+  half-hip and mansard stay unsupported. A reviewed mono-pitch draft shows
+  the solver's rafter section and opens the mono-pitch workspace prefilled
+  ("z dokumentu" badges, an import note). More pitch wording and the
+  singular "krokiew"; benchmark case `mono-pitch-1p-carport`.
+- Samples: four synthetic plans (gable, hip, mono-pitch, 4-page design) one
+  click from the empty import — the whole path without a file.
+- Workspace: pitch as an angle or from the two plate tops (exact inverse,
+  errors at the high top field); old drafts open unchanged.
+- Drawing: `layoutMarkerTags` (drawing-engine, pure, property-tested) —
+  datum tags on leaders never overlap; used by the mono-pitch section.
+- Validation: `pnpm verify` green — 214 files / 2248 tests
+  (13 skipped); `pnpm e2e` 176 passed / 38 conditionally
+  skipped / 0 failed (new: sample → import → mono-pitch, desktop + phone).
+- NEXT ACTION (owner, 2026-10-23: the whole app for more roof types): carry
+  the mono-pitch roof through quantities → cost → execution document, then
+  open the V2 writer (ADR-015) so it is a saved project; then the
+  asymmetric gable, then an L with a valley.
+
 ## VNext-7B-4 / 7B-5 (2026-10-23) — mono-pitch in 3D, a printed sheet, intermediate purlins; blank printouts fixed
 
 - Same branch `feature/vnext-7b2-mono-pitch-skeleton`.

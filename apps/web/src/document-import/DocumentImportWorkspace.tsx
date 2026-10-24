@@ -8,6 +8,7 @@ import {
   ChevronRight,
   CircleDashed,
   Crosshair,
+  FileText,
   FileUp,
   MapPin,
   Minus,
@@ -19,6 +20,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
+import { resolveMonoPitchRoofSystem } from '@cieslacalc/calculator-core';
 import { fromMillimetres, toMillimetres } from '@cieslacalc/roof-math';
 import type { RoofTemplateSpec } from '@cieslacalc/timber-model';
 import {
@@ -62,6 +64,9 @@ import {
   type RecognitionResult,
   type RecognizedMeasurement,
   type RoofStartParameters,
+  IMPORT_ROOF_TYPES,
+  type ImportRoofType,
+  type ValueProvenance,
   type ScaleCalibration,
   type SourceRegion,
   type TranscriptionError,
@@ -74,8 +79,22 @@ import {
   projectStartValuesFromTemplate,
 } from '../assembly/project-start';
 import { RoofPlanPreview } from '../assembly/ProjectStartAssistant';
+import {
+  monoPitchDraftFromImport,
+  monoPitchDraftIssues,
+  monoPitchImportDefaults,
+  monoPitchSystemInput,
+  type MonoPitchDraft,
+  type MonoPitchImportOrigin,
+} from '../mono-pitch/mono-pitch-draft';
+import { MonoPitchSection } from '../mono-pitch/MonoPitchSection';
 import type { ImportIntakeReport } from '../assembly/project-preparation';
 import { importCopy, type ImportCopy } from './copy';
+import {
+  fetchSampleDocument,
+  SAMPLE_DOCUMENTS,
+  type SampleDocument,
+} from './samples';
 import {
   fingerprintBytes,
   ImageTooLargeError,
@@ -238,6 +257,7 @@ export function DocumentImportWorkspace({
   initialFile,
   onClose,
   onCreate,
+  onOpenMonoPitch,
 }: {
   /** VNext-4: a file already chosen elsewhere (universal file opening). */
   initialFile?: File;
@@ -248,6 +268,14 @@ export function DocumentImportWorkspace({
     /** VNext-6: what the document gave — for the preparation card. */
     intake: ImportIntakeReport,
   ) => Promise<void>;
+  /**
+   * VNext-7C: a reviewed mono-pitch roof opens its calculation (no project
+   * format yet, ADR-015). Without it a mono-pitch draft cannot be finished.
+   */
+  onOpenMonoPitch?: (initial: {
+    draft: MonoPitchDraft;
+    origin: MonoPitchImportOrigin;
+  }) => void;
 }) {
   const { t, i18n } = useTranslation();
   const m = importCopy(i18n.language);
@@ -449,23 +477,58 @@ export function DocumentImportWorkspace({
     return { byTotal, members };
   }, [draft?.relations]);
   const rasterPage = !!doc && isRasterPage(doc, pageNumber);
+  const monoPitch = draft?.roofType.value === 'mono-pitch';
+  /** The labelled defaults of the calculation this roof goes to. */
+  const startDefaults = monoPitch ? monoPitchImportDefaults : defaults;
   const mapping = useMemo(
-    () => (draft ? mapDraftToRoofStart(draft, defaults) : undefined),
-    [defaults, draft],
+    () => (draft ? mapDraftToRoofStart(draft, startDefaults) : undefined),
+    [startDefaults, draft],
   );
   const template = useMemo(() => {
     if (mapping?.status !== 'ready') return undefined;
+    const { roofType } = mapping.values;
+    if (roofType === 'mono-pitch') return undefined;
     try {
-      return createProjectStartTemplate(mapping.values, base);
+      return createProjectStartTemplate({ ...mapping.values, roofType }, base);
     } catch {
       return undefined;
     }
   }, [base, mapping]);
+  /** VNext-7C: the inputs a reviewed mono-pitch roof opens its calculation with. */
+  const monoPitchStart = useMemo(() => {
+    if (mapping?.status !== 'ready' || mapping.values.roofType !== 'mono-pitch')
+      return undefined;
+    const start = monoPitchDraftFromImport(mapping.values, mapping.provenance);
+    return Object.keys(monoPitchDraftIssues(start.draft)).length
+      ? undefined
+      : start;
+  }, [mapping]);
+  const ready = !!template || (!!monoPitchStart && !!onOpenMonoPitch);
+  /** The mono-pitch section forming during the review (the shared solver). */
+  const monoPitchPreview = useMemo(() => {
+    if (!draft || draft.roofType.value !== 'mono-pitch') return undefined;
+    const values = { ...monoPitchImportDefaults };
+    const provenance = {} as Record<NumericRoofField, ValueProvenance>;
+    for (const field of NUMERIC_ROOF_FIELDS) {
+      const value = draft.fields[field].value;
+      if (value === undefined && REQUIRED_ROOF_FIELDS.includes(field))
+        return undefined;
+      if (value !== undefined) values[START_PARAMETER_OF[field]] = value;
+      provenance[field] = value === undefined ? 'roofcalc-default' : 'document';
+    }
+    const preview = monoPitchDraftFromImport(values, provenance).draft;
+    if (Object.keys(monoPitchDraftIssues(preview)).length) return undefined;
+    try {
+      return resolveMonoPitchRoofSystem(monoPitchSystemInput(preview));
+    } catch {
+      return undefined;
+    }
+  }, [draft]);
   /** The model forming while the user reviews — never the confirmed one. */
   const previewTemplate = useMemo(() => {
     if (template) return template;
     const roofType = draft?.roofType.value;
-    if (!draft || !roofType) return undefined;
+    if (!draft || !roofType || roofType === 'mono-pitch') return undefined;
     if (
       REQUIRED_ROOF_FIELDS.some(
         (field) => draft.fields[field].value === undefined,
@@ -531,6 +594,17 @@ export function DocumentImportWorkspace({
     // Once, for the file the workspace was opened with.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialFile]);
+
+  async function openSample(sample: SampleDocument) {
+    setLoadError(undefined);
+    setLoading(m.loading);
+    try {
+      await chooseFile(await fetchSampleDocument(sample));
+    } catch {
+      setLoading(undefined);
+      setLoadError(m.sampleFailed);
+    }
+  }
 
   async function chooseFile(file: File | undefined) {
     if (!file) return;
@@ -883,6 +957,15 @@ export function DocumentImportWorkspace({
   }
 
   async function create() {
+    if (monoPitchStart && onOpenMonoPitch) {
+      if (!reviewed || !doc || submitting.current) return;
+      submitting.current = true;
+      onOpenMonoPitch({
+        draft: monoPitchStart.draft,
+        origin: { fileName: doc.fileName, fields: monoPitchStart.fields },
+      });
+      return;
+    }
     if (
       !template ||
       !reviewed ||
@@ -1069,6 +1152,29 @@ export function DocumentImportWorkspace({
               {loading ?? m.choose}
             </button>
             <small>{m.limits}</small>
+            <div
+              className="dimp-samples"
+              role="group"
+              aria-label={m.samplesTitle}
+              data-testid="document-import-samples"
+            >
+              <span>{m.samplesTitle}</span>
+              <div>
+                {SAMPLE_DOCUMENTS.map((sample) => (
+                  <button
+                    key={sample.id}
+                    type="button"
+                    data-testid={`document-import-sample-${sample.id}`}
+                    disabled={!!loading}
+                    onClick={() => void openSample(sample)}
+                  >
+                    <FileText size={15} aria-hidden="true" />
+                    {m.sample[sample.id]}
+                  </button>
+                ))}
+              </div>
+              <small>{m.samplesHint}</small>
+            </div>
             <p className="dimp-privacy">{m.privacy}</p>
             {loadError && (
               <p className="dimp-error" role="alert">
@@ -1638,7 +1744,7 @@ export function DocumentImportWorkspace({
                         }
                         defaultText={formatWithUnit(
                           field,
-                          defaults[START_PARAMETER_OF[field]],
+                          startDefaults[START_PARAMETER_OF[field]],
                         )}
                         formatValue={(value) => formatWithUnit(field, value)}
                         canMeasure={
@@ -1708,12 +1814,31 @@ export function DocumentImportWorkspace({
                 )}
                 <section className="dimp-preview" aria-label={m.preview}>
                   <h4>{m.preview}</h4>
-                  <RoofPlanPreview
-                    template={previewTemplate}
-                    label={m.preview}
-                    invalidLabel={m.previewEmpty}
-                  />
-                  <p>{m.construction}</p>
+                  {monoPitch ? (
+                    monoPitchPreview ? (
+                      <div
+                        className="dimp-mono-preview"
+                        data-testid="document-import-mono-preview"
+                        aria-label={m.monoPitchPreview}
+                      >
+                        <MonoPitchSection
+                          assembly={
+                            monoPitchPreview.framing.calculation.assembly
+                          }
+                          unit={unit}
+                        />
+                      </div>
+                    ) : (
+                      <p className="dimp-preview-empty">{m.previewEmpty}</p>
+                    )
+                  ) : (
+                    <RoofPlanPreview
+                      template={previewTemplate}
+                      label={m.preview}
+                      invalidLabel={m.previewEmpty}
+                    />
+                  )}
+                  <p>{monoPitch ? m.monoPitchConstruction : m.construction}</p>
                 </section>
                 <p className="dimp-limitation">{m.limitation}</p>
                 {mapping?.status === 'blocked' && (
@@ -1721,7 +1846,7 @@ export function DocumentImportWorkspace({
                     className="dimp-blockers"
                     data-testid="document-import-blockers"
                   >
-                    <h4>{m.blockers}</h4>
+                    <h4>{monoPitch ? m.monoPitchBlockers : m.blockers}</h4>
                     <ul>
                       {mapping.blockers.map((blocker, index) => (
                         <li key={index}>{m.blocker(blocker, fieldLabel)}</li>
@@ -1729,7 +1854,7 @@ export function DocumentImportWorkspace({
                     </ul>
                   </section>
                 )}
-                {mapping?.status === 'ready' && !template && (
+                {mapping?.status === 'ready' && !ready && (
                   <p className="dimp-error" role="alert">
                     {m.invalidTemplate}
                   </p>
@@ -1738,7 +1863,7 @@ export function DocumentImportWorkspace({
                   <input
                     type="checkbox"
                     checked={reviewed}
-                    disabled={!template || busy}
+                    disabled={!ready || busy}
                     data-testid="document-import-reviewed"
                     onChange={(event) => setReviewed(event.target.checked)}
                   />
@@ -1753,10 +1878,10 @@ export function DocumentImportWorkspace({
                   type="button"
                   className="dimp-primary dimp-create"
                   data-testid="document-import-create"
-                  disabled={!template || !reviewed || busy}
+                  disabled={!ready || !reviewed || busy}
                   onClick={() => void create()}
                 >
-                  {busy ? m.creating : m.create}
+                  {busy ? m.creating : monoPitch ? m.openMonoPitch : m.create}
                 </button>
               </section>
             )}
@@ -1968,7 +2093,7 @@ function RoofTypeRow({
 }: {
   draft: ImportedRoofDraftV1;
   copy: ImportCopy;
-  onChange: (value: 'gable' | 'hip') => void;
+  onChange: (value: ImportRoofType) => void;
   onConfirm: () => void;
   onShow: () => void;
 }) {
@@ -1979,7 +2104,7 @@ function RoofTypeRow({
         {m.roofType} <small>{m.required}</small>
       </span>
       <div className="dimp-segmented" role="group" aria-label={m.roofType}>
-        {(['gable', 'hip'] as const).map((value) => (
+        {IMPORT_ROOF_TYPES.map((value) => (
           <button
             key={value}
             type="button"

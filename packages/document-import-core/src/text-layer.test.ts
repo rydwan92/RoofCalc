@@ -452,3 +452,127 @@ describe('draft derivation and review', () => {
     expect(draft.warnings).toContainEqual({ code: 'hip-length-below-width' });
   });
 });
+
+describe('mono-pitch and tent roofs (VNext-7C)', () => {
+  const recognize = (...lines: string[]) =>
+    recognizeTextLayer([
+      page(lines.map((text, index) => item(text, 50, 20 + index * 20))),
+    ]);
+
+  it.each([
+    ['Dach jednospadowy', 'jednospadowy'],
+    ['Wiata — dach pulpitowy', 'pulpitowy'],
+    ['Mono-pitch roof', 'Mono-pitch'],
+    ['Lean-to carport', 'Lean-to'],
+  ])('reads "%s" as a mono-pitch roof', (line, text) => {
+    const result = recognize(line);
+    expect(result.roofType).toMatchObject({ value: 'mono-pitch', text });
+    expect(result.warnings).toEqual([]);
+  });
+
+  it('reads a tent roof as the square case of a hip', () => {
+    expect(recognize('Dach namiotowy').roofType?.value).toBe('hip');
+  });
+
+  it('keeps mansard and half-hip roofs unsupported', () => {
+    expect(recognize('Dach naczółkowy').roofType?.value).toBe('unsupported');
+    expect(recognize('Half-hip roof').roofType?.value).toBe('unsupported');
+  });
+
+  it('names no roof when two supported types are named equally often', () => {
+    expect(
+      recognize('Dom: dach dwuspadowy', 'Garaż: dach jednospadowy').roofType,
+    ).toBeUndefined();
+    expect(
+      recognize(
+        'Dach jednospadowy',
+        'Wiata jednospadowa',
+        'Dach dwuspadowy nad domem',
+      ).roofType?.value,
+    ).toBe('mono-pitch');
+  });
+
+  it('maps a reviewed mono-pitch draft with its width as the run, no width warning', () => {
+    const results = [
+      recognizeTextLayer([
+        page([
+          item('Dach jednospadowy', 50, 20),
+          item('Długość budynku: 3,00 m', 50, 40),
+          item('Szerokość budynku: 5,00 m', 50, 60),
+          item('Spadek dachu 10°', 50, 80),
+        ]),
+      ]),
+    ];
+    let decisions: ImportDecisions = {
+      ...EMPTY_DECISIONS,
+      roofType: 'mono-pitch',
+      roofTypeConfirmed: true,
+    };
+    const draft = deriveImportedRoofDraft({
+      source: SOURCE,
+      results,
+      decisions,
+    });
+    expect(draft.warnings.map((warning) => warning.code)).not.toContain(
+      'width-exceeds-length',
+    );
+    for (const field of ['buildingLength', 'buildingWidth', 'pitch'] as const)
+      decisions = confirmField(decisions, draft, field);
+    const reviewed = deriveImportedRoofDraft({
+      source: SOURCE,
+      results,
+      decisions,
+    });
+    expect(mapDraftToRoofStart(reviewed, DEFAULTS)).toMatchObject({
+      status: 'ready',
+      values: {
+        roofType: 'mono-pitch',
+        buildingLengthMm: 3000,
+        buildingWidthMm: 5000,
+        pitchDeg: 10,
+      },
+      provenance: { buildingWidth: 'document', eave: 'roofcalc-default' },
+    });
+  });
+
+  it('accepts mono-pitch in an engine result', () => {
+    const result = recognize('Dach jednospadowy');
+    expect(parseRecognitionResult(result).roofType?.value).toBe('mono-pitch');
+  });
+});
+
+describe('pitch and rafter wording (VNext-7C)', () => {
+  const recognize = (line: string) =>
+    recognizeTextLayer([page([item('Rzut', 50, 10), item(line, 50, 40)])])
+      .measurements;
+
+  it.each([
+    ['Kąt dachu 30°', 30, 'high'],
+    ['Pochylenie dachu 20°', 20, 'high'],
+    ['Dach o spadku 12°', 12, 'high'],
+    ['Kąt pochylenia połaci 45°', 45, 'high'],
+    ['Kąt nachylenia połaci dachowych α=40°', 40, 'high'],
+    ['α = 35°', 35, 'medium'],
+  ] as const)(
+    'reads "%s" as the pitch (%s°, %s)',
+    (line, degrees, confidence) => {
+      expect(recognize(line)).toEqual([
+        expect.objectContaining({
+          field: 'pitch',
+          valueDeg: degrees,
+          confidence,
+        }),
+      ]);
+    },
+  );
+
+  it('reads the singular "krokiew" as a rafter section', () => {
+    expect(recognize('Krokiew 80×200 mm, rozstaw 90 cm')).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ field: 'rafterWidth', valueMm: 80 }),
+        expect.objectContaining({ field: 'rafterDepth', valueMm: 200 }),
+        expect.objectContaining({ field: 'spacing', valueMm: 900 }),
+      ]),
+    );
+  });
+});

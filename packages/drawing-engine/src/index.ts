@@ -510,3 +510,4 @@ export function fitDrawing(bounds: Bounds, viewport: Viewport) {
 
 export * from './interaction';
 export * from './lanes';
+export * from './marker-tags';

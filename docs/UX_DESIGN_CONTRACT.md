@@ -627,6 +627,15 @@ line and manual lengths keep working.
   projektu" lists five groups and one "Dalej" step, opens the existing
   editor and folds into a one-line pill; "Edytuj szczegółowo" is the
   Creator. What the document did not give is named, never hidden.
+- **VNext-7C: a document goes as far as RoofCalc calculates.** A roof the
+  import recognises but cannot make a project of (mono-pitch) opens its
+  calculation, prefilled, with every value from the document marked; the
+  final button names where it goes. Sample drawings let anyone try the whole
+  path without a file of their own.
+- **VNext-7C: datum tags never cover each other.** Tags hang below their
+  point on a leader and are spread by `layoutMarkerTags`
+  (`drawing-engine`); a value measured on site (plate tops) is an input
+  like the angle it replaces, with the derived angle shown next to it.
 - **VNext-7B-4: every screen prints what it shows.** A print rule of one
   overlay is scoped to that overlay (`body:has(…)`); the mono-pitch sheet
   prints the inputs as a table, the result, the section, cuts, marking out,

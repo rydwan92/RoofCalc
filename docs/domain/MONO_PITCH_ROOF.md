@@ -296,3 +296,25 @@ the roof `not-supported` until documents can show it.
 
 A purlin shortens the rafter span; whether that span, the purlin's section
 and the support spacing carry the load is the designer's (ADR-014).
+
+## 12. From a document and from site measurement (VNext-7C)
+
+- **Import.** A document naming a mono-pitch roof ("jednospadowy",
+  "pulpitowy", shed, lean-to, skillion) is recognised as `mono-pitch`,
+  not refused. After the same review as any import, the values open this
+  workspace: building length → `buildingLengthMm`, building width →
+  `runMm` (the outer faces of the supports), pitch, eave → the low eave
+  overhang, spacing and section. Everything the document does not state is
+  the example, never the browser's previous draft. The fields that came from
+  the document are marked until edited.
+- **Pitch from the plate tops.** On site the two tops are measured from one
+  level. The pitch is the exact inverse of the plate difference (§8):
+  `α = atan((h_high − h_low) / (R − w_high + s_high − s_low))` with the
+  same supports as the framing (`monoPitchFromPlateTops`). The high top
+  must be above the low one; the result must lie in 1–80°.
+
+| # | Input | Expected |
+| --- | --- | --- |
+| P1 | example supports, tops 2600 / 3634 mm | atan(1034 / 3860) = 14.996° |
+| P2 | tops = low + the plate difference F1 reports | exactly 15° (round trip) |
+| P3 | carport 7200 × 4200 mm, 12°, 80 × 200 at ≤ 800 mm | 10 rafters; plate difference (4200 − 140)·tan 12° |

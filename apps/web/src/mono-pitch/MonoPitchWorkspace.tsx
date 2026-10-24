@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { Plus, Printer, RotateCcw, Trash2, X } from 'lucide-react';
+import { FileText, Plus, Printer, RotateCcw, Trash2, X } from 'lucide-react';
 import {
   resolveMonoPitchRoofSystem,
   type MonoPitchRoofSystem,
@@ -24,9 +24,11 @@ import {
   monoPitchSystemInput,
   newMonoPitchPurlin,
   purlinFieldKey,
+  resolveDraftPitch,
   saveMonoPitchDraft,
   type MonoPitchDraft,
   type MonoPitchFieldIssue,
+  type MonoPitchImportOrigin,
   type MonoPitchInputKey,
   type MonoPitchNumberField,
 } from './mono-pitch-draft';
@@ -47,7 +49,8 @@ type LayerToggle =
   'battensEnabled' | 'counterBattensEnabled' | 'membraneEnabled';
 
 const GROUPS: { key: string; fields: readonly Field[] }[] = [
-  { key: 'building', fields: ['buildingLengthMm', 'runMm', 'pitchDeg'] },
+  // The pitch follows them: typed, or from the plate tops (pitchInputs).
+  { key: 'building', fields: ['buildingLengthMm', 'runMm'] },
   {
     key: 'rafters',
     fields: ['rafterWidthMm', 'rafterDepthMm', 'rafterSpacingMm'],
@@ -100,15 +103,23 @@ const LAYERS: { toggle: LayerToggle; key: string; fields: readonly Field[] }[] =
  */
 export function MonoPitchWorkspace({
   unit,
+  initial,
   onClose,
 }: {
   unit: LengthUnit;
+  /** VNext-7C: a reviewed document import replaces the remembered draft. */
+  initial?: { draft: MonoPitchDraft; origin: MonoPitchImportOrigin };
   onClose: () => void;
 }) {
   const { t, i18n } = useTranslation();
   const locale = i18n.language;
   const [draft, setDraft] = useState<MonoPitchDraft>(() =>
-    loadMonoPitchDraft(),
+    initial ? { ...initial.draft } : loadMonoPitchDraft(),
+  );
+  const [origin, setOrigin] = useState(initial?.origin);
+  /** Fields still holding the document's value (an edit makes them the user's). */
+  const [fromDocument, setFromDocument] = useState<ReadonlySet<Field>>(
+    () => new Set(initial?.origin.fields),
   );
   const [texts, setTexts] = useState<
     Partial<Record<MonoPitchInputKey, string>>
@@ -174,9 +185,22 @@ export function MonoPitchWorkspace({
   }) => {
     const id = `mono-pitch.${key}`;
     const error = issueText(key);
+    const documented = fromDocument.has(key as Field);
     return (
-      <label className="mono-field" htmlFor={id} key={key}>
-        <span>{label}</span>
+      <label
+        className="mono-field"
+        htmlFor={id}
+        key={key}
+        data-source={documented ? 'document' : undefined}
+      >
+        <span>
+          {label}
+          {documented && (
+            <em className="mono-from-document">
+              {t('assembly.monoPitch.import.badge')}
+            </em>
+          )}
+        </span>
         <div>
           <input
             id={id}
@@ -229,8 +253,84 @@ export function MonoPitchWorkspace({
       label: t(`assembly.monoPitch.fields.${field}`),
       value: draft[field],
       angleField: MONO_PITCH_ANGLE_FIELDS.has(field),
-      apply: (value) => setDraft((current) => ({ ...current, [field]: value })),
+      apply: (value) => {
+        setDraft((current) => ({ ...current, [field]: value }));
+        setFromDocument((current) => {
+          if (!current.has(field)) return current;
+          const next = new Set(current);
+          next.delete(field);
+          return next;
+        });
+      },
     });
+  const pitch = resolveDraftPitch(draft);
+  /** Switching keeps the same roof: the tops start where the pitch puts them. */
+  const setPitchSource = (source: MonoPitchDraft['pitchSource']) =>
+    setDraft((current) => {
+      if (current.pitchSource === source) return current;
+      if (source === 'angle') {
+        const resolved = resolveDraftPitch(current);
+        return {
+          ...current,
+          pitchSource: source,
+          ...('pitchDeg' in resolved
+            ? { pitchDeg: Number(resolved.pitchDeg.toFixed(2)) }
+            : {}),
+        };
+      }
+      const difference = system?.framing.plates.differenceMm;
+      return {
+        ...current,
+        pitchSource: source,
+        ...(difference !== undefined
+          ? {
+              highPlateTopMm: Math.round(current.lowPlateTopMm + difference),
+            }
+          : {}),
+      };
+    });
+  const pitchInputs = (
+    <>
+      <div
+        className="mono-choice"
+        role="radiogroup"
+        aria-label={t('assembly.monoPitch.pitchSource.label')}
+      >
+        <span>{t('assembly.monoPitch.pitchSource.label')}</span>
+        {(['angle', 'plate-tops'] as const).map((source) => (
+          <label key={source}>
+            <input
+              type="radio"
+              name="mono-pitch-pitch-source"
+              value={source}
+              data-testid={`mono-pitch-source-${source}`}
+              checked={draft.pitchSource === source}
+              onChange={() => setPitchSource(source)}
+            />
+            {t(`assembly.monoPitch.pitchSource.${source}`)}
+          </label>
+        ))}
+      </div>
+      {draft.pitchSource === 'angle' ? (
+        input('pitchDeg')
+      ) : (
+        <>
+          {input('lowPlateTopMm')}
+          {input('highPlateTopMm')}
+          <p className="mono-derived" data-testid="mono-pitch-derived-pitch">
+            {'pitchDeg' in pitch && (
+              <strong>
+                {t('assembly.monoPitch.pitchSource.derived', {
+                  angle: formatNumber(pitch.pitchDeg, locale, 2),
+                })}
+              </strong>
+            )}
+            <small>{t('assembly.monoPitch.pitchSource.hint')}</small>
+          </p>
+        </>
+      )}
+    </>
+  );
   const setPurlins = (
     update: (purlins: MonoPitchDraft['purlins']) => MonoPitchDraft['purlins'],
   ) => {
@@ -328,6 +428,8 @@ export function MonoPitchWorkspace({
                 setDraft({ ...defaultMonoPitchDraft });
                 setTexts({});
                 setUnparsable(new Set());
+                setOrigin(undefined);
+                setFromDocument(new Set());
               }}
             >
               <RotateCcw size={16} aria-hidden="true" />
@@ -354,6 +456,40 @@ export function MonoPitchWorkspace({
           </div>
         </header>
         <p className="mono-draft-note">{t('assembly.monoPitch.draftNote')}</p>
+        {origin && (
+          <div
+            className="mono-import-note"
+            role="status"
+            data-testid="mono-pitch-import-note"
+          >
+            <FileText size={18} aria-hidden="true" />
+            <div>
+              <strong>
+                {t('assembly.monoPitch.import.heading', {
+                  file: origin.fileName,
+                })}
+              </strong>
+              <p>
+                {t('assembly.monoPitch.import.note', {
+                  fields: origin.fields
+                    .map((field) =>
+                      t(`assembly.monoPitch.fields.${field}`).toLowerCase(),
+                    )
+                    .join(', '),
+                })}
+              </p>
+            </div>
+            <button
+              type="button"
+              className="mono-icon"
+              aria-label={t('assembly.monoPitch.import.dismiss')}
+              title={t('assembly.monoPitch.import.dismiss')}
+              onClick={() => setOrigin(undefined)}
+            >
+              <X size={16} aria-hidden="true" />
+            </button>
+          </div>
+        )}
         {system && (
           // Phones: the key numbers stay in view while the inputs scroll; the
           // full result (same values) follows the form.
@@ -387,6 +523,7 @@ export function MonoPitchWorkspace({
             <fieldset>
               <legend>{t('assembly.monoPitch.groups.building')}</legend>
               {GROUPS[0]!.fields.map(input)}
+              {pitchInputs}
             </fieldset>
             <fieldset>
               <legend>{t('assembly.monoPitch.groups.eaves')}</legend>
@@ -912,13 +1049,19 @@ function MonoPitchPrintInputs({
   unit: LengthUnit;
 }) {
   const { t, i18n } = useTranslation();
+  const pitch = resolveDraftPitch(draft);
   const value = (field: Field) =>
-    MONO_PITCH_ANGLE_FIELDS.has(field)
-      ? `${formatNumber(draft[field], i18n.language, 2)}°`
-      : `${formatLength(draft[field], unit, i18n.language)} ${unit}`;
+    field === 'pitchDeg' && 'pitchDeg' in pitch
+      ? `${formatNumber(pitch.pitchDeg, i18n.language, 2)}°`
+      : MONO_PITCH_ANGLE_FIELDS.has(field)
+        ? `${formatNumber(draft[field], i18n.language, 2)}°`
+        : `${formatLength(draft[field], unit, i18n.language)} ${unit}`;
   const fields: Field[] = [
     'buildingLengthMm',
     'runMm',
+    ...(draft.pitchSource === 'plate-tops'
+      ? (['lowPlateTopMm', 'highPlateTopMm'] as const)
+      : []),
     'pitchDeg',
     'lowEaveOverhangMm',
     ...(draft.topEdge === 'free' ? (['highOverhangMm'] as const) : []),

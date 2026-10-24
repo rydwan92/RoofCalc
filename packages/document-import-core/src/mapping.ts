@@ -10,6 +10,10 @@ import {
  * The same parameter names as the web app's `ProjectStartValues`, so the
  * existing `createProjectStartTemplate` maps an import exactly like the
  * Creator and the IFC import. This package defines no roof geometry.
+ *
+ * For `mono-pitch` (VNext-7C) the same names read as the mono-pitch
+ * calculation's inputs: `buildingWidthMm` is the horizontal run across the
+ * slope and `eaveOverhangMm` the overhang at the low eave.
  */
 export interface RoofStartParameters {
   roofType: ImportRoofType;

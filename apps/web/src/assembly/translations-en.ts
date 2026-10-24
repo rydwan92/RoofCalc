@@ -1858,6 +1858,19 @@ export const assemblyEn: typeof assemblyPl = {
     draftNote:
       'Values are remembered in this browser only. Saving as a project, cost estimate and execution document come next.',
     restore: 'Restore example',
+    pitchSource: {
+      label: 'I give the pitch as',
+      angle: 'an angle',
+      'plate-tops': 'support heights',
+      derived: 'Pitch from the support heights: {{angle}}°',
+      hint: 'Measure both tops from one level, e.g. the floor. The pitch follows from the height difference, the span, the high support width and the seats.',
+    },
+    import: {
+      heading: 'From the document “{{file}}”',
+      note: 'From the document: {{fields}}. Everything else is the RoofCalc example — check the supports, the rafter section and the top edge.',
+      badge: 'from document',
+      dismiss: 'Hide the import note',
+    },
     print: 'Print / PDF',
     printInputs: 'Input data',
     printDate: 'Printed on {{date}}',
@@ -1872,6 +1885,8 @@ export const assemblyEn: typeof assemblyPl = {
       buildingLengthMm: 'Building length (along the eave)',
       runMm: 'Run (outer faces of the supports)',
       pitchDeg: 'Roof pitch',
+      lowPlateTopMm: 'Low plate top (from a reference level)',
+      highPlateTopMm: 'High support top (from the same level)',
       lowEaveOverhangMm: 'Low eave (horizontal)',
       highOverhangMm: 'High overhang (horizontal)',
       vergeOverhangMm: 'Verge overhang',
@@ -1915,6 +1930,8 @@ export const assemblyEn: typeof assemblyPl = {
         'The notch cuts through the rafter — reduce the seat.',
       supports_overlap: 'The supports overlap — increase the run.',
       support_outside_span: 'A purlin must lie between the plates.',
+      not_rising: 'The high support must be above the low one.',
+      pitch_out_of_range: 'These heights give a pitch outside 1–80°.',
     },
     invalidResult:
       'Correct the marked fields — the results show the last valid values.',

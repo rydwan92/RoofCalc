@@ -1,0 +1,68 @@
+/* The rafter section drawing: the mono-pitch workspace and the import preview. */
+.mono-section {
+  margin: 0;
+  padding: 8px;
+  border: 1px solid var(--ui-line);
+  border-radius: 10px;
+  background: var(--ui-canvas);
+}
+.mono-section svg {
+  display: block;
+}
+.mono-section figcaption {
+  padding: 4px 6px 0;
+  color: var(--ui-text-muted);
+  font-size: var(--ui-text-xs);
+}
+.mono-section .mono-member {
+  fill: #e0bc8e;
+  stroke: #7a5230;
+  stroke-width: 1.4;
+}
+.mono-section .mono-support {
+  fill: #cfd8cf;
+  stroke: #61756a;
+  stroke-width: 1.2;
+}
+.mono-section .mono-line-cut {
+  stroke: var(--ui-danger);
+  stroke-width: 1.6;
+}
+.mono-section .mono-line-axis,
+.mono-section .mono-line-reference {
+  stroke: var(--ui-line-strong);
+  stroke-dasharray: 5 4;
+}
+.mono-section .mono-dimension line {
+  stroke: var(--ui-text-muted);
+  stroke-width: 1;
+}
+.mono-section .mono-dimension .mono-extension {
+  stroke-dasharray: 3 3;
+  opacity: 0.7;
+}
+.mono-section .mono-dimension text {
+  fill: var(--ui-text);
+  font-size: 12px;
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: var(--ui-canvas);
+  stroke-width: 3px;
+}
+.mono-section .mono-marker line {
+  stroke: var(--ui-accent);
+  stroke-width: 1;
+}
+.mono-section .mono-marker circle {
+  fill: var(--ui-accent);
+}
+.mono-section .mono-marker rect {
+  fill: var(--ui-surface);
+  stroke: var(--ui-accent);
+  stroke-width: 1.5;
+}
+.mono-section .mono-marker text {
+  fill: var(--ui-accent);
+  font-size: 11px;
+  font-weight: 700;
+}

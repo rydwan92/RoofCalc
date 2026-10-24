@@ -63,6 +63,50 @@
   background: var(--ui-accent-soft);
   font-size: var(--ui-text-sm);
 }
+/* VNext-7C: what a document import filled in. */
+.mono-import-note {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border: 1px solid var(--ui-info);
+  border-radius: 8px;
+  background: var(--ui-info-soft);
+  font-size: var(--ui-text-sm);
+}
+.mono-import-note > svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--ui-info);
+}
+.mono-import-note > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.mono-import-note p {
+  margin: 2px 0 0;
+}
+.mono-from-document {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: var(--ui-radius-pill);
+  background: var(--ui-info-soft);
+  color: var(--ui-info);
+  font-size: var(--ui-text-xs);
+  font-style: normal;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.mono-derived {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  font-size: var(--ui-text-sm);
+}
+.mono-derived small {
+  color: var(--ui-text-muted);
+  font-size: var(--ui-text-xs);
+}
 .mono-body {
   display: grid;
   grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
@@ -237,66 +281,6 @@
 .mono-card small {
   color: var(--ui-text-muted);
   font-size: var(--ui-text-xs);
-}
-.mono-section {
-  margin: 0;
-  padding: 8px;
-  border: 1px solid var(--ui-line);
-  border-radius: 10px;
-  background: var(--ui-canvas);
-}
-.mono-section svg {
-  display: block;
-}
-.mono-section figcaption {
-  padding: 4px 6px 0;
-  color: var(--ui-text-muted);
-  font-size: var(--ui-text-xs);
-}
-.mono-section .mono-member {
-  fill: #e0bc8e;
-  stroke: #7a5230;
-  stroke-width: 1.4;
-}
-.mono-section .mono-support {
-  fill: #cfd8cf;
-  stroke: #61756a;
-  stroke-width: 1.2;
-}
-.mono-section .mono-line-cut {
-  stroke: var(--ui-danger);
-  stroke-width: 1.6;
-}
-.mono-section .mono-line-axis,
-.mono-section .mono-line-reference {
-  stroke: var(--ui-line-strong);
-  stroke-dasharray: 5 4;
-}
-.mono-section .mono-dimension line {
-  stroke: var(--ui-text-muted);
-  stroke-width: 1;
-}
-.mono-section .mono-dimension .mono-extension {
-  stroke-dasharray: 3 3;
-  opacity: 0.7;
-}
-.mono-section .mono-dimension text {
-  fill: var(--ui-text);
-  font-size: 12px;
-  font-weight: 600;
-  paint-order: stroke;
-  stroke: var(--ui-canvas);
-  stroke-width: 3px;
-}
-.mono-section .mono-marker circle {
-  fill: var(--ui-surface);
-  stroke: var(--ui-accent);
-  stroke-width: 1.5;
-}
-.mono-section .mono-marker text {
-  fill: var(--ui-accent);
-  font-size: 11px;
-  font-weight: 700;
 }
 .mono-view {
   display: grid;
@@ -478,6 +462,7 @@
   .mono-view-switch,
   .mono-scene,
   .mono-draft-note,
+  .mono-import-note,
   .mono-invalid {
     display: none !important;
   }

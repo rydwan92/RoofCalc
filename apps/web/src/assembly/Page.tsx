@@ -8,6 +8,10 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react';
+import type {
+  MonoPitchDraft,
+  MonoPitchImportOrigin,
+} from '../mono-pitch/mono-pitch-draft';
 import { useTranslation } from 'react-i18next';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
@@ -395,6 +399,11 @@ function AssemblyPageContent({
   const [documentImportOpen, setDocumentImportOpen] = useState(false);
   const [cadImportOpen, setCadImportOpen] = useState(false);
   const [monoPitchOpen, setMonoPitchOpen] = useState(false);
+  /** VNext-7C: a reviewed document import the mono-pitch calculation opens with. */
+  const [monoPitchImport, setMonoPitchImport] = useState<{
+    draft: MonoPitchDraft;
+    origin: MonoPitchImportOrigin;
+  }>();
   /** VNext-4: the file an importer opens with (universal file opening). */
   const [importFile, setImportFile] = useState<File>();
   const [reuseFreshProject, setReuseFreshProject] = useState(false);
@@ -3595,6 +3604,12 @@ function AssemblyPageContent({
               state.setViewPreset('construction');
               openPreparation(report, template);
             }}
+            onOpenMonoPitch={(initial) => {
+              setDocumentImportOpen(false);
+              setImportFile(undefined);
+              setMonoPitchImport(initial);
+              setMonoPitchOpen(true);
+            }}
           />
         </Suspense>
       )}
@@ -3635,7 +3650,11 @@ function AssemblyPageContent({
         <Suspense fallback={<p className="a-loading-overlay" role="status" />}>
           <MonoPitchWorkspace
             unit={state.unit}
-            onClose={() => setMonoPitchOpen(false)}
+            initial={monoPitchImport}
+            onClose={() => {
+              setMonoPitchOpen(false);
+              setMonoPitchImport(undefined);
+            }}
           />
         </Suspense>
       )}

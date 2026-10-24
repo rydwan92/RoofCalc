@@ -4,6 +4,7 @@ import {
   gableRoofPlanSpec,
   hipRoofPlanSpec,
   houseDesignSpecs,
+  monoPitchRoofPlanSpec,
 } from '../documents/roof-plan-pdf';
 
 /**
@@ -33,7 +34,7 @@ export interface BenchmarkCase {
   licence: 'synthetic' | string;
   bytes: () => Uint8Array;
   truth: {
-    roofType: 'gable' | 'hip';
+    roofType: 'gable' | 'hip' | 'mono-pitch';
     /** mm, degrees for pitch; only what the document states. */
     values: Partial<Record<BenchmarkField, number>>;
   };
@@ -100,5 +101,26 @@ export const BENCHMARK_CASES: readonly BenchmarkCase[] = [
       },
     },
     conflicts: ['buildingLength'],
+  },
+  {
+    id: 'mono-pitch-1p-carport',
+    input: 'pdf-text',
+    description:
+      'One sheet, mono-pitch carport (VNext-7C): run as the building width, pitch as "spadek".',
+    licence: 'synthetic',
+    bytes: () => createRoofPlanPdf(monoPitchRoofPlanSpec()),
+    truth: {
+      roofType: 'mono-pitch',
+      values: {
+        buildingLength: 7_200,
+        buildingWidth: 4_200,
+        pitch: 12,
+        eave: 400,
+        spacing: 800,
+        rafterWidth: 80,
+        rafterDepth: 200,
+      },
+    },
+    conflicts: [],
   },
 ];

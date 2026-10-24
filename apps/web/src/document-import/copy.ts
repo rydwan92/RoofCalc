@@ -44,6 +44,18 @@ const pl = {
   privacy:
     'Plik jest analizowany wyłącznie w tej przeglądarce. Nie jest wysyłany na serwer ani do usług AI i nie jest zapisywany w projekcie.',
   limits: 'Do 25 MB · PDF do 30 stron',
+  // VNext-7C: sample drawings through the same import.
+  samplesTitle: 'Nie masz rysunku pod ręką? Wypróbuj na przykładzie:',
+  sample: {
+    gable: 'Dom — dach dwuspadowy',
+    hip: 'Dom — dach kopertowy',
+    'mono-pitch': 'Wiata — dach jednospadowy',
+    house: 'Projekt domu — 4 strony',
+  },
+  samplesHint:
+    'Syntetyczne rysunki RoofCalc. Przechodzą przez ten sam odczyt, weryfikację i obliczenie co Twój plik.',
+  sampleFailed:
+    'Nie udało się wczytać przykładu. Sprawdź połączenie i spróbuj ponownie.',
   loading: 'Wczytywanie dokumentu…',
   reading: 'Odczyt warstwy tekstowej…',
   other: 'Inny plik',
@@ -142,9 +154,10 @@ const pl = {
   roofType: 'Typ dachu',
   gable: 'Dwuspadowy',
   hip: 'Kopertowy',
+  'mono-pitch': 'Jednospadowy',
   detectedRoof: (text: string) => `W dokumencie: „${text}”`,
   unsupportedRoof: (text: string) =>
-    `Dokument opisuje dach „${text}”. RoofCalc liczy obecnie dachy dwuspadowe i kopertowe — wybierz typ ręcznie tylko, jeśli to uproszczenie jest prawidłowe.`,
+    `Dokument opisuje dach „${text}”. RoofCalc liczy obecnie dachy dwuspadowe, kopertowe (także namiotowe) i jednospadowe — wybierz typ ręcznie tylko, jeśli to uproszczenie jest prawidłowe.`,
   confirmRoof: 'Potwierdź typ',
   documentUnit: 'Jednostka liczb bez jednostki',
   unitFromDocument: (text: string) => `z dokumentu: „${text}”`,
@@ -222,6 +235,7 @@ const pl = {
     }
   },
   blockers: 'Przed utworzeniem projektu',
+  monoPitchBlockers: 'Przed otwarciem obliczenia',
   blocker: (
     blocker: ImportBlocker,
     field: (name: NumericRoofField) => string,
@@ -230,7 +244,7 @@ const pl = {
       case 'roof-type-missing':
         return 'Wybierz typ dachu.';
       case 'roof-type-unsupported':
-        return `Typ „${blocker.text}” nie jest obsługiwany — wybierz dwuspadowy lub kopertowy, jeśli to uprawnione uproszczenie.`;
+        return `Typ „${blocker.text}” nie jest obsługiwany — wybierz dwuspadowy, kopertowy lub jednospadowy, jeśli to uprawnione uproszczenie.`;
       case 'roof-type-unconfirmed':
         return 'Potwierdź typ dachu odczytany z dokumentu.';
       case 'value-missing':
@@ -252,6 +266,11 @@ const pl = {
   reviewCheck: 'Sprawdziłem odczytane wartości i ich źródła w dokumencie.',
   create: 'Utwórz projekt RoofCalc',
   creating: 'Tworzenie projektu…',
+  // VNext-7C: a mono-pitch roof goes to its calculation, not a project.
+  monoPitchConstruction:
+    'Dach jednospadowy otworzy się w kalkulatorze dachu jednospadowego — tam ustawisz murłaty, płatwie, oparcie przy ścianie i łaty. To obliczenie, jeszcze nie zapisany projekt.',
+  openMonoPitch: 'Otwórz w kalkulatorze dachu jednospadowego',
+  monoPitchPreview: 'Przekrój krokwi z obliczenia RoofCalc',
   createFailed:
     'Nie udało się zapisać projektu. Sprawdź dostępność lokalnego zapisu i spróbuj ponownie.',
   invalidTemplate:
@@ -357,6 +376,17 @@ const en: Copy = {
   privacy:
     'The file is analysed only in this browser. It is not sent to a server or an AI service and is not stored in the project.',
   limits: 'Up to 25 MB · PDF up to 30 pages',
+  samplesTitle: 'No drawing at hand? Try a sample:',
+  sample: {
+    gable: 'House — gable roof',
+    hip: 'House — hip roof',
+    'mono-pitch': 'Carport — mono-pitch roof',
+    house: 'House design — 4 pages',
+  },
+  samplesHint:
+    'Synthetic RoofCalc drawings. They go through the same reading, review and calculation as your file.',
+  sampleFailed:
+    'The sample could not be loaded. Check the connection and try again.',
   loading: 'Loading document…',
   reading: 'Reading text layer…',
   other: 'Other file',
@@ -448,9 +478,10 @@ const en: Copy = {
   roofType: 'Roof type',
   gable: 'Gable',
   hip: 'Hip',
+  'mono-pitch': 'Mono-pitch',
   detectedRoof: (text) => `In the document: “${text}”`,
   unsupportedRoof: (text) =>
-    `The document describes a “${text}” roof. RoofCalc currently computes gable and hip roofs — choose a type manually only if that simplification is valid.`,
+    `The document describes a “${text}” roof. RoofCalc currently computes gable, hip (including pyramid) and mono-pitch roofs — choose a type manually only if that simplification is valid.`,
   confirmRoof: 'Confirm type',
   documentUnit: 'Unit of numbers without a unit',
   unitFromDocument: (text) => `from the document: “${text}”`,
@@ -525,12 +556,13 @@ const en: Copy = {
     }
   },
   blockers: 'Before creating the project',
+  monoPitchBlockers: 'Before opening the calculation',
   blocker: (blocker, field) => {
     switch (blocker.code) {
       case 'roof-type-missing':
         return 'Choose the roof type.';
       case 'roof-type-unsupported':
-        return `“${blocker.text}” is not supported — choose gable or hip only if that is a valid simplification.`;
+        return `“${blocker.text}” is not supported — choose gable, hip or mono-pitch only if that is a valid simplification.`;
       case 'roof-type-unconfirmed':
         return 'Confirm the roof type read from the document.';
       case 'value-missing':
@@ -552,6 +584,10 @@ const en: Copy = {
   reviewCheck: 'I checked the read values and their sources in the document.',
   create: 'Create RoofCalc project',
   creating: 'Creating project…',
+  monoPitchConstruction:
+    'A mono-pitch roof opens in the mono-pitch calculator — set the wall plates, purlins, the wall abutment and battens there. It is a calculation, not yet a saved project.',
+  openMonoPitch: 'Open in the mono-pitch calculator',
+  monoPitchPreview: 'Rafter section from the RoofCalc calculation',
   createFailed:
     'The project could not be saved. Check local storage availability and try again.',
   invalidTemplate:

@@ -4,12 +4,14 @@ import { createAssemblyDrawing } from '@cieslacalc/calculator-core';
 import {
   fitDimensionedDrawing,
   layoutDimensionLanes,
+  layoutMarkerTags,
   type DrawingDimension,
   type Point,
 } from '@cieslacalc/drawing-engine';
 import type { LengthUnit } from '@cieslacalc/roof-math';
 import type { ResolvedAssembly } from '@cieslacalc/timber-model';
 import { formatLength } from '../format';
+import './mono-section.css';
 
 /**
  * VNext-7B-3: the rafter section of the mono-pitch roof — read-only and
@@ -56,6 +58,8 @@ export function MonoPitchSection({
     labelWidth,
   );
   const lanes = layoutDimensionLanes(dimensions, project, labelWidth);
+  const labelled = (model.markers ?? []).filter((marker) => marker.label);
+  const labelOf = new Map(labelled.map((marker) => [marker.id, marker.label]));
   const points = (vertices: readonly Point[]) =>
     vertices
       .map(project)
@@ -124,17 +128,19 @@ export function MonoPitchSection({
             </text>
           </g>
         ))}
-        {(model.markers ?? []).map((marker) => {
-          const at = project(marker.at);
-          return marker.label ? (
-            <g key={marker.id} className="mono-marker">
-              <circle cx={at.x} cy={at.y} r={9} />
-              <text x={at.x} y={at.y + 4} textAnchor="middle">
-                {marker.label}
-              </text>
-            </g>
-          ) : null;
-        })}
+        {/* Datum tags hang below their points and never cover each other. */}
+        {layoutMarkerTags(
+          labelled.map((marker) => ({ id: marker.id, at: project(marker.at) })),
+        ).map(({ id, anchor, tag }) => (
+          <g key={id} className="mono-marker" data-datum={id}>
+            <line x1={anchor.x} y1={anchor.y} x2={tag.x} y2={tag.y - 10} />
+            <circle cx={anchor.x} cy={anchor.y} r={2.5} />
+            <rect x={tag.x - 10} y={tag.y - 10} width={20} height={20} rx={5} />
+            <text x={tag.x} y={tag.y + 4} textAnchor="middle">
+              {labelOf.get(id)}
+            </text>
+          </g>
+        ))}
       </svg>
       <figcaption>{t('assembly.monoPitch.drawing')}</figcaption>
     </figure>

@@ -584,6 +584,54 @@
   width: 100%;
   max-height: 220px;
 }
+/* VNext-7C: sample drawings under the file chooser. */
+.dimp-samples {
+  display: grid;
+  gap: var(--ui-space-2);
+  justify-items: center;
+  width: min(100%, 560px);
+  margin-top: var(--ui-space-2);
+  padding-top: var(--ui-space-3);
+  border-top: 1px solid var(--ui-line);
+  font-size: var(--ui-text-sm);
+}
+.dimp-samples > div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--ui-space-2);
+}
+.dimp-samples button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--ui-touch-target);
+  padding: 0 var(--ui-space-3);
+  border: 1px solid var(--ui-line-strong);
+  border-radius: var(--ui-radius-pill);
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.dimp-samples button:hover:not(:disabled) {
+  border-color: var(--ui-accent);
+  color: var(--ui-accent);
+}
+.dimp-samples button:focus-visible {
+  outline: 2px solid var(--ui-focus-ring);
+  outline-offset: 2px;
+}
+.dimp-samples small {
+  color: var(--ui-text-muted);
+  font-size: var(--ui-text-xs);
+  text-align: center;
+}
+/* VNext-7C: the mono-pitch rafter section keeps its own proportions. */
+.dimp-mono-preview svg {
+  max-height: none;
+}
 .dimp-preview p,
 .dimp-limitation {
   margin: var(--ui-space-2) 0 0;

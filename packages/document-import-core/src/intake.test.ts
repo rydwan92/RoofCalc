@@ -281,20 +281,43 @@ describe('intake summary (VNext-6)', () => {
   });
 
   it('a document naming an unsupported roof says so first', () => {
+    const mansard = page(1, [
+      item('Dach mansardowy', 50, 50),
+      item('Długość budynku: 8,00 m', 50, 80),
+    ]);
+    const draft = deriveImportedRoofDraft({
+      source: SOURCE,
+      results: [recognizeTextLayer([mansard])],
+    });
+    const summary = summarizeIntake(draft, { reviewed: false });
+    expect(summary.next).toEqual({
+      kind: 'unsupported-roof',
+      text: 'mansardowy',
+    });
+    expect(summary.counts.unsupported).toBe(1);
+  });
+
+  it('a mono-pitch document is a roof to confirm, not a refusal (VNext-7C)', () => {
     const mono = page(1, [
       item('Dach jednospadowy', 50, 50),
-      item('Długość budynku: 8,00 m', 50, 80),
+      item('Długość budynku: 6,00 m', 50, 80),
+      item('Szerokość budynku: 4,00 m', 50, 100),
+      item('Spadek dachu 12°', 50, 120),
     ]);
     const draft = deriveImportedRoofDraft({
       source: SOURCE,
       results: [recognizeTextLayer([mono])],
     });
-    const summary = summarizeIntake(draft, { reviewed: false });
-    expect(summary.next).toEqual({
-      kind: 'unsupported-roof',
-      text: 'jednospadowy',
+    expect(draft.roofType).toMatchObject({
+      value: 'mono-pitch',
+      requiresConfirmation: true,
     });
-    expect(summary.counts.unsupported).toBe(1);
+    const summary = summarizeIntake(draft, { reviewed: false });
+    expect(summary.counts.unsupported).toBe(0);
+    expect(summary.items[0]).toMatchObject({
+      key: 'roofType',
+      state: 'to-confirm',
+    });
   });
 });
 

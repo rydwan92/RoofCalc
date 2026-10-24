@@ -228,6 +228,51 @@ export function hipRoofPlanSpec(): RoofPlanSpec {
 }
 
 /**
+ * Fixture 3 (VNext-7C): a mono-pitch carport — run across the slope as the
+ * building width, the pitch as "spadek" in degrees, rafters in one line.
+ */
+export function monoPitchRoofPlanSpec(): RoofPlanSpec {
+  const { x0, y0, w, h } = planGeometry(7.2, 4.2, false);
+  const lines: PlanLine[] = [
+    { from: [x0, y0], to: [x0 + w, y0], width: 1.2 },
+    { from: [x0 + w, y0], to: [x0 + w, y0 + h], width: 1.2 },
+    { from: [x0 + w, y0 + h], to: [x0, y0 + h], width: 1.2 },
+    { from: [x0, y0 + h], to: [x0, y0], width: 1.2 },
+    // Slope arrow from the low eave (front) to the high wall (back).
+    { from: [x0 + w / 2, y0 + 10], to: [x0 + w / 2, y0 + h - 10], width: 0.8 },
+    { from: [x0 + w / 2, y0 + h - 10], to: [x0 + w / 2 - 5, y0 + h - 20] },
+    { from: [x0 + w / 2, y0 + h - 10], to: [x0 + w / 2 + 5, y0 + h - 20] },
+    { from: [x0, y0 - 20], to: [x0 + w, y0 - 20], width: 0.4 },
+    { from: [x0, y0 - 25], to: [x0, y0 - 15], width: 0.4 },
+    { from: [x0 + w, y0 - 25], to: [x0 + w, y0 - 15], width: 0.4 },
+  ];
+  return {
+    lines,
+    texts: [
+      {
+        text: 'WIATA GARAŻOWA — RZUT DACHU',
+        x: 60,
+        y: 555,
+        size: 14,
+        bold: true,
+      },
+      { text: '720', x: x0 + w / 2 - 8, y: y0 - 32, size: 9 },
+      { text: 'Dach jednospadowy', x: 500, y: 500, size: 11, bold: true },
+      { text: 'Długość budynku:', x: 500, y: 478 },
+      { text: '7,20 m', x: 650, y: 478 },
+      { text: 'Szerokość budynku:', x: 500, y: 462 },
+      { text: '4,20 m', x: 650, y: 462 },
+      { text: 'Spadek dachu:', x: 500, y: 446 },
+      { text: '12°', x: 650, y: 446 },
+      { text: 'Okap:', x: 500, y: 430 },
+      { text: '40 cm', x: 650, y: 430 },
+      { text: 'Krokwie 8×20 cm co 80 cm', x: 500, y: 414 },
+      { text: 'Skala 1:100', x: 500, y: 104, size: 8 },
+    ],
+  };
+}
+
+/**
  * VNext-6: a multi-page PDF with one content stream per page and the same
  * two fonts — the shape of a real issued building design.
  */

@@ -1,19 +1,20 @@
 import { engineRef, TEXT_LAYER_ENGINE } from './engines';
 import { DOCUMENT_IMPORT_LIMITS } from './ingestion';
-import type {
-  Confidence,
-  DetectedRoofType,
-  DocumentUnitStatement,
-  DraftWarning,
-  EvidenceCode,
-  NumericRoofField,
-  PageBox,
-  PageUnit,
-  RecognitionResult,
-  RecognizedMeasurement,
-  RoofTypeStatement,
-  ScaleStatement,
-  SourceRegion,
+import {
+  IMPORT_ROOF_TYPES,
+  type Confidence,
+  type DetectedRoofType,
+  type DocumentUnitStatement,
+  type DraftWarning,
+  type EvidenceCode,
+  type NumericRoofField,
+  type PageBox,
+  type PageUnit,
+  type RecognitionResult,
+  type RecognizedMeasurement,
+  type RoofTypeStatement,
+  type ScaleStatement,
+  type SourceRegion,
 } from './model';
 import {
   LENGTH_UNIT_MM,
@@ -691,18 +692,20 @@ export function recognizeTextLayer(
 
 /**
  * The supported roof type the document names most often. A tie between
- * gable and hip, or only unsupported names, gives no supported value.
+ * supported types, or only unsupported names, gives no supported value.
  */
 function chooseRoofType(
   statements: readonly RoofTypeStatement[],
 ): RoofTypeStatement | undefined {
   const count = (value: DetectedRoofType) =>
     statements.filter((statement) => statement.value === value).length;
-  const gable = count('gable');
-  const hip = count('hip');
-  if (gable === 0 && hip === 0)
+  const ranked = IMPORT_ROOF_TYPES.map((value) => ({
+    value,
+    count: count(value),
+  })).sort((a, b) => b.count - a.count);
+  const [first, second] = ranked;
+  if (!first?.count)
     return statements.find((statement) => statement.value === 'unsupported');
-  if (gable === hip) return undefined;
-  const winner = gable > hip ? 'gable' : 'hip';
-  return statements.find((statement) => statement.value === winner);
+  if (second && second.count === first.count) return undefined;
+  return statements.find((statement) => statement.value === first.value);
 }

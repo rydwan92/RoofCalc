@@ -363,7 +363,12 @@ export function deriveImportedRoofDraft(input: {
   if (length !== undefined && width !== undefined) {
     if (roofTypeValue === 'hip' && length < width)
       warnings.push({ code: 'hip-length-below-width' });
-    else if (roofTypeValue !== 'hip' && width > length)
+    // A mono-pitch roof may slope along the long side or the short one.
+    else if (
+      roofTypeValue !== 'hip' &&
+      roofTypeValue !== 'mono-pitch' &&
+      width > length
+    )
       warnings.push({ code: 'width-exceeds-length' });
   }
 

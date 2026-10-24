@@ -757,3 +757,18 @@ workbench. No migration.
   height, seat; at most four) — additive: a draft saved before has none.
 - `MonoPitchFramingSpec.intermediateSupports?` (VNext-7B-5, derived): up to
   four purlins; result `MonoPitchFraming.purlins` (ID, position, seat level).
+
+## 22. VNext-7C contracts (session-only and browser draft; no project schema change)
+
+- `RecognitionResult.roofType.value` and `DetectedRoofType` gain
+  `'mono-pitch'`; `ImportRoofType` is `'gable' | 'hip' | 'mono-pitch'`
+  (`ProjectRoofType` keeps the two a project can hold). Session-only (§13):
+  nothing persisted changes. A mono-pitch draft maps to
+  `RoofStartParameters` with the same names (width = run, eave = low eave)
+  and opens the mono-pitch workspace, never `createProjectStartTemplate`.
+- Mono-pitch workspace draft (§21, `cieslacalc.monoPitchDraft.v1`) adds
+  `pitchSource: 'angle' | 'plate-tops'`, `lowPlateTopMm`,
+  `highPlateTopMm` — additive and optional on read: a draft saved before
+  opens with the defaults (typed angle). Still schema version 1.
+- Import sample drawings: static files `apps/web/public/samples/*.pdf`,
+  byte-identical to `fixtures/documents` (generator + test). Not data.

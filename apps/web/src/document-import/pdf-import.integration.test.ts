@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { resolveMonoPitchRoofSystem } from '@cieslacalc/calculator-core';
 import {
   classifyDocumentBytes,
   confirmField,
@@ -14,6 +15,7 @@ import {
   type ImportDecisions,
   type ImportSource,
   type PageSegment,
+  type RoofStartParameters,
   type TextLayerPage,
 } from '@cieslacalc/document-import-core';
 import {
@@ -22,6 +24,7 @@ import {
   gableRoofPlanSpec,
   hipRoofPlanSpec,
   houseDesignSpecs,
+  monoPitchRoofPlanSpec,
 } from '../../../../fixtures/documents/roof-plan-pdf';
 import { createDefaultProjectDocument } from '../assembly/store';
 import {
@@ -29,6 +32,12 @@ import {
   projectStartValuesFromTemplate,
   validateProjectStart,
 } from '../assembly/project-start';
+import {
+  monoPitchDraftFromImport,
+  monoPitchDraftIssues,
+  monoPitchImportDefaults,
+  monoPitchSystemInput,
+} from '../mono-pitch/mono-pitch-draft';
 import { segmentsFromOperatorList } from './pdf-geometry';
 import { textItemsFromPdf, type Matrix } from './pdf-text';
 
@@ -37,6 +46,13 @@ import { textItemsFromPdf, type Matrix } from './pdf-text';
  * positioned text → deterministic recognition → reviewed draft → the same
  * project-start mapping the Creator and the IFC import use.
  */
+/** A gable or hip import as project-start values (mono-pitch has none). */
+function projectValues(values: RoofStartParameters) {
+  const { roofType } = values;
+  if (roofType === 'mono-pitch') throw new Error('not a project roof');
+  return { ...values, roofType };
+}
+
 async function readPdf(bytes: Uint8Array): Promise<TextLayerPage[]> {
   return (await readPdfDocument(bytes)).pages;
 }
@@ -117,6 +133,74 @@ describe('PDF document import (real pdf.js parser)', () => {
     );
   });
 
+  it("serves the import samples with the generators' exact bytes", () => {
+    for (const [name, bytes] of [
+      ['rzut-dachu-dwuspadowy.pdf', createRoofPlanPdf(gableRoofPlanSpec())],
+      ['rzut-dachu-kopertowy.pdf', createRoofPlanPdf(hipRoofPlanSpec())],
+      [
+        'rzut-dachu-jednospadowy.pdf',
+        createRoofPlanPdf(monoPitchRoofPlanSpec()),
+      ],
+      ['projekt-domu-4-strony.pdf', createDesignPdf(houseDesignSpecs())],
+    ] as const)
+      expect(
+        new Uint8Array(
+          readFileSync(
+            new URL(`../../public/samples/${name}`, import.meta.url),
+          ),
+        ),
+      ).toEqual(bytes);
+  });
+
+  it('keeps the committed mono-pitch sample identical to its generator', () => {
+    const committed = readFileSync(
+      new URL(
+        '../../../../fixtures/documents/rzut-dachu-jednospadowy.pdf',
+        import.meta.url,
+      ),
+    );
+    expect(new Uint8Array(committed)).toEqual(
+      createRoofPlanPdf(monoPitchRoofPlanSpec()),
+    );
+  });
+
+  it('turns a mono-pitch plan PDF into the mono-pitch calculation (VNext-7C)', async () => {
+    const bytes = createRoofPlanPdf(monoPitchRoofPlanSpec());
+    const pages = await readPdf(bytes);
+    const result = recognizeTextLayer(pages);
+    expect(result.roofType).toMatchObject({
+      value: 'mono-pitch',
+      text: 'jednospadowy',
+    });
+    const draft = deriveImportedRoofDraft({
+      source: source(bytes, pages),
+      results: [result],
+      decisions: { ...EMPTY_DECISIONS, roofTypeConfirmed: true },
+    });
+    const mapping = mapDraftToRoofStart(draft, monoPitchImportDefaults);
+    expect(mapping.status).toBe('ready');
+    if (mapping.status !== 'ready') return;
+    expect(mapping.values).toEqual({
+      roofType: 'mono-pitch',
+      buildingLengthMm: 7_200,
+      buildingWidthMm: 4_200,
+      pitchDeg: 12,
+      eaveOverhangMm: 400,
+      rafterSpacingMm: 800,
+      rafterWidthMm: 80,
+      rafterDepthMm: 200,
+    });
+    const { draft: mono, fields } = monoPitchDraftFromImport(
+      mapping.values,
+      mapping.provenance,
+    );
+    expect(fields).toHaveLength(7);
+    expect(monoPitchDraftIssues(mono)).toEqual({});
+    const system = resolveMonoPitchRoofSystem(monoPitchSystemInput(mono));
+    expect(system.framing.rafterSpacing.stationCount).toBe(10);
+    expect(system.skeleton.members.length).toBeGreaterThan(10);
+  });
+
   it('turns a gable plan PDF into the existing canonical roof template', async () => {
     const bytes = createRoofPlanPdf(gableRoofPlanSpec());
     expect(
@@ -179,7 +263,10 @@ describe('PDF document import (real pdf.js parser)', () => {
         ],
       ),
     ).toEqual([]);
-    const template = createProjectStartTemplate(mapping.values, base);
+    const template = createProjectStartTemplate(
+      projectValues(mapping.values),
+      base,
+    );
     expect(template).toMatchObject({
       type: 'gable',
       buildingLengthMm: 12_400,
@@ -384,7 +471,9 @@ describe('PDF document import (real pdf.js parser)', () => {
       },
       base,
     );
-    expect(createProjectStartTemplate(mapping.values, base)).toEqual(manual);
+    expect(
+      createProjectStartTemplate(projectValues(mapping.values), base),
+    ).toEqual(manual);
   });
 
   it('keeps unitless hip values uncertain from the text alone', async () => {

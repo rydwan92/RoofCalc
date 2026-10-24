@@ -43,3 +43,14 @@ application must not depend on one provider.
   model already carries points, segments and relations for it.
 - Enforced by `tools/architecture/layering.test.ts` (purity, offline, parser
   boundary) and `packages/document-import-core` tests.
+
+## Addendum — VNext-7C (2026-10-24)
+
+- `ImportRoofType` is now `'gable' | 'hip' | 'mono-pitch'`. The mapping
+  stays one function; the caller routes a mono-pitch result to its
+  calculation instead of the project start. A tent roof ("namiotowy") reads
+  as a hip (the square case the hip solver computes); mansard, half-hip,
+  multi-pitch and curved roofs stay `unsupported`.
+- Recognition wording added and benchmarked: "kąt dachu/połaci", "kąt
+  pochylenia", "pochylenie dachu", "dach o spadku", a line-leading "α =",
+  and the singular "krokiew" as a rafter section.

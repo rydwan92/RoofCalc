@@ -150,3 +150,9 @@ and L-with-valley scenes; an overlapping L without a solved junction is
   are built.
 - The 7A plane frame now matches gable/hip (x across, y along), so the
   skeleton, the schedule and the 3D scene read every roof alike.
+
+## Addendum — VNext-7C (2026-10-24)
+
+- The document import recognises a mono-pitch roof and hands the reviewed
+  values to the mono-pitch workspace. The import still creates projects only
+  for gable and hip; the V2 writer gate is unchanged.

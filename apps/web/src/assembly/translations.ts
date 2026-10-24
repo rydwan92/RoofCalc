@@ -1864,6 +1864,19 @@ export const assemblyPl = {
     draftNote:
       'Wartości są zapamiętywane tylko w tej przeglądarce. Zapis jako projekt, kosztorys i dokument wykonawczy — w kolejnym etapie.',
     restore: 'Przywróć przykład',
+    pitchSource: {
+      label: 'Spadek podaję jako',
+      angle: 'kąt',
+      'plate-tops': 'wysokości podpór',
+      derived: 'Kąt z wysokości podpór: {{angle}}°',
+      hint: 'Zmierz oba wierzchy od jednego poziomu, np. posadzki. Kąt wynika z różnicy wysokości, rozpiętości, szerokości podpory górnej i siedzisk.',
+    },
+    import: {
+      heading: 'Z dokumentu „{{file}}”',
+      note: 'Z dokumentu: {{fields}}. Pozostałe wartości to przykład RoofCalc — sprawdź podpory, przekrój krokwi i krawędź górną.',
+      badge: 'z dokumentu',
+      dismiss: 'Ukryj informację o imporcie',
+    },
     print: 'Drukuj / PDF',
     printInputs: 'Dane wejściowe',
     printDate: 'Wydruk z dnia {{date}}',
@@ -1878,6 +1891,8 @@ export const assemblyPl = {
       buildingLengthMm: 'Długość budynku (wzdłuż okapu)',
       runMm: 'Rozpiętość (zewnętrzne krawędzie podpór)',
       pitchDeg: 'Kąt połaci',
+      lowPlateTopMm: 'Wierzch murłaty dolnej (od poziomu odniesienia)',
+      highPlateTopMm: 'Wierzch podpory górnej (od tego samego poziomu)',
       lowEaveOverhangMm: 'Okap dolny (w poziomie)',
       highOverhangMm: 'Okap górny (w poziomie)',
       vergeOverhangMm: 'Okap boczny (wiatrownice)',
@@ -1920,6 +1935,8 @@ export const assemblyPl = {
       notch_consumes_depth: 'Zacięcie przecina krokiew — zmniejsz siedzisko.',
       supports_overlap: 'Podpory nachodzą na siebie — zwiększ rozpiętość.',
       support_outside_span: 'Płatew musi leżeć między murłatami.',
+      not_rising: 'Podpora górna musi być wyżej niż dolna.',
+      pitch_out_of_range: 'Z tych wysokości wychodzi kąt poza 1–80°.',
     },
     invalidResult:
       'Popraw zaznaczone pola — wyniki pokazują ostatnie poprawne wartości.',

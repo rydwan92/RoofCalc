@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import i18n from '../i18n';
 import { MonoPitchWorkspace } from './MonoPitchWorkspace';
+import { defaultMonoPitchDraft } from './mono-pitch-draft';
 
 beforeEach(async () => {
   localStorage.clear();
@@ -118,5 +119,67 @@ describe('intermediate purlins in the workspace (VNext-7B-5)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Usuń płatew P1' }));
     expect(screen.queryByTestId('mono-pitch-purlin-0')).toBeNull();
     expect(screen.queryByTestId('mono-pitch-invalid')).toBeNull();
+  });
+});
+
+describe('document import and site measurement (VNext-7C)', () => {
+  it('opens an import with its values marked until the user edits them', () => {
+    render(
+      <MonoPitchWorkspace
+        unit="cm"
+        initial={{
+          draft: {
+            ...defaultMonoPitchDraft,
+            buildingLengthMm: 7200,
+            runMm: 4200,
+          },
+          origin: {
+            fileName: 'wiata.pdf',
+            fields: ['buildingLengthMm', 'runMm'],
+          },
+        }}
+        onClose={() => undefined}
+      />,
+    );
+    const note = screen.getByTestId('mono-pitch-import-note').textContent;
+    expect(note).toContain('Z dokumentu „wiata.pdf”');
+    expect(note).toContain('długość budynku (wzdłuż okapu)');
+    expect(field('runMm').value).toBe('420');
+    const sourced = () =>
+      [...document.querySelectorAll('[data-source="document"] input')].map(
+        (input) => input.id,
+      );
+    expect(sourced()).toEqual([
+      'mono-pitch.buildingLengthMm',
+      'mono-pitch.runMm',
+    ]);
+    fireEvent.change(field('runMm'), { target: { value: '400' } });
+    expect(sourced()).toEqual(['mono-pitch.buildingLengthMm']);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Ukryj informację o imporcie' }),
+    );
+    expect(screen.queryByTestId('mono-pitch-import-note')).toBeNull();
+  });
+
+  it('takes the pitch from the plate tops and keeps the roof when switching', () => {
+    render(<MonoPitchWorkspace unit="cm" onClose={() => undefined} />);
+    fireEvent.click(screen.getByTestId('mono-pitch-source-plate-tops'));
+    expect(field('pitchDeg')).toBeNull();
+    // The tops start where the 15° roof puts them: same plates, same rafter.
+    expect(field('highPlateTopMm').value).toBe('363.4');
+    expect(result('plates')).toContain('103,4 cm');
+    expect(
+      screen.getByTestId('mono-pitch-derived-pitch').textContent,
+    ).toContain('15');
+    fireEvent.change(field('highPlateTopMm'), { target: { value: '360' } });
+    expect(result('plates')).toContain('100 cm');
+    fireEvent.change(field('highPlateTopMm'), { target: { value: '250' } });
+    expect(screen.getByRole('alert').textContent).toBe(
+      'Podpora górna musi być wyżej niż dolna.',
+    );
+    fireEvent.change(field('highPlateTopMm'), { target: { value: '360' } });
+    fireEvent.click(screen.getByTestId('mono-pitch-source-angle'));
+    // atan(1000 / 3860) = 14.524°, kept to two decimals.
+    expect(field('pitchDeg').value).toBe('14.52');
   });
 });

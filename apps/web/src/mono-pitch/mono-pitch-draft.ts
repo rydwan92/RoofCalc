@@ -1,6 +1,14 @@
 import { z } from 'zod';
 import type { MonoPitchRoofSystemInput } from '@cieslacalc/calculator-core';
-import { monoPitchFramingSpecSchema } from '@cieslacalc/roof-math';
+import type {
+  NumericRoofField,
+  RoofStartParameters,
+  ValueProvenance,
+} from '@cieslacalc/document-import-core';
+import {
+  monoPitchFramingSpecSchema,
+  monoPitchFromPlateTops,
+} from '@cieslacalc/roof-math';
 
 /**
  * VNext-7B-3: the inputs of the mono-pitch workspace, all in millimetres and
@@ -27,6 +35,15 @@ export interface MonoPitchDraft {
   buildingLengthMm: number;
   runMm: number;
   pitchDeg: number;
+  /**
+   * VNext-7C: the pitch is typed (`angle`) or follows from the two plate
+   * tops measured on site (`plate-tops`, the exact inverse of the plate
+   * difference). `pitchDeg` is ignored while the tops decide.
+   */
+  pitchSource: 'angle' | 'plate-tops';
+  /** Plate tops above one common level, e.g. the floor slab. */
+  lowPlateTopMm: number;
+  highPlateTopMm: number;
   lowEaveOverhangMm: number;
   topEdge: 'free' | 'abutment';
   highOverhangMm: number;
@@ -64,6 +81,10 @@ export const defaultMonoPitchDraft: MonoPitchDraft = {
   buildingLengthMm: 6000,
   runMm: 4000,
   pitchDeg: 15,
+  pitchSource: 'angle',
+  // 1034 mm apart: the 15° example measured on site (14.996°).
+  lowPlateTopMm: 2600,
+  highPlateTopMm: 3634,
   lowEaveOverhangMm: 500,
   topEdge: 'free',
   highOverhangMm: 300,
@@ -116,10 +137,43 @@ export type MonoPitchInputKey = MonoPitchNumberField | MonoPitchPurlinKey;
 export const MONO_PITCH_ANGLE_FIELDS: ReadonlySet<MonoPitchNumberField> =
   new Set(['pitchDeg']);
 
+/**
+ * The pitch the calculation uses: typed, or from the plate tops through
+ * `monoPitchFromPlateTops` with the same supports as the framing.
+ */
+export function resolveDraftPitch(
+  draft: MonoPitchDraft,
+):
+  | { pitchDeg: number }
+  | { issue: MonoPitchFieldIssue; key: MonoPitchNumberField } {
+  if (draft.pitchSource !== 'plate-tops') return { pitchDeg: draft.pitchDeg };
+  try {
+    return {
+      pitchDeg: monoPitchFromPlateTops({
+        lowTopMm: draft.lowPlateTopMm,
+        highTopMm: draft.highPlateTopMm,
+        runMm: draft.runMm,
+        lowSeatMm: draft.lowSeatMm,
+        highSeatMm: draft.highSeatMm,
+        highSupportWidthMm: draft.highSupportWidthMm,
+      }),
+    };
+  } catch (error) {
+    const code = error instanceof Error ? error.message : '';
+    if (code === 'supports_overlap')
+      return { issue: 'supports_overlap', key: 'runMm' };
+    return {
+      issue: code === 'not_rising' ? 'not_rising' : 'pitch_out_of_range',
+      key: 'highPlateTopMm',
+    };
+  }
+}
+
 export function monoPitchSystemInput(
   draft: MonoPitchDraft,
 ): MonoPitchRoofSystemInput {
   const abutment = draft.topEdge === 'abutment';
+  const pitch = resolveDraftPitch(draft);
   return {
     framing: {
       roof: {
@@ -127,7 +181,7 @@ export function monoPitchSystemInput(
         id: 'template:mono-pitch-draft',
         buildingLengthMm: draft.buildingLengthMm,
         runMm: draft.runMm,
-        pitchDeg: draft.pitchDeg,
+        pitchDeg: 'pitchDeg' in pitch ? pitch.pitchDeg : draft.pitchDeg,
         lowEaveOverhangMm: draft.lowEaveOverhangMm,
         topEdge: draft.topEdge,
         // Against a wall the roof ends at the wall face (MONO_PITCH_ROOF §8).
@@ -218,7 +272,11 @@ export type MonoPitchFieldIssue =
   | 'seat_exceeds_support'
   | 'notch_consumes_depth'
   | 'supports_overlap'
-  | 'support_outside_span';
+  | 'support_outside_span'
+  /** VNext-7C: the high plate top is not above the low one. */
+  | 'not_rising'
+  /** VNext-7C: the plate tops give a pitch outside 1–80°. */
+  | 'pitch_out_of_range';
 
 const NAMED_ISSUES: ReadonlySet<string> = new Set([
   'seat_exceeds_support',
@@ -242,11 +300,13 @@ function keyForPath(
 export function monoPitchDraftIssues(
   draft: MonoPitchDraft,
 ): Partial<Record<MonoPitchInputKey, MonoPitchFieldIssue>> {
+  const issues: Partial<Record<MonoPitchInputKey, MonoPitchFieldIssue>> = {};
+  const pitch = resolveDraftPitch(draft);
+  if ('issue' in pitch) issues[pitch.key] = pitch.issue;
   const result = monoPitchFramingSpecSchema.safeParse(
     monoPitchSystemInput(draft).framing,
   );
-  if (result.success) return {};
-  const issues: Partial<Record<MonoPitchInputKey, MonoPitchFieldIssue>> = {};
+  if (result.success) return issues;
   for (const issue of result.error.issues) {
     const key = keyForPath(issue.path);
     if (!key || issues[key]) continue;
@@ -258,13 +318,24 @@ export function monoPitchDraftIssues(
 }
 
 const STORAGE_KEY = 'cieslacalc.monoPitchDraft.v1';
+const CHOICES: Partial<Record<keyof MonoPitchDraft, z.ZodTypeAny>> = {
+  topEdge: z.enum(['free', 'abutment']),
+  pitchSource: z.enum(['angle', 'plate-tops']),
+};
+/** Added after the first release: a draft saved before simply has none. */
+const ADDED_LATER: ReadonlySet<keyof MonoPitchDraft> = new Set([
+  'purlins',
+  'pitchSource',
+  'lowPlateTopMm',
+  'highPlateTopMm',
+]);
 const storedDraftSchema = z.object({
   schemaVersion: z.literal(1),
   draft: z.object(
     Object.fromEntries(
-      Object.entries(defaultMonoPitchDraft).map(([key, value]) => [
-        key,
-        Array.isArray(value)
+      Object.entries(defaultMonoPitchDraft).map(([name, value]) => {
+        const key = name as keyof MonoPitchDraft;
+        const schema = Array.isArray(value)
           ? z
               .array(
                 z.object({
@@ -275,14 +346,13 @@ const storedDraftSchema = z.object({
                 }),
               )
               .max(MONO_PITCH_MAX_PURLINS)
-              // A draft saved before purlins existed simply has none.
-              .optional()
           : typeof value === 'number'
             ? z.number().finite()
             : typeof value === 'boolean'
               ? z.boolean()
-              : z.enum(['free', 'abutment']),
-      ]),
+              : (CHOICES[key] ?? z.never());
+        return [key, ADDED_LATER.has(key) ? schema.optional() : schema];
+      }),
     ) as Record<keyof MonoPitchDraft, z.ZodTypeAny>,
   ),
 });
@@ -324,4 +394,64 @@ function safeStorage(): Storage | undefined {
   } catch {
     return undefined;
   }
+}
+
+/** VNext-7C: the draft field each document parameter fills. */
+const DRAFT_FIELD_OF_IMPORT = {
+  buildingLength: 'buildingLengthMm',
+  buildingWidth: 'runMm',
+  pitch: 'pitchDeg',
+  eave: 'lowEaveOverhangMm',
+  spacing: 'rafterSpacingMm',
+  rafterWidth: 'rafterWidthMm',
+  rafterDepth: 'rafterDepthMm',
+} as const satisfies Record<NumericRoofField, MonoPitchNumberField>;
+
+/** The example's values under the import's names (labelled defaults). */
+export const monoPitchImportDefaults: Omit<RoofStartParameters, 'roofType'> = {
+  buildingLengthMm: defaultMonoPitchDraft.buildingLengthMm,
+  buildingWidthMm: defaultMonoPitchDraft.runMm,
+  pitchDeg: defaultMonoPitchDraft.pitchDeg,
+  eaveOverhangMm: defaultMonoPitchDraft.lowEaveOverhangMm,
+  rafterSpacingMm: defaultMonoPitchDraft.rafterSpacingMm,
+  rafterWidthMm: defaultMonoPitchDraft.rafterWidthMm,
+  rafterDepthMm: defaultMonoPitchDraft.rafterDepthMm,
+};
+
+/** Where an imported mono-pitch draft came from, for the workspace note. */
+export interface MonoPitchImportOrigin {
+  fileName: string;
+  /** Draft fields the document (or the user in its review) gave. */
+  fields: MonoPitchNumberField[];
+}
+
+/**
+ * A reviewed import as a fresh draft: the document's values where it gave
+ * them, the example everywhere else (never the browser's last draft, so a
+ * new document never inherits another roof's supports).
+ */
+export function monoPitchDraftFromImport(
+  values: Omit<RoofStartParameters, 'roofType'>,
+  provenance: Record<NumericRoofField, ValueProvenance>,
+): { draft: MonoPitchDraft; fields: MonoPitchNumberField[] } {
+  const draft: MonoPitchDraft = { ...defaultMonoPitchDraft, purlins: [] };
+  const fields: MonoPitchNumberField[] = [];
+  const valueOf: Record<NumericRoofField, number> = {
+    buildingLength: values.buildingLengthMm,
+    buildingWidth: values.buildingWidthMm,
+    pitch: values.pitchDeg,
+    eave: values.eaveOverhangMm,
+    spacing: values.rafterSpacingMm,
+    rafterWidth: values.rafterWidthMm,
+    rafterDepth: values.rafterDepthMm,
+  };
+  for (const [source, target] of Object.entries(DRAFT_FIELD_OF_IMPORT) as [
+    NumericRoofField,
+    MonoPitchNumberField,
+  ][]) {
+    if (provenance[source] === 'roofcalc-default') continue;
+    draft[target] = valueOf[source];
+    fields.push(target);
+  }
+  return { draft, fields };
 }
