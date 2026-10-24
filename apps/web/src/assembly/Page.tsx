@@ -2454,18 +2454,21 @@ function AssemblyPageContent({
           <House size={24} />
           <span>{brand}</span>
         </a>
-        <nav className="a-modes" aria-label={t('workshop')}>
-          {(['quick', 'builder'] as const).map((mode) => (
-            <button
-              key={mode}
-              data-mode={mode}
-              aria-pressed={workbench.mode === mode}
-              onClick={() => changeMode(mode)}
-            >
-              {t(`assembly.${mode}`)}
-            </button>
-          ))}
-        </nav>
+        {/* VNext-11: the sales desk is not the workbench — no mode switch. */}
+        {!businessHomeOpen && (
+          <nav className="a-modes" aria-label={t('workshop')}>
+            {(['quick', 'builder'] as const).map((mode) => (
+              <button
+                key={mode}
+                data-mode={mode}
+                aria-pressed={workbench.mode === mode}
+                onClick={() => changeMode(mode)}
+              >
+                {t(`assembly.${mode}`)}
+              </button>
+            ))}
+          </nav>
+        )}
         {workbench.mode === 'builder' && (
           <ProjectManager
             session={projectSession}
@@ -2510,6 +2513,7 @@ function AssemblyPageContent({
         <BusinessHeader onHome={returnHome} />
         <HeaderSettings
           mobile={mobile}
+          workbenchControls={!businessHomeOpen}
           onExampleRestored={() =>
             showFeedback('assembly.readiness.feedback.exampleRestored')
           }
@@ -2537,7 +2541,11 @@ function AssemblyPageContent({
             projects={projectSessionState.projects}
             onCreate={startBusinessEstimation}
             onOpenProject={openBusinessProject}
-            onContinue={() => business.setHomeOpen(false)}
+            onContinue={() => {
+              // The open project is the workbench's, never the quick one.
+              state.setMode('builder');
+              business.setHomeOpen(false);
+            }}
           />
         </Suspense>
       ) : (

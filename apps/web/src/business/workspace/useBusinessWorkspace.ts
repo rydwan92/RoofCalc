@@ -31,7 +31,7 @@ import type {
   MaterialPlanRow,
   MaterialPriceSelection,
 } from '../../assembly/material-plan';
-import { materialText } from '../../assembly/material-copy';
+import { materialRowLabel } from '../../assembly/material-copy';
 import { workbenchLocation } from '../../assembly/workbench';
 
 import { workspaceClient, type EstimationDetail } from './client';
@@ -347,9 +347,9 @@ export function useBusinessWorkspace({
       prices: effectiveMaterialPrices,
       organizationPrices: commercialPrices.items,
       label: (row) =>
-        `${row.product?.name || materialText(locale, row.labelKey)}${
-          row.description ? ` · ${row.description}` : ''
-        }`,
+        row.product?.name
+          ? `${row.product.name}${row.description ? ` · ${row.description}` : ''}`
+          : materialRowLabel(row, locale),
     });
   };
 

@@ -929,6 +929,12 @@ export function ProjectStartAssistant({
                         <dt>{t('assembly.creator.field.pitch')}</dt>
                         <dd>{facts.pitchDeg}°</dd>
                       </div>
+                      {facts.structureCount > 1 && (
+                        <div>
+                          <dt>{t('assembly.structures.title')}</dt>
+                          <dd>{facts.structureCount}</dd>
+                        </div>
+                      )}
                     </dl>
                     <button
                       type="button"

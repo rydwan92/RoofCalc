@@ -375,6 +375,15 @@ export interface MaterialListSection {
     category: string;
     labelKey: string;
     description?: string;
+    /** VNext-11: a timber member's facts, printed as its name (Murłata M…). */
+    timberMember?: {
+      memberKind: string;
+      familyKey: string;
+      pieceCount: number;
+      pieceLengthMm: number;
+      widthMm?: number;
+      depthMm?: number;
+    };
     product?: string;
     basis: string;
     quantity?: number;

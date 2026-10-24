@@ -16,9 +16,15 @@ import { useAssembly } from './store';
 export function HeaderSettings({
   mobile,
   onExampleRestored,
+  workbenchControls = true,
 }: {
   mobile: boolean;
   onExampleRestored: () => void;
+  /**
+   * VNext-11: units and Undo/Redo belong to the workbench; the sales desk
+   * and the administration show only language and mode.
+   */
+  workbenchControls?: boolean;
 }) {
   const { t, i18n } = useTranslation();
   const unit = useAssembly((state) => state.unit);
@@ -49,10 +55,12 @@ export function HeaderSettings({
     ));
   return (
     <div className="a-settings">
-      <div className="a-units" role="group" aria-label={t('assembly.unit')}>
-        {units()}
-      </div>
-      {builder && (
+      {workbenchControls && (
+        <div className="a-units" role="group" aria-label={t('assembly.unit')}>
+          {units()}
+        </div>
+      )}
+      {builder && workbenchControls && (
         <div
           className="a-history"
           role="group"

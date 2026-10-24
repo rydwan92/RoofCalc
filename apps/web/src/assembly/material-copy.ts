@@ -593,6 +593,25 @@ export function materialText(locale: string, key: string) {
   return copy[key as keyof typeof copy] ?? key;
 }
 
+/**
+ * VNext-11: a material row's name wherever it is printed — the material
+ * plan, the CSV, the quote and the execution document. A timber member
+ * reads "Murłata M 140×140 · 2 szt. × 10,00 m", never a bare family code.
+ */
+export function materialRowLabel(
+  row: {
+    labelKey: string;
+    description?: string;
+    timberMember?: Parameters<typeof timberMemberLabel>[0];
+  },
+  locale: string,
+): string {
+  if (row.timberMember) return timberMemberLabel(row.timberMember, locale);
+  return `${materialText(locale, row.labelKey)}${
+    row.description ? ` · ${row.description}` : ''
+  }`;
+}
+
 /** "Kulawka J1 80×200 · 8 szt. × 1,59 m" from structured schedule facts. */
 export function timberMemberLabel(
   member: {

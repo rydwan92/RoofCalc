@@ -868,6 +868,19 @@ export const assemblyEn: typeof assemblyPl = {
           title: 'Roof with collar ties',
           shows: 'Rafter and collar-tie system with a direct ridge meeting.',
         },
+        'mono-pitch-carport': {
+          title: 'Carport — mono-pitch roof',
+          shows: 'Rafters on two wall plates, a top cut, battens and covering.',
+        },
+        'asymmetric-gable': {
+          title: 'Asymmetric gable roof',
+          shows: 'Two plane pitches, one ridge: K1 and K2 rafters.',
+        },
+        'house-and-carport': {
+          title: 'House and carport — two structures',
+          shows:
+            'A project with two roofs: each structure calculated on its own, one total estimate.',
+        },
       },
     },
   },

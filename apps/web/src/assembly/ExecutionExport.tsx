@@ -21,7 +21,7 @@ import { detailStepText } from './DetailPreview';
 import { roofPlaneShortLabelKey } from './covering-presentation';
 import { createExportCandidates, type ExportFacts } from './export-adapter';
 import './execution-export.css';
-import { materialCopy, materialText } from './material-copy';
+import { materialCopy, materialRowLabel, materialText } from './material-copy';
 import { MATERIAL_CATEGORY_ORDER } from './material-plan';
 import type { DocumentStatus } from '@cieslacalc/document-core';
 import type { ReadinessDocumentKind } from './project-readiness';
@@ -1745,8 +1745,9 @@ function SectionBody({
                       return (
                         <tr key={index}>
                           <td>
-                            {materialText(locale, row.labelKey)}{' '}
-                            {row.description}
+                            {row.timberMember
+                              ? materialRowLabel(row, locale)
+                              : `${materialText(locale, row.labelKey)} ${row.description ?? ''}`}
                             <p>{row.product}</p>
                             {row.metrics.map((metric) => (
                               <p key={metric.labelKey}>

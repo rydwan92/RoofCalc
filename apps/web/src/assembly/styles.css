@@ -48,6 +48,11 @@
   --a-covering-cut: var(--ui-covering-cut, #c38320);
   --a-opening: var(--ui-opening, #b42318);
   color: var(--a-text);
+  /* VNext-11: one background down to the bottom of the window, so a short
+     page (administration, sales desk) shows no seam below its content. */
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--a-background);
 }
 .assembly-app button,
 .assembly-app select,

@@ -1185,6 +1185,9 @@ export function createExportCandidates(facts: ExportFacts): SectionCandidate[] {
                   category: row.category,
                   labelKey: row.labelKey,
                   description: linearBreakdown ?? row.description,
+                  ...(row.timberMember
+                    ? { timberMember: row.timberMember }
+                    : {}),
                   product: row.product?.name,
                   basis: linearPlan
                     ? 'procurement-stock'

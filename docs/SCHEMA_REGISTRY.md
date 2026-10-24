@@ -875,3 +875,12 @@ workbench. No migration.
 - `cost-core` `summarizeCostScenarioParts` (derived): the project total —
   one currency, VAT only when every part has it, parts without an estimate
   named, never counted as zero.
+
+## 28. VNext-11 contracts (derived; nothing persisted changes)
+
+- document-core `MaterialListSection.rows[].timberMember?` (rendered, not
+  persisted): a timber member's kind, family code, pieces, piece length and
+  section, so the execution document prints the member's name.
+- Creator examples: `ProjectExampleId` adds `mono-pitch-carport`,
+  `asymmetric-gable` and `house-and-carport` (fixtures 11, 12 and 13);
+  `projectExampleDocument` returns a V1 or V2 document.

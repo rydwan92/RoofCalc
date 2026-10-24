@@ -869,6 +869,19 @@ export const assemblyPl = {
           shows:
             'Więźba krokwiowo-jętkowa z połączeniem bezpośrednim w kalenicy.',
         },
+        'mono-pitch-carport': {
+          title: 'Wiata — dach jednospadowy',
+          shows: 'Krokwie na dwóch murłatach, cięcie górne, łaty i pokrycie.',
+        },
+        'asymmetric-gable': {
+          title: 'Dach dwuspadowy niesymetryczny',
+          shows: 'Dwa kąty połaci, jedna kalenica: krokwie K1 i K2.',
+        },
+        'house-and-carport': {
+          title: 'Dom z wiatą — dwie bryły',
+          shows:
+            'Projekt z dwoma dachami: każda bryła liczona osobno, wycena całości.',
+        },
       },
     },
   },

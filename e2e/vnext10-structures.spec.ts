@@ -139,3 +139,33 @@ test('a house and a garage in one project, switched, renamed, reopened and remov
     .not.toContain(2);
   expect(errors).toEqual([]);
 });
+
+test('the two-structure example opens as one project with both roofs priced apart', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.route('**/api/**', (route) =>
+    route.fulfill({ status: 503, json: { error: { code: 'unavailable' } } }),
+  );
+  await page.goto('/#/calculators/common-rafter');
+  await page.locator('[data-mode="builder"]').click();
+  const start = page.getByTestId('project-start-assistant');
+  await page.locator('.a-start-secondary > summary').click();
+  await start.getByTestId('project-start-examples').click();
+  const example = start.locator('[data-example="house-and-carport"]');
+  await expect(example).toContainText('Dom z wiatą — dwie bryły');
+  await expect(example).toContainText('Bryły projektu');
+  await example.getByTestId('project-example-house-and-carport').click();
+  await expect(start).toBeHidden();
+
+  const chips = page.getByTestId('structure-bar').locator('.a-structure-chip');
+  await expect(chips).toHaveCount(2);
+  await expect(chips.nth(0)).toContainText('Dom');
+  await expect(chips.nth(1)).toContainText('Wiata');
+  await page.locator('[data-perspective="costing"]:visible').first().click();
+  await expect(
+    page.getByTestId('project-pricing').locator('tbody tr'),
+  ).toHaveCount(2);
+  expect(errors).toEqual([]);
+});

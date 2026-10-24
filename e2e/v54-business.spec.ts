@@ -288,9 +288,11 @@ async function openBuilder(page: Page, mode: 'standard' | 'business') {
     else localStorage.removeItem('cieslacalc.businessMode.v1');
   }, mode);
   await page.goto('/#/calculators/common-rafter');
-  await page.locator('[data-mode="builder"]').click();
+  // The sales desk opens first in Business mode; continuing enters the
+  // workbench (VNext-11: the desk has no mode switch).
   if (mode === 'business')
     await page.getByTestId('business-home-continue').click();
+  else await page.locator('[data-mode="builder"]').click();
 }
 
 /** Project → Pokrycie → Dachówka → Wybierz z katalogu. */
@@ -451,7 +453,6 @@ test.describe('V54 business mode', () => {
     // The wholesaler stops selling it; everything technical must be unchanged.
     await stubBusinessApi(page, { sells: [] });
     await page.reload();
-    await page.locator('[data-mode="builder"]').click();
     await page.getByTestId('business-home-continue').click();
     await page.locator('[data-perspective="covering"]').click();
     // §17/§18: an explicit choice, never an automatic substitution.

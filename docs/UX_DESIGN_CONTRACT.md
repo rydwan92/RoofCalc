@@ -632,6 +632,19 @@ line and manual lengths keep working.
   is named through one lookup (`ROOF_FAMILY_LABEL`), and never shows
   another family's controls (no ridge settings on a mono-pitch roof). A quick
   calculation offers "Utwórz projekt" instead of retyping.
+- **VNext-11: a member is named, never coded.** A timber row reads
+  "Murłata M 140×140 · 2 szt. × 10,00 m" in the material plan, the CSV, the
+  quote and the execution document — one rule (`materialRowLabel`), never
+  a bare family code ("M", "R").
+- **VNext-11: each screen shows its own controls.** The sales desk has no
+  workbench mode switch, units or Undo; "Przejdź do otwartego projektu"
+  enters the workbench. A problem card with nothing to fix says "W porządku"
+  instead of a disabled button; on a phone the overview cards sit two per
+  row. Section headings of one screen share one size; the app background
+  reaches the bottom of the window.
+- **VNext-11: an example for every roof.** The Creator's examples cover
+  every family (gable, hip, collar ties, mono-pitch carport, asymmetric
+  gable) and a project of two structures — each a reference fixture.
 - **VNext-10B: the project total never hides a gap.** The estimate of a
   project of several structures lists each one (lines, net, gross, state)
   above the estimate of the structure shown, whose title names it. A

@@ -217,6 +217,27 @@ function AdminOverview({
     : undefined;
   const number = (value: number | undefined) =>
     value === undefined ? '—' : String(value);
+  /**
+   * VNext-11: a problem with nothing to fix says so — no disabled button
+   * for a count of zero.
+   */
+  const fix = (
+    count: number | undefined,
+    label: string,
+    onClick: () => void,
+  ) =>
+    count === 0 ? (
+      <p className="bz-overview-ok">✓ {pl ? 'W porządku' : 'All good'}</p>
+    ) : (
+      <button
+        type="button"
+        className="a-button"
+        disabled={count === undefined}
+        onClick={onClick}
+      >
+        {label}
+      </button>
+    );
   return (
     <section className="bz-overview" data-testid="admin-overview">
       <header>
@@ -262,14 +283,11 @@ function AdminOverview({
               ? 'aktywne pozycje — w wycenie pokażą „brak ceny”'
               : 'active items — estimates show “no price”'}
           </span>
-          <button
-            type="button"
-            className="a-button"
-            disabled={!summary?.withoutPrice}
-            onClick={() => onAssortment('without-price')}
-          >
-            {pl ? 'Uzupełnij ceny' : 'Add prices'}
-          </button>
+          {fix(
+            summary?.withoutPrice,
+            pl ? 'Uzupełnij ceny' : 'Add prices',
+            () => onAssortment('without-price'),
+          )}
         </article>
         <article data-tone={summary?.withoutVat ? 'warn' : 'ok'}>
           <small>{pl ? 'Bez stawki VAT' : 'Without VAT rate'}</small>
@@ -277,14 +295,9 @@ function AdminOverview({
           <span>
             {pl ? 'oferta nie pokaże ceny brutto' : 'offers cannot show gross'}
           </span>
-          <button
-            type="button"
-            className="a-button"
-            disabled={!summary?.withoutVat}
-            onClick={() => onAssortment('without-vat')}
-          >
-            {pl ? 'Ustaw VAT' : 'Set VAT'}
-          </button>
+          {fix(summary?.withoutVat, pl ? 'Ustaw VAT' : 'Set VAT', () =>
+            onAssortment('without-vat'),
+          )}
         </article>
         <article data-tone={summary?.unmatched ? 'warn' : 'ok'}>
           <small>
@@ -296,14 +309,9 @@ function AdminOverview({
               ? 'bez danych technicznych RoofCalc (wymiary, krycie)'
               : 'without RoofCalc technical data'}
           </span>
-          <button
-            type="button"
-            className="a-button"
-            disabled={!summary?.unmatched}
-            onClick={() => onAssortment('unmatched')}
-          >
-            {pl ? 'Powiąż' : 'Link'}
-          </button>
+          {fix(summary?.unmatched, pl ? 'Powiąż' : 'Link', () =>
+            onAssortment('unmatched'),
+          )}
         </article>
         {canUsers && (
           <article>

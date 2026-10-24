@@ -1,6 +1,6 @@
 import type { MaterialPlanRow, MaterialPriceSelection } from './material-plan';
 import { materialValue } from './material-plan';
-import { materialCopy, materialText, timberMemberLabel } from './material-copy';
+import { materialCopy, materialRowLabel, materialText } from './material-copy';
 
 function cell(value: string | number) {
   const text = String(value);
@@ -62,9 +62,7 @@ export function materialCsv(
     return [
       index + 1,
       m[row.category],
-      row.timberMember
-        ? timberMemberLabel(row.timberMember, locale)
-        : `${materialText(locale, row.labelKey)} ${row.description ?? ''}`.trim(),
+      materialRowLabel(row, locale),
       row.product?.name ?? '',
       basis,
       row.range ? `${row.range.min}–${row.range.max}` : (row.quantity ?? ''),

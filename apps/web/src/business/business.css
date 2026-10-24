@@ -503,7 +503,9 @@
   grid-row: span 2;
 }
 
+/* VNext-11: every home section heading at one size. */
 .bz-section-heading h2,
+.bz-home-section > h2,
 .bz-quality h3 {
   margin: 0;
   font-size: 1rem;
@@ -2466,6 +2468,28 @@
 .bz-overview-grid .a-button {
   justify-self: start;
   margin-top: 4px;
+}
+.bz-overview-ok {
+  margin: 4px 0 0;
+  color: var(--ui-success, #2f7d4f);
+  font-size: 13px;
+  font-weight: 600;
+}
+/* VNext-11: two compact cards per row on a phone, not six tall ones. */
+@media (max-width: 760px) {
+  .bz-overview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .bz-overview-grid article {
+    padding: 10px;
+  }
+  .bz-overview-grid strong {
+    font-size: 22px;
+  }
+  .bz-overview-grid span {
+    min-height: 0;
+  }
 }
 .bz-overview-actions h3 {
   margin: 0 0 8px;

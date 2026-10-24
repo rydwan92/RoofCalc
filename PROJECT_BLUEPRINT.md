@@ -1297,6 +1297,31 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+## VNext-11 (2026-10-25) — example projects, clear labels, a simpler sales desk
+
+- Branch `feature/vnext-11-seeds-admin-pricing` (from 10B, `1ce7511`).
+  Owner (2026-10-24): UI/UX, administration, simplicity, data seeds,
+  pricing.
+- Seed data users can open: Creator examples for every family — carport
+  (fixture 11), asymmetric gable (12) and "Dom z wiatą" with two
+  structures (13); a card shows how many structures an example has.
+- Pricing/quote: timber rows were printed as bare family codes
+  ("Drewno · zestawienie geometryczne · M"); one `materialRowLabel` now
+  names them ("Murłata M 140×140 · 2 szt. × 10,00 m") in the material plan,
+  CSV, quote and execution document (document-core row `timberMember?`).
+- Simplicity: the sales desk shows no workbench mode switch, units or Undo;
+  "Przejdź do otwartego projektu" enters the workbench; admin overview says
+  "W porządku" instead of disabled buttons and fits two cards per row on a
+  phone; home section headings share one size; the app background reaches
+  the bottom of the window.
+- Audit method: the business e2e visual QA (`V57_VISUAL_QA=1`) on desktop
+  and phone; its print-preview screenshot step times out on desktop (a
+  visual-QA-only step, the normal run passes).
+- Validation: `pnpm verify` green — 220 files / 2333 tests (13 skipped);
+  `pnpm e2e` 188 passed / 0 failed.
+- NEXT ACTION: 10C — a design with several roof parts read as structures
+  of one project (import); 10D — the site view of all structures.
+
 ## VNext-10B (2026-10-24) — an estimate per structure, the whole project priced
 
 - Same branch. Owner (2026-10-24): UI/UX, administration, simplicity, data
