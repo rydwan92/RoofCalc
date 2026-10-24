@@ -7,6 +7,8 @@ import type {
 } from '@cieslacalc/timber-model';
 import { openingFamilyCode, purlinFamilyCode } from './schedule-family-code';
 
+export * from './project-schedule';
+
 export type QuantityCategory = 'structural-timber' | 'roof-build-up';
 export type QuantityUnit =
   'pcs' | 'm' | 'm2' | 'm3' | 'coverage-position' | 'geometric-run';

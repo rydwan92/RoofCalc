@@ -44,6 +44,7 @@ import {
   roofTemplateSpanMm,
 } from '@cieslacalc/roof-math';
 import { createDefaultProjectDocument, useAssembly } from './store';
+import { structuralSectionOverrides } from './member-schedule';
 import {
   QuickH1Result,
   QuickK1Result,
@@ -193,6 +194,7 @@ import { summarizeCostScenario } from '@cieslacalc/cost-core';
 import { ProjectManager, projectStatusLabel } from '../projects/ProjectManager';
 import { StructureBar, structureLabel } from '../projects/StructureBar';
 import { ProjectPricingOverview } from '../projects/ProjectPricingOverview';
+import { ProjectQuantityOverview } from '../projects/ProjectQuantityOverview';
 import { LocalProjectRepository } from '../projects/local-repository';
 import {
   recentProjects,
@@ -900,30 +902,12 @@ function AssemblyPageContent({
       }),
     [coveringAssignments, resolvedCoveringLayouts],
   );
-  // VNext-8: a mono-pitch roof has no ridge member to size.
-  const ridgeSpec =
-    state.template.type === 'mono-pitch' ? undefined : state.template.ridge;
   const memberSchedule = useMemo(
     () =>
       createRoofMemberSchedule({
         // Proposals never enter quantities; only accepted/current composition does.
         skeleton: framingProjection.composedSkeleton,
-        sectionOverrides: ridgeSpec
-          ? {
-              [ridgeSpec.id]: {
-                ...(ridgeSpec.thicknessMm > 0
-                  ? { widthMm: ridgeSpec.thicknessMm }
-                  : {}),
-                ...(ridgeSpec.depthMm !== undefined
-                  ? { depthMm: ridgeSpec.depthMm }
-                  : {}),
-                completeness:
-                  ridgeSpec.thicknessMm > 0 && ridgeSpec.depthMm !== undefined
-                    ? 'complete'
-                    : 'partial',
-              },
-            }
-          : {},
+        sectionOverrides: structuralSectionOverrides(state.template),
         buildUp: [
           ...(counterBattens?.enabled
             ? counterBattenProjection.rows.map((row) => ({
@@ -1007,7 +991,7 @@ function AssemblyPageContent({
       framingProjection.composedSkeleton,
       membrane,
       membraneCourseLayout,
-      ridgeSpec,
+      state.template,
       surfaceProjection.planes,
     ],
   );
@@ -2939,6 +2923,10 @@ function AssemblyPageContent({
                         <Suspense
                           fallback={<div className="a-loading-panel" />}
                         >
+                          <ProjectQuantityOverview
+                            session={projectSession}
+                            state={projectSessionState}
+                          />
                           <MaterialPlan
                             key={projectSessionState.active?.id ?? 'unsaved'}
                             facts={materialFacts}

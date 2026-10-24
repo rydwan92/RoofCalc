@@ -632,6 +632,13 @@ line and manual lengths keep working.
   is named through one lookup (`ROOF_FAMILY_LABEL`), and never shows
   another family's controls (no ridge settings on a mono-pitch roof). A quick
   calculation offers "Utwórz projekt" instead of retyping.
+- **VNext-10E: the project's quantities, never a hidden gap.** Above the
+  material plan of a project of structures, "Zestawienie całego projektu"
+  lists each structure (roof area, members, length, volume) and the
+  project's timber by section with each structure's share. A member
+  without an exact section is counted and named ("bez 1 szt."), never
+  guessed into a section; the wording says geometric, not a purchase
+  quantity.
 - **VNext-10D: the site shows every roof where it stands.** "Widok działki"
   draws the roofs of every structure in plan, the open one emphasised; a
   click on a roof opens that structure. Two roofs that share plan area are

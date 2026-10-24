@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
 /**
  * VNext-10 (ADR-017): a project of several roof structures — a house and a
@@ -106,6 +106,33 @@ test('a house and a garage in one project, switched, renamed, reopened and remov
   await expect(chips.nth(0)).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByTestId('material-plan')).toBeVisible();
   await expect(bar).toContainText('pokazują teraz bryłę „Budynek główny”');
+
+  // VNext-10E: the whole project's quantities sit above the material plan —
+  // the total is the structures' sum, and a row opens that structure.
+  const schedule = page.getByTestId('project-quantities');
+  const scheduleRows = schedule.locator('table').first().locator('tbody tr');
+  await expect(scheduleRows).toHaveCount(2);
+  await expect(scheduleRows.nth(0)).toHaveAttribute('aria-current', 'true');
+  await expect(
+    schedule.getByTestId('project-quantities-sections'),
+  ).toBeVisible();
+  const members = async (cell: Locator) => Number(await cell.innerText());
+  expect(
+    await members(schedule.getByTestId('project-quantities-members')),
+  ).toBe(
+    (await members(scheduleRows.nth(0).locator('td').nth(1))) +
+      (await members(scheduleRows.nth(1).locator('td').nth(1))),
+  );
+  await schedule.scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: testInfo.outputPath('vnext10e-quantities.png'),
+    fullPage: true,
+  });
+  await scheduleRows.nth(1).getByRole('button', { name: 'Garaż' }).click();
+  await expect(chips.nth(1)).toHaveAttribute('aria-pressed', 'true');
+  await expect(scheduleRows.nth(1)).toHaveAttribute('aria-current', 'true');
+  await chips.nth(0).click();
+  await expect(scheduleRows.nth(0)).toHaveAttribute('aria-current', 'true');
 
   // VNext-10B: each structure has its own estimate; the whole project's sits
   // above it, and a row opens that structure's estimate.

@@ -1297,6 +1297,34 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+## VNext-10E (2026-10-25) — the whole project's quantities
+
+- Branch `feature/vnext-10e-project-quantities` (from 10D, `48094ba`).
+  Owner (2026-10-25): "pracuj dalej".
+- `quantity-core` `summarizeProjectTimber`: structures' timber added by
+  exact section (width × depth) with each structure's share; a member
+  without an exact section (a ridge without its depth) is counted and named,
+  never guessed into a section; the volume is that of exact sections.
+- `apps/web/src/assembly/member-schedule.ts`: `structuralSectionOverrides`
+  (now also used by the workbench, no copy) and `structuralTimberSchedule`
+  — the workbench's resolver, accepted opening framing and schedule.
+- `apps/web/src/projects/project-quantities.ts` `deriveProjectQuantities`
+  and `ProjectQuantityOverview` ("Zestawienie całego projektu") above the
+  material plan: per structure roof area, members, length, volume; the
+  project's timber by section; a row opens that structure. Derived only —
+  no schema change. Pricing overview names line up (link button padding).
+- Tests: hand-checked sums/volumes in quantity-core; fixture 13; e2e
+  (desktop + phone). Docs: VNext-10 doc (DoR in brief), UX contract,
+  ADR-017 consequence.
+- Validation: `pnpm verify` green — 224 files / 2349 tests (13 skipped);
+  `pnpm e2e` 190 passed / 0 failed.
+- Known limits: build-up layers (battens, counter-battens, membrane,
+  covering) stay per structure — they need each structure's layouts; no
+  project CSV yet.
+- NEXT ACTION: business sync of multi-structure projects (ADR-017 §8 —
+  server estimations carry V1 only), or the project's build-up layers
+  through a pure per-structure layout derivation.
+
 ## VNext-10D (2026-10-25) — the site: every roof where it stands
 
 - Branch `feature/vnext-10d-site-view` (from 10C, `5a5b5ec`). Owner

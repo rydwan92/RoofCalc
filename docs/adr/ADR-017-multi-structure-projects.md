@@ -63,3 +63,7 @@ the materials up by hand.
   remains).
 - Junction framing, valleys between structures and flashing remain future
   work behind connections (ADR-008).
+- VNext-10E implements §7 for structural timber and roof area: the material
+  identity added across structures is the exact section
+  (`quantity-core` `summarizeProjectTimber`); a member without one is
+  counted, never added to a section. Build-up layers stay per structure.

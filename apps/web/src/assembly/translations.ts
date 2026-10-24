@@ -385,6 +385,23 @@ export const assemblyPl = {
     currencyNote:
       'Kosztorysy w innej walucie nie są dodawane do sumy projektu.',
   },
+  projectQuantities: {
+    title: 'Zestawienie całego projektu',
+    hint: 'Drewno konstrukcyjne i powierzchnia dachu każdej bryły i razem — długości osiowe, zestawienie geometryczne, nie ilość do zakupu. Łaty, kontrłaty, membrana i pokrycie są w planie materiałów każdej bryły.',
+    roofArea: 'Połacie dachu',
+    members: 'Elementy',
+    length: 'Długość',
+    volume: 'Objętość',
+    volumeWithout: 'bez {{count}} szt.',
+    bySection: 'Drewno według przekroju — cały projekt',
+    section: 'Przekrój',
+    shares: 'Z brył',
+    share: '{{name}}: {{count}} szt.',
+    unsectioned:
+      '„{{name}}”: elementów bez pełnego przekroju (np. kalenica bez wysokości): {{count}} — policzone w sumie, nie według przekroju ani w objętości. Otwórz bryłę i podaj brakujący wymiar.',
+    issues:
+      '„{{name}}”: nie każdy element dało się policzyć — sprawdź zestawienie materiałów tej bryły.',
+  },
   structures: {
     title: 'Bryły projektu',
     fallback: 'Bryła {{n}}',

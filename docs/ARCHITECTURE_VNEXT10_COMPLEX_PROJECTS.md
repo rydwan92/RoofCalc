@@ -57,6 +57,8 @@ skomplikowanych projektów kompleksowo dla całej aplikacji". Decision record:
   parts becomes one project with one structure per part.
 - **10D — the site.** All structures placed in one plan / 3D view with the
   overlap check.
+- **10E — the project schedule.** Structural timber and roof area per
+  structure and for the project, timber added by exact section.
 
 ## Delivered — 10A (2026-10-24)
 
@@ -136,3 +138,38 @@ skomplikowanych projektów kompleksowo dla całej aplikacji". Decision record:
 - Not yet: a 3D site view; an elevation check (a lower roof under an eave
   is still reported by plan); dragging a structure on the site (the exact
   inputs of the structure settings stay the way to place it).
+
+## Delivered — 10E (2026-10-25)
+
+Readiness, briefly: the user (a carpenter pricing a house and a garage)
+had to open every structure and add its timber by hand. Owner: the
+schedule stays in `quantity-core` (adding parts by section is a quantity
+rule, like `createSectionGroups`); the web project layer only feeds it each
+structure's schedule. Derived, never stored — no schema, no migration, no
+history entry. No allowance, stock length or price enters (ADR-005,
+ADR-009, ADR-010). Offline. Phone: the same table, narrower. Structures are
+keys, never parsed (ADR-007).
+
+- `quantity-core` `summarizeProjectTimber(parts)`: adds section groups of
+  the same exact section (width × depth) across parts, with each part's
+  share; a member without an exact section (a ridge without its depth) is
+  counted in the totals, named by its part and never guessed into a
+  section; the volume is that of the exact sections.
+- `structuralTimberSchedule(project)`
+  (`apps/web/src/assembly/member-schedule.ts`): the workbench's own
+  resolver, accepted opening framing and `createRoofMemberSchedule`;
+  `structuralSectionOverrides` (the ridge section) is now one function the
+  workbench uses too.
+- `deriveProjectQuantities` (project layer) and "Zestawienie całego
+  projektu" above the material plan of a project of structures: per
+  structure roof area, members, length and volume ("bez 1 szt." when a
+  member has no exact section); the project's timber by section with each
+  structure's share; a row opens that structure.
+- Tests: hand-checked section sums and volumes; fixture 13 (each structure
+  equals its own schedule and surface, the total is the sum, a ridge
+  without its depth stays out of the sections, with its depth it joins
+  40 × 160); e2e desktop + phone (the total is the rows' sum, a row opens a
+  structure).
+- Not yet: build-up layers (battens, counter-battens, membrane, covering)
+  per project — they need each structure's layouts, which the workbench
+  resolves for the open structure only; a project CSV.

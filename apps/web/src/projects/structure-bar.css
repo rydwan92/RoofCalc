@@ -227,6 +227,12 @@
   justify-items: start;
   gap: 2px;
 }
+/* A structure name that opens it lines up with the open one's name. */
+.a-project-pricing-name .a-link-button {
+  min-height: 28px;
+  padding: 0;
+  text-align: left;
+}
 .a-project-pricing-name small {
   color: var(--a-muted);
   font-size: var(--ui-text-xs);
@@ -320,4 +326,47 @@
   background: var(--a-warning-fill);
   color: var(--a-warning);
   font-size: var(--ui-text-sm);
+}
+
+/* VNext-10E: the whole project's quantities, in the pricing overview's form. */
+.a-project-quantities h4 {
+  margin: var(--ui-space-2) 0 0;
+  font-size: var(--ui-text-md);
+}
+.a-project-quantities td {
+  white-space: nowrap;
+}
+.a-project-quantities td:last-child {
+  text-align: right;
+}
+.a-project-quantities td small,
+.a-project-quantities-sections td span {
+  display: block;
+}
+.a-project-quantities td small {
+  color: var(--a-muted);
+  font-size: var(--ui-text-xs);
+  font-weight: var(--ui-weight-regular);
+}
+.a-project-quantities-sections th:last-child {
+  text-align: left;
+}
+.a-project-quantities .a-project-quantities-sections td:last-child {
+  color: var(--a-muted);
+  text-align: left;
+}
+@media (max-width: 760px) {
+  .a-project-quantities {
+    padding: var(--ui-space-2);
+  }
+  .a-project-quantities table {
+    font-size: var(--ui-text-xs);
+  }
+  .a-project-quantities th,
+  .a-project-quantities td {
+    padding: 6px 4px;
+  }
+  .a-project-quantities td small {
+    white-space: normal;
+  }
 }

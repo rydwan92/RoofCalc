@@ -385,6 +385,23 @@ export const assemblyEn: typeof assemblyPl = {
     currencyNote:
       'Estimates in another currency are not added to the project total.',
   },
+  projectQuantities: {
+    title: 'Whole-project schedule',
+    hint: 'Structural timber and roof area of every structure and in total — axis lengths, a geometric schedule, not a purchase quantity. Battens, counter-battens, membrane and covering are in each structure’s material plan.',
+    roofArea: 'Roof planes',
+    members: 'Members',
+    length: 'Length',
+    volume: 'Volume',
+    volumeWithout: 'without {{count}} pcs',
+    bySection: 'Timber by section — whole project',
+    section: 'Section',
+    shares: 'From structures',
+    share: '{{name}}: {{count}} pcs',
+    unsectioned:
+      '“{{name}}”: members without a full section (e.g. a ridge without its depth): {{count}} — counted in the total, not by section or in the volume. Open the structure and state the missing dimension.',
+    issues:
+      '“{{name}}”: not every member could be counted — check this structure’s material schedule.',
+  },
   structures: {
     title: 'Project structures',
     fallback: 'Structure {{n}}',
