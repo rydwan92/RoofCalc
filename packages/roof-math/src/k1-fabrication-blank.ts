@@ -15,7 +15,12 @@ export type K1BlankUnresolvedReason =
 
 export type K1RidgeConnectionBasis =
   | 'centered-vertical-ridge-board-near-face-butt'
-  | 'direct-opposing-rafter-plumb-meeting';
+  | 'direct-opposing-rafter-plumb-meeting'
+  /** VNext-8: a mono-pitch rafter's upper end — a plain plumb cut. */
+  | 'top-plumb-cut';
+
+/** How the rafter's upper end is made: a ridge connection or a free top cut. */
+export type K1UpperEnd = RidgeConnectionType | 'top-plumb-cut';
 
 export type K1FabricationBlankResolution =
   | {
@@ -46,12 +51,13 @@ const toleranceMm = 1e-6;
  * with zero effective thickness (the caller's `assembly` must already reflect
  * that, see `resolveAssembly`). `half-lap` has no modeled overlap/cut-reduction
  * geometry yet and never resolves a blank — it is reported as unresolved with
- * a structured reason rather than guessed.
+ * a structured reason rather than guessed. `top-plumb-cut` (VNext-8) is the
+ * mono-pitch rafter: an eave cut and one plumb cut at the top end, no ridge.
  */
 export function resolveK1FabricationBlank(
   assembly: ResolvedAssembly,
   ridgeBoardThicknessMm: number,
-  connection: RidgeConnectionType = 'ridge-board',
+  connection: K1UpperEnd = 'ridge-board',
 ): K1FabricationBlankResolution {
   if (connection === 'half-lap')
     return { status: 'unresolved', reason: 'ridge-connection-not-modeled' };
@@ -71,11 +77,14 @@ export function resolveK1FabricationBlank(
     return { status: 'unresolved', reason: 'invalid-section' };
 
   const eave = assembly.endCuts.filter((cut) => cut.end === 'eave');
-  const ridge = assembly.endCuts.filter((cut) => cut.end === 'ridge');
+  const top = connection === 'top-plumb-cut';
+  const ridge = assembly.endCuts.filter(
+    (cut) => cut.end === (top ? 'top' : 'ridge'),
+  );
   if (
     eave.length !== 1 ||
     ridge.length !== 1 ||
-    ridge[0]!.supportId === undefined ||
+    (!top && ridge[0]!.supportId === undefined) ||
     !assembly.joints.length ||
     assembly.joints.some((joint) => joint.kind !== 'seat-notch')
   )
@@ -134,8 +143,9 @@ export function resolveK1FabricationBlank(
     },
     requiredBlankLengthMm: lengthMm,
     basis: 'modeled-k1-cut-envelope',
-    ridgeConnection:
-      connection === 'direct-meeting'
+    ridgeConnection: top
+      ? 'top-plumb-cut'
+      : connection === 'direct-meeting'
         ? 'direct-opposing-rafter-plumb-meeting'
         : 'centered-vertical-ridge-board-near-face-butt',
     fabricationAllowanceMm: 0,

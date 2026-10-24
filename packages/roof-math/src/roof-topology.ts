@@ -14,7 +14,9 @@ import type { RoofSurfaceGeometryResult } from './roof-surface';
  * Visualization, covering accessories, drainage, the material plan, cost and
  * documents all read this one result. Nothing here knows a product or price.
  */
-export type RoofLineFeatureKind = 'eave' | 'ridge' | 'hip' | 'verge' | 'valley';
+/** `abutment` (VNext-8): the roof meets a higher wall — declared, never inferred. */
+export type RoofLineFeatureKind =
+  'eave' | 'ridge' | 'hip' | 'verge' | 'valley' | 'abutment';
 
 export type RoofLineEvidence =
   | 'unshared-horizontal-lowest'
@@ -22,7 +24,8 @@ export type RoofLineEvidence =
   | 'unshared-sloped'
   | 'shared-horizontal'
   | 'shared-sloped-convex'
-  | 'shared-sloped-concave';
+  | 'shared-sloped-concave'
+  | 'declared-abutment';
 
 export interface ResolvedRoofFeature {
   /** Opaque, deterministic for identical geometry. Never parse it. */
@@ -96,6 +99,7 @@ const KIND_ORDER: RoofLineFeatureKind[] = [
   'hip',
   'valley',
   'verge',
+  'abutment',
 ];
 
 const same = (a: Point3D, b: Point3D) =>
@@ -251,6 +255,17 @@ export function resolveRoofFeatureTopology(
       continue;
     }
     const plane = planeById.get(edge.roofPlaneId)!;
+    if (plane.abutmentEdges?.includes(edge.index)) {
+      raw.push({
+        kind: 'abutment',
+        start: edge.from,
+        end: edge.to,
+        incidentPlaneIds,
+        evidence: 'declared-abutment',
+        edges: [edge],
+      });
+      continue;
+    }
     const lowest = Math.min(...plane.worldPolygon.map((point) => point.z));
     if (Math.abs(edge.from.z - lowest) > TOLERANCE_MM) {
       raw.push({

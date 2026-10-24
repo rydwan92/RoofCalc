@@ -125,6 +125,13 @@ export interface AssemblySpec {
     /** Absent means `ridge-board`, matching every project saved before V32. */
     connection?: RidgeConnectionType;
   };
+  /**
+   * VNext-8: how the rafter's upper end is made. Absent: `ridge` (gable,
+   * hip). `top`: a plain plumb end over a second, higher plate or against
+   * a wall — the mono-pitch rafter; `ridge` then names that end with zero
+   * thickness. Derived from the template, never persisted on its own.
+   */
+  upperEnd?: 'ridge' | 'top';
 }
 export type RafterSpacingMode =
   'max-even-spacing' | 'target-even-spacing' | 'fixed-module';
@@ -189,7 +196,62 @@ export interface HipRoofTemplateSpec {
   /** V39 execution intent. Absent means undecided, as on every older project. */
   hipExecution?: HipExecutionIntent;
 }
-export type RoofTemplateSpec = GableRoofTemplateSpec | HipRoofTemplateSpec;
+/** A bearing line of a mono-pitch roof (VNext-7B; template since VNext-8). */
+export interface MonoPitchSupportSpec {
+  /** `ledger`: a plate fixed to the face of a higher wall (abutment only). */
+  kind: 'wall-plate' | 'ledger';
+  widthMm: number;
+  heightMm: number;
+  /** Horizontal seat of the birdsmouth on this support. */
+  seatMm: number;
+}
+
+/** An intermediate purlin under mono-pitch rafters (płatew pośrednia). */
+export interface MonoPitchPurlinSpec {
+  /** Horizontal distance from the low plate's outer face to the purlin's
+   *  downslope face (where the birdsmouth heel sits). */
+  positionMm: number;
+  widthMm: number;
+  heightMm: number;
+  seatMm: number;
+}
+
+/**
+ * VNext-8 (ADR-016): a mono-pitch roof as a project template — the inputs of
+ * `MonoPitchFramingSpec`, named like the gable where they mean the same
+ * (`eaveOverhangMm` is the low eave). Frame and formulas:
+ * docs/domain/MONO_PITCH_ROOF.md.
+ */
+export interface MonoPitchRoofTemplateSpec {
+  id: EntityId;
+  type: 'mono-pitch';
+  /** Along the eave, between the gable ends. */
+  buildingLengthMm: number;
+  /** Horizontal: low plate outer face → high support outer face. */
+  runMm: number;
+  pitchDeg: number;
+  /** Horizontal overhang at the low eave. */
+  eaveOverhangMm: number;
+  topEdge: 'free' | 'abutment';
+  /** Horizontal overhang beyond the high support; 0 for an abutment. */
+  highOverhangMm: number;
+  /** Horizontal overhang beyond each gable end. */
+  vergeOverhangMm: number;
+  rafterSpacing: RafterSpacingSpec;
+  rafterSection: TimberSection;
+  lowSupport: MonoPitchSupportSpec;
+  highSupport: MonoPitchSupportSpec;
+  /** Up to four purlins between the plates; empty: plate to plate. */
+  intermediateSupports: MonoPitchPurlinSpec[];
+}
+
+export type RoofTemplateSpec =
+  GableRoofTemplateSpec | HipRoofTemplateSpec | MonoPitchRoofTemplateSpec;
+/** Families with a ridge between two eaves (one rafter cross section per side). */
+export type RidgedRoofTemplateSpec =
+  GableRoofTemplateSpec | HipRoofTemplateSpec;
+/** The roof families a single-structure project can hold (ADR-016). */
+export type RoofFamily = RoofTemplateSpec['type'];
 
 /**
  * V39 execution intent for the hip rafter's top treatment.

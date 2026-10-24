@@ -130,7 +130,10 @@ function signature(args: {
   const { template, feature } = args;
   return JSON.stringify({
     roofType: template.type,
-    halfRunMm: template.halfRunMm,
+    // Gable/hip keys unchanged: saved signatures stay valid.
+    ...(template.type === 'mono-pitch'
+      ? { runMm: template.runMm }
+      : { halfRunMm: template.halfRunMm }),
     buildingLengthMm: template.buildingLengthMm,
     pitchDeg: template.pitchDeg,
     eaveOverhangMm: template.eaveOverhangMm,

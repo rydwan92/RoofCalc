@@ -359,6 +359,11 @@ export const assemblyEn: typeof assemblyPl = {
   memberType: 'Calculate member',
   gableRoof: 'Gable',
   hipRoof: 'Hip',
+  monoPitchRoof: 'Mono-pitch',
+  monoRun: 'Span (outer faces of the supports)',
+  monoEaveOverhang: 'Low eave overhang, horizontal',
+  monoHighOverhang: 'Top overhang, horizontal',
+  monoVergeOverhang: 'Verge overhang (barge boards)',
   commonRafter: 'Common rafter',
   hipRafter: 'Hip rafter',
   jackRafter: 'Jack rafter',
@@ -395,6 +400,7 @@ export const assemblyEn: typeof assemblyPl = {
     roofHint: {
       gable: 'Two main planes and a ridge',
       hip: 'Four planes and hip edges',
+      'mono-pitch': 'One plane from the lower to the higher wall',
     },
     building: 'Building dimensions',
     roof: 'Roof',
@@ -880,7 +886,7 @@ export const assemblyEn: typeof assemblyPl = {
         invalid: 'roof geometry inconsistent — documents held back',
       },
       supported: '{{roof}} roof calculated by RoofCalc',
-      roof: { gable: 'gable', hip: 'hip' },
+      roof: { gable: 'gable', hip: 'hip', 'mono-pitch': 'mono-pitch' },
       notSupported: 'RoofCalc does not calculate this roof shape yet',
       capacity: 'load capacity, deflection and stability are not checked',
     },
@@ -1608,6 +1614,9 @@ export const assemblyEn: typeof assemblyPl = {
     'The module starts at the datum without an end axis. {{remainder}} remains from the last axis to the end.',
   rafterPairs: 'Rafter pairs',
   rafterPairCount: '{{count}} rafter pairs',
+  monoRafters: 'K1 rafters',
+  monoRafterCount: '{{count}} K1 pcs',
+  monoSkeletonDrawing: 'Axonometric mono-pitch roof skeleton',
   physicalInstance: 'Physical instance',
   prototype: 'Shared fabrication prototype',
   side: 'Roof side',
@@ -1670,6 +1679,7 @@ export const assemblyEn: typeof assemblyPl = {
   detailDrawer: 'Detail drawer',
   birdsmouthDetail: 'Support birdsmouth',
   ridgeCutDetail: 'Ridge cut',
+  topCutDetail: 'Top plumb cut',
   hipUpperCutDetail: 'Hip-rafter upper cut',
   'member-elevation': 'Member side elevation',
   'member-top-face': 'Top-face view',
@@ -1856,20 +1866,23 @@ export const assemblyEn: typeof assemblyPl = {
       'Carports, lean-tos, garages: rafters on two supports, birdsmouths, battens, counter-battens and membrane — calculated as you type.',
     close: 'Close mono-pitch roof',
     draftNote:
-      'Values are remembered in this browser only. Saving as a project, cost estimate and execution document come next.',
+      'A quick calculation, remembered in this browser only. "Create project" saves this roof as a project — with the workshop, covering, materials, cost estimate and documents.',
+    createProject: 'Create project',
+    createProjectHint:
+      'Save this roof as a RoofCalc project with the same dimensions, supports and layers.',
+    projectName: 'Mono-pitch roof',
     restore: 'Restore example',
+    supportHeading: {
+      low: 'Low wall plate',
+      high: 'High wall plate',
+      ledger: 'Wall ledger',
+    },
     pitchSource: {
       label: 'I give the pitch as',
       angle: 'an angle',
       'plate-tops': 'support heights',
       derived: 'Pitch from the support heights: {{angle}}°',
       hint: 'Measure both tops from one level, e.g. the floor. The pitch follows from the height difference, the span, the high support width and the seats.',
-    },
-    import: {
-      heading: 'From the document “{{file}}”',
-      note: 'From the document: {{fields}}. Everything else is the RoofCalc example — check the supports, the rafter section and the top edge.',
-      badge: 'from document',
-      dismiss: 'Hide the import note',
     },
     print: 'Print / PDF',
     printInputs: 'Input data',
@@ -2020,6 +2033,8 @@ export const assemblyEn: typeof assemblyPl = {
   assumptions: 'Geometry assumptions',
   assumptionsText:
     'Wall plate: face x=0, seat y=0. The purlin has a horizontal contact plane; its elevation follows the rafter and notch geometry. Position is measured to the left face. The ridge cut is on the near face of a symmetric board.',
+  monoAssumptionsText:
+    'Low wall plate: face x=0, seat y=0. The span is measured to the outer face of the high support (against a wall: to the wall face). Purlins have a horizontal contact plane. The rafter ends at the top in a plumb cut; a mono-pitch roof has no ridge.',
   hipAssumptionsText:
     'The regular rectangular hip roof has equal pitch on four planes and square corners. H1 runs at 45° in plan. Ridge-face deduction is t/√2 in plan and is then converted along the sloping hip axis.',
   structural: 'Geometry is not a structural capacity check.',
@@ -2177,7 +2192,7 @@ export const assemblyEn: typeof assemblyPl = {
         'A DXF drawing (AutoCAD, ArchiCAD…) or an IFC model — outline, eave, ridge and hips are recognised.',
       monoPitch: 'Mono-pitch roof',
       monoPitchHint:
-        'Carport, lean-to, garage: rafters, notches, battens and membrane — without creating a project.',
+        'A quick calculation for a carport, lean-to or garage: rafters, birdsmouths, battens, membrane — one button makes it a project.',
       dropAny:
         'Already have a file? Drop it here — a RoofCalc project, PDF, photo, DXF drawing or IFC model. The format is recognised.',
       dropProject: 'Drop a RoofCalc project file here to open it.',

@@ -12,6 +12,7 @@ import { App } from '../App';
 import i18n from '../i18n';
 import { useAssembly } from './store';
 import { newBattenLayer } from './build-up-defaults';
+import { ridged } from './test-templates';
 
 /**
  * V44 error prevention: impossible input is caught next to the field, the
@@ -60,7 +61,7 @@ describe('V44 input guards', () => {
     const pitch = input('Kąt połaci');
     const run = input('Rzut do osi kalenicy');
     const startPitch = useAssembly.getState().template.pitchDeg;
-    const startRun = useAssembly.getState().template.halfRunMm;
+    const startRun = ridged(useAssembly.getState().template).halfRunMm;
     const history = useAssembly.getState().historyPast.length;
     fireEvent.focus(pitch);
     fireEvent.keyDown(pitch, { key: 'ArrowUp' });
@@ -72,12 +73,14 @@ describe('V44 input guards', () => {
     fireEvent.keyDown(run, { key: 'ArrowDown' });
     fireEvent.blur(run);
     // 1 cm per press on a length.
-    expect(useAssembly.getState().template.halfRunMm).toBe(startRun - 10);
+    expect(ridged(useAssembly.getState().template).halfRunMm).toBe(
+      startRun - 10,
+    );
     expect(useAssembly.getState().historyPast).toHaveLength(history + 2);
     act(() => useAssembly.getState().undo());
     act(() => useAssembly.getState().undo());
     expect(useAssembly.getState().template.pitchDeg).toBe(startPitch);
-    expect(useAssembly.getState().template.halfRunMm).toBe(startRun);
+    expect(ridged(useAssembly.getState().template).halfRunMm).toBe(startRun);
   });
 
   it('a result explains itself with "Jak policzono?" built from the same facts', () => {

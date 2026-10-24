@@ -12,6 +12,7 @@ import {
   createK1CuttingRequirement,
   k1RequirementSignature,
 } from './k1-cutting-adapter';
+import { ridged } from './test-templates';
 
 function projection(hip = false) {
   const gable = gableTemplateFromAssembly(assemblyDefaults);
@@ -64,7 +65,7 @@ describe('K1 application procurement boundary', () => {
   it('does not promote a geometry row when the ridge board or whole instance is absent', () => {
     const { resolved, schedule } = projection();
     const zeroRidge = structuredClone(resolved);
-    zeroRidge.template.ridge.thicknessMm = 0;
+    ridged(zeroRidge.template).ridge.thicknessMm = 0;
     expect(createK1CuttingRequirement(zeroRidge, schedule)).toEqual({
       status: 'unresolved',
       reason: 'ridge-board-not-modeled',

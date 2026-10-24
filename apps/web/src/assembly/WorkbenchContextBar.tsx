@@ -23,6 +23,7 @@ import {
   memberInstanceCode,
   workbenchLocationLabelKey,
 } from './workbench';
+import { ROOF_FAMILY_LABEL } from './roof-family';
 
 function familyName(
   code: MemberInstanceContext['familyCode'],
@@ -215,7 +216,7 @@ export function WorkbenchContextBar({
                   state.workbench.selectedId === 'roof' ? 'page' : undefined
                 }
               >
-                {t(`assembly.${roofPackage.roofType}Roof`)}
+                {t(ROOF_FAMILY_LABEL[roofPackage.roofType])}
               </button>
             </>
           )}

@@ -1,3 +1,4 @@
+import type { RoofFamily } from '@cieslacalc/timber-model';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -58,7 +59,7 @@ export function DocumentHub({
   scope?: {
     geometry: 'complete' | 'partial' | 'invalid';
     calculation: 'supported' | 'not-supported';
-    roofType: 'gable' | 'hip';
+    roofType: RoofFamily;
   };
   facts: ExportFacts;
   readiness: ProjectReadiness;

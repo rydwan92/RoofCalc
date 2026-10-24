@@ -126,15 +126,17 @@ export function createAssemblyDetailPreviews(input: {
       warningKeys: [],
     };
   });
+  // The plumb cut at the upper end: a ridge cut, or the top cut of a
+  // mono-pitch rafter (VNext-8) — the same drawing, its own title.
   const ridgeCuts: DetailPreviewModel[] = input.assembly.endCuts
-    .filter((cut) => cut.end === 'ridge')
+    .filter((cut) => cut.end === 'ridge' || cut.end === 'top')
     .map((cut) => {
       const cutStates = createAssemblyCutStates(input.assembly, cut.id);
       return {
         id: `preview:${cut.id}`,
         sourceSelectionId: cut.id,
         type: 'ridge-cut-detail',
-        titleKey: 'ridgeCutDetail',
+        titleKey: cut.end === 'top' ? 'topCutDetail' : 'ridgeCutDetail',
         subjectMemberId: input.assembly.member.id,
         subjectCode: 'K1',
         relatedSupportId: cut.supportId,

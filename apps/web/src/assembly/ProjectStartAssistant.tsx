@@ -17,7 +17,11 @@ import {
   X,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { fromMillimetres, toMillimetres } from '@cieslacalc/roof-math';
+import {
+  fromMillimetres,
+  roofTemplateSpanMm,
+  toMillimetres,
+} from '@cieslacalc/roof-math';
 import type {
   RidgeConnectionType,
   RoofTemplateSpec,
@@ -43,6 +47,7 @@ import {
 } from './project-start';
 import { useAssembly } from './store';
 import { workbenchProjectResolver } from './workbench-project';
+import { ROOF_FAMILY_LABEL } from './roof-family';
 
 export type ProjectStartMode = 'new' | 'quick' | 'edit';
 
@@ -83,6 +88,8 @@ function RecentProjectButton({
   );
 }
 type Stage = 'choose' | 'examples' | 1 | 2 | 3 | 4;
+
+const MONO_PITCH_START_PITCH = '15';
 
 interface Draft {
   roofType: RoofTemplateSpec['type'];
@@ -220,9 +227,11 @@ export function RoofPlanPreview({
       <rect
         className="plan-building"
         x={0}
-        y={-template.halfRunMm}
+        // A ridged frame is centred on the ridge; a mono-pitch frame starts
+        // at the low plate's outer face (ADR-016).
+        y={template.type === 'mono-pitch' ? 0 : -template.halfRunMm}
         width={template.buildingLengthMm}
-        height={template.halfRunMm * 2}
+        height={roofTemplateSpanMm(template)}
       />
       {members
         .filter((member) => member.kind !== 'wall-plate')
@@ -288,6 +297,15 @@ export function ProjectStartAssistant({
   const { t, i18n } = useTranslation();
   const [stage, setStage] = useState<Stage>(mode === 'new' ? 'choose' : 1);
   const [draft, setDraft] = useState(() => initialDraft(template, unit));
+  /**
+   * VNext-8: each family's starting pitch. A mono-pitch roof starts at the
+   * 15° of docs/domain/MONO_PITCH_ROOF.md, not at a gable's pitch; a pitch
+   * the user typed is never replaced by switching the family.
+   */
+  const familyPitch = (type: Draft['roofType']) =>
+    type === 'mono-pitch' && template.type !== 'mono-pitch'
+      ? MONO_PITCH_START_PITCH
+      : String(projectStartValuesFromTemplate(template).pitchDeg);
   const [confirmed, setConfirmed] = useState<Set<ProjectStartField>>(
     () => new Set(mode === 'quick' ? QUICK_CONFIRMED : []),
   );
@@ -364,6 +382,8 @@ export function ProjectStartAssistant({
       return undefined;
     }
   }, [allIssues.length, draft, numbers, template]);
+  /** The roof the review describes: the one about to be created. */
+  const reviewTemplate = nextTemplate ?? template;
   const readiness = useMemo(
     () =>
       stage === 4 && nextTemplate
@@ -905,9 +925,21 @@ export function ProjectStartAssistant({
                         hint: t('assembly.projectStart.roofHint.hip'),
                         illustration: 'hip',
                       },
+                      {
+                        value: 'mono-pitch',
+                        label: t('assembly.monoPitchRoof'),
+                        hint: t('assembly.projectStart.roofHint.mono-pitch'),
+                        illustration: 'mono-pitch',
+                      },
                     ],
                     (roofType) =>
-                      setDraft((current) => ({ ...current, roofType })),
+                      setDraft((current) => ({
+                        ...current,
+                        roofType,
+                        ...(current.pitch === familyPitch(current.roofType)
+                          ? { pitch: familyPitch(roofType) }
+                          : {}),
+                      })),
                     'roof-type',
                   )}
                   {field('buildingLength')}
@@ -1015,7 +1047,7 @@ export function ProjectStartAssistant({
                   <dl className="a-start-summary">
                     {(
                       [
-                        ['roofType', t(`assembly.${draft.roofType}Roof`)],
+                        ['roofType', t(ROOF_FAMILY_LABEL[draft.roofType])],
                         [
                           'buildingLength',
                           `${draft.buildingLength} × ${draft.buildingWidth} ${unit}`,
@@ -1085,16 +1117,20 @@ export function ProjectStartAssistant({
                     <ul className="a-start-assumptions">
                       <li>
                         {t('assembly.creator.review.wallPlate', {
-                          value: `${display(template.wallPlate.section.widthMm, unit)} × ${display(template.wallPlate.section.heightMm, unit)} ${unit}`,
+                          value:
+                            reviewTemplate.type === 'mono-pitch'
+                              ? `${display(reviewTemplate.lowSupport.widthMm, unit)} × ${display(reviewTemplate.lowSupport.heightMm, unit)} ${unit}`
+                              : `${display(reviewTemplate.wallPlate.section.widthMm, unit)} × ${display(reviewTemplate.wallPlate.section.heightMm, unit)} ${unit}`,
                         })}
                       </li>
-                      {draft.ridgeConnection === 'ridge-board' && (
-                        <li>
-                          {t('assembly.creator.review.ridgeBoard', {
-                            value: `${display(template.ridge.thicknessMm, unit)} ${unit}`,
-                          })}
-                        </li>
-                      )}
+                      {reviewTemplate.type !== 'mono-pitch' &&
+                        draft.ridgeConnection === 'ridge-board' && (
+                          <li>
+                            {t('assembly.creator.review.ridgeBoard', {
+                              value: `${display(reviewTemplate.ridge.thicknessMm, unit)} ${unit}`,
+                            })}
+                          </li>
+                        )}
                       <li>{t('assembly.creator.review.spacingMode')}</li>
                       <li>{t('assembly.creator.review.editLater')}</li>
                       <li>{t('assembly.structural')}</li>
@@ -1151,8 +1187,8 @@ export function ProjectStartAssistant({
                 invalidLabel={t('assembly.creator.preview.invalid')}
               />
               <strong>
-                {t(`assembly.${draft.roofType}Roof`)} · {draft.buildingLength} ×{' '}
-                {draft.buildingWidth} {unit}
+                {t(ROOF_FAMILY_LABEL[draft.roofType])} · {draft.buildingLength}{' '}
+                × {draft.buildingWidth} {unit}
               </strong>
               <p>{t('assembly.creator.preview.hint')}</p>
             </aside>

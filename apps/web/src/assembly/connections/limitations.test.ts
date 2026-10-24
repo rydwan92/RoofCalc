@@ -6,6 +6,7 @@ import { nodesOfKind } from '@cieslacalc/connection-core';
 import { createRoofSkeleton } from '@cieslacalc/roof-math';
 import type { RoofTemplateSpec, SupportSpec } from '@cieslacalc/timber-model';
 import { structuralLimitations } from '../project-readiness';
+import { ridged } from '../test-templates';
 import { roofConnectionModel } from './census';
 
 /**
@@ -34,7 +35,7 @@ describe('structural limitations from located nodes', () => {
       ...p.roof,
       intermediateSupports: [
         {
-          ...structuredClone(p.roof.wallPlate),
+          ...structuredClone(ridged(p.roof).wallPlate),
           id: 'support:purlin-1',
           kind: 'purlin',
           section: { widthMm: 140, heightMm: 160 },

@@ -1,11 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { resolveMonoPitchRoofSystem } from '@cieslacalc/calculator-core';
+import {
+  createRoofProjectDocument,
+  resolveMonoPitchRoofSystem,
+} from '@cieslacalc/calculator-core';
+import { resolveRoofTemplate } from '@cieslacalc/roof-math';
 import { MemoryStorage } from '../projects/memory-storage';
 import {
   defaultMonoPitchDraft,
   loadMonoPitchDraft,
-  monoPitchDraftFromImport,
   monoPitchDraftIssues,
+  monoPitchProjectFromDraft,
   monoPitchSystemInput,
   resolveDraftPitch,
   saveMonoPitchDraft,
@@ -147,59 +151,45 @@ describe('pitch from the plate tops (VNext-7C)', () => {
   });
 });
 
-describe('a document import as a mono-pitch draft (VNext-7C)', () => {
-  const values = {
-    buildingLengthMm: 7200,
-    buildingWidthMm: 4200,
-    pitchDeg: 12,
-    eaveOverhangMm: 400,
-    rafterSpacingMm: 800,
-    rafterWidthMm: 80,
-    rafterDepthMm: 200,
-  };
-
-  it('takes what the document gave and the example for the rest', () => {
-    const { draft, fields } = monoPitchDraftFromImport(values, {
-      buildingLength: 'document',
-      buildingWidth: 'document',
-      pitch: 'user',
-      eave: 'document',
-      spacing: 'roofcalc-default',
-      rafterWidth: 'roofcalc-default',
-      rafterDepth: 'roofcalc-default',
+describe('the calculation as a project (VNext-8, ADR-016)', () => {
+  it('gives the project the same roof the workspace computed, layers included', () => {
+    const { template, buildUp } = monoPitchProjectFromDraft(
+      defaultMonoPitchDraft,
+    );
+    expect(template.type).toBe('mono-pitch');
+    const document = createRoofProjectDocument(template, { buildUp });
+    expect(document.project.roof).toEqual(template);
+    expect(resolveRoofTemplate(template).calculation).toEqual(
+      resolveMonoPitchRoofSystem(monoPitchSystemInput(defaultMonoPitchDraft))
+        .framing.calculation,
+    );
+    expect(buildUp).toEqual({
+      battenLayout: {
+        enabled: true,
+        mode: 'manual',
+        gaugeMm: 340,
+        eaveOffsetMm: 50,
+        battenWidthMm: 60,
+        battenHeightMm: 40,
+      },
+      counterBattens: { enabled: true, widthMm: 50, heightMm: 25 },
+      membrane: { enabled: true },
     });
-    expect(draft).toEqual({
-      ...defaultMonoPitchDraft,
-      buildingLengthMm: 7200,
-      runMm: 4200,
-      pitchDeg: 12,
-      lowEaveOverhangMm: 400,
-    });
-    expect(fields).toEqual([
-      'buildingLengthMm',
-      'runMm',
-      'pitchDeg',
-      'lowEaveOverhangMm',
-    ]);
   });
 
-  it('computes the imported carport with the shared solver', () => {
-    const { draft } = monoPitchDraftFromImport(values, {
-      buildingLength: 'document',
-      buildingWidth: 'document',
-      pitch: 'document',
-      eave: 'document',
-      spacing: 'document',
-      rafterWidth: 'document',
-      rafterDepth: 'document',
+  it('leaves out switched-off layers and keeps an abutment', () => {
+    const { template, buildUp } = monoPitchProjectFromDraft({
+      ...defaultMonoPitchDraft,
+      topEdge: 'abutment',
+      battensEnabled: false,
+      counterBattensEnabled: false,
+      membraneEnabled: false,
     });
-    expect(monoPitchDraftIssues(draft)).toEqual({});
-    const { framing } = resolveMonoPitchRoofSystem(monoPitchSystemInput(draft));
-    // 7200 − 80 = 7120 between the outer axes at most 800 apart: 9 gaps.
-    expect(framing.rafterSpacing.stationCount).toBe(10);
-    expect(framing.plates.differenceMm).toBeCloseTo(
-      (4200 - 140) * Math.tan((12 * Math.PI) / 180),
-      6,
-    );
+    expect(buildUp).toEqual({});
+    expect(template).toMatchObject({
+      topEdge: 'abutment',
+      highOverhangMm: 0,
+      highSupport: { kind: 'ledger' },
+    });
   });
 });

@@ -1,13 +1,13 @@
 import { z } from 'zod';
 import type { MonoPitchRoofSystemInput } from '@cieslacalc/calculator-core';
 import type {
-  NumericRoofField,
-  RoofStartParameters,
-  ValueProvenance,
-} from '@cieslacalc/document-import-core';
+  MonoPitchRoofTemplateSpec,
+  RoofBuildUp,
+} from '@cieslacalc/timber-model';
 import {
   monoPitchFramingSpecSchema,
   monoPitchFromPlateTops,
+  monoPitchTemplateFromFraming,
 } from '@cieslacalc/roof-math';
 
 /**
@@ -396,62 +396,40 @@ function safeStorage(): Storage | undefined {
   }
 }
 
-/** VNext-7C: the draft field each document parameter fills. */
-const DRAFT_FIELD_OF_IMPORT = {
-  buildingLength: 'buildingLengthMm',
-  buildingWidth: 'runMm',
-  pitch: 'pitchDeg',
-  eave: 'lowEaveOverhangMm',
-  spacing: 'rafterSpacingMm',
-  rafterWidth: 'rafterWidthMm',
-  rafterDepth: 'rafterDepthMm',
-} as const satisfies Record<NumericRoofField, MonoPitchNumberField>;
-
-/** The example's values under the import's names (labelled defaults). */
-export const monoPitchImportDefaults: Omit<RoofStartParameters, 'roofType'> = {
-  buildingLengthMm: defaultMonoPitchDraft.buildingLengthMm,
-  buildingWidthMm: defaultMonoPitchDraft.runMm,
-  pitchDeg: defaultMonoPitchDraft.pitchDeg,
-  eaveOverhangMm: defaultMonoPitchDraft.lowEaveOverhangMm,
-  rafterSpacingMm: defaultMonoPitchDraft.rafterSpacingMm,
-  rafterWidthMm: defaultMonoPitchDraft.rafterWidthMm,
-  rafterDepthMm: defaultMonoPitchDraft.rafterDepthMm,
-};
-
-/** Where an imported mono-pitch draft came from, for the workspace note. */
-export interface MonoPitchImportOrigin {
-  fileName: string;
-  /** Draft fields the document (or the user in its review) gave. */
-  fields: MonoPitchNumberField[];
-}
-
 /**
- * A reviewed import as a fresh draft: the document's values where it gave
- * them, the example everywhere else (never the browser's last draft, so a
- * new document never inherits another roof's supports).
+ * VNext-8 (ADR-016): this calculation as a project — the roof template the
+ * framing already is, and the layers as the project's build-up. Membrane
+ * roll data stays a workspace convenience; the project chooses a product.
  */
-export function monoPitchDraftFromImport(
-  values: Omit<RoofStartParameters, 'roofType'>,
-  provenance: Record<NumericRoofField, ValueProvenance>,
-): { draft: MonoPitchDraft; fields: MonoPitchNumberField[] } {
-  const draft: MonoPitchDraft = { ...defaultMonoPitchDraft, purlins: [] };
-  const fields: MonoPitchNumberField[] = [];
-  const valueOf: Record<NumericRoofField, number> = {
-    buildingLength: values.buildingLengthMm,
-    buildingWidth: values.buildingWidthMm,
-    pitch: values.pitchDeg,
-    eave: values.eaveOverhangMm,
-    spacing: values.rafterSpacingMm,
-    rafterWidth: values.rafterWidthMm,
-    rafterDepth: values.rafterDepthMm,
+export function monoPitchProjectFromDraft(draft: MonoPitchDraft): {
+  template: MonoPitchRoofTemplateSpec;
+  buildUp: RoofBuildUp;
+} {
+  return {
+    template: monoPitchTemplateFromFraming(monoPitchSystemInput(draft).framing),
+    buildUp: {
+      ...(draft.battensEnabled
+        ? {
+            battenLayout: {
+              enabled: true,
+              mode: 'manual',
+              gaugeMm: draft.battenGaugeMm,
+              eaveOffsetMm: draft.battenEaveOffsetMm,
+              battenWidthMm: draft.battenWidthMm,
+              battenHeightMm: draft.battenHeightMm,
+            },
+          }
+        : {}),
+      ...(draft.counterBattensEnabled
+        ? {
+            counterBattens: {
+              enabled: true,
+              widthMm: draft.counterBattenWidthMm,
+              heightMm: draft.counterBattenHeightMm,
+            },
+          }
+        : {}),
+      ...(draft.membraneEnabled ? { membrane: { enabled: true } } : {}),
+    },
   };
-  for (const [source, target] of Object.entries(DRAFT_FIELD_OF_IMPORT) as [
-    NumericRoofField,
-    MonoPitchNumberField,
-  ][]) {
-    if (provenance[source] === 'roofcalc-default') continue;
-    draft[target] = valueOf[source];
-    fields.push(target);
-  }
-  return { draft, fields };
 }

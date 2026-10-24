@@ -15,7 +15,9 @@ async function openMaterialProject(
   ) as ProjectRecordV1;
   record.id = 'v36-browser-project';
   record.name = 'V36 · plan materiałów';
-  record.document.project.roof.halfRunMm = 2000;
+  const roof = record.document.project.roof;
+  if (roof.type === 'mono-pitch') throw new Error('fixture 05 is a gable');
+  roof.halfRunMm = 2000;
   record.document.project.roof.rafterSection = { widthMm: 45, depthMm: 145 };
   const tiles = JSON.parse(
     readFileSync(

@@ -78,11 +78,18 @@ export function createK1CuttingRequirement(
   )
     return { status: 'unresolved', reason: 'incomplete-k1-section' };
 
-  const blank = resolveK1FabricationBlank(
-    resolved.calculation.assembly,
-    resolved.template.ridge.thicknessMm,
-    resolved.template.ridge.connection ?? 'ridge-board',
-  );
+  const blank =
+    'monoPitch' in resolved
+      ? resolveK1FabricationBlank(
+          resolved.calculation.assembly,
+          0,
+          'top-plumb-cut',
+        )
+      : resolveK1FabricationBlank(
+          resolved.calculation.assembly,
+          resolved.template.ridge.thicknessMm,
+          resolved.template.ridge.connection ?? 'ridge-board',
+        );
   if (blank.status === 'unresolved') return blank;
   if (blank.finishedGeometryReference.memberPrototypeId !== prototype.id)
     return { status: 'unresolved', reason: 'unmatched-fabrication-reference' };

@@ -359,16 +359,13 @@ describe('mono-pitch roof', () => {
     );
   });
 
-  it('is complete geometry but NOT a roof RoofCalc calculates yet', () => {
+  it('is complete geometry, but a drawn roof is not a calculated one', () => {
+    // VNext-8 (ADR-016): the mono-pitch family is calculated — by its
+    // solver. This graph is a hand-made fixture, so it still is not.
     const assessment = assessRoofScene(graph);
     expect(assessment.geometry).toBe('complete');
     expect(assessment.calculation).toBe('not-supported');
     expect(assessment.limits).toEqual([
-      {
-        code: 'template-not-calculated',
-        structureId: 'lean-to',
-        template: 'mono-pitch',
-      },
       { code: 'not-from-solver', structureId: 'lean-to' },
     ]);
   });

@@ -4,6 +4,8 @@ import { datumDisplayLabel } from '@cieslacalc/drawing-engine';
 import { formatLength, formatNumber } from '../format';
 import { useAssembly } from './store';
 import type { Calculation } from './Inputs';
+import { ROOF_FAMILY_LABEL } from './roof-family';
+import { roofTemplateSpanMm } from '@cieslacalc/roof-math';
 import type {
   ResolvedMemberPrototype,
   ResolvedRafterSpacing,
@@ -367,23 +369,33 @@ export function ContextualResults({
       >
         <header>
           <span>{t('assembly.roofSummary')}</span>
-          <strong>
-            {t(
-              `assembly.${resolved.template.type === 'hip' ? 'hipRoof' : 'gableRoof'}`,
-            )}
-          </strong>
+          <strong>{t(ROOF_FAMILY_LABEL[resolved.template.type])}</strong>
         </header>
         <div className="a-results">
           <Metric label={t('assembly.footprint')} main>
             {length(resolved.template.buildingLengthMm)} ×{' '}
-            {length(resolved.template.halfRunMm * 2)}
+            {length(roofTemplateSpanMm(resolved.template))}
           </Metric>
-          <Metric label={t('assembly.ridgeLength')}>
-            {length(ridgeLength)}
-          </Metric>
-          <Metric label={t('assembly.ridgeHeight')}>
-            {length(resolved.ridgeHeightMm)}
-          </Metric>
+          {'monoPitch' in resolved ? (
+            <>
+              {/* VNext-8: no ridge — what the walls must be built to. */}
+              <Metric label={t('assembly.monoPitch.results.plates')}>
+                {length(resolved.monoPitch.plates.differenceMm)}
+              </Metric>
+              <Metric label={t('assembly.monoPitch.results.rise')}>
+                {length(resolved.monoPitch.surface.riseMm)}
+              </Metric>
+            </>
+          ) : (
+            <>
+              <Metric label={t('assembly.ridgeLength')}>
+                {length(ridgeLength)}
+              </Metric>
+              <Metric label={t('assembly.ridgeHeight')}>
+                {length(resolved.ridgeHeightMm)}
+              </Metric>
+            </>
+          )}
           <Metric label={t('assembly.stock')} testId="stock-length">
             {length(resolved.calculation.plan.minimumStockLengthMm)}
           </Metric>
@@ -526,14 +538,16 @@ export function ContextualResults({
           context.support.section.widthMm,
           context.support.section.heightMm,
         )
-      : section(
-          resolved.template.ridge.thicknessMm,
-          resolved.template.rafterSection.depthMm,
-        );
+      : 'monoPitch' in resolved
+        ? '—'
+        : section(
+            resolved.template.ridge.thicknessMm,
+            resolved.template.rafterSection.depthMm,
+          );
     const connected = skeleton.members.filter((member) =>
       context.supportKind === 'purlin'
         ? member.kind === 'rafter' &&
-          (resolved.template.type === 'gable' ||
+          (resolved.template.type !== 'hip' ||
             member.side === 'left' ||
             member.side === 'right')
         : ['rafter', 'hip-rafter', 'jack-rafter'].includes(member.kind),

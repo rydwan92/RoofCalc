@@ -102,8 +102,10 @@ const copy = {
     roof: 'Dach',
     gable: 'dwuspadowy',
     hip: 'kopertowy',
+    'mono-pitch': 'jednospadowy',
     length: 'Długość budynku',
     halfRun: 'Połowa rozpiętości',
+    span: 'Rozpiętość',
     pitch: 'Nachylenie',
     netArea: 'Powierzchnia netto',
     openings: 'Otwory',
@@ -134,13 +136,18 @@ const copy = {
       'K1 jest docięta do bliskiej płaszczyzny pionowej deski kalenicowej osadzonej centralnie.',
     ridgeNoteDirect:
       'K1 dochodzi bezpośrednio do osi kalenicy - przeciwległe krokwie stykają się bez deski kalenicowej.',
+    topNote:
+      'Górny koniec K1 to cięcie pionowe nad podporą górną albo przy ścianie — dach jednospadowy nie ma kalenicy.',
     structure: 'Konstrukcja więźby',
     structureRafter: 'Więźba krokwiowa',
     structureCollarTie: 'Więźba krokwiowo-jętkowa',
     datum:
       'Punkt odniesienia: zewnętrzny okap. Oznacz górną i dolną krawędź oraz kierunek okap → kalenica.',
+    datumTop:
+      'Punkt odniesienia: zewnętrzny okap. Oznacz górną i dolną krawędź oraz kierunek okap → góra połaci.',
     birdsmouth: 'Zacios przy podporze',
     ridgeCut: 'Cięcie przy kalenicy',
+    topCut: 'Cięcie górne',
     dimensions: 'Wymiary kontrolne',
     marking: 'Trasowanie',
     stock: 'Długość handlowa',
@@ -281,9 +288,11 @@ const copy = {
     },
     scopeText: {
       'roof-geometry': (p: Params) =>
-        `Geometria dachu ${p.roofType === 'hip' ? 'kopertowego' : 'dwuspadowego'}, nachylenie ${num(p.pitchDeg)}°.`,
+        `Geometria dachu ${p.roofType === 'hip' ? 'kopertowego' : p.roofType === 'mono-pitch' ? 'jednospadowego' : 'dwuspadowego'}, nachylenie ${num(p.pitchDeg)}°.`,
       'k1-ridge-board': (p: Params) =>
         `K1 (${p.count} szt.): przygotowanie i trasowanie z centralną deską kalenicową.`,
+      'k1-top-cut': (p: Params) =>
+        `K1 (${p.count} szt.): przygotowanie i trasowanie krokwi dachu jednospadowego, z cięciem pionowym u góry.`,
       'k1-direct-meeting': (p: Params) =>
         `K1 (${p.count} szt.): bezpośredni styk przeciwległych krokwi w osi kalenicy.`,
       'k1-cutting-plan': (p: Params) =>
@@ -406,8 +415,10 @@ const copy = {
     roof: 'Roof',
     gable: 'gable',
     hip: 'hip',
+    'mono-pitch': 'mono-pitch',
     length: 'Building length',
     halfRun: 'Half run',
+    span: 'Span',
     pitch: 'Pitch',
     netArea: 'Net area',
     openings: 'Openings',
@@ -437,13 +448,18 @@ const copy = {
       'K1 terminates at the near face of a centered vertical ridge board.',
     ridgeNoteDirect:
       'K1 reaches the ridge axis directly - opposing rafters meet with no ridge board.',
+    topNote:
+      'The upper end of K1 is a plumb cut over the high support or at the wall — a mono-pitch roof has no ridge.',
     structure: 'Roof structural system',
     structureRafter: 'Rafter roof',
     structureCollarTie: 'Rafter and collar-tie roof',
     datum:
       'Datum: outer eave. Mark top and bottom edges and the direction eave → ridge.',
+    datumTop:
+      'Datum: outer eave. Mark top and bottom edges and the direction eave → top of the roof.',
     birdsmouth: 'Support birdsmouth',
     ridgeCut: 'Ridge cut',
+    topCut: 'Top cut',
     dimensions: 'Control dimensions',
     marking: 'Marking',
     stock: 'Stock length',
@@ -585,9 +601,11 @@ const copy = {
     },
     scopeText: {
       'roof-geometry': (p: Params) =>
-        `${p.roofType === 'hip' ? 'Hip' : 'Gable'} roof geometry, pitch ${num(p.pitchDeg)}°.`,
+        `${p.roofType === 'hip' ? 'Hip' : p.roofType === 'mono-pitch' ? 'Mono-pitch' : 'Gable'} roof geometry, pitch ${num(p.pitchDeg)}°.`,
       'k1-ridge-board': (p: Params) =>
         `K1 (${p.count} pcs): preparation and marking against a centred ridge board.`,
+      'k1-top-cut': (p: Params) =>
+        `K1 (${p.count} pcs): preparation and marking of mono-pitch rafters with a plumb cut at the top.`,
       'k1-direct-meeting': (p: Params) =>
         `K1 (${p.count} pcs): direct meeting of opposing rafters on the ridge axis.`,
       'k1-cutting-plan': (p: Params) =>
@@ -929,10 +947,17 @@ function SectionBody({
                   : m.structureRafter}
               </strong>
             </div>
-            <div>
-              <span>{m.halfRun}</span>
-              <strong>{length(section.halfRunMm)}</strong>
-            </div>
+            {section.halfRunMm === undefined ? (
+              <div>
+                <span>{m.span}</span>
+                <strong>{length(section.spanMm)}</strong>
+              </div>
+            ) : (
+              <div>
+                <span>{m.halfRun}</span>
+                <strong>{length(section.halfRunMm)}</strong>
+              </div>
+            )}
             <div>
               <span>{m.pitch}</span>
               <strong>{section.pitchDeg}°</strong>
@@ -1216,7 +1241,9 @@ function SectionBody({
             </div>
             <small>{m.blankNote}</small>
           </div>
-          <p className="doc-note">{m.datum}</p>
+          <p className="doc-note">
+            {section.ridgeConnection === 'top-plumb-cut' ? m.datumTop : m.datum}
+          </p>
           <Diagram model={section.drawing} label="K1" height={185} />
           <div className="doc-detail-grid">
             {section.details.map((detail, index) => (
@@ -1224,7 +1251,9 @@ function SectionBody({
                 <h3>
                   {detail.type === 'birdsmouth-detail'
                     ? m.birdsmouth
-                    : m.ridgeCut}
+                    : section.ridgeConnection === 'top-plumb-cut'
+                      ? m.topCut
+                      : m.ridgeCut}
                 </h3>
                 <Diagram
                   model={detail.drawing}
@@ -1262,9 +1291,11 @@ function SectionBody({
             ))}
           </div>
           <p className="doc-warning">
-            {section.ridgeConnection === 'direct-meeting'
-              ? m.ridgeNoteDirect
-              : m.ridgeNote}
+            {section.ridgeConnection === 'top-plumb-cut'
+              ? m.topNote
+              : section.ridgeConnection === 'direct-meeting'
+                ? m.ridgeNoteDirect
+                : m.ridgeNote}
           </p>
         </>
       );

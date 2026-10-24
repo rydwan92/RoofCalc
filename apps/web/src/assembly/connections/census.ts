@@ -32,7 +32,10 @@ export function roofConnectionModel(input: {
   buildUp: RoofBuildUp;
 }): RoofConnectionModel {
   const { template, members, buildUp } = input;
-  const ridgeConnection = template.ridge.connection ?? 'ridge-board';
+  // VNext-8: a mono-pitch roof has no ridge joint; its rafters end in a
+  // plain top cut, and every bearing is a seat notch.
+  const ridged = template.type === 'mono-pitch' ? undefined : template;
+  const ridgeConnection = ridged?.ridge.connection ?? 'ridge-board';
   const projection = resolveRoofConnectionNodes({
     members,
     ridgeJoint: ridgeConnection === 'ridge-board' ? 'board' : 'paired',
@@ -42,7 +45,7 @@ export function roofConnectionModel(input: {
   const axes = projection.axes.commonRafters + projection.axes.jackRafters;
 
   const seat: ModelledInterface | undefined =
-    template.wallPlate.joint.kind === 'seat-notch'
+    !ridged || ridged.wallPlate.joint.kind === 'seat-notch'
       ? { type: 'seat-notch', status: 'resolved' }
       : undefined;
   const ridge: ModelledInterface =
@@ -100,7 +103,11 @@ export function roofConnectionModel(input: {
         status: jackConnection === 'hip-face-butt' ? 'resolved' : 'undecided',
       },
     },
-    { kind: 'rafter-ridge', count: count('rafter-ridge'), modelled: ridge },
+    {
+      kind: 'rafter-ridge',
+      count: count('rafter-ridge'),
+      ...(ridged ? { modelled: ridge } : {}),
+    },
     {
       kind: 'hip-rafter-ridge',
       count: count('hip-rafter-ridge'),
@@ -135,27 +142,37 @@ export function roofConnectionModel(input: {
       widthMm: template.rafterSection.widthMm,
       depthMm: template.rafterSection.depthMm,
     },
-    'wall-plate': {
-      widthMm: template.wallPlate.section.widthMm,
-      depthMm: template.wallPlate.section.heightMm,
-    },
+    'wall-plate':
+      template.type === 'mono-pitch'
+        ? {
+            widthMm: template.lowSupport.widthMm,
+            depthMm: template.lowSupport.heightMm,
+          }
+        : {
+            widthMm: template.wallPlate.section.widthMm,
+            depthMm: template.wallPlate.section.heightMm,
+          },
   };
   if (template.type === 'hip')
     sections['hip-rafter'] = {
       widthMm: template.hipRafterSection.widthMm,
       depthMm: template.hipRafterSection.depthMm,
     };
-  if (template.ridge.thicknessMm > 0 && template.ridge.depthMm !== undefined)
+  if (
+    ridged &&
+    ridged.ridge.thicknessMm > 0 &&
+    ridged.ridge.depthMm !== undefined
+  )
     sections['ridge-board'] = {
-      widthMm: template.ridge.thicknessMm,
-      depthMm: template.ridge.depthMm,
+      widthMm: ridged.ridge.thicknessMm,
+      depthMm: ridged.ridge.depthMm,
     };
-  const purlin = template.intermediateSupports[0];
+  const purlin: { widthMm: number; heightMm: number } | undefined =
+    template.type === 'mono-pitch'
+      ? template.intermediateSupports[0]
+      : template.intermediateSupports[0]?.section;
   if (purlin)
-    sections.purlin = {
-      widthMm: purlin.section.widthMm,
-      depthMm: purlin.section.heightMm,
-    };
+    sections.purlin = { widthMm: purlin.widthMm, depthMm: purlin.heightMm };
   const collar =
     template.type === 'gable' ? template.structure?.collarTie : undefined;
   if (collar)

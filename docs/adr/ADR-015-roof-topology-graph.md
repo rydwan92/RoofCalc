@@ -156,3 +156,9 @@ and L-with-valley scenes; an overlapping L without a solved junction is
 - The document import recognises a mono-pitch roof and hands the reviewed
   values to the mono-pitch workspace. The import still creates projects only
   for gable and hip; the V2 writer gate is unchanged.
+
+## Addendum — VNext-8 (2026-10-24)
+
+- Refined by ADR-016: a single mono-pitch roof is a template variant in the
+  V1 project, not a reason to write V2. A solver-produced mono-pitch scene
+  is `calculation: supported`; V2 stays the format for composed roofs.

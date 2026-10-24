@@ -36,6 +36,7 @@ import {
   createDefaultRoofWindow,
   gablePitchDegFromRidgeHeight,
   gableRidgeHeightMm,
+  monoPitchRiseMm,
   projectPlaneLocalToWorld,
   resolveRoofFeatureCollisions,
   resolveNearestRoofWindowBay,
@@ -43,6 +44,7 @@ import {
   resolveRoofPlaneBasis,
   roofPlaneIntervalsAtV,
   roofPlaneIds as resolveRoofPlaneIds,
+  roofTemplateSpanMm,
   type BattenLayoutResult,
   type CounterBattenLayoutResult,
   type RoofWindowAlignmentGuide,
@@ -50,6 +52,7 @@ import {
 } from '@cieslacalc/roof-math';
 import type {
   HipRoofSkeleton,
+  RoofFamily,
   ResolvedRafterSpacing,
   RoofSkeleton,
   RoofTemplateSpec,
@@ -451,23 +454,33 @@ function SkeletonCanvasComponent({
     viewportPoint(fit.project(point), viewport, { width, height });
   const worldPoint = (point: { x: number; y: number; z: number }) =>
     viewPoint(projectAxonometric(point));
+  // VNext-8: the cross-section frame — a ridged roof is centred on its
+  // ridge, a mono-pitch roof starts at the low plate's outer face (x = 0).
+  const spanMm = roofTemplateSpanMm(template);
+  const frameLeftMm = template.type === 'mono-pitch' ? 0 : -template.halfRunMm;
+  const frameRightMm = frameLeftMm + spanMm;
+  /** Plan x of the mono-pitch rafters' top ends: the pitch handle's base. */
+  const topEndXmm =
+    template.type === 'mono-pitch'
+      ? template.runMm + template.highOverhangMm
+      : 0;
   const spacingStationAxes =
-    template.type === 'gable' && policy.effectiveDimensionLevel !== 'minimal'
+    template.type !== 'hip' && policy.effectiveDimensionLevel !== 'minimal'
       ? spacing.stations.map((station) => ({
           id: station.id,
           alongBuildingMm: station.alongBuildingMm,
           from: worldPoint({
-            x: -template.halfRunMm,
+            x: frameLeftMm,
             y: station.alongBuildingMm,
             z: 0,
           }),
           to: worldPoint({
-            x: template.halfRunMm,
+            x: frameRightMm,
             y: station.alongBuildingMm,
             z: 0,
           }),
           dimensionPoint: worldPoint({
-            x: template.halfRunMm + 320,
+            x: frameRightMm + 320,
             y: station.alongBuildingMm,
             z: 0,
           }),
@@ -475,7 +488,7 @@ function SkeletonCanvasComponent({
       : [];
   const spacingDimensions = createSpacingDimensionPresentation(
     spacing.stations,
-    template.type === 'gable' ? policy.effectiveDimensionLevel : 'minimal',
+    template.type !== 'hip' ? policy.effectiveDimensionLevel : 'minimal',
   );
   const spacingSummaryDimensions = createSpacingDimensionPresentation(
     spacing.stations,
@@ -490,23 +503,35 @@ function SkeletonCanvasComponent({
     `${formatLength(value, state.unit, i18n.language)} ${state.unit}`;
   const slope = Math.tan((template.pitchDeg * Math.PI) / 180);
   const pitchHandleY = template.type === 'hip' ? template.halfRunMm : 0;
+  const pitchHandleX = topEndXmm;
   const lengthHandleZ = template.type === 'gable' ? skeleton.ridgeHeightMm : 0;
+  const purlinSupports = state.spec.supports.filter(
+    (support) => support.kind === 'purlin',
+  );
   const handles: Handle[] = [
     {
       id: 'handle:pitch',
       kind: 'pitch',
-      at: worldPoint({ x: 0, y: pitchHandleY, z: skeleton.ridgeHeightMm }),
-      axisStart: worldPoint({ x: 0, y: pitchHandleY, z: 0 }),
-      axisEnd: worldPoint({ x: 0, y: pitchHandleY, z: handleRangeMm }),
+      at: worldPoint({
+        x: pitchHandleX,
+        y: pitchHandleY,
+        z: skeleton.ridgeHeightMm,
+      }),
+      axisStart: worldPoint({ x: pitchHandleX, y: pitchHandleY, z: 0 }),
+      axisEnd: worldPoint({
+        x: pitchHandleX,
+        y: pitchHandleY,
+        z: handleRangeMm,
+      }),
       axisLengthMm: handleRangeMm,
     },
     {
       id: 'handle:span',
       kind: 'span',
-      at: worldPoint({ x: template.halfRunMm, y: 0, z: 0 }),
-      axisStart: worldPoint({ x: template.halfRunMm, y: 0, z: 0 }),
+      at: worldPoint({ x: frameRightMm, y: 0, z: 0 }),
+      axisStart: worldPoint({ x: frameRightMm, y: 0, z: 0 }),
       axisEnd: worldPoint({
-        x: template.halfRunMm + handleRangeMm,
+        x: frameRightMm + handleRangeMm,
         y: 0,
         z: 0,
       }),
@@ -532,22 +557,22 @@ function SkeletonCanvasComponent({
       }),
       axisLengthMm: handleRangeMm,
     },
-    ...template.intermediateSupports.map((support) => ({
+    ...purlinSupports.map((support) => ({
       id: `handle:${support.id}`,
       kind: 'purlin' as const,
       selectionId: support.id,
       at: worldPoint({
-        x: -template.halfRunMm + support.placement.xMm,
+        x: frameLeftMm + support.placement.xMm,
         y: template.type === 'hip' ? support.placement.xMm : 0,
         z: support.placement.xMm * slope,
       }),
       axisStart: worldPoint({
-        x: -template.halfRunMm + support.placement.xMm,
+        x: frameLeftMm + support.placement.xMm,
         y: template.type === 'hip' ? support.placement.xMm : 0,
         z: support.placement.xMm * slope,
       }),
       axisEnd: worldPoint({
-        x: -template.halfRunMm + support.placement.xMm + handleRangeMm,
+        x: frameLeftMm + support.placement.xMm + handleRangeMm,
         y: template.type === 'hip' ? support.placement.xMm + handleRangeMm : 0,
         z: (support.placement.xMm + handleRangeMm) * slope,
       }),
@@ -900,10 +925,12 @@ function SkeletonCanvasComponent({
         handle.kind === 'pitch'
           ? skeleton.ridgeHeightMm
           : handle.kind === 'span'
-            ? template.halfRunMm
+            ? template.type === 'mono-pitch'
+              ? template.runMm
+              : template.halfRunMm
             : handle.kind === 'length'
               ? template.buildingLengthMm
-              : template.intermediateSupports.find(
+              : purlinSupports.find(
                   (support) => support.id === handle.selectionId,
                 )?.placement.xMm,
       supportId: handle.selectionId,
@@ -1073,15 +1100,25 @@ function SkeletonCanvasComponent({
     });
     if (active.kind === 'pitch') {
       const pitch = clampGablePitchDeg(
-        gablePitchDegFromRidgeHeight(template.halfRunMm, Math.max(0, raw)),
+        template.type === 'mono-pitch'
+          ? (Math.atan(Math.max(0, raw) / topEndXmm) * 180) / Math.PI
+          : gablePitchDegFromRidgeHeight(template.halfRunMm, Math.max(0, raw)),
       );
       const snappedPitch = Math.round(pitch * 2) / 2;
       state.setCanonicalField('roof.pitchDeg', snappedPitch);
       setPreview(`${t('assembly.pitch')} ${snappedPitch.toFixed(1)}°`);
     } else if (active.kind === 'span') {
-      const run = clampRoofHalfRunMm(template, Math.round(raw / 10) * 10);
-      state.setCanonicalField('roof.runMm', run);
-      setPreview(`${t('assembly.span')} ${length(run * 2)}`);
+      if (template.type === 'mono-pitch') {
+        // The run is the span; the template's own rules refuse a span the
+        // supports no longer fit (the last valid value stays).
+        const run = Math.max(1, Math.round(raw / 10) * 10);
+        state.setCanonicalField('mono.runMm', run);
+        setPreview(`${t('assembly.span')} ${length(run)}`);
+      } else {
+        const run = clampRoofHalfRunMm(template, Math.round(raw / 10) * 10);
+        state.setCanonicalField('roof.runMm', run);
+        setPreview(`${t('assembly.span')} ${length(run * 2)}`);
+      }
     } else if (active.kind === 'length') {
       const buildingLength = Math.max(
         template.type === 'hip' ? template.halfRunMm * 2 : 1,
@@ -1231,13 +1268,19 @@ function SkeletonCanvasComponent({
         clampGablePitchDeg(template.pitchDeg + direction * 0.5 * multiplier),
       );
     } else if (handle.kind === 'span') {
-      state.setCanonicalField(
-        'roof.runMm',
-        clampRoofHalfRunMm(
-          template,
-          template.halfRunMm + direction * 10 * multiplier,
-        ),
-      );
+      if (template.type === 'mono-pitch')
+        state.setCanonicalField(
+          'mono.runMm',
+          Math.max(1, template.runMm + direction * 10 * multiplier),
+        );
+      else
+        state.setCanonicalField(
+          'roof.runMm',
+          clampRoofHalfRunMm(
+            template,
+            template.halfRunMm + direction * 10 * multiplier,
+          ),
+        );
     } else if (handle.kind === 'length') {
       state.setCanonicalField(
         'template.buildingLengthMm',
@@ -1264,7 +1307,7 @@ function SkeletonCanvasComponent({
   };
   const handleValue = (handle: Handle) => {
     if (handle.kind === 'pitch') return template.pitchDeg;
-    if (handle.kind === 'span') return template.halfRunMm * 2;
+    if (handle.kind === 'span') return spanMm;
     if (handle.kind === 'length') return template.buildingLengthMm;
     return state.spec.supports.find(
       (support) => support.id === handle.selectionId,
@@ -1377,21 +1420,27 @@ function SkeletonCanvasComponent({
           state.workbench.buildUpView === 'battens' &&
           selectedStore.battenLayout?.enabled
             ? `${battenResult.battens.length} ${t('assembly.battenRows').toLowerCase()} · ${uniformGaugeMm !== undefined ? length(uniformGaugeMm) : '—'} · ${new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 1 }).format(battenResult.totalLengthMm / 1000)} m`
-            : template.type === 'hip'
-              ? t('assembly.hipSkeletonCount', {
-                  common: skeleton.members.filter(
+            : template.type === 'mono-pitch'
+              ? t('assembly.monoRafterCount', {
+                  count: skeleton.members.filter(
                     (member) => member.kind === 'rafter',
                   ).length,
-                  jacks: skeleton.members.filter(
-                    (member) => member.kind === 'jack-rafter',
-                  ).length,
                 })
-              : t('assembly.rafterPairCount', {
-                  count:
-                    skeleton.members.filter(
+              : template.type === 'hip'
+                ? t('assembly.hipSkeletonCount', {
+                    common: skeleton.members.filter(
                       (member) => member.kind === 'rafter',
-                    ).length / 2,
-                })}
+                    ).length,
+                    jacks: skeleton.members.filter(
+                      (member) => member.kind === 'jack-rafter',
+                    ).length,
+                  })
+                : t('assembly.rafterPairCount', {
+                    count:
+                      skeleton.members.filter(
+                        (member) => member.kind === 'rafter',
+                      ).length / 2,
+                  })}
         </span>
       </div>
       {selectedStore.viewPreset === 'layers' &&
@@ -1416,9 +1465,7 @@ function SkeletonCanvasComponent({
           data-testid="skeleton-drawing"
           data-fit-scale={fit.scale}
           role="group"
-          aria-label={t(
-            `assembly.${template.type === 'hip' ? 'hipSkeletonDrawing' : 'skeletonDrawing'}`,
-          )}
+          aria-label={t(SKELETON_DRAWING_LABEL[template.type])}
           style={{ height }}
           onPointerDownCapture={beginTouchCapture}
           onPointerDown={beginPan}
@@ -1433,11 +1480,7 @@ function SkeletonCanvasComponent({
           }}
           onLostPointerCapture={() => finishDrag(true)}
         >
-          <title>
-            {t(
-              `assembly.${template.type === 'hip' ? 'hipSkeletonDrawing' : 'skeletonDrawing'}`,
-            )}
-          </title>
+          <title>{t(SKELETON_DRAWING_LABEL[template.type])}</title>
           <rect
             className="a-skeleton-background"
             data-skeleton-background="true"
@@ -2312,14 +2355,25 @@ function SkeletonCanvasComponent({
         </div>
         <div>
           <dt>{t('assembly.span')}</dt>
-          <dd>{length(template.halfRunMm * 2)}</dd>
+          <dd>{length(spanMm)}</dd>
         </div>
-        <div>
-          <dt>{t('assembly.ridgeHeight')}</dt>
-          <dd>
-            {length(gableRidgeHeightMm(template.halfRunMm, template.pitchDeg))}
-          </dd>
-        </div>
+        {template.type === 'mono-pitch' ? (
+          <div>
+            <dt>{t('assembly.monoPitch.results.rise')}</dt>
+            <dd>
+              {length(monoPitchRiseMm(template.runMm, template.pitchDeg))}
+            </dd>
+          </div>
+        ) : (
+          <div>
+            <dt>{t('assembly.ridgeHeight')}</dt>
+            <dd>
+              {length(
+                gableRidgeHeightMm(template.halfRunMm, template.pitchDeg),
+              )}
+            </dd>
+          </div>
+        )}
         {template.type === 'hip' && (
           <div>
             <dt>{t('assembly.ridgeLength')}</dt>
@@ -2344,7 +2398,7 @@ function SkeletonCanvasComponent({
         <div>
           <dt>
             {t(
-              `assembly.${template.type === 'hip' ? 'spacingAxes' : 'rafterPairs'}`,
+              `assembly.${template.type === 'hip' ? 'spacingAxes' : template.type === 'mono-pitch' ? 'monoRafters' : 'rafterPairs'}`,
             )}
           </dt>
           <dd>{spacing.stationCount}</dd>
@@ -2362,3 +2416,10 @@ function SkeletonCanvasComponent({
 }
 
 export const SkeletonCanvas = memo(SkeletonCanvasComponent);
+
+/** The drawing's accessible name per roof family (ADR-016). */
+const SKELETON_DRAWING_LABEL: Record<RoofFamily, string> = {
+  gable: 'assembly.skeletonDrawing',
+  hip: 'assembly.hipSkeletonDrawing',
+  'mono-pitch': 'assembly.monoSkeletonDrawing',
+};

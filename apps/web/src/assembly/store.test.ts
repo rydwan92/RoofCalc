@@ -11,6 +11,7 @@ import {
 } from '@cieslacalc/calculator-core';
 import { supportField, useAssembly } from './store';
 import { createRoofSkeleton } from '@cieslacalc/roof-math';
+import { ridged } from './test-templates';
 
 function memberInstances() {
   const template = useAssembly.getState().template;
@@ -195,14 +196,16 @@ it('converts the controlling joint parameter without changing the notch', () => 
 it('switches roof templates as one undoable transaction and preserves compatible values', () => {
   const before = structuredClone(useAssembly.getState().template);
   useAssembly.getState().setRoofType('hip');
-  const hip = useAssembly.getState().template;
+  const hip = ridged(useAssembly.getState().template);
   expect(hip.type).toBe('hip');
-  expect(hip.halfRunMm).toBe(before.halfRunMm);
+  expect(hip.halfRunMm).toBe(ridged(before).halfRunMm);
   expect(hip.pitchDeg).toBe(before.pitchDeg);
   expect(useAssembly.getState().historyPast).toHaveLength(1);
   useAssembly.getState().undo();
   expect(useAssembly.getState().template.type).toBe('gable');
-  expect(useAssembly.getState().template.halfRunMm).toBe(before.halfRunMm);
+  expect(ridged(useAssembly.getState().template).halfRunMm).toBe(
+    ridged(before).halfRunMm,
+  );
   useAssembly.getState().redo();
   expect(useAssembly.getState().template.type).toBe('hip');
 });
@@ -293,14 +296,14 @@ it('"Przywróć przykład" is one undoable edit, never a history wipe (VNext-6.2
 it('updates canonical millimetres directly for drawing handles without display-unit conversion', () => {
   useAssembly.getState().setUnit('m');
   useAssembly.getState().setCanonicalField('roof.runMm', 4210.5);
-  expect(useAssembly.getState().template.halfRunMm).toBe(4210.5);
+  expect(ridged(useAssembly.getState().template).halfRunMm).toBe(4210.5);
   expect(useAssembly.getState().spec.roof.runMm).toBe(4210.5);
 });
 it('coalesces a purlin gesture and restores its start state when cancelled', () => {
   useAssembly.getState().add();
   useAssembly.setState({ historyPast: [], historyFuture: [] });
-  const start =
-    useAssembly.getState().template.intermediateSupports[0]!.placement.xMm;
+  const start = ridged(useAssembly.getState().template).intermediateSupports[0]!
+    .placement.xMm;
   useAssembly.getState().beginTransaction();
   useAssembly.getState().movePurlin('support:purlin-1', start + 100);
   useAssembly.getState().movePurlin('support:purlin-1', start + 250);
@@ -309,17 +312,20 @@ it('coalesces a purlin gesture and restores its start state when cancelled', () 
   expect(useAssembly.getState().historyPast).toHaveLength(1);
   useAssembly.getState().undo();
   expect(
-    useAssembly.getState().template.intermediateSupports[0]!.placement.xMm,
+    ridged(useAssembly.getState().template).intermediateSupports[0]!.placement
+      .xMm,
   ).toBe(start);
   useAssembly.getState().redo();
   expect(
-    useAssembly.getState().template.intermediateSupports[0]!.placement.xMm,
+    ridged(useAssembly.getState().template).intermediateSupports[0]!.placement
+      .xMm,
   ).toBe(start + 250);
   useAssembly.getState().beginTransaction();
   useAssembly.getState().movePurlin('support:purlin-1', start + 300);
   useAssembly.getState().cancelTransaction();
   expect(
-    useAssembly.getState().template.intermediateSupports[0]!.placement.xMm,
+    ridged(useAssembly.getState().template).intermediateSupports[0]!.placement
+      .xMm,
   ).toBe(start + 250);
 });
 it('applies an equal-gap purlin proposal as one canonical undo step', () => {
@@ -334,9 +340,9 @@ it('applies an equal-gap purlin proposal as one canonical undo step', () => {
 
   useAssembly.getState().distributePurlins();
 
-  const positions = useAssembly
-    .getState()
-    .template.intermediateSupports.map((support) => support.placement.xMm);
+  const positions = ridged(
+    useAssembly.getState().template,
+  ).intermediateSupports.map((support) => support.placement.xMm);
   expect(positions).toEqual([...positions].sort((a, b) => a - b));
   expect(useAssembly.getState().historyPast).toHaveLength(1);
   expect(useAssembly.getState().projectDocument).not.toEqual(documentBefore);
@@ -344,9 +350,9 @@ it('applies an equal-gap purlin proposal as one canonical undo step', () => {
   expect(useAssembly.getState().template).toEqual(before);
   useAssembly.getState().redo();
   expect(
-    useAssembly
-      .getState()
-      .template.intermediateSupports.map((support) => support.placement.xMm),
+    ridged(useAssembly.getState().template).intermediateSupports.map(
+      (support) => support.placement.xMm,
+    ),
   ).toEqual(positions);
 });
 it('stores roof windows and batten settings in complete undoable project snapshots', () => {
@@ -711,14 +717,22 @@ it('stores membrane and counter-battens canonically while keeping layer navigati
 it('undoes and redoes adding and removing independently allocated purlins', () => {
   useAssembly.getState().add();
   useAssembly.getState().add();
-  expect(useAssembly.getState().template.intermediateSupports).toHaveLength(2);
+  expect(
+    ridged(useAssembly.getState().template).intermediateSupports,
+  ).toHaveLength(2);
   useAssembly.getState().undo();
-  expect(useAssembly.getState().template.intermediateSupports).toHaveLength(1);
+  expect(
+    ridged(useAssembly.getState().template).intermediateSupports,
+  ).toHaveLength(1);
   useAssembly.getState().redo();
   useAssembly.getState().remove('support:purlin-2');
-  expect(useAssembly.getState().template.intermediateSupports).toHaveLength(1);
+  expect(
+    ridged(useAssembly.getState().template).intermediateSupports,
+  ).toHaveLength(1);
   useAssembly.getState().undo();
-  expect(useAssembly.getState().template.intermediateSupports).toHaveLength(2);
+  expect(
+    ridged(useAssembly.getState().template).intermediateSupports,
+  ).toHaveLength(2);
 });
 it('keeps transient workbench changes outside project history and document', () => {
   const before = structuredClone(useAssembly.getState().projectDocument);
@@ -952,21 +966,21 @@ it('measures exact canonical 3D points without changing the project or history',
 });
 
 it('edits, clears and undoes the optional ridge depth canonically', () => {
-  expect(useAssembly.getState().template.ridge.depthMm).toBeUndefined();
+  expect(ridged(useAssembly.getState().template).ridge.depthMm).toBeUndefined();
   useAssembly.setState({ historyPast: [], historyFuture: [] });
 
   useAssembly.getState().setField('ridge.depthMm', '22');
-  expect(useAssembly.getState().template.ridge.depthMm).toBe(22);
+  expect(ridged(useAssembly.getState().template).ridge.depthMm).toBe(22);
   expect(
-    useAssembly.getState().projectDocument.project.roof.ridge.depthMm,
+    ridged(useAssembly.getState().projectDocument.project.roof).ridge.depthMm,
   ).toBe(22);
   expect(useAssembly.getState().historyPast).toHaveLength(1);
 
   useAssembly.getState().undo();
-  expect(useAssembly.getState().template.ridge.depthMm).toBeUndefined();
+  expect(ridged(useAssembly.getState().template).ridge.depthMm).toBeUndefined();
   useAssembly.getState().setField('ridge.depthMm', '22');
   useAssembly.getState().setField('ridge.depthMm', '');
-  expect(useAssembly.getState().template.ridge.depthMm).toBeUndefined();
+  expect(ridged(useAssembly.getState().template).ridge.depthMm).toBeUndefined();
 });
 
 it('commits roof-tile layout intent as one undoable domain edit while task switching stays transient', () => {
@@ -1061,8 +1075,8 @@ it('edits project basics as one history entry while preserving features and cove
   useAssembly.setState({ historyPast: [], historyFuture: [] });
 
   useAssembly.getState().setProjectRoof({
-    ...useAssembly.getState().template,
-    halfRunMm: useAssembly.getState().template.halfRunMm + 500,
+    ...ridged(useAssembly.getState().template),
+    halfRunMm: ridged(useAssembly.getState().template).halfRunMm + 500,
   });
 
   expect(useAssembly.getState().historyPast).toHaveLength(1);
@@ -1213,7 +1227,7 @@ it('selects a ridge connection and reflects it on the assembly spec', () => {
   );
   useAssembly.getState().setRidgeConnection('direct-meeting');
   expect(useAssembly.getState().spec.ridge.connection).toBe('direct-meeting');
-  expect(useAssembly.getState().template.ridge.connection).toBe(
+  expect(ridged(useAssembly.getState().template).ridge.connection).toBe(
     'direct-meeting',
   );
   useAssembly.getState().setRidgeConnection('half-lap');

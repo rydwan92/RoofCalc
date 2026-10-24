@@ -152,15 +152,15 @@ describe('RoofProjectDocumentV1', () => {
 
     expect(
       parseRoofProjectDocument(serializeRoofProjectDocument(document)).project
-        .roof.ridge.depthMm,
-    ).toBe(220);
+        .roof,
+    ).toMatchObject({ type: 'gable', ridge: { depthMm: 220 } });
 
     delete roof.ridge.depthMm;
-    expect(
-      parseRoofProjectDocument(
-        JSON.stringify({ schemaVersion: 1, project: { roof } }),
-      ).project.roof.ridge.depthMm,
-    ).toBeUndefined();
+    const older = parseRoofProjectDocument(
+      JSON.stringify({ schemaVersion: 1, project: { roof } }),
+    ).project.roof;
+    expect(older.type).toBe('gable');
+    expect(older.type !== 'mono-pitch' && 'depthMm' in older.ridge).toBe(false);
   });
 
   it('preserves a covering technical snapshot while older V17 documents normalize to no assignments', () => {

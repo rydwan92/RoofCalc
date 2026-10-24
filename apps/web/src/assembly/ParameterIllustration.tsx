@@ -6,6 +6,7 @@
 export type ParameterIllustrationKind =
   | 'gable'
   | 'hip'
+  | 'mono-pitch'
   | 'building-length'
   | 'building-width'
   | 'pitch'
@@ -54,6 +55,16 @@ function content(kind: ParameterIllustrationKind) {
           <path className="pi-wall" d="M22 74V46H98V74" />
           <path className="pi-roof" d="M14 50L60 18L106 50" />
           <path className="pi-accent" d="M60 18V46" />
+        </>
+      );
+    case 'mono-pitch':
+      // One plane from the low wall up to the higher one (VNext-8).
+      return (
+        <>
+          <path className="pi-ground" d="M8 74H112" />
+          <path className="pi-wall" d="M22 74V52M98 74V28" />
+          <path className="pi-roof" d="M12 55L106 25" />
+          <path className="pi-accent" d="M98 52V28" />
         </>
       );
     case 'hip':

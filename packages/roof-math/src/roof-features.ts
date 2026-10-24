@@ -19,7 +19,29 @@ import {
   planMembraneRolls,
   type MembraneRollPlanIssueCode,
 } from './membrane-layout';
+import { MONO_PITCH_PLANE_ID, monoPitchPlaneBasis } from './mono-pitch-roof';
+import { monoPitchSurfaceFromTemplate } from './mono-pitch-template';
 import { roofTemplateSchema } from './roof-template';
+
+/**
+ * The planes a template's solver produces. Opaque IDs (ADR-007): only
+ * roof-math names them; `roof-surface`'s `roofPlaneIds` is this list.
+ */
+export function templateRoofPlaneIds(template: RoofTemplateSpec): string[] {
+  switch (template.type) {
+    case 'gable':
+      return ['roof-plane:left', 'roof-plane:right'];
+    case 'hip':
+      return [
+        'roof-plane:left',
+        'roof-plane:right',
+        'roof-plane:front',
+        'roof-plane:rear',
+      ];
+    case 'mono-pitch':
+      return [MONO_PITCH_PLANE_ID];
+  }
+}
 
 export interface RoofPlaneBasis {
   id: string;
@@ -263,6 +285,11 @@ export function resolveRoofPlaneBasis(
   template: RoofTemplateSpec,
   roofPlaneId: string,
 ): RoofPlaneBasis {
+  if (template.type === 'mono-pitch') {
+    if (roofPlaneId !== MONO_PITCH_PLANE_ID)
+      throw new RangeError('unknown_roof_plane');
+    return monoPitchPlaneBasis(monoPitchSurfaceFromTemplate(template));
+  }
   const r = template.halfRunMm;
   const e = template.eaveOverhangMm;
   const rise = r * Math.tan((template.pitchDeg * Math.PI) / 180);
@@ -842,15 +869,7 @@ export function resolveBattenLayout(args: {
   autoSource?: BattenAutoSource;
 }): BattenLayoutResult {
   return resolveBattenLayoutOnPlanes({
-    knownRoofPlaneIds:
-      args.template.type === 'gable'
-        ? ['roof-plane:left', 'roof-plane:right']
-        : [
-            'roof-plane:left',
-            'roof-plane:right',
-            'roof-plane:front',
-            'roof-plane:rear',
-          ],
+    knownRoofPlaneIds: templateRoofPlaneIds(args.template),
     planeBasis: (roofPlaneId) =>
       resolveRoofPlaneBasis(args.template, roofPlaneId),
     geometryValid: roofTemplateSchema.safeParse(args.template).success,
@@ -1188,15 +1207,7 @@ export function resolveMembraneLayout(args: {
   features?: RoofFeature[];
 }): MembraneLayoutResult {
   return resolveMembraneLayoutOnPlanes({
-    knownRoofPlaneIds:
-      args.template.type === 'gable'
-        ? ['roof-plane:left', 'roof-plane:right']
-        : [
-            'roof-plane:left',
-            'roof-plane:right',
-            'roof-plane:front',
-            'roof-plane:rear',
-          ],
+    knownRoofPlaneIds: templateRoofPlaneIds(args.template),
     planeBasis: (roofPlaneId) =>
       resolveRoofPlaneBasis(args.template, roofPlaneId),
     geometryValid: roofTemplateSchema.safeParse(args.template).success,

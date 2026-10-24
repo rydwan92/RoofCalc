@@ -235,7 +235,6 @@ const pl = {
     }
   },
   blockers: 'Przed utworzeniem projektu',
-  monoPitchBlockers: 'Przed otwarciem obliczenia',
   blocker: (
     blocker: ImportBlocker,
     field: (name: NumericRoofField) => string,
@@ -266,10 +265,9 @@ const pl = {
   reviewCheck: 'Sprawdziłem odczytane wartości i ich źródła w dokumencie.',
   create: 'Utwórz projekt RoofCalc',
   creating: 'Tworzenie projektu…',
-  // VNext-7C: a mono-pitch roof goes to its calculation, not a project.
+  // VNext-8: a mono-pitch roof is a project like the others.
   monoPitchConstruction:
-    'Dach jednospadowy otworzy się w kalkulatorze dachu jednospadowego — tam ustawisz murłaty, płatwie, oparcie przy ścianie i łaty. To obliczenie, jeszcze nie zapisany projekt.',
-  openMonoPitch: 'Otwórz w kalkulatorze dachu jednospadowego',
+    'Murłaty, płatwie i krawędź górną (wolną albo przy wyższej ścianie) ustawisz w warsztacie. Szerokość budynku to rozpiętość między zewnętrznymi krawędziami podpór.',
   monoPitchPreview: 'Przekrój krokwi z obliczenia RoofCalc',
   createFailed:
     'Nie udało się zapisać projektu. Sprawdź dostępność lokalnego zapisu i spróbuj ponownie.',
@@ -556,7 +554,6 @@ const en: Copy = {
     }
   },
   blockers: 'Before creating the project',
-  monoPitchBlockers: 'Before opening the calculation',
   blocker: (blocker, field) => {
     switch (blocker.code) {
       case 'roof-type-missing':
@@ -585,8 +582,7 @@ const en: Copy = {
   create: 'Create RoofCalc project',
   creating: 'Creating project…',
   monoPitchConstruction:
-    'A mono-pitch roof opens in the mono-pitch calculator — set the wall plates, purlins, the wall abutment and battens there. It is a calculation, not yet a saved project.',
-  openMonoPitch: 'Open in the mono-pitch calculator',
+    'Set the wall plates, purlins and the top edge (free or against a higher wall) in the workshop. The building width is the span between the outer faces of the supports.',
   monoPitchPreview: 'Rafter section from the RoofCalc calculation',
   createFailed:
     'The project could not be saved. Check local storage availability and try again.',

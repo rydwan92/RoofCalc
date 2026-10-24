@@ -359,6 +359,11 @@ export const assemblyPl = {
   memberType: 'Oblicz element',
   gableRoof: 'Dwuspadowy',
   hipRoof: 'Kopertowy',
+  monoPitchRoof: 'Jednospadowy',
+  monoRun: 'Rozpiętość (zewnętrzne krawędzie podpór)',
+  monoEaveOverhang: 'Okap dolny w poziomie',
+  monoHighOverhang: 'Okap górny w poziomie',
+  monoVergeOverhang: 'Okap boczny (wiatrownice)',
   commonRafter: 'Krokiew zwykła',
   hipRafter: 'Krokiew narożna',
   jackRafter: 'Kulawka',
@@ -395,6 +400,7 @@ export const assemblyPl = {
     roofHint: {
       gable: 'Dwie główne połacie i kalenica',
       hip: 'Cztery połacie i naroża',
+      'mono-pitch': 'Jedna połać od niższej do wyższej ściany',
     },
     building: 'Wymiary budynku',
     roof: 'Dach',
@@ -881,7 +887,11 @@ export const assemblyPl = {
         invalid: 'geometria dachu niespójna — dokumenty wstrzymane',
       },
       supported: 'dach {{roof}} liczony przez RoofCalc',
-      roof: { gable: 'dwuspadowy', hip: 'kopertowy' },
+      roof: {
+        gable: 'dwuspadowy',
+        hip: 'kopertowy',
+        'mono-pitch': 'jednospadowy',
+      },
       notSupported: 'tego kształtu dachu RoofCalc jeszcze nie liczy',
       capacity: 'nośność, ugięcia i stateczność nie są sprawdzane',
     },
@@ -1614,6 +1624,9 @@ export const assemblyPl = {
     'Moduł odmierzono od początku bez osi końcowej. Od ostatniej osi do końca pozostaje {{remainder}}.',
   rafterPairs: 'Pary krokwi',
   rafterPairCount: '{{count}} par krokwi',
+  monoRafters: 'Krokwie K1',
+  monoRafterCount: '{{count}} szt. K1',
+  monoSkeletonDrawing: 'Aksonometryczny szkielet dachu jednospadowego',
   physicalInstance: 'Sztuka w konstrukcji',
   prototype: 'Wspólny element produkcyjny',
   side: 'Połać',
@@ -1677,6 +1690,7 @@ export const assemblyPl = {
   detailDrawer: 'Panel detalu',
   birdsmouthDetail: 'Zacios przy podporze',
   ridgeCutDetail: 'Cięcie kalenicowe',
+  topCutDetail: 'Cięcie górne (pionowe)',
   hipUpperCutDetail: 'Górne cięcie krokwi narożnej',
   'member-elevation': 'Widok boku elementu',
   'member-top-face': 'Widok górnego lica',
@@ -1862,20 +1876,23 @@ export const assemblyPl = {
       'Wiaty, przybudówki, garaże: krokwie na dwóch podporach, zacięcia, łaty, kontrłaty i membrana — liczone na bieżąco.',
     close: 'Zamknij dach jednospadowy',
     draftNote:
-      'Wartości są zapamiętywane tylko w tej przeglądarce. Zapis jako projekt, kosztorys i dokument wykonawczy — w kolejnym etapie.',
+      'Szybkie obliczenie, zapamiętywane tylko w tej przeglądarce. „Utwórz projekt” zapisze ten dach jako projekt — z warsztatem, pokryciem, materiałami, kosztorysem i dokumentami.',
+    createProject: 'Utwórz projekt',
+    createProjectHint:
+      'Zapisz ten dach jako projekt RoofCalc z tymi samymi wymiarami, podporami i warstwami.',
+    projectName: 'Dach jednospadowy',
     restore: 'Przywróć przykład',
+    supportHeading: {
+      low: 'Murłata dolna',
+      high: 'Murłata górna',
+      ledger: 'Łata przyścienna',
+    },
     pitchSource: {
       label: 'Spadek podaję jako',
       angle: 'kąt',
       'plate-tops': 'wysokości podpór',
       derived: 'Kąt z wysokości podpór: {{angle}}°',
       hint: 'Zmierz oba wierzchy od jednego poziomu, np. posadzki. Kąt wynika z różnicy wysokości, rozpiętości, szerokości podpory górnej i siedzisk.',
-    },
-    import: {
-      heading: 'Z dokumentu „{{file}}”',
-      note: 'Z dokumentu: {{fields}}. Pozostałe wartości to przykład RoofCalc — sprawdź podpory, przekrój krokwi i krawędź górną.',
-      badge: 'z dokumentu',
-      dismiss: 'Ukryj informację o imporcie',
     },
     print: 'Drukuj / PDF',
     printInputs: 'Dane wejściowe',
@@ -2026,6 +2043,8 @@ export const assemblyPl = {
   assumptions: 'Założenia geometrii',
   assumptionsText:
     'Murłata: lico x=0, siedzisko y=0. Płatew ma poziomą powierzchnię podparcia; jej wysokość osadzenia dopasowuje się do krokwi i zaciosu. Pozycję mierzymy do lewego lica. Cięcie kalenicowe na bliższym licu symetrycznej deski.',
+  monoAssumptionsText:
+    'Murłata dolna: lico x=0, siedzisko y=0. Rozpiętość mierzymy do zewnętrznego lica podpory górnej (przy ścianie — do lica ściany). Płatwie mają poziomą powierzchnię podparcia. Krokiew kończy się u góry cięciem pionowym; dach jednospadowy nie ma kalenicy.',
   hipAssumptionsText:
     'Regularny prostokątny dach kopertowy ma równe kąty czterech połaci i naroża 90°. H1 biegnie pod 45° w planie. Odjęcie do fizycznego lica kalenicy wynosi t/√2 w planie, następnie jest przeliczane wzdłuż pochylonej osi.',
   structural: 'Geometria nie jest weryfikacją nośności konstrukcji.',
@@ -2190,7 +2209,7 @@ export const assemblyPl = {
         'Rysunek DXF (AutoCAD, ArchiCAD…) lub model IFC — rozpoznamy obrys, okap, kalenicę i naroża.',
       monoPitch: 'Dach jednospadowy',
       monoPitchHint:
-        'Wiata, przybudówka, garaż: krokwie, zacięcia, łaty i membrana — bez zakładania projektu.',
+        'Szybkie obliczenie wiaty, przybudówki, garażu: krokwie, zacięcia, łaty, membrana — projekt utworzysz jednym przyciskiem.',
       dropAny:
         'Masz już plik? Przeciągnij go tutaj — projekt RoofCalc, PDF, zdjęcie, rysunek DXF lub model IFC. Rozpoznamy format.',
       dropProject: 'Przeciągnij tutaj plik projektu RoofCalc, aby go otworzyć.',

@@ -6,6 +6,7 @@ import type {
 import type {
   JackRafterFabricationStep,
   ResolvedMemberPrototype,
+  RoofFamily,
   TimberSection,
 } from '@cieslacalc/timber-model';
 import {
@@ -55,7 +56,7 @@ export interface MemberFabricationPackage {
 }
 
 export interface RoofFabricationPackage {
-  roofType: 'gable' | 'hip';
+  roofType: RoofFamily;
   families: MemberFabricationPackage[];
   openingFraming: OpeningFramingFabricationItem[];
   warningKeys: string[];
@@ -150,6 +151,12 @@ export function createRoofFabricationPackage(
     (prototype) => prototype.code === 'K1',
   )!;
   const commonPreviews = createAssemblyDetailPreviews(resolved.calculation);
+  // Notches on a plate read "wall plate", the rest "purlin"; a mono-pitch
+  // roof bears on two plates (or a plate and a ledger).
+  const plateIds: readonly string[] =
+    'monoPitch' in resolved
+      ? [resolved.monoPitch.supportIds.low, resolved.monoPitch.supportIds.high]
+      : [resolved.template.wallPlate.id];
   let notchIndex = 0;
   const k1Operations = commonPreviews.map((preview) => {
     const notch = preview.type === 'birdsmouth-detail';
@@ -159,10 +166,10 @@ export function createRoofFabricationPackage(
       k1Prototype.id,
       notch ? `Z${notchIndex}` : 'K1',
       notch
-        ? preview.relatedSupportId === resolved.template.wallPlate.id
+        ? plateIds.includes(preview.relatedSupportId ?? '')
           ? 'wall-plate'
           : 'purlin'
-        : 'ridgeCutDetail',
+        : preview.titleKey,
     );
   });
   const families: MemberFabricationPackage[] = [

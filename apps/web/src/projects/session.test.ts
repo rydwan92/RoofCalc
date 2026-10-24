@@ -4,6 +4,8 @@ import { createDefaultProjectDocument, useAssembly } from '../assembly/store';
 import { LocalProjectRepository } from './local-repository';
 import { MemoryStorage } from './memory-storage';
 import { ProjectSession } from './session';
+import { ridged } from '../assembly/test-templates';
+import type { RoofTemplateSpec } from '@cieslacalc/timber-model';
 
 let storage: MemoryStorage;
 let repository: LocalProjectRepository;
@@ -62,7 +64,7 @@ it('opens atomically, resets history and transient tools while preserving displa
   useAssembly.getState().commitTransaction();
   await session.open(original.id);
   const state = useAssembly.getState();
-  expect(state.template.halfRunMm).toBe(4450);
+  expect(ridged(state.template).halfRunMm).toBe(4450);
   expect(state.historyPast).toEqual([]);
   expect(state.historyFuture).toEqual([]);
   expect(state.activeTransaction).toBeUndefined();
@@ -95,9 +97,7 @@ it('debounces canonical edits, waits for transaction commit and ignores view/uni
   expect(useAssembly.getState().historyPast).toHaveLength(1);
   await vi.advanceTimersByTimeAsync(800);
   expect(session.snapshot().saveStatus).toBe('saved');
-  expect(
-    (await repository.get(active.id))?.document.project.roof.halfRunMm,
-  ).toBe(4400);
+  expect(storedHalfRun(await repository.get(active.id))).toBe(4400);
   expect(useAssembly.getState().historyPast).toHaveLength(1);
 });
 
@@ -164,7 +164,7 @@ it('preserves an editable document and shows error when storage fails', async ()
   useAssembly.getState().setCanonicalField('roof.runMm', 4600);
   await expect(session.persistNow()).rejects.toThrow();
   expect(session.snapshot().saveStatus).toBe('error');
-  expect(useAssembly.getState().template.halfRunMm).toBe(4600);
+  expect(ridged(useAssembly.getState().template).halfRunMm).toBe(4600);
   expect(session.exportActive()?.contents).toContain('4600');
   storage.failWrites = false;
 });
@@ -236,7 +236,7 @@ it('restores the last edited project in a new application session', async () => 
   session = new ProjectSession(repository);
   await session.initialize();
   expect(session.snapshot().active?.id).toBe(id);
-  expect(useAssembly.getState().template.halfRunMm).toBe(4780);
+  expect(ridged(useAssembly.getState().template).halfRunMm).toBe(4780);
 });
 
 it('keeps an edited Quick calculation when entering a restored Builder project', async () => {
@@ -252,12 +252,10 @@ it('keeps an edited Quick calculation when entering a restored Builder project',
   useAssembly.getState().setMode('builder');
   await session.initialize();
   expect(session.snapshot().active?.id).toBe(stored.id);
-  expect(useAssembly.getState().template.halfRunMm).toBe(4860);
+  expect(ridged(useAssembly.getState().template).halfRunMm).toBe(4860);
   expect(session.snapshot().saveStatus).toBe('dirty');
   await session.persistNow();
-  expect(
-    (await repository.get(stored.id))?.document.project.roof.halfRunMm,
-  ).toBe(4860);
+  expect(storedHalfRun(await repository.get(stored.id))).toBe(4860);
 });
 
 it('does not persist later Quick-only edits into the active Builder project', async () => {
@@ -268,9 +266,7 @@ it('does not persist later Quick-only edits into the active Builder project', as
   await session.persistNow();
   useAssembly.getState().setCanonicalField('roof.runMm', 4990);
   await session.dispose();
-  expect((await repository.get(id))?.document.project.roof.halfRunMm).toBe(
-    4320,
-  );
+  expect(storedHalfRun(await repository.get(id))).toBe(4320);
 });
 
 it('shows saving while a write is pending and blocks switching after a failed flush', async () => {
@@ -300,7 +296,14 @@ it('shows saving while a write is pending and blocks switching after a failed fl
   storage.failWrites = true;
   useAssembly.getState().setCanonicalField('roof.runMm', 5000);
   await expect(session.create()).rejects.toThrow();
-  expect(useAssembly.getState().template.halfRunMm).toBe(5000);
+  expect(ridged(useAssembly.getState().template).halfRunMm).toBe(5000);
   expect(session.snapshot().saveStatus).toBe('error');
   storage.failWrites = false;
 });
+
+/** A stored gable/hip project's half run (ADR-016: the roof is a union). */
+function storedHalfRun(
+  record: { document: { project: { roof: RoofTemplateSpec } } } | undefined,
+) {
+  return record ? ridged(record.document.project.roof).halfRunMm : undefined;
+}

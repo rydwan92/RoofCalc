@@ -1,3 +1,5 @@
+import { ROOF_FAMILY_LABEL } from './roof-family';
+import type { RoofFamily } from '@cieslacalc/timber-model';
 import { useTranslation } from 'react-i18next';
 import type { ProjectWorkflow } from './project-workflow';
 import type { ProjectJourney, JourneyAction } from './project-journey';
@@ -7,7 +9,7 @@ import { JourneyOverview } from './ProjectReadiness';
 import { readinessIssueText } from './readiness-copy';
 
 export interface ProjectSummaryFacts {
-  roofType: 'gable' | 'hip';
+  roofType: RoofFamily;
   netRoofAreaMm2?: number;
   timberCount: number;
   timberFamilies: Array<{ familyKey: string; quantity: number }>;
@@ -111,7 +113,7 @@ export function ProjectSummary({
       <div className="a-project-summary-grid">
         <article>
           <span>{t('assembly.workflow.roof')}</span>
-          <strong>{t(`assembly.${facts.roofType}Roof`)}</strong>
+          <strong>{t(ROOF_FAMILY_LABEL[facts.roofType])}</strong>
           <p>
             {area === undefined
               ? t('assembly.workflow.roofAreaUnavailable')

@@ -301,12 +301,10 @@ and the support spacing carry the load is the designer's (ADR-014).
 
 - **Import.** A document naming a mono-pitch roof ("jednospadowy",
   "pulpitowy", shed, lean-to, skillion) is recognised as `mono-pitch`,
-  not refused. After the same review as any import, the values open this
-  workspace: building length → `buildingLengthMm`, building width →
+  not refused. After the same review as any import it becomes a project
+  (VNext-8, §13): building length → `buildingLengthMm`, building width →
   `runMm` (the outer faces of the supports), pitch, eave → the low eave
-  overhang, spacing and section. Everything the document does not state is
-  the example, never the browser's previous draft. The fields that came from
-  the document are marked until edited.
+  overhang, spacing and section.
 - **Pitch from the plate tops.** On site the two tops are measured from one
   level. The pitch is the exact inverse of the plate difference (§8):
   `α = atan((h_high − h_low) / (R − w_high + s_high − s_low))` with the
@@ -318,3 +316,25 @@ and the support spacing carry the load is the designer's (ADR-014).
 | P1 | example supports, tops 2600 / 3634 mm | atan(1034 / 3860) = 14.996° |
 | P2 | tops = low + the plate difference F1 reports | exactly 15° (round trip) |
 | P3 | carport 7200 × 4200 mm, 12°, 80 × 200 at ≤ 800 mm | 10 rafters; plate difference (4200 − 140)·tan 12° |
+
+## 13. The mono-pitch roof as a project (VNext-8, ADR-016)
+
+- `MonoPitchRoofTemplateSpec` is a `RoofTemplateSpec`: the inputs of
+  `MonoPitchFramingSpec`. `resolveMonoPitchRoofTemplate` delegates to
+  `resolveMonoPitchFraming` — the project and the quick workspace share
+  one solver; reference project 11 reproduces F1 (stock 5022.916 mm, 8 K1).
+- The workbench edits the rafter cross section with a top end
+  (`upperEnd: 'top'`): the low plate at x = 0, purlins between, the high
+  plate (or ledger) last; edits map back by position.
+- Surface: one plane (`mono-pitch-plane:main`), metrics per family; the top
+  line is a ridge when free and a declared `abutment` against a wall, so
+  ridge components never bind to a wall junction.
+- Downstream: layers, coverings, materials, cost and the execution document
+  run through the plane-generic engines; the document names the K1 top cut
+  and the span instead of a half run.
+
+| # | Project 11 (F1 + layers) | Expected |
+| --- | --- | --- |
+| R1 | net area | 6.6 m × 4800/cos 15° = 32.8 m² |
+| R2 | battens 60 × 40 at 340, first 50 from the eave | 15 rows × 6.6 m = 99 m |
+| R3 | counter-battens 40 × 40 on 8 rafters | 8 × 4969.3 mm = 39.8 m |

@@ -1,3 +1,5 @@
+import { roofTemplateSpanMm } from '@cieslacalc/roof-math';
+import type { RoofFamily } from '@cieslacalc/timber-model';
 import type { RoofProjectDocumentV1 } from '@cieslacalc/calculator-core';
 import { importProject } from '@cieslacalc/project-core';
 import basicGable from '../../../../fixtures/projects/01-basic-gable.cieslacalc.json';
@@ -38,7 +40,7 @@ export function projectExampleDocument(
 }
 
 export interface ProjectExampleFacts {
-  roofType: 'gable' | 'hip';
+  roofType: RoofFamily;
   buildingLengthMm: number;
   buildingWidthMm: number;
   pitchDeg: number;
@@ -52,7 +54,7 @@ export function projectExampleFacts(
   return {
     roofType: roof.type,
     buildingLengthMm: roof.buildingLengthMm,
-    buildingWidthMm: roof.halfRunMm * 2,
+    buildingWidthMm: roofTemplateSpanMm(roof),
     pitchDeg: roof.pitchDeg,
     collarTie:
       roof.type === 'gable' && roof.structure?.system === 'rafter-collar-tie',

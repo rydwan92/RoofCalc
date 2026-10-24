@@ -112,7 +112,15 @@ export function resolveRoofSystemFacts(args: {
       intent: args.intent?.drainage,
     }),
     lineComponents: resolveRoofLineComponents({
-      features: topology.features,
+      // VNext-8: a wall abutment has no component role yet (wall flashing
+      // is not in the roof-system vocabulary), so nothing binds to it.
+      features: topology.features.filter(
+        (
+          feature,
+        ): feature is typeof feature & {
+          kind: Exclude<RoofLineFeatureKind, 'abutment'>;
+        } => feature.kind !== 'abutment',
+      ),
       components: args.intent?.lineComponents ?? [],
       lineEnds,
       ...(args.ridgeTileCount !== undefined
@@ -245,6 +253,7 @@ const FEATURE_WORD: Record<
   hip: { pl: 'Grzbiet', en: 'Hip' },
   valley: { pl: 'Kosz', en: 'Valley' },
   verge: { pl: 'Skraj', en: 'Verge' },
+  abutment: { pl: 'Styk ze ścianą', en: 'Wall abutment' },
   opening: { pl: 'Okno', en: 'Window' },
 };
 
@@ -276,6 +285,7 @@ export function featureScopeLabel(
         hip: 'Grzbiety',
         valley: 'Kosze',
         verge: 'Skraje',
+        abutment: 'Styki ze ścianą',
       }
     : {
         eave: 'Eaves',
@@ -283,6 +293,7 @@ export function featureScopeLabel(
         hip: 'Hips',
         valley: 'Valleys',
         verge: 'Verges',
+        abutment: 'Wall abutments',
       };
   const parts: string[] = [];
   for (const kind of ['ridge', 'hip', 'eave', 'verge', 'valley'] as const) {

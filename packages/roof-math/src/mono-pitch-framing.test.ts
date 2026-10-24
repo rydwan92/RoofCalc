@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   createMonoPitchSkeleton,
   MONO_PITCH_FRAMING_SCOPE,
-  resolveMonoPitchCounterBattens,
   monoPitchFramingSpecSchema,
   monoPitchFromPlateTops,
   resolveMonoPitchFraming,
@@ -11,8 +10,9 @@ import {
 import { assemblyDefaults, calculateAssembly } from './assembly';
 import {
   resolveMonoPitchBattens,
+  resolveMonoPitchCounterBattens,
   resolveMonoPitchMembrane,
-} from './mono-pitch-roof';
+} from './mono-pitch-layers';
 
 /**
  * Reference vectors from docs/domain/MONO_PITCH_ROOF.md §8, derived with

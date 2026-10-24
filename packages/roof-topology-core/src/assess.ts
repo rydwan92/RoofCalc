@@ -36,10 +36,11 @@ import {
  *    and every overlap between structures is a resolved junction; `partial`
  *    when something is merely unknown or unresolved; `invalid` when
  *    something contradicts itself.
- *  - `calculation`: `supported` only for one structure computed by today's
- *    gable/hip solver. A complete mono-pitch or L-shaped graph is still
- *    `not-supported` until its solver, covering, quantities and documents
- *    exist — a correct drawing is not a calculated roof.
+ *  - `calculation`: `supported` only for one structure computed by a
+ *    project solver (gable, hip and, since VNext-8, mono-pitch — ADR-016).
+ *    A complete L-shaped graph is still `not-supported` until its solver,
+ *    covering, quantities and documents exist — a correct drawing is not a
+ *    calculated roof.
  *
  * VNext-6.1 hardening (audit): boundary coverage is an interval union per
  * side (duplicates no longer hide gaps, overlaps are reported), outlines are
@@ -116,6 +117,7 @@ export interface RoofSceneAssessment {
 const CALCULATED_TEMPLATES: ReadonlySet<StructureTemplate> = new Set([
   'gable',
   'hip',
+  'mono-pitch',
 ]);
 /** Stored normal/pitch may differ from the polygon's by at most this. */
 const ANGLE_TOLERANCE_DEG = 0.5;

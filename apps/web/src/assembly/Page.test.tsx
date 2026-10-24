@@ -22,6 +22,7 @@ import { fitDimensionedDrawing } from '@cieslacalc/drawing-engine';
 import { formatLength } from '../format';
 import { useAssembly } from './store';
 import { newBattenLayer } from './build-up-defaults';
+import { ridged } from './test-templates';
 
 beforeEach(async () => {
   localStorage.clear();
@@ -892,18 +893,19 @@ describe('dual-mode parametric workbench', () => {
     expect(
       screen.getByRole('button', { name: 'Właściwości elementu Płatew P2 −' }),
     ).toBeTruthy();
-    const purlinBefore =
-      useAssembly.getState().template.intermediateSupports[1]!.placement.xMm;
+    const purlinBefore = ridged(useAssembly.getState().template)
+      .intermediateSupports[1]!.placement.xMm;
     fireEvent.keyDown(
       container.querySelector('[data-entity="instance:purlin-2:left"]')!,
       { key: 'ArrowRight' },
     );
     expect(
-      useAssembly.getState().template.intermediateSupports[1]!.placement.xMm,
+      ridged(useAssembly.getState().template).intermediateSupports[1]!.placement
+        .xMm,
     ).toBe(purlinBefore + 10);
-    expect(useAssembly.getState().template.intermediateSupports).toHaveLength(
-      2,
-    );
+    expect(
+      ridged(useAssembly.getState().template).intermediateSupports,
+    ).toHaveLength(2);
     const preparation = screen.getByTestId('roof-fabrication-package');
     fireEvent.click(
       within(preparation).getByRole('button', {
@@ -950,11 +952,11 @@ describe('dual-mode parametric workbench', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Zastosuj' }));
     expect(useAssembly.getState().historyPast).toHaveLength(1);
     expect(
-      useAssembly
-        .getState()
-        .template.intermediateSupports.map((support) => support.placement.xMm),
+      ridged(useAssembly.getState().template).intermediateSupports.map(
+        (support) => support.placement.xMm,
+      ),
     ).toEqual(
-      [...useAssembly.getState().template.intermediateSupports]
+      [...ridged(useAssembly.getState().template).intermediateSupports]
         .map((support) => support.placement.xMm)
         .sort((a, b) => a - b),
     );
@@ -994,7 +996,7 @@ describe('dual-mode parametric workbench', () => {
       }),
       { key: 'ArrowUp', shiftKey: true },
     );
-    expect(useAssembly.getState().template.halfRunMm).toBe(4010);
+    expect(ridged(useAssembly.getState().template).halfRunMm).toBe(4010);
     expect(useAssembly.getState().template.buildingLengthMm).toBe(8100);
     const afterEdit = structuredClone(useAssembly.getState().template);
     fireEvent.click(screen.getByRole('button', { name: 'Powiększ rysunek' }));

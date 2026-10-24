@@ -126,16 +126,10 @@ describe('mono-pitch 6 × 4 m at 15° through the roof graph', () => {
     );
   });
 
-  it('is complete geometry and NOT a calculated roof', () => {
+  it('is complete geometry and, from the solver, a calculated roof (ADR-016)', () => {
     expect(assessment.geometry).toBe('complete');
-    expect(assessment.calculation).toBe('not-supported');
-    expect(assessment.limits).toEqual([
-      {
-        code: 'template-not-calculated',
-        structureId: 'structure:lean-to',
-        template: 'mono-pitch',
-      },
-    ]);
+    expect(assessment.calculation).toBe('supported');
+    expect(assessment.limits).toEqual([]);
   });
 
   it('a free top edge is accepted as a mono-pitch ridge', () => {

@@ -8,7 +8,11 @@ import {
   resolveRoofPlaneBasis,
   resolveRoofSurfaceGeometry,
 } from '@cieslacalc/roof-math';
-import type { RoofTemplateSpec } from '@cieslacalc/timber-model';
+import type {
+  GableRoofTemplateSpec,
+  HipRoofTemplateSpec,
+  RoofTemplateSpec,
+} from '@cieslacalc/timber-model';
 import { assessRoofScene } from './assess';
 import { planeAdjacency, roofSceneMetrics } from './build';
 import { roofSceneFromResolvedRoof } from './adapter';
@@ -18,13 +22,13 @@ import { roofSceneFromResolvedRoof } from './adapter';
  * roof-math exactly as the workbench solves them, become the neutral graph
  * WITHOUT a number changing and without replacing the solver.
  */
-const gable = (buildingLengthMm = 9000): RoofTemplateSpec =>
+const gable = (buildingLengthMm = 9000): GableRoofTemplateSpec =>
   gableTemplateFromAssembly(assemblyDefaults, {
     id: 'template:topology-gable',
     buildingLengthMm,
     rafterSpacing: { mode: 'max-even-spacing', spacingMm: 900 },
   });
-const hip = (buildingLengthMm = 12000): RoofTemplateSpec => ({
+const hip = (buildingLengthMm = 12000): HipRoofTemplateSpec => ({
   ...gable(buildingLengthMm),
   id: 'template:topology-hip',
   type: 'hip',

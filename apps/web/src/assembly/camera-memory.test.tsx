@@ -35,6 +35,9 @@ describe('VNext-5 drawing camera', () => {
       { name: 'Powiększ rysunek' },
       { timeout: 5000 },
     );
+    // The Builder's project session restores asynchronously and refits the
+    // camera once; zoom only after it has settled (a race under load).
+    await screen.findAllByText('Zapisano lokalnie', {}, { timeout: 5000 });
     expect(zoomLabel()).toBe('100%');
     fireEvent.click(screen.getByRole('button', { name: 'Powiększ rysunek' }));
     fireEvent.click(screen.getByRole('button', { name: 'Powiększ rysunek' }));

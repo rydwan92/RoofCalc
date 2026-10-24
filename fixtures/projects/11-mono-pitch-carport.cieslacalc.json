@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "id": "fixture-11",
+  "name": "Reference — mono-pitch carport (F1)",
+  "createdAt": "2026-10-24T00:00:00.000Z",
+  "updatedAt": "2026-10-24T00:00:00.000Z",
+  "document": {
+    "schemaVersion": 1,
+    "project": {
+      "roof": {
+        "id": "template:mono-pitch-1",
+        "type": "mono-pitch",
+        "buildingLengthMm": 6000,
+        "runMm": 4000,
+        "pitchDeg": 15,
+        "eaveOverhangMm": 500,
+        "topEdge": "free",
+        "highOverhangMm": 300,
+        "vergeOverhangMm": 300,
+        "rafterSpacing": {
+          "mode": "max-even-spacing",
+          "spacingMm": 900
+        },
+        "rafterSection": {
+          "widthMm": 80,
+          "depthMm": 200
+        },
+        "lowSupport": {
+          "kind": "wall-plate",
+          "widthMm": 140,
+          "heightMm": 140,
+          "seatMm": 100
+        },
+        "highSupport": {
+          "kind": "wall-plate",
+          "widthMm": 140,
+          "heightMm": 140,
+          "seatMm": 100
+        },
+        "intermediateSupports": []
+      },
+      "features": [],
+      "openingFraming": [],
+      "buildUp": {
+        "membrane": {
+          "enabled": true
+        },
+        "counterBattens": {
+          "enabled": true,
+          "widthMm": 40,
+          "heightMm": 40
+        },
+        "battenLayout": {
+          "enabled": true,
+          "battenHeightMm": 40,
+          "battenWidthMm": 60,
+          "gaugeMm": 340,
+          "eaveOffsetMm": 50
+        }
+      },
+      "coverings": []
+    }
+  }
+}

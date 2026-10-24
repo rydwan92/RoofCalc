@@ -627,6 +627,11 @@ line and manual lengths keep working.
   projektu" lists five groups and one "Dalej" step, opens the existing
   editor and folds into a one-line pill; "Edytuj szczegółowo" is the
   Creator. What the document did not give is named, never hidden.
+- **VNext-8: a new roof family is the whole application.** It appears as a
+  third choice wherever a roof type is chosen (Creator, import, workbench),
+  is named through one lookup (`ROOF_FAMILY_LABEL`), and never shows
+  another family's controls (no ridge settings on a mono-pitch roof). A quick
+  calculation offers "Utwórz projekt" instead of retyping.
 - **VNext-7C: a document goes as far as RoofCalc calculates.** A roof the
   import recognises but cannot make a project of (mono-pitch) opens its
   calculation, prefilled, with every value from the document marked; the

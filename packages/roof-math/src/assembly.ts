@@ -61,6 +61,7 @@ export const assemblySpecSchema: z.ZodType<AssemblySpec> = z
         .enum(['ridge-board', 'direct-meeting', 'half-lap'])
         .optional(),
     }),
+    upperEnd: z.enum(['ridge', 'top']).optional(),
   })
   .superRefine((spec, ctx) => {
     const issue = (path: (string | number)[], message: string) =>
@@ -71,10 +72,18 @@ export const assemblySpecSchema: z.ZodType<AssemblySpec> = z
       ...spec.supports.map((s) => s.id),
     ];
     if (new Set(ids).size !== ids.length) issue(['supports'], 'duplicate_id');
-    const walls = spec.supports.filter((s) => s.kind === 'wall-plate');
-    if (walls.length !== 1 || walls[0]?.placement.xMm !== 0)
+    const walls = spec.supports
+      .filter((s) => s.kind === 'wall-plate')
+      .sort((a, b) => a.placement.xMm - b.placement.xMm);
+    // A ridged rafter bears on one plate at the origin; a rafter with a top
+    // end (mono-pitch) on that plate and a second one up the slope.
+    const top = spec.upperEnd === 'top';
+    if (walls.length !== (top ? 2 : 1) || walls[0]?.placement.xMm !== 0)
       issue(['supports'], 'wall_origin');
     const face = spec.roof.runMm - spec.ridge.thicknessMm / 2;
+    // The high plate of a mono-pitch roof may end flush with the top end
+    // (against a wall); a ridge always keeps a gap to its board.
+    const beyond = (end: number) => (top ? end > face + 1e-8 : end >= face);
     spec.supports.forEach((support, index) => {
       const seat = seatLength(support, spec.roof.pitchDeg);
       if (seat > support.section.widthMm + 1e-8)
@@ -84,7 +93,7 @@ export const assemblySpecSchema: z.ZodType<AssemblySpec> = z
         spec.member.section.depthMm
       )
         issue(['supports', index, 'joint', 'valueMm'], 'notch_consumes_depth');
-      if (support.placement.xMm + support.section.widthMm >= face)
+      if (beyond(support.placement.xMm + support.section.widthMm))
         issue(['supports', index, 'placement', 'xMm'], 'support_outside_span');
       spec.supports.forEach((other, j) => {
         if (j >= index) return;
@@ -222,7 +231,7 @@ export function resolveAssembly(raw: AssemblySpec): ResolvedAssembly {
  */
 export function resolveAssemblyGeometry(
   spec: AssemblySpec,
-  upperEnd: 'ridge' | 'top' = 'ridge',
+  upperEnd: 'ridge' | 'top' = spec.upperEnd ?? 'ridge',
 ): ResolvedAssembly {
   const { runMm, pitchDeg, overhangMm } = spec.roof;
   const { depthMm } = spec.member.section;
@@ -437,10 +446,19 @@ export function purlinRange(
   spec: AssemblySpec,
   widthMm: number,
 ): { min: number; max: number } {
-  const wall = spec.supports.find((s) => s.kind === 'wall-plate')!;
+  const plates = spec.supports
+    .filter((s) => s.kind === 'wall-plate')
+    .sort((a, b) => a.placement.xMm - b.placement.xMm);
+  const wall = plates[0]!;
+  // VNext-8: a mono-pitch rafter bears on a second plate at its upper end;
+  // a purlin stays clear of it as of the ridge (one ridged plate: unchanged).
+  const upper = plates[1]?.placement.xMm ?? Infinity;
   return {
     min: wall.placement.xMm + wall.section.widthMm + 1,
-    max: spec.roof.runMm - spec.ridge.thicknessMm / 2 - widthMm - 1,
+    max:
+      Math.min(spec.roof.runMm - spec.ridge.thicknessMm / 2, upper) -
+      widthMm -
+      1,
   };
 }
 /** Legal left-face intervals for a purlin, excluding existing intermediate supports. */

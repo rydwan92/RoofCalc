@@ -92,10 +92,13 @@ export interface DocumentDrawing {
 
 export interface ProjectSummarySection {
   kind: 'project-summary';
-  roofType: 'gable' | 'hip';
+  roofType: 'gable' | 'hip' | 'mono-pitch';
   structuralSystem: 'rafter' | 'rafter-collar-tie';
   buildingLengthMm: number;
-  halfRunMm: number;
+  /** Gable/hip: wall plate to ridge. Absent on a mono-pitch roof. */
+  halfRunMm?: number;
+  /** VNext-8: across the slope, outer face to outer face (2 × half run). */
+  spanMm: number;
   pitchDeg: number;
   netRoofAreaMm2?: number;
   openingCount: number;
@@ -135,7 +138,8 @@ export interface MemberFabricationSection {
   count: number;
   section: { widthMm: number; depthMm: number };
   requiredBlankLengthMm: number;
-  ridgeConnection: 'ridge-board' | 'direct-meeting';
+  /** `top-plumb-cut`: a mono-pitch rafter's upper end (VNext-8). */
+  ridgeConnection: 'ridge-board' | 'direct-meeting' | 'top-plumb-cut';
   drawing: DocumentDrawing;
   details: {
     type: 'birdsmouth-detail' | 'ridge-cut-detail';

@@ -1,13 +1,9 @@
 import { z } from 'zod';
-import {
-  counterBattenRowsOnPlane,
-  summarizeCounterBattens,
-  type CounterBattenLayoutResult,
-} from './counter-battens';
 import type {
   AssemblySpec,
-  CounterBattenLayoutSpec,
   FabricationPlan,
+  MonoPitchPurlinSpec,
+  MonoPitchSupportSpec,
   RafterSpacingSpec,
   ResolvedAssembly,
   ResolvedMemberPrototype,
@@ -40,24 +36,8 @@ import {
  * support's downslope face; the roof reference plane of the surface
  * passes through the heel–seat corner of the low plate, as for a gable.
  */
-export interface MonoPitchSupportSpec {
-  /** `ledger`: a plate fixed to the face of a higher wall (abutment only). */
-  kind: 'wall-plate' | 'ledger';
-  widthMm: number;
-  heightMm: number;
-  /** Horizontal seat of the birdsmouth on this support. */
-  seatMm: number;
-}
-
-/** VNext-7B-5: an intermediate purlin under the rafters (płatew pośrednia). */
-export interface MonoPitchPurlinSpec {
-  /** Horizontal distance from the low plate's outer face to the purlin's
-   *  downslope face (where the birdsmouth heel sits). */
-  positionMm: number;
-  widthMm: number;
-  heightMm: number;
-  seatMm: number;
-}
+// VNext-8: the support shapes are template types (timber-model).
+export type { MonoPitchPurlinSpec, MonoPitchSupportSpec };
 
 export interface MonoPitchFramingSpec {
   roof: MonoPitchRoofSpec;
@@ -248,6 +228,7 @@ export function monoPitchRafterAssembly(spec: MonoPitchFramingSpec): {
       ],
       // No ridge: a zero-thickness terminal gives the plain plumb end.
       ridge: { id: TOP_END_ID, thicknessMm: 0 },
+      upperEnd: 'top',
     },
   };
 }
@@ -431,51 +412,4 @@ export function createMonoPitchSkeleton(
       },
     ],
   };
-}
-
-/**
- * VNext-7B-2: counter-battens along the mono-pitch rafters through the one
- * per-plane rule (`counterBattenRowsOnPlane`) and the one summary.
- */
-export function resolveMonoPitchCounterBattens(
-  framing: MonoPitchFraming,
-  skeleton: RoofSkeleton,
-  layout: CounterBattenLayoutSpec,
-): CounterBattenLayoutResult {
-  if (!layout.enabled)
-    return { ...summarizeCounterBattens([], []), status: 'disabled' };
-  if (
-    !(Number.isFinite(layout.widthMm) && layout.widthMm > 0) ||
-    !(Number.isFinite(layout.heightMm) && layout.heightMm > 0)
-  )
-    return summarizeCounterBattens(
-      [],
-      [{ code: 'invalid-counter-batten-section' }],
-    );
-  const [plane] = framing.surface.planes;
-  const unknown = (layout.roofPlaneIds ?? []).filter(
-    (id) => id !== plane.roofPlaneId,
-  );
-  if (layout.roofPlaneIds && !layout.roofPlaneIds.includes(plane.roofPlaneId))
-    return summarizeCounterBattens(
-      [],
-      unknown.map((roofPlaneId) => ({
-        code: 'unknown-roof-plane' as const,
-        roofPlaneId,
-      })),
-    );
-  const { rows, issues } = counterBattenRowsOnPlane({
-    roofPlaneId: plane.roofPlaneId,
-    basis: plane.basis,
-    rafterSide: 'center',
-    skeleton,
-    layout,
-  });
-  return summarizeCounterBattens(rows, [
-    ...issues,
-    ...unknown.map((roofPlaneId) => ({
-      code: 'unknown-roof-plane' as const,
-      roofPlaneId,
-    })),
-  ]);
 }

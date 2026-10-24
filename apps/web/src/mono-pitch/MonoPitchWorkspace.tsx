@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { FileText, Plus, Printer, RotateCcw, Trash2, X } from 'lucide-react';
+import { FolderPlus, Plus, Printer, RotateCcw, Trash2, X } from 'lucide-react';
 import {
   resolveMonoPitchRoofSystem,
   type MonoPitchRoofSystem,
@@ -21,6 +21,7 @@ import {
   MONO_PITCH_MAX_PURLINS,
   MONO_PITCH_PURLIN_FIELDS,
   monoPitchDraftIssues,
+  monoPitchProjectFromDraft,
   monoPitchSystemInput,
   newMonoPitchPurlin,
   purlinFieldKey,
@@ -28,7 +29,6 @@ import {
   saveMonoPitchDraft,
   type MonoPitchDraft,
   type MonoPitchFieldIssue,
-  type MonoPitchImportOrigin,
   type MonoPitchInputKey,
   type MonoPitchNumberField,
 } from './mono-pitch-draft';
@@ -103,23 +103,20 @@ const LAYERS: { toggle: LayerToggle; key: string; fields: readonly Field[] }[] =
  */
 export function MonoPitchWorkspace({
   unit,
-  initial,
   onClose,
+  onCreateProject,
 }: {
   unit: LengthUnit;
-  /** VNext-7C: a reviewed document import replaces the remembered draft. */
-  initial?: { draft: MonoPitchDraft; origin: MonoPitchImportOrigin };
   onClose: () => void;
+  /** VNext-8: the calculation becomes a project (saved, priced, documented). */
+  onCreateProject?: (
+    project: ReturnType<typeof monoPitchProjectFromDraft>,
+  ) => void;
 }) {
   const { t, i18n } = useTranslation();
   const locale = i18n.language;
   const [draft, setDraft] = useState<MonoPitchDraft>(() =>
-    initial ? { ...initial.draft } : loadMonoPitchDraft(),
-  );
-  const [origin, setOrigin] = useState(initial?.origin);
-  /** Fields still holding the document's value (an edit makes them the user's). */
-  const [fromDocument, setFromDocument] = useState<ReadonlySet<Field>>(
-    () => new Set(initial?.origin.fields),
+    loadMonoPitchDraft(),
   );
   const [texts, setTexts] = useState<
     Partial<Record<MonoPitchInputKey, string>>
@@ -185,22 +182,9 @@ export function MonoPitchWorkspace({
   }) => {
     const id = `mono-pitch.${key}`;
     const error = issueText(key);
-    const documented = fromDocument.has(key as Field);
     return (
-      <label
-        className="mono-field"
-        htmlFor={id}
-        key={key}
-        data-source={documented ? 'document' : undefined}
-      >
-        <span>
-          {label}
-          {documented && (
-            <em className="mono-from-document">
-              {t('assembly.monoPitch.import.badge')}
-            </em>
-          )}
-        </span>
+      <label className="mono-field" htmlFor={id} key={key}>
+        <span>{label}</span>
         <div>
           <input
             id={id}
@@ -253,15 +237,7 @@ export function MonoPitchWorkspace({
       label: t(`assembly.monoPitch.fields.${field}`),
       value: draft[field],
       angleField: MONO_PITCH_ANGLE_FIELDS.has(field),
-      apply: (value) => {
-        setDraft((current) => ({ ...current, [field]: value }));
-        setFromDocument((current) => {
-          if (!current.has(field)) return current;
-          const next = new Set(current);
-          next.delete(field);
-          return next;
-        });
-      },
+      apply: (value) => setDraft((current) => ({ ...current, [field]: value })),
     });
   const pitch = resolveDraftPitch(draft);
   /** Switching keeps the same roof: the tops start where the pitch puts them. */
@@ -420,6 +396,21 @@ export function MonoPitchWorkspace({
             <p>{t('assembly.monoPitch.subtitle')}</p>
           </div>
           <div className="mono-header-actions">
+            {onCreateProject && (
+              <button
+                type="button"
+                className="a-button mono-create"
+                data-testid="mono-pitch-create-project"
+                disabled={invalid}
+                title={t('assembly.monoPitch.createProjectHint')}
+                onClick={() =>
+                  onCreateProject(monoPitchProjectFromDraft(draft))
+                }
+              >
+                <FolderPlus size={16} aria-hidden="true" />
+                {t('assembly.monoPitch.createProject')}
+              </button>
+            )}
             <button
               type="button"
               className="a-button"
@@ -428,8 +419,6 @@ export function MonoPitchWorkspace({
                 setDraft({ ...defaultMonoPitchDraft });
                 setTexts({});
                 setUnparsable(new Set());
-                setOrigin(undefined);
-                setFromDocument(new Set());
               }}
             >
               <RotateCcw size={16} aria-hidden="true" />
@@ -456,40 +445,6 @@ export function MonoPitchWorkspace({
           </div>
         </header>
         <p className="mono-draft-note">{t('assembly.monoPitch.draftNote')}</p>
-        {origin && (
-          <div
-            className="mono-import-note"
-            role="status"
-            data-testid="mono-pitch-import-note"
-          >
-            <FileText size={18} aria-hidden="true" />
-            <div>
-              <strong>
-                {t('assembly.monoPitch.import.heading', {
-                  file: origin.fileName,
-                })}
-              </strong>
-              <p>
-                {t('assembly.monoPitch.import.note', {
-                  fields: origin.fields
-                    .map((field) =>
-                      t(`assembly.monoPitch.fields.${field}`).toLowerCase(),
-                    )
-                    .join(', '),
-                })}
-              </p>
-            </div>
-            <button
-              type="button"
-              className="mono-icon"
-              aria-label={t('assembly.monoPitch.import.dismiss')}
-              title={t('assembly.monoPitch.import.dismiss')}
-              onClick={() => setOrigin(undefined)}
-            >
-              <X size={16} aria-hidden="true" />
-            </button>
-          </div>
-        )}
         {system && (
           // Phones: the key numbers stay in view while the inputs scroll; the
           // full result (same values) follows the form.

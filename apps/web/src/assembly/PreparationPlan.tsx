@@ -9,6 +9,7 @@ import type {
 import { formatLength, formatNumber } from '../format';
 import { detailStepText } from './DetailPreview';
 import { useAssembly } from './store';
+import { ROOF_FAMILY_LABEL } from './roof-family';
 
 function familyName(
   family: MemberFabricationPackage,
@@ -145,7 +146,7 @@ export function PreparationPlan({
           <small>{t('assembly.fabricationPackage')}</small>
           <h2>{t('assembly.roofPreparationPlan')}</h2>
         </div>
-        <span>{t(`assembly.${roofPackage.roofType}Roof`)}</span>
+        <span>{t(ROOF_FAMILY_LABEL[roofPackage.roofType])}</span>
       </header>
       <div className="a-preparation-groups">
         {roofPackage.families.map((family) => (

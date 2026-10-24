@@ -97,6 +97,19 @@ const ACCEPTANCE: [string, Record<string, number>][] = [
     '10-gable-collar-tie-direct-meeting.cieslacalc.json',
     { roofAreaM2: 87.9, k1StockCm: 563.4, k1: 22, j1: 0, battenM: 0 },
   ],
+  [
+    // VNext-8 (ADR-016): F1 of docs/domain/MONO_PITCH_ROOF.md as a project.
+    // 6.6 m x 4800/cos 15 deg; 15 battens x 6.6 m; 8 counter-battens x 4969.3 mm.
+    '11-mono-pitch-carport.cieslacalc.json',
+    {
+      roofAreaM2: 32.8,
+      k1StockCm: 502.3,
+      k1: 8,
+      j1: 0,
+      battenM: 99,
+      counterBattenM: 39.8,
+    },
+  ],
 ];
 
 function loadRecord(file: string) {
@@ -279,6 +292,7 @@ describe('reference project corpus', () => {
       '08-gable-cut-to-length-sheet.cieslacalc.json',
       '09-hip-catalogue-snapshot.cieslacalc.json',
       '10-gable-collar-tie-direct-meeting.cieslacalc.json',
+      '11-mono-pitch-carport.cieslacalc.json',
     ]);
   });
 
@@ -392,6 +406,25 @@ describe('geometry invariants', () => {
     expect(c1?.quantity).toBe(11);
     expect(c1?.lengthMm).toBeGreaterThan(0);
     expect(c1?.lengthMm).toBeLessThan(project.roof.halfRunMm * 2);
+  });
+});
+
+describe('mono-pitch family (VNext-8)', () => {
+  it('11 resolves one plane, two plates and the K1 top cut through the shared solver', () => {
+    const project = resolveProject('11-mono-pitch-carport.cieslacalc.json');
+    expect(project.roof.type).toBe('mono-pitch');
+    expect(project.surface.status).toBe('resolved');
+    expect(project.surface.planes).toHaveLength(1);
+    const resolved = resolveRoofTemplate(project.roof);
+    expect(resolved.calculation.assembly.endCuts.map((cut) => cut.end)).toEqual(
+      ['eave', 'top'],
+    );
+    expect(
+      project.baseSkeleton.members.filter(
+        (member) => member.kind === 'wall-plate',
+      ),
+    ).toHaveLength(2);
+    expect(project.schedule.timberRows.length).toBeGreaterThan(0);
   });
 });
 

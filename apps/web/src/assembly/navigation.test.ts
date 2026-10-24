@@ -9,6 +9,7 @@ import {
   workbenchLocation,
   workbenchLocationLabelKey,
 } from './workbench';
+import { ridged } from './test-templates';
 
 beforeEach(() => {
   useAssembly.getState().reset();
@@ -98,14 +99,14 @@ describe('V37 return model', () => {
 
   it('navigation never interferes with Undo/Redo of canonical edits', () => {
     const store = useAssembly.getState();
-    const run = store.template.halfRunMm;
+    const run = ridged(store.template).halfRunMm;
     store.setCanonicalField('roof.runMm', run + 250);
     expect(useAssembly.getState().historyPast).toHaveLength(1);
     useAssembly.getState().navigateTo(workbenchLocation('documents'));
     useAssembly.getState().navigateBack();
     expect(useAssembly.getState().historyPast).toHaveLength(1);
     useAssembly.getState().undo();
-    expect(useAssembly.getState().template.halfRunMm).toBe(run);
+    expect(ridged(useAssembly.getState().template).halfRunMm).toBe(run);
     expect(useAssembly.getState().workbench.viewPreset).toBe('construction');
   });
 

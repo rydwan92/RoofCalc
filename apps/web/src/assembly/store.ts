@@ -52,6 +52,7 @@ import {
   type RoofWindowDistributionResult,
 } from '@cieslacalc/roof-math';
 import type {
+  MonoPitchRoofTemplateSpec,
   AssemblySpec,
   BattenLayoutSpec,
   CounterBattenLayoutSpec,
@@ -109,9 +110,24 @@ export type EditField =
   | 'collarTie.heightAboveWallPlateMm'
   | 'collarTie.widthMm'
   | 'collarTie.depthMm'
+  /** VNext-8: mono-pitch template lengths with no rafter-section twin. */
+  | MonoPitchEditField
   | `support/${string}/${SupportField}`;
+export type MonoPitchEditField =
+  'mono.runMm' | 'mono.highOverhangMm' | 'mono.vergeOverhangMm';
+const MONO_PITCH_FIELD_KEY = {
+  'mono.runMm': 'runMm',
+  'mono.highOverhangMm': 'highOverhangMm',
+  'mono.vergeOverhangMm': 'vergeOverhangMm',
+} as const satisfies Record<
+  MonoPitchEditField,
+  keyof MonoPitchRoofTemplateSpec
+>;
+const isMonoPitchField = (field: EditField): field is MonoPitchEditField =>
+  field in MONO_PITCH_FIELD_KEY;
 type AssemblyEditField = Exclude<
   EditField,
+  | MonoPitchEditField
   | 'template.buildingLengthMm'
   | 'template.rafterSpacingMm'
   | 'hip.widthMm'
@@ -120,6 +136,8 @@ type AssemblyEditField = Exclude<
   | 'collarTie.widthMm'
   | 'collarTie.depthMm'
 >;
+/** A free mono-pitch top edge overhangs its wall by this much by default. */
+const FREE_TOP_OVERHANG_MM = 300;
 export const supportField = (id: string, field: SupportField): EditField =>
   `support/${id}/${field}`;
 export function editableFields(spec: AssemblySpec): EditField[] {
@@ -145,6 +163,10 @@ export function editValue(
   field: EditField,
   template?: RoofTemplateSpec,
 ): number {
+  if (isMonoPitchField(field))
+    return template?.type === 'mono-pitch'
+      ? template[MONO_PITCH_FIELD_KEY[field]]
+      : NaN;
   if (field === 'template.buildingLengthMm')
     return template?.buildingLengthMm ?? NaN;
   if (field === 'template.rafterSpacingMm')
@@ -256,6 +278,11 @@ function editedTemplate(
   field: EditField,
   value: number,
 ): RoofTemplateSpec {
+  if (isMonoPitchField(field)) {
+    if (template.type !== 'mono-pitch')
+      throw new RangeError('mono_pitch_template_required');
+    return { ...template, [MONO_PITCH_FIELD_KEY[field]]: value };
+  }
   if (field === 'template.buildingLengthMm')
     return {
       ...template,
@@ -366,6 +393,8 @@ export interface AssemblyState {
   setMode: (mode: WorkbenchMode) => void;
   setRoofType: (type: RoofTemplateSpec['type']) => void;
   setRoofStructureSystem: (system: 'rafter' | 'rafter-collar-tie') => void;
+  /** VNext-8: a mono-pitch top edge — free over the wall, or against one. */
+  setMonoPitchTopEdge: (edge: MonoPitchRoofTemplateSpec['topEdge']) => void;
   setRidgeConnection: (connection: RidgeConnectionType) => void;
   setProjectRoof: (template: RoofTemplateSpec) => void;
   setView: (view: WorkbenchCanvasView) => void;
@@ -729,6 +758,36 @@ export const useAssembly = create<AssemblyState>((set) => ({
           state.projectDocument,
         ),
       );
+    }),
+  setMonoPitchTopEdge: (edge) =>
+    set((state) => {
+      const current = state.template;
+      if (current.type !== 'mono-pitch' || current.topEdge === edge)
+        return state;
+      // Against a wall the rafters bear on a ledger and end at its face;
+      // a free edge rests on the high wall's plate and overhangs it.
+      const template: MonoPitchRoofTemplateSpec = {
+        ...current,
+        topEdge: edge,
+        highOverhangMm: edge === 'abutment' ? 0 : FREE_TOP_OVERHANG_MM,
+        highSupport: {
+          ...current.highSupport,
+          kind: edge === 'abutment' ? 'ledger' : 'wall-plate',
+        },
+      };
+      try {
+        return withHistory(
+          state,
+          committedTemplate(
+            template,
+            state.drafts,
+            state.invalidFields,
+            state.projectDocument,
+          ),
+        );
+      } catch {
+        return state;
+      }
     }),
   setRidgeConnection: (connection) =>
     set((state) => {
@@ -2281,10 +2340,28 @@ export const useAssembly = create<AssemblyState>((set) => ({
     }),
   add: () =>
     set((state) => {
-      const template = roofTemplateFromAssembly(
-        addPurlin(state.spec),
-        state.template,
+      let template: RoofTemplateSpec;
+      let spec: AssemblySpec;
+      try {
+        spec = addPurlin(state.spec);
+        template = roofTemplateFromAssembly(spec, state.template);
+      } catch {
+        // No free span, or the family's purlin limit (mono-pitch: four).
+        return state;
+      }
+      const added = spec.supports.find(
+        (support) => !state.spec.supports.some((old) => old.id === support.id),
       );
+      // A mono-pitch template numbers its purlins along the slope, so the
+      // new one is found by position, not by the ID addPurlin gave it.
+      const selectedId =
+        template.type === 'mono-pitch'
+          ? (assemblyFromRoofTemplate(template).supports.find(
+              (support) =>
+                support.kind === 'purlin' &&
+                Math.abs(support.placement.xMm - added!.placement.xMm) < 1e-6,
+            )?.id ?? 'roof')
+          : template.intermediateSupports.at(-1)!.id;
       return {
         ...withHistory(
           state,
@@ -2297,7 +2374,7 @@ export const useAssembly = create<AssemblyState>((set) => ({
         ),
         workbench: {
           ...state.workbench,
-          selectedId: template.intermediateSupports.at(-1)!.id,
+          selectedId,
           selectedPrototypeId: undefined,
           selectedInstanceId: undefined,
           inspectorOpen: true,

@@ -8,10 +8,6 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react';
-import type {
-  MonoPitchDraft,
-  MonoPitchImportOrigin,
-} from '../mono-pitch/mono-pitch-draft';
 import { useTranslation } from 'react-i18next';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
@@ -43,6 +39,7 @@ import {
   resolveMembraneLayout,
   resolveRoofSurfaceGeometry,
   resolveRoofFeatureTopology,
+  roofTemplateSpanMm,
 } from '@cieslacalc/roof-math';
 import { useAssembly } from './store';
 import {
@@ -67,6 +64,7 @@ import {
   SupportInputs,
   TimberInputs,
 } from './Inputs';
+import { ROOF_FAMILY_LABEL } from './roof-family';
 import { AssemblyCanvas, entityLabel } from './Canvas';
 import { HipFabricationSheet } from './HipFabricationSheet';
 import {
@@ -399,11 +397,6 @@ function AssemblyPageContent({
   const [documentImportOpen, setDocumentImportOpen] = useState(false);
   const [cadImportOpen, setCadImportOpen] = useState(false);
   const [monoPitchOpen, setMonoPitchOpen] = useState(false);
-  /** VNext-7C: a reviewed document import the mono-pitch calculation opens with. */
-  const [monoPitchImport, setMonoPitchImport] = useState<{
-    draft: MonoPitchDraft;
-    origin: MonoPitchImportOrigin;
-  }>();
   /** VNext-4: the file an importer opens with (universal file opening). */
   const [importFile, setImportFile] = useState<File>();
   const [reuseFreshProject, setReuseFreshProject] = useState(false);
@@ -883,26 +876,30 @@ function AssemblyPageContent({
       }),
     [coveringAssignments, resolvedCoveringLayouts],
   );
+  // VNext-8: a mono-pitch roof has no ridge member to size.
+  const ridgeSpec =
+    state.template.type === 'mono-pitch' ? undefined : state.template.ridge;
   const memberSchedule = useMemo(
     () =>
       createRoofMemberSchedule({
         // Proposals never enter quantities; only accepted/current composition does.
         skeleton: framingProjection.composedSkeleton,
-        sectionOverrides: {
-          [state.template.ridge.id]: {
-            ...(state.template.ridge.thicknessMm > 0
-              ? { widthMm: state.template.ridge.thicknessMm }
-              : {}),
-            ...(state.template.ridge.depthMm !== undefined
-              ? { depthMm: state.template.ridge.depthMm }
-              : {}),
-            completeness:
-              state.template.ridge.thicknessMm > 0 &&
-              state.template.ridge.depthMm !== undefined
-                ? 'complete'
-                : 'partial',
-          },
-        },
+        sectionOverrides: ridgeSpec
+          ? {
+              [ridgeSpec.id]: {
+                ...(ridgeSpec.thicknessMm > 0
+                  ? { widthMm: ridgeSpec.thicknessMm }
+                  : {}),
+                ...(ridgeSpec.depthMm !== undefined
+                  ? { depthMm: ridgeSpec.depthMm }
+                  : {}),
+                completeness:
+                  ridgeSpec.thicknessMm > 0 && ridgeSpec.depthMm !== undefined
+                    ? 'complete'
+                    : 'partial',
+              },
+            }
+          : {},
         buildUp: [
           ...(counterBattens?.enabled
             ? counterBattenProjection.rows.map((row) => ({
@@ -986,9 +983,7 @@ function AssemblyPageContent({
       framingProjection.composedSkeleton,
       membrane,
       membraneCourseLayout,
-      state.template.ridge.id,
-      state.template.ridge.depthMm,
-      state.template.ridge.thicknessMm,
+      ridgeSpec,
       surfaceProjection.planes,
     ],
   );
@@ -1469,11 +1464,10 @@ function AssemblyPageContent({
     readiness: projectReadiness,
     checklist: roofChecklist,
     summaries: {
-      geometry: `${t(`assembly.${state.template.type === 'gable' ? 'gableRoof' : 'hipRoof'}`)} · ${(
+      geometry: `${t(ROOF_FAMILY_LABEL[state.template.type])} · ${(
         state.template.buildingLengthMm / 1000
       ).toLocaleString(i18n.language)} × ${(
-        (state.template.halfRunMm * 2) /
-        1000
+        roofTemplateSpanMm(state.template) / 1000
       ).toLocaleString(
         i18n.language,
       )} m · ${pitch.toLocaleString(i18n.language)}°`,
@@ -3422,7 +3416,7 @@ function AssemblyPageContent({
             <summary>{t('assembly.assumptions')}</summary>
             <p>
               {t(
-                `assembly.${state.template.type === 'hip' ? 'hipAssumptionsText' : 'assumptionsText'}`,
+                `assembly.${state.template.type === 'hip' ? 'hipAssumptionsText' : state.template.type === 'mono-pitch' ? 'monoAssumptionsText' : 'assumptionsText'}`,
               )}
             </p>
             <p>{t('assembly.structural')}</p>
@@ -3604,12 +3598,6 @@ function AssemblyPageContent({
               state.setViewPreset('construction');
               openPreparation(report, template);
             }}
-            onOpenMonoPitch={(initial) => {
-              setDocumentImportOpen(false);
-              setImportFile(undefined);
-              setMonoPitchImport(initial);
-              setMonoPitchOpen(true);
-            }}
           />
         </Suspense>
       )}
@@ -3650,10 +3638,21 @@ function AssemblyPageContent({
         <Suspense fallback={<p className="a-loading-overlay" role="status" />}>
           <MonoPitchWorkspace
             unit={state.unit}
-            initial={monoPitchImport}
-            onClose={() => {
+            onClose={() => setMonoPitchOpen(false)}
+            onCreateProject={async ({ template, buildUp }) => {
+              await projectSession.initialize();
+              await projectSession.createFromDocument(
+                createRoofProjectDocument(template, { buildUp }),
+                t('assembly.monoPitch.projectName'),
+              );
+              rememberCreatorStart();
+              projectSession.acknowledgeFreshProject();
+              setReuseFreshProject(false);
+              setProjectStartMode(undefined);
               setMonoPitchOpen(false);
-              setMonoPitchImport(undefined);
+              state.setMode('builder');
+              state.navigatePerspective('project');
+              state.setViewPreset('construction');
             }}
           />
         </Suspense>

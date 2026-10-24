@@ -12,11 +12,13 @@ import {
 } from '@cieslacalc/roof-math';
 import type { RoofProjectDocumentV1 } from '@cieslacalc/calculator-core';
 import type {
+  RidgedRoofTemplateSpec,
   RoofTemplateSpec,
   RoofWindowFeature,
   SkeletonMember3D,
   SupportSpec,
 } from '@cieslacalc/timber-model';
+import { ridged } from '../test-templates';
 import { roofConnectionModel } from './census';
 
 type ProjectDocumentProject = RoofProjectDocumentV1['project'];
@@ -37,7 +39,10 @@ function fixture(name: string): ProjectDocumentProject {
   return structuredClone(record.document.project);
 }
 
-function composed(project: ProjectDocumentProject, roof = project.roof) {
+function composed(
+  project: ProjectDocumentProject,
+  roof: RoofTemplateSpec = project.roof,
+) {
   const skeleton = createRoofSkeleton(roof);
   const windows = project.features.filter(
     (feature): feature is RoofWindowFeature => feature.kind === 'roof-window',
@@ -50,7 +55,10 @@ function composed(project: ProjectDocumentProject, roof = project.roof) {
   }).composedSkeleton.members;
 }
 
-function model(project: ProjectDocumentProject, roof = project.roof) {
+function model(
+  project: ProjectDocumentProject,
+  roof: RoofTemplateSpec = project.roof,
+) {
   return roofConnectionModel({
     template: roof,
     members: composed(project, roof),
@@ -66,7 +74,11 @@ const counts = (result: ReturnType<typeof model>) =>
 const kindCount = (members: readonly SkeletonMember3D[], kind: string) =>
   members.filter((member) => member.kind === kind).length;
 
-function purlin(roof: RoofTemplateSpec, id: string, xMm: number): SupportSpec {
+function purlin(
+  roof: RidgedRoofTemplateSpec,
+  id: string,
+  xMm: number,
+): SupportSpec {
   return {
     ...structuredClone(roof.wallPlate),
     id,
@@ -94,7 +106,7 @@ describe('connection nodes on real roofs', () => {
       (row) => row.kind === 'wall-plate-anchorage',
     )!;
     expect(anchorage.unit).toBe('member');
-    expect(anchorage.extentMm).toBe(2 * project.roof.buildingLengthMm);
+    expect(anchorage.extentMm).toBe(2 * ridged(project.roof).buildingLengthMm);
     // Zero occurrences never become a schedule row.
     expect(
       deriveConnectionSchedule(result.census).map((row) => row.kind),
@@ -103,13 +115,13 @@ describe('connection nodes on real roofs', () => {
 
   it('gable: every purlin at its own position crosses every rafter of its side', () => {
     const project = fixture('01-basic-gable.cieslacalc.json');
-    const roof: RoofTemplateSpec = {
-      ...project.roof,
+    const roof: RidgedRoofTemplateSpec = {
+      ...ridged(project.roof),
       intermediateSupports: [
-        purlin(project.roof, 'support:purlin-1', 1200),
-        purlin(project.roof, 'support:purlin-2', 2600),
+        purlin(ridged(project.roof), 'support:purlin-1', 1200),
+        purlin(ridged(project.roof), 'support:purlin-2', 2600),
       ],
-    } as RoofTemplateSpec;
+    } as RidgedRoofTemplateSpec;
     const members = composed(project, roof);
     const result = model(project, roof);
     const rafters = kindCount(members, 'rafter');
@@ -129,9 +141,11 @@ describe('connection nodes on real roofs', () => {
   it('hip: hips on the plate corners, jacks on hips, purlins only where they really cross', () => {
     const project = fixture('02-basic-hip.cieslacalc.json');
     const roof = {
-      ...project.roof,
-      intermediateSupports: [purlin(project.roof, 'support:purlin-1', 1500)],
-    } as RoofTemplateSpec;
+      ...ridged(project.roof),
+      intermediateSupports: [
+        purlin(ridged(project.roof), 'support:purlin-1', 1500),
+      ],
+    } as RidgedRoofTemplateSpec;
     const members = composed(project, roof);
     const result = model(project, roof);
     const jacks = members.filter((member) => member.kind === 'jack-rafter');
@@ -168,9 +182,9 @@ describe('connection nodes on real roofs', () => {
   it('hip without a ridge (pyramid) reports the apex instead of hip–ridge nodes', () => {
     const project = fixture('02-basic-hip.cieslacalc.json');
     const roof = {
-      ...project.roof,
-      buildingLengthMm: 2 * project.roof.halfRunMm,
-    } as RoofTemplateSpec;
+      ...ridged(project.roof),
+      buildingLengthMm: 2 * ridged(project.roof).halfRunMm,
+    } as RidgedRoofTemplateSpec;
     const result = model(project, roof);
     expect(counts(result)['hip-rafter-ridge']).toBe(0);
     expect(result.projection.limitations).toContain('apex-without-ridge');
@@ -179,14 +193,14 @@ describe('connection nodes on real roofs', () => {
   it('an accepted opening: segments end on headers, headers on trimmers, axes stay', () => {
     const project = fixture('04-hip-opening-framing.cieslacalc.json');
     const framed = composed(project);
-    const base = createRoofSkeleton(project.roof).members;
+    const base = createRoofSkeleton(ridged(project.roof)).members;
     const segments = framed.filter(
       (member) => member.kind === 'rafter-segment',
     );
     expect(segments.length).toBeGreaterThan(0);
     const result = model(project);
     const plain = roofConnectionModel({
-      template: project.roof,
+      template: ridged(project.roof),
       members: base,
       buildUp: project.buildUp,
     });
@@ -215,7 +229,7 @@ describe('connection nodes on real roofs', () => {
 
   it('recounts after a geometry change and keeps node IDs stable across pitch', () => {
     const project = fixture('01-basic-gable.cieslacalc.json');
-    const steeper = model(project, { ...project.roof, pitchDeg: 45 });
+    const steeper = model(project, { ...ridged(project.roof), pitchDeg: 45 });
     const base = model(project);
     expect(steeper.projection.nodes.map((node) => node.id)).toEqual(
       base.projection.nodes.map((node) => node.id),
@@ -227,7 +241,7 @@ describe('connection nodes on real roofs', () => {
     )!;
     expect(raised.location.z).toBeGreaterThan(ridgeNode.location.z);
     const denser = model(project, {
-      ...project.roof,
+      ...ridged(project.roof),
       rafterSpacing: { mode: 'max-even-spacing', spacingMm: 400 },
     } as RoofTemplateSpec);
     expect(counts(denser)['rafter-wall-plate']).toBeGreaterThan(

@@ -238,20 +238,41 @@ export function Inspector({
                         <CollarTieInputs />
                       </>
                     )}
-                  <h3>{t('assembly.ridge')}</h3>
-                  <NumberField
-                    field="ridge.thicknessMm"
-                    label="ridgeWidth"
-                    max={1000}
-                  />
-                  <NumberField
-                    field="ridge.depthMm"
-                    label="ridgeDepth"
-                    min={1}
-                    max={2000}
-                    optional
-                  />
-                  <RidgeConnectionSelector />
+                  {state.template.type === 'mono-pitch' ? (
+                    // VNext-8: no ridge — the two bearings instead.
+                    state.spec.supports
+                      .filter((item) => item.kind === 'wall-plate')
+                      .map((plate, index) => (
+                        <div
+                          key={plate.id}
+                          data-testid={`mono-support-${index}`}
+                        >
+                          <h3>
+                            {t(
+                              `assembly.monoPitch.supportHeading.${index === 0 ? 'low' : state.template.type === 'mono-pitch' && state.template.topEdge === 'abutment' ? 'ledger' : 'high'}`,
+                            )}
+                          </h3>
+                          <SupportInputs support={plate} result={result} />
+                        </div>
+                      ))
+                  ) : (
+                    <>
+                      <h3>{t('assembly.ridge')}</h3>
+                      <NumberField
+                        field="ridge.thicknessMm"
+                        label="ridgeWidth"
+                        max={1000}
+                      />
+                      <NumberField
+                        field="ridge.depthMm"
+                        label="ridgeDepth"
+                        min={1}
+                        max={2000}
+                        optional
+                      />
+                      <RidgeConnectionSelector />
+                    </>
+                  )}
                 </div>
               </details>
             </>
@@ -299,24 +320,25 @@ export function Inspector({
               </button>
             </>
           )}
-          {(workbench.selectedId === state.spec.ridge.id ||
-            workbench.selectedId === 'cut:ridge') && (
-            <>
-              <NumberField
-                field="ridge.thicknessMm"
-                label="ridgeWidth"
-                max={1000}
-              />
-              <NumberField
-                field="ridge.depthMm"
-                label="ridgeDepth"
-                min={1}
-                max={2000}
-                optional
-              />
-              <RidgeConnectionSelector />
-            </>
-          )}
+          {state.template.type !== 'mono-pitch' &&
+            (workbench.selectedId === state.spec.ridge.id ||
+              workbench.selectedId === 'cut:ridge') && (
+              <>
+                <NumberField
+                  field="ridge.thicknessMm"
+                  label="ridgeWidth"
+                  max={1000}
+                />
+                <NumberField
+                  field="ridge.depthMm"
+                  label="ridgeDepth"
+                  min={1}
+                  max={2000}
+                  optional
+                />
+                <RidgeConnectionSelector />
+              </>
+            )}
           {isCollarTie && (
             <>
               <h3>{t('assembly.collar-tie')}</h3>

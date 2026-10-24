@@ -30,6 +30,7 @@ import {
   projectPlaneLocalToWorld,
   resolveRoofPlaneBasis,
   roofStructureSystem,
+  roofTemplateSpanMm,
   type BattenAutoSource,
   type BattenLayoutResult,
   type CounterBattenLayoutResult,
@@ -161,9 +162,11 @@ function k1Section(facts: ExportFacts, k1: ResolvedK1): ExecutionSection {
     section: k1.blank.section,
     requiredBlankLengthMm: k1.blank.requiredBlankLengthMm,
     ridgeConnection:
-      k1.blank.ridgeConnection === 'direct-opposing-rafter-plumb-meeting'
-        ? 'direct-meeting'
-        : 'ridge-board',
+      k1.blank.ridgeConnection === 'top-plumb-cut'
+        ? 'top-plumb-cut'
+        : k1.blank.ridgeConnection === 'direct-opposing-rafter-plumb-meeting'
+          ? 'direct-meeting'
+          : 'ridge-board',
     drawing: drawing(
       createAssemblyDrawing(facts.resolved.calculation.assembly),
     ),
@@ -469,7 +472,10 @@ export function createExportCandidates(facts: ExportFacts): SectionCandidate[] {
     roofType: facts.template.type,
     structuralSystem: roofStructureSystem(facts.template),
     buildingLengthMm: facts.template.buildingLengthMm,
-    halfRunMm: facts.template.halfRunMm,
+    ...(facts.template.type === 'mono-pitch'
+      ? {}
+      : { halfRunMm: facts.template.halfRunMm }),
+    spanMm: roofTemplateSpanMm(facts.template),
     pitchDeg: facts.template.pitchDeg,
     netRoofAreaMm2:
       facts.surface.status === 'resolved'
@@ -874,10 +880,12 @@ export function createExportCandidates(facts: ExportFacts): SectionCandidate[] {
         ? [
             {
               code:
-                facts.k1.blank.ridgeConnection ===
-                'direct-opposing-rafter-plumb-meeting'
-                  ? 'k1-direct-meeting'
-                  : 'k1-ridge-board',
+                facts.k1.blank.ridgeConnection === 'top-plumb-cut'
+                  ? 'k1-top-cut'
+                  : facts.k1.blank.ridgeConnection ===
+                      'direct-opposing-rafter-plumb-meeting'
+                    ? 'k1-direct-meeting'
+                    : 'k1-ridge-board',
               params: { count: facts.k1.requiredPieces.length },
             },
           ]

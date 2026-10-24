@@ -1297,6 +1297,26 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+## VNext-8 (2026-10-24) — mono-pitch is a project roof through the whole app (ADR-016)
+
+- Branch `feature/vnext-8-roof-families` (from 7C, `8ffb3d3`).
+- Owner request (2026-10-23): roof types through the RoofCalc engine with
+  the whole application connected, demonstrable via import.
+- ADR-016 + `docs/ARCHITECTURE_VNEXT8_ROOF_FAMILIES.md` (Definition of
+  Ready, branch audit). `RoofTemplateSpec` += `MonoPitchRoofTemplateSpec`,
+  resolved by the existing mono-pitch solver; V1 schema version unchanged.
+- Works end to end: Creator (third family), import (sample → project),
+  quick workspace → "Utwórz projekt", workbench (2D skeleton, 3D, K1
+  preparation with a top cut), save/reopen, covering, materials, documents.
+- Fixture 11 (F1 + layers) with hand-checked aggregates; e2e
+  `vnext7c-import-mono-pitch.spec.ts` covers the whole path on desktop and
+  phone. A camera test race (session restore vs. zoom) fixed in the test.
+- Validation: `pnpm verify` green — 216 files / 2270 tests (13 skipped);
+  `pnpm e2e` 180 passed / 38 conditionally skipped / 0 failed.
+- NEXT ACTION: asymmetric gable (two pitches, one ridge) as the next
+  family by the same pattern; then the L with a valley (V2 structures,
+  ADR-008); a wall-flashing role for abutment lines.
+
 ## VNext-7C (2026-10-24) — import → mono-pitch, samples, pitch from plate tops, datum tags
 
 - Branch `feature/vnext-7c-automation`.

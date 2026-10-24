@@ -5,7 +5,11 @@ import {
   resolveRoofFeatureTopology,
   resolveRoofSurfaceGeometry,
 } from '@cieslacalc/roof-math';
-import type { RoofTemplateSpec } from '@cieslacalc/timber-model';
+import type {
+  GableRoofTemplateSpec,
+  HipRoofTemplateSpec,
+  RoofTemplateSpec,
+} from '@cieslacalc/timber-model';
 import { roofSceneFromResolvedRoof } from './adapter';
 import { assessRoofScene, type RoofSceneIssueCode } from './assess';
 import {
@@ -386,13 +390,13 @@ describe('mergeRoofScenes never lets IDs collide silently (audit P0-B)', () => {
 });
 
 describe('gable and hip regression under rotation, scale and point order', () => {
-  const gable = (lengthMm: number): RoofTemplateSpec =>
+  const gable = (lengthMm: number): GableRoofTemplateSpec =>
     gableTemplateFromAssembly(assemblyDefaults, {
       id: 'template:hardening',
       buildingLengthMm: lengthMm,
       rafterSpacing: { mode: 'max-even-spacing', spacingMm: 900 },
     });
-  const hip = (lengthMm: number): RoofTemplateSpec => ({
+  const hip = (lengthMm: number): HipRoofTemplateSpec => ({
     ...gable(lengthMm),
     type: 'hip',
     hipRafterSection: { widthMm: 100, depthMm: 240 },

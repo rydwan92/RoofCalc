@@ -7,8 +7,9 @@ import {
   roofPlaneIds,
   type calculateAssembly,
 } from '@cieslacalc/roof-math';
-import type { SupportSpec } from '@cieslacalc/timber-model';
+import type { RoofFamily, SupportSpec } from '@cieslacalc/timber-model';
 import { editableLength, formatLength, formatNumber } from '../format';
+import { ROOF_FAMILY_LABEL } from './roof-family';
 import { editValue, supportField, useAssembly, type EditField } from './store';
 
 export type Calculation = ReturnType<typeof calculateAssembly>;
@@ -141,10 +142,17 @@ export function GeometryInputs({
 }: {
   includeLayout?: boolean;
 }) {
+  const monoPitch = useAssembly(
+    (state) => state.template.type === 'mono-pitch',
+  );
   return (
     <>
       {includeLayout && <RoofTypeSelector context="roof" />}
-      <NumberField field="roof.runMm" label="run" min={1} />
+      {monoPitch ? (
+        <NumberField field="mono.runMm" label="monoRun" min={1} />
+      ) : (
+        <NumberField field="roof.runMm" label="run" min={1} />
+      )}
       <NumberField
         field="roof.pitchDeg"
         label="pitch"
@@ -152,8 +160,55 @@ export function GeometryInputs({
         max={80}
         step={1}
       />
-      <NumberField field="roof.overhangMm" label="overhang" max={10000} />
+      <NumberField
+        field="roof.overhangMm"
+        label={monoPitch ? 'monoEaveOverhang' : 'overhang'}
+        max={10000}
+      />
+      {monoPitch && <MonoPitchEdgeInputs />}
       {includeLayout && <TemplateInputs />}
+    </>
+  );
+}
+/** VNext-8: the top edge of a mono-pitch roof and its overhangs. */
+export function MonoPitchEdgeInputs() {
+  const state = useAssembly(),
+    { t } = useTranslation();
+  if (state.template.type !== 'mono-pitch') return null;
+  const topEdge = state.template.topEdge;
+  return (
+    <>
+      <div className="a-roof-type">
+        <span>{t('assembly.monoPitch.topEdge.label')}</span>
+        <div
+          role="group"
+          aria-label={t('assembly.monoPitch.topEdge.label')}
+          data-testid="mono-pitch-top-edge"
+        >
+          {(['free', 'abutment'] as const).map((edge) => (
+            <button
+              key={edge}
+              type="button"
+              aria-pressed={topEdge === edge}
+              onClick={() => state.setMonoPitchTopEdge(edge)}
+            >
+              {t(`assembly.monoPitch.topEdge.${edge}`)}
+            </button>
+          ))}
+        </div>
+      </div>
+      {topEdge === 'free' && (
+        <NumberField
+          field="mono.highOverhangMm"
+          label="monoHighOverhang"
+          max={10000}
+        />
+      )}
+      <NumberField
+        field="mono.vergeOverhangMm"
+        label="monoVergeOverhang"
+        max={10000}
+      />
     </>
   );
 }
@@ -243,7 +298,7 @@ export function CollarTieInputs() {
  */
 function roofTypeConsequences(
   state: ReturnType<typeof useAssembly.getState>,
-  next: 'gable' | 'hip',
+  next: RoofFamily,
 ) {
   const project = state.projectDocument.project;
   // Plane IDs belong to the template resolver (ADR-007).
@@ -276,11 +331,14 @@ export function RoofTypeSelector({
 }) {
   const state = useAssembly(),
     { t } = useTranslation();
-  const [pending, setPending] = useState<'gable' | 'hip'>();
+  const [pending, setPending] = useState<RoofFamily>();
   const consequences = pending ? roofTypeConsequences(state, pending) : [];
-  const typeLabel = (type: 'gable' | 'hip') =>
-    t(`assembly.${type === 'gable' ? 'gableRoof' : 'hipRoof'}`);
-  const choose = (type: 'gable' | 'hip') => {
+  const typeLabel = (type: RoofFamily) => t(ROOF_FAMILY_LABEL[type]);
+  // VNext-8: a mono-pitch roof is a project roof; Quick Calc stays one
+  // rafter (common or hip) and keeps its link to the mono-pitch workspace.
+  const families: readonly RoofFamily[] =
+    context === 'roof' ? ['gable', 'hip', 'mono-pitch'] : ['gable', 'hip'];
+  const choose = (type: RoofFamily) => {
     if (type === state.template.type) return;
     if (
       context === 'roof' &&
@@ -303,16 +361,19 @@ export function RoofTypeSelector({
           `assembly.${context === 'roof' ? 'roofType' : 'memberType'}`,
         )}
       >
-        {(['gable', 'hip'] as const).map((type) => (
+        {families.map((type) => (
           <button
             key={type}
             type="button"
+            data-family={type}
             aria-pressed={state.template.type === type}
             onClick={() => choose(type)}
           >
-            {t(
-              `assembly.${context === 'roof' ? (type === 'gable' ? 'gableRoof' : 'hipRoof') : type === 'gable' ? 'commonRafter' : 'hipRafter'}`,
-            )}
+            {context === 'roof'
+              ? typeLabel(type)
+              : t(
+                  `assembly.${type === 'gable' ? 'commonRafter' : 'hipRafter'}`,
+                )}
           </button>
         ))}
       </div>

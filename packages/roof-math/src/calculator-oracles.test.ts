@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type {
   GableRoofTemplateSpec,
+  HipRoofTemplateSpec,
   RoofTemplateSpec,
 } from '@cieslacalc/timber-model';
 import { assemblyDefaults, resolveAssembly } from './assembly';
@@ -24,7 +25,7 @@ import { createRoofSkeleton, resolveRoofTemplate } from './roof-template';
  */
 
 const rad = (deg: number) => (deg * Math.PI) / 180;
-const gable = (overrides: Partial<RoofTemplateSpec> = {}) =>
+const gable = (overrides: Partial<GableRoofTemplateSpec> = {}) =>
   ({
     ...gableTemplateFromAssembly(assemblyDefaults, {
       id: 'template:oracle',
@@ -32,15 +33,15 @@ const gable = (overrides: Partial<RoofTemplateSpec> = {}) =>
       rafterSpacing: { mode: 'max-even-spacing', spacingMm: 800 },
     }),
     ...overrides,
-  }) as RoofTemplateSpec;
-const hip = (overrides: Partial<RoofTemplateSpec> = {}) =>
+  }) as GableRoofTemplateSpec;
+const hip = (overrides: Partial<HipRoofTemplateSpec> = {}) =>
   ({
     ...gable(),
     type: 'hip',
     buildingLengthMm: 12000,
     hipRafterSection: { widthMm: 80, depthMm: 240 },
     ...overrides,
-  }) as RoofTemplateSpec;
+  }) as HipRoofTemplateSpec;
 
 function k1(overrides: {
   runMm?: number;
@@ -234,7 +235,10 @@ describe('V44 roof surface oracles and symmetry', () => {
 });
 
 describe('V44 build-up metamorphic checks', () => {
-  const membrane = (minimumOverlapMm: number, template = gable()) =>
+  const membrane = (
+    minimumOverlapMm: number,
+    template: RoofTemplateSpec = gable(),
+  ) =>
     resolveMembraneLayout({
       template,
       layout: { enabled: true },

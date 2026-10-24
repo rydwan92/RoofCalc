@@ -44,6 +44,20 @@
   width: auto;
   min-height: 40px;
 }
+/* VNext-8: rendered into body, so global tokens, not the workbench ones. */
+.mono-header-actions .mono-create {
+  border-color: var(--ui-accent);
+  background: var(--ui-accent);
+  color: var(--ui-text-on-accent);
+  font-weight: 650;
+}
+.mono-header-actions .mono-create:hover:not(:disabled) {
+  background: var(--ui-accent-hover);
+}
+.mono-header-actions .mono-create:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
 .mono-icon {
   display: inline-grid;
   place-items: center;
@@ -62,40 +76,6 @@
   border-radius: 6px;
   background: var(--ui-accent-soft);
   font-size: var(--ui-text-sm);
-}
-/* VNext-7C: what a document import filled in. */
-.mono-import-note {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  padding: 10px 12px;
-  border: 1px solid var(--ui-info);
-  border-radius: 8px;
-  background: var(--ui-info-soft);
-  font-size: var(--ui-text-sm);
-}
-.mono-import-note > svg {
-  flex: none;
-  margin-top: 2px;
-  color: var(--ui-info);
-}
-.mono-import-note > div {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-.mono-import-note p {
-  margin: 2px 0 0;
-}
-.mono-from-document {
-  margin-left: 6px;
-  padding: 1px 6px;
-  border-radius: var(--ui-radius-pill);
-  background: var(--ui-info-soft);
-  color: var(--ui-info);
-  font-size: var(--ui-text-xs);
-  font-style: normal;
-  font-weight: 600;
-  white-space: nowrap;
 }
 .mono-derived {
   display: grid;
@@ -422,6 +402,15 @@
   .mono-header {
     flex-wrap: wrap;
   }
+  /* VNext-8: on a phone the actions take their own row; "Create project"
+     spans it, the rest wrap beneath. */
+  .mono-header-actions {
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+  }
+  .mono-header-actions .mono-create {
+    flex: 1 1 100%;
+  }
   .mono-cuts dl > div {
     grid-template-columns: minmax(0, 1fr);
     gap: 2px;
@@ -462,7 +451,6 @@
   .mono-view-switch,
   .mono-scene,
   .mono-draft-note,
-  .mono-import-note,
   .mono-invalid {
     display: none !important;
   }

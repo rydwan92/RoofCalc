@@ -767,7 +767,10 @@ export function createWorkbenchToolRegistry(args: {
       icon: 'add',
       enabled: args.canAddPurlin,
     },
-    {
+  );
+  // VNext-8: a mono-pitch roof ends in a top cut, not at a ridge.
+  if (args.template.type !== 'mono-pitch')
+    tools.push({
       id: 'tool:ridge',
       category: 'support',
       action: 'select',
@@ -775,7 +778,6 @@ export function createWorkbenchToolRegistry(args: {
       labelKey: 'ridge',
       icon: 'ridge',
       enabled: true,
-    },
-  );
+    });
   return tools;
 }

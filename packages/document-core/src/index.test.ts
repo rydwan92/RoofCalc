@@ -34,6 +34,7 @@ const candidates: SectionCandidate[] = [
       structuralSystem: 'rafter',
       buildingLengthMm: 10000,
       halfRunMm: 4000,
+      spanMm: 8000,
       pitchDeg: 35,
       openingCount: 0,
       timberFamilies: [],

@@ -1,19 +1,8 @@
 import { z } from 'zod';
-import type {
-  BattenLayoutSpec,
-  MembraneLayerSpec,
-  Point3D,
-  RoofPlanePosition,
-} from '@cieslacalc/timber-model';
-import {
-  resolveBattenLayoutOnPlanes,
-  resolveMembraneLayoutOnPlanes,
-  type BattenAutoSource,
-  type BattenLayoutResult,
-  type MembraneCourseProduct,
-  type MembraneLayoutResult,
-  type RoofPlaneBasis,
-} from './roof-features';
+import type { Point3D, RoofPlanePosition } from '@cieslacalc/timber-model';
+// Types only: the surface has no runtime dependency on the features
+// module, so `roof-template` can resolve a mono-pitch roof (ADR-016).
+import type { RoofPlaneBasis } from './roof-features';
 
 /**
  * VNext-7A mono-pitch (pulpitowy) roof: SURFACE GEOMETRY ONLY.
@@ -168,6 +157,32 @@ export function monoPitchFromBearingElevations(input: {
   return { pitchDeg: pitch, riseMm };
 }
 
+/**
+ * The plane's frame for an already valid spec — no validation, so the
+ * generic `resolveRoofPlaneBasis` can call it like the gable/hip frames.
+ * u runs along the eave from the start verge, v up the slope.
+ */
+export function monoPitchPlaneBasis(spec: MonoPitchRoofSpec): RoofPlaneBasis {
+  const alpha = (spec.pitchDeg * Math.PI) / 180;
+  const eaveX = -spec.lowEaveOverhangMm;
+  const topX = spec.runMm + spec.highOverhangMm;
+  const widthMm = spec.buildingLengthMm + 2 * spec.vergeOverhangMm;
+  const slopeLengthMm = (topX - eaveX) / Math.cos(alpha);
+  return {
+    id: MONO_PITCH_PLANE_ID,
+    origin: point(eaveX, -spec.vergeOverhangMm, eaveX * Math.tan(alpha)),
+    uAxis: point(0, 1, 0),
+    vAxis: point(Math.cos(alpha), 0, Math.sin(alpha)),
+    normal: point(-Math.sin(alpha), 0, Math.cos(alpha)),
+    polygon: [
+      { uMm: 0, vMm: 0 },
+      { uMm: widthMm, vMm: 0 },
+      { uMm: widthMm, vMm: slopeLengthMm },
+      { uMm: 0, vMm: slopeLengthMm },
+    ],
+  };
+}
+
 export function resolveMonoPitchRoof(
   input: MonoPitchRoofSpec,
 ): MonoPitchRoofGeometry {
@@ -199,19 +214,7 @@ export function resolveMonoPitchRoof(
   const widthMm = end - start;
   const planDepthMm = topX - eaveX;
   const slopeLengthMm = planDepthMm / cos;
-  const basis: RoofPlaneBasis = {
-    id: MONO_PITCH_PLANE_ID,
-    origin: corners.eaveStart,
-    uAxis: point(0, 1, 0),
-    vAxis: point(cos, 0, Math.sin(alpha)),
-    normal: point(-Math.sin(alpha), 0, cos),
-    polygon: [
-      { uMm: 0, vMm: 0 },
-      { uMm: widthMm, vMm: 0 },
-      { uMm: widthMm, vMm: slopeLengthMm },
-      { uMm: 0, vMm: slopeLengthMm },
-    ],
-  };
+  const basis = monoPitchPlaneBasis(spec);
   const plane: MonoPitchRoofPlane = {
     roofPlaneId: MONO_PITCH_PLANE_ID,
     basis,
@@ -279,38 +282,4 @@ export function resolveMonoPitchRoof(
     planAreaMm2: plane.planAreaMm2,
     scope: MONO_PITCH_SOLVER_SCOPE,
   };
-}
-
-/**
- * VNext-7B: battens on the mono-pitch plane through the one batten engine
- * (`resolveBattenLayoutOnPlanes`); `ridgeOffsetMm` is measured below the top
- * edge.
- */
-export function resolveMonoPitchBattens(
-  roof: MonoPitchRoofGeometry,
-  layout: BattenLayoutSpec,
-  autoSource?: BattenAutoSource,
-): BattenLayoutResult {
-  const [plane] = roof.planes;
-  return resolveBattenLayoutOnPlanes({
-    knownRoofPlaneIds: [plane.roofPlaneId],
-    planeBasis: () => plane.basis,
-    layout,
-    autoSource,
-  });
-}
-
-/** VNext-7B-2: membrane courses on the mono-pitch plane, one engine. */
-export function resolveMonoPitchMembrane(
-  roof: MonoPitchRoofGeometry,
-  layout: MembraneLayerSpec,
-  product: MembraneCourseProduct,
-): MembraneLayoutResult {
-  const [plane] = roof.planes;
-  return resolveMembraneLayoutOnPlanes({
-    knownRoofPlaneIds: [plane.roofPlaneId],
-    planeBasis: () => plane.basis,
-    layout,
-    product,
-  });
 }

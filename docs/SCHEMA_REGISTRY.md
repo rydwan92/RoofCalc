@@ -764,11 +764,36 @@ workbench. No migration.
   `'mono-pitch'`; `ImportRoofType` is `'gable' | 'hip' | 'mono-pitch'`
   (`ProjectRoofType` keeps the two a project can hold). Session-only (§13):
   nothing persisted changes. A mono-pitch draft maps to
-  `RoofStartParameters` with the same names (width = run, eave = low eave)
-  and opens the mono-pitch workspace, never `createProjectStartTemplate`.
+  `RoofStartParameters` with the same names (width = run, eave = low eave).
+  Since VNext-8 it goes through `createProjectStartTemplate` into a project
+  like gable and hip (§23); the 7C hand-off to the workspace is removed.
 - Mono-pitch workspace draft (§21, `cieslacalc.monoPitchDraft.v1`) adds
   `pitchSource: 'angle' | 'plate-tops'`, `lowPlateTopMm`,
   `highPlateTopMm` — additive and optional on read: a draft saved before
   opens with the defaults (typed angle). Still schema version 1.
 - Import sample drawings: static files `apps/web/public/samples/*.pdf`,
   byte-identical to `fixtures/documents` (generator + test). Not data.
+
+## 23. VNext-8 contracts — mono-pitch is a project roof (ADR-016)
+
+- **`RoofProjectDocumentV1.project.roof`** (persisted): `RoofTemplateSpec`
+  gains `MonoPitchRoofTemplateSpec` (`type: 'mono-pitch'`: building
+  length, run, pitch, low eave, top edge, high and verge overhangs, rafter
+  spacing and section, low/high support, up to four purlins). Schema
+  version stays **1**: every existing document is unchanged and opens as
+  before; a document with a mono-pitch roof is refused by an older build
+  with its ordinary schema error (forward-incompatible additive variant).
+  Reference fixture `fixtures/projects/11-mono-pitch-carport`.
+- `AssemblySpec.upperEnd?: ridge | top` (derived, never persisted on its
+  own): absent = ridge. `top` allows the second, higher plate.
+- `RoofLineFeatureKind` gains `abutment`; `ResolvedRoofSurfacePlane.abutmentEdges?`
+  declares it (derived).
+- K1 blank basis `top-plumb-cut`; `RoofFabricationPackage.roofType` is
+  `RoofFamily` (derived).
+- document-core `ProjectSummarySection`: `roofType` adds
+  `mono-pitch`, `spanMm` added, `halfRunMm` optional (absent on a
+  mono-pitch roof); `MemberFabricationSection.ridgeConnection` adds
+  `top-plumb-cut`. Documents are rendered, not persisted.
+- Mono-pitch workspace draft: the 7C import fields are gone (the import
+  makes a project); `monoPitchProjectFromDraft` turns a draft into a
+  project (template + build-up).

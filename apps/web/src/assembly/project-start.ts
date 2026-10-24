@@ -3,6 +3,7 @@ import {
   convertRoofTemplate,
   maxCollarTieHeightMm,
   roofTemplateSchema,
+  roofTemplateSpanMm,
 } from '@cieslacalc/roof-math';
 import { createRoofMemberSchedule } from '@cieslacalc/quantity-core';
 import type {
@@ -32,7 +33,7 @@ export function projectStartValuesFromTemplate(
   return {
     roofType: template.type,
     buildingLengthMm: template.buildingLengthMm,
-    buildingWidthMm: template.halfRunMm * 2,
+    buildingWidthMm: roofTemplateSpanMm(template),
     pitchDeg: template.pitchDeg,
     eaveOverhangMm: template.eaveOverhangMm,
     rafterSpacingMm: template.rafterSpacing.spacingMm,
@@ -42,19 +43,38 @@ export function projectStartValuesFromTemplate(
       template.type === 'gable'
         ? (template.structure?.system ?? 'rafter')
         : 'rafter',
-    ridgeConnection: template.ridge.connection ?? 'ridge-board',
+    ...(template.type === 'mono-pitch'
+      ? {}
+      : { ridgeConnection: template.ridge.connection ?? 'ridge-board' }),
   };
 }
 
 /**
  * Maps friendly building dimensions onto the one existing canonical roof
- * template. Building width is never persisted separately from halfRunMm.
+ * template. Building width is never persisted separately from halfRunMm
+ * (a mono-pitch roof: `runMm`, ADR-016).
  */
 export function createProjectStartTemplate(
   values: ProjectStartValues,
   base: RoofTemplateSpec,
 ): RoofTemplateSpec {
   const converted = convertRoofTemplate(base, values.roofType);
+  if (converted.type === 'mono-pitch')
+    return roofTemplateSchema.parse({
+      ...converted,
+      buildingLengthMm: values.buildingLengthMm,
+      runMm: values.buildingWidthMm,
+      pitchDeg: values.pitchDeg,
+      eaveOverhangMm: values.eaveOverhangMm,
+      rafterSpacing: {
+        ...converted.rafterSpacing,
+        spacingMm: values.rafterSpacingMm,
+      },
+      rafterSection: {
+        widthMm: values.rafterWidthMm ?? converted.rafterSection.widthMm,
+        depthMm: values.rafterDepthMm ?? converted.rafterSection.depthMm,
+      },
+    });
   const halfRunMm = values.buildingWidthMm / 2;
   const next = {
     ...converted,
@@ -209,7 +229,10 @@ export function deriveProjectStartReadiness(
     });
     const k1 = createK1CuttingRequirement(projection.resolved, schedule);
     const notes: ProjectStartReadiness['notes'] = [];
-    if (template.ridge.connection === 'half-lap')
+    if (
+      template.type !== 'mono-pitch' &&
+      template.ridge.connection === 'half-lap'
+    )
       notes.push('half-lap-unmodelled');
     return {
       geometry: projection.skeleton.members.length ? 'ready' : 'unavailable',

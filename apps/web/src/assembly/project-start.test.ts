@@ -76,7 +76,9 @@ describe('project start mapping', () => {
       base,
     );
     expect(roof.rafterSection).toEqual({ widthMm: 80, depthMm: 180 });
-    expect(roof.ridge.connection).toBe('direct-meeting');
+    expect(roof.type !== 'mono-pitch' && roof.ridge.connection).toBe(
+      'direct-meeting',
+    );
     expect(roof.type === 'gable' && roof.structure?.system).toBe(
       'rafter-collar-tie',
     );

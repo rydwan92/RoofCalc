@@ -6,9 +6,11 @@ import type {
   RoofWindowFeature,
   SkeletonMemberSide,
 } from '@cieslacalc/timber-model';
+import { MONO_PITCH_PLANE_ID } from './mono-pitch-roof';
 import {
   projectPlaneLocalToWorld,
   resolveRoofPlaneBasis,
+  templateRoofPlaneIds,
 } from './roof-features';
 
 const EPSILON = 1e-7;
@@ -26,6 +28,12 @@ export interface RoofSurfaceIssue {
 }
 
 export interface ResolvedRoofSurfacePlane {
+  /**
+   * VNext-8: polygon edges (index i runs from vertex i to i + 1) that meet a
+   * wall — declared by the solver, since geometry alone cannot tell a top
+   * edge against a wall from a free one. Absent: none.
+   */
+  abutmentEdges?: number[];
   roofPlaneId: string;
   grossAreaMm2: number;
   openingAreaMm2: number;
@@ -50,14 +58,7 @@ export interface RoofSurfaceGeometryResult {
 }
 
 export function roofPlaneIds(template: RoofTemplateSpec): string[] {
-  return template.type === 'gable'
-    ? ['roof-plane:left', 'roof-plane:right']
-    : [
-        'roof-plane:left',
-        'roof-plane:right',
-        'roof-plane:front',
-        'roof-plane:rear',
-      ];
+  return templateRoofPlaneIds(template);
 }
 
 /**
@@ -76,6 +77,8 @@ export function roofPlaneSide(
     'roof-plane:right': 'right',
     'roof-plane:front': 'front',
     'roof-plane:rear': 'rear',
+    // One plane, one row of rafters (the skeleton's `center` side).
+    [MONO_PITCH_PLANE_ID]: 'center',
   };
   return sides[roofPlaneId];
 }
@@ -233,6 +236,20 @@ function finiteOpening(feature: RoofWindowFeature) {
 }
 
 function boundaryMetrics(template: RoofTemplateSpec, roofPlaneId: string) {
+  if (template.type === 'mono-pitch') {
+    const width = template.buildingLengthMm + 2 * template.vergeOverhangMm;
+    return {
+      slopeLengthsMm: [
+        (template.eaveOverhangMm + template.runMm + template.highOverhangMm) /
+          Math.cos((template.pitchDeg * Math.PI) / 180),
+      ],
+      eaveLengthMm: width,
+      // A free top edge is the roof's upper boundary; against a wall it is
+      // an abutment (a wall junction), not a ridge.
+      ridgeBoundaryLengthMm: template.topEdge === 'free' ? width : 0,
+      hipBoundaryLengthMm: 0,
+    };
+  }
   const slopeLength =
     (template.halfRunMm + template.eaveOverhangMm) /
     Math.cos((template.pitchDeg * Math.PI) / 180);
@@ -317,6 +334,11 @@ export function resolveRoofSurfaceGeometry(args: {
       openingAreaMm2,
       netAreaMm2: Math.max(0, grossAreaMm2 - openingAreaMm2),
       ...boundaryMetrics(args.template, roofPlaneId),
+      // The mono-pitch polygon is eave, end verge, top, start verge: edge 2.
+      ...(args.template.type === 'mono-pitch' &&
+      args.template.topEdge === 'abutment'
+        ? { abutmentEdges: [2] }
+        : {}),
       polygon: basis.polygon,
       worldPolygon: basis.polygon.map((point) =>
         projectPlaneLocalToWorld(basis, point),
