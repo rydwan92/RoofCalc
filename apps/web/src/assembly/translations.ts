@@ -364,6 +364,32 @@ export const assemblyPl = {
   asymSpan: 'Rozpiętość (zewnętrzne lica murłat)',
   leftPitch: 'Kąt lewej połaci',
   rightPitch: 'Kąt prawej połaci',
+  structures: {
+    title: 'Bryły projektu',
+    fallback: 'Bryła {{n}}',
+    mainName: 'Budynek główny',
+    add: 'Dodaj bryłę',
+    settings: 'Ustawienia bryły',
+    hint: 'Warsztat, materiały, kosztorys i dokumenty pokazują teraz bryłę „{{name}}”.',
+    placement: 'Położenie na działce',
+    placementHint:
+      'Narożnik budynku (lewy przedni, po licu murłat), poziom murłat i obrót. Położenie służy do widoku działki — nie zmienia obliczeń bryły.',
+    field: {
+      name: 'Nazwa bryły',
+      x: 'Narożnik X',
+      y: 'Narożnik Y',
+      z: 'Poziom murłat',
+      rotation: 'Obrót',
+    },
+    save: 'Zapisz',
+    cancel: 'Anuluj',
+    remove: 'Usuń bryłę',
+    removeYes: 'Usuń z projektu',
+    removeConfirm:
+      'Usunąć bryłę „{{name}}” z projektu? Jej dach, warstwy, pokrycie i otwory znikną z projektu.',
+    invalid: 'Wpisz liczby; obrót od −360° do 360°.',
+    actionError: 'Nie udało się zapisać projektu. Spróbuj ponownie.',
+  },
   rightRafter: {
     title: 'K2 — krokiew prawej połaci',
     seat: 'Siedzisko na murłacie',
@@ -400,12 +426,15 @@ export const assemblyPl = {
       new: 'Szybki start',
       quick: 'Na podstawie szybkiego obliczenia',
       edit: 'Podstawowe wymiary projektu',
+      structure: 'Nowa bryła projektu',
     },
     description: {
       new: 'Podaj wymiary budynku i dachu. Resztę dopracujesz później w warsztacie.',
       quick:
         'Geometrię krokwi już mamy. Uzupełnij tylko dane potrzebne dla całego dachu.',
       edit: 'Zmień podstawowe wymiary bez tworzenia projektu od nowa.',
+      structure:
+        'Garaż, wiata albo dobudówka w tym samym projekcie: podaj jej wymiary i dach. Każdą bryłę liczysz osobno.',
     },
     roofType: 'Jaki dach?',
     roofHint: {
@@ -432,6 +461,7 @@ export const assemblyPl = {
       new: 'Utwórz projekt',
       quick: 'Utwórz z tego projekt',
       edit: 'Zapisz podstawowe wymiary',
+      structure: 'Dodaj bryłę do projektu',
     },
   },
   guidance: {

@@ -1,0 +1,180 @@
+/*
+ * VNext-10 (ADR-017): the roof structures of one project. A quiet row above
+ * the workspace: the chosen structure is the one everything below shows.
+ */
+.a-structures {
+  display: grid;
+  gap: var(--ui-space-1);
+  padding: var(--ui-space-2) var(--ui-space-3);
+  border: 1px solid var(--a-line);
+  border-radius: var(--ui-radius-md);
+  background: var(--a-surface);
+}
+.a-structures-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-2);
+  min-width: 0;
+}
+.a-structures-title {
+  flex: none;
+  color: var(--a-muted);
+  font-size: var(--ui-text-xs);
+  font-weight: var(--ui-weight-medium);
+  letter-spacing: var(--ui-tracking-caps);
+  text-transform: uppercase;
+}
+.a-structures-list {
+  display: flex;
+  flex: 1;
+  gap: var(--ui-space-2);
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.a-structure-chip,
+.a-structure-add,
+.a-structure-settings {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--ui-space-2);
+  min-height: 36px;
+  padding: 4px 12px;
+  border: 1px solid var(--a-line);
+  border-radius: var(--ui-radius-pill);
+  background: var(--a-surface);
+  color: var(--a-text);
+  font-size: var(--ui-text-sm);
+  cursor: pointer;
+}
+.a-structure-chip small {
+  color: var(--a-muted);
+  font-size: var(--ui-text-xs);
+}
+.a-structure-chip[aria-pressed='true'] {
+  border-color: var(--a-accent);
+  background: var(--a-accent);
+  color: #fff;
+}
+.a-structure-chip[aria-pressed='true'] small {
+  color: #ffffffcc;
+}
+.a-structure-chip:hover:not([aria-pressed='true']),
+.a-structure-add:hover,
+.a-structure-settings:hover {
+  border-color: var(--a-line-strong);
+}
+.a-structure-add {
+  border-style: dashed;
+  color: var(--a-accent);
+}
+.a-structure-settings {
+  margin-left: auto;
+}
+.a-structures-hint {
+  margin: 0;
+  color: var(--a-muted);
+  font-size: var(--ui-text-xs);
+}
+.a-structures-error {
+  margin: 0;
+  color: var(--a-warning);
+  font-size: var(--ui-text-sm);
+}
+.a-structure-panel {
+  display: grid;
+  gap: var(--ui-space-3);
+  padding-top: var(--ui-space-2);
+  border-top: 1px solid var(--a-line);
+}
+.a-structure-panel fieldset {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--ui-space-2) var(--ui-space-3);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.a-structure-panel legend {
+  margin-bottom: var(--ui-space-1);
+  font-size: var(--ui-text-sm);
+  font-weight: var(--ui-weight-medium);
+}
+.a-structure-panel fieldset .a-structures-hint {
+  grid-column: 1 / -1;
+}
+.a-structure-field {
+  display: grid;
+  gap: 4px;
+  font-size: var(--ui-text-xs);
+  color: var(--a-muted);
+}
+.a-structure-field.is-name {
+  max-width: 360px;
+}
+.a-structure-field input {
+  width: 100%;
+  min-height: 38px;
+  padding: 6px 10px;
+  border: 1px solid var(--a-line);
+  border-radius: var(--ui-radius-sm);
+  color: var(--a-text);
+  font-size: var(--ui-text-md);
+}
+.a-structure-input {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.a-structure-field input[aria-invalid='true'] {
+  border-color: var(--a-warning);
+}
+.a-structure-actions,
+.a-structure-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ui-space-2);
+}
+.a-structure-actions .a-primary {
+  width: auto;
+}
+.a-structure-remove {
+  color: var(--a-warning);
+}
+.a-structure-confirm {
+  padding: var(--ui-space-2) var(--ui-space-3);
+  border: 1px solid var(--a-warning);
+  border-radius: var(--ui-radius-sm);
+  background: var(--a-warning-fill);
+}
+.a-structure-confirm p {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: var(--ui-text-sm);
+}
+
+@media (max-width: 760px) {
+  /* The chips get the whole first row; settings sit below them. */
+  .a-structures-row {
+    flex-wrap: wrap;
+  }
+  .a-structures-title {
+    display: none;
+  }
+  .a-structures-list {
+    flex-basis: 100%;
+  }
+  .a-structure-chip small {
+    display: none;
+  }
+  .a-structure-settings {
+    min-height: 32px;
+    margin-left: 0;
+    padding: 2px 10px;
+  }
+  .a-structure-panel fieldset {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

@@ -838,3 +838,24 @@ workbench. No migration.
   required right pitch is never a RoofCalc default.
 - New sample `rzut-dachu-dwuspadowy-niesymetryczny.pdf` (fixtures and
   `public/samples`, byte-checked) and benchmark case `asymmetric-gable-1p`.
+
+## 26. VNext-10 contracts — a project of several structures (ADR-017)
+
+- **`ProjectRecordV2`** (persisted, `schemaVersion: 2`): the V1 envelope
+  (id, name, timestamps) around a `RoofProjectDocumentV2`. Readers:
+  `projectRecordSchema` (V1 | V2); `importProject` also reads a bare V2
+  document. An older build refuses a V2 record with its ordinary schema
+  error. Storage keys are unchanged (`cieslacalc.projects.v1.record.<id>`
+  versions the key layout, not the record).
+- **`RoofProjectDocumentV2`** (persisted inside a V2 record): `structures`
+  of kind `template-roof` only — id (opaque), optional name, `transform`
+  (plan translation and elevation in mm, rotation about the vertical in
+  degrees), `project` = exactly a V1 project. `connections` stays `[]`.
+  The VNext-7A `mono-pitch` geometry kind is removed (never persisted).
+- **Writer rule:** `canonicalProjectDocument` writes a document of one
+  structure in its own frame as V1, so a project of one roof never changes
+  format; removing the last extra structure turns a project back into V1.
+- The selected structure is session view state, never persisted (ADR-002).
+- Business estimations keep `ProjectRecordV1`; the API is unchanged.
+- Reference fixture `fixtures/projects/structures/13-house-and-carport`
+  (references 01 and 11, byte-identical inside their structures).

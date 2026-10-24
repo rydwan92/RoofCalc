@@ -162,3 +162,10 @@ and L-with-valley scenes; an overlapping L without a solved junction is
 - Refined by ADR-016: a single mono-pitch roof is a template variant in the
   V1 project, not a reason to write V2. A solver-produced mono-pitch scene
   is `calculation: supported`; V2 stays the format for composed roofs.
+
+## Addendum — VNext-10 (2026-10-24)
+
+- The V2 writer is on for what it was designed for (ADR-017): a project of
+  several structures is a `ProjectRecordV2`. The gate in
+  `layering.test.ts` now admits V2 in the web project layer only; the
+  workbench, solvers, documents and the API still see one V1 document.

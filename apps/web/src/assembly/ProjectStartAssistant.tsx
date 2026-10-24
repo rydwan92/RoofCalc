@@ -54,7 +54,8 @@ import { useAssembly } from './store';
 import { workbenchProjectResolver } from './workbench-project';
 import { ROOF_FAMILY_LABEL } from './roof-family';
 
-export type ProjectStartMode = 'new' | 'quick' | 'edit';
+/** VNext-10: `structure` adds a roof structure to the open project. */
+export type ProjectStartMode = 'new' | 'quick' | 'edit' | 'structure';
 
 /** One saved project: its name first, then when it last changed. */
 function RecentProjectButton({

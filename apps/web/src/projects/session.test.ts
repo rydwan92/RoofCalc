@@ -1,11 +1,15 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { createProjectRecord } from '@cieslacalc/project-core';
+import {
+  createProjectRecord,
+  type ProjectRecord,
+} from '@cieslacalc/project-core';
 import { createDefaultProjectDocument, useAssembly } from '../assembly/store';
 import { LocalProjectRepository } from './local-repository';
 import { MemoryStorage } from './memory-storage';
 import { ProjectSession } from './session';
 import { ridged } from '../assembly/test-templates';
-import type { RoofTemplateSpec } from '@cieslacalc/timber-model';
+import { createRoofProjectDocument } from '@cieslacalc/calculator-core';
+import { convertRoofTemplate } from '@cieslacalc/roof-math';
 
 let storage: MemoryStorage;
 let repository: LocalProjectRepository;
@@ -144,7 +148,7 @@ it('autosaves and reopens a catalogue selection from its local technical snapsho
   expect(session.snapshot().saveStatus).toBe('dirty');
   await vi.advanceTimersByTimeAsync(800);
   expect(
-    (await repository.get(id))?.document.project.coverings[0]?.product
+    single(await repository.get(id))?.document.project.coverings[0]?.product
       .catalogRef?.technicalRevisionId,
   ).toBe('revision:tile:r1');
 
@@ -301,9 +305,125 @@ it('shows saving while a write is pending and blocks switching after a failed fl
   storage.failWrites = false;
 });
 
-/** A stored gable/hip project's half run (ADR-016: the roof is a union). */
-function storedHalfRun(
-  record: { document: { project: { roof: RoofTemplateSpec } } } | undefined,
-) {
-  return record ? ridged(record.document.project.roof).halfRunMm : undefined;
+/** A stored project of one roof (a V1 record), or a loud failure. */
+function single(record: ProjectRecord | undefined) {
+  if (record && record.schemaVersion !== 1)
+    throw new Error('expected a project of one roof');
+  return record;
 }
+
+/** A stored gable/hip project's half run (ADR-016: the roof is a union). */
+function storedHalfRun(record: ProjectRecord | undefined) {
+  const stored = single(record);
+  return stored ? ridged(stored.document.project.roof).halfRunMm : undefined;
+}
+
+/* VNext-10 (ADR-017): a project of several roof structures. */
+
+/** A mono-pitch garage as the V1 document the workbench edits. */
+function garageDocument() {
+  return createRoofProjectDocument(
+    convertRoofTemplate(
+      createDefaultProjectDocument().project.roof,
+      'mono-pitch',
+    ),
+  );
+}
+
+it('adds a structure, edits only the selected one and switches with fresh Undo', async () => {
+  await session.initialize();
+  const active = session.snapshot().active!;
+  useAssembly.getState().setCanonicalField('roof.runMm', 4450);
+  const garageId = await session.addStructure(garageDocument(), {
+    name: 'Garaż',
+    firstName: 'Dom',
+  });
+  // The project is now a V2 record of two structures, the garage open.
+  const stored = await repository.get(active.id);
+  expect(stored?.schemaVersion).toBe(2);
+  expect(session.snapshot().structures?.map((s) => [s.name, s.family])).toEqual(
+    [
+      ['Dom', 'gable'],
+      ['Garaż', 'mono-pitch'],
+    ],
+  );
+  expect(session.snapshot().activeStructureId).toBe(garageId);
+  expect(useAssembly.getState().template.type).toBe('mono-pitch');
+  expect(useAssembly.getState().historyPast).toEqual([]);
+
+  // An edit of the garage lands in the garage only.
+  useAssembly.getState().setField('template.buildingLengthMm', '5000');
+  await session.persistNow();
+  const afterEdit = await repository.get(active.id);
+  if (afterEdit?.schemaVersion !== 2) throw new Error('expected V2');
+  expect(
+    afterEdit.document.structures.map((s) => s.project.roof.buildingLengthMm),
+  ).toEqual([
+    createDefaultProjectDocument().project.roof.buildingLengthMm,
+    5000,
+  ]);
+  expect(ridged(afterEdit.document.structures[0]!.project.roof).halfRunMm).toBe(
+    4450,
+  );
+
+  // Back to the house: its roof, an empty Undo, the perspective kept.
+  useAssembly.getState().setViewPreset('materials');
+  await session.selectStructure(afterEdit.document.structures[0]!.id);
+  expect(ridged(useAssembly.getState().template).halfRunMm).toBe(4450);
+  expect(useAssembly.getState().historyPast).toEqual([]);
+  expect(useAssembly.getState().workbench.viewPreset).toBe('materials');
+});
+
+it('renames, moves and removes a structure; one unmoved roof is V1 again', async () => {
+  await session.initialize();
+  const active = session.snapshot().active!;
+  const garageId = await session.addStructure(garageDocument(), {
+    name: 'Garaż',
+  });
+  await session.renameStructure(garageId, 'Wiata');
+  await session.moveStructure(garageId, {
+    cornerMm: { x: 12000, y: 1500 },
+    elevationMm: 300,
+    rotationAboutVerticalDeg: 90,
+  });
+  const garage = session
+    .snapshot()
+    .structures!.find((structure) => structure.id === garageId)!;
+  expect(garage.name).toBe('Wiata');
+  // The building corner lands exactly where it was typed.
+  expect(garage.placement.cornerMm.x).toBeCloseTo(12000, 9);
+  expect(garage.placement.cornerMm.y).toBeCloseTo(1500, 9);
+  expect(garage.placement).toMatchObject({
+    elevationMm: 300,
+    rotationAboutVerticalDeg: 90,
+  });
+  await session.removeStructure(garageId);
+  expect(session.snapshot().structures).toBeUndefined();
+  expect((await repository.get(active.id))?.schemaVersion).toBe(1);
+  expect(useAssembly.getState().template.type).toBe('gable');
+});
+
+it('reopens a project of structures on its first one and exports it whole', async () => {
+  await session.initialize();
+  const active = session.snapshot().active!;
+  await session.addStructure(garageDocument(), { name: 'Garaż' });
+  const exported = session.exportActive()!;
+  await session.dispose();
+
+  // A page load: the store starts from the default document.
+  useAssembly.getState().reset();
+  useAssembly.getState().setMode('builder');
+  const reopened = new ProjectSession(repository, 800);
+  session = reopened;
+  await reopened.initialize();
+  expect(reopened.snapshot().active?.id).toBe(active.id);
+  expect(reopened.snapshot().structures).toHaveLength(2);
+  expect(useAssembly.getState().template.type).toBe('gable');
+
+  await reopened.import(exported.contents);
+  expect(reopened.snapshot().active?.id).not.toBe(active.id);
+  expect(reopened.snapshot().structures?.map((s) => s.name)).toEqual([
+    undefined,
+    'Garaż',
+  ]);
+});

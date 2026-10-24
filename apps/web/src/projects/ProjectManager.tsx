@@ -17,6 +17,7 @@ const messages = {
     editBasics: 'Edytuj podstawowe wymiary',
     rename: 'Zmień nazwę',
     duplicate: 'Duplikuj',
+    addStructure: 'Dodaj bryłę (garaż, wiata…)',
     export: 'Eksportuj',
     import: 'Importuj projekt',
     delete: 'Usuń',
@@ -42,6 +43,7 @@ const messages = {
     editBasics: 'Edit basic dimensions',
     rename: 'Rename',
     duplicate: 'Duplicate',
+    addStructure: 'Add structure (garage, carport…)',
     export: 'Export',
     import: 'Import project',
     delete: 'Delete',
@@ -74,6 +76,7 @@ export function ProjectManager({
   onImportIfc,
   onImportCad,
   onImportDocument,
+  onAddStructure,
 }: {
   session: ProjectSession;
   state: ProjectSessionState;
@@ -85,6 +88,8 @@ export function ProjectManager({
   onImportCad?: () => void;
   /** VNext: PDF/photo document import. */
   onImportDocument?: () => void;
+  /** VNext-10: a garage, carport… as another structure of this project. */
+  onAddStructure?: () => void;
 }) {
   const { i18n } = useTranslation();
   const m = messages[i18n.language.startsWith('pl') ? 'pl' : 'en'];
@@ -204,6 +209,17 @@ export function ProjectManager({
           <button onClick={() => void action(() => session.duplicate())}>
             {m.duplicate}
           </button>
+          {onAddStructure && (
+            <button
+              data-testid="project-add-structure"
+              onClick={() => {
+                setOpen(false);
+                onAddStructure();
+              }}
+            >
+              {m.addStructure}
+            </button>
+          )}
           <button onClick={download}>{m.export}</button>
           <button onClick={() => setDeleteId(state.active?.id)}>
             {m.delete}

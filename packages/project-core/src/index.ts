@@ -1,7 +1,10 @@
 import { z } from 'zod';
 import {
+  roofProjectDocumentV1FromV2,
   roofProjectDocumentV1Schema,
+  roofProjectDocumentV2Schema,
   type RoofProjectDocumentV1,
+  type RoofProjectDocumentV2,
 } from '@cieslacalc/calculator-core';
 
 const nonBlank = z.string().trim().min(1);
@@ -17,19 +20,91 @@ export const projectRecordV1Schema = z.object({
 });
 
 export type ProjectRecordV1 = z.infer<typeof projectRecordV1Schema>;
+
+/**
+ * VNext-10 (ADR-017): a project of several roof structures. Written only
+ * when the document needs V2; a project of one roof in its own frame stays
+ * a V1 record.
+ */
+export const projectRecordV2Schema = z.object({
+  schemaVersion: z.literal(2),
+  id: nonBlank,
+  name: nonBlank,
+  createdAt: isoDate,
+  updatedAt: isoDate,
+  document: roofProjectDocumentV2Schema,
+});
+export type ProjectRecordV2 = z.infer<typeof projectRecordV2Schema>;
+
+/** Every record a reader accepts. */
+export const projectRecordSchema = z.discriminatedUnion('schemaVersion', [
+  projectRecordV1Schema,
+  projectRecordV2Schema,
+]);
+export type ProjectRecord = ProjectRecordV1 | ProjectRecordV2;
+export type ProjectDocument = RoofProjectDocumentV1 | RoofProjectDocumentV2;
+
 export type ProjectSummary = Pick<
-  ProjectRecordV1,
+  ProjectRecord,
   'id' | 'name' | 'createdAt' | 'updatedAt'
 >;
 
 export interface ProjectRepository {
   list(): Promise<ProjectSummary[]>;
-  get(id: string): Promise<ProjectRecordV1 | undefined>;
-  save(record: ProjectRecordV1): Promise<void>;
+  get(id: string): Promise<ProjectRecord | undefined>;
+  save(record: ProjectRecord): Promise<void>;
   delete(id: string): Promise<void>;
 }
 
-export function projectSummary(record: ProjectRecordV1): ProjectSummary {
+/**
+ * The document as it is saved: a V2 document that holds one structure in
+ * its own frame goes back to V1, so a project of one roof never changes
+ * format (ADR-017 §1).
+ */
+export function canonicalProjectDocument(
+  document: ProjectDocument,
+): ProjectDocument {
+  if (document.schemaVersion === 1) return document;
+  const single = roofProjectDocumentV1FromV2(document);
+  return single.ok ? single.document : document;
+}
+
+/** A record of any version, holding a document of any version. */
+export function createProjectRecordFor(
+  document: ProjectDocument,
+  name: string,
+  id = newProjectId(),
+  now = new Date().toISOString(),
+): ProjectRecord {
+  const canonical = canonicalProjectDocument(document);
+  return projectRecordSchema.parse({
+    schemaVersion: canonical.schemaVersion,
+    id,
+    name,
+    createdAt: now,
+    updatedAt: now,
+    document: structuredClone(canonical),
+  });
+}
+
+/** The same record with another document (the version follows it). */
+export function projectRecordWithDocument(
+  record: ProjectRecord,
+  document: ProjectDocument,
+  now = new Date().toISOString(),
+): ProjectRecord {
+  const canonical = canonicalProjectDocument(document);
+  return projectRecordSchema.parse({
+    schemaVersion: canonical.schemaVersion,
+    id: record.id,
+    name: record.name,
+    createdAt: record.createdAt,
+    updatedAt: now,
+    document: structuredClone(canonical),
+  });
+}
+
+export function projectSummary(record: ProjectRecord): ProjectSummary {
   const { id, name, createdAt, updatedAt } = record;
   return { id, name, createdAt, updatedAt };
 }
@@ -76,21 +151,31 @@ export function createProjectRecord(
   });
 }
 
-export function renameProject(
-  record: ProjectRecordV1,
+export function renameProject<Record extends ProjectRecord>(
+  record: Record,
   name: string,
   now = new Date().toISOString(),
-): ProjectRecordV1 {
-  return projectRecordV1Schema.parse({ ...record, name, updatedAt: now });
+): Record {
+  return projectRecordSchema.parse({
+    ...record,
+    name,
+    updatedAt: now,
+  }) as Record;
 }
 
-export function duplicateProject(
-  record: ProjectRecordV1,
+export function duplicateProject<Record extends ProjectRecord>(
+  record: Record,
   name: string,
   id = newProjectId(),
   now = new Date().toISOString(),
-): ProjectRecordV1 {
-  return createProjectRecord(record.document, name, id, now);
+): Record {
+  return projectRecordSchema.parse({
+    ...structuredClone(record),
+    id,
+    name,
+    createdAt: now,
+    updatedAt: now,
+  }) as Record;
 }
 
 export function nextProjectName(
@@ -103,8 +188,8 @@ export function nextProjectName(
   return `${prefix} ${number}`;
 }
 
-export function exportProject(record: ProjectRecordV1): string {
-  return JSON.stringify(projectRecordV1Schema.parse(record), null, 2);
+export function exportProject(record: ProjectRecord): string {
+  return JSON.stringify(projectRecordSchema.parse(record), null, 2);
 }
 
 export type ProjectImportErrorCode =
@@ -125,7 +210,7 @@ export function importProject(
     now?: string;
     legacyName: string;
   },
-): ProjectRecordV1 {
+): ProjectRecord {
   const id = options.id ?? newProjectId();
   const now = options.now ?? new Date().toISOString();
   let parsed: unknown;
@@ -134,9 +219,9 @@ export function importProject(
   } catch {
     throw new ProjectImportError('invalid-json');
   }
-  const archive = projectRecordV1Schema.safeParse(parsed);
+  const archive = projectRecordSchema.safeParse(parsed);
   if (archive.success)
-    return createProjectRecord(
+    return createProjectRecordFor(
       archive.data.document,
       archive.data.name,
       id,
@@ -145,5 +230,9 @@ export function importProject(
   const document = roofProjectDocumentV1Schema.safeParse(parsed);
   if (document.success)
     return createProjectRecord(document.data, options.legacyName, id, now);
+  // VNext-10: a bare V2 document (several structures) too.
+  const structures = roofProjectDocumentV2Schema.safeParse(parsed);
+  if (structures.success)
+    return createProjectRecordFor(structures.data, options.legacyName, id, now);
   throw new ProjectImportError('unsupported-project-format');
 }

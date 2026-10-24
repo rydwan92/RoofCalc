@@ -1297,6 +1297,29 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+## VNext-10A (2026-10-24) — a project of several roof structures (ADR-017)
+
+- Branch `feature/vnext-10-complex-projects` (from 9B, `15b10d6`).
+- Owner request (2026-10-24): read more complex projects across the app.
+- ADR-017 + `docs/ARCHITECTURE_VNEXT10_COMPLEX_PROJECTS.md` (Definition of
+  Ready, phases 10A–10D). V2 writer on for projects of several structures;
+  one unmoved structure is still written V1.
+- calculator-core V2 edits (add, write back, rename, move, remove,
+  footprint, default and corner placement); project-core `ProjectRecordV2`
+  and union readers; the session keeps the V2 document and the selected
+  structure; "Dodaj bryłę" (project menu + structure row), the Creator's
+  `structure` mode, the structure row with exact placement inputs.
+- Fixture 13 (house 01 + carport 11), architecture gate per ADR-017, e2e
+  house + garage (desktop + phone). Editable lengths drop binary noise
+  (15 significant digits).
+- Validation: `pnpm verify` 2321 tests passed, 1 failed (the 12-digit
+  rounding cut a typed value; fixed to 15 digits, rerun green);
+  `pnpm e2e` 186 passed / 0 failed.
+- NEXT ACTION: VNext-9C per-plane pitch for the asymmetric gable (covering
+  geometry, automatic battens, minimum pitch, K2 3D solids); then 10B
+  project totals; owner (2026-10-24): UI/UX, administration, simplicity,
+  data seeds, pricing.
+
 ## VNext-9B (2026-10-24) — importing an asymmetric gable
 
 - Branch `feature/vnext-9b-import-asymmetric` (from VNext-9, `75907c8`).

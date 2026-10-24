@@ -32,7 +32,9 @@ export function formatLength(mm: number, unit: LengthUnit, locale: string) {
 }
 /** Inputs show the exact canonical value (UX contract §5). */
 export function editableLength(mm: number, unit: LengthUnit): string {
-  return String(fromMillimetres(mm, unit));
+  // 15 significant digits drop binary noise (826.3799999999999 → 826.38)
+  // and keep every digit a person or a solver means.
+  return String(Number(fromMillimetres(mm, unit).toPrecision(15)));
 }
 
 /** Angles: 0.1°. */

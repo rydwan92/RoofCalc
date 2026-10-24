@@ -584,7 +584,15 @@ export interface AssemblyState {
   reset: () => void;
   /** "Przywróć przykład": the example roof as ONE undoable edit. */
   restoreExample: () => void;
-  replaceProjectDocument: (document: RoofProjectDocumentV1) => void;
+  /**
+   * Opens another document. VNext-10: `keepPerspective` keeps the task and
+   * view the user is in (switching between structures of one project);
+   * selection, history and the camera always start fresh.
+   */
+  replaceProjectDocument: (
+    document: RoofProjectDocumentV1,
+    options?: { keepPerspective?: boolean },
+  ) => void;
 }
 function withHistory(
   state: AssemblyState,
@@ -2680,15 +2688,30 @@ export const useAssembly = create<AssemblyState>((set) => ({
           : {}),
       };
     }),
-  replaceProjectDocument: (input) =>
+  replaceProjectDocument: (input, options) =>
     set((state) => {
       // Another project starts with a fitted drawing (view state only).
       canvasCamera.forgetAll();
       const document = parseRoofProjectDocument(JSON.stringify(input));
+      const kept = options?.keepPerspective
+        ? {
+            viewPreset: state.workbench.viewPreset,
+            constructionSection: state.workbench.constructionSection,
+            buildUpView: state.workbench.buildUpView,
+            materialsView: state.workbench.materialsView,
+            canvasView: state.workbench.canvasView,
+            workspaceRenderer: state.workbench.workspaceRenderer,
+            dimensionLevel: state.workbench.dimensionLevel,
+            toolboxCollapsed: state.workbench.toolboxCollapsed,
+            collapsedToolGroups: state.workbench.collapsedToolGroups,
+            inspectorOpen: state.workbench.inspectorOpen,
+          }
+        : {};
       return {
         ...committedDocument(document, {}, {}),
         workbench: {
           ...structuredClone(initialWorkbenchViewState),
+          ...kept,
           mode: state.workbench.mode,
           // A mounted drawing refits too (monotonic request).
           fitRequestId: state.workbench.fitRequestId + 1,

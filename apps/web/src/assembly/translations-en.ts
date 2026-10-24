@@ -364,6 +364,32 @@ export const assemblyEn: typeof assemblyPl = {
   asymSpan: 'Span (outer faces of the wall plates)',
   leftPitch: 'Left plane pitch',
   rightPitch: 'Right plane pitch',
+  structures: {
+    title: 'Project structures',
+    fallback: 'Structure {{n}}',
+    mainName: 'Main building',
+    add: 'Add structure',
+    settings: 'Structure settings',
+    hint: 'The workbench, materials, cost and documents now show “{{name}}”.',
+    placement: 'Position on the site',
+    placementHint:
+      'Building corner (front left, at the wall-plate faces), plate level and rotation. Position is for the site view — it does not change the structure’s calculation.',
+    field: {
+      name: 'Structure name',
+      x: 'Corner X',
+      y: 'Corner Y',
+      z: 'Plate level',
+      rotation: 'Rotation',
+    },
+    save: 'Save',
+    cancel: 'Cancel',
+    remove: 'Remove structure',
+    removeYes: 'Remove from project',
+    removeConfirm:
+      'Remove “{{name}}” from the project? Its roof, layers, covering and openings leave the project.',
+    invalid: 'Enter numbers; rotation from −360° to 360°.',
+    actionError: 'The project could not be saved. Try again.',
+  },
   rightRafter: {
     title: 'K2 — right plane rafter',
     seat: 'Seat on the wall plate',
@@ -400,12 +426,15 @@ export const assemblyEn: typeof assemblyPl = {
       new: 'Quick start',
       quick: 'From the quick calculation',
       edit: 'Basic project dimensions',
+      structure: 'New project structure',
     },
     description: {
       new: 'Enter the building and roof dimensions. Refine the rest later in the workbench.',
       quick:
         'The rafter geometry is already known. Add only the data needed for the whole roof.',
       edit: 'Change the basic dimensions without recreating the project.',
+      structure:
+        'A garage, carport or extension in the same project: enter its size and roof. Each structure is calculated on its own.',
     },
     roofType: 'Which roof?',
     roofHint: {
@@ -432,6 +461,7 @@ export const assemblyEn: typeof assemblyPl = {
       new: 'Create project',
       quick: 'Create project from this',
       edit: 'Save basic dimensions',
+      structure: 'Add structure to project',
     },
   },
   guidance: {

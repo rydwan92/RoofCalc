@@ -347,13 +347,15 @@ describe('package dependency direction', () => {
     expect(forbiddenText('packages/roof-topology-core', NETWORK)).toEqual([]);
   });
 
-  it('no application reads or writes the designed V2 project document yet (ADR-015 gate)', () => {
-    // VNext-7A designs and tests V1 → V2 in calculator-core. Turning it on
-    // is a deliberate gate: change ADR-015 and this test first.
+  it('only the project layer reads or writes the V2 document of structures (ADR-017)', () => {
+    // VNext-10: a project of several roofs is a V2 document held by the web
+    // project session; the workbench, solvers, documents and the API see one
+    // V1 document — the selected structure's. Change ADR-017 first.
+    const v2 =
+      /\broofProjectDocument(?:V2Schema|V2FromV1|V1FromV2)\b|\bRoofProjectDocumentV2\b|\b(?:add|remove|rename|move)RoofStructure\b|\bwithRoofStructureProject\b|\broofStructureDocument\b/;
     expect(
-      forbiddenText(
-        'apps',
-        /\broofProjectDocument(?:V2Schema|V2FromV1|V1FromV2)\b|\bRoofProjectDocumentV2\b/,
+      forbiddenText('apps', v2).filter(
+        (match) => !match.file.startsWith('apps/web/src/projects/'),
       ),
     ).toEqual([]);
   });

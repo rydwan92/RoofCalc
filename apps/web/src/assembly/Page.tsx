@@ -41,7 +41,7 @@ import {
   resolveRoofFeatureTopology,
   roofTemplateSpanMm,
 } from '@cieslacalc/roof-math';
-import { useAssembly } from './store';
+import { createDefaultProjectDocument, useAssembly } from './store';
 import {
   QuickH1Result,
   QuickK1Result,
@@ -189,6 +189,7 @@ import type { LinearPlanSurface } from './MaterialPlan';
 import { useInstallationActions } from './InstallationWorkflow';
 import { summarizeCostScenario } from '@cieslacalc/cost-core';
 import { ProjectManager, projectStatusLabel } from '../projects/ProjectManager';
+import { StructureBar } from '../projects/StructureBar';
 import { LocalProjectRepository } from '../projects/local-repository';
 import {
   recentProjects,
@@ -2459,6 +2460,15 @@ function AssemblyPageContent({
             onImportIfc={() => setIfcImportOpen(true)}
             onImportCad={() => setCadImportOpen(true)}
             onImportDocument={() => setDocumentImportOpen(true)}
+            // VNext-10: estimations carry one roof (ADR-017 §8).
+            {...(business.mode === 'business'
+              ? {}
+              : {
+                  onAddStructure: () => {
+                    setReuseFreshProject(false);
+                    setProjectStartMode('structure');
+                  },
+                })}
           />
         )}
         {workbench.mode === 'builder' && (
@@ -2634,6 +2644,16 @@ function AssemblyPageContent({
                   onAction={runCommercialAction}
                 />
               )}
+              <StructureBar
+                session={projectSession}
+                state={projectSessionState}
+                unit={state.unit}
+                canAdd={business.mode !== 'business'}
+                onAdd={() => {
+                  setReuseFreshProject(false);
+                  setProjectStartMode('structure');
+                }}
+              />
               {(() => {
                 const readinessBar = (
                   <ProjectReadinessBar
@@ -3459,7 +3479,12 @@ function AssemblyPageContent({
       {projectStartMode && !businessHomeOpen && (
         <ProjectStartAssistant
           mode={projectStartMode}
-          template={state.template}
+          // A new structure starts from RoofCalc's defaults, not this roof.
+          template={
+            projectStartMode === 'structure'
+              ? createDefaultProjectDocument().project.roof
+              : state.template
+          }
           projects={recentProjects(
             (projectSessionState.initialized
               ? projectSessionState.projects
@@ -3515,6 +3540,11 @@ function AssemblyPageContent({
                 .replaceProjectDocument(createRoofProjectDocument(template));
             } else if (projectStartMode === 'edit') {
               useAssembly.getState().setProjectRoof(template);
+            } else if (projectStartMode === 'structure') {
+              await projectSession.addStructure(
+                createRoofProjectDocument(template),
+                { firstName: t('assembly.structures.mainName') },
+              );
             }
             rememberCreatorStart();
             projectSession.acknowledgeFreshProject();

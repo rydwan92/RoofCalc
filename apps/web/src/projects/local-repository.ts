@@ -1,8 +1,8 @@
 import {
-  projectRecordV1Schema,
+  projectRecordSchema,
   projectSummary,
   sortProjectSummaries,
-  type ProjectRecordV1,
+  type ProjectRecord,
   type ProjectRepository,
   type ProjectSummary,
 } from '@cieslacalc/project-core';
@@ -60,7 +60,7 @@ export class LocalProjectRepository implements ProjectRepository {
         const raw = storage.getItem(key);
         if (!raw) continue;
         summaries.push(
-          projectSummary(projectRecordV1Schema.parse(JSON.parse(raw))),
+          projectSummary(projectRecordSchema.parse(JSON.parse(raw))),
         );
       } catch {
         // One damaged record must not hide the others.
@@ -87,19 +87,19 @@ export class LocalProjectRepository implements ProjectRepository {
     }
   }
 
-  async get(id: string): Promise<ProjectRecordV1 | undefined> {
+  async get(id: string): Promise<ProjectRecord | undefined> {
     try {
       const raw = this.requiredStorage().getItem(recordKey(id));
       if (!raw) return undefined;
-      const record = projectRecordV1Schema.parse(JSON.parse(raw));
+      const record = projectRecordSchema.parse(JSON.parse(raw));
       return record.id === id ? record : undefined;
     } catch {
       return undefined;
     }
   }
 
-  async save(record: ProjectRecordV1): Promise<void> {
-    const valid = projectRecordV1Schema.parse(record);
+  async save(record: ProjectRecord): Promise<void> {
+    const valid = projectRecordSchema.parse(record);
     try {
       const storage = this.requiredStorage();
       const previous = await this.list();

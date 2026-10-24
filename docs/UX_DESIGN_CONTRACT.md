@@ -632,6 +632,13 @@ line and manual lengths keep working.
   is named through one lookup (`ROOF_FAMILY_LABEL`), and never shows
   another family's controls (no ridge settings on a mono-pitch roof). A quick
   calculation offers "Utwórz projekt" instead of retyping.
+- **VNext-10: one structure at a time, always named.** A project of
+  several roofs shows a quiet "Bryły projektu" row above the workspace; the
+  chosen structure is the one every perspective shows, and the row says so.
+  Adding a structure is the Creator in its own mode; placement uses the
+  building corner, plate level and rotation as exact inputs (never a
+  family's solver origin); removing one asks first. A project of one roof
+  shows no row at all. On a phone the chips take the whole row.
 - **VNext-9B: a field exists only where the roof has it.** An import asks
   for, counts and shows the right pitch only on an asymmetric gable; an
   angle is read or typed, never offered "measure from the scale".

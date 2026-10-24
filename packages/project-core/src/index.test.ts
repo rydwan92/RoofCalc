@@ -13,6 +13,7 @@ import {
   projectRecordV1Schema,
   projectSummary,
   renameProject,
+  type ProjectRecord,
   type ProjectRepository,
 } from './index';
 
@@ -97,7 +98,7 @@ describe('project lifecycle contract', () => {
   });
 
   it('keeps repository contract async and lists metadata without geometry', async () => {
-    const records = new Map([[record.id, record]]);
+    const records = new Map<string, ProjectRecord>([[record.id, record]]);
     const repository: ProjectRepository = {
       list: async () => [...records.values()].map(projectSummary),
       get: async (id) => records.get(id),

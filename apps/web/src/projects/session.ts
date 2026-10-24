@@ -1,21 +1,39 @@
 import {
+  canonicalProjectDocument,
   createProjectRecord,
+  createProjectRecordFor,
   duplicateProject,
   exportProject,
   importProject,
   nextProjectName,
   newProjectId,
-  projectSummary,
   projectRecordV1Schema,
+  projectRecordWithDocument,
+  projectSummary,
   renameProject,
+  type ProjectDocument,
+  type ProjectRecord,
   type ProjectRecordV1,
   type ProjectRepository,
   type ProjectSummary,
 } from '@cieslacalc/project-core';
 import {
+  addRoofStructure,
+  moveRoofStructure,
+  removeRoofStructure,
+  renameRoofStructure,
+  roofProjectDocumentV2FromV1,
+  roofStructure,
+  roofStructureDocument,
   serializeRoofProjectDocument,
+  serializeRoofProjectDocumentV2,
+  structureCornerPlacement,
+  structureTransformAtCorner,
+  withRoofStructureProject,
   type RoofProjectDocumentV1,
+  type StructureCornerPlacement,
 } from '@cieslacalc/calculator-core';
+import type { RoofTemplateSpec } from '@cieslacalc/timber-model';
 import {
   createDefaultProjectDocument,
   useAssembly,
@@ -24,6 +42,21 @@ import {
 import { LocalProjectRepository } from './local-repository';
 
 export type SaveStatus = 'saved' | 'saving' | 'dirty' | 'error';
+
+/**
+ * VNext-10: where a structure stands on the site (ADR-017 §5) — its
+ * building corner, plate level and rotation.
+ */
+export type StructurePlacement = StructureCornerPlacement;
+
+/** One roof structure of the active project, for the structure bar. */
+export interface StructureSummary {
+  id: string;
+  name?: string;
+  family: RoofTemplateSpec['type'];
+  placement: StructurePlacement;
+}
+
 export interface ProjectSessionState {
   active?: ProjectSummary;
   projects: ProjectSummary[];
@@ -31,6 +64,13 @@ export interface ProjectSessionState {
   initialized: boolean;
   freshProject: boolean;
   error?: string;
+  /**
+   * VNext-10: the structures of a project of several roofs, in document
+   * order; absent for a project of one roof (a V1 record).
+   */
+  structures?: StructureSummary[];
+  /** The structure the workbench edits (session view state, ADR-002). */
+  activeStructureId?: string;
 }
 
 interface ActiveIdStorage {
@@ -47,7 +87,9 @@ export class ProjectSession {
     freshProject: false,
   };
   private listeners = new Set<() => void>();
-  private record?: ProjectRecordV1;
+  private record?: ProjectRecord;
+  /** VNext-10: the structure the workbench edits, when the record is V2. */
+  private structureId?: string;
   private workingDocument?: RoofProjectDocumentV1;
   private activeRemembered = false;
   private savedDocument = '';
@@ -70,12 +112,67 @@ export class ProjectSession {
   snapshot = () => this.state;
 
   /** Business synchronization carries a normal technical record, never commerce. */
-  exportRecord(): ProjectRecordV1 | undefined {
+  exportRecord(): ProjectRecord | undefined {
     if (!this.record) return undefined;
-    return projectRecordV1Schema.parse({
-      ...this.record,
-      document: this.workingDocument ?? this.record.document,
-    });
+    return projectRecordWithDocument(
+      this.record,
+      this.composed(
+        this.workingDocument ?? useAssembly.getState().projectDocument,
+      ),
+      this.record.updatedAt,
+    );
+  }
+
+  /**
+   * The whole project document with the workbench's structure written
+   * back — what is saved, exported and totalled. A project of one roof is
+   * its V1 document.
+   */
+  projectDocument(): ProjectDocument | undefined {
+    if (!this.record) return undefined;
+    return this.composed(this.currentLocalDocument());
+  }
+
+  private currentLocalDocument(): RoofProjectDocumentV1 {
+    const assembly = useAssembly.getState();
+    return assembly.workbench.mode === 'builder'
+      ? assembly.projectDocument
+      : (this.workingDocument ?? assembly.projectDocument);
+  }
+
+  /** The workbench document written back into the selected structure. */
+  private composed(local: RoofProjectDocumentV1): ProjectDocument {
+    const record = this.record;
+    if (!record || record.schemaVersion === 1 || !this.structureId)
+      return local;
+    return withRoofStructureProject(record.document, this.structureId, local);
+  }
+
+  /** Canonical text of what would be saved (V1 or V2, ADR-017 §1). */
+  private serialize(document: ProjectDocument): string {
+    const canonical = canonicalProjectDocument(document);
+    return canonical.schemaVersion === 1
+      ? serializeRoofProjectDocument(canonical)
+      : serializeRoofProjectDocumentV2(canonical);
+  }
+
+  /** Structure bar state for a record (none for a project of one roof). */
+  private structurePatch(): Pick<
+    ProjectSessionState,
+    'structures' | 'activeStructureId'
+  > {
+    const record = this.record;
+    if (!record || record.schemaVersion === 1)
+      return { structures: undefined, activeStructureId: undefined };
+    return {
+      structures: record.document.structures.map((structure) => ({
+        id: structure.id,
+        ...(structure.name ? { name: structure.name } : {}),
+        family: structure.project.roof.type,
+        placement: structureCornerPlacement(structure),
+      })),
+      activeStructureId: this.structureId,
+    };
   }
 
   async openRemote(record: ProjectRecordV1): Promise<void> {
@@ -148,7 +245,7 @@ export class ProjectSession {
       return;
     }
     this.workingDocument = assembly.projectDocument;
-    const serialized = serializeRoofProjectDocument(assembly.projectDocument);
+    const serialized = this.serialize(this.composed(assembly.projectDocument));
     if (serialized === this.savedDocument) {
       this.clearTimer();
       if (!this.pending && this.state.saveStatus === 'dirty')
@@ -161,14 +258,16 @@ export class ProjectSession {
     else this.schedule();
   };
 
-  private async restore(record: ProjectRecordV1) {
-    const current = serializeRoofProjectDocument(
-      useAssembly.getState().projectDocument,
-    );
+  private async restore(record: ProjectRecord) {
+    const local = useAssembly.getState().projectDocument;
     const quickChanged =
-      current !== serializeRoofProjectDocument(createDefaultProjectDocument());
+      serializeRoofProjectDocument(local) !==
+      serializeRoofProjectDocument(createDefaultProjectDocument());
     await this.activate(record, !quickChanged);
-    if (quickChanged && current !== this.savedDocument) {
+    if (
+      quickChanged &&
+      this.serialize(this.composed(local)) !== this.savedDocument
+    ) {
       this.update({ saveStatus: 'dirty' });
       this.schedule();
     }
@@ -225,7 +324,7 @@ export class ProjectSession {
   }
 
   private async activate(
-    record: ProjectRecordV1,
+    record: ProjectRecord,
     replace = true,
     persisted = true,
     remember = true,
@@ -234,17 +333,28 @@ export class ProjectSession {
     if (this.pending) await this.pending.catch(() => undefined);
     this.suppressed = true;
     this.record = record;
+    // A project of several roofs opens on its first structure.
+    this.structureId =
+      record.schemaVersion === 2
+        ? record.document.structures[0]!.id
+        : undefined;
     this.activeRemembered = false;
-    this.savedDocument = persisted
-      ? serializeRoofProjectDocument(record.document)
-      : '';
-    if (replace) useAssembly.getState().replaceProjectDocument(record.document);
+    this.savedDocument = persisted ? this.serialize(record.document) : '';
+    if (replace)
+      useAssembly
+        .getState()
+        .replaceProjectDocument(
+          record.schemaVersion === 2
+            ? roofStructureDocument(record.document, this.structureId!)
+            : record.document,
+        );
     this.workingDocument = useAssembly.getState().projectDocument;
     this.suppressed = false;
     this.update({
       active: projectSummary(record),
       saveStatus: persisted ? 'saved' : 'dirty',
       error: undefined,
+      ...this.structurePatch(),
     });
     if (remember) {
       try {
@@ -269,11 +379,12 @@ export class ProjectSession {
       this.schedule();
       return;
     }
-    const document =
+    const document = this.composed(
       assembly.workbench.mode === 'builder'
         ? assembly.projectDocument
-        : (this.workingDocument ?? assembly.projectDocument);
-    const serialized = serializeRoofProjectDocument(document);
+        : (this.workingDocument ?? assembly.projectDocument),
+    );
+    const serialized = this.serialize(document);
     if (serialized === this.savedDocument) {
       if (!this.activeRemembered) {
         try {
@@ -290,11 +401,7 @@ export class ProjectSession {
       }
       return;
     }
-    const next: ProjectRecordV1 = {
-      ...record,
-      updatedAt: new Date().toISOString(),
-      document: structuredClone(document),
-    };
+    const next = projectRecordWithDocument(record, document);
     this.update({ saveStatus: 'saving', error: undefined });
     const write = this.repository.save(next);
     this.pending = write;
@@ -330,8 +437,10 @@ export class ProjectSession {
       if (
         !failed &&
         this.record?.id === record.id &&
-        serializeRoofProjectDocument(
-          this.workingDocument ?? useAssembly.getState().projectDocument,
+        this.serialize(
+          this.composed(
+            this.workingDocument ?? useAssembly.getState().projectDocument,
+          ),
         ) !== this.savedDocument
       ) {
         if (this.state.saveStatus !== 'error')
@@ -349,13 +458,129 @@ export class ProjectSession {
       await this.persistNow();
     if (
       this.state.saveStatus === 'error' &&
-      serializeRoofProjectDocument(useAssembly.getState().projectDocument) !==
+      this.serialize(this.composed(useAssembly.getState().projectDocument)) !==
         this.savedDocument
     )
       throw new Error('Najpierw wyeksportuj niezapisane zmiany.');
   }
 
+  /* ---------------------------------------------------------------------- */
+  /* VNext-10: the structures of one project (ADR-017). Each operation     */
+  /* saves the whole project first and then edits it as one record write;  */
+  /* none is a workbench Undo entry.                                       */
+  /* ---------------------------------------------------------------------- */
+
+  /** Writes a new document of the active project and shows a structure. */
+  private async commitStructures(
+    document: ProjectDocument,
+    structureId: string | undefined,
+  ) {
+    const record = this.record;
+    if (!record) return;
+    const next = projectRecordWithDocument(record, document);
+    await this.repository.save(next);
+    this.suppressed = true;
+    this.record = next;
+    this.structureId = next.schemaVersion === 2 ? structureId : undefined;
+    this.savedDocument = this.serialize(next.document);
+    const local =
+      next.schemaVersion === 2
+        ? roofStructureDocument(next.document, this.structureId!)
+        : next.document;
+    if (
+      serializeRoofProjectDocument(local) !==
+      serializeRoofProjectDocument(useAssembly.getState().projectDocument)
+    )
+      useAssembly
+        .getState()
+        .replaceProjectDocument(local, { keepPerspective: true });
+    this.workingDocument = useAssembly.getState().projectDocument;
+    this.suppressed = false;
+    this.update({
+      active: projectSummary(next),
+      projects: await this.repository.list(),
+      saveStatus: 'saved',
+      error: undefined,
+      ...this.structurePatch(),
+    });
+  }
+
+  /** The current project as a document of structures (a V1 one becomes one). */
+  private async structuresDocument(firstName?: string) {
+    await this.flushBeforeChange();
+    const document = this.projectDocument();
+    if (!document) throw new Error('Brak aktywnego projektu.');
+    return document.schemaVersion === 2
+      ? document
+      : roofProjectDocumentV2FromV1(document, firstName);
+  }
+
+  /**
+   * Adds a roof structure and opens it in the workbench. A project of one
+   * roof becomes a project of structures; its roof is named `firstName`.
+   */
+  async addStructure(
+    local: RoofProjectDocumentV1,
+    names: { name?: string; firstName?: string } = {},
+  ): Promise<string> {
+    const document = await this.structuresDocument(names.firstName);
+    const added = addRoofStructure(document, {
+      project: local.project,
+      ...(names.name ? { name: names.name } : {}),
+    });
+    await this.commitStructures(added.document, added.structureId);
+    return added.structureId;
+  }
+
+  /** Opens another structure in the workbench; its Undo starts empty. */
+  async selectStructure(id: string): Promise<void> {
+    if (id === this.structureId) return;
+    const document = await this.structuresDocument();
+    if (!document.structures.some((structure) => structure.id === id))
+      throw new Error('Nie ma takiej bryły w projekcie.');
+    await this.commitStructures(document, id);
+  }
+
+  async renameStructure(id: string, name: string): Promise<void> {
+    const document = await this.structuresDocument();
+    await this.commitStructures(
+      renameRoofStructure(document, id, name),
+      this.structureId,
+    );
+  }
+
+  async moveStructure(
+    id: string,
+    placement: StructurePlacement,
+  ): Promise<void> {
+    const document = await this.structuresDocument();
+    const structure = roofStructure(document, id);
+    if (!structure) throw new Error('Nie ma takiej bryły w projekcie.');
+    await this.commitStructures(
+      moveRoofStructure(
+        document,
+        id,
+        structureTransformAtCorner(structure.project, placement),
+      ),
+      this.structureId,
+    );
+  }
+
+  /**
+   * Removes a structure. When one unmoved structure remains the project is
+   * a project of one roof again (V1, ADR-017 §1).
+   */
+  async removeStructure(id: string): Promise<void> {
+    const document = await this.structuresDocument();
+    const next = removeRoofStructure(document, id);
+    await this.commitStructures(
+      next,
+      this.structureId === id ? next.structures[0]!.id : this.structureId,
+    );
+  }
+
   async open(id: string): Promise<void> {
+    // (VNext-10) A project of structures reopens on its first structure.
     await this.flushBeforeChange();
     if (this.record?.id === id) return;
     const record = await this.repository.get(id);
@@ -386,7 +611,7 @@ export class ProjectSession {
    * The active project is flushed first and never overwritten.
    */
   async createFromDocument(
-    document: RoofProjectDocumentV1,
+    document: ProjectDocument,
     name: string,
   ): Promise<void> {
     await this.flushBeforeChange();
@@ -394,7 +619,7 @@ export class ProjectSession {
     const unique = projects.some((project) => project.name === name)
       ? nextProjectName(projects, name)
       : name;
-    const record = createProjectRecord(
+    const record = createProjectRecordFor(
       structuredClone(document),
       unique,
       await this.uniqueId(),
@@ -467,14 +692,11 @@ export class ProjectSession {
 
   exportActive(): { name: string; contents: string } | undefined {
     if (!this.record) return undefined;
-    const current = {
-      ...this.record,
-      document: structuredClone(
-        useAssembly.getState().workbench.mode === 'builder'
-          ? useAssembly.getState().projectDocument
-          : (this.workingDocument ?? useAssembly.getState().projectDocument),
-      ),
-    };
+    const current = projectRecordWithDocument(
+      this.record,
+      this.composed(this.currentLocalDocument()),
+      this.record.updatedAt,
+    );
     const safeName = current.name
       .normalize('NFKD')
       .replace(/[\u0300-\u036f]/g, '')
