@@ -1297,6 +1297,25 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+## VNext-10B (2026-10-24) — an estimate per structure, the whole project priced
+
+- Same branch. Owner (2026-10-24): UI/UX, administration, simplicity, data
+  seeds, pricing ("wycena").
+- Each structure has its own cost estimate: the first keeps the project key,
+  further ones live in `cieslacalc.structureCostEstimate.v1.<projectId>`
+  (SCHEMA_REGISTRY §27); removal and the return to one roof move or drop
+  them. Before this, the house's and the garage's proposals collided.
+- "Wycena całego projektu" in Kosztorys: each structure (lines, net, gross,
+  state), the project total from `cost-core`'s
+  `summarizeCostScenarioParts` (one currency, VAT only when every part has
+  it, a structure without an estimate named, never counted as zero); the
+  estimate's title names its structure. One `formatMoney` replaces four
+  private copies.
+- Validation: `pnpm verify` green — 219 files / 2331 tests (13 skipped);
+  `pnpm e2e` 186 passed / 0 failed; visual QA desktop + phone.
+- NEXT ACTION: example projects for every family and a two-structure one
+  (seed data the user can open); then an administration / pricing UX audit.
+
 ## VNext-9C (2026-10-24) — every plane at its own pitch
 
 - Same branch. Found while planning 10B: the asymmetric gable's right plane

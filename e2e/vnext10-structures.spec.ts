@@ -75,6 +75,30 @@ test('a house and a garage in one project, switched, renamed, reopened and remov
   await expect(page.getByTestId('material-plan')).toBeVisible();
   await expect(bar).toContainText('pokazują teraz bryłę „Budynek główny”');
 
+  // VNext-10B: each structure has its own estimate; the whole project's sits
+  // above it, and a row opens that structure's estimate.
+  await page.locator('[data-perspective="costing"]:visible').first().click();
+  const pricing = page.getByTestId('project-pricing');
+  const rows = pricing.locator('tbody tr');
+  await expect(rows).toHaveCount(2);
+  await expect(rows.nth(0)).toHaveAttribute('aria-current', 'true');
+  await expect(rows.nth(1)).toContainText('Garaż');
+  await expect(rows.nth(1)).toContainText('Brak kosztorysu');
+  await rows.nth(1).getByRole('button', { name: 'Garaż' }).click();
+  await expect(chips.nth(1)).toHaveAttribute('aria-pressed', 'true');
+  await expect(rows.nth(1)).toHaveAttribute('aria-current', 'true');
+  const addReady = page.getByTestId('cost-add-ready');
+  if (await addReady.isVisible()) {
+    await addReady.click();
+    await expect(rows.nth(1)).not.toContainText('Brak kosztorysu');
+  }
+  await page.screenshot({
+    path: testInfo.outputPath('vnext10b-pricing.png'),
+    fullPage: true,
+  });
+  await chips.nth(0).click();
+  await expect(rows.nth(0)).toHaveAttribute('aria-current', 'true');
+
   const records = await storedRecords(page);
   const project = records.find((record) => record.schemaVersion === 2);
   expect(

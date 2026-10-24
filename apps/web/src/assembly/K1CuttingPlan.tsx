@@ -13,7 +13,7 @@ import {
   toMillimetres,
   type LengthUnit,
 } from '@cieslacalc/roof-math';
-import { formatLength, parseDecimal } from '../format';
+import { formatLength, formatMoney, parseDecimal } from '../format';
 import type { TimberStockCatalogPick } from '../catalog/TimberStockProductPicker';
 import type { VariantPrice } from '../pricing/client';
 import { usePricesForVariants } from '../pricing/use-prices';
@@ -82,12 +82,7 @@ function metric(mm: number, locale: string) {
   return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(mm / 1000)} m`;
 }
 
-function money(minor: number, currencyCode: string, locale: string) {
-  return new Intl.NumberFormat(locale, {
-    style: 'currency',
-    currency: currencyCode,
-  }).format(minor / 100);
-}
+const money = formatMoney;
 
 function StockLayout({
   usage,

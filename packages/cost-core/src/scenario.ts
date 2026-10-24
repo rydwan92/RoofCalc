@@ -150,3 +150,68 @@ export function linesByCategory(
     map.set(line.category, [...(map.get(line.category) ?? []), line]);
   return map;
 }
+
+/**
+ * VNext-10B: the total of several estimates (one per roof structure of a
+ * project). Integer minor units, summed only within one currency; VAT and
+ * gross only when every summed part carries VAT. A part without an
+ * estimate is never counted as zero — it is named instead.
+ */
+export interface CostScenarioPartsSummary {
+  /** The currency of every summed part (the first part with lines). */
+  currencyCode?: string;
+  netMinor: number;
+  taxMinor?: number;
+  grossMinor?: number;
+  /** Parts in the total, with their own summaries. */
+  summed: { key: string; summary: CostScenarioSummary }[];
+  /** Parts without an estimate or without lines: not in the total. */
+  missingKeys: string[];
+  /** Parts in another currency: not in the total. */
+  otherCurrencyKeys: string[];
+  /** Every part summed, one currency, every summed estimate complete. */
+  complete: boolean;
+}
+
+export function summarizeCostScenarioParts(
+  parts: readonly { key: string; scenario?: CostScenario }[],
+): CostScenarioPartsSummary {
+  const missingKeys: string[] = [];
+  const otherCurrencyKeys: string[] = [];
+  const summed: CostScenarioPartsSummary['summed'] = [];
+  let currencyCode: string | undefined;
+  for (const { key, scenario } of parts) {
+    if (!scenario || scenario.lines.length === 0) {
+      missingKeys.push(key);
+      continue;
+    }
+    currencyCode ??= scenario.currencyCode;
+    if (scenario.currencyCode !== currencyCode) {
+      otherCurrencyKeys.push(key);
+      continue;
+    }
+    summed.push({ key, summary: summarizeCostScenario(scenario) });
+  }
+  const netMinor = summed.reduce((sum, part) => sum + part.summary.netMinor, 0);
+  const taxed =
+    summed.length > 0 &&
+    summed.every((part) => part.summary.taxMinor !== undefined);
+  const taxMinor = taxed
+    ? summed.reduce((sum, part) => sum + part.summary.taxMinor!, 0)
+    : undefined;
+  return {
+    ...(currencyCode ? { currencyCode } : {}),
+    netMinor,
+    ...(taxMinor !== undefined
+      ? { taxMinor, grossMinor: netMinor + taxMinor }
+      : {}),
+    summed,
+    missingKeys,
+    otherCurrencyKeys,
+    complete:
+      summed.length > 0 &&
+      missingKeys.length === 0 &&
+      otherCurrencyKeys.length === 0 &&
+      summed.every((part) => part.summary.complete),
+  };
+}

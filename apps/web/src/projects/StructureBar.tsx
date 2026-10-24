@@ -34,12 +34,18 @@ export function StructureBar({
   unit,
   canAdd,
   onAdd,
+  onRemoved,
 }: {
   session: ProjectSession;
   state: ProjectSessionState;
   unit: LengthUnit;
   canAdd: boolean;
   onAdd: () => void;
+  /** VNext-10B: the structure's own sidecars (its cost estimate) go too. */
+  onRemoved?: (removal: {
+    removedId: string;
+    remainingSingleId?: string;
+  }) => void;
 }) {
   const { t } = useTranslation();
   const [editing, setEditing] = useState<string>();
@@ -295,9 +301,9 @@ export function StructureBar({
                 data-testid="structure-remove-confirm"
                 disabled={busy}
                 onClick={() =>
-                  void run(() => session.removeStructure(edited.id)).then(
-                    (done) => done && close(),
-                  )
+                  void run(async () =>
+                    onRemoved?.(await session.removeStructure(edited.id)),
+                  ).then((done) => done && close())
                 }
               >
                 {t('assembly.structures.removeYes')}

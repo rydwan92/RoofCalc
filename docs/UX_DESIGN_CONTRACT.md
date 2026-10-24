@@ -632,6 +632,11 @@ line and manual lengths keep working.
   is named through one lookup (`ROOF_FAMILY_LABEL`), and never shows
   another family's controls (no ridge settings on a mono-pitch roof). A quick
   calculation offers "Utwórz projekt" instead of retyping.
+- **VNext-10B: the project total never hides a gap.** The estimate of a
+  project of several structures lists each one (lines, net, gross, state)
+  above the estimate of the structure shown, whose title names it. A
+  structure without an estimate is named and left out of the sum, never
+  counted as zero; a row opens that structure's estimate.
 - **VNext-10: one structure at a time, always named.** A project of
   several roofs shows a quiet "Bryły projektu" row above the workspace; the
   chosen structure is the one every perspective shows, and the row says so.

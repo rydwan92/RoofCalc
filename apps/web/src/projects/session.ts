@@ -570,13 +570,19 @@ export class ProjectSession {
    * Removes a structure. When one unmoved structure remains the project is
    * a project of one roof again (V1, ADR-017 §1).
    */
-  async removeStructure(id: string): Promise<void> {
+  async removeStructure(
+    id: string,
+  ): Promise<{ removedId: string; remainingSingleId?: string }> {
     const document = await this.structuresDocument();
     const next = removeRoofStructure(document, id);
     await this.commitStructures(
       next,
       this.structureId === id ? next.structures[0]!.id : this.structureId,
     );
+    // A project of one roof again: its sidecars follow the remaining one.
+    return this.record?.schemaVersion === 1
+      ? { removedId: id, remainingSingleId: next.structures[0]!.id }
+      : { removedId: id };
   }
 
   async open(id: string): Promise<void> {

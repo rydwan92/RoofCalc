@@ -14,6 +14,7 @@ import {
   setScenarioTaxRateBps,
   sortCostLines,
   summarizeCostScenario,
+  summarizeCostScenarioParts,
   validateMoney,
   withIncluded,
   withManualQuantity,
@@ -337,5 +338,65 @@ describe('input validation', () => {
     expect(() => line({ quantity: { value: Infinity, unit: 'm' } })).toThrow(
       CostValidationError,
     );
+  });
+});
+
+describe('several estimates as one total (VNext-10B)', () => {
+  const priced = (id: string, net: number, currency = 'PLN', vat = true) => {
+    let scenario = createEmptyCostScenario(currency);
+    scenario = addCostLine(
+      scenario,
+      line({
+        id,
+        category: 'material',
+        quantity: { value: 1, unit: 'piece' },
+        unitPriceMinor: net,
+        currencyCode: currency,
+      }),
+    );
+    return vat ? setScenarioTaxRateBps(scenario, 2300) : scenario;
+  };
+
+  it('adds net, VAT and gross of every part in one currency', () => {
+    const total = summarizeCostScenarioParts([
+      { key: 'house', scenario: priced('h', 10_000) },
+      { key: 'garage', scenario: priced('g', 2_500) },
+    ]);
+    expect(total).toMatchObject({
+      currencyCode: 'PLN',
+      netMinor: 12_500,
+      taxMinor: 2_300 + 575,
+      grossMinor: 12_500 + 2_875,
+      missingKeys: [],
+      otherCurrencyKeys: [],
+      complete: true,
+    });
+    expect(total.summed.map((part) => part.key)).toEqual(['house', 'garage']);
+  });
+
+  it('names a part without an estimate instead of counting it as zero', () => {
+    const total = summarizeCostScenarioParts([
+      { key: 'house', scenario: priced('h', 10_000) },
+      { key: 'garage' },
+      { key: 'shed', scenario: createEmptyCostScenario('PLN') },
+    ]);
+    expect(total).toMatchObject({
+      netMinor: 10_000,
+      missingKeys: ['garage', 'shed'],
+      complete: false,
+    });
+  });
+
+  it('never adds two currencies, and drops VAT when a part has none', () => {
+    const total = summarizeCostScenarioParts([
+      { key: 'house', scenario: priced('h', 10_000) },
+      { key: 'garage', scenario: priced('g', 500, 'EUR') },
+      { key: 'shed', scenario: priced('s', 1_000, 'PLN', false) },
+    ]);
+    expect(total.otherCurrencyKeys).toEqual(['garage']);
+    expect(total.netMinor).toBe(11_000);
+    expect(total.taxMinor).toBeUndefined();
+    expect(total.grossMinor).toBeUndefined();
+    expect(total.complete).toBe(false);
   });
 });

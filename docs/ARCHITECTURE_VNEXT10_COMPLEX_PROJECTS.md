@@ -80,3 +80,19 @@ skomplikowanych projektów kompleksowo dla całej aplikacji". Decision record:
   fixture 13, e2e (desktop + phone).
 - Also fixed: editable lengths no longer show binary noise
   (826.3799999999999 → 826.38).
+
+## Delivered — 10B (2026-10-24)
+
+- Each structure has its own estimate (Kosztorys of the structure shown;
+  its title names the structure). The first structure keeps the project's
+  estimate key; further structures live in their own sidecar (SCHEMA_REGISTRY
+  §27).
+- "Wycena całego projektu" above the estimate: every structure with lines,
+  net, gross and state; the project total from `summarizeCostScenarioParts`;
+  a row opens that structure's estimate.
+- One money formatter (`formatMoney`) replaces four private copies.
+- Tests: cost-core totals (currency, VAT, missing parts), structure-scoped
+  repository (keys, removal, downgrade, pruning), e2e (desktop + phone).
+- Quantities per structure (timber, layers) as one project schedule remain
+  for a later step; the pricing overview is the project total users asked
+  for first.

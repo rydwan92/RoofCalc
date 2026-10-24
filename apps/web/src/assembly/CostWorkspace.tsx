@@ -22,7 +22,7 @@ import {
   type QuantityUnit,
 } from '@cieslacalc/cost-core';
 import { newProjectId } from '@cieslacalc/project-core';
-import { formatNumber, parseDecimal } from '../format';
+import { formatMoney, formatNumber, parseDecimal } from '../format';
 import {
   createCostSuggestions,
   currentSuggestionQuantityValue,
@@ -118,17 +118,7 @@ function suggestionLabel(
   return `${base}${section}${length}${suggestion.productName ? ` · ${suggestion.productName}` : ''}`;
 }
 
-function money(
-  minor: number | undefined,
-  currencyCode: string,
-  locale: string,
-) {
-  if (minor === undefined) return '—';
-  return new Intl.NumberFormat(locale, {
-    style: 'currency',
-    currency: currencyCode,
-  }).format(minor / 100);
-}
+const money = formatMoney;
 
 export function CostWorkspace({
   facts,
@@ -138,6 +128,7 @@ export function CostWorkspace({
   materialsAttention = 0,
   onOpenMaterials,
   onOpenQuote,
+  subject,
 }: {
   facts: ExportFacts;
   scenario: CostScenario;
@@ -147,6 +138,8 @@ export function CostWorkspace({
   materialsAttention?: number;
   onOpenMaterials?: () => void;
   onOpenQuote?: () => void;
+  /** VNext-10B: the structure this estimate belongs to, when there are several. */
+  subject?: string;
 }) {
   const { t, i18n } = useTranslation();
   const locale = i18n.language;
@@ -267,6 +260,7 @@ export function CostWorkspace({
                 ? 'Wycena materiałów'
                 : 'Material estimate'
               : t('assembly.cost.title')}
+            {subject && <small className="cw-subject"> · {subject}</small>}
           </h2>
           <span>{t('assembly.cost.totalNet')}</span>
           <strong data-testid="cost-total-net">

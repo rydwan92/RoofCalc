@@ -54,7 +54,9 @@ export {
   setScenarioTaxRateBps,
   sortedScenarioLines,
   summarizeCostScenario,
+  summarizeCostScenarioParts,
 } from './scenario';
+export type { CostScenarioPartsSummary } from './scenario';
 export {
   costScenarioV1Schema,
   parseCostScenario,

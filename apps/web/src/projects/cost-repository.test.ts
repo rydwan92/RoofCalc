@@ -85,3 +85,62 @@ it('removes estimates of deleted projects only, never one with a record (VNext-6
   expect(await repository.get('deleted')).toBeUndefined();
   expect(storage.getItem('cieslacalc.costEstimateNotes')).toBe('unrelated');
 });
+
+/* VNext-10B (ADR-017): one estimate per structure of a project. */
+
+it('keeps the project roof on its own key and each further structure apart', async () => {
+  const storage = new MemoryStorage();
+  const repository = new LocalCostRepository(storage);
+  const house = sampleScenario();
+  const garage = createEmptyCostScenario('PLN');
+  await repository.save('project-a', house);
+  await repository.save('project-a', garage, 'structure:2');
+  // The roof a V1 project had keeps its estimate when it becomes structure 1.
+  expect(await repository.get('project-a', 'structure:roof')).toEqual(house);
+  expect(await repository.get('project-a')).toEqual(house);
+  expect(await repository.get('project-a', 'structure:2')).toEqual(garage);
+  expect(await repository.get('project-a', 'structure:3')).toBeUndefined();
+  expect(
+    await repository.getMany('project-a', [
+      'structure:roof',
+      'structure:2',
+      'structure:3',
+    ]),
+  ).toEqual([
+    { structureId: 'structure:roof', scenario: house },
+    { structureId: 'structure:2', scenario: garage },
+    { structureId: 'structure:3' },
+  ]);
+});
+
+it('drops a removed structure and gives the last one the project key', async () => {
+  const storage = new MemoryStorage();
+  const repository = new LocalCostRepository(storage);
+  const garage = sampleScenario();
+  await repository.save('project-a', createEmptyCostScenario('PLN'));
+  await repository.save('project-a', garage, 'structure:2');
+  await repository.save('project-a', garage, 'structure:3');
+  await repository.afterStructureRemoved('project-a', 'structure:3');
+  expect(await repository.get('project-a', 'structure:3')).toBeUndefined();
+  // Removing the first roof, the project is the garage alone (V1 again).
+  await repository.afterStructureRemoved(
+    'project-a',
+    'structure:roof',
+    'structure:2',
+  );
+  expect(await repository.get('project-a')).toEqual(garage);
+  expect(
+    storage.getItem('cieslacalc.structureCostEstimate.v1.project-a'),
+  ).toBeNull();
+});
+
+it('prunes the structure estimates of a deleted project too', async () => {
+  const storage = new MemoryStorage();
+  const repository = new LocalCostRepository(storage);
+  await repository.save('kept', sampleScenario(), 'structure:2');
+  await repository.save('deleted', sampleScenario(), 'structure:2');
+  storage.setItem(projectRecordKey('kept'), '{}');
+  repository.prune();
+  expect(await repository.get('kept', 'structure:2')).toBeDefined();
+  expect(await repository.get('deleted', 'structure:2')).toBeUndefined();
+});

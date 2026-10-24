@@ -366,6 +366,25 @@ export const assemblyPl = {
   asymSpan: 'Rozpiętość (zewnętrzne lica murłat)',
   leftPitch: 'Kąt lewej połaci',
   rightPitch: 'Kąt prawej połaci',
+  projectPricing: {
+    title: 'Wycena całego projektu',
+    hint: 'Każda bryła ma własny kosztorys — poniżej kosztorys bryły, którą pokazuje warsztat. Kliknij bryłę, by otworzyć jej kosztorys.',
+    structure: 'Bryła',
+    lines: 'Pozycje',
+    net: 'Netto',
+    gross: 'Brutto',
+    state: 'Stan',
+    total: 'Razem projekt',
+    complete: 'Kompletny',
+    incomplete: 'Niekompletny',
+    missing: 'Brak kosztorysu',
+    otherCurrency: 'Inna waluta',
+    needsPrice: 'Brak ceny: {{count}} poz.',
+    missingNote:
+      'Brył bez kosztorysu: {{count}} — suma ich nie obejmuje. Otwórz bryłę i dodaj propozycje w jej kosztorysie.',
+    currencyNote:
+      'Kosztorysy w innej walucie nie są dodawane do sumy projektu.',
+  },
   structures: {
     title: 'Bryły projektu',
     fallback: 'Bryła {{n}}',

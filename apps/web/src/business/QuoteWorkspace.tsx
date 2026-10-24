@@ -12,7 +12,7 @@ import {
   type QuoteDraft,
   type QuoteLineGroup,
 } from '@cieslacalc/quote-core';
-import { parseDecimal } from '../format';
+import { formatMoney, parseDecimal } from '../format';
 import { CompanyLogo } from './CompanySettings';
 import type { RemoteSaveStatus } from './workspace/autosave';
 
@@ -25,13 +25,7 @@ const GROUPS: readonly QuoteLineGroup[] = [
   'other',
 ];
 
-function money(value: number | undefined, currency: string, locale: string) {
-  return value === undefined
-    ? '—'
-    : new Intl.NumberFormat(locale, { style: 'currency', currency }).format(
-        value / 100,
-      );
-}
+const money = formatMoney;
 
 export function QuoteWorkspace({
   draft,

@@ -43,10 +43,12 @@ the materials up by hand.
 6. **No inferred connections.** `connections` stays empty. Structures whose
    plans overlap are reported as an unsolved junction (ADR-015 assessment);
    a valley or abutment between structures is never inferred from geometry.
-7. **Quantities.** Each structure's quantities come from the same
-   derivation as the workbench; the project total adds rows with the same
-   material identity and keeps the per-structure breakdown. Nothing is
-   assigned to a connection.
+7. **Quantities and estimates.** Each structure's quantities come from
+   the same derivation as the workbench; the project total adds rows with
+   the same material identity and keeps the per-structure breakdown.
+   Nothing is assigned to a connection. Each structure has its own cost
+   estimate; the project's is their sum in one currency, naming any
+   structure without one (VNext-10B).
 8. **Business.** Server estimations carry V1 records. A multi-structure
    project stays local in this version and the UI says so; the API is not
    changed.

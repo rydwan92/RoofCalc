@@ -37,6 +37,22 @@ export function editableLength(mm: number, unit: LengthUnit): string {
   return String(Number(fromMillimetres(mm, unit).toPrecision(15)));
 }
 
+/**
+ * Money from integer minor units, in the currency's own format; '—' when
+ * there is no amount. One formatter for estimates, quotes and plans.
+ */
+export function formatMoney(
+  minor: number | undefined,
+  currencyCode: string,
+  locale: string,
+): string {
+  if (minor === undefined) return '—';
+  return new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency: currencyCode,
+  }).format(minor / 100);
+}
+
 /** Angles: 0.1°. */
 export function formatAngle(deg: number, locale: string) {
   return `${formatNumber(deg, locale, 1)}°`;

@@ -8,10 +8,12 @@ import { LocalCostRepository } from '../projects/cost-repository';
 /**
  * Loads/saves the sidecar cost estimate for the active project (§13). Cost
  * data never enters roof Undo/Redo or `RoofProjectDocumentV1` — switching
- * projects loads a different, independent scenario.
+ * projects loads a different, independent scenario. VNext-10B: and so does
+ * switching structures of one project (`structureId`).
  */
 export function useCostScenario(
   projectId: string | undefined,
+  structureId?: string,
 ): [CostScenario | undefined, (next: CostScenario) => void] {
   const [scenario, setScenario] = useState<CostScenario>();
   const repository = useRef(new LocalCostRepository());
@@ -23,22 +25,24 @@ export function useCostScenario(
       return;
     }
     setScenario(undefined);
-    void repository.current.get(projectId).then((stored) => {
+    void repository.current.get(projectId, structureId).then((stored) => {
       if (cancelled) return;
       setScenario(stored ?? createEmptyCostScenario('PLN'));
     });
     return () => {
       cancelled = true;
     };
-  }, [projectId]);
+  }, [projectId, structureId]);
 
   const update = useCallback(
     (next: CostScenario) => {
       setScenario(next);
       if (projectId)
-        void repository.current.save(projectId, next).catch(() => undefined);
+        void repository.current
+          .save(projectId, next, structureId)
+          .catch(() => undefined);
     },
-    [projectId],
+    [projectId, structureId],
   );
 
   return [scenario, update];

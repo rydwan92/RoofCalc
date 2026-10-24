@@ -178,3 +178,90 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* VNext-10B: the estimate of the whole project, above the structure's. */
+.a-project-pricing {
+  display: grid;
+  gap: var(--ui-space-2);
+  margin-bottom: var(--ui-space-3);
+  padding: var(--ui-space-3);
+  border: 1px solid var(--a-line);
+  border-radius: var(--ui-radius-md);
+  background: var(--a-surface);
+}
+.a-project-pricing header h3 {
+  margin: 0;
+  font-size: var(--ui-text-lg);
+}
+.a-project-pricing header p,
+.a-project-pricing-note {
+  margin: 0;
+  color: var(--a-muted);
+  font-size: var(--ui-text-sm);
+}
+.a-project-pricing table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--ui-text-sm);
+  font-variant-numeric: tabular-nums;
+}
+.a-project-pricing th,
+.a-project-pricing td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--a-line);
+  text-align: right;
+}
+.a-project-pricing th:first-child,
+.a-project-pricing td:last-child {
+  text-align: left;
+}
+.a-project-pricing thead th {
+  color: var(--a-muted);
+  font-size: var(--ui-text-xs);
+  font-weight: var(--ui-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: var(--ui-tracking-caps);
+}
+.a-project-pricing-name {
+  display: grid;
+  justify-items: start;
+  gap: 2px;
+}
+.a-project-pricing-name small {
+  color: var(--a-muted);
+  font-size: var(--ui-text-xs);
+  font-weight: var(--ui-weight-regular);
+}
+.a-project-pricing tr[aria-current='true'] {
+  background: var(--a-selection-soft);
+}
+.a-project-pricing tfoot th,
+.a-project-pricing tfoot td {
+  border-bottom: 0;
+  font-size: var(--ui-text-md);
+  font-weight: var(--ui-weight-bold);
+}
+.a-project-pricing td[data-state='missing'],
+.a-project-pricing td[data-state='currency'],
+.a-project-pricing td[data-state='partial'] {
+  color: var(--a-warning);
+}
+.a-project-pricing td[data-state='complete'] {
+  color: var(--a-accent);
+}
+@media (max-width: 760px) {
+  .a-project-pricing {
+    overflow-x: auto;
+  }
+  .a-project-pricing th,
+  .a-project-pricing td {
+    padding: 6px;
+  }
+}
+
+/* VNext-10B: the estimate says which structure it belongs to. */
+.cw-subject {
+  color: var(--a-muted);
+  font-size: 0.6em;
+  font-weight: var(--ui-weight-medium);
+}

@@ -859,3 +859,19 @@ workbench. No migration.
 - Business estimations keep `ProjectRecordV1`; the API is unchanged.
 - Reference fixture `fixtures/projects/structures/13-house-and-carport`
   (references 01 and 11, byte-identical inside their structures).
+
+## 27. VNext-10B contracts — an estimate per structure (browser sidecars)
+
+- `cieslacalc.costEstimate.v1.<projectId>` is unchanged: the estimate of a
+  project of one roof, and of the first structure (`structure:roof`) of a
+  project of several — an existing estimate stays with its roof.
+- **New** `cieslacalc.structureCostEstimate.v1.<projectId>` (persisted,
+  browser only): `{ schemaVersion: 1, estimates: { [structureId]:
+  CostScenarioV1 } }` for the further structures. Its own namespace, so
+  the project-ID pruning of the main one never reads it; pruned when the
+  project record is gone. Removing a structure removes its estimate; when a
+  project is one roof again, the remaining structure's estimate moves to the
+  project key.
+- `cost-core` `summarizeCostScenarioParts` (derived): the project total —
+  one currency, VAT only when every part has it, parts without an estimate
+  named, never counted as zero.

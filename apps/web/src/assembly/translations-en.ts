@@ -366,6 +366,25 @@ export const assemblyEn: typeof assemblyPl = {
   asymSpan: 'Span (outer faces of the wall plates)',
   leftPitch: 'Left plane pitch',
   rightPitch: 'Right plane pitch',
+  projectPricing: {
+    title: 'Whole-project estimate',
+    hint: 'Each structure has its own estimate — below is the estimate of the structure the workbench shows. Click a structure to open its estimate.',
+    structure: 'Structure',
+    lines: 'Lines',
+    net: 'Net',
+    gross: 'Gross',
+    state: 'State',
+    total: 'Project total',
+    complete: 'Complete',
+    incomplete: 'Incomplete',
+    missing: 'No estimate',
+    otherCurrency: 'Other currency',
+    needsPrice: 'Missing price: {{count}}',
+    missingNote:
+      'Structures without an estimate: {{count}} — the total leaves them out. Open a structure and add proposals in its estimate.',
+    currencyNote:
+      'Estimates in another currency are not added to the project total.',
+  },
   structures: {
     title: 'Project structures',
     fallback: 'Structure {{n}}',

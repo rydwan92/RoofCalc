@@ -191,7 +191,8 @@ import type { LinearPlanSurface } from './MaterialPlan';
 import { useInstallationActions } from './InstallationWorkflow';
 import { summarizeCostScenario } from '@cieslacalc/cost-core';
 import { ProjectManager, projectStatusLabel } from '../projects/ProjectManager';
-import { StructureBar } from '../projects/StructureBar';
+import { StructureBar, structureLabel } from '../projects/StructureBar';
+import { ProjectPricingOverview } from '../projects/ProjectPricingOverview';
 import { LocalProjectRepository } from '../projects/local-repository';
 import {
   recentProjects,
@@ -379,6 +380,8 @@ function AssemblyPageContent({
   const [exportError, setExportError] = useState('');
   const [costScenario, setCostScenario] = useCostScenario(
     projectSessionState.active?.id,
+    // VNext-10B: each structure of a project has its own estimate.
+    projectSessionState.activeStructureId,
   );
   const [projectStartMode, setProjectStartMode] = useState<ProjectStartMode>();
   const [homeProjects, setHomeProjects] = useState<SavedProjectSummary[]>([]);
@@ -2673,6 +2676,15 @@ function AssemblyPageContent({
                   setReuseFreshProject(false);
                   setProjectStartMode('structure');
                 }}
+                onRemoved={(removal) => {
+                  const projectId = projectSessionState.active?.id;
+                  if (projectId)
+                    void new LocalCostRepository().afterStructureRemoved(
+                      projectId,
+                      removal.removedId,
+                      removal.remainingSingleId,
+                    );
+                }}
               />
               {(() => {
                 const readinessBar = (
@@ -3156,6 +3168,13 @@ function AssemblyPageContent({
                     </Suspense>
                   ) : workbench.viewPreset === 'costing' ? (
                     <Suspense fallback={<div className="a-loading-panel" />}>
+                      <ProjectPricingOverview
+                        session={projectSession}
+                        state={projectSessionState}
+                        {...(costScenario
+                          ? { activeScenario: costScenario }
+                          : {})}
+                      />
                       {costScenario && projectSessionState.active ? (
                         <CostWorkspace
                           facts={
@@ -3207,6 +3226,25 @@ function AssemblyPageContent({
                           }
                           scenario={costScenario}
                           onScenarioChange={setCostScenario}
+                          {...(() => {
+                            // VNext-10B: whose estimate this is.
+                            const structures = projectSessionState.structures;
+                            const index =
+                              structures?.findIndex(
+                                (structure) =>
+                                  structure.id ===
+                                  projectSessionState.activeStructureId,
+                              ) ?? -1;
+                            return structures && index >= 0
+                              ? {
+                                  subject: structureLabel(
+                                    structures[index]!,
+                                    index,
+                                    t,
+                                  ),
+                                }
+                              : {};
+                          })()}
                           onOpenDocuments={openExecutionExport}
                           materialsAttention={
                             materialRows.filter((row) => row.partial).length
