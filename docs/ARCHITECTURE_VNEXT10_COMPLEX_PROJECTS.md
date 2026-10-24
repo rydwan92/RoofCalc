@@ -114,3 +114,25 @@ skomplikowanych projektów kompleksowo dla całej aplikacji". Decision record:
 - Not yet: column layouts with two structures side by side on one sheet are
   read by vertical order; photos and scans are single-roof (no text layer to
   split).
+
+## Delivered — 10D (2026-10-25)
+
+- `deriveSiteScene` (`apps/web/src/projects/site-scene.ts`): every
+  structure's roof is the scene the workbench already checks (ADR-015),
+  placed by its transform with the topology core's `transformRoofScene`;
+  no second geometry. Two roofs that share plan area are found by the core's
+  own assessment (`junction-unresolved`) over the pair's merged scene, and
+  reported as a pair of structure IDs — no ID is parsed (ADR-007).
+- "Widok działki" in the structure row: the roofs of every structure in
+  plan, the open one emphasised, an overlapping pair outlined in the warning
+  colour; a click (or Enter) on a roof opens that structure. The plan follows
+  the open structure's edits as they happen.
+- The overlap warning names both structures and says the junction (valley,
+  flashing) is not calculated (ADR-017 §6): nothing is inferred, and the
+  warning shows with the site view closed too.
+- Tests: fixture 13 apart (no overlap, the placed carport roof covers its
+  outline) and stacked (one pair); e2e desktop + phone (apart → on top of
+  the house → back, select by a click on the plan).
+- Not yet: a 3D site view; an elevation check (a lower roof under an eave
+  is still reported by plan); dragging a structure on the site (the exact
+  inputs of the structure settings stay the way to place it).

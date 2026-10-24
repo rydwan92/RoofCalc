@@ -1297,6 +1297,30 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+## VNext-10D (2026-10-25) — the site: every roof where it stands
+
+- Branch `feature/vnext-10d-site-view` (from 10C, `5a5b5ec`). Owner
+  (2026-10-25): "pracuj dalej".
+- `deriveSiteScene` (`apps/web/src/projects/site-scene.ts`): each
+  structure's roof is the workbench's own ADR-015 scene, placed by its
+  transform (`transformRoofScene`); a pair whose roofs share plan area is
+  found by `assessRoofScene` (`junction-unresolved`) over the pair's merged
+  scene. No second geometry, no ID parsed.
+- Structure row: "Widok działki" (plan of every roof, the open one
+  emphasised, a click or Enter opens a structure; follows live edits) and an
+  overlap warning naming both structures and saying the junction (valley,
+  flashing) is not calculated — visible with the plan closed too.
+- `deriveProjectRoofScene` takes an optional `structureId` / `name`.
+- Tests: fixture 13 apart / stacked; e2e (desktop + phone) apart → on the
+  house → back, selection from the plan. Docs: VNext-10 doc, UX contract.
+- Validation: `pnpm verify` green — 222 files / 2341 tests (13 skipped);
+  `pnpm e2e` 190 passed / 0 failed.
+- Known limits: plan-only check (a lower roof under an eave is still
+  reported), no 3D site, no dragging on the site (exact inputs place it).
+- NEXT ACTION: a project schedule of quantities across structures (timber,
+  layers per structure and in total), then business sync of
+  multi-structure projects.
+
 ## VNext-10C (2026-10-25) — a design with several roofs becomes one project
 
 - Branch `feature/vnext-10c-multi-roof-import` (from VNext-11, `0081998`).

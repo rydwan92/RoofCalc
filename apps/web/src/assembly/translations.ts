@@ -388,6 +388,12 @@ export const assemblyPl = {
   structures: {
     title: 'Bryły projektu',
     fallback: 'Bryła {{n}}',
+    site: 'Widok działki',
+    siteLabel: 'Rzut dachów wszystkich brył projektu',
+    siteHint:
+      'Dachy wszystkich brył w rzucie, w położeniu z ustawień bryły. Kliknij dach, by otworzyć bryłę.',
+    overlap:
+      'Dachy brył „{{a}}” i „{{b}}” nachodzą na siebie — ich połączenie (kosz, obróbka) nie jest liczone. Przesuń bryłę albo opracuj połączenie osobno.',
     mainName: 'Budynek główny',
     add: 'Dodaj bryłę',
     settings: 'Ustawienia bryły',

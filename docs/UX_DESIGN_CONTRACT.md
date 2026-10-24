@@ -632,6 +632,11 @@ line and manual lengths keep working.
   is named through one lookup (`ROOF_FAMILY_LABEL`), and never shows
   another family's controls (no ridge settings on a mono-pitch roof). A quick
   calculation offers "Utwórz projekt" instead of retyping.
+- **VNext-10D: the site shows every roof where it stands.** "Widok działki"
+  draws the roofs of every structure in plan, the open one emphasised; a
+  click on a roof opens that structure. Two roofs that share plan area are
+  named in a warning that stays visible with the plan closed and says the
+  junction is not calculated — never a silent valley.
 - **VNext-10C: a design with several roofs is reviewed roof by roof.**
   The review lists the structures the document names, each "gotowa" or "do
   sprawdzenia"; values, confirmations and typed numbers belong to the

@@ -388,6 +388,12 @@ export const assemblyEn: typeof assemblyPl = {
   structures: {
     title: 'Project structures',
     fallback: 'Structure {{n}}',
+    site: 'Site view',
+    siteLabel: 'Plan of the roofs of every structure',
+    siteHint:
+      'The roofs of every structure in plan, placed by the structure settings. Click a roof to open its structure.',
+    overlap:
+      'The roofs of “{{a}}” and “{{b}}” overlap — their junction (valley, flashing) is not calculated. Move a structure or detail the junction separately.',
     mainName: 'Main building',
     add: 'Add structure',
     settings: 'Structure settings',

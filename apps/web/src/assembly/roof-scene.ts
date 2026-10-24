@@ -50,9 +50,16 @@ export function deriveProjectRoofScene(input: {
   template: RoofTemplateSpec;
   surface: RoofSurfaceGeometryResult;
   topology: RoofFeatureTopology;
+  /**
+   * VNext-10D: a structure of a project of several (its own ID keeps the
+   * scenes apart when they are placed on one site); absent: the project roof.
+   */
+  structureId?: string;
+  name?: string;
 }): ProjectRoofScene {
   const scene = roofSceneFromResolvedRoof({
-    structureId: PROJECT_ROOF_STRUCTURE_ID,
+    structureId: input.structureId ?? PROJECT_ROOF_STRUCTURE_ID,
+    ...(input.name ? { name: input.name } : {}),
     template: input.template.type,
     planes: input.surface.planes,
     lines: input.topology.features,

@@ -68,6 +68,38 @@ test('a house and a garage in one project, switched, renamed, reopened and remov
   await expect(panel).toBeHidden();
   await expect(chips.nth(1)).toContainText('Garaż');
 
+  // VNext-10D: the site — both roofs in plan, apart, no warning.
+  await bar.getByTestId('structure-site').click();
+  const site = bar.getByTestId('site-plan');
+  await expect(site.locator('.a-site-structure')).toHaveCount(2);
+  await expect(bar.getByTestId('structure-overlap')).toHaveCount(0);
+  // On top of the house, the unsolved junction is named.
+  await bar.getByTestId('structure-settings').click();
+  await panel.locator('[data-structure-field="x"]').fill('-200');
+  await panel.locator('[data-structure-field="rotation"]').fill('0');
+  await panel.getByRole('button', { name: 'Zapisz' }).click();
+  await expect(bar.getByTestId('structure-overlap')).toContainText(
+    'Dachy brył „Budynek główny” i „Garaż” nachodzą na siebie',
+  );
+  await expect(
+    site.locator('.a-site-structure[data-overlap="true"]'),
+  ).toHaveCount(2);
+  await page.screenshot({
+    path: testInfo.outputPath('vnext10d-site.png'),
+    fullPage: true,
+  });
+  // Back beside it, and a click on a roof opens that structure.
+  await bar.getByTestId('structure-settings').click();
+  await panel.locator('[data-structure-field="x"]').fill('1500');
+  await panel.locator('[data-structure-field="rotation"]').fill('90');
+  await panel.getByRole('button', { name: 'Zapisz' }).click();
+  await expect(bar.getByTestId('structure-overlap')).toHaveCount(0);
+  await site.locator('.a-site-structure').nth(0).click();
+  await expect(chips.nth(0)).toHaveAttribute('aria-pressed', 'true');
+  await site.locator('.a-site-structure').nth(1).click();
+  await expect(chips.nth(1)).toHaveAttribute('aria-pressed', 'true');
+  await bar.getByTestId('structure-site').click();
+
   // The perspective stays when the structure changes.
   await page.locator('[data-perspective="materials"]:visible').first().click();
   await chips.nth(0).click();

@@ -265,3 +265,59 @@
   font-size: 0.6em;
   font-weight: var(--ui-weight-medium);
 }
+
+/* VNext-10D: the site — every roof in plan, where its structure stands. */
+.a-site-plan {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+.a-site-plan svg {
+  width: 100%;
+  max-height: 320px;
+  border: 1px solid var(--a-line);
+  border-radius: var(--ui-radius-sm);
+  background: var(--a-canvas);
+}
+.a-site-plan figcaption {
+  color: var(--a-muted);
+  font-size: var(--ui-text-xs);
+}
+.a-site-structure {
+  cursor: pointer;
+}
+.a-site-structure polygon {
+  fill: var(--a-guide-fill);
+  stroke: var(--a-guide);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+.a-site-structure[data-active='true'] polygon {
+  fill: var(--a-selection-soft);
+  stroke: var(--a-selection);
+  stroke-width: 2;
+}
+.a-site-structure[data-overlap='true'] polygon {
+  stroke: var(--a-warning);
+}
+.a-site-structure text {
+  fill: var(--a-text);
+  font-weight: var(--ui-weight-medium);
+}
+.a-site-structure:focus-visible {
+  outline: none;
+}
+.a-site-structure:focus-visible polygon {
+  stroke-width: 3;
+}
+.a-structures-overlap {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: var(--ui-radius-sm);
+  background: var(--a-warning-fill);
+  color: var(--a-warning);
+  font-size: var(--ui-text-sm);
+}

@@ -1,9 +1,18 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Settings2, Trash2 } from 'lucide-react';
+import {
+  AlertTriangle,
+  Map as MapIcon,
+  Plus,
+  Settings2,
+  Trash2,
+} from 'lucide-react';
 import { toMillimetres, type LengthUnit } from '@cieslacalc/roof-math';
 import { editableLength, parseDecimal } from '../format';
 import { ROOF_FAMILY_LABEL } from '../assembly/roof-family';
+import { useAssembly } from '../assembly/store';
+import { deriveSiteScene } from './site-scene';
+import { SitePlan } from './SitePlan';
 import type {
   ProjectSession,
   ProjectSessionState,
@@ -53,8 +62,24 @@ export function StructureBar({
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [siteOpen, setSiteOpen] = useState(false);
+  // VNext-10D: the site follows the open structure's edits as they happen.
+  const editedDocument = useAssembly((assembly) => assembly.projectDocument);
+  const site = useMemo(() => {
+    if (!state.structures) return undefined;
+    const document = session.projectDocument();
+    return document?.schemaVersion === 2
+      ? deriveSiteScene(document)
+      : undefined;
+    // `editedDocument` re-derives on every edit of the open structure.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, state.structures, editedDocument]);
   const structures = state.structures;
   if (!structures) return null;
+  const nameOf = (id: string) => {
+    const index = structures.findIndex((structure) => structure.id === id);
+    return structureLabel(structures[index] ?? {}, index, t);
+  };
   const activeIndex = structures.findIndex(
     (structure) => structure.id === state.activeStructureId,
   );
@@ -204,6 +229,16 @@ export function StructureBar({
             </button>
           )}
         </div>
+        <button
+          type="button"
+          className="a-structure-settings"
+          data-testid="structure-site"
+          aria-expanded={siteOpen}
+          onClick={() => setSiteOpen((open) => !open)}
+        >
+          <MapIcon size={15} aria-hidden="true" />
+          {t('assembly.structures.site')}
+        </button>
         {activeIndex >= 0 && (
           <button
             type="button"
@@ -224,6 +259,27 @@ export function StructureBar({
           name: structureLabel(structures[activeIndex] ?? {}, activeIndex, t),
         })}
       </p>
+      {site?.overlaps.map(([a, b]) => (
+        <p
+          key={`${a}+${b}`}
+          className="a-structures-overlap"
+          role="status"
+          data-testid="structure-overlap"
+        >
+          <AlertTriangle size={15} aria-hidden="true" />
+          {t('assembly.structures.overlap', { a: nameOf(a), b: nameOf(b) })}
+        </p>
+      ))}
+      {siteOpen && site && (
+        <SitePlan
+          site={site}
+          structures={structures}
+          {...(state.activeStructureId
+            ? { activeId: state.activeStructureId }
+            : {})}
+          onSelect={(id) => void run(() => session.selectStructure(id))}
+        />
+      )}
       {edited && draft && (
         <form
           className="a-structure-panel"
