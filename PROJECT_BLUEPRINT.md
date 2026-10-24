@@ -1297,6 +1297,23 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+## VNext-9C (2026-10-24) — every plane at its own pitch
+
+- Same branch. Found while planning 10B: the asymmetric gable's right plane
+  was read at the left pitch by covering layouts (minimum-pitch checks),
+  automatic battens, the batten workflow and the catalogue's suitability;
+  K2's 3D finished solid used K1's assembly.
+- `roofPlanePitchDeg` / `flattestRoofPitchDeg` (roof-math, which owns plane
+  IDs). Automatic battens take a gauge valid at every battened pitch (the
+  overlap of the manufacturer's ranges) or report `pitch-gauges-differ`;
+  minimum-pitch checks bind at the flattest plane; K2 is finished by K2.
+- An async language assertion in `App.test.tsx` waits for the effect.
+- Validation: `pnpm test` 2325 passed / 0 failed (the full verify run had
+  that one flake); `pnpm e2e` 186 passed / 0 failed.
+- NEXT ACTION: 10B — structure-scoped cost estimates and the project's
+  pricing overview (owner: UI/UX, administration, simplicity, seeds,
+  pricing).
+
 ## VNext-10A (2026-10-24) — a project of several roof structures (ADR-017)
 
 - Branch `feature/vnext-10-complex-projects` (from 9B, `15b10d6`).

@@ -84,6 +84,36 @@ export function roofPlaneSide(
   return sides[roofPlaneId];
 }
 
+/**
+ * VNext-9C: the pitch of one plane. An asymmetric gable's right plane has
+ * its own; every other family has one pitch for all its planes. Covering,
+ * battens and product checks read a plane's pitch here, never the
+ * template's first one.
+ */
+export function roofPlanePitchDeg(
+  template: RoofTemplateSpec,
+  roofPlaneId: string,
+): number {
+  return template.type === 'asymmetric-gable' &&
+    roofPlaneSide(template, roofPlaneId) === 'right'
+    ? template.rightPitchDeg
+    : template.pitchDeg;
+}
+
+/**
+ * The flattest pitch among planes (all of the roof when none are named):
+ * the one a covering's or an installation's minimum pitch binds.
+ */
+export function flattestRoofPitchDeg(
+  template: RoofTemplateSpec,
+  roofPlaneIds?: readonly string[],
+): number {
+  const ids = roofPlaneIds?.length
+    ? roofPlaneIds
+    : templateRoofPlaneIds(template);
+  return Math.min(...ids.map((id) => roofPlanePitchDeg(template, id)));
+}
+
 function polygonArea(polygon: readonly RoofPlanePosition[]) {
   if (polygon.length < 3) return 0;
   return (

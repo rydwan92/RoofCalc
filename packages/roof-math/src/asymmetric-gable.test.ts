@@ -12,7 +12,12 @@ import {
   gableTemplateFromAssembly,
   resolveGableRoofTemplate,
 } from './gable-roof';
-import { resolveRoofSurfaceGeometry } from './roof-surface';
+import {
+  flattestRoofPitchDeg,
+  resolveRoofSurfaceGeometry,
+  roofPlanePitchDeg,
+  roofPlaneIds as roofTemplatePlaneIds,
+} from './roof-surface';
 import {
   convertRoofTemplate,
   createRoofSkeleton,
@@ -196,5 +201,18 @@ describe('asymmetric gable (VNext-9)', () => {
       (8000 * 0.6) / (Math.tan((40 * Math.PI) / 180) + 0.6),
       6,
     );
+  });
+});
+
+describe('each plane at its own pitch (VNext-9C)', () => {
+  it('reads the right plane of an asymmetric gable at its own pitch', () => {
+    const template = a1({ pitchDeg: 45, rightPitchDeg: 30 });
+    const [left, right] = roofTemplatePlaneIds(template);
+    expect(roofPlanePitchDeg(template, left!)).toBe(45);
+    expect(roofPlanePitchDeg(template, right!)).toBe(30);
+    expect(flattestRoofPitchDeg(template)).toBe(30);
+    expect(flattestRoofPitchDeg(template, [left!])).toBe(45);
+    // A gable has one pitch everywhere.
+    expect(flattestRoofPitchDeg(base)).toBe(base.pitchDeg);
   });
 });

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import {
   resolveBattenLayout,
   roofPlaneIds,
+  roofPlanePitchDeg,
   type BattenLayoutResult,
 } from '@cieslacalc/roof-math';
 import { resolvePrimaryCoveringAssignments } from '@cieslacalc/covering-core';
@@ -220,6 +221,7 @@ export function BattenAutoRepair({ layout }: { layout: BattenLayoutSpec }) {
       ownership: resolvePrimaryCoveringAssignments(assignments),
       roofPlaneIds: roofPlaneIds(state.template),
       roofPitchDeg: state.template.pitchDeg,
+      pitchOf: (roofPlaneId) => roofPlanePitchDeg(state.template, roofPlaneId),
     });
     const result = resolveBattenLayout({
       template: state.template,

@@ -1,3 +1,4 @@
+import { flattestRoofPitchDeg } from '@cieslacalc/roof-math';
 import { useEffect, useMemo, useState } from 'react';
 import {
   useInfiniteQuery,
@@ -217,7 +218,10 @@ function PickerBody({
 
   const unavailable = manufacturers.isError || products.isError;
   // V-next-2: the card says whether the product suits this roof's pitch.
-  const roofPitchDeg = useAssembly((state) => state.template.pitchDeg);
+  // VNext-9C: the flattest plane decides (an asymmetric gable has two).
+  const roofPitchDeg = useAssembly((state) =>
+    flattestRoofPitchDeg(state.template),
+  );
   const productItems = products.data?.pages.flatMap((page) => page.items);
   const selectedVariant = detail.data?.variants.find(
     (item) => item.id === variantId,

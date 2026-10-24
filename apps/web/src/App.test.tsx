@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { cleanup, render, screen, fireEvent } from '@testing-library/react';
+import {
+  cleanup,
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+} from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import i18n from './i18n';
 // Historical v2 screen regression suite; v3 has its own integration tests.
@@ -125,6 +131,7 @@ describe('parametric workbench', () => {
     expect(
       await screen.findByRole('heading', { name: /Common rafter/ }),
     ).toBeTruthy();
-    expect(document.documentElement.lang).toBe('en');
+    // The document language follows in an effect after the render.
+    await waitFor(() => expect(document.documentElement.lang).toBe('en'));
   });
 });

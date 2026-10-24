@@ -84,4 +84,10 @@ ridge unevenly; sizing is the designer's.
   niesymetryczny", "asymmetric gable") and each pitch by its side ("kąt
   połaci lewej / prawej", "β ="); the review asks for the right pitch only
   on this family and creates the project through the same project start.
+- VNext-9C: every plane is read at its own pitch (`roofPlanePitchDeg`):
+  covering layouts and their minimum-pitch checks, the batten workflow (the
+  flattest battened plane binds) and the catalogue's suitability (the
+  flattest plane). Automatic battens take a gauge valid at every battened
+  pitch — the overlap of the manufacturer's ranges — or say that the planes
+  need different gauges. K2's finished 3D solid uses K2's own assembly.
 - Not yet: purlins and collar ties, a cutting plan for K2 of its own.

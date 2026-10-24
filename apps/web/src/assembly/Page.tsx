@@ -39,6 +39,8 @@ import {
   resolveMembraneLayout,
   resolveRoofSurfaceGeometry,
   resolveRoofFeatureTopology,
+  flattestRoofPitchDeg,
+  roofPlanePitchDeg,
   roofTemplateSpanMm,
 } from '@cieslacalc/roof-math';
 import { createDefaultProjectDocument, useAssembly } from './store';
@@ -628,6 +630,8 @@ function AssemblyPageContent({
         assignments: coveringAssignments,
         ownership: coveringOwnership,
         roofPitchDeg: state.template.pitchDeg,
+        pitchOf: (roofPlaneId) =>
+          roofPlanePitchDeg(state.template, roofPlaneId),
         roofPlaneIds: surfaceProjection.planes.map(
           (plane) => plane.roofPlaneId,
         ),
@@ -637,7 +641,7 @@ function AssemblyPageContent({
       coveringOwnership,
       effectiveBattenLayout,
       surfaceProjection.planes,
-      state.template.pitchDeg,
+      state.template,
     ],
   );
   /**
@@ -688,13 +692,24 @@ function AssemblyPageContent({
           : [];
       });
     // Finished K1 solids, only where the fabrication actually resolved.
+    // VNext-9C: K2 (an asymmetric gable's right rafter) is finished by its
+    // own assembly at its own pitch.
+    const left = {
+      assembly: templateResult.calculation.assembly,
+      pitchDeg: state.template.pitchDeg,
+    };
+    const right =
+      state.template.type === 'asymmetric-gable' &&
+      'rightCalculation' in templateResult
+        ? {
+            assembly: templateResult.rightCalculation.assembly,
+            pitchDeg: state.template.rightPitchDeg,
+          }
+        : undefined;
     const finishedMembers = skeleton.members.flatMap((member) => {
       if (member.kind !== 'rafter') return [];
-      const solid = resolveFinishedRafterSolid({
-        assembly: templateResult.calculation.assembly,
-        member,
-        pitchDeg: state.template.pitchDeg,
-      });
+      const rafter = member.familyCode === 'K2' && right ? right : left;
+      const solid = resolveFinishedRafterSolid({ ...rafter, member });
       return solid.status === 'resolved'
         ? [
             {
@@ -713,8 +728,8 @@ function AssemblyPageContent({
     counterBattenProjection.rows,
     scene3dOpen,
     skeleton.members,
-    state.template.pitchDeg,
-    templateResult.calculation.assembly,
+    state.template,
+    templateResult,
   ]);
   const battenProjection = useMemo(
     () =>
@@ -749,7 +764,11 @@ function AssemblyPageContent({
         composition: battenAutoComposition,
         decision: battenInstallationDecision,
         assignments: coveringAssignments,
-        roofPitchDeg: state.template.pitchDeg,
+        // The flattest battened plane: a minimum pitch binds there.
+        roofPitchDeg: flattestRoofPitchDeg(
+          state.template,
+          battenLayout?.roofPlaneIds,
+        ),
       }),
     [
       battenLayout,
@@ -757,7 +776,7 @@ function AssemblyPageContent({
       battenAutoComposition,
       battenInstallationDecision,
       coveringAssignments,
-      state.template.pitchDeg,
+      state.template,
     ],
   );
   const counterBattenWorkflow = useMemo(
@@ -807,7 +826,8 @@ function AssemblyPageContent({
     const geometry = {
       roofSurfaceGeometry: surfaceProjection.planes.map((plane) => ({
         roofPlaneId: plane.roofPlaneId,
-        pitchDeg: state.template.pitchDeg,
+        // VNext-9C: each plane's own pitch (two on an asymmetric gable).
+        pitchDeg: roofPlanePitchDeg(state.template, plane.roofPlaneId),
         localPolygon: plane.polygon,
         netAreaMm2: plane.netAreaMm2,
       })),
@@ -841,7 +861,7 @@ function AssemblyPageContent({
     coveringAssignments,
     coveringOwnership.trustedRoofPlaneIdsByAssignment,
     roofWindows,
-    state.template.pitchDeg,
+    state.template,
     surfaceProjection.planes,
   ]);
   const activeCoveringAssignment =

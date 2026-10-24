@@ -239,6 +239,8 @@ export const assemblyPl = {
       'Kąt leży na granicy dwóch reguł producenta — brak jednoznacznych danych automatycznych.',
     'pitch-rule-unavailable':
       'Brak jednoznacznych danych automatycznych dla tego kąta.',
+    'pitch-gauges-differ':
+      'Połacie mają różne kąty, a producent wymaga dla nich różnych rozstawów łat — ustaw rozstaw ręcznie.',
     'installation-condition-unverified':
       'Wybrany sposób montażu ma dodatkowy warunek techniczny. Sprawdź jego spełnienie według instrukcji produktu.',
     'layout-capacity-exceeded':
@@ -1547,6 +1549,8 @@ export const assemblyPl = {
       'Więcej niż jedno pokrycie przypisano do tej samej połaci.',
     'pitch-rule-unavailable':
       'Brak jednoznacznych danych automatycznych dla tego kąta.',
+    'pitch-gauges-differ':
+      'Połacie mają różne kąty, a producent wymaga dla nich różnych rozstawów łat — ustaw rozstaw ręcznie.',
   },
   windowCollision: 'Kolizja geometryczna z krokwią',
   windowClear: 'Otwór znajduje się geometrycznie między krokwiami.',

@@ -102,6 +102,7 @@ export function evaluateBattenInstallation(args: {
     'pitch-rule-data-missing',
     'pitch-rule-ambiguous',
     'pitch-rule-unavailable',
+    'pitch-gauges-differ',
   ]);
   const hard = issues.filter((issue) => issue.category === 'hard-constraint');
   const incompatible = hard.some((issue) => !missingCodes.has(issue.code));

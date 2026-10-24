@@ -242,6 +242,8 @@ export const assemblyEn: typeof assemblyPl = {
     'pitch-rule-ambiguous':
       'The pitch sits on the boundary of two manufacturer rules — no unambiguous automatic data.',
     'pitch-rule-unavailable': 'No unambiguous automatic data for this pitch.',
+    'pitch-gauges-differ':
+      'The planes have different pitches and the manufacturer needs different batten gauges for them — set the gauge manually.',
     'installation-condition-unverified':
       'The selected mode has an additional technical condition. Check it against the product instructions.',
     'layout-capacity-exceeded':
@@ -1541,6 +1543,8 @@ export const assemblyEn: typeof assemblyPl = {
     'covering-source-conflict':
       'More than one covering is assigned to the same roof plane.',
     'pitch-rule-unavailable': 'No unambiguous automatic data for this pitch.',
+    'pitch-gauges-differ':
+      'The planes have different pitches and the manufacturer needs different batten gauges for them — set the gauge manually.',
   },
   windowCollision: 'Geometric collision with a rafter',
   windowClear: 'The opening is geometrically between rafters.',

@@ -13,7 +13,9 @@ export type BattenAutoSourceReason =
   | 'installation-mode-missing'
   | 'target-planes-not-covered'
   | 'covering-source-conflict'
-  | 'pitch-rule-unavailable';
+  | 'pitch-rule-unavailable'
+  /** VNext-9C: the planes' pitches need gauges no single value meets. */
+  | 'pitch-gauges-differ';
 
 export interface BattenAutoComposition {
   source: BattenAutoSource;
@@ -38,6 +40,11 @@ export function resolveBattenAutoComposition(args: {
   ownership: PrimaryCoveringAssignmentResolution;
   roofPlaneIds: readonly string[];
   roofPitchDeg?: number;
+  /**
+   * VNext-9C: each plane's own pitch (an asymmetric gable has two). The
+   * gauge must suit every battened plane; absent → `roofPitchDeg`.
+   */
+  pitchOf?: (roofPlaneId: string) => number;
 }): BattenAutoComposition {
   const targets = args.layout.roofPlaneIds ?? [...args.roofPlaneIds];
   if (
@@ -76,14 +83,29 @@ export function resolveBattenAutoComposition(args: {
       source: { status: 'missing' },
       reason: 'tile-covering-missing',
     };
-  const installation = evaluateRoofTileInstallation({
-    productSpec: spec,
-    selectedInstallationModeId: assignment.selectedInstallationModeId,
-    roofPitchDeg: args.roofPitchDeg ?? Number.NaN,
-    source: assignment.product.catalogRef
-      ? 'manufacturer-product-data'
-      : 'project-user-input',
-  });
+  // Every distinct pitch among the battened planes, flattest first: the
+  // flattest one is shown, since a minimum pitch binds there.
+  const pitches = [
+    ...new Set(
+      args.pitchOf
+        ? targets.map((roofPlaneId) => args.pitchOf!(roofPlaneId))
+        : [args.roofPitchDeg ?? Number.NaN],
+    ),
+  ].sort((a, b) => a - b);
+  const evaluations = pitches.map((roofPitchDeg) =>
+    evaluateRoofTileInstallation({
+      productSpec: spec,
+      selectedInstallationModeId: assignment.selectedInstallationModeId,
+      roofPitchDeg,
+      source: assignment.product.catalogRef
+        ? 'manufacturer-product-data'
+        : 'project-user-input',
+    }),
+  );
+  const installation =
+    evaluations.find((evaluation) => !evaluation.mode) ??
+    evaluations.find((evaluation) => !evaluation.gaugeRangeMm) ??
+    evaluations[0]!;
   const installationMode = installation.mode;
   if (!installationMode)
     return {
@@ -105,11 +127,29 @@ export function resolveBattenAutoComposition(args: {
         assignment.product.displaySnapshot?.familyName ??
         assignment.product.displaySnapshot?.manufacturer,
     };
+  // A gauge valid at every pitch: the overlap of the ranges.
+  const minimumGaugeMm = Math.max(
+    ...evaluations.map((evaluation) => evaluation.gaugeRangeMm!.min),
+  );
+  const maximumGaugeMm = Math.min(
+    ...evaluations.map((evaluation) => evaluation.gaugeRangeMm!.max),
+  );
+  if (minimumGaugeMm > maximumGaugeMm)
+    return {
+      source: { status: 'missing' },
+      reason: 'pitch-gauges-differ',
+      assignmentId: assignment.id,
+      installationMode,
+      installation,
+      productLabel:
+        assignment.product.displaySnapshot?.familyName ??
+        assignment.product.displaySnapshot?.manufacturer,
+    };
   return {
     source: {
       status: 'resolved',
-      minimumGaugeMm: installation.gaugeRangeMm.min,
-      maximumGaugeMm: installation.gaugeRangeMm.max,
+      minimumGaugeMm,
+      maximumGaugeMm,
     },
     assignmentId: assignment.id,
     installationMode,
