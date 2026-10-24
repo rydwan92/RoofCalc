@@ -541,6 +541,103 @@ describe('mono-pitch and tent roofs (VNext-7C)', () => {
   });
 });
 
+describe('asymmetric gable wording (VNext-9B)', () => {
+  const recognize = (...lines: string[]) =>
+    recognizeTextLayer([
+      page(lines.map((text, index) => item(text, 50, 20 + index * 20))),
+    ]);
+
+  it.each([
+    ['Dach dwuspadowy niesymetryczny', 'dwuspadowy niesymetryczny'],
+    ['Niesymetryczny dach dwuspadowy', 'Niesymetryczny dach dwuspadowy'],
+    ['Dach dwuspadowy asymetryczny', 'dwuspadowy asymetryczny'],
+    ['Asymmetric gable roof', 'Asymmetric gable'],
+  ])('reads "%s" as one asymmetric gable statement', (line, text) => {
+    const result = recognize(line);
+    expect(result.roofType).toMatchObject({ value: 'asymmetric-gable', text });
+  });
+
+  it('still reads a plain gable as a gable', () => {
+    expect(recognize('Dach dwuspadowy').roofType?.value).toBe('gable');
+  });
+
+  it.each([
+    ['Kąt połaci prawej: 30°', 'rightPitch', 30],
+    ['Kąt nachylenia prawej połaci 25°', 'rightPitch', 25],
+    ['Spadek połaci prawej 20°', 'rightPitch', 20],
+    ['Połać prawa 35°', 'rightPitch', 35],
+    ['Right roof pitch 30°', 'rightPitch', 30],
+    ['β = 30°', 'rightPitch', 30],
+    ['Kąt połaci lewej: 45°', 'pitch', 45],
+    ['Połać lewa 40°', 'pitch', 40],
+    ['Left pitch 45°', 'pitch', 45],
+  ] as const)('reads "%s" as %s %s°', (line, field, degrees) => {
+    expect(
+      recognize('Rzut', line).measurements.map((measurement) => [
+        measurement.field,
+        measurement.valueDeg,
+      ]),
+    ).toEqual([[field, degrees]]);
+  });
+
+  it('maps both pitches of a reviewed draft and asks only this family for the right one', () => {
+    const results = [
+      recognize(
+        'Dach dwuspadowy niesymetryczny',
+        'Długość budynku: 10,00 m',
+        'Szerokość budynku: 8,00 m',
+        'Kąt połaci lewej: 45°',
+      ),
+    ];
+    let decisions: ImportDecisions = {
+      ...EMPTY_DECISIONS,
+      roofTypeConfirmed: true,
+    };
+    const draft = deriveImportedRoofDraft({
+      source: SOURCE,
+      results,
+      decisions,
+    });
+    // The right pitch is missing — and required — only on this family.
+    expect(draft.missing).toEqual(['rightPitch']);
+    for (const field of ['buildingLength', 'buildingWidth', 'pitch'] as const)
+      decisions = confirmField(decisions, draft, field);
+    decisions = enterValue(decisions, 'rightPitch', 30);
+    const reviewed = deriveImportedRoofDraft({
+      source: SOURCE,
+      results,
+      decisions,
+    });
+    expect(mapDraftToRoofStart(reviewed, DEFAULTS)).toMatchObject({
+      status: 'ready',
+      values: {
+        roofType: 'asymmetric-gable',
+        pitchDeg: 45,
+        rightPitchDeg: 30,
+      },
+      provenance: { pitch: 'document', rightPitch: 'user' },
+    });
+    // The same values as a gable: no right pitch asked, none mapped.
+    const gable = deriveImportedRoofDraft({
+      source: SOURCE,
+      results,
+      decisions: { ...decisions, roofType: 'gable' },
+    });
+    expect(gable.missing).toEqual([]);
+    const mapped = mapDraftToRoofStart(gable, DEFAULTS);
+    expect(mapped.status).toBe('ready');
+    if (mapped.status === 'ready')
+      expect(mapped.values).not.toHaveProperty('rightPitchDeg');
+  });
+
+  it('accepts the asymmetric gable and a right pitch in an engine result', () => {
+    const result = recognize('Dach dwuspadowy niesymetryczny', 'β = 30°');
+    const parsed = parseRecognitionResult(result);
+    expect(parsed.roofType?.value).toBe('asymmetric-gable');
+    expect(parsed.measurements[0]?.field).toBe('rightPitch');
+  });
+});
+
 describe('pitch and rafter wording (VNext-7C)', () => {
   const recognize = (line: string) =>
     recognizeTextLayer([page([item('Rzut', 50, 10), item(line, 50, 40)])])

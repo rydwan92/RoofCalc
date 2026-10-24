@@ -169,7 +169,7 @@ test('builds a project from a plan photo using only written dimensions', async (
 
   await importer
     .getByTestId('document-import-roof-type')
-    .getByRole('button', { name: 'Dwuspadowy' })
+    .getByRole('button', { name: 'Dwuspadowy', exact: true })
     .click();
   await importer.getByTestId('document-import-reviewed').check();
   await importer.getByTestId('document-import-create').click();

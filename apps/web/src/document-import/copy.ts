@@ -51,6 +51,7 @@ const pl = {
     hip: 'Dom — dach kopertowy',
     'mono-pitch': 'Wiata — dach jednospadowy',
     house: 'Projekt domu — 4 strony',
+    'asymmetric-gable': 'Budynek gospodarczy — dach niesymetryczny',
   },
   samplesHint:
     'Syntetyczne rysunki RoofCalc. Przechodzą przez ten sam odczyt, weryfikację i obliczenie co Twój plik.',
@@ -155,9 +156,10 @@ const pl = {
   gable: 'Dwuspadowy',
   hip: 'Kopertowy',
   'mono-pitch': 'Jednospadowy',
+  'asymmetric-gable': 'Dwuspadowy niesymetryczny',
   detectedRoof: (text: string) => `W dokumencie: „${text}”`,
   unsupportedRoof: (text: string) =>
-    `Dokument opisuje dach „${text}”. RoofCalc liczy obecnie dachy dwuspadowe, kopertowe (także namiotowe) i jednospadowe — wybierz typ ręcznie tylko, jeśli to uproszczenie jest prawidłowe.`,
+    `Dokument opisuje dach „${text}”. RoofCalc liczy obecnie dachy dwuspadowe (także niesymetryczne), kopertowe (także namiotowe) i jednospadowe — wybierz typ ręcznie tylko, jeśli to uproszczenie jest prawidłowe.`,
   confirmRoof: 'Potwierdź typ',
   documentUnit: 'Jednostka liczb bez jednostki',
   unitFromDocument: (text: string) => `z dokumentu: „${text}”`,
@@ -243,7 +245,7 @@ const pl = {
       case 'roof-type-missing':
         return 'Wybierz typ dachu.';
       case 'roof-type-unsupported':
-        return `Typ „${blocker.text}” nie jest obsługiwany — wybierz dwuspadowy, kopertowy lub jednospadowy, jeśli to uprawnione uproszczenie.`;
+        return `Typ „${blocker.text}” nie jest obsługiwany — wybierz dwuspadowy, dwuspadowy niesymetryczny, kopertowy lub jednospadowy, jeśli to uprawnione uproszczenie.`;
       case 'roof-type-unconfirmed':
         return 'Potwierdź typ dachu odczytany z dokumentu.';
       case 'value-missing':
@@ -380,6 +382,7 @@ const en: Copy = {
     hip: 'House — hip roof',
     'mono-pitch': 'Carport — mono-pitch roof',
     house: 'House design — 4 pages',
+    'asymmetric-gable': 'Farm building — asymmetric gable',
   },
   samplesHint:
     'Synthetic RoofCalc drawings. They go through the same reading, review and calculation as your file.',
@@ -477,9 +480,10 @@ const en: Copy = {
   gable: 'Gable',
   hip: 'Hip',
   'mono-pitch': 'Mono-pitch',
+  'asymmetric-gable': 'Asymmetric gable',
   detectedRoof: (text) => `In the document: “${text}”`,
   unsupportedRoof: (text) =>
-    `The document describes a “${text}” roof. RoofCalc currently computes gable, hip (including pyramid) and mono-pitch roofs — choose a type manually only if that simplification is valid.`,
+    `The document describes a “${text}” roof. RoofCalc currently computes gable (including asymmetric), hip (including pyramid) and mono-pitch roofs — choose a type manually only if that simplification is valid.`,
   confirmRoof: 'Confirm type',
   documentUnit: 'Unit of numbers without a unit',
   unitFromDocument: (text) => `from the document: “${text}”`,
@@ -559,7 +563,7 @@ const en: Copy = {
       case 'roof-type-missing':
         return 'Choose the roof type.';
       case 'roof-type-unsupported':
-        return `“${blocker.text}” is not supported — choose gable, hip or mono-pitch only if that is a valid simplification.`;
+        return `“${blocker.text}” is not supported — choose gable, asymmetric gable, hip or mono-pitch only if that is a valid simplification.`;
       case 'roof-type-unconfirmed':
         return 'Confirm the roof type read from the document.';
       case 'value-missing':

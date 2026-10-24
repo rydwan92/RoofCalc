@@ -1,4 +1,5 @@
 import {
+  asymmetricGableRoofPlanSpec,
   createDesignPdf,
   createRoofPlanPdf,
   gableRoofPlanSpec,
@@ -20,6 +21,7 @@ export type BenchmarkField =
   | 'buildingLength'
   | 'buildingWidth'
   | 'pitch'
+  | 'rightPitch'
   | 'eave'
   | 'spacing'
   | 'rafterWidth'
@@ -34,7 +36,7 @@ export interface BenchmarkCase {
   licence: 'synthetic' | string;
   bytes: () => Uint8Array;
   truth: {
-    roofType: 'gable' | 'hip' | 'mono-pitch';
+    roofType: 'gable' | 'hip' | 'mono-pitch' | 'asymmetric-gable';
     /** mm, degrees for pitch; only what the document states. */
     values: Partial<Record<BenchmarkField, number>>;
   };
@@ -117,6 +119,28 @@ export const BENCHMARK_CASES: readonly BenchmarkCase[] = [
         pitch: 12,
         eave: 400,
         spacing: 800,
+        rafterWidth: 80,
+        rafterDepth: 200,
+      },
+    },
+    conflicts: [],
+  },
+  {
+    id: 'asymmetric-gable-1p',
+    input: 'pdf-text',
+    description:
+      'One sheet, asymmetric gable (VNext-9B): "dwuspadowy niesymetryczny", each pitch labelled by its side.',
+    licence: 'synthetic',
+    bytes: () => createRoofPlanPdf(asymmetricGableRoofPlanSpec()),
+    truth: {
+      roofType: 'asymmetric-gable',
+      values: {
+        buildingLength: 10_000,
+        buildingWidth: 8_000,
+        pitch: 45,
+        rightPitch: 30,
+        eave: 500,
+        spacing: 900,
         rafterWidth: 80,
         rafterDepth: 200,
       },

@@ -7,6 +7,7 @@ import type {
   RecognitionResult,
   RecognizedMeasurement,
 } from './model';
+import { isAngleField } from './model';
 import {
   LENGTH_UNIT_MM,
   percentSlopeToDegrees,
@@ -92,7 +93,7 @@ export function transcribeDimension(
   const [token] = tokens;
   const target = input.target;
 
-  if (target === 'pitch') {
+  if (target && target !== 'rafterSection' && isAngleField(target)) {
     let valueDeg: number;
     let unit: 'deg' | 'percent' | undefined;
     if (token!.kind === 'angle') {
@@ -116,7 +117,7 @@ export function transcribeDimension(
           input,
           '',
           {
-            field: 'pitch',
+            field: target,
             quantity: 'angle',
             raw: {
               text,

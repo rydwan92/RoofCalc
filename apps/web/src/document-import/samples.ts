@@ -8,6 +8,10 @@ export const SAMPLE_DOCUMENTS = [
   { id: 'gable', fileName: 'rzut-dachu-dwuspadowy.pdf' },
   { id: 'hip', fileName: 'rzut-dachu-kopertowy.pdf' },
   { id: 'mono-pitch', fileName: 'rzut-dachu-jednospadowy.pdf' },
+  {
+    id: 'asymmetric-gable',
+    fileName: 'rzut-dachu-dwuspadowy-niesymetryczny.pdf',
+  },
   { id: 'house', fileName: 'projekt-domu-4-strony.pdf' },
 ] as const;
 

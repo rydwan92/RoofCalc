@@ -1297,6 +1297,25 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+## VNext-9B (2026-10-24) — importing an asymmetric gable
+
+- Branch `feature/vnext-9b-import-asymmetric` (from VNext-9, `75907c8`).
+- document-import-core: `rightPitch` field and `asymmetric-gable` import
+  type; `roofFieldsFor` / `requiredRoofFieldsFor` (the right pitch exists
+  only on this family), `isAngleField` (one angle rule); vocabulary for the
+  family and each pitch by its side; one roof-type statement per span
+  ("dwuspadowy niesymetryczny" is not also a gable).
+- Web review: left/right pitch labels, no scale measuring for angles,
+  transcription target only on this family, a refused pitch pair names its
+  reason; fifth sample drawing (fixtures + public, byte-checked).
+- Benchmark `asymmetric-gable-1p`: 8/8 values, 0 false accepted, 3 actions.
+- Validation: `pnpm verify` green — 218 files / 2311 tests (13 skipped);
+  `pnpm e2e` 182 passed / 38 conditionally skipped; the 2 failures of the
+  first run (an old test matched "Dwuspadowy" as a substring) fixed and the
+  import specs rerun: 14/14.
+- NEXT ACTION: complex projects — a design with several roof parts read as
+  structures of one project (V2, ADR-008/015).
+
 ## VNext-9 (2026-10-24) — the asymmetric gable is a project roof through the whole app (ADR-016)
 
 - Branch `feature/vnext-9-asymmetric-gable` (from VNext-8, `9d5af29`).

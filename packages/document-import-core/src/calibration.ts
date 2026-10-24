@@ -7,6 +7,7 @@ import type {
   RecognitionResult,
   RecognizedMeasurement,
 } from './model';
+import { isAngleField } from './model';
 
 /**
  * Manual mode: the user marks points on the document underlay. A scale is
@@ -139,7 +140,7 @@ export function manualMeasurementResult(
     });
   }
   for (const input of inputs) {
-    if (input.field === 'pitch') continue;
+    if (isAngleField(input.field)) continue;
     const valueMm = measureMm(input.from, input.to, calibration);
     if (valueMm === undefined) continue;
     const rounded = Math.round(valueMm);

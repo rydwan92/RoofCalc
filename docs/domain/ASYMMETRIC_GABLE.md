@@ -80,5 +80,8 @@ ridge unevenly; sizing is the designer's.
   building) and moves the ridge; only a new left run moves the right plate.
 - `asymmetricGableSeatRefusal` is the one check for §2's refusals: the
   schema, the Creator and the workbench name the same code.
-- Not yet: purlins and collar ties, recognition of "niesymetryczny" in an
-  imported document, a cutting plan for K2 of its own.
+- VNext-9B: an imported document names the family ("dwuspadowy
+  niesymetryczny", "asymmetric gable") and each pitch by its side ("kąt
+  połaci lewej / prawej", "β ="); the review asks for the right pitch only
+  on this family and creates the project through the same project start.
+- Not yet: purlins and collar ties, a cutting plan for K2 of its own.

@@ -40,11 +40,13 @@ import {
   fieldProvenance,
   manualMeasurementResult,
   mapDraftToRoofStart,
+  isAngleField,
   measurementValueSource,
   NUMERIC_ROOF_FIELDS,
   recognizeTextLayer,
   recognizeVectorGeometry,
-  REQUIRED_ROOF_FIELDS,
+  requiredRoofFieldsFor,
+  roofFieldsFor,
   START_PARAMETER_OF,
   suggestPageRoles,
   summarizeIntake,
@@ -78,6 +80,7 @@ import { parseDecimal } from '../format';
 import { createDefaultProjectDocument, useAssembly } from '../assembly/store';
 import {
   createProjectStartTemplate,
+  projectStartSeatRefusal,
   projectStartValuesFromTemplate,
 } from '../assembly/project-start';
 import { RoofPlanPreview } from '../assembly/ProjectStartAssistant';
@@ -213,8 +216,9 @@ type Tool =
   | { kind: 'calibrate' }
   | { kind: 'measure'; field: NumericRoofField };
 
+// Angles (both pitches) are read or typed, never measured off the scale.
 const LENGTH_FIELDS: readonly NumericRoofField[] = NUMERIC_ROOF_FIELDS.filter(
-  (field) => field !== 'pitch',
+  (field) => !isAngleField(field),
 );
 
 /** What a transcribed dimension can mean, in the order a plan is read. */
@@ -222,6 +226,7 @@ const TRANSCRIPTION_TARGETS: readonly TranscriptionTarget[] = [
   'buildingLength',
   'buildingWidth',
   'pitch',
+  'rightPitch',
   'eave',
   'spacing',
   'rafterSection',
@@ -265,8 +270,6 @@ export function DocumentImportWorkspace({
   const { t, i18n } = useTranslation();
   const m = importCopy(i18n.language);
   const unit = useAssembly((state) => state.unit);
-  const fieldLabel = (field: NumericRoofField) =>
-    t(`assembly.creator.field.${field}`);
 
   const [loading, setLoading] = useState<string>();
   const [loadError, setLoadError] = useState<string>();
@@ -446,6 +449,11 @@ export function DocumentImportWorkspace({
         : undefined,
     [decisions, engines, manualResult, source, transcribed],
   );
+  /** VNext-9B: two pitches read as left and right, as in the Creator. */
+  const fieldLabel = (field: NumericRoofField) =>
+    t(
+      `assembly.creator.field.${field === 'pitch' && draft?.roofType.value === 'asymmetric-gable' ? 'leftPitch' : field}`,
+    );
   const chainOf = useMemo(() => {
     const byTotal = new Map<
       string,
@@ -483,7 +491,7 @@ export function DocumentImportWorkspace({
     const roofType = draft?.roofType.value;
     if (!draft || !roofType) return undefined;
     if (
-      REQUIRED_ROOF_FIELDS.some(
+      requiredRoofFieldsFor(roofType).some(
         (field) => draft.fields[field].value === undefined,
       )
     )
@@ -892,13 +900,13 @@ export function DocumentImportWorkspace({
   }
 
   function displayValue(field: NumericRoofField, value: number) {
-    return field === 'pitch'
+    return isAngleField(field)
       ? displayNumber(value, 2)
       : displayNumber(fromMillimetres(value, unit), 4);
   }
 
   function formatWithUnit(field: NumericRoofField, value: number) {
-    return `${displayValue(field, value).replace('.', i18n.language.startsWith('pl') ? ',' : '.')} ${field === 'pitch' ? '°' : unit}`;
+    return `${displayValue(field, value).replace('.', i18n.language.startsWith('pl') ? ',' : '.')} ${isAngleField(field) ? '°' : unit}`;
   }
 
   function typeValue(field: NumericRoofField, raw: string) {
@@ -913,7 +921,7 @@ export function DocumentImportWorkspace({
       enterValue(
         decisions,
         field,
-        field === 'pitch' ? value : toMillimetres(value, unit),
+        isAngleField(field) ? value : toMillimetres(value, unit),
       ),
     );
   }
@@ -1375,7 +1383,12 @@ export function DocumentImportWorkspace({
                         }
                       >
                         <option value="">{m.transcribeUnassigned}</option>
-                        {TRANSCRIPTION_TARGETS.map((target) => (
+                        {TRANSCRIPTION_TARGETS.filter(
+                          // The right pitch exists only on an asymmetric gable.
+                          (target) =>
+                            target !== 'rightPitch' ||
+                            draft?.roofType.value === 'asymmetric-gable',
+                        ).map((target) => (
                           <option key={target} value={target}>
                             {target === 'rafterSection'
                               ? m.rafterSection
@@ -1663,7 +1676,7 @@ export function DocumentImportWorkspace({
                   </section>
                 )}
                 <ul className="dimp-fields">
-                  {NUMERIC_ROOF_FIELDS.map((field) => {
+                  {roofFieldsFor(draft.roofType.value).map((field) => {
                     const state = draft.fields[field];
                     const measurement = state.measurementId
                       ? measurementById.get(state.measurementId)
@@ -1686,8 +1699,10 @@ export function DocumentImportWorkspace({
                         provenance={fieldProvenance(draft, field)}
                         copy={m}
                         label={fieldLabel(field)}
-                        unitLabel={field === 'pitch' ? '°' : unit}
-                        required={REQUIRED_ROOF_FIELDS.includes(field)}
+                        unitLabel={isAngleField(field) ? '°' : unit}
+                        required={requiredRoofFieldsFor(
+                          draft.roofType.value,
+                        ).includes(field)}
                         active={activeField === field}
                         inputValue={
                           inputs[field] ??
@@ -1697,7 +1712,8 @@ export function DocumentImportWorkspace({
                         }
                         defaultText={formatWithUnit(
                           field,
-                          defaults[START_PARAMETER_OF[field]],
+                          defaults[START_PARAMETER_OF[field]] ??
+                            defaults.pitchDeg,
                         )}
                         formatValue={(value) => formatWithUnit(field, value)}
                         canMeasure={
@@ -1802,7 +1818,16 @@ export function DocumentImportWorkspace({
                 )}
                 {mapping?.status === 'ready' && !template && (
                   <p className="dimp-error" role="alert">
-                    {m.invalidTemplate}
+                    {(() => {
+                      // VNext-9B: two pitches the plates cannot take say why.
+                      const refusal = projectStartSeatRefusal(
+                        mapping.values,
+                        base,
+                      );
+                      return refusal
+                        ? t(`assembly.seatRefusal.${refusal}`)
+                        : m.invalidTemplate;
+                    })()}
                   </p>
                 )}
                 <label className="dimp-check">
@@ -2211,7 +2236,7 @@ function FieldRow({
             {m.confirmed}
           </span>
         )}
-        {field !== 'pitch' && (
+        {!isAngleField(field) && (
           <button
             type="button"
             className="dimp-measure"

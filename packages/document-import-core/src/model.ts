@@ -71,6 +71,8 @@ export type NumericRoofField =
   | 'buildingLength'
   | 'buildingWidth'
   | 'pitch'
+  /** VNext-9B: the second plane of an asymmetric gable (degrees). */
+  | 'rightPitch'
   | 'eave'
   | 'spacing'
   | 'rafterWidth'
@@ -80,6 +82,7 @@ export const NUMERIC_ROOF_FIELDS: readonly NumericRoofField[] = [
   'buildingLength',
   'buildingWidth',
   'pitch',
+  'rightPitch',
   'eave',
   'spacing',
   'rafterWidth',
@@ -93,18 +96,46 @@ export const REQUIRED_ROOF_FIELDS: readonly NumericRoofField[] = [
   'pitch',
 ];
 
+/** The angles among them: degrees, never millimetres. */
+export function isAngleField(field: NumericRoofField): boolean {
+  return field === 'pitch' || field === 'rightPitch';
+}
+
 /**
- * What a document can be imported as. `gable` and `hip` start a project;
- * `mono-pitch` opens the mono-pitch calculation (VNext-7C), which has no
- * project format yet (ADR-015 writer gate).
+ * What a document can be imported as. Every family starts a project
+ * (ADR-016): gable, hip, mono-pitch (VNext-8) and the asymmetric gable
+ * (VNext-9B).
  */
-export type ImportRoofType = 'gable' | 'hip' | 'mono-pitch';
+export type ImportRoofType =
+  'gable' | 'hip' | 'mono-pitch' | 'asymmetric-gable';
+
+/**
+ * The parameters a roof type has: the right pitch exists only on an
+ * asymmetric gable, so no other import counts, asks for or shows it.
+ */
+export function roofFieldsFor(
+  roofType: ImportRoofType | undefined,
+): readonly NumericRoofField[] {
+  return roofType === 'asymmetric-gable'
+    ? NUMERIC_ROOF_FIELDS
+    : NUMERIC_ROOF_FIELDS.filter((field) => field !== 'rightPitch');
+}
+
+/** The parameters a roof type cannot start without. */
+export function requiredRoofFieldsFor(
+  roofType: ImportRoofType | undefined,
+): readonly NumericRoofField[] {
+  return roofType === 'asymmetric-gable'
+    ? [...REQUIRED_ROOF_FIELDS, 'rightPitch']
+    : REQUIRED_ROOF_FIELDS;
+}
 /** The roofs the project start creates (`RoofProjectDocumentV1`). */
 export type ProjectRoofType = Exclude<ImportRoofType, 'mono-pitch'>;
 export const IMPORT_ROOF_TYPES: readonly ImportRoofType[] = [
   'gable',
   'hip',
   'mono-pitch',
+  'asymmetric-gable',
 ];
 /** `unsupported` = the document names a roof RoofCalc does not compute yet. */
 export type DetectedRoofType = ImportRoofType | 'unsupported';
@@ -404,6 +435,7 @@ const fieldSchema = z.enum([
   'buildingLength',
   'buildingWidth',
   'pitch',
+  'rightPitch',
   'eave',
   'spacing',
   'rafterWidth',
@@ -513,7 +545,13 @@ export const recognitionResultSchema = z.object({
     .optional(),
   roofType: z
     .object({
-      value: z.enum(['gable', 'hip', 'mono-pitch', 'unsupported']),
+      value: z.enum([
+        'gable',
+        'hip',
+        'mono-pitch',
+        'asymmetric-gable',
+        'unsupported',
+      ]),
       text: shortText,
       region: regionSchema.optional(),
     })

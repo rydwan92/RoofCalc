@@ -4,6 +4,7 @@ import type {
   RecognizedMeasurement,
   UnitBasis,
 } from './model';
+import { isAngleField } from './model';
 import { LENGTH_UNIT_MM } from './tokens';
 
 /**
@@ -20,6 +21,7 @@ export const PLAUSIBLE_RANGES: Record<
   buildingLength: { min: 2_000, max: 80_000 },
   buildingWidth: { min: 2_000, max: 40_000 },
   pitch: { min: 3, max: 75 },
+  rightPitch: { min: 3, max: 75 },
   eave: { min: 0, max: 1_500 },
   spacing: { min: 300, max: 1_500 },
   rafterWidth: { min: 30, max: 300 },
@@ -43,7 +45,7 @@ export function isPlausible(field: NumericRoofField, value: number): boolean {
 }
 
 export function fieldQuantity(field: NumericRoofField): 'length' | 'angle' {
-  return field === 'pitch' ? 'angle' : 'length';
+  return isAngleField(field) ? 'angle' : 'length';
 }
 
 export type ResolvedValue =

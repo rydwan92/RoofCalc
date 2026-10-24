@@ -1,7 +1,7 @@
 import {
   measurementValueSource,
-  NUMERIC_ROOF_FIELDS,
-  REQUIRED_ROOF_FIELDS,
+  requiredRoofFieldsFor,
+  roofFieldsFor,
   type Confidence,
   type DraftWarning,
   type FieldStatus,
@@ -98,9 +98,10 @@ export function summarizeIntake(
       ...(roof.detected?.region ? { page: roof.detected.region.page } : {}),
     },
   ];
-  for (const field of NUMERIC_ROOF_FIELDS) {
+  const requiredFields = requiredRoofFieldsFor(roof.value);
+  for (const field of roofFieldsFor(roof.value)) {
     const state = draft.fields[field];
-    const required = REQUIRED_ROOF_FIELDS.includes(field);
+    const required = requiredFields.includes(field);
     const page = state.measurementId
       ? byId.get(state.measurementId)?.region?.page
       : undefined;

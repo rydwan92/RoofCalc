@@ -126,7 +126,22 @@ with a valley are next.
 - Proof: e2e Creator → project → materials → documents (K1 and K2 pages),
   desktop and phone.
 
-Known limits: no purlins or collar ties on an asymmetric gable; the import
-does not recognise "niesymetryczny" yet; K2 has no cutting plan of its own
-(the K1 plan is shown); no wall-flashing role for abutment lines. Next: the
-L with a valley (V2 structures and a connection, ADR-008).
+Known limits: no purlins or collar ties on an asymmetric gable; K2 has no
+cutting plan of its own (the K1 plan is shown); no wall-flashing role for
+abutment lines. Next: the L with a valley (V2 structures and a connection,
+ADR-008).
+
+## Delivered (VNext-9B, 2026-10-24) — importing an asymmetric gable
+
+- Vocabulary: the family ("dwuspadowy niesymetryczny", "niesymetryczny dach
+  dwuspadowy", "asymmetric gable") is one statement, never also a gable
+  (overlapping roof-type spans keep the first, most specific pattern);
+  each pitch by its side ("kąt [nachylenia] połaci lewej/prawej", "połać
+  prawa", "right pitch", "β =").
+- Draft, intake, mapping: the right pitch is a field of this family only
+  (`roofFieldsFor`, `requiredRoofFieldsFor`); angles by one rule
+  (`isAngleField`).
+- Review: left/right pitch labels as in the Creator, no scale measuring for
+  angles, a refused pair of pitches names its reason.
+- Sample drawing and benchmark case: 8/8 values, 0 false accepted, 3 user
+  actions; e2e sample → project → materials → documents, desktop + phone.

@@ -29,7 +29,7 @@ truth in hand.
 | `input` | `pdf-text` · `pdf-vector` · `scan` · `photo` · `dxf` · `ifc` |
 | `licence` | `synthetic`, or the licence / written permission of the source |
 | `bytes()` | The document (generated, or read from `documents/` in this folder) |
-| `truth.roofType` | `gable`, `hip` or `mono-pitch` as the design states it |
+| `truth.roofType` | `gable`, `hip`, `mono-pitch` or `asymmetric-gable` as the design states it |
 | `truth.values` | Only what the document **states**: mm for lengths, degrees for pitch. A value the document does not state is left out — the import must then leave it to a labelled default, not invent it. |
 | `conflicts` | Fields with two different written values in the document |
 
@@ -52,6 +52,8 @@ truth in hand.
 | gable-1p-title-block | 7/7 | 0 | 0/0 | 3 | 243 (cold) |
 | hip-1p-unitless-percent | 3/3 | 0 | 0/0 | 3 | 6 |
 | house-4p-cross-sheet-conflict | 7/7 | 0 | 1/1 | 4 | 13 |
+| mono-pitch-1p-carport | 7/7 | 0 | 0/0 | 3 | 4 |
+| asymmetric-gable-1p | 8/8 | 0 | 0/0 | 3 | 5 |
 
 ## Adding real documents
 

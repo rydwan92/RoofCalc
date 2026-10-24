@@ -210,6 +210,57 @@ export function gableRoofPlanSpec(): RoofPlanSpec {
   };
 }
 
+/**
+ * Fixture 4 (VNext-9B): an asymmetric gable — one ridge off centre, each
+ * plane's pitch labelled by its side, as a farm-building plan states them.
+ */
+export function asymmetricGableRoofPlanSpec(): RoofPlanSpec {
+  const { lines, x0, y0, w, h } = planGeometry(10, 8, false);
+  // The ridge sits where both planes meet: tan 30° / (tan 45° + tan 30°)
+  // of the width from the 45° side (docs/domain/ASYMMETRIC_GABLE.md §2).
+  const ridge = lines.pop()!;
+  const offset = h * (Math.tan(Math.PI / 6) / (1 + Math.tan(Math.PI / 6)));
+  lines.push({
+    ...ridge,
+    from: [x0, y0 + h - offset],
+    to: [x0 + w, y0 + h - offset],
+  });
+  return {
+    lines,
+    texts: [
+      {
+        text: 'RZUT DACHU — BUDYNEK GOSPODARCZY',
+        x: 60,
+        y: 555,
+        size: 14,
+        bold: true,
+      },
+      { text: '1000', x: x0 + w / 2 - 11, y: y0 - 32, size: 9 },
+      { text: '800', x: x0 - 30, y: y0 + h / 2 - 8, size: 9, rotate: 90 },
+      {
+        text: 'Dach dwuspadowy niesymetryczny',
+        x: 500,
+        y: 500,
+        size: 11,
+        bold: true,
+      },
+      { text: 'Długość budynku:', x: 500, y: 478 },
+      { text: '10,00 m', x: 650, y: 478 },
+      { text: 'Szerokość budynku:', x: 500, y: 462 },
+      { text: '8,00 m', x: 650, y: 462 },
+      { text: 'Kąt połaci lewej:', x: 500, y: 446 },
+      { text: '45°', x: 650, y: 446 },
+      { text: 'Kąt połaci prawej:', x: 500, y: 430 },
+      { text: '30°', x: 650, y: 430 },
+      { text: 'Okap:', x: 500, y: 414 },
+      { text: '50 cm', x: 650, y: 414 },
+      { text: 'Krokwie 8×20 cm co 90 cm', x: 500, y: 398 },
+      { text: 'Wszystkie wymiary podano w cm', x: 500, y: 120, size: 8 },
+      { text: 'Skala 1:100', x: 500, y: 104, size: 8 },
+    ],
+  };
+}
+
 /** Fixture 2: a hip plan with unitless values and a slope in percent. */
 export function hipRoofPlanSpec(): RoofPlanSpec {
   const { lines, rects, x0, y0, w } = planGeometry(14, 10, true);

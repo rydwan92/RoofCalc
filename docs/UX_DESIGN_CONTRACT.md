@@ -632,6 +632,9 @@ line and manual lengths keep working.
   is named through one lookup (`ROOF_FAMILY_LABEL`), and never shows
   another family's controls (no ridge settings on a mono-pitch roof). A quick
   calculation offers "Utwórz projekt" instead of retyping.
+- **VNext-9B: a field exists only where the roof has it.** An import asks
+  for, counts and shows the right pitch only on an asymmetric gable; an
+  angle is read or typed, never offered "measure from the scale".
 - **VNext-9: two pitches read as two pitches.** An asymmetric gable asks
   for the span and a left and a right pitch (never "the pitch"), shows them
   as "α° / β°" in the review and the documents, and gives each rafter its

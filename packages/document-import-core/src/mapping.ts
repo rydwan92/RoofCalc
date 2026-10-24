@@ -1,6 +1,6 @@
 import {
-  NUMERIC_ROOF_FIELDS,
-  REQUIRED_ROOF_FIELDS,
+  requiredRoofFieldsFor,
+  roofFieldsFor,
   type ImportedRoofDraftV1,
   type ImportRoofType,
   type NumericRoofField,
@@ -20,6 +20,8 @@ export interface RoofStartParameters {
   buildingLengthMm: number;
   buildingWidthMm: number;
   pitchDeg: number;
+  /** VNext-9B: the right plane of an asymmetric gable only. */
+  rightPitchDeg?: number;
   eaveOverhangMm: number;
   rafterSpacingMm: number;
   rafterWidthMm: number;
@@ -33,6 +35,7 @@ export const START_PARAMETER_OF: Record<
   buildingLength: 'buildingLengthMm',
   buildingWidth: 'buildingWidthMm',
   pitch: 'pitchDeg',
+  rightPitch: 'rightPitchDeg',
   eave: 'eaveOverhangMm',
   spacing: 'rafterSpacingMm',
   rafterWidth: 'rafterWidthMm',
@@ -82,11 +85,13 @@ export function mapDraftToRoofStart(
 
   const values = { ...defaults };
   const provenance = {} as Record<NumericRoofField, ValueProvenance>;
-  for (const field of NUMERIC_ROOF_FIELDS) {
+  // Only the parameters this roof type has (no right pitch on a gable).
+  const required = requiredRoofFieldsFor(roofType);
+  for (const field of roofFieldsFor(roofType)) {
     const state = draft.fields[field];
     const key = START_PARAMETER_OF[field];
     if (state.value === undefined) {
-      if (REQUIRED_ROOF_FIELDS.includes(field))
+      if (required.includes(field))
         blockers.push({ code: 'value-missing', field });
       provenance[field] = 'roofcalc-default';
       continue;

@@ -3,7 +3,8 @@ import {
   IMPORTED_ROOF_DRAFT_SCHEMA_VERSION,
   measurementValueSource,
   NUMERIC_ROOF_FIELDS,
-  REQUIRED_ROOF_FIELDS,
+  requiredRoofFieldsFor,
+  roofFieldsFor,
   type Confidence,
   type DraftField,
   type DraftWarning,
@@ -332,7 +333,12 @@ export function deriveImportedRoofDraft(input: {
     ]),
   ) as Record<NumericRoofField, DraftField>;
 
-  for (const field of NUMERIC_ROOF_FIELDS) {
+  const detected = results.find((result) => result.roofType)?.roofType;
+  const roofTypeValue: ImportRoofType | undefined =
+    decisions.roofType ??
+    (detected && detected.value !== 'unsupported' ? detected.value : undefined);
+
+  for (const field of roofFieldsFor(roofTypeValue)) {
     const state = fields[field];
     if (state.status === 'conflict')
       warnings.push({ code: 'conflicting-values', field });
@@ -347,10 +353,6 @@ export function deriveImportedRoofDraft(input: {
       });
   }
 
-  const detected = results.find((result) => result.roofType)?.roofType;
-  const roofTypeValue: ImportRoofType | undefined =
-    decisions.roofType ??
-    (detected && detected.value !== 'unsupported' ? detected.value : undefined);
   const roofType: ImportedRoofDraftV1['roofType'] = {
     ...(roofTypeValue ? { value: roofTypeValue } : {}),
     ...(detected ? { detected } : {}),
@@ -374,7 +376,7 @@ export function deriveImportedRoofDraft(input: {
 
   const missing: ImportedRoofDraftV1['missing'] = [
     ...(roofTypeValue ? [] : ['roofType' as const]),
-    ...REQUIRED_ROOF_FIELDS.filter(
+    ...requiredRoofFieldsFor(roofTypeValue).filter(
       (field) => fields[field].value === undefined,
     ),
   ];

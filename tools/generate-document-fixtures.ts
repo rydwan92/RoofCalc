@@ -5,6 +5,7 @@
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import {
+  asymmetricGableRoofPlanSpec,
   createDesignPdf,
   createRoofPlanPdf,
   gableRoofPlanSpec,
@@ -18,6 +19,10 @@ const documents: [string, Uint8Array][] = [
   ['rzut-dachu-kopertowy.pdf', createRoofPlanPdf(hipRoofPlanSpec())],
   ['rzut-dachu-jednospadowy.pdf', createRoofPlanPdf(monoPitchRoofPlanSpec())],
   ['projekt-domu-4-strony.pdf', createDesignPdf(houseDesignSpecs())],
+  [
+    'rzut-dachu-dwuspadowy-niesymetryczny.pdf',
+    createRoofPlanPdf(asymmetricGableRoofPlanSpec()),
+  ],
 ];
 const targets = [
   new URL('../fixtures/documents/', import.meta.url),

@@ -7,6 +7,7 @@ import {
   type DocumentUnitStatement,
   type DraftWarning,
   type EvidenceCode,
+  isAngleField,
   type NumericRoofField,
   type PageBox,
   type PageUnit,
@@ -254,7 +255,7 @@ function findLabels(normalized: string): LabelMatch[] {
 type Wanted = 'length' | 'angle' | 'pair';
 function wantedTokens(label: LabelPattern): Wanted[] {
   if (label.target.kind !== 'field') return ['pair'];
-  return label.target.field === 'pitch' ? ['angle', 'length'] : ['length'];
+  return isAngleField(label.target.field) ? ['angle', 'length'] : ['length'];
 }
 
 function tokenFits(token: MeasurementToken, wanted: readonly Wanted[]) {
@@ -366,7 +367,7 @@ function labelled(
   context.usedTokens.add(tokenKey(line, token));
   const target = label.label.target;
 
-  if (target.kind === 'field' && target.field === 'pitch') {
+  if (target.kind === 'field' && isAngleField(target.field)) {
     let valueDeg: number;
     let unit: 'deg' | 'percent' | undefined;
     if (token.kind === 'angle') {
@@ -383,8 +384,8 @@ function labelled(
     } else return;
     if (!(valueDeg > 0 && valueDeg < 90)) return;
     push(context, {
-      id: measurementId(line, token, 'pitch'),
-      field: 'pitch',
+      id: measurementId(line, token, target.field),
+      field: target.field,
       quantity: 'angle',
       raw: {
         text: token.text,
@@ -570,18 +571,23 @@ export function recognizeTextLayer(
             region: regionOfRange(line, unit.start, unit.end),
           };
       }
+      // VNext-9B: one span names one roof — "dwuspadowy niesymetryczny" is
+      // an asymmetric gable, not also a gable. Patterns are ordered from the
+      // most specific; a later match inside an earlier one is dropped.
+      const spans: { start: number; end: number }[] = [];
       for (const roof of ROOF_TYPE_PATTERNS) {
         const match = roof.pattern.exec(normalized);
-        if (match)
-          roofTypes.push({
-            value: roof.value,
-            text: line.text.slice(match.index, match.index + match[0].length),
-            region: regionOfRange(
-              line,
-              match.index,
-              match.index + match[0].length,
-            ),
-          });
+        if (!match) continue;
+        const start = match.index;
+        const end = start + match[0].length;
+        if (spans.some((span) => start < span.end && span.start < end))
+          continue;
+        spans.push({ start, end });
+        roofTypes.push({
+          value: roof.value,
+          text: line.text.slice(start, end),
+          region: regionOfRange(line, start, end),
+        });
       }
       const scaleToken = tokens.find((token) => token.kind === 'scale');
       if (!scale && scaleToken?.kind === 'scale')

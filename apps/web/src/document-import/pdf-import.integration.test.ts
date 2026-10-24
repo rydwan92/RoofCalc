@@ -18,6 +18,7 @@ import {
   type TextLayerPage,
 } from '@cieslacalc/document-import-core';
 import {
+  asymmetricGableRoofPlanSpec,
   createDesignPdf,
   createRoofPlanPdf,
   gableRoofPlanSpec,
@@ -187,6 +188,78 @@ describe('PDF document import (real pdf.js parser)', () => {
     });
     const resolved = resolveRoofTemplate(template);
     expect(resolved.rafterSpacing?.stationCount).toBe(10);
+  });
+
+  it('turns an asymmetric gable plan PDF into its project roof (VNext-9B)', async () => {
+    const bytes = createRoofPlanPdf(asymmetricGableRoofPlanSpec());
+    const pages = await readPdf(bytes);
+    const result = recognizeTextLayer(pages);
+    // One statement, not also a gable: the longer span names the family.
+    expect(result.roofType).toMatchObject({
+      value: 'asymmetric-gable',
+      text: 'dwuspadowy niesymetryczny',
+    });
+    const pitches = result.measurements.filter(
+      (measurement) => measurement.quantity === 'angle',
+    );
+    expect(
+      pitches.map((measurement) => [measurement.field, measurement.valueDeg]),
+    ).toEqual([
+      ['pitch', 45],
+      ['rightPitch', 30],
+    ]);
+    const draft = deriveImportedRoofDraft({
+      source: source(bytes, pages),
+      results: [result],
+      decisions: { ...EMPTY_DECISIONS, roofTypeConfirmed: true },
+    });
+    // The intake asks for the right pitch only on this family.
+    expect(
+      summarizeIntake(draft, { reviewed: false }).items.map((item) => item.key),
+    ).toContain('rightPitch');
+    const mapping = mapDraftToRoofStart(draft, {
+      buildingLengthMm: defaults.buildingLengthMm,
+      buildingWidthMm: defaults.buildingWidthMm,
+      pitchDeg: defaults.pitchDeg,
+      eaveOverhangMm: defaults.eaveOverhangMm,
+      rafterSpacingMm: defaults.rafterSpacingMm,
+      rafterWidthMm: defaults.rafterWidthMm!,
+      rafterDepthMm: defaults.rafterDepthMm!,
+    });
+    expect(mapping.status).toBe('ready');
+    if (mapping.status !== 'ready') return;
+    expect(mapping.values).toMatchObject({ pitchDeg: 45, rightPitchDeg: 30 });
+    // The same project start as the Creator (ADR-016).
+    const template = createProjectStartTemplate(mapping.values, base);
+    expect(template).toMatchObject({
+      type: 'asymmetric-gable',
+      buildingLengthMm: 10_000,
+      spanMm: 8_000,
+      pitchDeg: 45,
+      rightPitchDeg: 30,
+      eaveOverhangMm: 500,
+      rafterSpacing: { spacingMm: 900 },
+      rafterSection: { widthMm: 80, depthMm: 200 },
+    });
+    const resolved = resolveRoofTemplate(template);
+    expect(
+      resolved.memberPrototypes.map((prototype) => prototype.code),
+    ).toEqual(['K1', 'K2']);
+  });
+
+  it('never asks a gable plan for a right pitch', async () => {
+    const bytes = createRoofPlanPdf(gableRoofPlanSpec());
+    const pages = await readPdf(bytes);
+    const draft = deriveImportedRoofDraft({
+      source: source(bytes, pages),
+      results: [recognizeTextLayer(pages)],
+      decisions: { ...EMPTY_DECISIONS, roofTypeConfirmed: true },
+    });
+    expect(draft.roofType.value).toBe('gable');
+    expect(
+      summarizeIntake(draft, { reviewed: false }).items.map((item) => item.key),
+    ).not.toContain('rightPitch');
+    expect(draft.missing).not.toContain('rightPitch');
   });
 
   it('turns a gable plan PDF into the existing canonical roof template', async () => {

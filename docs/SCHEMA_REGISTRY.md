@@ -592,7 +592,8 @@ canonical mm / degrees; page coordinates use the page's own space (`pt` for
 PDF, `px` for images, top-left origin). The source file's bytes are never
 stored. Only the confirmed result enters the existing project-start path.
 Persisting a draft later (e.g. to resume a review) requires a new entry here,
-a storage key and a reader for version 1.
+a storage key and a reader for version 1. VNext-9B extended both additively
+(§25); `schemaVersion` stays 1 because nothing is persisted.
 
 ## 14. Workbench section state (VNext, transient)
 
@@ -821,3 +822,19 @@ workbench. No migration.
   gains `followers?` (K2 prints as its own page after K1). Documents are
   rendered, not persisted.
 - Creator: the session draft gains `rightPitch` (session-only).
+
+## 25. VNext-9B contracts — importing an asymmetric gable (session-only)
+
+- `NumericRoofField` adds `rightPitch` (degrees); `ImportRoofType` and
+  `DetectedRoofType` add `asymmetric-gable`; `recognitionResultSchema`
+  accepts both. `roofFieldsFor(type)` / `requiredRoofFieldsFor(type)` give
+  the fields a roof type has: the right pitch exists — is counted, asked
+  for and required — only on an asymmetric gable. `isAngleField` is the
+  one rule for angles (both pitches are read or typed, never measured off
+  the scale).
+- `RoofStartParameters.rightPitchDeg?` carries it to the project start
+  (the same `createProjectStartTemplate` as the Creator).
+- Nothing persisted changes: the import-evidence sidecar keeps its keys; a
+  required right pitch is never a RoofCalc default.
+- New sample `rzut-dachu-dwuspadowy-niesymetryczny.pdf` (fixtures and
+  `public/samples`, byte-checked) and benchmark case `asymmetric-gable-1p`.

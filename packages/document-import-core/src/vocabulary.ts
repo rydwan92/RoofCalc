@@ -78,6 +78,20 @@ export const LABEL_PATTERNS: readonly LabelPattern[] = [
       /\bkat\s+(?:nachylenia|pochylenia|spadku)(?:\s+(?:dachu|polaci(?:\s+dachowych)?))?\b|\bkat\s+(?:dachu|polaci)\b|\b(?:nachylenie|pochylenie|spadek)\s+(?:dachu|polaci(?:\s+dachowych)?)\b|\bo\s+(?:nachyleniu|pochyleniu|spadku)\b|\broof\s+pitch\b|\bpitch\b|\broof\s+slope\b/g,
   },
   {
+    // VNext-9B: an asymmetric gable names each plane. A longer label wins
+    // its overlap, so "kąt połaci prawej" is never the plain pitch.
+    target: field('rightPitch'),
+    strength: 'explicit',
+    pattern:
+      /\b(?:kat\s+(?:(?:nachylenia|pochylenia|spadku)\s+)?|(?:nachylenie|pochylenie|spadek)\s+)(?:polaci\s+prawej|prawej\s+polaci)\b|\bpolac\s+prawa\b|\bright\s+(?:roof\s+|plane\s+)?(?:pitch|slope)\b/g,
+  },
+  {
+    target: field('pitch'),
+    strength: 'explicit',
+    pattern:
+      /\b(?:kat\s+(?:(?:nachylenia|pochylenia|spadku)\s+)?|(?:nachylenie|pochylenie|spadek)\s+)(?:polaci\s+lewej|lewej\s+polaci)\b|\bpolac\s+lewa\b|\bleft\s+(?:roof\s+|plane\s+)?(?:pitch|slope)\b/g,
+  },
+  {
     target: field('eave'),
     strength: 'explicit',
     pattern:
@@ -121,6 +135,12 @@ export const LABEL_PATTERNS: readonly LabelPattern[] = [
     pattern: /\bnachylenie\b|\bspadek\b|\bslope\b|^\s*α(?=\s*=)/g,
   },
   {
+    // "β = 30°" opening a line: the second angle of a two-pitch section.
+    target: field('rightPitch'),
+    strength: 'generic',
+    pattern: /^\s*β(?=\s*=)/g,
+  },
+  {
     target: field('spacing'),
     strength: 'generic',
     pattern: /\brozstaw\b/g,
@@ -135,6 +155,12 @@ export const ROOF_TYPE_PATTERNS: readonly {
     value: 'unsupported',
     pattern:
       /\b(?:mansardow\w*|naczolkow\w*|wielospadow\w*|kopulow\w*|lukow\w*|beczkow\w*|mansard|gambrel|half-?hip\w*|jerkin\w*)\b/,
+  },
+  {
+    // Before the gable: "dwuspadowy niesymetryczny" is its own family.
+    value: 'asymmetric-gable',
+    pattern:
+      /\b(?:dwuspadow\w*\s+(?:nie|a)symetryczn\w*|(?:nie|a)symetryczn\w*\s+(?:dach\s+)?dwuspadow\w*|asymmetric(?:al)?\s+(?:gable|dual-pitch|pitched)\w*)\b/,
   },
   {
     value: 'mono-pitch',
