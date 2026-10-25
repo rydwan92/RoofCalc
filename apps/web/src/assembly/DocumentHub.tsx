@@ -50,7 +50,10 @@ export function DocumentHub({
   onMaterialCsv,
   onCostCsv,
   scope,
+  subject,
 }: {
+  /** VNext-13: the structure these documents are of (a project of several). */
+  subject?: string;
   /**
    * VNext-6.1: what these documents rest on — whether the roof geometry
    * closes (roof graph) and whether RoofCalc calculates this roof — so a
@@ -75,7 +78,10 @@ export function DocumentHub({
     <section className="a-document-hub" data-testid="document-hub">
       <header>
         <small>{t('assembly.docs.eyebrow')}</small>
-        <h2>{t('assembly.docs.title')}</h2>
+        <h2>
+          {t('assembly.docs.title')}
+          {subject && <span className="cw-subject"> · {subject}</span>}
+        </h2>
         <p>{t('assembly.docs.description')}</p>
         {scope && (
           <p

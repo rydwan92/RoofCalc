@@ -2167,7 +2167,6 @@ export const assemblyEn: typeof assemblyPl = {
   unit: 'Units',
   language: 'Switch language to Polish',
   reset: 'Restore example',
-  model: 'Model 15.0',
   local: 'Local calculations',
   noSave: 'Working session · not saved',
   assumptions: 'Geometry assumptions',

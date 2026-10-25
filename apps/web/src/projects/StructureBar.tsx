@@ -221,11 +221,14 @@ export function StructureBar({
               type="button"
               className="a-structure-add"
               data-testid="structure-add"
+              aria-label={t('assembly.structures.add')}
               disabled={busy}
               onClick={onAdd}
             >
               <Plus size={15} aria-hidden="true" />
-              {t('assembly.structures.add')}
+              <span className="a-structure-action-label">
+                {t('assembly.structures.add')}
+              </span>
             </button>
           )}
         </div>
@@ -233,28 +236,38 @@ export function StructureBar({
           type="button"
           className="a-structure-settings"
           data-testid="structure-site"
+          aria-label={t('assembly.structures.site')}
+          title={t('assembly.structures.site')}
           aria-expanded={siteOpen}
           onClick={() => setSiteOpen((open) => !open)}
         >
           <MapIcon size={15} aria-hidden="true" />
-          {t('assembly.structures.site')}
+          <span className="a-structure-action-label">
+            {t('assembly.structures.site')}
+          </span>
         </button>
         {activeIndex >= 0 && (
           <button
             type="button"
             className="a-structure-settings"
             data-testid="structure-settings"
+            aria-label={t('assembly.structures.settings')}
+            title={t('assembly.structures.settings')}
             aria-expanded={editing === state.activeStructureId}
             onClick={() =>
               editing ? close() : openSettings(structures[activeIndex]!)
             }
           >
             <Settings2 size={15} aria-hidden="true" />
-            {t('assembly.structures.settings')}
+            <span className="a-structure-action-label">
+              {t('assembly.structures.settings')}
+            </span>
           </button>
         )}
       </div>
-      <p className="a-structures-hint">
+      {/* VNext-13: the pressed chip already shows it; the sentence stays
+          for screen readers, so the row is one line high. */}
+      <p className="a-visually-hidden" aria-live="polite">
         {t('assembly.structures.hint', {
           name: structureLabel(structures[activeIndex] ?? {}, activeIndex, t),
         })}

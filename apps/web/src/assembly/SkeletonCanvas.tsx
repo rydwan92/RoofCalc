@@ -1,6 +1,7 @@
 import {
   memo,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -161,6 +162,11 @@ export interface ConnectionMarkers {
   onSelect: (nodeId: string) => void;
 }
 
+/** The phone task dock and a little air above it. */
+const MOBILE_TASK_DOCK_PX = 80;
+/** Below this a phone canvas is too small to edit; the page scrolls instead. */
+const MOBILE_MIN_CANVAS_PX = 340;
+
 function SkeletonCanvasComponent({
   template,
   skeleton,
@@ -281,8 +287,38 @@ function SkeletonCanvasComponent({
   const [viewportHeight, setViewportHeight] = useState(() =>
     typeof window === 'undefined' ? 800 : window.innerHeight,
   );
+  /**
+   * VNext-13: on a phone the canvas ends above the task dock, so the fitted
+   * roof is seen whole on the first screen — measured from where the canvas
+   * actually starts, whatever rows sit above it.
+   */
+  const [pageTop, setPageTop] = useState<number>();
+  useLayoutEffect(() => {
+    if (!mobile) return;
+    const measure = () => {
+      // The drawing itself, below the canvas caption row.
+      const element = svg.current ?? container.current;
+      if (!element) return;
+      const rect = element.getBoundingClientRect();
+      // A hidden canvas (another task is shown) has no place to measure.
+      if (!rect.width) return;
+      const top = rect.top + window.scrollY;
+      setPageTop((current) =>
+        current === undefined || Math.abs(top - current) > 4 ? top : current,
+      );
+    };
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    // Rows above the canvas growing or shrinking change the page's size.
+    const observer = new ResizeObserver(measure);
+    observer.observe(document.body);
+    return () => observer.disconnect();
+  }, [mobile]);
   const height = mobile
-    ? Math.max(200, Math.min(620, viewportHeight - 250))
+    ? Math.max(
+        MOBILE_MIN_CANVAS_PX,
+        Math.min(620, viewportHeight - (pageTop ?? 170) - MOBILE_TASK_DOCK_PX),
+      )
     : compact
       ? Math.max(300, Math.min(420, width * 0.78))
       : width < 550

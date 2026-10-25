@@ -952,6 +952,11 @@ export function ProjectStartAssistant({
                       )}
                       size="large"
                     />
+                    {facts.structureCount > 1 && (
+                      <span className="a-start-example-badge">
+                        {t('assembly.structures.title')}: {facts.structureCount}
+                      </span>
+                    )}
                     <h3>
                       {t(`assembly.creator.examples.item.${example.id}.title`)}
                     </h3>
@@ -975,12 +980,6 @@ export function ProjectStartAssistant({
                         <dt>{t('assembly.creator.field.pitch')}</dt>
                         <dd>{facts.pitchDeg}°</dd>
                       </div>
-                      {facts.structureCount > 1 && (
-                        <div>
-                          <dt>{t('assembly.structures.title')}</dt>
-                          <dd>{facts.structureCount}</dd>
-                        </div>
-                      )}
                     </dl>
                     <button
                       type="button"

@@ -156,23 +156,27 @@
 }
 
 @media (max-width: 760px) {
-  /* The chips get the whole first row; settings sit below them. */
-  .a-structures-row {
-    flex-wrap: wrap;
+  /* VNext-13: one row — the chips scroll, the actions are icons (named for
+     assistive technology and on hover). */
+  .a-structures {
+    padding: var(--ui-space-2);
   }
   .a-structures-title {
     display: none;
   }
-  .a-structures-list {
-    flex-basis: 100%;
-  }
-  .a-structure-chip small {
+  .a-structure-chip small,
+  .a-structure-action-label {
     display: none;
   }
+  .a-structure-add,
   .a-structure-settings {
-    min-height: 32px;
+    justify-content: center;
+    width: 40px;
+    min-height: 40px;
+    padding: 0;
+  }
+  .a-structure-settings + .a-structure-settings {
     margin-left: 0;
-    padding: 2px 10px;
   }
   .a-structure-panel fieldset {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -369,4 +373,15 @@
   .a-project-quantities td small {
     white-space: normal;
   }
+}
+
+/* VNext-13: a column's heading sits where its values sit. */
+.a-project-pricing thead th:last-child {
+  text-align: left;
+}
+.a-project-quantities thead th:last-child {
+  text-align: right;
+}
+.a-project-quantities .a-project-quantities-sections thead th:last-child {
+  text-align: left;
 }

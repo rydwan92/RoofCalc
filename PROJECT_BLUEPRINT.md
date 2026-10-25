@@ -1297,6 +1297,36 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+## VNext-13 (2026-10-25) — the workbench fits the screen
+
+- Branch `feature/vnext-13-ui-polish` (from 12, `5637913`). Owner
+  (2026-10-25): "pracuj dalej nad wyglądem i UI / UX".
+- Audit (1440×900 and 390×844, example "Dom z wiatą"): the structure row
+  took two lines (81 px desktop, ~160 px phone) and pushed the canvas below
+  the window; on a phone the canvas ran under the task dock, so the fitted
+  roof sat half hidden; the phone context line was a card; opening an
+  example left an empty "Projekt 1"; example buttons did not line up; the
+  pricing table's "Stan" heading sat right of its values; documents of a
+  project of several structures did not say whose they were; quick mode
+  showed "Model 15.0".
+- Structure row one line (hint sentence visually hidden, `aria-live`);
+  phone actions as named icons. Phone context line as a caption.
+- SkeletonCanvas (phone): height = window − where the drawing starts
+  (measured on the SVG, re-measured when the page resizes) − dock, at
+  least 340 px. A hidden canvas is never measured: its zero rect made the
+  height follow the scroll and shifted the page under a tap (caught by the
+  V52 phone e2e).
+- Example leaves one record (fresh project deleted, as for an import).
+  Example cards end on one line; structure count as a badge.
+- DocumentHub and the estimate name the structure (`activeStructureLabel`).
+- Table headings aligned with their values; quick mode eyebrow names the
+  mode.
+- Presentation only: no schema, no persistence change.
+- Validation: `pnpm verify` green — 226 files / 2369 tests (13 skipped);
+  `pnpm e2e` 196 passed / 0 failed.
+- NEXT ACTION: the project's build-up layers per structure through a pure
+  layout derivation (10G).
+
 ## VNext-12 (2026-10-25) — choosing well: start, Creator, covering, catalogue
 
 - Branch `feature/vnext-12-choices` (from 10F, `bbab7fc`). Owner

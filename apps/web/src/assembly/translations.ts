@@ -2173,7 +2173,6 @@ export const assemblyPl = {
   unit: 'Jednostki',
   language: 'Zmień język na angielski',
   reset: 'Przywróć przykład',
-  model: 'Model 15.0',
   local: 'Obliczenia lokalne',
   noSave: 'Sesja robocza · bez zapisu',
   assumptions: 'Założenia geometrii',

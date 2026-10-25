@@ -1094,6 +1094,10 @@ function AssemblyPageContent({
       })),
     [projectSessionState.structures, t],
   );
+  /** VNext-13: the structure the estimate and the documents are of. */
+  const activeStructureLabel = quoteStructures?.find(
+    (part) => part.id === projectSessionState.activeStructureId,
+  )?.label;
   const {
     currentQuoteDraft,
     quoteStale,
@@ -2549,7 +2553,10 @@ function AssemblyPageContent({
           <div className="a-page-heading">
             <div>
               <span className="a-eyebrow">
-                {t('workshop')} / {t('assembly.model')}
+                {/* VNext-13: the mode, not an internal model number. */}
+                {workbench.mode === 'quick'
+                  ? t('assembly.journey.start.group.quick')
+                  : t('workshop')}
               </span>
               <h1>{t('assembly.title')}</h1>
               <strong className="a-member-subtitle">
@@ -3234,25 +3241,10 @@ function AssemblyPageContent({
                           }
                           scenario={costScenario}
                           onScenarioChange={setCostScenario}
-                          {...(() => {
-                            // VNext-10B: whose estimate this is.
-                            const structures = projectSessionState.structures;
-                            const index =
-                              structures?.findIndex(
-                                (structure) =>
-                                  structure.id ===
-                                  projectSessionState.activeStructureId,
-                              ) ?? -1;
-                            return structures && index >= 0
-                              ? {
-                                  subject: structureLabel(
-                                    structures[index]!,
-                                    index,
-                                    t,
-                                  ),
-                                }
-                              : {};
-                          })()}
+                          // VNext-10B: whose estimate this is.
+                          {...(activeStructureLabel
+                            ? { subject: activeStructureLabel }
+                            : {})}
                           onOpenDocuments={openExecutionExport}
                           materialsAttention={
                             materialRows.filter((row) => row.partial).length
@@ -3268,6 +3260,9 @@ function AssemblyPageContent({
                     </Suspense>
                   ) : workbench.viewPreset === 'documents' ? (
                     <DocumentHub
+                      {...(activeStructureLabel
+                        ? { subject: activeStructureLabel }
+                        : {})}
                       scope={{
                         geometry: projectRoofScene.gate.geometry,
                         calculation: projectRoofScene.gate.calculation,
@@ -3657,11 +3652,19 @@ function AssemblyPageContent({
           onExample={async (id) => {
             await projectSession.initialize();
             state.setMode('builder');
+            // VNext-13: like an import, an example leaves one record — the
+            // session's untouched fresh project does not stay behind empty.
+            const fresh =
+              reuseFreshProject || projectSession.snapshot().freshProject
+                ? projectSession.snapshot().active?.id
+                : undefined;
             const title = t(`assembly.creator.examples.item.${id}.title`);
             await projectSession.createFromDocument(
               projectExampleDocument(id),
               t('assembly.creator.examples.name', { title }),
             );
+            if (fresh) await projectSession.delete(fresh);
+            projectSession.acknowledgeFreshProject();
             rememberCreatorStart();
             setReuseFreshProject(false);
             setProjectStartMode(undefined);

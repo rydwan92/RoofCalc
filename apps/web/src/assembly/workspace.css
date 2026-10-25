@@ -823,6 +823,28 @@
   text-underline-offset: 3px;
 }
 
+/* VNext-13: example cards of one row end on one line — the button at the
+   foot of each card, whatever the length of its text. */
+.a-start-example-grid article {
+  display: flex;
+  flex-direction: column;
+}
+.a-start-example-grid article > .a-button {
+  margin-top: auto;
+}
+.a-start-example-grid article > dl {
+  margin-bottom: var(--ui-space-2);
+}
+.a-start-example-badge {
+  align-self: flex-start;
+  padding: 2px 10px;
+  border-radius: var(--ui-radius-pill);
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent);
+  font-size: var(--ui-text-xs);
+  font-weight: var(--ui-weight-bold);
+}
+
 /* ---------- VNext-12: the start screen in three named groups ---------- */
 .assembly-app .a-start-paths.is-grouped {
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -870,5 +892,18 @@
 @media (max-width: 560px) {
   .assembly-app .a-start-paths.is-grouped > .a-start-recent.has-projects {
     order: -1;
+  }
+}
+
+/* VNext-13: on a phone, too, the context line is a quiet caption — not a
+   card between the readiness bar and the task tabs. */
+@media (max-width: 800px) {
+  .assembly-app .a-context-bar {
+    min-height: 28px;
+    margin-bottom: 2px;
+    padding: 0 4px;
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
   }
 }

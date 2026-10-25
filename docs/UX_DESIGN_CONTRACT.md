@@ -632,6 +632,17 @@ line and manual lengths keep working.
   is named through one lookup (`ROOF_FAMILY_LABEL`), and never shows
   another family's controls (no ridge settings on a mono-pitch roof). A quick
   calculation offers "Utwórz projekt" instead of retyping.
+- **VNext-13: the workbench fits the screen.** The structure row is one
+  line: the pressed chip names the open structure (the sentence stays for
+  screen readers); on a phone the add, site and settings actions are icons
+  with names. On a phone the context line is a caption, not a card, and the
+  canvas ends above the task dock, measured from where the drawing starts,
+  so the fitted roof is whole on the first screen (the page scrolls only
+  below a minimum canvas height). The documents and the estimate of a
+  project of several structures name the structure in their heading. An
+  example opens as the only project — no empty "Projekt 1" stays behind.
+  Example cards end on one line; a column heading sits where its values
+  sit. No internal model number is shown.
 - **VNext-12: a choice says what it means.** The start screen names three
   ways in — "Zacznij projekt" (new or example), "Z pliku lub rysunku" and
   "Szybkie obliczenie — bez projektu"; on a phone a returning user's
