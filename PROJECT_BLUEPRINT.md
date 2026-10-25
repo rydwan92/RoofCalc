@@ -1341,7 +1341,9 @@ If code is temporarily incomplete, explicitly list:
   a covering heading names the product family; a toast's timer is not
   restarted by every render.
 - Schema: none changed; everything new is derived on demand.
-- Validation: recorded in the follow-up checkpoint commit.
+- Validation (A, without 14B): `pnpm verify` green — 228 files / 2383
+  tests (13 skipped); `pnpm e2e` 200 passed / 0 failed (desktop and phone;
+  new `e2e/vnext14-covering-flow.spec.ts`).
 - NEXT ACTION: the project's build-up layers per structure through a pure
   layout derivation (10G); then gable overhangs / verge in the templates,
   which a truss enquiry would also carry.
