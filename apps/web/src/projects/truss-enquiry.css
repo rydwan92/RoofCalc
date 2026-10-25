@@ -1,0 +1,123 @@
+/* VNext-14: the data a truss manufacturer asks for before a quote. */
+.te-sheet {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+  padding: 18px;
+  border: 1px solid var(--a-line);
+  border-radius: 14px;
+  background: #fff;
+}
+.te-sheet > header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+}
+.te-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #eaf2ee;
+  color: var(--v37-brand, #235344);
+}
+.te-sheet header small {
+  color: var(--a-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.te-sheet h3 {
+  margin: 2px 0 4px;
+  font-size: 17px;
+}
+.te-sheet header p {
+  margin: 0;
+  color: var(--a-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.te-copied {
+  margin: 0;
+  color: var(--v37-brand, #235344);
+  font-size: 12px;
+  font-weight: 600;
+}
+.te-structures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+.te-structures article {
+  padding: 12px 14px;
+  border: 1px solid var(--a-line);
+  border-radius: 10px;
+  background: var(--a-canvas, #f6f8f7);
+}
+.te-structures h4 {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+.te-structures dl {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+.te-structures dl > div {
+  display: grid;
+  grid-template-columns: minmax(110px, 40%) minmax(0, 1fr);
+  gap: 8px;
+  font-size: 13px;
+}
+.te-structures dt {
+  color: var(--a-muted);
+}
+.te-structures dd {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.te-total {
+  margin: 0;
+  font-size: 14px;
+}
+.te-todo {
+  padding: 10px 14px;
+  border-left: 3px solid #e3b65c;
+  border-radius: 6px;
+  background: #fff8e8;
+  font-size: 13px;
+}
+.te-todo ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+.te-disclaimer {
+  margin: 0;
+  color: var(--a-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+@media (max-width: 640px) {
+  .te-sheet {
+    padding: 14px;
+  }
+  .te-sheet > header {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .te-sheet > header .a-button {
+    grid-column: 1 / -1;
+    justify-content: center;
+    min-height: 44px;
+  }
+  .te-structures {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .te-structures dl > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1px;
+  }
+}

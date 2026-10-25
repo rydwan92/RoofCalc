@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { lazy, Suspense, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   AlertTriangle,
@@ -13,6 +13,9 @@ import { ROOF_FAMILY_LABEL } from '../assembly/roof-family';
 import { useAssembly } from '../assembly/store';
 import { deriveSiteScene } from './site-scene';
 import { SitePlan } from './SitePlan';
+
+/** VNext-14: three.js only when someone looks at the site in 3D. */
+const SiteScene3D = lazy(() => import('./SiteScene3D'));
 import type {
   ProjectSession,
   ProjectSessionState,
@@ -65,15 +68,17 @@ export function StructureBar({
   const [siteOpen, setSiteOpen] = useState(false);
   // VNext-10D: the site follows the open structure's edits as they happen.
   const editedDocument = useAssembly((assembly) => assembly.projectDocument);
-  const site = useMemo(() => {
+  const [siteView, setSiteView] = useState<'plan' | '3d'>('plan');
+  const siteSource = useMemo(() => {
     if (!state.structures) return undefined;
     const document = session.projectDocument();
     return document?.schemaVersion === 2
-      ? deriveSiteScene(document)
+      ? { document, scene: deriveSiteScene(document) }
       : undefined;
     // `editedDocument` re-derives on every edit of the open structure.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, state.structures, editedDocument]);
+  const site = siteSource?.scene;
   const structures = state.structures;
   if (!structures) return null;
   const nameOf = (id: string) => {
@@ -283,15 +288,47 @@ export function StructureBar({
           {t('assembly.structures.overlap', { a: nameOf(a), b: nameOf(b) })}
         </p>
       ))}
-      {siteOpen && site && (
-        <SitePlan
-          site={site}
-          structures={structures}
-          {...(state.activeStructureId
-            ? { activeId: state.activeStructureId }
-            : {})}
-          onSelect={(id) => void run(() => session.selectStructure(id))}
-        />
+      {siteOpen && site && siteSource && (
+        <div className="a-site-views">
+          <div
+            className="a-site-view-switch"
+            role="group"
+            aria-label={t('assembly.structures.siteViews')}
+          >
+            {(['plan', '3d'] as const).map((view) => (
+              <button
+                key={view}
+                type="button"
+                aria-pressed={siteView === view}
+                data-site-view={view}
+                onClick={() => setSiteView(view)}
+              >
+                {t(`assembly.structures.siteView.${view}`)}
+              </button>
+            ))}
+          </div>
+          {siteView === 'plan' ? (
+            <SitePlan
+              site={site}
+              structures={structures}
+              {...(state.activeStructureId
+                ? { activeId: state.activeStructureId }
+                : {})}
+              onSelect={(id) => void run(() => session.selectStructure(id))}
+            />
+          ) : (
+            <Suspense
+              fallback={
+                <div className="a-site-3d is-loading" aria-busy="true" />
+              }
+            >
+              <SiteScene3D document={siteSource.document} />
+              <p className="a-site-3d-hint">
+                {t('assembly.structures.site3dHint')}
+              </p>
+            </Suspense>
+          )}
+        </div>
       )}
       {edited && draft && (
         <form

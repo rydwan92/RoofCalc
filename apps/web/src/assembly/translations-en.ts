@@ -410,6 +410,13 @@ export const assemblyEn: typeof assemblyPl = {
     title: 'Project structures',
     fallback: 'Structure {{n}}',
     site: 'Site view',
+    siteViews: 'Site view: plan or 3D',
+    siteView: { plan: 'Plan', '3d': '3D' },
+    site3dLabel: 'The project structures in 3D, placed by their settings',
+    site3dHint:
+      'Each structure stands where its settings place it. Junctions between structures (valley, flashing) are not calculated.',
+    site3dUnavailable:
+      'This browser cannot show 3D — the site plan still works.',
     siteLabel: 'Plan of the roofs of every structure',
     siteHint:
       'The roofs of every structure in plan, placed by the structure settings. Click a roof to open its structure.',
@@ -1410,6 +1417,87 @@ export const assemblyEn: typeof assemblyPl = {
       'Axis and length are calculated. The joint connection is not chosen yet — this is not an error.',
     executionNote: 'Dimensions include the resolved connection.',
   },
+  trussEnquiry: {
+    eyebrow: 'For the truss manufacturer',
+    title: 'Data for a truss quote',
+    description:
+      'What a truss manufacturer asks for before a quote, taken from the model: each structure’s geometry, sloped area, covering and layers. Copy it into an enquiry.',
+    copy: 'Copy data for an enquiry',
+    copied: {
+      done: 'Copied to the clipboard — paste it into a message or a form.',
+      failed: 'Could not copy — select the text below by hand.',
+    },
+    thisRoof: 'This roof',
+    roofType: 'Roof type',
+    footprint: 'Dimensions (length × span)',
+    pitch: 'Pitch',
+    height: { ridge: 'Ridge height', rise: 'Roof rise' },
+    eaveOverhang: 'Eave overhang (horizontal)',
+    area: 'Sloped area',
+    areaNet: '{{gross}} (net of openings {{net}})',
+    covering: 'Covering',
+    kind: {
+      'roof-tile': 'Roof tile',
+      'modular-sheet': 'Modular sheet',
+      'standing-seam': 'Standing seam',
+    },
+    material: {
+      ceramic: 'ceramic',
+      concrete: 'concrete',
+      other: 'other material',
+    },
+    pieceMass: 'about {{value}} per piece',
+    areaMass: '≈ {{min}}–{{max}} kg/m² per the product card',
+    membrane: 'Membrane',
+    membraneManual: 'manual parameters',
+    layers: 'Battens / counter-battens',
+    layersValue: 'battens {{battens}} · counter-battens {{counter}}',
+    openings: 'Roof windows',
+    none: 'none',
+    off: 'off',
+    missing: 'not chosen',
+    total: 'Total sloped area (net of openings)',
+    todoTitle: 'Still needed by the truss designer',
+    todo: {
+      location: 'Site location — snow and wind load zones.',
+      plans:
+        'Top-floor plan and building section — load-bearing walls and possible supports.',
+      loads:
+        'Additional loads: photovoltaics, habitable attic, suspended ceiling.',
+    },
+    disclaimer:
+      'RoofCalc designs no trusses and checks no load-bearing capacity. This is input data from the roof model, not a structural design.',
+  },
+  battenSection: {
+    title: 'Battens on the plane',
+    planes: 'Plane of the section',
+    label: 'Battens along the plane, eave to ridge',
+    plane: '{{pitch}}° plane · {{length}} eave to ridge',
+    scale:
+      'Distances along the plane to scale; batten and counter-batten thickness drawn larger.',
+    eaveOffset: 'First batten from the eave',
+    ridgeOffset: 'Last batten from the top',
+    eaveOffsetHint:
+      'The first batten depends on the eave detail (drip edge, eave comb), the last on the ridge detail. The gauge between them follows the covering.',
+    noRows: 'Equal courses do not fit',
+    noRowsHint:
+      'With these eave and top distances the gauge would leave the product range {{min}}–{{max}}. The nearest positions at which equal courses fit:',
+    noRowsManual:
+      'Equal courses do not fit these eave and top distances. Change them or set the gauge manually.',
+    fitTop: 'last batten {{value}} from the top',
+    fitEave: 'first batten {{value}} from the eave',
+    fitChange: '{{change}} from now',
+    eave: 'eave',
+    top: 'ridge',
+    rows_one: '{{count}} batten row per plane',
+    rows_few: '{{count}} batten rows per plane',
+    rows_many: '{{count}} batten rows per plane',
+    rows_other: '{{count}} batten rows per plane',
+    gauge: 'gauge {{value}}',
+    range: '(product sheet: {{min}}–{{max}})',
+    first: 'first batten {{value}} from the eave',
+    gap: '{{value}} left to the ridge',
+  },
   install: {
     title: 'Covering installation',
     product: 'Product',
@@ -1489,6 +1577,8 @@ export const assemblyEn: typeof assemblyPl = {
         'Gauge {{gauge}} is outside the product range {{min}}–{{max}}.',
       'auto-incompatible':
         'The covering does not suit this roof — changing the gauge will not fix it.',
+      'auto-no-equal-rows':
+        'With these eave and top distances the product gauge range gives no equal courses. Moving the last batten is simplest — the first one depends on the eave detail.',
     },
     action: {
       'enable-auto': 'Lay out battens automatically',
@@ -1502,6 +1592,7 @@ export const assemblyEn: typeof assemblyPl = {
       'use-product-gauge': 'Use the product spacing',
       'enable-counter-battens': 'Add structure-derived counter-battens',
       'choose-hip-detail': 'Complete the hip detail',
+      'fit-top-batten': 'Last batten {{value}} from the top',
     },
     counter: {
       'layer-off': 'Counter-battens off',
@@ -2605,6 +2696,8 @@ export const assemblyEn: typeof assemblyPl = {
       roofTypeChanged: 'Roof type changed. Covering and layers were fitted.',
       autoGauge: 'Battens set to the automatic gauge.',
       productGauge: 'Battens set to the spacing the manufacturer states.',
+      topBatten:
+        'The last batten moved — equal courses now fit the product range.',
       exampleRestored:
         'The example roof was loaded. “Undo” brings your project back.',
       undo: 'Undo',
@@ -2651,6 +2744,7 @@ export const assemblyEn: typeof assemblyPl = {
       'open-documents': 'Open documents',
       'open-cost': 'Open cost estimate',
       'review-import-defaults': 'Check imported values',
+      'fit-top-batten': 'Fit the last batten',
     },
     issue: {
       'geometry-invalid': {
@@ -2715,7 +2809,7 @@ export const assemblyEn: typeof assemblyPl = {
       'battens-auto-unresolved': {
         title: 'The automatic batten gauge found no solution',
         description:
-          'The product gauge range does not give equal courses on this roof plane. Set the gauge manually or check the product data.',
+          'With these eave and top distances the product gauge range gives no equal courses. Move the last batten, set the gauge manually or check the product data.',
       },
       'battens-product-incompatible': {
         title: 'The product does not suit the roof pitch',

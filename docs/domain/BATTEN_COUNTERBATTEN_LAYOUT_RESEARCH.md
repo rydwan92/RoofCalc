@@ -35,6 +35,21 @@ They are not regular gauge intervals and are not inferred from physical tile
 length. Eave support, ridge accessories and family-specific boundary courses
 remain outside the generic V33 model.
 
+### When no interval count fits (VNext-14)
+
+A narrow range leaves gaps: with 402–418 mm (Koramic V9), 10 intervals
+cover 4020–4180 mm and 11 cover 4422–4598 mm, so a 4300 mm span has no
+solution. The model does not stretch the range; one end batten moves.
+`fitBattenEndOffset` takes every plane's span and the current offset of one
+end: changing it by `d` leaves `s − d`, which fits `n` intervals for `d` in
+`[s − n·gMax, s − n·gMin]`. The nearest feasible `d` on either side of zero
+is an endpoint of one of those intervals (all planes share the offset), so
+only endpoints are tested, within one maximum gauge. The offset is rounded
+to whole millimetres toward the inside of the feasible interval, never
+below zero. Hand-checked: 4300 mm, top gap 200 mm → 320 mm (10 × 418) or
+78 mm (11 × 402). Which end moves is the user's choice; the last batten is
+offered first on a tie, because the eave detail usually fixes the first.
+
 ## Counter-batten direction and provenance
 
 Counter-battens follow the fall-line axes of supporting rafters, rather than a

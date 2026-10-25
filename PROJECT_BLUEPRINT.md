@@ -1297,6 +1297,55 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+## VNext-14 (2026-10-25) — battens that fit, the site in 3D, a truss enquiry
+
+- Branch `feature/vnext-14-demo-ready` (from 13, `2fc600a`). Owner
+  (2026-10-25): fitting battens, covering and tiles easier and more
+  intuitive; the structures shown together in our own engine; a better
+  seeded catalogue; ready to show to a prefabricated-truss manufacturer.
+- Battens on the plane (`BattenSlopeSection`): the plane laid out along its
+  fall line from the engine's stations, true to scale along the slope; the
+  dimension chain first / n × gauge / top gap; the product's gauge range
+  quoted; exact fields for the first batten from the eave and the last from
+  the top (`DraftLengthField`, extracted from the Inspector).
+- No equal courses fit (a narrow tile range, e.g. Koramic V9 402–418 mm):
+  `roof-math` `fitBattenEndOffset` finds the nearest offsets of either end
+  at which every plane admits equal intervals (endpoints of
+  [s − n·max, s − n·min], whole millimetres toward the inside). The
+  workflow carries `topBattenFit` / `eaveBattenFit` and the action
+  `fit-top-batten`; the readiness blocker offers it first; the section
+  stays, says why and lists the fixes smallest change first. One history
+  entry each. A pitch below the minimum offers no batten move.
+- The site in 3D: `technical-scene` `placeTechnicalScene` (rigid motion,
+  the `transformRoofScene` convention) and `mergeTechnicalScenes` (new ids,
+  part kept beside the id); `deriveSiteTechnicalScene` places each
+  structure's `composedStructureSkeleton` (also the schedule's). "Rzut /
+  3D" on the site panel, lazy three.js; no junction calculated, and it says
+  so. Presentation only.
+- "Dane do wyceny wiązarów" in the documents: per structure the type,
+  dimensions, pitch(es), ridge height or rise, eave overhang, sloped area
+  (gross / net), covering with stated piece mass and mass per m² (only when
+  the product states weight and consumption), membrane, battens /
+  counter-battens, roof windows; the project total; what the truss
+  designer still needs; "RoofCalc nie projektuje wiązarów". Copy as text.
+  Derived from the resolvers (`deriveTrussEnquiryStructure`), never stored.
+- Catalogue seed (VNext-14B, branch `feature/vnext-14b-catalogue-seed`,
+  not on `main` yet): Koramic V9, Orea 9, V11, Actua 10 (Wienerberger PL
+  mini-catalogue 01.2026) and Alegra 10 (wienerberger.nl); DÖRKEN
+  DELTA-FOXX PLUS, -XX PLUS UNIVERSAL, -MAXX X (product pages, 10 cm
+  overlap per the installation guide). Kept off `main` because Workers
+  Builds runs `db:check:deployment`, which refuses a deploy while an
+  expected batch is missing remotely; the owner seeds the remote first
+  (extra batches do not fail the check), then merges 14B.
+- Also: the catalogue's manufacturer filter lists only makers of the kind;
+  a covering heading names the product family; a toast's timer is not
+  restarted by every render.
+- Schema: none changed; everything new is derived on demand.
+- Validation: recorded in the follow-up checkpoint commit.
+- NEXT ACTION: the project's build-up layers per structure through a pure
+  layout derivation (10G); then gable overhangs / verge in the templates,
+  which a truss enquiry would also carry.
+
 ## VNext-13 (2026-10-25) — the workbench fits the screen
 
 - Branch `feature/vnext-13-ui-polish` (from 12, `5637913`). Owner

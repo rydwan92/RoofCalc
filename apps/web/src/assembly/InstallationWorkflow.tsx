@@ -1,4 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
+import {
+  BattenSlopeSection,
+  type BattenSectionFacts,
+} from './BattenSlopeSection';
 import { useTranslation } from 'react-i18next';
 import {
   AlertTriangle,
@@ -48,6 +52,8 @@ import {
 export interface InstallationWorkflowFacts {
   battens: BattenWorkflow;
   counterBattens: CounterBattenWorkflow;
+  /** VNext-14: the resolved batten layout, for the slope section. */
+  battenSection?: BattenSectionFacts;
   /** Length the `paired-plane-runs` hip detail would add (hip roofs only). */
   hipPairedRunsPreviewMm?: number;
 }
@@ -84,7 +90,8 @@ function productSupportGaugeMm(
 /** One action vocabulary for every workflow surface; each is one history entry at most. */
 export function useInstallationActions() {
   const state = useAssembly();
-  return (action: InstallationUiAction, seedGaugeMm?: number) => {
+  /** `value`: the seed gauge of set-manual, the top gap of fit-top-batten. */
+  return (action: InstallationUiAction, value?: number) => {
     const project = state.projectDocument.project;
     const layout = project.buildUp.battenLayout;
     const openLayer = (view: 'battens' | 'counterBattens' | 'installation') => {
@@ -113,15 +120,21 @@ export function useInstallationActions() {
           // A manual value is a tape-measurable intent: seed it at 0.1 mm,
           // never as 349.636363… from the whole-interval fit (V44).
           gaugeMm:
-            seedGaugeMm !== undefined
-              ? Math.round(seedGaugeMm * 10) / 10
-              : base.gaugeMm,
+            value !== undefined ? Math.round(value * 10) / 10 : base.gaugeMm,
         });
         openLayer('battens');
         return;
       }
       case 'fit-roof':
         state.fitInstallationToRoof();
+        return;
+      case 'fit-top-batten':
+        if (layout && value !== undefined)
+          state.setBattenLayout({
+            ...layout,
+            enabled: true,
+            ridgeOffsetMm: value,
+          });
         return;
       case 'use-product-gauge': {
         const fixed = productSupportGaugeMm(project.coverings);
@@ -191,13 +204,17 @@ export function OwnerBadge({ owner }: { owner: 'auto' | 'manual' }) {
 export function WorkflowActions({
   actions,
   seedGaugeMm,
+  topGapMm,
   compact,
 }: {
   actions: readonly InstallationUiAction[];
   seedGaugeMm?: number;
+  /** The top gap `fit-top-batten` sets. */
+  topGapMm?: number;
   compact?: boolean;
 }) {
   const { t } = useTranslation();
+  const length = useLength();
   const run = useInstallationActions();
   if (!actions.length) return null;
   return (
@@ -208,9 +225,13 @@ export function WorkflowActions({
           type="button"
           className={`a-button ${index === 0 ? 'a-primary' : ''}`}
           data-workflow-action={action}
-          onClick={() => run(action, seedGaugeMm)}
+          onClick={() =>
+            run(action, action === 'fit-top-batten' ? topGapMm : seedGaugeMm)
+          }
         >
-          {t(`assembly.install.action.${action}`)}
+          {t(`assembly.install.action.${action}`, {
+            value: topGapMm !== undefined ? length(topGapMm) : '',
+          })}
         </button>
       ))}
     </div>
@@ -572,7 +593,10 @@ export function CoveringInstallationBlock({
     t('assembly.roofTile');
   const batteActions: BattenWorkflowAction[] = battens.actions.filter(
     (action) =>
-      action !== 'choose-covering' && action !== 'choose-installation-mode',
+      action !== 'choose-covering' &&
+      action !== 'choose-installation-mode' &&
+      // The slope section below offers both top gaps itself.
+      !(action === 'fit-top-batten' && facts.battenSection),
   );
   return (
     <section
@@ -657,6 +681,9 @@ export function CoveringInstallationBlock({
               compact
               actions={batteActions}
               seedGaugeMm={battens.gaugeMm}
+              {...(battens.topBattenFit
+                ? { topGapMm: battens.topBattenFit.nearest.offsetMm }
+                : {})}
             />
           </dd>
         </div>
@@ -679,6 +706,9 @@ export function CoveringInstallationBlock({
           </div>
         )}
       </dl>
+      {facts.battenSection && (
+        <BattenSlopeSection facts={facts.battenSection} />
+      )}
       <footer>
         <button
           type="button"
@@ -725,7 +755,14 @@ export function BattenWorkflowPanel({
     'manual-unverified',
     'auto-incompatible',
   ].includes(workflow.state)
-    ? t(`assembly.install.stateHelp.${workflow.state}`)
+    ? t(
+        // VNext-14: a pitch below the minimum is the covering's problem;
+        // otherwise the courses just do not divide this span.
+        workflow.state === 'auto-incompatible' &&
+          workflow.pitch.status !== 'below-minimum'
+          ? 'assembly.install.stateHelp.auto-no-equal-rows'
+          : `assembly.install.stateHelp.${workflow.state}`,
+      )
     : undefined;
   return (
     <section
@@ -740,6 +777,9 @@ export function BattenWorkflowPanel({
       <WorkflowActions
         actions={workflow.actions.filter((action) => action !== 'fit-auto')}
         seedGaugeMm={workflow.gaugeMm}
+        {...(workflow.topBattenFit
+          ? { topGapMm: workflow.topBattenFit.nearest.offsetMm }
+          : {})}
       />
     </section>
   );

@@ -56,6 +56,8 @@ export type ReadinessAction =
   | 'enable-auto-battens'
   | 'review-battens'
   | 'use-product-gauge'
+  /** VNext-14: move the last batten to the nearest top gap that fits. */
+  | 'fit-top-batten'
   | 'review-eave-detail'
   | 'enable-counter-battens'
   | 'choose-hip-detail'
@@ -668,8 +670,9 @@ export function deriveProjectReadiness(
                 maxMm: battens.allowedRangeMm.max,
               }
             : {},
-          action: 'set-manual',
-          secondaryAction: 'review-covering',
+          ...(battens.topBattenFit
+            ? { action: 'fit-top-batten', secondaryAction: 'set-manual' }
+            : { action: 'set-manual', secondaryAction: 'review-covering' }),
           affects: QUANTITY_DOCUMENTS,
           source: 'batten-workflow',
         });

@@ -6,6 +6,7 @@ import {
 } from '@cieslacalc/quantity-core';
 import { resolveOpeningFramingSet } from '@cieslacalc/roof-math';
 import type {
+  RoofSkeleton,
   RoofTemplateSpec,
   RoofWindowFeature,
 } from '@cieslacalc/timber-model';
@@ -42,18 +43,27 @@ export function structuralSectionOverrides(
 export function structuralTimberSchedule(
   project: RoofProjectDocumentV1['project'],
 ): RoofMemberSchedule {
+  return createRoofMemberSchedule({
+    skeleton: composedStructureSkeleton(project),
+    sectionOverrides: structuralSectionOverrides(project.roof),
+  });
+}
+
+/**
+ * The skeleton a roof project builds: the workbench's resolver and its
+ * accepted opening framing — what the schedule counts and the site draws.
+ */
+export function composedStructureSkeleton(
+  project: RoofProjectDocumentV1['project'],
+): RoofSkeleton {
   const template = project.roof;
   const { skeleton } = workbenchProjectResolver.resolve(template);
-  const { composedSkeleton } = resolveOpeningFramingSet({
+  return resolveOpeningFramingSet({
     template,
     skeleton,
     features: project.features.filter(
       (feature): feature is RoofWindowFeature => feature.kind === 'roof-window',
     ),
     framingSpecs: project.openingFraming,
-  });
-  return createRoofMemberSchedule({
-    skeleton: composedSkeleton,
-    sectionOverrides: structuralSectionOverrides(template),
-  });
+  }).composedSkeleton;
 }

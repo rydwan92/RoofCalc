@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveAutoBattenSpacing } from './batten-spacing';
+import { fitBattenEndOffset, resolveAutoBattenSpacing } from './batten-spacing';
 
 describe('automatic batten spacing', () => {
   it.each([
@@ -159,5 +159,91 @@ describe('automatic batten spacing', () => {
       expect(result.stations.at(-1)).toBe(173 + span);
       expect(result.stations).toHaveLength(result.intervalCount + 1);
     }
+  });
+});
+
+describe('fitting the top batten (VNext-14)', () => {
+  const range = { minimumGaugeMm: 402, maximumGaugeMm: 418 };
+
+  it('finds the nearest top gaps when no equal rows fit (hand-checked)', () => {
+    // 4300 mm: 11 intervals need >= 4422, 10 allow <= 4180 — nothing fits.
+    expect(
+      resolveAutoBattenSpacing({
+        firstStationMm: 0,
+        lastStationMm: 4300,
+        ...range,
+      }).status,
+    ).toBe('unresolved');
+    const fit = fitBattenEndOffset({
+      regularSpansMm: [4300],
+      offsetMm: 200,
+      ...range,
+    });
+    // Gap +120 -> span 4180 = 10 x 418; gap -122 -> span 4422 = 11 x 402.
+    expect(fit?.larger).toEqual({ offsetMm: 320, changeMm: 120 });
+    expect(fit?.smaller).toEqual({ offsetMm: 78, changeMm: -122 });
+    expect(fit?.nearest).toBe(fit?.larger);
+    expect(
+      resolveAutoBattenSpacing({
+        firstStationMm: 0,
+        lastStationMm: 4300 - 120,
+        ...range,
+      }),
+    ).toMatchObject({ status: 'resolved', intervalCount: 10 });
+  });
+
+  it('never proposes a negative top gap', () => {
+    const fit = fitBattenEndOffset({
+      regularSpansMm: [4300],
+      offsetMm: 40,
+      ...range,
+    });
+    expect(fit?.smaller).toBeUndefined();
+    expect(fit?.nearest).toEqual({ offsetMm: 160, changeMm: 120 });
+  });
+
+  it('fits every plane with one shared top gap', () => {
+    // 4250: fits for d in [70, 230] or [-348, -172]; 4300: [120, 280] or
+    // [-298, -122]. Both: [120, 230] and [-298, -172].
+    const fit = fitBattenEndOffset({
+      regularSpansMm: [4300, 4250],
+      offsetMm: 200,
+      ...range,
+    });
+    expect(fit?.larger?.changeMm).toBe(120);
+    expect(fit?.smaller?.changeMm).toBe(-172);
+  });
+
+  it('rounds the gap to whole millimetres toward the inside', () => {
+    const fit = fitBattenEndOffset({
+      regularSpansMm: [4300.3],
+      offsetMm: 40,
+      ...range,
+    });
+    expect(fit?.nearest.offsetMm).toBe(161);
+    const gauge = (4300.3 - (161 - 40)) / 10;
+    expect(gauge).toBeLessThanOrEqual(418);
+    expect(gauge).toBeGreaterThanOrEqual(402);
+  });
+
+  it('returns nothing when the current gap already fits or the input is invalid', () => {
+    expect(
+      fitBattenEndOffset({
+        regularSpansMm: [4100],
+        offsetMm: 40,
+        ...range,
+      }),
+    ).toBeUndefined();
+    expect(
+      fitBattenEndOffset({
+        regularSpansMm: [4300],
+        offsetMm: 40,
+        minimumGaugeMm: 420,
+        maximumGaugeMm: 410,
+      }),
+    ).toBeUndefined();
+    expect(
+      fitBattenEndOffset({ regularSpansMm: [], offsetMm: 40, ...range }),
+    ).toBeUndefined();
   });
 });

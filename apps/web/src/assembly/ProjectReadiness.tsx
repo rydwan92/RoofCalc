@@ -695,10 +695,14 @@ export function ActionFeedback({
   onDismiss: () => void;
 }) {
   const { t } = useTranslation();
+  // VNext-14: the timer belongs to the message. A parent passing a new
+  // callback each render must not restart it, or the note never leaves.
+  const dismiss = useRef(onDismiss);
+  dismiss.current = onDismiss;
   useEffect(() => {
-    const timer = window.setTimeout(onDismiss, 7000);
+    const timer = window.setTimeout(() => dismiss.current(), 7000);
     return () => window.clearTimeout(timer);
-  }, [message, onDismiss]);
+  }, [message]);
   return (
     <div
       className="a-action-feedback"

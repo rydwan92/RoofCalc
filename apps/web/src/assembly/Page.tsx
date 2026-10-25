@@ -195,6 +195,7 @@ import { ProjectManager, projectStatusLabel } from '../projects/ProjectManager';
 import { StructureBar, structureLabel } from '../projects/StructureBar';
 import { ProjectPricingOverview } from '../projects/ProjectPricingOverview';
 import { ProjectQuantityOverview } from '../projects/ProjectQuantityOverview';
+import { TrussEnquirySheet } from '../projects/TrussEnquirySheet';
 import { LocalProjectRepository } from '../projects/local-repository';
 import {
   recentProjects,
@@ -823,8 +824,44 @@ function AssemblyPageContent({
       ...(hipPairedRunsPreviewMm !== undefined
         ? { hipPairedRunsPreviewMm }
         : {}),
+      // VNext-14: the resolved layout itself, drawn along each plane.
+      // VNext-14: the section stays when no equal courses fit — that is
+      // when its setting-out fields and the top-gap fixes matter most.
+      ...(effectiveBattenLayout.enabled && battenProjection.planes.length > 0
+        ? {
+            battenSection: {
+              planes: battenProjection.planes.map((layout) => ({
+                roofPlaneId: layout.roofPlaneId,
+                pitchDeg: roofPlanePitchDeg(state.template, layout.roofPlaneId),
+                layout,
+              })),
+              battenWidthMm: effectiveBattenLayout.battenWidthMm,
+              battenHeightMm: effectiveBattenLayout.battenHeightMm,
+              ...(counterBattens?.enabled
+                ? { counterBattenHeightMm: counterBattens.heightMm }
+                : {}),
+              ...(battenWorkflow.allowedRangeMm
+                ? { allowedRangeMm: battenWorkflow.allowedRangeMm }
+                : {}),
+              ...(battenWorkflow.topBattenFit
+                ? { topBattenFit: battenWorkflow.topBattenFit }
+                : {}),
+              ...(battenWorkflow.eaveBattenFit
+                ? { eaveBattenFit: battenWorkflow.eaveBattenFit }
+                : {}),
+            },
+          }
+        : {}),
     }),
-    [battenWorkflow, counterBattenWorkflow, hipPairedRunsPreviewMm],
+    [
+      battenWorkflow,
+      counterBattenWorkflow,
+      hipPairedRunsPreviewMm,
+      effectiveBattenLayout,
+      battenProjection.planes,
+      state.template,
+      counterBattens,
+    ],
   );
   const resolvedCoveringLayouts = useMemo(() => {
     // VNext-7B: one dispatch for every structure (calculator-core).
@@ -1956,6 +1993,13 @@ function AssemblyPageContent({
         return;
       case 'set-manual':
         runInstallationAction('set-manual', battenWorkflow.gaugeMm);
+        return;
+      case 'fit-top-batten':
+        runInstallationAction(
+          'fit-top-batten',
+          battenWorkflow.topBattenFit?.nearest.offsetMm,
+        );
+        showFeedback('assembly.readiness.feedback.topBatten');
         return;
       case 'enable-auto-battens':
         state.setBattenLayout(
@@ -3259,39 +3303,45 @@ function AssemblyPageContent({
                       )}
                     </Suspense>
                   ) : workbench.viewPreset === 'documents' ? (
-                    <DocumentHub
-                      {...(activeStructureLabel
-                        ? { subject: activeStructureLabel }
-                        : {})}
-                      scope={{
-                        geometry: projectRoofScene.gate.geometry,
-                        calculation: projectRoofScene.gate.calculation,
-                        roofType: state.template.type,
-                      }}
-                      facts={documentFactsWithLimits}
-                      readiness={projectReadiness}
-                      unit={state.unit}
-                      onAction={runReadinessAction}
-                      onOpen={openDocument}
-                      onMaterialCsv={() =>
-                        downloadMaterialCsv(
-                          materialRows,
-                          effectiveMaterialPrices,
-                          projectSessionState.active?.name ?? brand,
-                          i18n.language,
-                        )
-                      }
-                      onCostCsv={
-                        costScenario?.lines.length
-                          ? () =>
-                              downloadCostEstimateCsv(
-                                costScenario,
-                                projectSessionState.active?.name ?? brand,
-                                i18n.language,
-                              )
-                          : undefined
-                      }
-                    />
+                    <>
+                      <DocumentHub
+                        {...(activeStructureLabel
+                          ? { subject: activeStructureLabel }
+                          : {})}
+                        scope={{
+                          geometry: projectRoofScene.gate.geometry,
+                          calculation: projectRoofScene.gate.calculation,
+                          roofType: state.template.type,
+                        }}
+                        facts={documentFactsWithLimits}
+                        readiness={projectReadiness}
+                        unit={state.unit}
+                        onAction={runReadinessAction}
+                        onOpen={openDocument}
+                        onMaterialCsv={() =>
+                          downloadMaterialCsv(
+                            materialRows,
+                            effectiveMaterialPrices,
+                            projectSessionState.active?.name ?? brand,
+                            i18n.language,
+                          )
+                        }
+                        onCostCsv={
+                          costScenario?.lines.length
+                            ? () =>
+                                downloadCostEstimateCsv(
+                                  costScenario,
+                                  projectSessionState.active?.name ?? brand,
+                                  i18n.language,
+                                )
+                            : undefined
+                        }
+                      />
+                      <TrussEnquirySheet
+                        session={projectSession}
+                        state={projectSessionState}
+                      />
+                    </>
                   ) : workbench.focusId ? (
                     <AssemblyCanvas
                       result={result}

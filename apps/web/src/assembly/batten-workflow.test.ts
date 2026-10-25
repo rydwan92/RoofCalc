@@ -421,3 +421,59 @@ describe('V43B counter-batten workflow and guidance', () => {
     expect(paired.totalLengthMm).toBeGreaterThan(none.totalLengthMm);
   });
 });
+
+describe('VNext-14 fitting an end batten when no equal courses fit', () => {
+  // A 16 mm gauge range, 402–418 mm, as Koramic V9 states.
+  const narrowRange: RoofTileTechnicalSpec = {
+    schemaVersion: 1,
+    kind: 'roof-tile',
+    installationModes: [
+      {
+        id: 'standard',
+        coverWidthMm: 269,
+        gaugeRangeMm: { min: 402, max: 418 },
+        minPitchDeg: 16,
+      },
+    ],
+  };
+  const atEave = (eaveOffsetMm: number) =>
+    run({
+      layout: { ...newBattenLayer(), eaveOffsetMm },
+      assignments: [tile(narrowRange)],
+    });
+
+  it('offers the nearest top gap and eave offset, and both fit', () => {
+    let eaveOffsetMm = 0;
+    while (atEave(eaveOffsetMm).workflow.state !== 'auto-incompatible')
+      eaveOffsetMm += 5;
+    expect(eaveOffsetMm).toBeLessThan(420);
+    const { workflow } = atEave(eaveOffsetMm);
+    expect(workflow.actions[0]).toBe('fit-top-batten');
+    const top = workflow.topBattenFit!.nearest;
+    const eave = workflow.eaveBattenFit!.nearest;
+    expect(Number.isInteger(top.offsetMm)).toBe(true);
+    const layout = newBattenLayer();
+    for (const fixed of [
+      { ...layout, eaveOffsetMm, ridgeOffsetMm: top.offsetMm },
+      { ...layout, eaveOffsetMm: eave.offsetMm },
+    ]) {
+      const after = run({ layout: fixed, assignments: [tile(narrowRange)] });
+      expect(after.workflow.state).toBe('auto-ready');
+      expect(after.workflow.gaugeMm).toBeGreaterThanOrEqual(402);
+      expect(after.workflow.gaugeMm).toBeLessThanOrEqual(418);
+      expect(after.workflow.topBattenFit).toBeUndefined();
+    }
+  });
+
+  it('offers no batten move for a pitch below the product minimum', () => {
+    const low = { ...gable, pitchDeg: 12 } as RoofTemplateSpec;
+    const { workflow } = run({
+      template: low,
+      layout: newBattenLayer(),
+      assignments: [tile(narrowRange, low)],
+    });
+    expect(workflow.state).toBe('auto-incompatible');
+    expect(workflow.topBattenFit).toBeUndefined();
+    expect(workflow.actions).not.toContain('fit-top-batten');
+  });
+});

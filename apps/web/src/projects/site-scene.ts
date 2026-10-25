@@ -9,7 +9,14 @@ import {
   transformRoofScene,
   type RoofSceneGraph,
 } from '@cieslacalc/roof-topology-core';
+import {
+  createRoofTechnicalScene,
+  mergeTechnicalScenes,
+  placeTechnicalScene,
+  type MergedTechnicalScene,
+} from '@cieslacalc/technical-scene';
 import { deriveProjectRoofScene } from '../assembly/roof-scene';
+import { composedStructureSkeleton } from '../assembly/member-schedule';
 
 /** One structure's roof, placed on the site (world mm, z up). */
 export interface SiteStructure {
@@ -64,4 +71,33 @@ export function deriveSiteScene(document: RoofProjectDocumentV2): SiteScene {
     }),
   );
   return { structures, overlaps };
+}
+
+/**
+ * VNext-14: every structure's timber in one 3D scene — each structure's
+ * own skeleton as the workbench builds it, turned into the renderer-neutral
+ * technical scene by the same adapter as the workbench's 3D view, then
+ * placed by the structure's transform (the rigid motion of the site plan).
+ * The structures stand side by side; no junction between them is
+ * calculated (ADR-017 §6).
+ */
+export function deriveSiteTechnicalScene(
+  document: RoofProjectDocumentV2,
+): MergedTechnicalScene {
+  return mergeTechnicalScenes(
+    document.structures.map((structure) => ({
+      key: structure.id,
+      scene: placeTechnicalScene(
+        createRoofTechnicalScene({
+          skeleton: composedStructureSkeleton(structure.project),
+          includeRoofPlanes: true,
+        }),
+        {
+          translation: structure.transform.translationMm,
+          rotationAboutVerticalDeg:
+            structure.transform.rotationAboutVerticalDeg,
+        },
+      ),
+    })),
+  );
 }

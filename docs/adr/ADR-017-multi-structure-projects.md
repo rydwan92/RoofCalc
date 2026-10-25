@@ -80,3 +80,9 @@ the materials up by hand.
   identity added across structures is the exact section
   (`quantity-core` `summarizeProjectTimber`); a member without one is
   counted, never added to a section. Build-up layers stay per structure.
+- VNext-14 draws the site in 3D from the same parts: each structure's
+  composed skeleton through the workbench's technical-scene adapter, placed
+  by its transform (`placeTechnicalScene`, the rigid motion of
+  `transformRoofScene`) and merged with new entity ids, the structure kept
+  beside each id. Presentation only; no junction between structures is
+  inferred or drawn.

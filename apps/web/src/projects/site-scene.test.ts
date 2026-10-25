@@ -5,7 +5,7 @@ import {
   roofStructureFootprint,
 } from '@cieslacalc/calculator-core';
 import { projectRecordSchema } from '@cieslacalc/project-core';
-import { deriveSiteScene } from './site-scene';
+import { deriveSiteScene, deriveSiteTechnicalScene } from './site-scene';
 
 /**
  * VNext-10D: the site of reference project 13 — a house and a carport.
@@ -53,5 +53,32 @@ describe('the site of a project of structures (VNext-10D)', () => {
     expect(deriveSiteScene(stacked).overlaps).toEqual([
       ['structure:roof', 'structure:2'],
     ]);
+  });
+});
+
+describe('the site in 3D (VNext-14)', () => {
+  it('draws every structure’s timber where its roof stands on the site', () => {
+    const plan = deriveSiteScene(document);
+    const { scene, partOf } = deriveSiteTechnicalScene(document);
+    const of = (id: string) =>
+      scene.entities.filter((entity) => partOf[entity.id] === id);
+    expect(of('structure:roof').length).toBeGreaterThan(0);
+    expect(of('structure:2').length).toBeGreaterThan(0);
+    // The carport's timber sits within its placed roof outline (plan).
+    const roofXs = plan.structures[1]!.scene.planes.flatMap((plane) =>
+      plane.polygon.map((point) => point.x),
+    );
+    const members = of('structure:2').filter(
+      (entity) => entity.geometry.kind === 'oriented-box',
+    );
+    for (const member of members) {
+      if (member.geometry.kind !== 'oriented-box') continue;
+      expect(member.geometry.center.x).toBeGreaterThanOrEqual(
+        Math.min(...roofXs) - 500,
+      );
+      expect(member.geometry.center.x).toBeLessThanOrEqual(
+        Math.max(...roofXs) + 500,
+      );
+    }
   });
 });

@@ -8700,3 +8700,161 @@ button.a-quick-fact[aria-pressed='true'] {
   font-size: 12px;
   font-weight: 600;
 }
+
+/* VNext-14: the batten layout in section along a plane. */
+.bs-section {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--a-line);
+}
+.bs-section svg {
+  width: 100%;
+  max-height: 220px;
+  border-radius: 10px;
+  background: var(--a-canvas);
+}
+.bs-rafter {
+  stroke: #8a5a33;
+  stroke-width: 3;
+  vector-effect: non-scaling-stroke;
+}
+.bs-counter {
+  fill: #e6c9a6;
+  stroke: #a0724c;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.bs-batten {
+  fill: #c39066;
+  stroke: #6f4a2a;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.bs-batten.is-edge {
+  fill: #2f6b4f;
+  stroke: #1d4434;
+}
+.bs-dimension line {
+  stroke: #5f7469;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.bs-dimension text,
+.bs-pitch {
+  fill: #2f4a3b;
+  font-weight: 700;
+}
+.bs-end {
+  fill: #6b7d73;
+}
+.bs-section figcaption {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  color: var(--a-muted);
+  font-size: 12px;
+}
+.bs-section figcaption strong {
+  color: var(--a-text);
+}
+.bs-planes {
+  display: inline-flex;
+  justify-self: start;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--a-line);
+  border-radius: 999px;
+  background: #fff;
+}
+.bs-planes button {
+  min-height: 30px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--a-muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.bs-planes button[aria-pressed='true'] {
+  background: var(--v37-brand, #235344);
+  color: #fff;
+}
+.bs-section > header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.bs-section > header strong {
+  font-size: 13px;
+}
+.bs-section rect.bs-rafter {
+  fill: #b98a5e;
+  stroke: #8a5a33;
+  stroke-width: 1;
+}
+.bs-section figcaption small {
+  flex-basis: 100%;
+  font-size: 11px;
+}
+.bs-edit {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 220px));
+  gap: 8px 12px;
+  align-items: end;
+}
+.bs-edit > small {
+  grid-column: 1 / -1;
+  color: var(--a-muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+.bs-unresolved {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid #e3b65c;
+  border-radius: 10px;
+  background: #fff8e8;
+}
+.bs-unresolved strong {
+  color: #7a4f00;
+  font-size: 13px;
+}
+.bs-unresolved p {
+  margin: 0;
+  color: var(--a-text);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.bs-fits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.bs-fits .a-button {
+  display: inline-grid;
+  justify-items: start;
+  gap: 1px;
+  min-height: 44px;
+  text-align: left;
+}
+.bs-fits .a-button small {
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.8;
+}
+@media (max-width: 520px) {
+  .bs-edit {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .bs-fits .a-button {
+    flex: 1 1 100%;
+  }
+}

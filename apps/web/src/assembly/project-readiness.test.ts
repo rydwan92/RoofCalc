@@ -322,6 +322,25 @@ describe('V47 project readiness', () => {
     expect(codes(deriveProjectReadiness(unresolved))).not.toContain(
       'battens-product-incompatible',
     );
+    // VNext-14: when the solver knows a top gap that fits, that is the fix.
+    const fitting = {
+      ...unresolved,
+      battenWorkflow: {
+        ...unresolved.battenWorkflow,
+        topBattenFit: {
+          larger: { offsetMm: 160, changeMm: 120 },
+          nearest: { offsetMm: 160, changeMm: 120 },
+        },
+      },
+    };
+    expect(
+      deriveProjectReadiness(fitting).issues.find(
+        (item) => item.code === 'battens-auto-unresolved',
+      ),
+    ).toMatchObject({
+      action: 'fit-top-batten',
+      secondaryAction: 'set-manual',
+    });
     const tooFlat = {
       ...unresolved,
       battenWorkflow: {

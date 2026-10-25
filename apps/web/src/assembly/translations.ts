@@ -410,6 +410,13 @@ export const assemblyPl = {
     title: 'Bryły projektu',
     fallback: 'Bryła {{n}}',
     site: 'Widok działki',
+    siteViews: 'Widok działki: rzut lub 3D',
+    siteView: { plan: 'Rzut', '3d': '3D' },
+    site3dLabel: 'Bryły projektu w 3D, w położeniu z ustawień brył',
+    site3dHint:
+      'Każda bryła stoi tam, gdzie wskazują jej ustawienia. Połączenia między bryłami (kosz, obróbki) nie są liczone.',
+    site3dUnavailable:
+      'Ta przeglądarka nie wyświetli widoku 3D — rzut działki działa dalej.',
     siteLabel: 'Rzut dachów wszystkich brył projektu',
     siteHint:
       'Dachy wszystkich brył w rzucie, w położeniu z ustawień bryły. Kliknij dach, by otworzyć bryłę.',
@@ -1414,6 +1421,87 @@ export const assemblyPl = {
       'Oś i długość są policzone. Połączenie w węźle nie jest jeszcze wybrane — to nie jest błąd.',
     executionNote: 'Wymiary uwzględniają rozwiązane połączenie.',
   },
+  trussEnquiry: {
+    eyebrow: 'Dla producenta wiązarów',
+    title: 'Dane do wyceny wiązarów',
+    description:
+      'To, o co producent wiązarów pyta przed wyceną, zebrane z modelu: geometria każdej bryły, powierzchnia połaci, pokrycie i warstwy. Skopiuj do zapytania ofertowego.',
+    copy: 'Kopiuj dane do zapytania',
+    copied: {
+      done: 'Skopiowano do schowka — wklej do wiadomości lub formularza.',
+      failed: 'Nie udało się skopiować — zaznacz tekst poniżej ręcznie.',
+    },
+    thisRoof: 'Ten dach',
+    roofType: 'Typ dachu',
+    footprint: 'Wymiary (długość × rozpiętość)',
+    pitch: 'Kąt nachylenia',
+    height: { ridge: 'Wysokość kalenicy', rise: 'Wzniesienie dachu' },
+    eaveOverhang: 'Wysięg okapu (w poziomie)',
+    area: 'Powierzchnia połaci',
+    areaNet: '{{gross}} (bez otworów {{net}})',
+    covering: 'Pokrycie',
+    kind: {
+      'roof-tile': 'Dachówka',
+      'modular-sheet': 'Blacha modułowa',
+      'standing-seam': 'Blacha na rąbek stojący',
+    },
+    material: {
+      ceramic: 'ceramiczna',
+      concrete: 'cementowa',
+      other: 'inny materiał',
+    },
+    pieceMass: 'ok. {{value}}/szt.',
+    areaMass: '≈ {{min}}–{{max}} kg/m² wg karty produktu',
+    membrane: 'Membrana',
+    membraneManual: 'parametry ręczne',
+    layers: 'Łaty / kontrłaty',
+    layersValue: 'łaty {{battens}} · kontrłaty {{counter}}',
+    openings: 'Okna dachowe',
+    none: 'brak',
+    off: 'wyłączone',
+    missing: 'nie wybrano',
+    total: 'Łączna powierzchnia połaci (bez otworów)',
+    todoTitle: 'Do uzupełnienia dla projektanta wiązarów',
+    todo: {
+      location: 'Lokalizacja budowy — strefa obciążenia śniegiem i wiatrem.',
+      plans:
+        'Rzut ostatniej kondygnacji i przekrój budynku — ściany nośne i możliwe podpory.',
+      loads:
+        'Dodatkowe obciążenia: fotowoltaika, poddasze użytkowe, sufit podwieszony.',
+    },
+    disclaimer:
+      'RoofCalc nie projektuje wiązarów i nie sprawdza nośności. To dane wejściowe z modelu dachu, nie projekt konstrukcji.',
+  },
+  battenSection: {
+    title: 'Łaty na połaci',
+    planes: 'Połać przekroju',
+    label: 'Rozkład łat wzdłuż połaci, od okapu do kalenicy',
+    plane: 'połać {{pitch}}° · {{length}} od okapu do kalenicy',
+    scale:
+      'Odległości wzdłuż połaci w skali; grubości łat i kontrłat powiększone.',
+    eaveOffset: 'Pierwsza łata od okapu',
+    ridgeOffset: 'Ostatnia łata od kalenicy',
+    eaveOffsetHint:
+      'Pierwsza łata zależy od detalu okapu (pas nadrynnowy, grzebień), ostatnia od detalu kalenicy. Rozstaw między nimi wynika z pokrycia.',
+    noRows: 'Równe rzędy się nie mieszczą',
+    noRowsHint:
+      'Z tymi odległościami od okapu i kalenicy rozstaw musiałby wyjść poza zakres produktu {{min}}–{{max}}. Najbliższe położenia, przy których równe rzędy się mieszczą:',
+    noRowsManual:
+      'Z tymi odległościami od okapu i kalenicy nie da się ułożyć równych rzędów. Zmień je albo ustaw rozstaw ręcznie.',
+    fitTop: 'ostatnia łata {{value}} od kalenicy',
+    fitEave: 'pierwsza łata {{value}} od okapu',
+    fitChange: '{{change}} względem obecnej',
+    eave: 'okap',
+    top: 'kalenica',
+    rows_one: '{{count}} rząd łat na połać',
+    rows_few: '{{count}} rzędy łat na połać',
+    rows_many: '{{count}} rzędów łat na połać',
+    rows_other: '{{count}} rzędu łat na połać',
+    gauge: 'rozstaw {{value}}',
+    range: '(karta produktu: {{min}}–{{max}})',
+    first: 'pierwsza łata {{value}} od okapu',
+    gap: 'do kalenicy zostaje {{value}}',
+  },
   install: {
     title: 'Montaż pokrycia',
     product: 'Produkt',
@@ -1494,6 +1582,8 @@ export const assemblyPl = {
         'Rozstaw {{gauge}} jest poza zakresem produktu {{min}}–{{max}}.',
       'auto-incompatible':
         'Pokrycie nie pasuje do tego dachu — zmiana rozstawu tego nie naprawi.',
+      'auto-no-equal-rows':
+        'Przy tych odległościach od okapu i kalenicy zakres łatowania produktu nie daje równych rzędów. Najprościej przesunąć ostatnią łatę — pierwsza zależy od detalu okapu.',
     },
     action: {
       'enable-auto': 'Rozmieść łaty automatycznie',
@@ -1507,6 +1597,7 @@ export const assemblyPl = {
       'use-product-gauge': 'Ustaw rozstaw z produktu',
       'enable-counter-battens': 'Dodaj kontrłaty z konstrukcji',
       'choose-hip-detail': 'Uzupełnij detal grzbietu',
+      'fit-top-batten': 'Ostatnia łata {{value}} od kalenicy',
     },
     counter: {
       'layer-off': 'Kontrłaty wyłączone',
@@ -2620,6 +2711,8 @@ export const assemblyPl = {
       roofTypeChanged: 'Zmieniono typ dachu. Pokrycie i warstwy dopasowano.',
       autoGauge: 'Łaty ustawiono na rozstaw automatyczny.',
       productGauge: 'Łaty ustawiono na rozstaw podany przez producenta.',
+      topBatten:
+        'Przesunięto ostatnią łatę — równe rzędy mieszczą się w zakresie produktu.',
       exampleRestored:
         'Wczytano przykładowy dach. „Cofnij” przywraca poprzedni projekt.',
       undo: 'Cofnij',
@@ -2666,6 +2759,7 @@ export const assemblyPl = {
       'open-documents': 'Otwórz dokumenty',
       'open-cost': 'Otwórz kosztorys',
       'review-import-defaults': 'Sprawdź wartości z importu',
+      'fit-top-batten': 'Dopasuj ostatnią łatę',
     },
     issue: {
       'geometry-invalid': {
@@ -2731,7 +2825,7 @@ export const assemblyPl = {
       'battens-auto-unresolved': {
         title: 'Automatyczny rozstaw łat nie znalazł rozwiązania',
         description:
-          'Z zakresu łatowania produktu nie da się ułożyć równych rzędów na tej połaci. Ustaw rozstaw ręcznie albo sprawdź dane produktu.',
+          'Przy tych odległościach od okapu i kalenicy zakres łatowania produktu nie daje równych rzędów. Przesuń ostatnią łatę, ustaw rozstaw ręcznie albo sprawdź dane produktu.',
       },
       'battens-product-incompatible': {
         title: 'Produkt nie pasuje do kąta dachu',

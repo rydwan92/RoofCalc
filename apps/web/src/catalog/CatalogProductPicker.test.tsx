@@ -194,8 +194,13 @@ describe('catalogue product picker', () => {
         target: { value: 'tile' },
       },
     );
-    expect(api.searchProducts).toHaveBeenCalledTimes(1);
-    await waitFor(() => expect(api.searchProducts).toHaveBeenCalledTimes(2), {
+    // Result searches only; the manufacturer list asks once on its own.
+    const searches = () =>
+      vi
+        .mocked(api.searchProducts)
+        .mock.calls.filter(([query]) => query.limit === 30).length;
+    expect(searches()).toBe(1);
+    await waitFor(() => expect(searches()).toBe(2), {
       timeout: 1_500,
     });
 
@@ -335,6 +340,31 @@ describe('catalogue product picker', () => {
       within(sheet).getByRole('button', { name: /Wr.*do wynik/ }),
     );
     expect(await within(sheet).findByTestId('catalog-results')).toBeTruthy();
+  });
+
+  // VNext-14: a tile's manufacturer filter lists only who makes tiles.
+  it('lists only the manufacturers of this covering kind', async () => {
+    const timber = {
+      id: 'm:timber',
+      slug: 'timber',
+      name: 'Tartak',
+      active: true,
+    };
+    renderPicker(
+      client({
+        listManufacturers: vi.fn(async () => [detail.manufacturer, timber]),
+      }),
+    );
+    await screen.findByText('Tile 30 (DEMO)');
+    await waitFor(() =>
+      expect(
+        [
+          ...(
+            screen.getByLabelText('Producent') as HTMLSelectElement
+          ).querySelectorAll('option'),
+        ].map((option) => option.textContent),
+      ).toEqual(['Wszyscy producenci', 'DEMO Roof']),
+    );
   });
 
   // VNext-12: what suits this roof comes first, and can be shown alone.

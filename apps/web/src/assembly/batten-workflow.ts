@@ -3,9 +3,11 @@ import {
   type CoveringAssignmentSpec,
   type CoveringSupportCapability,
 } from '@cieslacalc/covering-core';
-import type {
-  BattenLayoutResult,
-  CounterBattenLayoutResult,
+import {
+  fitBattenEndOffset,
+  type BattenLayoutResult,
+  type BattenEndFitOptions,
+  type CounterBattenLayoutResult,
 } from '@cieslacalc/roof-math';
 import type {
   BattenLayoutSpec,
@@ -64,7 +66,12 @@ export type BattenWorkflowAction =
    * VNext-4: a modular sheet states one fixed support spacing; a different
    * manual gauge is repaired by taking that spacing (one history entry).
    */
-  | 'use-product-gauge';
+  | 'use-product-gauge'
+  /**
+   * VNext-14: no whole number of equal courses fits; the last batten moves
+   * to the nearest top gap at which they do (one history entry).
+   */
+  | 'fit-top-batten';
 
 export interface BattenWorkflow {
   state: BattenWorkflowState;
@@ -100,6 +107,10 @@ export interface BattenWorkflow {
   };
   eaveReferenceMm?: number;
   ridgeReferenceMm?: number;
+  /** VNext-14: where the last batten could go so equal courses fit. */
+  topBattenFit?: BattenEndFitOptions;
+  /** VNext-14: where the first batten could go instead. */
+  eaveBattenFit?: BattenEndFitOptions;
   actions: BattenWorkflowAction[];
   /** Geometry exists and needs no batten decision before quantities. */
   complete: boolean;
@@ -284,8 +295,30 @@ export function deriveBattenWorkflow(args: {
       return build('auto-data-unavailable', 'blocked', ['set-manual']);
     if (geometryIssue)
       return build('geometry-invalid', 'blocked', geometryActions);
-    if (belowMinimum || result.status !== 'resolved')
-      return build('auto-incompatible', 'blocked', ['set-manual']);
+    if (belowMinimum || result.status !== 'resolved') {
+      // A pitch problem is not fixed by moving a batten; a span is.
+      const source = composition.source;
+      const fitEnd = (offsetMm: number) =>
+        belowMinimum
+          ? undefined
+          : fitBattenEndOffset({
+              regularSpansMm: result.planes.map((plane) => plane.regularSpanMm),
+              offsetMm,
+              minimumGaugeMm: source.minimumGaugeMm,
+              maximumGaugeMm: source.maximumGaugeMm,
+            });
+      const topBattenFit = fitEnd(layout.ridgeOffsetMm ?? 0);
+      const eaveBattenFit = fitEnd(layout.eaveOffsetMm);
+      return build(
+        'auto-incompatible',
+        'blocked',
+        topBattenFit ? ['fit-top-batten', 'set-manual'] : ['set-manual'],
+        {
+          ...(topBattenFit ? { topBattenFit } : {}),
+          ...(eaveBattenFit ? { eaveBattenFit } : {}),
+        },
+      );
+    }
     return build(
       'auto-ready',
       decision.status === 'partially-automatic' || decision.status === 'ready'

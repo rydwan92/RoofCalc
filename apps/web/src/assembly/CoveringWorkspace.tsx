@@ -1045,7 +1045,10 @@ export function CoveringWorkspace({
           <div className="a-covering-scheme-heading">
             <div>
               <small>{t('assembly.coveringAdd.scheme')}</small>
-              <strong>{t(coveringKindLabelKey(assignment))}</strong>
+              <strong>
+                {assignment.product.displaySnapshot?.familyName ??
+                  t(coveringKindLabelKey(assignment))}
+              </strong>
             </div>
             {assignment.roofPlaneIds.length < planeIds.length &&
               !planeIds.some((id) =>

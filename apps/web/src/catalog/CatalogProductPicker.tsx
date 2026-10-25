@@ -219,6 +219,22 @@ function PickerBody({
     initialPageParam: '',
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
+  // VNext-14: the manufacturer filter lists only who makes this kind — one
+  // page of up to 50 of the kind tells; a larger kind keeps every maker.
+  const kindMakers = useQuery({
+    queryKey: catalogQueryKey(client, 'kind-makers', kind),
+    queryFn: ({ signal }) => client.searchProducts({ kind, limit: 50 }, signal),
+    staleTime: 5 * 60_000,
+  });
+  const manufacturerOptions = useMemo(() => {
+    const all = manufacturers.data ?? [];
+    const page = kindMakers.data;
+    if (!page || page.nextCursor) return all;
+    const ids = new Set(page.items.map((item) => item.manufacturer.id));
+    return all.filter(
+      (maker) => ids.has(maker.id) || maker.id === manufacturerId,
+    );
+  }, [manufacturers.data, kindMakers.data, manufacturerId]);
   const detail = useQuery({
     queryKey: catalogQueryKey(client, 'product', productId),
     queryFn: ({ signal }) => client.getProduct(productId!, signal),
@@ -386,7 +402,7 @@ function PickerBody({
             onChange={(event) => setManufacturerId(event.target.value)}
           >
             <option value="">{m.all}</option>
-            {manufacturers.data?.map((manufacturer) => (
+            {manufacturerOptions.map((manufacturer) => (
               <option key={manufacturer.id} value={manufacturer.id}>
                 {manufacturer.name}
               </option>

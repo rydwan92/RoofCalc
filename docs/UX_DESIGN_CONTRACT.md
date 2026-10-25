@@ -632,6 +632,17 @@ line and manual lengths keep working.
   is named through one lookup (`ROOF_FAMILY_LABEL`), and never shows
   another family's controls (no ridge settings on a mono-pitch roof). A quick
   calculation offers "Utwórz projekt" instead of retyping.
+- **VNext-14: a batten layout that does not fit offers the fix.** The
+  covering block draws the plane's battens from the engine's stations,
+  with the first batten and the last as exact fields. When no equal
+  courses fit the product's gauge range, the drawing gives way to a plain
+  statement and the nearest positions of either end batten that do fit,
+  smallest change first, each one click and one history entry — never a
+  dead end. The site panel switches between the plan and 3D (the same
+  timber, placed where each structure stands; junctions are not
+  calculated and the hint says so). The documents carry the data a truss
+  manufacturer asks for before a quote, copyable as text, with what the
+  designer still needs and a plain "RoofCalc nie projektuje wiązarów".
 - **VNext-13: the workbench fits the screen.** The structure row is one
   line: the pressed chip names the open structure (the sentence stays for
   screen readers); on a phone the add, site and settings actions are icons
