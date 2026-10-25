@@ -71,6 +71,29 @@ export interface QuoteLine {
   /** Missing VAT remains explicit and makes gross totals incomplete. */
   vatRateBps?: number;
   included: boolean;
+  /**
+   * VNext-10F: the section (a roof structure) the line belongs to — on
+   * every line exactly when the draft has `sections`. A line is identified
+   * by the pair (sectionId, id), never by a concatenated string.
+   */
+  sectionId?: string;
+}
+
+/**
+ * VNext-10F (ADR-017 §9): one part of a quote of several roof structures,
+ * with the fingerprint of the source it was last built from.
+ */
+export interface QuoteSection {
+  id: string;
+  label: string;
+  sourceFingerprint: string;
+}
+
+/** What identifies a line in a draft: its id within its section. */
+export type QuoteLineRef = Pick<QuoteLine, 'id' | 'sectionId'>;
+
+export function sameQuoteLine(a: QuoteLineRef, b: QuoteLineRef): boolean {
+  return a.id === b.id && a.sectionId === b.sectionId;
 }
 
 export interface QuoteDraft {
@@ -90,9 +113,13 @@ export interface QuoteDraft {
   lines: QuoteLine[];
   notes?: string;
   footer?: string;
+  /** VNext-10F: absent on a one-roof quote; one per structure otherwise. */
+  sections?: QuoteSection[];
 }
 
 export { quoteDraftSchema } from './schema';
+import { quoteSectionsAreConsistent } from './sections';
+export { quoteSectionsAreConsistent };
 
 export interface ComputedQuoteLine {
   line: QuoteLine;
@@ -273,6 +300,7 @@ export interface CreateQuoteDraftInput {
   sourceFingerprint: string;
   lines: QuoteLine[];
   notes?: string;
+  sections?: QuoteSection[];
 }
 
 export function createQuoteDraft(input: CreateQuoteDraftInput): QuoteDraft {
@@ -285,6 +313,13 @@ export function createQuoteDraft(input: CreateQuoteDraftInput): QuoteDraft {
   )
     throw new Error('invalid-quote-draft');
   input.lines.forEach(assertLine);
+  if (
+    input.sections?.some(
+      (section) => !section.id.trim() || !section.label.trim(),
+    ) ||
+    !quoteSectionsAreConsistent(input)
+  )
+    throw new Error('invalid-quote-sections');
   return {
     schemaVersion: 1,
     id: input.id,
@@ -302,23 +337,28 @@ export function createQuoteDraft(input: CreateQuoteDraftInput): QuoteDraft {
     sourceFingerprint: input.sourceFingerprint,
     lines: input.lines.map((line) => structuredClone(line)),
     ...(input.notes ? { notes: input.notes } : {}),
+    ...(input.sections
+      ? { sections: input.sections.map((section) => ({ ...section })) }
+      : {}),
   };
 }
 
 function replaceLine(
   draft: QuoteDraft,
-  id: string,
+  ref: QuoteLineRef,
   update: (line: QuoteLine) => QuoteLine,
 ): QuoteDraft {
   return {
     ...draft,
-    lines: draft.lines.map((line) => (line.id === id ? update(line) : line)),
+    lines: draft.lines.map((line) =>
+      sameQuoteLine(line, ref) ? update(line) : line,
+    ),
   };
 }
 
 export function withQuoteUnitPrice(
   draft: QuoteDraft,
-  id: string,
+  ref: QuoteLineRef,
   unitNetAmountMinor: number | undefined,
 ): QuoteDraft {
   if (
@@ -326,7 +366,7 @@ export function withQuoteUnitPrice(
     (!Number.isInteger(unitNetAmountMinor) || unitNetAmountMinor < 0)
   )
     throw new Error('invalid-quote-money');
-  return replaceLine(draft, id, (line) => ({
+  return replaceLine(draft, ref, (line) => ({
     ...line,
     ...(unitNetAmountMinor === undefined
       ? { unitNetAmountMinor: undefined, priceSource: 'missing' as const }
@@ -339,7 +379,7 @@ export function withQuoteUnitPrice(
 
 export function withQuoteDiscount(
   draft: QuoteDraft,
-  id: string,
+  ref: QuoteLineRef,
   discountBps: number | undefined,
 ): QuoteDraft {
   if (
@@ -347,12 +387,12 @@ export function withQuoteDiscount(
     (!Number.isInteger(discountBps) || discountBps < 0 || discountBps > 10_000)
   )
     throw new Error('invalid-quote-discount');
-  return replaceLine(draft, id, (line) => ({ ...line, discountBps }));
+  return replaceLine(draft, ref, (line) => ({ ...line, discountBps }));
 }
 
 export function withQuoteVat(
   draft: QuoteDraft,
-  id: string,
+  ref: QuoteLineRef,
   vatRateBps: number | undefined,
 ): QuoteDraft {
   if (
@@ -360,16 +400,16 @@ export function withQuoteVat(
     (!Number.isInteger(vatRateBps) || vatRateBps < 0 || vatRateBps > 10_000)
   )
     throw new Error('invalid-quote-vat');
-  return replaceLine(draft, id, (line) => ({ ...line, vatRateBps }));
+  return replaceLine(draft, ref, (line) => ({ ...line, vatRateBps }));
 }
 
 export function withQuoteQuantity(
   draft: QuoteDraft,
-  id: string,
+  ref: QuoteLineRef,
   offerValue: number,
 ): QuoteDraft {
   if (!validNonNegative(offerValue)) throw new Error('invalid-quote-quantity');
-  return replaceLine(draft, id, (line) => ({
+  return replaceLine(draft, ref, (line) => ({
     ...line,
     offerQuantity: { ...line.offerQuantity, value: offerValue },
     quantityOverridden: offerValue !== line.technicalQuantity.value,
@@ -378,10 +418,10 @@ export function withQuoteQuantity(
 
 export function withQuoteIncluded(
   draft: QuoteDraft,
-  id: string,
+  ref: QuoteLineRef,
   included: boolean,
 ): QuoteDraft {
-  return replaceLine(draft, id, (line) => ({ ...line, included }));
+  return replaceLine(draft, ref, (line) => ({ ...line, included }));
 }
 
 export function quoteIsStale(
@@ -389,6 +429,124 @@ export function quoteIsStale(
   currentFingerprint: string,
 ): boolean {
   return draft.sourceFingerprint !== currentFingerprint;
+}
+
+/** A part of the project a quote can have a section for, in project order. */
+export interface QuoteSectionOrder {
+  id: string;
+  label: string;
+}
+
+/**
+ * The sections a draft stands for: its own, or — for a one-roof draft with
+ * lines — one for the project's first part, whose lines they are.
+ */
+function effectiveSections(
+  draft: QuoteDraft,
+  order: readonly QuoteSectionOrder[],
+): QuoteSection[] {
+  if (draft.sections) return draft.sections;
+  const first = order[0];
+  return first && draft.lines.length > 0
+    ? [{ ...first, sourceFingerprint: draft.sourceFingerprint }]
+    : [];
+}
+
+function sectionedFingerprint(sections: readonly QuoteSection[]): string {
+  return quoteSourceFingerprint(
+    sections.map((section) => [section.id, section.sourceFingerprint]),
+  );
+}
+
+/**
+ * VNext-10F (ADR-017 §9): a quote of several roof structures after the
+ * open structure's part is rebuilt. `base` is that part built exactly as a
+ * one-roof quote (header, its lines, its source fingerprint); `previous`
+ * is the quote so far. Every other part keeps its frozen lines under its
+ * current label; a part no longer in `order` leaves; a part never built
+ * has no section. A one-roof `previous` is the first part's quote.
+ */
+export function withQuoteSection(input: {
+  base: QuoteDraft;
+  sectionId: string;
+  order: readonly QuoteSectionOrder[];
+  previous?: QuoteDraft;
+}): QuoteDraft {
+  const { base, sectionId, order, previous } = input;
+  if (!order.some((part) => part.id === sectionId))
+    throw new Error('quote-section-not-in-order');
+  const kept = previous ? effectiveSections(previous, order) : [];
+  const sections: QuoteSection[] = [];
+  const lines: QuoteLine[] = [];
+  for (const part of order) {
+    if (part.id === sectionId) {
+      sections.push({ ...part, sourceFingerprint: base.sourceFingerprint });
+      lines.push(...base.lines.map((line) => ({ ...line, sectionId })));
+      continue;
+    }
+    const section = kept.find((candidate) => candidate.id === part.id);
+    if (!section || !previous) continue;
+    sections.push({ ...section, label: part.label });
+    lines.push(
+      ...previous.lines
+        .filter((line) => (line.sectionId ?? order[0]?.id) === part.id)
+        .map((line) => ({ ...line, sectionId: part.id })),
+    );
+  }
+  return createQuoteDraft({
+    ...base,
+    sourceFingerprint: sectionedFingerprint(sections),
+    lines,
+    sections,
+  });
+}
+
+export interface QuoteSectionStatus {
+  /**
+   * The open part must be rebuilt: it has no section, its source changed,
+   * or the sections no longer match the project's parts (one removed or
+   * renamed).
+   */
+  stale: boolean;
+  /** Parts of the project with no section yet, in project order. */
+  missing: string[];
+}
+
+/** VNext-10F: where a quote of several structures stands for the open one. */
+export function quoteSectionStatus(
+  draft: QuoteDraft,
+  order: readonly QuoteSectionOrder[],
+  open: { id: string; sourceFingerprint: string },
+): QuoteSectionStatus {
+  const sections = effectiveSections(draft, order);
+  const own = sections.find((section) => section.id === open.id);
+  return {
+    stale:
+      !own ||
+      own.sourceFingerprint !== open.sourceFingerprint ||
+      sections.some(
+        (section) =>
+          !order.some(
+            (part) => part.id === section.id && part.label === section.label,
+          ),
+      ),
+    missing: order
+      .filter((part) => !sections.some((section) => section.id === part.id))
+      .map((part) => part.id),
+  };
+}
+
+/** Each section's own totals, in the draft's section order. */
+export function summarizeQuoteBySection(
+  draft: QuoteDraft,
+): { section: QuoteSection; summary: QuoteSummary }[] {
+  return (draft.sections ?? []).map((section) => ({
+    section,
+    summary: summarizeQuote({
+      ...draft,
+      lines: draft.lines.filter((line) => line.sectionId === section.id),
+    }),
+  }));
 }
 /** Commercial comparison consumes frozen quotes, never live roof geometry. */
 export function summarizeQuoteByGroup(

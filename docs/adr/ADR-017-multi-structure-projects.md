@@ -49,9 +49,22 @@ the materials up by hand.
    Nothing is assigned to a connection. Each structure has its own cost
    estimate; the project's is their sum in one currency, naming any
    structure without one (VNext-10B).
-8. **Business.** Server estimations carry V1 records. A multi-structure
-   project stays local in this version and the UI says so; the API is not
-   changed.
+8. **Business.** Server estimations carry a project record — V1, or V2
+   for a project of several structures — validated with the same
+   `projectRecordSchema` the browser uses and stored as an opaque snapshot
+   (a JSON column: no migration; every stored V1 record reads unchanged).
+   The server never opens the V2 document: it neither edits nor totals
+   structures. (VNext-10A–10E kept estimations V1 and offered no structure
+   in Business; VNext-10F lifts that.)
+9. **Quote of several structures.** A quote of a project of several
+   structures has one section per structure (`QuoteDraft.sections`, each
+   with its label and source fingerprint; `QuoteLine.sectionId`). A line is
+   identified by the pair (section, line id), never by a concatenated
+   string. A section is built by the same material-plan → quote path as a
+   one-roof quote, while its structure is open in the workbench, and is
+   refreshed only then; the other sections keep their frozen values. Lines
+   of a removed structure leave the quote on the next refresh; a structure
+   without a section is named, never priced as zero.
 
 ## Consequences
 

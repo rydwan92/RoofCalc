@@ -349,8 +349,10 @@ describe('package dependency direction', () => {
 
   it('only the project layer reads or writes the V2 document of structures (ADR-017)', () => {
     // VNext-10: a project of several roofs is a V2 document held by the web
-    // project session; the workbench, solvers, documents and the API see one
-    // V1 document — the selected structure's. Change ADR-017 first.
+    // project session; the workbench, solvers and documents see one V1
+    // document — the selected structure's. The API stores the record as an
+    // opaque validated snapshot and never opens it (VNext-10F, ADR-017 §8).
+    // Change ADR-017 first.
     const v2 =
       /\broofProjectDocument(?:V2Schema|V2FromV1|V1FromV2)\b|\bRoofProjectDocumentV2\b|\b(?:add|remove|rename|move)RoofStructure\b|\bwithRoofStructureProject\b|\broofStructureDocument\b/;
     expect(

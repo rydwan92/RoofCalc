@@ -333,9 +333,9 @@ function sourceKey(source: UngroupedMember) {
   ].join('|');
 }
 
-function rowId(source: UngroupedMember, ordinal: number) {
+function rowIdPrefix(source: UngroupedMember) {
   const role = source.role ? `:${source.role}` : '';
-  return `quantity:${source.category}:${source.familyKey}:${source.memberKind}${role}:${ordinal}`;
+  return `quantity:${source.category}:${source.familyKey}:${source.memberKind}${role}`;
 }
 
 function volumeFor(section: QuantitySection, lengthMm: number) {
@@ -356,6 +356,10 @@ function groupSources(
     groupedByIdentity.set(key, [...(groupedByIdentity.get(key) ?? []), source]);
   }
   const rows: RoofMemberScheduleRow[] = [];
+  // Two identities can share an id prefix (a mono-pitch roof's low and high
+  // wall plates are two prototypes): the ordinal runs across them, so every
+  // row id stays unique.
+  const ordinals = new Map<string, number>();
   for (const identitySources of [...groupedByIdentity.values()].sort((a, b) =>
     sourceKey(a[0]!).localeCompare(sourceKey(b[0]!)),
   )) {
@@ -372,8 +376,11 @@ function groupSources(
       if (group) group.push(source);
       else lengthGroups.push([source]);
     }
-    lengthGroups.forEach((group, index) => {
+    lengthGroups.forEach((group) => {
       const first = group[0]!;
+      const prefix = rowIdPrefix(first);
+      const ordinal = (ordinals.get(prefix) ?? 0) + 1;
+      ordinals.set(prefix, ordinal);
       const sourceInstanceIds = group
         .map((source) => source.sourceInstanceId)
         .sort();
@@ -383,7 +390,7 @@ function groupSources(
       );
       const volumeMm3 = volumeFor(first.section, totalLengthMm);
       rows.push({
-        id: rowId(first, index + 1),
+        id: `${prefix}:${ordinal}`,
         category: first.category,
         familyKey: first.familyKey,
         memberKind: first.memberKind,

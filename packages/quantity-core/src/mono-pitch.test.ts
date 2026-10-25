@@ -73,6 +73,22 @@ describe('mono-pitch timber schedule', () => {
     expect(rows).toHaveLength(3);
   });
 
+  it('gives the low and the high wall plate their own row ids', () => {
+    // VNext-10F: both plates once got `…:M:wall-plate:1`, so a quote of a
+    // mono-pitch roof held two lines with one id and could not be saved.
+    const ids = schedule.rows.map((row) => row.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(
+      schedule.timberRows
+        .filter((row) => row.memberKind === 'wall-plate')
+        .map((row) => row.id)
+        .sort(),
+    ).toEqual([
+      'quantity:structural-timber:M:wall-plate:1',
+      'quantity:structural-timber:M:wall-plate:2',
+    ]);
+  });
+
   it('sums the timber exactly', () => {
     const k1 = schedule.timberRows.find((row) => row.familyKey === 'K1')!;
     expect(k1.totalLengthMm).toBeCloseTo(8 * k1.lengthMm, 6);

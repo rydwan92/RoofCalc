@@ -1085,9 +1085,19 @@ function AssemblyPageContent({
     ...materialScenarioPrices(costScenario, materialRows),
     ...materialPrices,
   };
+  // VNext-10F: a quote has a section per structure, named as the row names it.
+  const quoteStructures = useMemo(
+    () =>
+      projectSessionState.structures?.map((structure, index) => ({
+        id: structure.id,
+        label: structureLabel(structure, index, t),
+      })),
+    [projectSessionState.structures, t],
+  );
   const {
     currentQuoteDraft,
-    currentCommercialFingerprint,
+    quoteStale,
+    quoteSections,
     commercialReadiness,
     quoteOpen,
     setQuoteOpen,
@@ -1116,6 +1126,12 @@ function AssemblyPageContent({
     locale: i18n.language,
     setReuseFreshProject,
     setProjectStartMode,
+    ...(quoteStructures && projectSessionState.activeStructureId
+      ? {
+          structures: quoteStructures,
+          activeStructureId: projectSessionState.activeStructureId,
+        }
+      : {}),
   });
   const connectionPlan = state.projectDocument.project.connectionPlan;
   const connectionRows = useMemo(
@@ -2470,15 +2486,11 @@ function AssemblyPageContent({
             onImportIfc={() => setIfcImportOpen(true)}
             onImportCad={() => setCadImportOpen(true)}
             onImportDocument={() => setDocumentImportOpen(true)}
-            // VNext-10: estimations carry one roof (ADR-017 §8).
-            {...(business.mode === 'business'
-              ? {}
-              : {
-                  onAddStructure: () => {
-                    setReuseFreshProject(false);
-                    setProjectStartMode('structure');
-                  },
-                })}
+            // VNext-10F: estimations carry every structure (ADR-017 §8).
+            onAddStructure={() => {
+              setReuseFreshProject(false);
+              setProjectStartMode('structure');
+            }}
           />
         )}
         {workbench.mode === 'builder' && (
@@ -3518,7 +3530,24 @@ function AssemblyPageContent({
             onRetrySave={retrySave}
             onReload={reloadRemote}
             comparison={compareDraft}
-            currentFingerprint={currentCommercialFingerprint}
+            stale={quoteStale}
+            {...(quoteSections && quoteStructures
+              ? {
+                  structures: {
+                    open: quoteStructures.find(
+                      (part) =>
+                        part.id === projectSessionState.activeStructureId,
+                    )!,
+                    missing: quoteStructures.filter((part) =>
+                      quoteSections.missing.includes(part.id),
+                    ),
+                    // The quote stays open: the opened structure's section
+                    // is then one refresh away.
+                    onOpen: (id: string) =>
+                      void projectSession.selectStructure(id),
+                  },
+                }
+              : {})}
             locale={i18n.language}
             onChange={changeQuote}
             onRefresh={refreshQuote}

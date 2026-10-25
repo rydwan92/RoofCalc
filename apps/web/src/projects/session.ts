@@ -7,13 +7,12 @@ import {
   importProject,
   nextProjectName,
   newProjectId,
-  projectRecordV1Schema,
+  projectRecordSchema,
   projectRecordWithDocument,
   projectSummary,
   renameProject,
   type ProjectDocument,
   type ProjectRecord,
-  type ProjectRecordV1,
   type ProjectRepository,
   type ProjectSummary,
 } from '@cieslacalc/project-core';
@@ -175,8 +174,12 @@ export class ProjectSession {
     };
   }
 
-  async openRemote(record: ProjectRecordV1): Promise<void> {
-    const validated = projectRecordV1Schema.parse(record);
+  /**
+   * Opens an estimation's project — one roof or several structures
+   * (ADR-017 §8) — as the active local record.
+   */
+  async openRemote(record: ProjectRecord): Promise<void> {
+    const validated = projectRecordSchema.parse(record);
     await this.persistNow();
     await this.repository.save(validated);
     await this.activate(validated, true);

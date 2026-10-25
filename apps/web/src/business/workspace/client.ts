@@ -12,8 +12,8 @@ import {
   type EstimationListQuery,
 } from '@cieslacalc/business-core';
 import {
-  projectRecordV1Schema,
-  type ProjectRecordV1,
+  projectRecordSchema,
+  type ProjectRecord,
 } from '@cieslacalc/project-core';
 import { quoteDraftSchema, type QuoteDraft } from '@cieslacalc/quote-core';
 import { requestJson } from '../client';
@@ -30,7 +30,7 @@ export const savedQuoteSchema = z.object({
 export const estimationDetailSchema = z.object({
   estimation: commercialEstimationSchema,
   customer: businessCustomerSchema,
-  project: projectRecordV1Schema,
+  project: projectRecordSchema,
   quote: savedQuoteSchema.optional(),
 });
 export const estimationSummarySchema = commercialEstimationSchema.extend({
@@ -149,7 +149,7 @@ export const workspaceClient = {
   createEstimation: async (
     org: string,
     input: EstimationInput,
-    project: ProjectRecordV1,
+    project: ProjectRecord,
   ) =>
     (
       await requestJson(
@@ -162,7 +162,7 @@ export const workspaceClient = {
     org: string,
     id: string,
     version: number,
-    project: ProjectRecordV1,
+    project: ProjectRecord,
   ) =>
     (
       await requestJson(

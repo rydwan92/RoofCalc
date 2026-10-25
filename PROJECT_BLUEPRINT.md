@@ -1297,6 +1297,37 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+## VNext-10F (2026-10-25) — Business: one estimation, every structure
+
+- Branch `feature/vnext-10f-business-structures` (from 10E, `3450335`).
+  Owner (2026-10-25): "pracuj dalej nad projektem!".
+- ADR-017 §8 changed first (estimations carry V1 or V2, opaque on the
+  server) and §9 added (a quote of several structures has a section per
+  structure; a line is (section, id)). SCHEMA_REGISTRY §30.
+- API: estimations create / save / read / duplicate a `ProjectRecord` with
+  `projectRecordSchema`; JSON column, no SQL migration, V1 rows unchanged.
+- Web: autosave sends `projectSession.exportRecord()` (every structure);
+  `openRemote` reads V1 or V2; "Dodaj bryłę" in Business.
+- `quote-core`: `QuoteSection`, `QuoteLine.sectionId`, `sameQuoteLine`,
+  edits by line ref, `withQuoteSection`, `quoteSectionStatus`,
+  `summarizeQuoteBySection`; schema keeps sections all-or-nothing.
+- QuoteWorkspace: a section row per structure with its subtotal ("bez
+  ceny: n"), "Bez pozycji w ofercie: …" with "Otwórz „…”", the refresh
+  names the structure; staleness is per open section.
+- Bug fixed: a mono-pitch roof's two wall plates shared a schedule row id,
+  so its quote could not be saved (server `duplicate-line-id`); quantity-core
+  ordinals now run across identities with one prefix.
+- Process note: a `git checkout` of one modified file (meant to drop a
+  debug line) reverted the quote-core edits; they were re-applied from the
+  session and re-tested. Never check out a modified file to undo one line.
+- Validation: `pnpm verify` green — 225 files / 2362 tests (13 skipped);
+  `pnpm e2e` 192 passed / 0 failed.
+- Known limits: a quote part is rebuilt only while its structure is open;
+  no per-structure page break in print.
+- NEXT ACTION: the project's build-up layers (battens, counter-battens,
+  membrane) per structure through a pure layout derivation, so the
+  project schedule and a quote part no longer need the open workbench.
+
 ## VNext-10E (2026-10-25) — the whole project's quantities
 
 - Branch `feature/vnext-10e-project-quantities` (from 10D, `48094ba`).

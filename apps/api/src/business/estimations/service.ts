@@ -4,7 +4,7 @@ import {
   type EstimationListQuery,
 } from '@cieslacalc/business-core';
 import {
-  projectRecordV1Schema,
+  projectRecordSchema,
   duplicateProject,
 } from '@cieslacalc/project-core';
 import {
@@ -36,7 +36,7 @@ export class EstimationService {
   }
   async create(org: string, userId: string, body: unknown) {
     const { input, project } = z
-      .object({ input: estimationInputSchema, project: projectRecordV1Schema })
+      .object({ input: estimationInputSchema, project: projectRecordSchema })
       .strict()
       .parse(body);
     if (input.roofProjectId !== project.id)
@@ -49,7 +49,7 @@ export class EstimationService {
     const { version, project } = z
       .object({
         version: z.number().int().positive(),
-        project: projectRecordV1Schema,
+        project: projectRecordSchema,
       })
       .strict()
       .parse(body);

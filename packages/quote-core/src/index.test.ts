@@ -73,7 +73,7 @@ describe('quote-core', () => {
   });
   it('compares frozen variants using rounded quote money and refuses incomplete/cross-currency differences', () => {
     const first = draft(),
-      second = withQuoteUnitPrice(first, line.id, 500);
+      second = withQuoteUnitPrice(first, line, 500);
     expect(summarizeQuoteByGroup(first).covering?.netMinor).toBe(54948);
     expect(compareQuoteTotals(first, second)).toEqual({
       netDifferenceMinor: 2052,
@@ -83,7 +83,7 @@ describe('quote-core', () => {
       compareQuoteTotals(first, { ...second, currencyCode: 'EUR' }),
     ).toBeUndefined();
     expect(
-      compareQuoteTotals(first, withQuoteUnitPrice(second, line.id, undefined)),
+      compareQuoteTotals(first, withQuoteUnitPrice(second, line, undefined)),
     ).toBeUndefined();
   });
   it('calculates money with integer minor units and per-line rounding', () => {
@@ -97,7 +97,7 @@ describe('quote-core', () => {
   });
 
   it('keeps technical quantity unchanged when the offer quantity changes', () => {
-    const changed = withQuoteQuantity(draft(), line.id, 125);
+    const changed = withQuoteQuantity(draft(), line, 125);
     expect(changed.lines[0]).toMatchObject({
       technicalQuantity: { value: 120 },
       offerQuantity: { value: 125 },
@@ -106,7 +106,7 @@ describe('quote-core', () => {
   });
 
   it('keeps the organization amount visible after a manual quote override', () => {
-    const changed = withQuoteUnitPrice(draft(), line.id, 9450);
+    const changed = withQuoteUnitPrice(draft(), line, 9450);
     expect(changed.lines[0]).toMatchObject({
       unitNetAmountMinor: 9450,
       organizationUnitNetAmountMinor: 482,
@@ -116,8 +116,8 @@ describe('quote-core', () => {
 
   it('supports explicit line discount and VAT without floats in the model', () => {
     const changed = withQuoteVat(
-      withQuoteDiscount(draft(), line.id, 750),
-      line.id,
+      withQuoteDiscount(draft(), line, 750),
+      line,
       800,
     );
     expect(changed.lines[0]).toMatchObject({

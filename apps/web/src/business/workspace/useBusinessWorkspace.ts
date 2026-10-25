@@ -9,8 +9,17 @@ import {
   summarizeCostScenario,
   type CostScenario,
 } from '@cieslacalc/cost-core';
-import { createProjectRecord, newProjectId } from '@cieslacalc/project-core';
-import type { QuoteDraft } from '@cieslacalc/quote-core';
+import {
+  createProjectRecord,
+  newProjectId,
+  projectRecordWithDocument,
+} from '@cieslacalc/project-core';
+import {
+  quoteSectionStatus,
+  withQuoteSection,
+  type QuoteDraft,
+  type QuoteSectionOrder,
+} from '@cieslacalc/quote-core';
 import { useBusiness } from '../context';
 import { useOrganizationPrices } from '../use-assortment';
 import { deriveCommercialReadiness } from '../commercial-readiness';
@@ -48,6 +57,8 @@ export function useBusinessWorkspace({
   locale,
   setReuseFreshProject,
   setProjectStartMode,
+  structures,
+  activeStructureId,
 }: {
   state: AssemblyState;
   projectSession: ProjectSession;
@@ -59,6 +70,13 @@ export function useBusinessWorkspace({
   locale: string;
   setReuseFreshProject: (value: boolean) => void;
   setProjectStartMode: (value: 'new') => void;
+  /**
+   * VNext-10F: the structures of a project of several roofs, named, in
+   * project order — the quote has a section for each (ADR-017 §9).
+   */
+  structures?: QuoteSectionOrder[];
+  /** The structure open in the workbench: the section a refresh rebuilds. */
+  activeStructureId?: string;
 }) {
   const business = useBusiness();
   const [detail, setDetail] = useState<EstimationDetail>();
@@ -172,22 +190,23 @@ export function useBusinessWorkspace({
       projectSessionState.active?.id !== detail.project.id
     )
       return;
+    // The whole project — every structure, the open one written back
+    // (ADR-017 §8) — is what the estimation carries.
+    const record = projectSession.exportRecord();
+    if (!record) return;
     const current = projectQueue.snapshot().value;
-    if (
-      JSON.stringify(current?.document) !==
-      JSON.stringify(state.projectDocument)
-    )
-      projectQueue.set({
-        ...detail.project,
-        document: state.projectDocument,
-        updatedAt: new Date().toISOString(),
-      });
+    if (JSON.stringify(current?.document) !== JSON.stringify(record.document))
+      projectQueue.set(
+        projectRecordWithDocument(detail.project, record.document),
+      );
   }, [
     detail,
     opening,
     state.projectDocument,
     state.activeTransaction,
     projectSessionState.active?.id,
+    projectSessionState.structures,
+    projectSession,
     projectQueue,
   ]);
 
@@ -280,6 +299,24 @@ export function useBusinessWorkspace({
   const costSummary = costScenario
     ? summarizeCostScenario(costScenario)
     : undefined;
+  // VNext-10F: a quote of several structures is current part by part.
+  const sections =
+    structures?.length && activeStructureId
+      ? { order: structures, openId: activeStructureId }
+      : undefined;
+  const quoteSections =
+    currentQuoteDraft && sections
+      ? quoteSectionStatus(currentQuoteDraft, sections.order, {
+          id: sections.openId,
+          sourceFingerprint: currentCommercialFingerprint,
+        })
+      : undefined;
+  const quoteStale =
+    !!currentQuoteDraft &&
+    (quoteSections
+      ? quoteSections.stale
+      : !!currentQuoteDraft.sections ||
+        currentQuoteDraft.sourceFingerprint !== currentCommercialFingerprint);
   const commercialReadiness = deriveCommercialReadiness({
     rows: materialRows,
     manuallyPricedRows: new Set(
@@ -296,9 +333,7 @@ export function useBusinessWorkspace({
     hasCovering: hasCovering,
     cost: costSummary,
     quoteExists: !!currentQuoteDraft,
-    quoteStale:
-      !!currentQuoteDraft &&
-      currentQuoteDraft.sourceFingerprint !== currentCommercialFingerprint,
+    quoteStale,
   });
 
   const createCurrentQuote = (existing?: QuoteDraft) => {
@@ -314,7 +349,7 @@ export function useBusinessWorkspace({
     )
       .toISOString()
       .slice(0, 10);
-    return createQuoteFromMaterialPlan({
+    const base = createQuoteFromMaterialPlan({
       draft: {
         number: existing?.number,
         issuedOn: existing?.issuedOn ?? createdAt.slice(0, 10),
@@ -351,6 +386,16 @@ export function useBusinessWorkspace({
           ? `${row.product.name}${row.description ? ` · ${row.description}` : ''}`
           : materialRowLabel(row, locale),
     });
+    // One roof: the quote as before (a project that is one roof again
+    // leaves its sections). Several: rebuild the open structure's section.
+    return sections
+      ? withQuoteSection({
+          base,
+          sectionId: sections.openId,
+          order: sections.order,
+          ...(existing ? { previous: existing } : {}),
+        })
+      : base;
   };
 
   const openQuote = () => {
@@ -510,7 +555,8 @@ export function useBusinessWorkspace({
         : undefined,
     exportRecovery,
     currentQuoteDraft,
-    currentCommercialFingerprint,
+    quoteStale,
+    quoteSections,
     commercialReadiness,
     quoteOpen,
     setQuoteOpen,

@@ -856,7 +856,7 @@ workbench. No migration.
   structure in its own frame as V1, so a project of one roof never changes
   format; removing the last extra structure turns a project back into V1.
 - The selected structure is session view state, never persisted (ADR-002).
-- Business estimations keep `ProjectRecordV1`; the API is unchanged.
+- Business estimations kept `ProjectRecordV1` until VNext-10F (§30).
 - Reference fixture `fixtures/projects/structures/13-house-and-carport`
   (references 01 and 11, byte-identical inside their structures).
 
@@ -900,3 +900,23 @@ workbench. No migration.
   ADR-017); the import evidence of the first structure is recorded.
 - New sample `projekt-dom-z-garazem.pdf` (fixtures and `public/samples`,
   byte-checked).
+
+## 30. VNext-10F contracts — Business projects of several structures
+
+- **Estimation project snapshot** (`commercial_estimations.project_snapshot`,
+  JSON, persisted on the server): now a `ProjectRecord` — V1, or V2 for a
+  project of several structures — read and written with
+  `projectRecordSchema`. No SQL migration: the column is JSON and every
+  stored V1 record reads unchanged. An older server build refuses a V2
+  record with its ordinary validation error; web and API deploy together.
+- **`QuoteDraft.sections?`** (additive optional, `schemaVersion` stays 1):
+  `{ id, label, sourceFingerprint }[]`, one per structure, in project
+  order. **`QuoteLine.sectionId?`**: present on every line exactly when
+  `sections` is; a line is unique by (sectionId, id). A draft without
+  sections is the one-roof quote, unchanged; old drafts parse as before.
+  The top-level `sourceFingerprint` of a sectioned draft is derived from
+  its sections' fingerprints.
+- Rules: a section is replaced only while its structure is open; lines of a
+  removed structure leave on the next refresh; the lines of a one-roof
+  quote become the first structure's section when a structure is added; a
+  project that is one roof again gets a quote without sections.

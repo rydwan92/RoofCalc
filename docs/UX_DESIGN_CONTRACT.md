@@ -632,6 +632,12 @@ line and manual lengths keep working.
   is named through one lookup (`ROOF_FAMILY_LABEL`), and never shows
   another family's controls (no ridge settings on a mono-pitch roof). A quick
   calculation offers "Utwórz projekt" instead of retyping.
+- **VNext-10F: one quote for every structure, part by part.** A business
+  estimation offers "Dodaj bryłę"; its quote has a section per structure
+  with a net subtotal that says "bez ceny: n" while lines lack a price. A
+  structure without items is named ("Bez pozycji w ofercie: …") with a
+  button that opens it while the quote stays open; the refresh button
+  names the structure it rebuilds. Never a silent zero for a missing part.
 - **VNext-10E: the project's quantities, never a hidden gap.** Above the
   material plan of a project of structures, "Zestawienie całego projektu"
   lists each structure (roof area, members, length, volume) and the

@@ -971,6 +971,31 @@
   letter-spacing: 0.05em;
 }
 
+/* VNext-10F: a quote of several structures — a section per structure. */
+.bz-quote-section th,
+.bz-quote-section td {
+  padding-top: 1.2rem;
+  border-bottom: 2px solid #284735;
+  color: #1d3326;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+.bz-quote-section td {
+  text-align: right;
+  white-space: nowrap;
+}
+.bz-quote-section-gap {
+  display: block;
+  color: #8a5a00;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+@media print {
+  .bz-quote-section {
+    break-after: avoid;
+  }
+}
+
 .bz-quote-table td:first-child {
   position: relative;
   min-width: 15rem;

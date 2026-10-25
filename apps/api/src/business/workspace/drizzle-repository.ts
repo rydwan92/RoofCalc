@@ -22,8 +22,8 @@ import {
   businessRoleSchema,
 } from '@cieslacalc/business-core';
 import {
-  projectRecordV1Schema,
-  type ProjectRecordV1,
+  projectRecordSchema,
+  type ProjectRecord,
 } from '@cieslacalc/project-core';
 import {
   quoteDraftSchema,
@@ -363,7 +363,7 @@ export class DrizzleWorkspaceRepository implements WorkspaceRepository {
     return {
       estimation: estimationFrom(row),
       customer,
-      project: projectRecordV1Schema.parse(decodeJson(row.projectSnapshot)),
+      project: projectRecordSchema.parse(decodeJson(row.projectSnapshot)),
       ...(quote ? { quote: quoteFrom(quote) } : {}),
     };
   }
@@ -371,7 +371,7 @@ export class DrizzleWorkspaceRepository implements WorkspaceRepository {
     org: string,
     userId: string,
     input: EstimationInput,
-    project: ProjectRecordV1,
+    project: ProjectRecord,
   ) {
     const id = crypto.randomUUID(),
       now = new Date();
@@ -390,7 +390,7 @@ export class DrizzleWorkspaceRepository implements WorkspaceRepository {
     org: string,
     id: string,
     version: number,
-    project: ProjectRecordV1,
+    project: ProjectRecord,
   ) {
     const [result] = await this.db
       .update(estimations)

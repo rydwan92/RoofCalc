@@ -59,6 +59,8 @@ skomplikowanych projektów kompleksowo dla całej aplikacji". Decision record:
   overlap check.
 - **10E — the project schedule.** Structural timber and roof area per
   structure and for the project, timber added by exact section.
+- **10F — Business.** A business estimation carries a project of several
+  structures; its quote has a section per structure.
 
 ## Delivered — 10A (2026-10-24)
 
@@ -173,3 +175,64 @@ keys, never parsed (ADR-007).
 - Not yet: build-up layers (battens, counter-battens, membrane, covering)
   per project — they need each structure's layouts, which the workbench
   resolves for the open structure only; a project CSV.
+
+## VNext-10F — Business: one estimation, every structure (2026-10-25)
+
+### Definition of Ready
+
+1. **User problem.** A salesperson quoting a house and its garage had to
+   open two estimations — Business offered no structure — and send two
+   quotes for one customer and one site.
+2. **Domain owner.** `quote-core` owns a quote of several parts (sections,
+   line identity, merging a rebuilt part, part status): a commercial rule,
+   no roof inside. The web business workspace builds each part through the
+   existing material-plan → quote path. The API only validates and stores.
+3. **Canonical persistence.** None new in the roof document. The
+   estimation's snapshot may now be a V2 record (ADR-017 §8).
+4. **Schema / migration.** SCHEMA_REGISTRY §30: estimation snapshot V1 |
+   V2 in a JSON column (no SQL migration, every V1 row reads unchanged);
+   `QuoteDraft.sections?` and `QuoteLine.sectionId?` additive optional,
+   quote `schemaVersion` stays 1, old drafts parse.
+5. **Undo / history.** Structure edits stay session edits (10A); quote
+   edits are quote edits — no new history entry.
+6. **Quantity.** Unchanged; each part is the open structure's material plan.
+7. **Procurement.** Unchanged.
+8. **Catalogue.** Unchanged; prices and SKUs come from the same lookups.
+9. **Cost layer.** Quote money stays in `quote-core`; no price enters
+   geometry, quantity or procurement.
+10. **Offline.** A business estimation needs the server as before; the
+    local project of structures still works offline.
+11. **Mobile.** The same quote at 390 px: a section row above its groups;
+    "Otwórz „…”" buttons for parts with no section yet; e2e on the phone.
+12. **Domain research.** None (no geometry).
+13. **Regression.** quote-core section tests (merge, identity, status,
+    totals, schema), API estimation tests with fixture 13, QuoteWorkspace
+    tests, e2e desktop + phone through the workspace fixture.
+14. **Multi-structure.** Structure IDs stay opaque; a line is (section, id),
+    never a concatenated string; sections follow the project's order.
+
+### Delivered
+
+- API: estimations create, save, read and duplicate a `ProjectRecord` (V1
+  or V2) with `projectRecordSchema`; the server never opens structures.
+- Web: the estimation autosaves the whole project (`exportRecord`, the open
+  structure written back); an opened estimation restores its structures;
+  "Dodaj bryłę" is offered in Business.
+- `quote-core`: `QuoteSection`, `QuoteLine.sectionId`, `sameQuoteLine`;
+  edits take a line (section and id); `withQuoteSection` rebuilds the open
+  part and keeps the others frozen (a one-roof quote becomes the first
+  structure's part; a removed structure leaves); `quoteSectionStatus` says
+  whether the open part is stale and which parts have none;
+  `summarizeQuoteBySection`.
+- Quote: a section row per structure with its net subtotal ("bez ceny: n"
+  while lines lack a price); "Bez pozycji w ofercie: …" with a button that
+  opens that structure while the quote stays open; the refresh names the
+  structure it rebuilds.
+- Found on the way: a mono-pitch roof's low and high wall plates shared
+  one schedule row id (`…:M:wall-plate:1`), so its quote held two lines
+  with one id and the server refused it. Row ordinals now run across
+  identities with a shared prefix (quantity-core; ids of every other row
+  unchanged).
+- Not yet: a quote part is rebuilt only while its structure is open (each
+  structure's material plan lives in the workbench); a printed quote of
+  several structures has no per-structure page break.

@@ -2,15 +2,19 @@ import { Fragment, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Printer, RefreshCw, X } from 'lucide-react';
 import {
   calculateQuoteLine,
-  quoteIsStale,
+  sameQuoteLine,
   summarizeQuote,
+  summarizeQuoteBySection,
   withQuoteDiscount,
   withQuoteIncluded,
   withQuoteQuantity,
   withQuoteUnitPrice,
   withQuoteVat,
   type QuoteDraft,
+  type QuoteLine,
   type QuoteLineGroup,
+  type QuoteSection,
+  type QuoteSummary,
 } from '@cieslacalc/quote-core';
 import { formatMoney, parseDecimal } from '../format';
 import { CompanyLogo } from './CompanySettings';
@@ -27,9 +31,25 @@ const GROUPS: readonly QuoteLineGroup[] = [
 
 const money = formatMoney;
 
+/**
+ * VNext-10F (ADR-017 §9): the structures of a quote of several roofs — the
+ * open one (whose section a refresh rebuilds) and those with no section yet.
+ */
+export interface QuoteStructuresView {
+  open: { id: string; label: string };
+  missing: { id: string; label: string }[];
+  onOpen: (id: string) => void;
+}
+
+/** A line's key for React: its section and id, as a pair. */
+function lineKey(line: QuoteLine) {
+  return JSON.stringify([line.sectionId ?? null, line.id]);
+}
+
 export function QuoteWorkspace({
   draft,
-  currentFingerprint,
+  stale,
+  structures,
   locale,
   onChange,
   onRefresh,
@@ -41,7 +61,9 @@ export function QuoteWorkspace({
   comparison,
 }: {
   draft: QuoteDraft;
-  currentFingerprint: string;
+  /** The quote no longer matches its source (the open structure's). */
+  stale: boolean;
+  structures?: QuoteStructuresView;
   locale: string;
   onChange: (draft: QuoteDraft) => void;
   onRefresh: () => void;
@@ -73,7 +95,17 @@ export function QuoteWorkspace({
     globalThis.window.requestAnimationFrame(() => globalThis.window.print());
   };
   const summary = summarizeQuote(draft);
-  const stale = quoteIsStale(draft, currentFingerprint);
+  // One part per structure, or the whole quote as one.
+  const parts: {
+    section?: QuoteSection;
+    summary?: QuoteSummary;
+    pool: QuoteLine[];
+  }[] = draft.sections
+    ? summarizeQuoteBySection(draft).map((part) => ({
+        ...part,
+        pool: draft.lines.filter((line) => line.sectionId === part.section.id),
+      }))
+    : [{ pool: draft.lines }];
   const groupLabel: Record<QuoteLineGroup, string> = pl
     ? {
         covering: 'Pokrycie',
@@ -397,14 +429,14 @@ export function QuoteWorkspace({
                     {comparison.lines
                       .filter(
                         (line) =>
-                          draft.lines.find((old) => old.id === line.id)
+                          draft.lines.find((old) => sameQuoteLine(old, line))
                             ?.technicalQuantity.value !==
                           line.technicalQuantity.value,
                       )
                       .map((line) => (
-                        <li key={line.id}>
+                        <li key={lineKey(line)}>
                           {line.description}:{' '}
-                          {draft.lines.find((old) => old.id === line.id)
+                          {draft.lines.find((old) => sameQuoteLine(old, line))
                             ?.technicalQuantity.value ?? '—'}{' '}
                           → {line.technicalQuantity.value}{' '}
                           {unit(line.technicalQuantity.unit)}
@@ -413,10 +445,12 @@ export function QuoteWorkspace({
                     {draft.lines
                       .filter(
                         (line) =>
-                          !comparison.lines.some((next) => next.id === line.id),
+                          !comparison.lines.some((next) =>
+                            sameQuoteLine(next, line),
+                          ),
                       )
                       .map((line) => (
-                        <li key={line.id}>
+                        <li key={lineKey(line)}>
                           {line.description}: {line.technicalQuantity.value} →{' '}
                           {pl ? 'usunięto' : 'removed'}
                         </li>
@@ -430,8 +464,45 @@ export function QuoteWorkspace({
                 onClick={onRefresh}
               >
                 <RefreshCw size={15} aria-hidden="true" />{' '}
-                {pl ? 'Odśwież ofertę' : 'Refresh quote'}
+                {structures
+                  ? pl
+                    ? `Odśwież pozycje bryły „${structures.open.label}”`
+                    : `Refresh the items of “${structures.open.label}”`
+                  : pl
+                    ? 'Odśwież ofertę'
+                    : 'Refresh quote'}
               </button>
+            </section>
+          )}
+          {structures && structures.missing.length > 0 && !preview && (
+            <section
+              className="bz-quote-stale bz-no-print"
+              role="status"
+              data-testid="quote-missing-structures"
+            >
+              <div>
+                <strong>
+                  {pl
+                    ? `Bez pozycji w ofercie: ${structures.missing.map((part) => part.label).join(', ')}`
+                    : `No items in the quote yet: ${structures.missing.map((part) => part.label).join(', ')}`}
+                </strong>
+                <p>
+                  {pl
+                    ? 'Pozycje bryły trafiają do oferty, gdy ją otworzysz i odświeżysz ofertę — suma oferty ich jeszcze nie obejmuje.'
+                    : 'A structure’s items enter the quote when you open it and refresh the quote — the total does not include them yet.'}
+                </p>
+              </div>
+              {structures.missing.map((part) => (
+                <button
+                  key={part.id}
+                  className="a-button"
+                  type="button"
+                  data-testid="quote-open-structure"
+                  onClick={() => structures.onOpen(part.id)}
+                >
+                  {pl ? `Otwórz „${part.label}”` : `Open “${part.label}”`}
+                </button>
+              ))}
             </section>
           )}
 
@@ -480,277 +551,312 @@ export function QuoteWorkspace({
                 </tr>
               </thead>
               <tbody>
-                {GROUPS.map((group) => {
-                  const lines = draft.lines.filter(
-                    (line) =>
-                      line.group === group &&
-                      (preview
-                        ? line.included
-                        : !attentionOnly ||
-                          (line.included &&
-                            (line.unitNetAmountMinor === undefined ||
-                              line.vatRateBps === undefined))),
-                  );
-                  if (!lines.length) return null;
-                  return (
-                    <Fragment key={group}>
-                      <tr className="bz-quote-group">
-                        <th colSpan={preview ? 7 : 8}>{groupLabel[group]}</th>
+                {parts.map((part) => (
+                  <Fragment key={part.section?.id ?? 'quote'}>
+                    {part.section && (
+                      <tr
+                        className="bz-quote-section"
+                        data-section-id={part.section.id}
+                      >
+                        <th colSpan={preview ? 6 : 7}>{part.section.label}</th>
+                        <td>
+                          {money(
+                            part.summary?.netMinor,
+                            draft.currencyCode,
+                            locale,
+                          )}
+                          {/* A part never reads as complete while lines lack a price. */}
+                          {!!part.summary?.missingPriceCount && (
+                            <small className="bz-quote-section-gap">
+                              {pl
+                                ? `bez ceny: ${part.summary.missingPriceCount}`
+                                : `without price: ${part.summary.missingPriceCount}`}
+                            </small>
+                          )}
+                        </td>
                       </tr>
-                      {lines.map((line) => {
-                        const calculated = calculateQuoteLine(line);
-                        return (
-                          <tr key={line.id} data-testid="quote-line">
-                            <td>
-                              <label className="bz-quote-include bz-no-print bz-no-preview">
-                                <input
-                                  type="checkbox"
-                                  checked={line.included}
-                                  onChange={(event) =>
-                                    onChange(
-                                      withQuoteIncluded(
-                                        draft,
-                                        line.id,
-                                        event.target.checked,
-                                      ),
-                                    )
-                                  }
-                                />
-                                <span className="bz-visually-hidden">
-                                  {pl ? 'Uwzględnij' : 'Include'}
-                                </span>
-                              </label>
-                              <strong>{line.description}</strong>
-                              <small className="bz-no-preview">
-                                {line.priceSource === 'organization-price-list'
-                                  ? pl
-                                    ? 'Cennik hurtowni'
-                                    : 'Company price list'
-                                  : line.priceSource === 'manual-estimation'
-                                    ? pl
-                                      ? 'Ręcznie — ta wycena'
-                                      : 'Manual — this estimate'
-                                    : pl
-                                      ? 'Brak ceny'
-                                      : 'Missing price'}
-                              </small>
-                              {line.priceSource === 'manual-estimation' &&
-                                line.organizationUnitNetAmountMinor !==
-                                  undefined && (
+                    )}
+                    {GROUPS.map((group) => {
+                      const lines = part.pool.filter(
+                        (line) =>
+                          line.group === group &&
+                          (preview
+                            ? line.included
+                            : !attentionOnly ||
+                              (line.included &&
+                                (line.unitNetAmountMinor === undefined ||
+                                  line.vatRateBps === undefined))),
+                      );
+                      if (!lines.length) return null;
+                      return (
+                        <Fragment key={group}>
+                          <tr className="bz-quote-group">
+                            <th colSpan={preview ? 7 : 8}>
+                              {groupLabel[group]}
+                            </th>
+                          </tr>
+                          {lines.map((line) => {
+                            const calculated = calculateQuoteLine(line);
+                            return (
+                              <tr key={lineKey(line)} data-testid="quote-line">
+                                <td>
+                                  <label className="bz-quote-include bz-no-print bz-no-preview">
+                                    <input
+                                      type="checkbox"
+                                      checked={line.included}
+                                      onChange={(event) =>
+                                        onChange(
+                                          withQuoteIncluded(
+                                            draft,
+                                            line,
+                                            event.target.checked,
+                                          ),
+                                        )
+                                      }
+                                    />
+                                    <span className="bz-visually-hidden">
+                                      {pl ? 'Uwzględnij' : 'Include'}
+                                    </span>
+                                  </label>
+                                  <strong>{line.description}</strong>
                                   <small className="bz-no-preview">
-                                    {!preview && (
-                                      <button
-                                        className="a-button"
-                                        type="button"
-                                        onClick={() =>
-                                          onChange({
-                                            ...withQuoteUnitPrice(
-                                              draft,
-                                              line.id,
-                                              line.organizationUnitNetAmountMinor!,
-                                            ),
-                                            lines: draft.lines.map((entry) =>
-                                              entry.id === line.id
-                                                ? {
-                                                    ...entry,
-                                                    unitNetAmountMinor:
-                                                      entry.organizationUnitNetAmountMinor,
-                                                    priceSource:
-                                                      'organization-price-list' as const,
-                                                  }
-                                                : entry,
-                                            ),
-                                          })
-                                        }
-                                      >
-                                        {pl
-                                          ? 'Przywróć cenę firmową'
-                                          : 'Restore company price'}
-                                      </button>
+                                    {line.priceSource ===
+                                    'organization-price-list'
+                                      ? pl
+                                        ? 'Cennik hurtowni'
+                                        : 'Company price list'
+                                      : line.priceSource === 'manual-estimation'
+                                        ? pl
+                                          ? 'Ręcznie — ta wycena'
+                                          : 'Manual — this estimate'
+                                        : pl
+                                          ? 'Brak ceny'
+                                          : 'Missing price'}
+                                  </small>
+                                  {line.priceSource === 'manual-estimation' &&
+                                    line.organizationUnitNetAmountMinor !==
+                                      undefined && (
+                                      <small className="bz-no-preview">
+                                        {!preview && (
+                                          <button
+                                            className="a-button"
+                                            type="button"
+                                            onClick={() =>
+                                              onChange({
+                                                ...withQuoteUnitPrice(
+                                                  draft,
+                                                  line,
+                                                  line.organizationUnitNetAmountMinor!,
+                                                ),
+                                                lines: draft.lines.map(
+                                                  (entry) =>
+                                                    sameQuoteLine(entry, line)
+                                                      ? {
+                                                          ...entry,
+                                                          unitNetAmountMinor:
+                                                            entry.organizationUnitNetAmountMinor,
+                                                          priceSource:
+                                                            'organization-price-list' as const,
+                                                        }
+                                                      : entry,
+                                                ),
+                                              })
+                                            }
+                                          >
+                                            {pl
+                                              ? 'Przywróć cenę firmową'
+                                              : 'Restore company price'}
+                                          </button>
+                                        )}
+                                        {pl ? 'Cena cennikowa' : 'List price'}:{' '}
+                                        {money(
+                                          line.organizationUnitNetAmountMinor,
+                                          draft.currencyCode,
+                                          locale,
+                                        )}
+                                      </small>
                                     )}
-                                    {pl ? 'Cena cennikowa' : 'List price'}:{' '}
+                                </td>
+                                <td data-label={pl ? 'Kod' : 'Code'}>
+                                  {line.organizationSku ?? '—'}
+                                </td>
+                                <td data-label={pl ? 'Ilość' : 'Quantity'}>
+                                  <span className="bz-quote-technical bz-no-preview">
+                                    {pl ? 'Techniczna' : 'Technical'}:{' '}
+                                    {line.technicalQuantity.value.toLocaleString(
+                                      locale,
+                                    )}{' '}
+                                    {unit(line.technicalQuantity.unit)}
+                                  </span>
+                                  {preview ? (
+                                    <strong>
+                                      {line.offerQuantity.value.toLocaleString(
+                                        locale,
+                                      )}
+                                    </strong>
+                                  ) : (
+                                    <label>
+                                      {pl ? 'Ofertowa' : 'Quoted'}
+                                      <input
+                                        key={`${lineKey(line)}:qty:${line.offerQuantity.value}`}
+                                        inputMode="decimal"
+                                        defaultValue={line.offerQuantity.value.toLocaleString(
+                                          locale,
+                                        )}
+                                        onBlur={(event) => {
+                                          const value = parseDecimal(
+                                            event.target.value,
+                                          );
+                                          if (value !== null && value >= 0)
+                                            onChange(
+                                              withQuoteQuantity(
+                                                draft,
+                                                line,
+                                                value,
+                                              ),
+                                            );
+                                        }}
+                                      />
+                                    </label>
+                                  )}
+                                  {line.quantityOverridden && (
+                                    <small className="bz-quote-warning bz-no-preview">
+                                      {pl
+                                        ? 'Różni się od zapotrzebowania RoofCalc.'
+                                        : 'Differs from the RoofCalc requirement.'}
+                                      {' Δ '}
+                                      {(
+                                        line.offerQuantity.value -
+                                        line.technicalQuantity.value
+                                      ).toLocaleString(locale)}{' '}
+                                      {unit(line.offerQuantity.unit)}
+                                    </small>
+                                  )}
+                                </td>
+                                <td data-label={pl ? 'JM' : 'Unit'}>
+                                  {unit(line.offerQuantity.unit)}
+                                </td>
+                                <td
+                                  data-label={pl ? 'Cena netto' : 'Net price'}
+                                >
+                                  {preview ? (
+                                    money(
+                                      line.unitNetAmountMinor,
+                                      draft.currencyCode,
+                                      locale,
+                                    )
+                                  ) : (
+                                    <input
+                                      aria-label={`${pl ? 'Cena netto' : 'Net price'} ${line.description}`}
+                                      key={`${lineKey(line)}:price:${line.unitNetAmountMinor}`}
+                                      inputMode="decimal"
+                                      defaultValue={
+                                        line.unitNetAmountMinor === undefined
+                                          ? ''
+                                          : (
+                                              line.unitNetAmountMinor / 100
+                                            ).toLocaleString(locale)
+                                      }
+                                      onBlur={(event) => {
+                                        const value = parseDecimal(
+                                          event.target.value,
+                                        );
+                                        onChange(
+                                          withQuoteUnitPrice(
+                                            draft,
+                                            line,
+                                            value === null
+                                              ? undefined
+                                              : Math.round(value * 100),
+                                          ),
+                                        );
+                                      }}
+                                    />
+                                  )}
+                                </td>
+                                <td data-label={pl ? 'Rabat' : 'Discount'}>
+                                  {preview ? (
+                                    line.discountBps ? (
+                                      `${line.discountBps / 100}%`
+                                    ) : (
+                                      '—'
+                                    )
+                                  ) : (
+                                    <input
+                                      aria-label={`${pl ? 'Rabat' : 'Discount'} ${line.description}`}
+                                      key={`${lineKey(line)}:discount:${line.discountBps}`}
+                                      inputMode="decimal"
+                                      defaultValue={
+                                        (line.discountBps ?? 0) / 100
+                                      }
+                                      onBlur={(event) => {
+                                        const value = parseDecimal(
+                                          event.target.value,
+                                        );
+                                        if (
+                                          value !== null &&
+                                          value >= 0 &&
+                                          value <= 100
+                                        )
+                                          onChange(
+                                            withQuoteDiscount(
+                                              draft,
+                                              line,
+                                              Math.round(value * 100),
+                                            ),
+                                          );
+                                      }}
+                                    />
+                                  )}
+                                </td>
+                                <td data-label="VAT" className="bz-no-preview">
+                                  {preview ? (
+                                    line.vatRateBps === undefined ? (
+                                      '—'
+                                    ) : (
+                                      `${line.vatRateBps / 100}%`
+                                    )
+                                  ) : (
+                                    <select
+                                      aria-label={`VAT ${line.description}`}
+                                      value={line.vatRateBps ?? ''}
+                                      onChange={(event) =>
+                                        onChange(
+                                          withQuoteVat(
+                                            draft,
+                                            line,
+                                            event.target.value === ''
+                                              ? undefined
+                                              : Number(event.target.value),
+                                          ),
+                                        )
+                                      }
+                                    >
+                                      <option value="">—</option>
+                                      <option value="0">0%</option>
+                                      <option value="500">5%</option>
+                                      <option value="800">8%</option>
+                                      <option value="2300">23%</option>
+                                    </select>
+                                  )}
+                                </td>
+                                <td data-label={pl ? 'Netto' : 'Net'}>
+                                  <strong>
                                     {money(
-                                      line.organizationUnitNetAmountMinor,
+                                      calculated.netMinor,
                                       draft.currencyCode,
                                       locale,
                                     )}
-                                  </small>
-                                )}
-                            </td>
-                            <td data-label={pl ? 'Kod' : 'Code'}>
-                              {line.organizationSku ?? '—'}
-                            </td>
-                            <td data-label={pl ? 'Ilość' : 'Quantity'}>
-                              <span className="bz-quote-technical bz-no-preview">
-                                {pl ? 'Techniczna' : 'Technical'}:{' '}
-                                {line.technicalQuantity.value.toLocaleString(
-                                  locale,
-                                )}{' '}
-                                {unit(line.technicalQuantity.unit)}
-                              </span>
-                              {preview ? (
-                                <strong>
-                                  {line.offerQuantity.value.toLocaleString(
-                                    locale,
-                                  )}
-                                </strong>
-                              ) : (
-                                <label>
-                                  {pl ? 'Ofertowa' : 'Quoted'}
-                                  <input
-                                    key={`${line.id}:qty:${line.offerQuantity.value}`}
-                                    inputMode="decimal"
-                                    defaultValue={line.offerQuantity.value.toLocaleString(
-                                      locale,
-                                    )}
-                                    onBlur={(event) => {
-                                      const value = parseDecimal(
-                                        event.target.value,
-                                      );
-                                      if (value !== null && value >= 0)
-                                        onChange(
-                                          withQuoteQuantity(
-                                            draft,
-                                            line.id,
-                                            value,
-                                          ),
-                                        );
-                                    }}
-                                  />
-                                </label>
-                              )}
-                              {line.quantityOverridden && (
-                                <small className="bz-quote-warning bz-no-preview">
-                                  {pl
-                                    ? 'Różni się od zapotrzebowania RoofCalc.'
-                                    : 'Differs from the RoofCalc requirement.'}
-                                  {' Δ '}
-                                  {(
-                                    line.offerQuantity.value -
-                                    line.technicalQuantity.value
-                                  ).toLocaleString(locale)}{' '}
-                                  {unit(line.offerQuantity.unit)}
-                                </small>
-                              )}
-                            </td>
-                            <td data-label={pl ? 'JM' : 'Unit'}>
-                              {unit(line.offerQuantity.unit)}
-                            </td>
-                            <td data-label={pl ? 'Cena netto' : 'Net price'}>
-                              {preview ? (
-                                money(
-                                  line.unitNetAmountMinor,
-                                  draft.currencyCode,
-                                  locale,
-                                )
-                              ) : (
-                                <input
-                                  aria-label={`${pl ? 'Cena netto' : 'Net price'} ${line.description}`}
-                                  key={`${line.id}:price:${line.unitNetAmountMinor}`}
-                                  inputMode="decimal"
-                                  defaultValue={
-                                    line.unitNetAmountMinor === undefined
-                                      ? ''
-                                      : (
-                                          line.unitNetAmountMinor / 100
-                                        ).toLocaleString(locale)
-                                  }
-                                  onBlur={(event) => {
-                                    const value = parseDecimal(
-                                      event.target.value,
-                                    );
-                                    onChange(
-                                      withQuoteUnitPrice(
-                                        draft,
-                                        line.id,
-                                        value === null
-                                          ? undefined
-                                          : Math.round(value * 100),
-                                      ),
-                                    );
-                                  }}
-                                />
-                              )}
-                            </td>
-                            <td data-label={pl ? 'Rabat' : 'Discount'}>
-                              {preview ? (
-                                line.discountBps ? (
-                                  `${line.discountBps / 100}%`
-                                ) : (
-                                  '—'
-                                )
-                              ) : (
-                                <input
-                                  aria-label={`${pl ? 'Rabat' : 'Discount'} ${line.description}`}
-                                  key={`${line.id}:discount:${line.discountBps}`}
-                                  inputMode="decimal"
-                                  defaultValue={(line.discountBps ?? 0) / 100}
-                                  onBlur={(event) => {
-                                    const value = parseDecimal(
-                                      event.target.value,
-                                    );
-                                    if (
-                                      value !== null &&
-                                      value >= 0 &&
-                                      value <= 100
-                                    )
-                                      onChange(
-                                        withQuoteDiscount(
-                                          draft,
-                                          line.id,
-                                          Math.round(value * 100),
-                                        ),
-                                      );
-                                  }}
-                                />
-                              )}
-                            </td>
-                            <td data-label="VAT" className="bz-no-preview">
-                              {preview ? (
-                                line.vatRateBps === undefined ? (
-                                  '—'
-                                ) : (
-                                  `${line.vatRateBps / 100}%`
-                                )
-                              ) : (
-                                <select
-                                  aria-label={`VAT ${line.description}`}
-                                  value={line.vatRateBps ?? ''}
-                                  onChange={(event) =>
-                                    onChange(
-                                      withQuoteVat(
-                                        draft,
-                                        line.id,
-                                        event.target.value === ''
-                                          ? undefined
-                                          : Number(event.target.value),
-                                      ),
-                                    )
-                                  }
-                                >
-                                  <option value="">—</option>
-                                  <option value="0">0%</option>
-                                  <option value="500">5%</option>
-                                  <option value="800">8%</option>
-                                  <option value="2300">23%</option>
-                                </select>
-                              )}
-                            </td>
-                            <td data-label={pl ? 'Netto' : 'Net'}>
-                              <strong>
-                                {money(
-                                  calculated.netMinor,
-                                  draft.currencyCode,
-                                  locale,
-                                )}
-                              </strong>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </Fragment>
-                  );
-                })}
+                                  </strong>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </Fragment>
+                      );
+                    })}
+                  </Fragment>
+                ))}
               </tbody>
             </table>
           </div>

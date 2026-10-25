@@ -8,7 +8,7 @@ import type {
   TeamCreate,
   TeamChange,
 } from '@cieslacalc/business-core';
-import type { ProjectRecordV1 } from '@cieslacalc/project-core';
+import type { ProjectRecord } from '@cieslacalc/project-core';
 import type { QuoteDraft } from '@cieslacalc/quote-core';
 
 export class WorkspaceError extends Error {
@@ -30,7 +30,7 @@ export interface SavedQuote {
 export interface EstimationDetail {
   estimation: CommercialEstimation;
   customer: BusinessCustomer;
-  project: ProjectRecordV1;
+  project: ProjectRecord;
   quote?: SavedQuote;
 }
 export interface EstimationSummary extends CommercialEstimation {
@@ -86,13 +86,13 @@ export interface WorkspaceRepository {
     org: string,
     userId: string,
     input: EstimationInput,
-    project: ProjectRecordV1,
+    project: ProjectRecord,
   ): Promise<EstimationDetail>;
   saveProject(
     org: string,
     id: string,
     version: number,
-    project: ProjectRecordV1,
+    project: ProjectRecord,
   ): Promise<number>;
   createQuote(
     org: string,

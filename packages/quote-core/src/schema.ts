@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { QuoteDraft } from './index';
+import { quoteSectionsAreConsistent } from './sections';
 
 const id = z.string().trim().min(1).max(128);
 const text = z.string().max(400);
@@ -110,6 +111,7 @@ export const quoteDraftSchema: z.ZodType<QuoteDraft> = z
             discountBps: bps.optional(),
             vatRateBps: bps.optional(),
             included: z.boolean(),
+            sectionId: id.optional(),
           })
           .strict()
           .refine(
@@ -121,10 +123,18 @@ export const quoteDraftSchema: z.ZodType<QuoteDraft> = z
           ),
       )
       .max(3000),
+    sections: z
+      .array(
+        z
+          .object({
+            id,
+            label: text.min(1),
+            sourceFingerprint: z.string().min(1).max(128),
+          })
+          .strict(),
+      )
+      .max(100)
+      .optional(),
   })
   .strict()
-  .refine(
-    (draft) =>
-      new Set(draft.lines.map((line) => line.id)).size === draft.lines.length,
-    'duplicate-line-id',
-  );
+  .refine(quoteSectionsAreConsistent, 'duplicate-line-id');
