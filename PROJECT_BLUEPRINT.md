@@ -1297,6 +1297,34 @@ If code is temporarily incomplete, explicitly list:
 
 # 25. WORK CHECKPOINT
 
+## VNext-12 (2026-10-25) — choosing well: start, Creator, covering, catalogue
+
+- Branch `feature/vnext-12-choices` (from 10F, `bbab7fc`). Owner
+  (2026-10-25): "ulepszenie aplikacji, jej wyglądu, lepszy wybór przy
+  możliwościach różnego rodzaju w projekcie".
+- Audit (desktop 1440×900, phone 390×844): the Creator's preview stayed a
+  plan while pitch and structure were chosen; structure and ridge options
+  had no explanation; the start screen mixed a project, imports and quick
+  calculations in one grid and hid the examples; covering families named
+  the engine's output, not the product; the catalogue did not sort by fit.
+- `RoofSectionPreview` (+ `roofSectionMembers`): the cross-section from
+  the resolved skeleton — the drawing-engine timber prisms of the middle
+  rafter station and every member along the building, seen across; pitch
+  per plane, the wall-plate line, the building width. No own geometry.
+- Creator: "Rzut / Przekrój" (plan on the building step, section after);
+  hints on structure and ridge-connection options (what they mean in the
+  model, no safety claim).
+- Start: three named groups; examples visible; quick card "Pojedyncza
+  krokiew"; on a phone, saved projects first.
+- Covering families: what each is and "Liczy: …".
+- Catalogue: fitting products first, no stated minimum next, too-flat
+  dimmed last; "Pasujące do kąta dachu {pitch}° (n)" filter.
+- Derived/presentation only: no schema, no persistence change.
+- Validation: `pnpm verify` green — 226 files / 2369 tests (13 skipped);
+  `pnpm e2e` 194 passed / 0 failed.
+- NEXT ACTION: the project's build-up layers per structure through a pure
+  layout derivation (10G), or more choice guidance in the layers panel.
+
 ## VNext-10F (2026-10-25) — Business: one estimation, every structure
 
 - Branch `feature/vnext-10f-business-structures` (from 10E, `3450335`).

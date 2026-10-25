@@ -13,6 +13,8 @@ import '../i18n';
 import { CatalogProductPicker } from './CatalogProductPicker';
 import type { CatalogClient } from './client';
 import type { CatalogProductDetail } from '@cieslacalc/catalog-core';
+import { flattestRoofPitchDeg } from '@cieslacalc/roof-math';
+import { useAssembly } from '../assembly/store';
 
 const detail: CatalogProductDetail = {
   manufacturer: {
@@ -333,5 +335,51 @@ describe('catalogue product picker', () => {
       within(sheet).getByRole('button', { name: /Wr.*do wynik/ }),
     );
     expect(await within(sheet).findByTestId('catalog-results')).toBeTruthy();
+  });
+
+  // VNext-12: what suits this roof comes first, and can be shown alone.
+  it('lists products this roof meets the minimum pitch of first, and can show only those', async () => {
+    const pitch = flattestRoofPitchDeg(useAssembly.getState().template);
+    const item = (id: string, name: string, minPitchDeg?: number) => ({
+      id,
+      manufacturer: {
+        id: detail.manufacturer.id,
+        name: detail.manufacturer.name,
+      },
+      name,
+      kind: 'roof-tile' as const,
+      currentRevisionId: `r:${id}`,
+      variantCount: 0,
+      technicalPreview: {
+        effectiveWidthMm: 300,
+        ...(minPitchDeg === undefined ? {} : { minPitchDeg }),
+      },
+    });
+    renderPicker(
+      client({
+        searchProducts: vi.fn(async () => ({
+          items: [
+            item('p:steep', 'Steep only', pitch + 10),
+            item('p:unknown', 'No minimum stated'),
+            item('p:fits', 'Fits this roof', pitch - 5),
+          ],
+        })),
+      }),
+    );
+    await screen.findByText('Fits this roof');
+    const names = () =>
+      [...document.querySelectorAll('.a-catalog-card > strong')].map(
+        (name) => name.textContent,
+      );
+    expect(names()).toEqual([
+      'Fits this roof',
+      'No minimum stated',
+      'Steep only',
+    ]);
+    const filter = screen.getByTestId('catalog-fit-filter');
+    expect(filter.textContent).toBe(`Pasujące do kąta dachu ${pitch}° (1)`);
+    fireEvent.click(filter);
+    expect(filter.getAttribute('aria-pressed')).toBe('true');
+    expect(names()).toEqual(['Fits this roof']);
   });
 });

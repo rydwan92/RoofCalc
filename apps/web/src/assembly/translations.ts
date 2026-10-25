@@ -125,15 +125,19 @@ export const assemblyPl = {
     family: {
       'roof-tile': {
         title: 'Dachówka',
-        description: 'Układ rzędów i pozycji krycia',
+        description: 'Ceramiczna lub betonowa, układana rzędami na łatach.',
+        computes:
+          'Liczy: rzędy i pozycje krycia oraz rozstaw łat z karty produktu.',
       },
       'modular-sheet': {
         title: 'Blacha modułowa',
-        description: 'Efektywny układ arkuszy i modułów',
+        description: 'Blachodachówka w arkuszach o stałym module.',
+        computes: 'Liczy: arkusze i moduły na każdej połaci.',
       },
       'standing-seam': {
         title: 'Blacha na rąbek',
-        description: 'Panele prowadzone od okapu do kalenicy',
+        description: 'Pasy blachy od okapu do kalenicy, cięte na długość.',
+        computes: 'Liczy: pasy i ich długości na każdej połaci.',
       },
     },
     catalogBadge: 'Katalog',
@@ -867,9 +871,26 @@ export const assemblyPl = {
     },
     preview: {
       title: 'Podgląd z modelu',
+      views: 'Widok podglądu',
+      plan: 'Rzut',
+      section: 'Przekrój',
       label: 'Rzut dachu z góry wyliczony z podanych wartości',
-      invalid: 'Uzupełnij poprawne wymiary, aby zobaczyć rzut dachu.',
+      sectionLabel:
+        'Przekrój dachu w poprzek budynku wyliczony z podanych wartości',
+      invalid: 'Uzupełnij poprawne wymiary, aby zobaczyć podgląd dachu.',
       hint: 'Rzut z góry pochodzi z tego samego modelu geometrii co warsztat.',
+      sectionHint:
+        'Przekrój w poprzek budynku: te same krokwie, jętki i murłaty, które rysuje warsztat — z kątem połaci i okapem.',
+    },
+    choiceHint: {
+      rafter: 'Pary krokwi oparte na murłatach i spięte w kalenicy.',
+      collarTie:
+        'Pary krokwi spięte jętką; jej wysokość ustawisz w warsztacie. Jętki są w zestawieniu materiałów.',
+      ridgeBoard:
+        'Krokwie oparte o deskę kalenicową; deska jest w zestawieniu materiałów.',
+      directMeeting: 'Krokwie stykają się czołami w kalenicy, bez deski.',
+      halfLap:
+        'Krokwie zachodzą na siebie w kalenicy — geometria nakładki nie jest jeszcze opracowana.',
     },
     examples: {
       title: 'Projekty przykładowe',
@@ -2310,8 +2331,14 @@ export const assemblyPl = {
     start: {
       new: 'Nowy projekt',
       newHint: 'Wprowadź wymiary dachu i przygotuj projekt krok po kroku.',
-      quick: 'Szybkie obliczenie',
-      quickHint: 'Oblicz pojedynczą krokiew bez zakładania projektu.',
+      quick: 'Pojedyncza krokiew',
+      quickHint:
+        'Długość, kąty i zacięcia jednej krokwi dachu dwuspadowego z trzech wymiarów.',
+      group: {
+        project: 'Zacznij projekt',
+        file: 'Z pliku lub rysunku',
+        quick: 'Szybkie obliczenie — bez projektu',
+      },
       ifc: 'Import projektu IFC',
       ifcHint: 'Otwórz model IFC i potwierdź wymiary obsługiwanego dachu.',
       document: 'Import z PDF lub zdjęcia',
@@ -2326,7 +2353,7 @@ export const assemblyPl = {
         'Rysunek DXF (AutoCAD, ArchiCAD…) lub model IFC — rozpoznamy obrys, okap, kalenicę i naroża.',
       monoPitch: 'Dach jednospadowy',
       monoPitchHint:
-        'Szybkie obliczenie wiaty, przybudówki, garażu: krokwie, zacięcia, łaty, membrana — projekt utworzysz jednym przyciskiem.',
+        'Wiata, przybudówka, garaż: krokwie, zacięcia, łaty, membrana — projekt utworzysz jednym przyciskiem.',
       dropAny:
         'Masz już plik? Przeciągnij go tutaj — projekt RoofCalc, PDF, zdjęcie, rysunek DXF lub model IFC. Rozpoznamy format.',
       dropProject: 'Przeciągnij tutaj plik projektu RoofCalc, aby go otworzyć.',
@@ -2349,7 +2376,7 @@ export const assemblyPl = {
       updated: 'zmieniony {{date}}',
       empty:
         'Nie masz jeszcze zapisanych projektów. Zacznij od Nowego projektu powyżej.',
-      more: 'Przykłady i opcje zaawansowane',
+      more: 'Opcje zaawansowane',
       geometryDone:
         'Geometria dachu jest gotowa. Następny krok: ustaw konstrukcję.',
       structureDone:

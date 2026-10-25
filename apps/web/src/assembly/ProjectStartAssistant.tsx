@@ -53,6 +53,7 @@ import {
 import { useAssembly } from './store';
 import { workbenchProjectResolver } from './workbench-project';
 import { ROOF_FAMILY_LABEL } from './roof-family';
+import { RoofSectionPreview } from './RoofSectionPreview';
 
 /** VNext-10: `structure` adds a roof structure to the open project. */
 export type ProjectStartMode = 'new' | 'quick' | 'edit' | 'structure';
@@ -316,6 +317,21 @@ export function ProjectStartAssistant({
   const unit = state.unit;
   const { t, i18n } = useTranslation();
   const [stage, setStage] = useState<Stage>(mode === 'new' ? 'choose' : 1);
+  /**
+   * VNext-12: the preview follows the step — the plan while the building is
+   * sized, the cross-section while pitch, overhang and structure are chosen
+   * — unless the user picks a view on this step.
+   */
+  const [previewChoice, setPreviewChoice] = useState<{
+    stage: Stage;
+    view: 'plan' | 'section';
+  }>();
+  const previewView =
+    previewChoice?.stage === stage
+      ? previewChoice.view
+      : stage === 1
+        ? 'plan'
+        : 'section';
   const [draft, setDraft] = useState(() => initialDraft(template, unit));
   /**
    * VNext-8: each family's starting pitch. A mono-pitch roof starts at the
@@ -687,81 +703,120 @@ export function ProjectStartAssistant({
         </header>
 
         {stage === 'choose' && (
-          <div className="a-start-paths">
-            <button
-              type="button"
-              className="a-start-path is-primary"
-              data-start-path="guided"
-              data-testid="project-start-guided"
-              onClick={() => {
-                onBeginProject?.();
-                setStage(1);
-              }}
+          <div className="a-start-paths is-grouped">
+            {/* VNext-12: three ways in, each named — a project, a file, or a
+                quick calculation with no project. */}
+            <section
+              className="a-start-group"
+              aria-labelledby="start-group-project"
             >
-              <Sparkles size={24} aria-hidden="true" />
-              <strong>{t('assembly.journey.start.new')}</strong>
-              <span>{t('assembly.journey.start.newHint')}</span>
-            </button>
-            {onQuick && (
+              <h3 id="start-group-project">
+                {t('assembly.journey.start.group.project')}
+              </h3>
+              <button
+                type="button"
+                className="a-start-path is-primary"
+                data-start-path="guided"
+                data-testid="project-start-guided"
+                onClick={() => {
+                  onBeginProject?.();
+                  setStage(1);
+                }}
+              >
+                <Sparkles size={24} aria-hidden="true" />
+                <strong>{t('assembly.journey.start.new')}</strong>
+                <span>{t('assembly.journey.start.newHint')}</span>
+              </button>
               <button
                 type="button"
                 className="a-start-path"
-                data-testid="project-start-quick"
-                onClick={onQuick}
+                data-start-path="example"
+                data-testid="project-start-examples"
+                onClick={() => setStage('examples')}
               >
-                <PencilRuler size={24} aria-hidden="true" />
-                <strong>{t('assembly.journey.start.quick')}</strong>
-                <span>{t('assembly.journey.start.quickHint')}</span>
+                <BookOpen size={24} aria-hidden="true" />
+                <strong>{t('assembly.creator.start.example.title')}</strong>
+                <span>{t('assembly.creator.start.example.text')}</span>
               </button>
-            )}
-            {onImportDocument && (
-              <button
-                type="button"
-                className="a-start-path"
-                data-testid="project-start-document"
-                onClick={onImportDocument}
-              >
-                <FileScan size={24} aria-hidden="true" />
-                <strong>{t('assembly.journey.start.document')}</strong>
-                <span>{t('assembly.journey.start.documentHint')}</span>
-              </button>
-            )}
-            {onImportCad ? (
-              <button
-                type="button"
-                className="a-start-path"
-                data-testid="project-start-cad"
-                onClick={onImportCad}
-              >
-                <DraftingCompass size={24} aria-hidden="true" />
-                <strong>{t('assembly.journey.start.cad')}</strong>
-                <span>{t('assembly.journey.start.cadHint')}</span>
-              </button>
-            ) : (
-              onImportIfc && (
+            </section>
+            <section
+              className="a-start-group"
+              aria-labelledby="start-group-file"
+            >
+              <h3 id="start-group-file">
+                {t('assembly.journey.start.group.file')}
+              </h3>
+              {onImportDocument && (
                 <button
                   type="button"
                   className="a-start-path"
-                  data-testid="project-start-ifc"
-                  onClick={onImportIfc}
+                  data-testid="project-start-document"
+                  onClick={onImportDocument}
                 >
-                  <BookOpen size={24} aria-hidden="true" />
-                  <strong>{t('assembly.journey.start.ifc')}</strong>
-                  <span>{t('assembly.journey.start.ifcHint')}</span>
+                  <FileScan size={24} aria-hidden="true" />
+                  <strong>{t('assembly.journey.start.document')}</strong>
+                  <span>{t('assembly.journey.start.documentHint')}</span>
                 </button>
-              )
-            )}
-            {onMonoPitch && (
-              <button
-                type="button"
-                className="a-start-path"
-                data-testid="project-start-mono-pitch"
-                onClick={onMonoPitch}
+              )}
+              {onImportCad ? (
+                <button
+                  type="button"
+                  className="a-start-path"
+                  data-testid="project-start-cad"
+                  onClick={onImportCad}
+                >
+                  <DraftingCompass size={24} aria-hidden="true" />
+                  <strong>{t('assembly.journey.start.cad')}</strong>
+                  <span>{t('assembly.journey.start.cadHint')}</span>
+                </button>
+              ) : (
+                onImportIfc && (
+                  <button
+                    type="button"
+                    className="a-start-path"
+                    data-testid="project-start-ifc"
+                    onClick={onImportIfc}
+                  >
+                    <BookOpen size={24} aria-hidden="true" />
+                    <strong>{t('assembly.journey.start.ifc')}</strong>
+                    <span>{t('assembly.journey.start.ifcHint')}</span>
+                  </button>
+                )
+              )}
+            </section>
+            {(onQuick || onMonoPitch) && (
+              <section
+                className="a-start-group"
+                aria-labelledby="start-group-quick"
               >
-                <Triangle size={24} aria-hidden="true" />
-                <strong>{t('assembly.journey.start.monoPitch')}</strong>
-                <span>{t('assembly.journey.start.monoPitchHint')}</span>
-              </button>
+                <h3 id="start-group-quick">
+                  {t('assembly.journey.start.group.quick')}
+                </h3>
+                {onQuick && (
+                  <button
+                    type="button"
+                    className="a-start-path"
+                    data-testid="project-start-quick"
+                    onClick={onQuick}
+                  >
+                    <PencilRuler size={24} aria-hidden="true" />
+                    <strong>{t('assembly.journey.start.quick')}</strong>
+                    <span>{t('assembly.journey.start.quickHint')}</span>
+                  </button>
+                )}
+                {onMonoPitch && (
+                  <button
+                    type="button"
+                    className="a-start-path"
+                    data-testid="project-start-mono-pitch"
+                    onClick={onMonoPitch}
+                  >
+                    <Triangle size={24} aria-hidden="true" />
+                    <strong>{t('assembly.journey.start.monoPitch')}</strong>
+                    <span>{t('assembly.journey.start.monoPitchHint')}</span>
+                  </button>
+                )}
+              </section>
             )}
             {acceptsDrop && (
               <p
@@ -776,7 +831,9 @@ export function ProjectStartAssistant({
                 )}
               </p>
             )}
-            <section className="a-start-recent">
+            <section
+              className={`a-start-recent${projects.length ? ' has-projects' : ''}`}
+            >
               <h3>{t('assembly.journey.start.recent')}</h3>
               <p>
                 {t(
@@ -857,17 +914,6 @@ export function ProjectStartAssistant({
             </section>
             <details className="a-start-secondary">
               <summary>{t('assembly.journey.start.more')}</summary>
-              <button
-                type="button"
-                className="a-start-path"
-                data-start-path="example"
-                data-testid="project-start-examples"
-                onClick={() => setStage('examples')}
-              >
-                <BookOpen size={24} aria-hidden="true" />
-                <strong>{t('assembly.creator.start.example.title')}</strong>
-                <span>{t('assembly.creator.start.example.text')}</span>
-              </button>
               <button
                 type="button"
                 className="a-start-path"
@@ -1058,11 +1104,13 @@ export function ProjectStartAssistant({
                         {
                           value: 'rafter',
                           label: t('assembly.rafterSystem'),
+                          hint: t('assembly.creator.choiceHint.rafter'),
                           illustration: 'rafter-system',
                         },
                         {
                           value: 'rafter-collar-tie',
                           label: t('assembly.rafterCollarTieSystem'),
+                          hint: t('assembly.creator.choiceHint.collarTie'),
                           illustration: 'collar-tie',
                         },
                       ],
@@ -1081,16 +1129,19 @@ export function ProjectStartAssistant({
                         {
                           value: 'ridge-board',
                           label: t('assembly.ridgeBoardConnection'),
+                          hint: t('assembly.creator.choiceHint.ridgeBoard'),
                           illustration: 'ridge-board',
                         },
                         {
                           value: 'direct-meeting',
                           label: t('assembly.directMeetingConnection'),
+                          hint: t('assembly.creator.choiceHint.directMeeting'),
                           illustration: 'direct-meeting',
                         },
                         {
                           value: 'half-lap',
                           label: t('assembly.halfLapConnection'),
+                          hint: t('assembly.creator.choiceHint.halfLap'),
                           illustration: 'half-lap',
                         },
                       ],
@@ -1264,16 +1315,48 @@ export function ProjectStartAssistant({
             </form>
             <aside className="a-start-preview">
               <span>{t('assembly.creator.preview.title')}</span>
-              <RoofPlanPreview
-                template={nextTemplate}
-                label={t('assembly.creator.preview.label')}
-                invalidLabel={t('assembly.creator.preview.invalid')}
-              />
+              <div
+                className="a-start-preview-views"
+                role="group"
+                aria-label={t('assembly.creator.preview.views')}
+              >
+                {(['plan', 'section'] as const).map((view) => (
+                  <button
+                    key={view}
+                    type="button"
+                    aria-pressed={previewView === view}
+                    data-preview-view={view}
+                    onClick={() => setPreviewChoice({ stage, view })}
+                  >
+                    {t(`assembly.creator.preview.${view}`)}
+                  </button>
+                ))}
+              </div>
+              {previewView === 'plan' ? (
+                <RoofPlanPreview
+                  template={nextTemplate}
+                  label={t('assembly.creator.preview.label')}
+                  invalidLabel={t('assembly.creator.preview.invalid')}
+                />
+              ) : (
+                <RoofSectionPreview
+                  template={nextTemplate}
+                  label={t('assembly.creator.preview.sectionLabel')}
+                  invalidLabel={t('assembly.creator.preview.invalid')}
+                  widthLabel={`${draft.buildingWidth} ${unit}`}
+                />
+              )}
               <strong>
                 {t(ROOF_FAMILY_LABEL[draft.roofType])} · {draft.buildingLength}{' '}
                 × {draft.buildingWidth} {unit}
               </strong>
-              <p>{t('assembly.creator.preview.hint')}</p>
+              <p>
+                {t(
+                  previewView === 'plan'
+                    ? 'assembly.creator.preview.hint'
+                    : 'assembly.creator.preview.sectionHint',
+                )}
+              </p>
             </aside>
           </div>
         )}

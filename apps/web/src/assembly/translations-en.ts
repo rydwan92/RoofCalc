@@ -131,15 +131,19 @@ export const assemblyEn: typeof assemblyPl = {
     family: {
       'roof-tile': {
         title: 'Roof tile',
-        description: 'Course and coverage-position layout',
+        description: 'Clay or concrete, laid in courses on battens.',
+        computes:
+          'Calculates: courses and coverage positions, and the batten gauge from the product sheet.',
       },
       'modular-sheet': {
         title: 'Modular sheet',
-        description: 'Effective sheet and module layout',
+        description: 'Tile-effect metal in sheets of a fixed module.',
+        computes: 'Calculates: sheets and modules on every plane.',
       },
       'standing-seam': {
         title: 'Standing seam',
-        description: 'Panels running from eave to ridge',
+        description: 'Metal panels from eave to ridge, cut to length.',
+        computes: 'Calculates: panels and their lengths on every plane.',
       },
     },
     catalogBadge: 'Catalogue',
@@ -867,9 +871,27 @@ export const assemblyEn: typeof assemblyPl = {
     },
     preview: {
       title: 'Preview from the model',
+      views: 'Preview view',
+      plan: 'Plan',
+      section: 'Section',
       label: 'Roof plan resolved from the entered values',
-      invalid: 'Enter valid dimensions to see the roof plan.',
+      sectionLabel:
+        'Roof cross-section across the building, resolved from the entered values',
+      invalid: 'Enter valid dimensions to see the roof preview.',
       hint: 'The plan comes from the same geometry model as the workbench.',
+      sectionHint:
+        'A section across the building: the same rafters, collar ties and wall plates the workbench draws — with the pitch and overhang.',
+    },
+    choiceHint: {
+      rafter:
+        'Rafter pairs bearing on the wall plates and joined at the ridge.',
+      collarTie:
+        'Rafter pairs tied by a collar; you set its height in the workbench. Collar ties are in the material schedule.',
+      ridgeBoard:
+        'Rafters bear against a ridge board; the board is in the material schedule.',
+      directMeeting: 'Rafters meet end to end at the ridge, with no board.',
+      halfLap:
+        'Rafters overlap at the ridge — half-lap geometry is not modelled yet.',
     },
     examples: {
       title: 'Example projects',
@@ -2295,8 +2317,14 @@ export const assemblyEn: typeof assemblyPl = {
     start: {
       new: 'New project',
       newHint: 'Enter roof dimensions and prepare a project step by step.',
-      quick: 'Quick calculation',
-      quickHint: 'Calculate a single rafter without creating a project.',
+      quick: 'A single rafter',
+      quickHint:
+        'Length, angles and birdsmouth of one gable rafter from three dimensions.',
+      group: {
+        project: 'Start a project',
+        file: 'From a file or drawing',
+        quick: 'Quick calculation — no project',
+      },
       ifc: 'Import IFC project',
       ifcHint:
         'Open an IFC model and confirm the dimensions of a supported roof.',
@@ -2312,7 +2340,7 @@ export const assemblyEn: typeof assemblyPl = {
         'A DXF drawing (AutoCAD, ArchiCAD…) or an IFC model — outline, eave, ridge and hips are recognised.',
       monoPitch: 'Mono-pitch roof',
       monoPitchHint:
-        'A quick calculation for a carport, lean-to or garage: rafters, birdsmouths, battens, membrane — one button makes it a project.',
+        'A carport, lean-to or garage: rafters, birdsmouths, battens, membrane — one button makes it a project.',
       dropAny:
         'Already have a file? Drop it here — a RoofCalc project, PDF, photo, DXF drawing or IFC model. The format is recognised.',
       dropProject: 'Drop a RoofCalc project file here to open it.',
@@ -2334,7 +2362,7 @@ export const assemblyEn: typeof assemblyPl = {
       all: 'All projects',
       updated: 'changed {{date}}',
       empty: 'No saved projects yet. Choose New project above to get started.',
-      more: 'Examples and advanced options',
+      more: 'Advanced options',
       geometryDone: 'Roof geometry is ready. Next step: set up the structure.',
       structureDone:
         'Structure inputs are complete. Review the project, then add covering.',

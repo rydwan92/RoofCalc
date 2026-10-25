@@ -61,6 +61,10 @@ const copy = {
     fitTitle: 'Twój dach',
     fits: (pitch: number) => `kąt dachu ${pitch}° ≥ minimum produktu`,
     tooFlat: (pitch: number) => `dach ${pitch}° — poniżej minimum produktu`,
+    fitOnly: (pitch: number, count: number) =>
+      `Pasujące do kąta dachu ${pitch}° (${count})`,
+    fitNone: (pitch: number) =>
+      `Żaden z wczytanych produktów nie dopuszcza kąta ${pitch}°. Wyłącz filtr albo wczytaj więcej.`,
     panelLength: 'Zakres długości',
     sheetFormat: 'Format',
     fixedSheet: 'Stały arkusz',
@@ -106,6 +110,10 @@ const copy = {
     fitTitle: 'Your roof',
     fits: (pitch: number) => `roof pitch ${pitch}° ≥ product minimum`,
     tooFlat: (pitch: number) => `roof ${pitch}° — below the product minimum`,
+    fitOnly: (pitch: number, count: number) =>
+      `Fits the ${pitch}° roof (${count})`,
+    fitNone: (pitch: number) =>
+      `None of the loaded products allows ${pitch}°. Turn the filter off or load more.`,
     panelLength: 'Length range',
     sheetFormat: 'Format',
     fixedSheet: 'Fixed sheet',
@@ -187,6 +195,8 @@ function PickerBody({
   const [variantId, setVariantId] = useState('');
   const [applying, setApplying] = useState(false);
   const [applyError, setApplyError] = useState(false);
+  /** VNext-12: only products whose minimum pitch this roof meets. */
+  const [fitOnly, setFitOnly] = useState(false);
   const manufacturers = useQuery({
     queryKey: catalogQueryKey(client, 'manufacturers'),
     queryFn: ({ signal }) => client.listManufacturers(signal),
@@ -222,7 +232,29 @@ function PickerBody({
   const roofPitchDeg = useAssembly((state) =>
     flattestRoofPitchDeg(state.template),
   );
-  const productItems = products.data?.pages.flatMap((page) => page.items);
+  const loadedItems = products.data?.pages.flatMap((page) => page.items);
+  // VNext-12: what suits this roof comes first — products it meets the
+  // minimum pitch of, then those with no stated minimum, then too-flat.
+  const fitOf = (product: NonNullable<typeof loadedItems>[number]) =>
+    product.technicalPreview.minPitchDeg === undefined
+      ? 'unknown'
+      : roofPitchDeg >= product.technicalPreview.minPitchDeg
+        ? 'fits'
+        : 'too-flat';
+  const FIT_RANK = { fits: 0, unknown: 1, 'too-flat': 2 } as const;
+  const rankedItems = loadedItems
+    ?.map((product, index) => ({ product, index }))
+    .sort(
+      (a, b) =>
+        FIT_RANK[fitOf(a.product)] - FIT_RANK[fitOf(b.product)] ||
+        a.index - b.index,
+    )
+    .map(({ product }) => product);
+  const fittingCount =
+    loadedItems?.filter((product) => fitOf(product) === 'fits').length ?? 0;
+  const productItems = fitOnly
+    ? rankedItems?.filter((product) => fitOf(product) === 'fits')
+    : rankedItems;
   const selectedVariant = detail.data?.variants.find(
     (item) => item.id === variantId,
   );
@@ -361,6 +393,18 @@ function PickerBody({
             ))}
           </select>
         </label>
+        {!!loadedItems?.length && (
+          <button
+            type="button"
+            className="a-catalog-fit-filter"
+            data-testid="catalog-fit-filter"
+            aria-pressed={fitOnly}
+            onClick={() => setFitOnly((value) => !value)}
+          >
+            <CircleCheck size={15} aria-hidden="true" />
+            {m.fitOnly(roofPitchDeg, fittingCount)}
+          </button>
+        )}
       </div>
       {unavailable ? (
         <CatalogUnavailable
@@ -376,7 +420,11 @@ function PickerBody({
       ) : productItems?.length ? (
         <div className="a-catalog-results">
           {productItems.map((product) => (
-            <article key={product.id} className="a-catalog-card">
+            <article
+              key={product.id}
+              className="a-catalog-card"
+              data-fit={fitOf(product)}
+            >
               <small>{product.manufacturer.name}</small>
               <strong>{product.name}</strong>
               <span className="a-catalog-revision-badge">
@@ -468,6 +516,10 @@ function PickerBody({
               {products.isFetchingNextPage ? m.loading : m.more}
             </button>
           )}
+        </div>
+      ) : fitOnly && loadedItems?.length ? (
+        <div className="a-catalog-empty" data-testid="catalog-fit-none">
+          {m.fitNone(roofPitchDeg)}
         </div>
       ) : !q && !manufacturerId ? (
         <div className="a-catalog-unavailable" role="status">

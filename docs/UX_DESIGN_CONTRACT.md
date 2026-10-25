@@ -632,6 +632,19 @@ line and manual lengths keep working.
   is named through one lookup (`ROOF_FAMILY_LABEL`), and never shows
   another family's controls (no ridge settings on a mono-pitch roof). A quick
   calculation offers "Utwórz projekt" instead of retyping.
+- **VNext-12: a choice says what it means.** The start screen names three
+  ways in — "Zacznij projekt" (new or example), "Z pliku lub rysunku" and
+  "Szybkie obliczenie — bez projektu"; on a phone a returning user's
+  projects come first. The Creator's preview follows the step: the plan
+  while the building is sized, the cross-section (the workbench's own
+  timber prisms, cut through the middle rafter station, with each plane's
+  pitch and the building width) while pitch, overhang and structure are
+  chosen; "Rzut / Przekrój" switches it. Every structural option says what
+  it means in the model, never whether it is safe. A covering family says
+  what it is and what the program calculates for it. The catalogue lists
+  products whose minimum pitch this roof meets first, then those with no
+  stated minimum, then too-flat ones (dimmed), and "Pasujące do kąta
+  dachu" shows only the first.
 - **VNext-10F: one quote for every structure, part by part.** A business
   estimation offers "Dodaj bryłę"; its quote has a section per structure
   with a net subtotal that says "bez ceny: n" while lines lack a price. A

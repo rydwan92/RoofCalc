@@ -822,3 +822,53 @@
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+
+/* ---------- VNext-12: the start screen in three named groups ---------- */
+.assembly-app .a-start-paths.is-grouped {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+}
+.a-start-group {
+  display: grid;
+  align-content: start;
+  gap: var(--ui-space-2);
+  min-width: 0;
+}
+.a-start-group > h3 {
+  margin: 0;
+  color: var(--ui-text-muted);
+  font-size: var(--ui-text-xs);
+  font-weight: var(--ui-weight-bold);
+  letter-spacing: var(--ui-tracking-caps);
+  text-transform: uppercase;
+}
+.assembly-app .a-start-group .a-start-path {
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: start;
+  column-gap: 12px;
+  row-gap: 4px;
+  min-height: 0 !important;
+  padding: 16px;
+}
+.assembly-app .a-start-group .a-start-path svg {
+  grid-row: 1 / span 2;
+}
+.assembly-app .a-start-group .a-start-path.is-primary {
+  padding: 20px 16px;
+}
+@media (max-width: 1100px) {
+  .assembly-app .a-start-paths.is-grouped {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 760px) {
+  .assembly-app .a-start-paths.is-grouped {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+/* A returning user on a phone finds their projects before the six ways in. */
+@media (max-width: 560px) {
+  .assembly-app .a-start-paths.is-grouped > .a-start-recent.has-projects {
+    order: -1;
+  }
+}

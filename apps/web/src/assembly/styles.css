@@ -8661,3 +8661,42 @@ button.a-quick-fact[aria-pressed='true'] {
 .a-layer-toggle:hover .a-switch-track {
   box-shadow: 0 0 0 3px #46836b22;
 }
+
+/* VNext-12: the catalogue puts what suits this roof first, and can show only that. */
+.a-catalog-fit-filter {
+  display: inline-flex;
+  grid-column: 1 / -1;
+  justify-self: start;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--a-line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--a-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.a-catalog-fit-filter[aria-pressed='true'] {
+  border-color: var(--v37-brand, #235344);
+  background: var(--v37-selected-fill, #e3f0e8);
+  color: var(--v37-brand, #235344);
+}
+.a-catalog-card[data-fit='too-flat'] {
+  opacity: 0.72;
+}
+.a-catalog-card[data-fit='too-flat']:hover,
+.a-catalog-card[data-fit='too-flat']:focus-within {
+  opacity: 1;
+}
+.a-covering-family-grid .a-covering-family-computes {
+  margin-top: 2px;
+  padding-top: 8px;
+  border-top: 1px solid var(--a-line);
+  color: var(--a-text);
+  font-size: 12px;
+  font-weight: 600;
+}

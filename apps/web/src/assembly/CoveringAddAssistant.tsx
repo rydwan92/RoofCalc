@@ -216,6 +216,10 @@ export function CoveringAddAssistant({
                 <span>
                   {t(`assembly.coveringAdd.family.${family.kind}.description`)}
                 </span>
+                {/* VNext-12: what choosing it gives the project. */}
+                <small className="a-covering-family-computes">
+                  {t(`assembly.coveringAdd.family.${family.kind}.computes`)}
+                </small>
               </button>
             );
           })}
