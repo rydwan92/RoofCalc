@@ -26,6 +26,7 @@ export const CATALOGUE_SEED_BATCHES = [
   'drainage-galeco-stal2-2026-09-v51.json',
   'roof-system-2026-09-v52.json',
   'drainage-galeco-stal2-colours-2026-10-vnext4.json',
+  'tiles-membranes-koramic-dorken-2026-10-vnext14.json',
 ] as const;
 
 export type CatalogueSeedBatch = (typeof CATALOGUE_SEED_BATCHES)[number];

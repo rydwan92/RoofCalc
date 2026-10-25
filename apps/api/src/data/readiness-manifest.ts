@@ -97,6 +97,13 @@ export const EXPECTED_SEEDS: readonly ExpectedSeed[] = [
       '4dc7f8b82dfa6048e7a77738e3fdda1dc45ece82d32052128e60e8d79d1b6f07',
   },
   {
+    file: 'tiles-membranes-koramic-dorken-2026-10-vnext14.json',
+    category: 'catalogue',
+    sourceId: 'manufacturer-research-2026-10-vnext14',
+    checksum:
+      '66f7c48f83a6db4773c6aea113593b4700a2fb7483cedbbdd526978455b9e6f1',
+  },
+  {
     file: 'prices-2026-09.json',
     category: 'pricing',
     sourceId: 'manufacturer-research-2026-09',

@@ -18,11 +18,11 @@ describe('system readiness projection', () => {
       applied: 8,
       expected: 8,
     });
-    // VNext-4: + Galeco STAL² colour variants (11 catalogue batches).
+    // VNext-14B: + Koramic tiles and DÖRKEN membranes (12 catalogue batches).
     expect(current.seeds.catalogue).toEqual({
       state: 'current',
-      current: 11,
-      expected: 11,
+      current: 12,
+      expected: 12,
     });
     expect(current.seeds.pricing).toEqual({
       state: 'current',

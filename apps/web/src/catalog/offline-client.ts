@@ -41,6 +41,8 @@ const LOADERS: Record<CatalogueSeedBatch, () => Promise<{ default: unknown }>> =
       import('@cieslacalc/catalog-data/batches/roof-system-2026-09-v52.json'),
     'drainage-galeco-stal2-colours-2026-10-vnext4.json': () =>
       import('@cieslacalc/catalog-data/batches/drainage-galeco-stal2-colours-2026-10-vnext4.json'),
+    'tiles-membranes-koramic-dorken-2026-10-vnext14.json': () =>
+      import('@cieslacalc/catalog-data/batches/tiles-membranes-koramic-dorken-2026-10-vnext14.json'),
   };
 
 let loading: Promise<OfflineCatalogue> | undefined;

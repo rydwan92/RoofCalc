@@ -1,0 +1,359 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "id": "manufacturer-research-2026-10-vnext14",
+    "label": "VNext-14: five Koramic ceramic tiles (official PL mini-catalogue 01.2026, Alegra 10 page) and three DÖRKEN DELTA membranes (official pages, installation guide). Technical data only; no prices, no invented SKUs.",
+    "sourceRevision": "2026-10-vnext14"
+  },
+  "manufacturers": [
+    {
+      "id": "manufacturer:wienerberger",
+      "slug": "wienerberger",
+      "name": "Wienerberger (Koramic)",
+      "countryCode": "AT",
+      "websiteUrl": "https://www.wienerberger.pl",
+      "active": true
+    },
+    {
+      "id": "manufacturer:dorken",
+      "slug": "dorken",
+      "name": "DÖRKEN",
+      "countryCode": "PL",
+      "websiteUrl": "https://www.doerken.com/pl/pl",
+      "active": true
+    }
+  ],
+  "products": [
+    {
+      "id": "product:wienerberger:koramic-v9",
+      "manufacturerId": "manufacturer:wienerberger",
+      "slug": "koramic-v9",
+      "name": "Koramic V9",
+      "coveringKind": "roof-tile",
+      "active": true
+    },
+    {
+      "id": "product:wienerberger:koramic-orea-9",
+      "manufacturerId": "manufacturer:wienerberger",
+      "slug": "koramic-orea-9",
+      "name": "Koramic Orea 9",
+      "coveringKind": "roof-tile",
+      "active": true
+    },
+    {
+      "id": "product:wienerberger:koramic-v11",
+      "manufacturerId": "manufacturer:wienerberger",
+      "slug": "koramic-v11",
+      "name": "Koramic V11",
+      "coveringKind": "roof-tile",
+      "active": true
+    },
+    {
+      "id": "product:wienerberger:koramic-actua-10",
+      "manufacturerId": "manufacturer:wienerberger",
+      "slug": "koramic-actua-10",
+      "name": "Koramic Actua 10",
+      "coveringKind": "roof-tile",
+      "active": true
+    },
+    {
+      "id": "product:wienerberger:koramic-alegra-10",
+      "manufacturerId": "manufacturer:wienerberger",
+      "slug": "koramic-alegra-10",
+      "name": "Koramic Alegra 10",
+      "coveringKind": "roof-tile",
+      "active": true
+    },
+    {
+      "id": "product:dorken:delta-foxx-plus",
+      "manufacturerId": "manufacturer:dorken",
+      "slug": "delta-foxx-plus",
+      "name": "DELTA-FOXX PLUS",
+      "coveringKind": "membrane",
+      "active": true
+    },
+    {
+      "id": "product:dorken:delta-xx-plus-universal",
+      "manufacturerId": "manufacturer:dorken",
+      "slug": "delta-xx-plus-universal",
+      "name": "DELTA-XX PLUS UNIVERSAL",
+      "coveringKind": "membrane",
+      "active": true
+    },
+    {
+      "id": "product:dorken:delta-maxx-x",
+      "manufacturerId": "manufacturer:dorken",
+      "slug": "delta-maxx-x",
+      "name": "DELTA-MAXX X",
+      "coveringKind": "membrane",
+      "active": true
+    }
+  ],
+  "revisions": [
+    {
+      "id": "revision:wienerberger:koramic-v9:2026-10",
+      "productId": "product:wienerberger:koramic-v9",
+      "revisionCode": "2026-10",
+      "validFrom": "2026-10-25",
+      "source": {
+        "label": "Wienerberger PL Koramic mini-catalogue (01.2026), p. 26, retrieved 2026-10-25. Minimum pitch 16 deg with membrane. Only a minimum of 8.9 pcs/m2 stated: no range stored. Straight-lay course pattern is a default, not sourced.",
+        "url": "https://www.wienerberger.pl/content/dam/wienerberger/poland/marketing/documents-magazines/brochures/PL_MKT_DOC_KOR_minikatalog_koramic_dachowki_nowoczesne.pdf",
+        "revision": "2026-01"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-tile",
+        "physicalWidthMm": 310,
+        "physicalLengthMm": 487,
+        "material": "ceramic",
+        "weightKgPerPiece": 4.1,
+        "salesUnit": "piece",
+        "installationModes": [
+          {
+            "id": "standard",
+            "coverWidthMm": 269,
+            "gaugeRangeMm": {
+              "min": 402,
+              "max": 418
+            },
+            "minPitchDeg": 16,
+            "coursePattern": {
+              "layers": [
+                {
+                  "id": "base",
+                  "horizontalOffsetFraction": 0
+                }
+              ],
+              "battenRowOffsetCycle": [0]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "revision:wienerberger:koramic-orea-9:2026-10",
+      "productId": "product:wienerberger:koramic-orea-9",
+      "revisionCode": "2026-10",
+      "validFrom": "2026-10-25",
+      "source": {
+        "label": "Wienerberger PL Koramic mini-catalogue (01.2026), p. 28, retrieved 2026-10-25. Minimum pitch 16 deg with membrane. Only a minimum of 8.9 pcs/m2 stated: no range stored. Straight-lay course pattern is a default, not sourced.",
+        "url": "https://www.wienerberger.pl/content/dam/wienerberger/poland/marketing/documents-magazines/brochures/PL_MKT_DOC_KOR_minikatalog_koramic_dachowki_nowoczesne.pdf",
+        "revision": "2026-01"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-tile",
+        "physicalWidthMm": 310,
+        "physicalLengthMm": 487,
+        "material": "ceramic",
+        "weightKgPerPiece": 4.1,
+        "salesUnit": "piece",
+        "installationModes": [
+          {
+            "id": "standard",
+            "coverWidthMm": 269,
+            "gaugeRangeMm": {
+              "min": 402,
+              "max": 418
+            },
+            "minPitchDeg": 16,
+            "coursePattern": {
+              "layers": [
+                {
+                  "id": "base",
+                  "horizontalOffsetFraction": 0
+                }
+              ],
+              "battenRowOffsetCycle": [0]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "revision:wienerberger:koramic-v11:2026-10",
+      "productId": "product:wienerberger:koramic-v11",
+      "revisionCode": "2026-10",
+      "validFrom": "2026-10-25",
+      "source": {
+        "label": "Wienerberger PL Koramic mini-catalogue (01.2026), p. 27, retrieved 2026-10-25. 17 deg with membrane, 25 without. Only a minimum of 10.9 pcs/m2 stated: no range stored. Straight-lay course pattern is a default, not sourced.",
+        "url": "https://www.wienerberger.pl/content/dam/wienerberger/poland/marketing/documents-magazines/brochures/PL_MKT_DOC_KOR_minikatalog_koramic_dachowki_nowoczesne.pdf",
+        "revision": "2026-01"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-tile",
+        "physicalWidthMm": 272,
+        "physicalLengthMm": 480,
+        "material": "ceramic",
+        "weightKgPerPiece": 4.3,
+        "salesUnit": "piece",
+        "installationModes": [
+          {
+            "id": "standard",
+            "coverWidthMm": 233,
+            "gaugeRangeMm": {
+              "min": 360,
+              "max": 395
+            },
+            "minPitchDeg": 17,
+            "recommendedMinPitchDeg": 25,
+            "coursePattern": {
+              "layers": [
+                {
+                  "id": "base",
+                  "horizontalOffsetFraction": 0
+                }
+              ],
+              "battenRowOffsetCycle": [0]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "revision:wienerberger:koramic-actua-10:2026-10",
+      "productId": "product:wienerberger:koramic-actua-10",
+      "revisionCode": "2026-10",
+      "validFrom": "2026-10-25",
+      "source": {
+        "label": "Wienerberger PL Koramic mini-catalogue (01.2026), p. 29, retrieved 2026-10-25. 24 deg with membrane, 30 without. Only a minimum of 10.0 pcs/m2 stated: no range stored. Straight-lay course pattern is a default, not sourced.",
+        "url": "https://www.wienerberger.pl/content/dam/wienerberger/poland/marketing/documents-magazines/brochures/PL_MKT_DOC_KOR_minikatalog_koramic_dachowki_nowoczesne.pdf",
+        "revision": "2026-01"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-tile",
+        "physicalWidthMm": 303,
+        "physicalLengthMm": 472,
+        "material": "ceramic",
+        "weightKgPerPiece": 4.4,
+        "salesUnit": "piece",
+        "installationModes": [
+          {
+            "id": "standard",
+            "coverWidthMm": 262,
+            "gaugeRangeMm": {
+              "min": 310,
+              "max": 380
+            },
+            "minPitchDeg": 24,
+            "recommendedMinPitchDeg": 30,
+            "coursePattern": {
+              "layers": [
+                {
+                  "id": "base",
+                  "horizontalOffsetFraction": 0
+                }
+              ],
+              "battenRowOffsetCycle": [0]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "revision:wienerberger:koramic-alegra-10:2026-10",
+      "productId": "product:wienerberger:koramic-alegra-10",
+      "revisionCode": "2026-10",
+      "validFrom": "2026-10-25",
+      "source": {
+        "label": "wienerberger.nl Koramic Alegra 10 page, retrieved 2026-10-25. No tile dimensions stated, so none stored. Course pattern: straight-lay default, not manufacturer-sourced.",
+        "url": "https://www.wienerberger.nl/producten/dak/cp/alegra-10.html",
+        "revision": "2026-10"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "roof-tile",
+        "material": "ceramic",
+        "weightKgPerPiece": 4,
+        "salesUnit": "piece",
+        "installationModes": [
+          {
+            "id": "standard",
+            "coverWidthMm": 254,
+            "gaugeRangeMm": {
+              "min": 333,
+              "max": 370
+            },
+            "minPitchDeg": 25,
+            "declaredUnitsPerM2": {
+              "min": 10.6,
+              "max": 11.8
+            },
+            "coursePattern": {
+              "layers": [
+                {
+                  "id": "base",
+                  "horizontalOffsetFraction": 0
+                }
+              ],
+              "battenRowOffsetCycle": [0]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "revision:dorken:delta-foxx-plus:2026-10",
+      "productId": "product:dorken:delta-foxx-plus",
+      "revisionCode": "2026-10",
+      "validFrom": "2026-10-25",
+      "source": {
+        "label": "doerken.com/pl DELTA-FOXX PLUS page, retrieved 2026-10-25. Grammage/Sd descriptive only. Minimum overlap 10 cm per the manufacturer's guide 'Membrany dachowe i szalunkowe' (02.23), p. 5.",
+        "url": "https://www.doerken.com/pl/pl/delta-foxx-plus",
+        "revision": "2026-10"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "membrane",
+        "rollWidthMm": 1500,
+        "rollLengthMm": 50000,
+        "minimumOverlapMm": 100,
+        "material": "synthetic",
+        "salesUnit": "roll"
+      }
+    },
+    {
+      "id": "revision:dorken:delta-xx-plus-universal:2026-10",
+      "productId": "product:dorken:delta-xx-plus-universal",
+      "revisionCode": "2026-10",
+      "validFrom": "2026-10-25",
+      "source": {
+        "label": "doerken.com/pl DELTA-XX PLUS UNIVERSAL page, retrieved 2026-10-25. Grammage/Sd descriptive only. Minimum overlap 10 cm per the manufacturer's guide 'Membrany dachowe i szalunkowe' (02.23), p. 5.",
+        "url": "https://www.doerken.com/pl/pl/delta-xx-plus-universal",
+        "revision": "2026-10"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "membrane",
+        "rollWidthMm": 1500,
+        "rollLengthMm": 50000,
+        "minimumOverlapMm": 100,
+        "material": "synthetic",
+        "salesUnit": "roll"
+      }
+    },
+    {
+      "id": "revision:dorken:delta-maxx-x:2026-10",
+      "productId": "product:dorken:delta-maxx-x",
+      "revisionCode": "2026-10",
+      "validFrom": "2026-10-25",
+      "source": {
+        "label": "doerken.com/pl DELTA-MAXX X page, retrieved 2026-10-25. Grammage/Sd descriptive only. Minimum overlap 10 cm per the manufacturer's guide 'Membrany dachowe i szalunkowe' (02.23), p. 5.",
+        "url": "https://www.doerken.com/pl/pl/delta-maxx-x",
+        "revision": "2026-10"
+      },
+      "technicalSpec": {
+        "schemaVersion": 1,
+        "kind": "membrane",
+        "rollWidthMm": 1500,
+        "rollLengthMm": 50000,
+        "minimumOverlapMm": 100,
+        "material": "synthetic",
+        "salesUnit": "roll"
+      }
+    }
+  ],
+  "variants": []
+}

@@ -920,3 +920,17 @@ workbench. No migration.
   removed structure leave on the next refresh; the lines of a one-roof
   quote become the first structure's section when a structure is added; a
   project that is one roof again gets a quote without sections.
+
+## 31. VNext-14 — catalogue seed data only (no schema change)
+
+- New technical catalogue batch
+  `packages/catalog-data/batches/tiles-membranes-koramic-dorken-2026-10-vnext14.json`
+  (`catalogImportBatchV1Schema`, schemaVersion 1, source
+  `manufacturer-research-2026-10-vnext14`), appended to
+  `CATALOGUE_SEED_BATCHES`; its checksum is in the edge readiness manifest.
+  Additive: new manufacturer `manufacturer:wienerberger`, five roof-tile and
+  three membrane products, each with one immutable revision; the existing
+  `manufacturer:dorken` record is repeated unchanged.
+- No project document, record or covering schema changes. The batten
+  end-offset fit, the site scene and the truss-enquiry sheet are derived on
+  demand and never stored.
